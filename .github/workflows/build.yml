@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.os_name }} ${{ matrix.arch }}
+    name: Build ${{ matrix.os_name }} ${{ matrix.asset_arch }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -17,28 +17,75 @@ jobs:
         include:
           - runner: ubuntu-latest
             os_name: linux
-            arch: x64
+            asset_arch: x86-64
             target: x86_64-unknown-linux-gnu
+            cpu: x86-64
+            ext: ""
+          - runner: ubuntu-latest
+            os_name: linux
+            asset_arch: avx2
+            target: x86_64-unknown-linux-gnu
+            cpu: x86-64-v3
+            ext: ""
+          - runner: ubuntu-latest
+            os_name: linux
+            asset_arch: avx512
+            target: x86_64-unknown-linux-gnu
+            cpu: x86-64-v4
             ext: ""
           - runner: ubuntu-24.04-arm
             os_name: linux
-            arch: arm64
+            asset_arch: arm64
             target: aarch64-unknown-linux-gnu
+            cpu: generic
             ext: ""
           - runner: windows-latest
             os_name: windows
-            arch: x64
+            asset_arch: x86-64
             target: x86_64-pc-windows-msvc
+            cpu: x86-64
+            ext: ".exe"
+          - runner: windows-latest
+            os_name: windows
+            asset_arch: avx2
+            target: x86_64-pc-windows-msvc
+            cpu: x86-64-v3
+            ext: ".exe"
+          - runner: windows-latest
+            os_name: windows
+            asset_arch: avx512
+            target: x86_64-pc-windows-msvc
+            cpu: x86-64-v4
             ext: ".exe"
           - runner: windows-11-arm
             os_name: windows
-            arch: arm64
+            asset_arch: arm64
             target: aarch64-pc-windows-msvc
+            cpu: generic
             ext: ".exe"
+          - runner: macos-15-intel
+            os_name: macos
+            asset_arch: x86-64
+            target: x86_64-apple-darwin
+            cpu: x86-64
+            ext: ""
+          - runner: macos-15-intel
+            os_name: macos
+            asset_arch: avx2
+            target: x86_64-apple-darwin
+            cpu: x86-64-v3
+            ext: ""
+          - runner: macos-15-intel
+            os_name: macos
+            asset_arch: avx512
+            target: x86_64-apple-darwin
+            cpu: x86-64-v4
+            ext: ""
           - runner: macos-latest
             os_name: macos
-            arch: arm64
+            asset_arch: arm64
             target: aarch64-apple-darwin
+            cpu: generic
             ext: ""
 
     steps:
@@ -54,19 +101,21 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build release binary
+        env:
+          RUSTFLAGS: "-C target-cpu=${{ matrix.cpu }}"
         run: cargo build --release --target=${{ matrix.target }}
 
       - name: Prepare asset name
         id: prepare-asset
         shell: bash
         run: |
-          asset_name="whitespine-${{ github.event.release.tag_name }}-${{ matrix.os_name }}-${{ matrix.arch }}${{ matrix.ext }}"
+          asset_name="lynx-${{ github.event.release.tag_name }}-${{ matrix.os_name }}-${{ matrix.asset_arch }}${{ matrix.ext }}"
           echo "asset_name=${asset_name}" >> "$GITHUB_OUTPUT"
 
       - name: Copy and rename binary
         shell: bash
         run: |
-          cp "target/${{ matrix.target }}/release/whitespine${{ matrix.ext }}" "${{ steps.prepare-asset.outputs.asset_name }}"
+          cp "target/${{ matrix.target }}/release/lynx${{ matrix.ext }}" "${{ steps.prepare-asset.outputs.asset_name }}"
 
       - name: Upload binary to GitHub release
         env:

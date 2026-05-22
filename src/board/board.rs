@@ -3,7 +3,6 @@
 /// Uses 12 bitboards (one per color×piece), two occupancy bitboards, and an
 /// incremental Zobrist hash.  Make/unmake are performed in-place with an
 /// internal history stack — no full-struct copies needed.
-use std::cell::Cell;
 use std::fmt;
 
 use super::attacks::ATTACKS;
@@ -30,9 +29,24 @@ struct UnmakeInfo {
     halfmove_clock: u8,
     fullmove: u16,
     hash: u64,
+    checkers: Bitboard,
 }
 
 const NO_PIECE: u8 = 255;
+const PIECE_FROM_ENCODED: [Piece; 12] = [
+    Piece::Pawn,
+    Piece::Knight,
+    Piece::Bishop,
+    Piece::Rook,
+    Piece::Queen,
+    Piece::King,
+    Piece::Pawn,
+    Piece::Knight,
+    Piece::Bishop,
+    Piece::Rook,
+    Piece::Queen,
+    Piece::King,
+];
 
 // -----------------------------------------------------------------------
 // Board
@@ -69,10 +83,7 @@ pub struct Board {
     pub fullmove: u16,
     /// Incrementally updated Zobrist hash.
     pub hash: u64,
-    in_check: Cell<bool>,
-    in_check_dirty: Cell<bool>,
-    checkers: Cell<Bitboard>,
-    checkers_dirty: Cell<bool>,
+    checkers: Bitboard,
     history: Vec<UnmakeInfo>,
 }
 
@@ -97,10 +108,7 @@ impl Board {
             halfmove_clock: 0,
             fullmove: 1,
             hash: 0,
-            in_check: Cell::new(false),
-            in_check_dirty: Cell::new(true),
-            checkers: Cell::new(Bitboard::EMPTY),
-            checkers_dirty: Cell::new(true),
+            checkers: Bitboard::EMPTY,
             history: Vec::with_capacity(128),
         };
 
@@ -172,7 +180,7 @@ impl Board {
             board.fullmove = s.parse::<u16>().unwrap_or(1);
         }
 
-        board.refresh_in_check_and_checkers();
+        board.checkers = board.calculate_checkers();
         Ok(board)
     }
 
@@ -307,8 +315,8 @@ impl Board {
 
     #[inline(always)]
     pub fn moving_piece(&self, mv: Move) -> Piece {
-        self.piece_type_at(mv.from_sq())
-            .expect("move source must contain a piece")
+        debug_assert!(self.mailbox[mv.from_sq().index()] < 12);
+        self.piece_type_at_unchecked(mv.from_sq())
     }
 
     #[inline(always)]
@@ -365,8 +373,11 @@ impl Board {
     pub fn captured_piece(&self, mv: Move) -> Option<Piece> {
         if mv.is_en_passant() {
             Some(Piece::Pawn)
+        } else if mv.is_capture() {
+            debug_assert!(self.mailbox[mv.to_sq().index()] < 12);
+            Some(self.piece_type_at_unchecked(mv.to_sq()))
         } else {
-            self.piece_type_at(mv.to_sq())
+            None
         }
     }
 
@@ -393,8 +404,12 @@ impl Board {
             || self.is_threefold_repetition()
     }
 
+    #[inline(always)]
     pub fn can_declare_draw_in_search(&self) -> bool {
-        self.halfmove_clock >= 100 || self.has_insufficient_material() || self.is_repetition(2)
+        if self.halfmove_clock >= 100 {
+            return true;
+        }
+        self.halfmove_clock >= 4 && self.is_repetition(2)
     }
 
     pub fn has_non_pawn_material(&self, color: Color) -> bool {
@@ -416,6 +431,7 @@ impl Board {
         self.attackers_to(sq, occ) & self.color_occ(color) & occ
     }
 
+    #[inline(always)]
     pub fn see(&self, mv: Move) -> i32 {
         let Some(victim) = self.captured_piece(mv) else {
             return if mv.is_promo() {
@@ -542,21 +558,16 @@ impl Board {
     /// Is the side-to-move's king currently in check?
     #[inline(always)]
     pub fn is_in_check(&self) -> bool {
-        if self.in_check_dirty.get() {
-            self.refresh_check_state();
-        }
-        self.in_check.get()
+        self.checkers.any()
     }
 
     #[inline(always)]
     pub fn checkers(&self) -> Bitboard {
-        if self.checkers_dirty.get() {
-            self.refresh_check_state();
-        }
-        self.checkers.get()
+        self.checkers
     }
 
     /// Bitboard of all pieces that attack the given square (any color).
+    #[inline(always)]
     pub fn attackers_to(&self, sq: Square, occ: Bitboard) -> Bitboard {
         let atk = &*ATTACKS;
         atk.pawn(Color::Black, sq) & self.pieces(Color::White, Piece::Pawn)
@@ -598,6 +609,7 @@ impl Board {
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
         let old_hash = self.hash;
+        let old_checkers = self.checkers;
         let mut captured = 255;
 
         // Halfmove clock: reset on pawn move or capture; increment otherwise.
@@ -710,8 +722,9 @@ impl Board {
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
             hash: old_hash,
+            checkers: old_checkers,
         });
-        self.mark_check_state_dirty();
+        self.checkers = self.calculate_checkers();
     }
 
     pub fn make_null_move(&mut self) {
@@ -721,6 +734,7 @@ impl Board {
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
         let old_hash = self.hash;
+        let old_checkers = self.checkers;
 
         if self.ep_sq != 255 {
             self.hash ^= ZOBRIST.ep(Square(self.ep_sq).file());
@@ -739,8 +753,9 @@ impl Board {
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
             hash: old_hash,
+            checkers: old_checkers,
         });
-        self.mark_check_state_dirty();
+        self.checkers = Bitboard::EMPTY;
     }
 
     pub fn unmake_null_move(&mut self) {
@@ -755,7 +770,7 @@ impl Board {
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
         self.hash = info.hash;
-        self.mark_check_state_dirty();
+        self.checkers = info.checkers;
     }
 
     /// Undo the last move.
@@ -778,7 +793,7 @@ impl Board {
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
         self.hash = info.hash;
-        self.mark_check_state_dirty();
+        self.checkers = info.checkers;
 
         // Move the piece back from `to` to `from`
         let moved_piece = if flags >= PROMO_KNIGHT {
@@ -802,7 +817,7 @@ impl Board {
             } else {
                 Color::Black
             };
-            let cap_piece = Piece::ALL[(info.captured % 6) as usize];
+            let cap_piece = PIECE_FROM_ENCODED[info.captured as usize];
             let cap_sq = if flags == EN_PASSANT {
                 if us == Color::White {
                     Square(to.0 - 8)
@@ -863,9 +878,11 @@ impl Board {
 
     #[inline(always)]
     fn piece_type_at_unchecked(&self, sq: Square) -> Piece {
-        Piece::ALL[(self.mailbox[sq.index()] % 6) as usize]
+        debug_assert!(self.mailbox[sq.index()] < 12);
+        unsafe { *PIECE_FROM_ENCODED.get_unchecked(self.mailbox[sq.index()] as usize) }
     }
 
+    #[inline(always)]
     fn least_valuable_attacker(&self, attackers: Bitboard, color: Color) -> (Square, Piece) {
         for piece in [
             Piece::Pawn,
@@ -887,30 +904,6 @@ impl Board {
     fn calculate_checkers(&self) -> Bitboard {
         self.attackers_to(self.king_sq(self.side_to_move), self.all_occ)
             & self.color_occ(!self.side_to_move)
-    }
-
-    #[inline(always)]
-    fn refresh_in_check_and_checkers(&mut self) {
-        let checkers = self.calculate_checkers();
-        self.in_check.set(checkers.any());
-        self.in_check_dirty.set(false);
-        self.checkers.set(checkers);
-        self.checkers_dirty.set(false);
-    }
-
-    #[inline(always)]
-    fn refresh_check_state(&self) {
-        let checkers = self.calculate_checkers();
-        self.in_check.set(checkers.any());
-        self.in_check_dirty.set(false);
-        self.checkers.set(checkers);
-        self.checkers_dirty.set(false);
-    }
-
-    #[inline(always)]
-    fn mark_check_state_dirty(&self) {
-        self.in_check_dirty.set(true);
-        self.checkers_dirty.set(true);
     }
 
     fn has_insufficient_material(&self) -> bool {
@@ -955,14 +948,21 @@ impl Board {
     }
 
     fn is_repetition(&self, needed_count: usize) -> bool {
-        1 + self
-            .history
-            .iter()
-            .rev()
-            .take(self.halfmove_clock as usize)
-            .filter(|position| position.hash == self.hash)
-            .count()
-            >= needed_count
+        let mut count = 1usize;
+        let max_plies = self.halfmove_clock as usize;
+        let mut plies_back = 2usize;
+
+        while plies_back <= max_plies && plies_back <= self.history.len() {
+            if self.history[self.history.len() - plies_back].hash == self.hash {
+                count += 1;
+                if count >= needed_count {
+                    return true;
+                }
+            }
+            plies_back += 2;
+        }
+
+        false
     }
 }
 
@@ -1010,14 +1010,14 @@ fn decode_piece(encoded: u8) -> Option<(Color, Piece)> {
     } else {
         Color::Black
     };
-    let piece = Piece::ALL[(encoded % 6) as usize];
+    let piece = PIECE_FROM_ENCODED[encoded as usize];
     Some((color, piece))
 }
 
 #[inline(always)]
 fn decode_piece_type(encoded: u8) -> Option<Piece> {
     if encoded < 12 {
-        Some(Piece::ALL[(encoded % 6) as usize])
+        Some(PIECE_FROM_ENCODED[encoded as usize])
     } else {
         None
     }

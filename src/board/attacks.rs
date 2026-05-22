@@ -26,6 +26,7 @@ pub struct AttackTables {
 
 pub static ATTACKS: LazyLock<AttackTables> = LazyLock::new(AttackTables::init);
 
+#[derive(Copy, Clone)]
 struct MagicEntry {
     mask: u64,
     magic: u64,
@@ -55,16 +56,16 @@ impl AttackTables {
 
     #[inline(always)]
     pub fn bishop(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        let e = &self.bishop[sq.index()];
+        let e = unsafe { self.bishop.get_unchecked(sq.index()) };
         let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
-        self.bishop_table[idx]
+        unsafe { *self.bishop_table.get_unchecked(idx) }
     }
 
     #[inline(always)]
     pub fn rook(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        let e = &self.rook[sq.index()];
+        let e = unsafe { self.rook.get_unchecked(sq.index()) };
         let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
-        self.rook_table[idx]
+        unsafe { *self.rook_table.get_unchecked(idx) }
     }
 
     #[inline(always)]

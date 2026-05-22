@@ -1,5 +1,5 @@
 use std::sync::{
-    Arc,
+    Arc, LazyLock,
     atomic::{AtomicU8, Ordering},
     mpsc,
 };
@@ -20,6 +20,15 @@ const MAX_DEPTH: usize = 100;
 const MAX_PLY: usize = 128;
 const MAX_QPLY: usize = 10;
 const MIN_PARALLEL_DEPTH: usize = 4;
+static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
+    let mut table = [[0; 64]; 64];
+    for (depth, row) in table.iter_mut().enumerate().skip(1) {
+        for (move_index, value) in row.iter_mut().enumerate().skip(1) {
+            *value = (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25) as i32;
+        }
+    }
+    table
+});
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
     None,
@@ -626,11 +635,11 @@ impl Searcher {
             if depth >= 4 {
                 let probcut_beta = beta + 160;
                 let captures = board.generate_legal_captures();
-                let mut scored = self.score_moves(board, captures.as_slice(), tt_move, ply);
+                let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
                 for index in 0..scored.len().min(8) {
                     let picked = pick_next(scored.as_mut_slice(), index);
                     let mv = picked.mv;
-                    if picked.see < 0 {
+                    if board.see(mv) < 0 {
                         continue;
                     }
                     self.stack_moves[ply] = mv;
@@ -944,7 +953,12 @@ impl Searcher {
         }
 
         let in_check = board.is_in_check();
-        let tt_entry = self.tt.probe(board.hash);
+        if in_check && qply >= 1 {
+            return self.corrected_eval(board);
+        }
+        let hash = board.hash;
+        let original_alpha = alpha;
+        let tt_entry = self.tt.probe(hash);
         let tt_move = tt_entry
             .and_then(|entry| entry.best_move())
             .unwrap_or(Move::NULL);
@@ -961,6 +975,7 @@ impl Searcher {
             }
         }
 
+        let mut q_static_eval = VALUE_NONE;
         if !in_check {
             let stand_pat = if let Some(entry) = tt_entry {
                 if entry.static_eval as i32 != VALUE_NONE {
@@ -971,7 +986,9 @@ impl Searcher {
             } else {
                 self.corrected_eval(board)
             };
+            q_static_eval = stand_pat;
             if stand_pat >= beta {
+                self.store_tt(hash, 0, beta, Bound::Lower, Move::NULL, ply, stand_pat);
                 return beta;
             }
             if qply >= MAX_QPLY {
@@ -987,8 +1004,6 @@ impl Searcher {
 
         let moves = if in_check {
             board.generate_legal_movelist()
-        } else if qply < 2 {
-            self.quiescence_moves(board)
         } else {
             board.generate_legal_captures()
         };
@@ -997,11 +1012,16 @@ impl Searcher {
             return -MATE_SCORE + ply as i32;
         }
 
-        let mut scored = self.score_moves(board, moves.as_slice(), tt_move, ply);
+        let mut best_move = Move::NULL;
+        let mut scored = if in_check {
+            self.score_moves(board, moves.as_slice(), tt_move, ply)
+        } else {
+            self.score_tactical_moves(board, moves.as_slice(), tt_move)
+        };
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
             let mv = picked.mv;
-            if !in_check && picked.see < -50 {
+            if !in_check && board.see(mv) < -50 {
                 continue;
             }
             let moving_piece = board.moving_piece(mv);
@@ -1015,10 +1035,12 @@ impl Searcher {
                 return 0;
             }
             if score >= beta {
+                self.store_tt(hash, 0, beta, Bound::Lower, mv, ply, q_static_eval);
                 return beta;
             }
             if score > alpha {
                 alpha = score;
+                best_move = mv;
                 self.pv_table[ply][ply] = mv;
                 let child_len = self.pv_len[ply + 1].max(ply + 1);
                 for next_ply in ply + 1..child_len {
@@ -1027,19 +1049,13 @@ impl Searcher {
                 self.pv_len[ply] = child_len;
             }
         }
+        let bound = if alpha > original_alpha {
+            Bound::Exact
+        } else {
+            Bound::Upper
+        };
+        self.store_tt(hash, 0, alpha, bound, best_move, ply, q_static_eval);
         alpha
-    }
-
-    fn quiescence_moves(&mut self, board: &mut Board) -> crate::board::MoveList {
-        let mut moves = board.generate_legal_captures();
-
-        for &mv in board.generate_legal_quiets().as_slice() {
-            if mv.is_promo() || board.gives_check(mv) {
-                moves.push(mv);
-            }
-        }
-
-        moves
     }
 
     fn score_moves(
@@ -1066,7 +1082,7 @@ impl Searcher {
             let score = if mv == tt_move {
                 30_000_000
             } else if mv.is_capture() {
-                let attacker = board.piece_on(mv.from_sq()).unwrap_or(Piece::Pawn);
+                let attacker = board.moving_piece(mv);
                 let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
                 see = board.see(mv);
                 let hist =
@@ -1088,6 +1104,27 @@ impl Searcher {
                 self.quiet_history_score(board, board.side_to_move(), mv, ply)
             };
             scored.push(mv, score, see);
+        }
+        scored
+    }
+
+    fn score_tactical_moves(&self, board: &Board, moves: &[Move], tt_move: Move) -> ScoredMoveList {
+        let mut scored = ScoredMoveList::new();
+        for &mv in moves {
+            let score = if mv == tt_move {
+                30_000_000
+            } else if mv.is_capture() {
+                let attacker = board.moving_piece(mv);
+                let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
+                let hist =
+                    self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+                20_000_000 + 16 * piece_value(victim) - piece_value(attacker) + hist
+            } else if mv.is_promo() {
+                18_000_000 + piece_value(mv.promo_piece())
+            } else {
+                0
+            };
+            scored.push(mv, score, 0);
         }
         scored
     }
@@ -1359,9 +1396,7 @@ fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
     if depth < 3 || move_index < 2 {
         return 0;
     }
-    let d = depth as f64;
-    let m = move_index as f64;
-    (0.75 + d.ln() * m.ln() / 2.25) as i32
+    LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
 }
 
 fn late_move_prune_count(depth: i32) -> usize {

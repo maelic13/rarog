@@ -45,6 +45,11 @@ impl TtEntry {
     }
 
     #[inline(always)]
+    fn is_occupied(self) -> bool {
+        self.flag_age & 3 != 0
+    }
+
+    #[inline(always)]
     pub fn best_move(self) -> Option<Move> {
         (self.mv != 0).then_some(Move(self.mv))
     }
@@ -353,11 +358,20 @@ fn cluster_count<T>(mb: usize) -> usize {
 #[inline(always)]
 fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
     let key16 = (key >> 48) as u16;
-    table.clusters[key as usize & table.mask]
-        .entries
-        .iter()
-        .copied()
-        .find(|entry| entry.key16 == key16 && entry.bound().is_some())
+    let entries = &table.clusters[key as usize & table.mask].entries;
+    let entry = entries[0];
+    if entry.key16 == key16 && entry.is_occupied() {
+        return Some(entry);
+    }
+    let entry = entries[1];
+    if entry.key16 == key16 && entry.is_occupied() {
+        return Some(entry);
+    }
+    let entry = entries[2];
+    if entry.key16 == key16 && entry.is_occupied() {
+        return Some(entry);
+    }
+    None
 }
 
 #[inline(always)]
@@ -384,12 +398,13 @@ fn store_local(
 
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
-    for (index, entry) in cluster.entries.iter().enumerate() {
+    for index in 0..cluster.entries.len() {
+        let entry = cluster.entries[index];
         if entry.key16 == key16 {
             replace_index = index;
             break;
         }
-        let quality = entry_quality(*entry, table.age);
+        let quality = entry_quality(entry, table.age);
         if quality < replace_quality {
             replace_quality = quality;
             replace_index = index;
@@ -511,7 +526,7 @@ fn make_entry(
 
 #[inline(always)]
 fn entry_quality(entry: TtEntry, age: u8) -> i32 {
-    if entry.bound().is_none() {
+    if !entry.is_occupied() {
         return i32::MIN;
     }
     let age_delta = age.wrapping_sub(entry.flag_age & 0xFC) & 0xFC;

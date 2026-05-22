@@ -5,8 +5,6 @@
 ///   2. In double check: generate only king evasions.
 ///   3. In single check: generate king moves + interpositions/captures of checker.
 ///   4. No check: generate all moves for each piece, respecting pins.
-use std::sync::LazyLock;
-
 use super::attacks::ATTACKS;
 use super::bitboard::Bitboard;
 use super::board::Board;
@@ -25,21 +23,21 @@ use super::square::{Rank, Square};
 /// Generate all legal moves for the current position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::with_capacity(48);
-    gen_moves(board, GenMode::All, &mut moves);
+    gen_moves::<true, true, _>(board, &mut moves);
     moves
 }
 
 /// Generate all legal moves into the engine's fixed-capacity move list.
 pub fn generate_legal_movelist(board: &Board) -> MoveList {
     let mut moves = MoveList::new();
-    gen_moves(board, GenMode::All, &mut moves);
+    gen_moves::<true, true, _>(board, &mut moves);
     moves
 }
 
 /// Generate only legal quiet moves.
 pub fn generate_quiets(board: &Board) -> MoveList {
     let mut moves = MoveList::new();
-    gen_moves(board, GenMode::Quiets, &mut moves);
+    gen_moves::<false, true, _>(board, &mut moves);
     moves
 }
 
@@ -59,7 +57,7 @@ pub fn generate_captures(board: &mut Board) -> MoveList {
     if pinned.is_empty() {
         gen_unpinned_captures(board, us, them, king_sq, board.checkers(), &mut moves);
     } else {
-        gen_moves(board, GenMode::Captures, &mut moves);
+        gen_moves::<true, false, _>(board, &mut moves);
     }
 
     moves
@@ -126,12 +124,12 @@ pub fn perft(board: &mut Board, depth: u32) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = generate_legal_moves(board);
+    let moves = generate_legal_movelist(board);
     if depth == 1 {
         return moves.len() as u64;
     }
     let mut nodes = 0u64;
-    for mv in moves {
+    for &mv in moves.as_slice() {
         board.make_move(mv);
         nodes += perft(board, depth - 1);
         board.unmake_move(mv);
@@ -161,26 +159,7 @@ impl MoveSink for MoveList {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum GenMode {
-    All,
-    Captures,
-    Quiets,
-}
-
-impl GenMode {
-    #[inline(always)]
-    fn includes_captures(self) -> bool {
-        self != Self::Quiets
-    }
-
-    #[inline(always)]
-    fn includes_quiets(self) -> bool {
-        self != Self::Captures
-    }
-}
-
-fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
+fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Board, moves: &mut S) {
     let us = board.side_to_move;
     let them = !us;
     let atk = &*ATTACKS;
@@ -200,12 +179,10 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
 
     // --- King moves (always generated) ---
     let king_targets = atk.king(king_sq) & !our_occ;
-    let targets = match mode {
-        GenMode::All => king_targets,
-        GenMode::Captures => king_targets & their_occ,
-        GenMode::Quiets => king_targets & !their_occ,
-    };
-    for to in targets {
+    let targets = filter_targets::<CAPTURES, QUIETS>(king_targets, their_occ);
+    let mut targets = targets;
+    while targets.any() {
+        let to = targets.pop_lsb();
         // Make sure the destination isn't attacked (use occ without the king)
         let occ_no_king = all_occ ^ Bitboard::from(king_sq);
         if !board.is_attacked_with_occ(to, them, occ_no_king) {
@@ -229,8 +206,8 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
     };
 
     // --- Pawns ---
-    gen_pawn_moves(
-        board, us, them, their_occ, all_occ, pinned, king_sq, check_mask, mode, moves,
+    gen_pawn_moves::<CAPTURES, QUIETS, _>(
+        board, us, them, their_occ, all_occ, pinned, king_sq, check_mask, moves,
     );
 
     // --- Knights ---
@@ -238,12 +215,10 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
     while knights.any() {
         let from = knights.pop_lsb();
         let raw = atk.knight(from) & !our_occ & check_mask;
-        let targets = match mode {
-            GenMode::All => raw,
-            GenMode::Captures => raw & their_occ,
-            GenMode::Quiets => raw & !their_occ,
-        };
-        for to in targets {
+        let targets = filter_targets::<CAPTURES, QUIETS>(raw, their_occ);
+        let mut targets = targets;
+        while targets.any() {
+            let to = targets.pop_lsb();
             add_move(from, to, their_occ, moves);
         }
     }
@@ -253,12 +228,10 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
     while bishops.any() {
         let from = bishops.pop_lsb();
         let raw = atk.bishop(from, all_occ) & !our_occ & check_mask;
-        let targets = match mode {
-            GenMode::All => raw,
-            GenMode::Captures => raw & their_occ,
-            GenMode::Quiets => raw & !their_occ,
-        };
-        for to in filter_pinned(from, targets, pinned, king_sq) {
+        let targets = filter_targets::<CAPTURES, QUIETS>(raw, their_occ);
+        let mut targets = filter_pinned(from, targets, pinned, king_sq);
+        while targets.any() {
+            let to = targets.pop_lsb();
             add_move(from, to, their_occ, moves);
         }
     }
@@ -268,12 +241,10 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
     while rooks.any() {
         let from = rooks.pop_lsb();
         let raw = atk.rook(from, all_occ) & !our_occ & check_mask;
-        let targets = match mode {
-            GenMode::All => raw,
-            GenMode::Captures => raw & their_occ,
-            GenMode::Quiets => raw & !their_occ,
-        };
-        for to in filter_pinned(from, targets, pinned, king_sq) {
+        let targets = filter_targets::<CAPTURES, QUIETS>(raw, their_occ);
+        let mut targets = filter_pinned(from, targets, pinned, king_sq);
+        while targets.any() {
+            let to = targets.pop_lsb();
             add_move(from, to, their_occ, moves);
         }
     }
@@ -283,19 +254,31 @@ fn gen_moves<S: MoveSink>(board: &Board, mode: GenMode, moves: &mut S) {
     while queens.any() {
         let from = queens.pop_lsb();
         let raw = atk.queen(from, all_occ) & !our_occ & check_mask;
-        let targets = match mode {
-            GenMode::All => raw,
-            GenMode::Captures => raw & their_occ,
-            GenMode::Quiets => raw & !their_occ,
-        };
-        for to in filter_pinned(from, targets, pinned, king_sq) {
+        let targets = filter_targets::<CAPTURES, QUIETS>(raw, their_occ);
+        let mut targets = filter_pinned(from, targets, pinned, king_sq);
+        while targets.any() {
+            let to = targets.pop_lsb();
             add_move(from, to, their_occ, moves);
         }
     }
 
     // --- Castling (only when not in check, not captures_only) ---
-    if mode.includes_quiets() && !checkers.any() {
+    if QUIETS && !checkers.any() {
         gen_castling(board, us, them, all_occ, moves);
+    }
+}
+
+#[inline(always)]
+fn filter_targets<const CAPTURES: bool, const QUIETS: bool>(
+    raw: Bitboard,
+    their_occ: Bitboard,
+) -> Bitboard {
+    if CAPTURES && QUIETS {
+        raw
+    } else if CAPTURES {
+        raw & their_occ
+    } else {
+        raw & !their_occ
     }
 }
 
@@ -312,7 +295,9 @@ fn gen_unpinned_captures(
     let all_occ = board.all_occ;
     let king_bb = Bitboard::from(king_sq);
 
-    for to in atk.king(king_sq) & their_occ {
+    let mut targets = atk.king(king_sq) & their_occ;
+    while targets.any() {
+        let to = targets.pop_lsb();
         if !board.is_attacked_with_occ(to, them, all_occ ^ king_bb) {
             moves.push_move(Move::new(king_sq, to, CAPTURE));
         }
@@ -327,7 +312,9 @@ fn gen_unpinned_captures(
     let mut pawns = board.pieces(us, Piece::Pawn);
     while pawns.any() {
         let from = pawns.pop_lsb();
-        for to in atk.pawn(us, from) & target_mask {
+        let mut targets = atk.pawn(us, from) & target_mask;
+        while targets.any() {
+            let to = targets.pop_lsb();
             push_pawn_move_flags(from, to, true, moves);
         }
 
@@ -352,7 +339,9 @@ fn gen_unpinned_captures(
     let mut knights = board.pieces(us, Piece::Knight);
     while knights.any() {
         let from = knights.pop_lsb();
-        for to in atk.knight(from) & target_mask {
+        let mut targets = atk.knight(from) & target_mask;
+        while targets.any() {
+            let to = targets.pop_lsb();
             moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
@@ -360,7 +349,9 @@ fn gen_unpinned_captures(
     let mut bishops = board.pieces(us, Piece::Bishop);
     while bishops.any() {
         let from = bishops.pop_lsb();
-        for to in atk.bishop(from, all_occ) & target_mask {
+        let mut targets = atk.bishop(from, all_occ) & target_mask;
+        while targets.any() {
+            let to = targets.pop_lsb();
             moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
@@ -368,7 +359,9 @@ fn gen_unpinned_captures(
     let mut rooks = board.pieces(us, Piece::Rook);
     while rooks.any() {
         let from = rooks.pop_lsb();
-        for to in atk.rook(from, all_occ) & target_mask {
+        let mut targets = atk.rook(from, all_occ) & target_mask;
+        while targets.any() {
+            let to = targets.pop_lsb();
             moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
@@ -376,7 +369,9 @@ fn gen_unpinned_captures(
     let mut queens = board.pieces(us, Piece::Queen);
     while queens.any() {
         let from = queens.pop_lsb();
-        for to in atk.queen(from, all_occ) & target_mask {
+        let mut targets = atk.queen(from, all_occ) & target_mask;
+        while targets.any() {
+            let to = targets.pop_lsb();
             moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
@@ -407,7 +402,7 @@ fn ep_capture_is_legal(
 // Pawn move generation
 // -----------------------------------------------------------------------
 
-fn gen_pawn_moves<S: MoveSink>(
+fn gen_pawn_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
     board: &Board,
     us: Color,
     them: Color,
@@ -416,37 +411,41 @@ fn gen_pawn_moves<S: MoveSink>(
     pinned: Bitboard,
     king_sq: Square,
     check_mask: Bitboard,
-    mode: GenMode,
     moves: &mut S,
 ) {
     let atk = &*ATTACKS;
     let pawns = board.pieces(us, Piece::Pawn);
+    let free_pawns = pawns & !pinned;
+    let pinned_pawns = pawns & pinned;
 
-    let rank2: Bitboard = match us {
+    if QUIETS {
+        gen_unpinned_pawn_quiets(us, free_pawns, all_occ, check_mask, moves);
+    }
+    if CAPTURES {
+        gen_unpinned_pawn_captures(us, free_pawns, their_occ, check_mask, moves);
+    }
+
+    let rank2 = match us {
         Color::White => Bitboard::RANK_2,
         Color::Black => Bitboard::RANK_7,
     };
-
-    let push_one = |bb: Bitboard| -> Bitboard {
-        match us {
-            Color::White => bb.north(),
-            Color::Black => bb.south(),
-        }
+    let push_one = |bb: Bitboard| match us {
+        Color::White => bb.north(),
+        Color::Black => bb.south(),
     };
 
-    let mut pawn_bb = pawns;
+    let mut pawn_bb = pinned_pawns;
     while pawn_bb.any() {
         let from = pawn_bb.pop_lsb();
         let from_bb = Bitboard::from(from);
-        let is_pinned = (pinned & from_bb).any();
 
         // --- Quiet pushes ---
-        if mode.includes_quiets() {
+        if QUIETS {
             let single_dest = push_one(from_bb) & !all_occ;
             if single_dest.any() {
                 let single_sq = single_dest.lsb();
                 let in_mask = (single_dest & check_mask).any();
-                if in_mask && !(is_pinned && !on_same_ray(from, single_sq, king_sq)) {
+                if in_mask && on_same_ray(from, single_sq, king_sq) {
                     push_pawn_move_flags(from, single_sq, false, moves);
                 }
 
@@ -455,7 +454,7 @@ fn gen_pawn_moves<S: MoveSink>(
                     let double_dest = push_one(single_dest) & !all_occ & check_mask;
                     if double_dest.any() {
                         let to = double_dest.lsb();
-                        if !(is_pinned && !on_same_ray(from, to, king_sq)) {
+                        if on_same_ray(from, to, king_sq) {
                             moves.push_move(Move::new(from, to, DOUBLE_PUSH));
                         }
                     }
@@ -464,49 +463,132 @@ fn gen_pawn_moves<S: MoveSink>(
         }
 
         // --- Captures ---
-        if mode.includes_captures() {
+        if CAPTURES {
             let capture_targets = atk.pawn(us, from) & their_occ & check_mask;
-            for to in capture_targets {
-                if is_pinned && !on_same_ray(from, to, king_sq) {
+            let mut capture_targets = capture_targets;
+            while capture_targets.any() {
+                let to = capture_targets.pop_lsb();
+                if !on_same_ray(from, to, king_sq) {
                     continue;
                 }
                 push_pawn_move_flags(from, to, true, moves);
             }
         }
+    }
 
-        // --- En passant ---
-        if mode.includes_captures()
-            && let Some(ep_sq) = board.ep_square()
-        {
-            if (atk.pawn(us, from) & Bitboard::from(ep_sq)).any() {
-                let ep_cap_sq = if us == Color::White {
-                    Square(ep_sq.0 - 8)
-                } else {
-                    Square(ep_sq.0 + 8)
-                };
+    if CAPTURES {
+        if let Some(ep_sq) = board.ep_square() {
+            let ep_cap_sq = if us == Color::White {
+                Square(ep_sq.0 - 8)
+            } else {
+                Square(ep_sq.0 + 8)
+            };
+            let ep_resolves = (check_mask & Bitboard::from(ep_sq)).any()
+                || (check_mask & Bitboard::from(ep_cap_sq)).any()
+                || check_mask.0 == u64::MAX;
 
-                // Verify ep doesn't expose king to horizontal slider
-                let occ_after = all_occ
-                    ^ Bitboard::from(from)
-                    ^ Bitboard::from(ep_sq)
-                    ^ Bitboard::from(ep_cap_sq);
-                let exposed_rook = (board.pieces(them, Piece::Rook)
-                    | board.pieces(them, Piece::Queen))
-                    & atk.rook(king_sq, occ_after);
-                let exposed_diag = (board.pieces(them, Piece::Bishop)
-                    | board.pieces(them, Piece::Queen))
-                    & atk.bishop(king_sq, occ_after);
-
-                // EP is only valid when it resolves a check (or there's no check)
-                let ep_resolves = (check_mask & Bitboard::from(ep_sq)).any()
-                    || (check_mask & Bitboard::from(ep_cap_sq)).any()
-                    || check_mask.0 == u64::MAX;
-
-                if ep_resolves && exposed_rook.is_empty() && exposed_diag.is_empty() {
-                    moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
+            if ep_resolves {
+                let mut attackers = atk.pawn(them, ep_sq) & pawns;
+                while attackers.any() {
+                    let from = attackers.pop_lsb();
+                    if (pinned & Bitboard::from(from)).any() && !on_same_ray(from, ep_sq, king_sq) {
+                        continue;
+                    }
+                    if ep_capture_is_legal(board, us, them, from, ep_sq, ep_cap_sq) {
+                        moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
+                    }
                 }
             }
         }
+    }
+}
+
+fn gen_unpinned_pawn_quiets<S: MoveSink>(
+    us: Color,
+    pawns: Bitboard,
+    all_occ: Bitboard,
+    check_mask: Bitboard,
+    moves: &mut S,
+) {
+    let empty = !all_occ;
+    let (push_from, promo_from, push_offset, double_offset) = match us {
+        Color::White => (
+            pawns & !Bitboard::RANK_7,
+            pawns & Bitboard::RANK_7,
+            8i16,
+            16i16,
+        ),
+        Color::Black => (
+            pawns & !Bitboard::RANK_2,
+            pawns & Bitboard::RANK_2,
+            -8i16,
+            -16i16,
+        ),
+    };
+
+    let single = match us {
+        Color::White => push_from.north(),
+        Color::Black => push_from.south(),
+    } & empty;
+    let mut targets = single & check_mask;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        moves.push_move(Move::new(
+            Square((to.0 as i16 - push_offset) as u8),
+            to,
+            QUIET,
+        ));
+    }
+
+    let double = match us {
+        Color::White => (single & Bitboard::RANK_3).north(),
+        Color::Black => (single & Bitboard::RANK_6).south(),
+    } & empty
+        & check_mask;
+    let mut targets = double;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        moves.push_move(Move::new(
+            Square((to.0 as i16 - double_offset) as u8),
+            to,
+            DOUBLE_PUSH,
+        ));
+    }
+
+    let promo = match us {
+        Color::White => promo_from.north(),
+        Color::Black => promo_from.south(),
+    } & empty
+        & check_mask;
+    let mut targets = promo;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        push_pawn_move_flags(Square((to.0 as i16 - push_offset) as u8), to, false, moves);
+    }
+}
+
+fn gen_unpinned_pawn_captures<S: MoveSink>(
+    us: Color,
+    pawns: Bitboard,
+    their_occ: Bitboard,
+    check_mask: Bitboard,
+    moves: &mut S,
+) {
+    let (east_targets, west_targets, east_offset, west_offset) = match us {
+        Color::White => (pawns.north_east(), pawns.north_west(), 9i16, 7i16),
+        Color::Black => (pawns.south_east(), pawns.south_west(), -7i16, -9i16),
+    };
+
+    let mut targets = east_targets & their_occ & check_mask;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        push_pawn_move_flags(Square((to.0 as i16 - east_offset) as u8), to, true, moves);
+    }
+
+    let mut targets = west_targets & their_occ & check_mask;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        push_pawn_move_flags(Square((to.0 as i16 - west_offset) as u8), to, true, moves);
     }
 }
 
@@ -588,7 +670,8 @@ fn gen_castling<S: MoveSink>(
     if board.castling.has(ks_flag)
         && (all_occ & ks_empty).is_empty()
         && (board.pieces(us, Piece::Rook) & Bitboard::from(ks_rook)).any()
-        && ks_safe.iter().all(|&sq| !board.is_attacked(sq, them))
+        && !board.is_attacked(ks_safe[0], them)
+        && !board.is_attacked(ks_safe[1], them)
     {
         moves.push_move(Move::new(king_sq, ks_safe[1], CASTLE_KINGSIDE));
     }
@@ -596,7 +679,8 @@ fn gen_castling<S: MoveSink>(
     if board.castling.has(qs_flag)
         && (all_occ & qs_empty).is_empty()
         && (board.pieces(us, Piece::Rook) & Bitboard::from(qs_rook)).any()
-        && qs_safe.iter().all(|&sq| !board.is_attacked(sq, them))
+        && !board.is_attacked(qs_safe[0], them)
+        && !board.is_attacked(qs_safe[1], them)
     {
         moves.push_move(Move::new(king_sq, qs_safe[0], CASTLE_QUEENSIDE));
     }
@@ -617,10 +701,12 @@ fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bit
     let xray_bishop = atk.bishop(king_sq, board.all_occ ^ (bishop_vision & our_occ));
     let diag_pinners =
         (board.pieces(them, Piece::Bishop) | board.pieces(them, Piece::Queen)) & xray_bishop;
-    for pinner_sq in diag_pinners {
+    let mut diag_pinners = diag_pinners;
+    while diag_pinners.any() {
+        let pinner_sq = diag_pinners.pop_lsb();
         let ray = between(king_sq, pinner_sq);
         let blockers = ray & our_occ;
-        if blockers.count() == 1 {
+        if blockers.any() && !blockers.more_than_one() {
             pinned |= blockers;
         }
     }
@@ -630,10 +716,12 @@ fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bit
     let xray_rook = atk.rook(king_sq, board.all_occ ^ (rook_vision & our_occ));
     let ortho_pinners =
         (board.pieces(them, Piece::Rook) | board.pieces(them, Piece::Queen)) & xray_rook;
-    for pinner_sq in ortho_pinners {
+    let mut ortho_pinners = ortho_pinners;
+    while ortho_pinners.any() {
+        let pinner_sq = ortho_pinners.pop_lsb();
         let ray = between(king_sq, pinner_sq);
         let blockers = ray & our_occ;
-        if blockers.count() == 1 {
+        if blockers.any() && !blockers.more_than_one() {
             pinned |= blockers;
         }
     }
@@ -677,84 +765,102 @@ fn on_same_ray(from: Square, to: Square, king: Square) -> bool {
 // Precomputed between / line tables
 // -----------------------------------------------------------------------
 
-static BETWEEN: LazyLock<[[Bitboard; 64]; 64]> = LazyLock::new(init_between);
-static LINE: LazyLock<[[Bitboard; 64]; 64]> = LazyLock::new(init_line);
+const BETWEEN: [[Bitboard; 64]; 64] = init_between();
+const LINE: [[Bitboard; 64]; 64] = init_line();
 
-fn init_between() -> [[Bitboard; 64]; 64] {
+const fn abs_i8(v: i8) -> i8 {
+    if v < 0 { -v } else { v }
+}
+
+const fn signum_i8(v: i8) -> i8 {
+    if v > 0 {
+        1
+    } else if v < 0 {
+        -1
+    } else {
+        0
+    }
+}
+
+const fn aligned(ar: i8, af: i8, br: i8, bf: i8) -> bool {
+    ar == br || af == bf || abs_i8(br - ar) == abs_i8(bf - af)
+}
+
+const fn init_between() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
-    for a in 0..64u8 {
-        for b in 0..64u8 {
-            if a == b {
-                continue;
-            }
-            let ar = a / 8;
-            let af = a % 8;
-            let br = b / 8;
-            let bf = b % 8;
-            let dr = br as i8 - ar as i8;
-            let df = bf as i8 - af as i8;
+    let mut a = 0usize;
+    while a < 64 {
+        let mut b = 0usize;
+        while b < 64 {
+            if a != b {
+                let ar = (a / 8) as i8;
+                let af = (a % 8) as i8;
+                let br = (b / 8) as i8;
+                let bf = (b % 8) as i8;
 
-            // Check alignment
-            if ar == br || af == bf || dr.abs() == df.abs() {
-                let sr: i8 = dr.signum();
-                let sf: i8 = df.signum();
-                let mut r = ar as i8 + sr;
-                let mut f = af as i8 + sf;
-                while r != br as i8 || f != bf as i8 {
-                    table[a as usize][b as usize] |=
-                        Bitboard::from(Square((r as u8) * 8 + f as u8));
-                    r += sr;
-                    f += sf;
+                if aligned(ar, af, br, bf) {
+                    let sr = signum_i8(br - ar);
+                    let sf = signum_i8(bf - af);
+                    let mut r = ar + sr;
+                    let mut f = af + sf;
+                    let mut bits = 0u64;
+                    while r != br || f != bf {
+                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
+                        r += sr;
+                        f += sf;
+                    }
+                    table[a][b] = Bitboard(bits);
                 }
             }
+            b += 1;
         }
+        a += 1;
     }
     table
 }
 
-fn init_line() -> [[Bitboard; 64]; 64] {
+const fn init_line() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
-    for a in 0..64u8 {
-        for b in 0..64u8 {
-            if a == b {
-                continue;
-            }
-            let ar = a / 8;
-            let af = a % 8;
-            let br = b / 8;
-            let bf = b % 8;
-            let dr = br as i8 - ar as i8;
-            let df = bf as i8 - af as i8;
+    let mut a = 0usize;
+    while a < 64 {
+        let mut b = 0usize;
+        while b < 64 {
+            if a != b {
+                let ar = (a / 8) as i8;
+                let af = (a % 8) as i8;
+                let br = (b / 8) as i8;
+                let bf = (b % 8) as i8;
 
-            if ar == br || af == bf || dr.abs() == df.abs() {
-                let sr: i8 = dr.signum();
-                let sf: i8 = df.signum();
+                if aligned(ar, af, br, bf) {
+                    let sr = signum_i8(br - ar);
+                    let sf = signum_i8(bf - af);
+                    let mut bits = (1u64 << a) | (1u64 << b);
 
-                // Extend the ray in both directions from `a`
-                let mut bits = Bitboard::from(Square(a)) | Bitboard::from(Square(b));
+                    let mut r = ar + sr;
+                    let mut f = af + sf;
+                    while r >= 0 && r < 8 && f >= 0 && f < 8 {
+                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
+                        r += sr;
+                        f += sf;
+                    }
 
-                // Forward from a
-                let (mut r, mut f) = (ar as i8 + sr, af as i8 + sf);
-                while (0..8).contains(&r) && (0..8).contains(&f) {
-                    bits |= Bitboard::from(Square(r as u8 * 8 + f as u8));
-                    r += sr;
-                    f += sf;
+                    let mut r = ar - sr;
+                    let mut f = af - sf;
+                    while r >= 0 && r < 8 && f >= 0 && f < 8 {
+                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
+                        r -= sr;
+                        f -= sf;
+                    }
+
+                    table[a][b] = Bitboard(bits);
                 }
-                // Backward from a
-                let (mut r, mut f) = (ar as i8 - sr, af as i8 - sf);
-                while (0..8).contains(&r) && (0..8).contains(&f) {
-                    bits |= Bitboard::from(Square(r as u8 * 8 + f as u8));
-                    r -= sr;
-                    f -= sf;
-                }
-
-                table[a as usize][b as usize] = bits;
             }
+            b += 1;
         }
+        a += 1;
     }
     table
 }
-
 // -----------------------------------------------------------------------
 // Extend Board with occ-parameterized attack check (needed for EP)
 // -----------------------------------------------------------------------

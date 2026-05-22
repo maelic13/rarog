@@ -1,9 +1,9 @@
-use whitespine::board::{Board, Color, GameResult, Move, Piece, Square};
-use whitespine::engine_command::EngineCommand;
-use whitespine::eval::{Evaluator, MATE_SCORE, piece_value};
-use whitespine::search::{SearchEvent, SearchExit, Searcher};
-use whitespine::search_options::SearchOptions;
-use whitespine::tt::{Bound, TranspositionTable, score_from_tt, score_to_tt};
+use lynx::board::{Board, Color, GameResult, Move, Piece, Square};
+use lynx::engine_command::EngineCommand;
+use lynx::eval::{Evaluator, MATE_SCORE, piece_value};
+use lynx::search::{SearchEvent, SearchExit, Searcher};
+use lynx::search_options::SearchOptions;
+use lynx::tt::{Bound, TranspositionTable, score_from_tt, score_to_tt};
 
 fn args(parts: &[&str]) -> Vec<String> {
     parts.iter().map(|part| (*part).to_string()).collect()

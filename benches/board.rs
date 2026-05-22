@@ -1,7 +1,7 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use whitespine::board::{Board, generate_captures, generate_legal_moves, perft};
+use lynx::board::{Board, generate_captures, generate_legal_moves, perft};
 
 const WARMUP: Duration = Duration::from_millis(150);
 const MEASURE: Duration = Duration::from_millis(750);
@@ -64,7 +64,7 @@ fn main() {
     ];
 
     println!();
-    println!("Whitespine board benchmark");
+    println!("Lynx board benchmark");
     println!("positions: {}", BENCHMARK_FENS.len());
     println!("warmup: {} ms", WARMUP.as_millis());
     println!("measure: {} ms per workload", MEASURE.as_millis());

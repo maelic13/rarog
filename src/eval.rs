@@ -1,3 +1,4 @@
+use crate::board::attacks::AttackTables;
 use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
 
 pub const MATE_SCORE: i32 = 32_000;
@@ -10,6 +11,7 @@ const TOTAL_PHASE: i32 = 24;
 const MG_VAL: [i32; 6] = [82, 337, 365, 477, 1025, 0];
 const EG_VAL: [i32; 6] = [94, 281, 297, 512, 936, 0];
 const PHASE_W: [i32; 6] = [0, 1, 1, 2, 4, 0];
+const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 
 const MG_PAWN_PST: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, -35, -1, -20, -23, -15, 24, 38, -22, -26, -4, -4, -10, 3, 3, 33, -12,
@@ -74,6 +76,199 @@ const EG_KING_PST: [i32; 64] = [
     16, 7, -9, -27, -11, 4, 13, 14, 4, -5, -17, -53, -34, -21, -11, -28, -14, -24, -43,
 ];
 
+const FILE_BBS: [Bitboard; 8] = [
+    Bitboard::FILE_A,
+    Bitboard::FILE_B,
+    Bitboard(0x0404_0404_0404_0404),
+    Bitboard(0x0808_0808_0808_0808),
+    Bitboard(0x1010_1010_1010_1010),
+    Bitboard(0x2020_2020_2020_2020),
+    Bitboard::FILE_G,
+    Bitboard::FILE_H,
+];
+const ADJACENT_FILES: [Bitboard; 8] = init_adjacent_files();
+const FORWARD_RANKS: [[Bitboard; 8]; 2] = init_forward_ranks();
+const PASSED_PAWN_MASKS: [[Bitboard; 64]; 2] = init_passed_pawn_masks();
+const MG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(true);
+const EG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(false);
+const SQUARE_FILE: [usize; 64] = init_square_file();
+const SQUARE_RANK: [usize; 64] = init_square_rank();
+const RELATIVE_RANKS: [[u8; 64]; 2] = init_relative_ranks();
+const KING_DISTANCE: [[u8; 64]; 64] = init_king_distance();
+
+const fn init_square_file() -> [usize; 64] {
+    let mut table = [0usize; 64];
+    let mut sq = 0usize;
+    while sq < 64 {
+        table[sq] = sq & 7;
+        sq += 1;
+    }
+    table
+}
+
+const fn init_square_rank() -> [usize; 64] {
+    let mut table = [0usize; 64];
+    let mut sq = 0usize;
+    while sq < 64 {
+        table[sq] = sq >> 3;
+        sq += 1;
+    }
+    table
+}
+
+const fn init_relative_ranks() -> [[u8; 64]; 2] {
+    let mut table = [[0u8; 64]; 2];
+    let mut sq = 0usize;
+    while sq < 64 {
+        let rank = (sq >> 3) as u8;
+        table[Color::White as usize][sq] = rank;
+        table[Color::Black as usize][sq] = 7 - rank;
+        sq += 1;
+    }
+    table
+}
+
+const fn init_king_distance() -> [[u8; 64]; 64] {
+    let mut table = [[0u8; 64]; 64];
+    let mut a = 0usize;
+    while a < 64 {
+        let af = (a & 7) as i32;
+        let ar = (a >> 3) as i32;
+        let mut b = 0usize;
+        while b < 64 {
+            let bf = (b & 7) as i32;
+            let br = (b >> 3) as i32;
+            let df = if af > bf { af - bf } else { bf - af };
+            let dr = if ar > br { ar - br } else { br - ar };
+            table[a][b] = if df > dr { df as u8 } else { dr as u8 };
+            b += 1;
+        }
+        a += 1;
+    }
+    table
+}
+
+const fn init_adjacent_files() -> [Bitboard; 8] {
+    let mut table = [Bitboard::EMPTY; 8];
+    let mut file = 0usize;
+    while file < 8 {
+        let mut mask = 0u64;
+        if file > 0 {
+            mask |= FILE_BBS[file - 1].0;
+        }
+        if file < 7 {
+            mask |= FILE_BBS[file + 1].0;
+        }
+        table[file] = Bitboard(mask);
+        file += 1;
+    }
+    table
+}
+
+const fn init_forward_ranks() -> [[Bitboard; 8]; 2] {
+    let mut table = [[Bitboard::EMPTY; 8]; 2];
+    let mut rank = 0usize;
+    while rank < 8 {
+        let mut white = 0u64;
+        let mut r = rank + 1;
+        while r < 8 {
+            white |= 0xFFu64 << (r * 8);
+            r += 1;
+        }
+        table[Color::White as usize][rank] = Bitboard(white);
+
+        let mut black = 0u64;
+        r = 0;
+        while r < rank {
+            black |= 0xFFu64 << (r * 8);
+            r += 1;
+        }
+        table[Color::Black as usize][rank] = Bitboard(black);
+        rank += 1;
+    }
+    table
+}
+
+const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
+    let mut table = [[Bitboard::EMPTY; 64]; 2];
+    let mut color = 0usize;
+    while color < 2 {
+        let mut sq = 0usize;
+        while sq < 64 {
+            let file = (sq % 8) as i32;
+            let rank = (sq / 8) as i32;
+            let mut mask = 0u64;
+            let mut df = -1i32;
+            while df <= 1 {
+                let f = file + df;
+                if f >= 0 && f < 8 {
+                    if color == Color::White as usize {
+                        let mut r = rank + 1;
+                        while r < 8 {
+                            mask |= 1u64 << (r * 8 + f);
+                            r += 1;
+                        }
+                    } else {
+                        let mut r = 0;
+                        while r < rank {
+                            mask |= 1u64 << (r * 8 + f);
+                            r += 1;
+                        }
+                    }
+                }
+                df += 1;
+            }
+            table[color][sq] = Bitboard(mask);
+            sq += 1;
+        }
+        color += 1;
+    }
+    table
+}
+
+const fn init_eval_table(mg: bool) -> [[[i32; 64]; 6]; 2] {
+    let mut table = [[[0i32; 64]; 6]; 2];
+    let mut piece = 0usize;
+    while piece < 6 {
+        let mut sq = 0usize;
+        while sq < 64 {
+            table[Color::White as usize][piece][sq] =
+                piece_base(piece, mg) + pst_value(piece, sq, mg);
+            table[Color::Black as usize][piece][sq] =
+                piece_base(piece, mg) + pst_value(piece, sq ^ 56, mg);
+            sq += 1;
+        }
+        piece += 1;
+    }
+    table
+}
+
+const fn piece_base(piece: usize, mg: bool) -> i32 {
+    if mg { MG_VAL[piece] } else { EG_VAL[piece] }
+}
+
+const fn pst_value(piece: usize, sq: usize, mg: bool) -> i32 {
+    if mg {
+        match piece {
+            0 => MG_PAWN_PST[sq],
+            1 => MG_KNIGHT_PST[sq],
+            2 => MG_BISHOP_PST[sq],
+            3 => MG_ROOK_PST[sq],
+            4 => MG_QUEEN_PST[sq],
+            _ => MG_KING_PST[sq],
+        }
+    } else {
+        match piece {
+            0 => EG_PAWN_PST[sq],
+            1 => EG_KNIGHT_PST[sq],
+            2 => EG_BISHOP_PST[sq],
+            3 => EG_ROOK_PST[sq],
+            4 => EG_QUEEN_PST[sq],
+            _ => EG_KING_PST[sq],
+        }
+    }
+}
+
 #[derive(Copy, Clone, Default)]
 struct PawnEntry {
     key: u64,
@@ -113,6 +308,7 @@ impl Evaluator {
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
+        let atk = &*ATTACKS;
         let mut mg = 0;
         let mut eg = 0;
         let mut phase = 0;
@@ -124,8 +320,8 @@ impl Evaluator {
                 phase += bb.count() as i32 * PHASE_W[piece as usize];
                 while bb.any() {
                     let sq = bb.pop_lsb();
-                    mg += sign * (MG_VAL[piece as usize] + mg_pst(piece)[pst_square(color, sq)]);
-                    eg += sign * (EG_VAL[piece as usize] + eg_pst(piece)[pst_square(color, sq)]);
+                    mg += sign * MG_TABLE[color as usize][piece as usize][sq.index()];
+                    eg += sign * EG_TABLE[color as usize][piece as usize][sq.index()];
                 }
             }
         }
@@ -133,11 +329,11 @@ impl Evaluator {
 
         let mut passed = [Bitboard::EMPTY; 2];
         let mut pawn_attacks = [Bitboard::EMPTY; 2];
-        let (pawn_mg, pawn_eg) = self.eval_pawns(board, &mut passed, &mut pawn_attacks);
+        let (pawn_mg, pawn_eg) = self.eval_pawns(board, atk, &mut passed, &mut pawn_attacks);
         mg += pawn_mg;
         eg += pawn_eg;
 
-        self.eval_piece_activity(board, &mut mg, &mut eg, &passed, &pawn_attacks);
+        self.eval_piece_activity(board, atk, &mut mg, &mut eg, &passed, &pawn_attacks, phase);
 
         let tempo = if board.side_to_move() == Color::White {
             10
@@ -158,6 +354,7 @@ impl Evaluator {
     fn eval_pawns(
         &mut self,
         board: &Board,
+        atk: &AttackTables,
         passed: &mut [Bitboard; 2],
         attacks: &mut [Bitboard; 2],
     ) -> (i32, i32) {
@@ -177,16 +374,14 @@ impl Evaluator {
             let sign = color_sign(color);
             let us = color;
             let them = !us;
-            let mut pawns = board.pieces(us, Piece::Pawn);
-            let our_pawns = pawns;
+            let our_pawns = board.pieces(us, Piece::Pawn);
             let their_pawns = board.pieces(them, Piece::Pawn);
-            let mut pawn_attack_map = Bitboard::EMPTY;
-
-            while pawns.any() {
-                let sq = pawns.pop_lsb();
-                pawn_attack_map |= ATTACKS.pawn(us, sq);
-            }
-            attacks[us as usize] = pawn_attack_map;
+            let occupied = board.occupied();
+            attacks[us as usize] = if us == Color::White {
+                our_pawns.north_east() | our_pawns.north_west()
+            } else {
+                our_pawns.south_east() | our_pawns.south_west()
+            };
 
             let passed_mg = [0, 5, 10, 20, 35, 60, 100, 0];
             let passed_eg = [0, 10, 17, 35, 62, 100, 170, 0];
@@ -194,41 +389,41 @@ impl Evaluator {
             passed[us as usize] = Bitboard::EMPTY;
             while tmp.any() {
                 let sq = tmp.pop_lsb();
-                let file = sq.file() as usize;
+                let file = SQUARE_FILE[sq.index()];
                 let rel_rank = relative_rank(us, sq) as usize;
-                let adjacent = adjacent_files(file);
+                let adjacent = ADJACENT_FILES[file];
 
-                if (passed_pawn_mask(us, sq) & their_pawns).is_empty() {
+                if (PASSED_PAWN_MASKS[us as usize][sq.index()] & their_pawns).is_empty() {
                     passed[us as usize] |= Bitboard::from(sq);
                     mg += sign * passed_mg[rel_rank];
                     eg += sign * passed_eg[rel_rank];
 
-                    if (ATTACKS.pawn(them, sq) & our_pawns).any() {
+                    if (atk.pawn(them, sq) & our_pawns).any() {
                         mg += sign * 8;
                         eg += sign * (6 + rel_rank as i32 * 4);
                     }
 
                     if let Some(stop) = forward_square(us, sq)
-                        && (board.occupied() & Bitboard::from(stop)).is_empty()
+                        && (occupied & Bitboard::from(stop)).is_empty()
                     {
                         mg += sign * (rel_rank as i32 * 2);
                         eg += sign * (rel_rank as i32 * 6);
-                        if board
-                            .attackers_to_color(stop, board.occupied(), them)
-                            .is_empty()
-                        {
+                        if board.attackers_to_color(stop, occupied, them).is_empty() {
                             eg += sign * (rel_rank as i32 * 8);
                         }
                     }
                 } else if rel_rank >= 3
-                    && (ATTACKS.pawn(them, sq) & our_pawns).any()
-                    && (their_pawns & adjacent & forward_ranks(us, sq.rank() as usize)).is_empty()
+                    && (atk.pawn(them, sq) & our_pawns).any()
+                    && (their_pawns
+                        & adjacent
+                        & FORWARD_RANKS[us as usize][SQUARE_RANK[sq.index()]])
+                    .is_empty()
                 {
                     mg += sign * 6;
                     eg += sign * 10;
                 }
 
-                let file_bb = file_bb(file);
+                let file_bb = FILE_BBS[file];
                 if (our_pawns & file_bb).more_than_one() {
                     mg -= sign * 10;
                     eg -= sign * 20;
@@ -237,7 +432,7 @@ impl Evaluator {
                     mg -= sign * 15;
                     eg -= sign * 20;
                 }
-                if (ATTACKS.pawn(them, sq) & our_pawns).any() {
+                if (atk.pawn(them, sq) & our_pawns).any() {
                     mg += sign * 7;
                     eg += sign * 5;
                 }
@@ -247,9 +442,9 @@ impl Evaluator {
                 } else {
                     sq.0.checked_sub(8)
                 };
-                if (our_pawns & passed_pawn_mask(them, sq) & adjacent).is_empty()
+                if (our_pawns & PASSED_PAWN_MASKS[them as usize][sq.index()] & adjacent).is_empty()
                     && let Some(stop) = stop_sq.filter(|sq| *sq < 64)
-                    && (ATTACKS.pawn(us, Square(stop)) & their_pawns).any()
+                    && (atk.pawn(us, Square(stop)) & their_pawns).any()
                 {
                     mg -= sign * 10;
                     eg -= sign * 15;
@@ -270,10 +465,12 @@ impl Evaluator {
     fn eval_piece_activity(
         &self,
         board: &Board,
+        atk: &AttackTables,
         mg: &mut i32,
         eg: &mut i32,
         passed: &[Bitboard; 2],
         pawn_attacks: &[Bitboard; 2],
+        phase: i32,
     ) {
         for color in [Color::White, Color::Black] {
             let sign = color_sign(color);
@@ -287,9 +484,10 @@ impl Evaluator {
             let mut rooks = board.pieces(color, Piece::Rook);
             while rooks.any() {
                 let sq = rooks.pop_lsb();
-                let file = sq.file() as usize;
-                let own_file_empty = (board.pieces(color, Piece::Pawn) & file_bb(file)).is_empty();
-                let their_file_empty = (board.pieces(them, Piece::Pawn) & file_bb(file)).is_empty();
+                let file = SQUARE_FILE[sq.index()];
+                let own_file_empty = (board.pieces(color, Piece::Pawn) & FILE_BBS[file]).is_empty();
+                let their_file_empty =
+                    (board.pieces(them, Piece::Pawn) & FILE_BBS[file]).is_empty();
                 if own_file_empty && their_file_empty {
                     *mg += sign * 25;
                     *eg += sign * 10;
@@ -307,8 +505,8 @@ impl Evaluator {
             while knights.any() {
                 let sq = knights.pop_lsb();
                 if relative_rank(color, sq) >= 4
-                    && (ATTACKS.pawn(them, sq) & board.pieces(color, Piece::Pawn)).any()
-                    && (ATTACKS.pawn(color, sq) & board.pieces(them, Piece::Pawn)).is_empty()
+                    && (atk.pawn(them, sq) & board.pieces(color, Piece::Pawn)).any()
+                    && (atk.pawn(color, sq) & board.pieces(them, Piece::Pawn)).is_empty()
                 {
                     *mg += sign * 25;
                     *eg += sign * 15;
@@ -320,7 +518,7 @@ impl Evaluator {
                 let mut pieces = board.pieces(color, piece);
                 while pieces.any() {
                     let sq = pieces.pop_lsb();
-                    let attacks = attacks_for(piece, sq, board.occupied());
+                    let attacks = attacks_for(atk, piece, sq, board.occupied());
                     let mobility = (attacks & safe & !board.color_occ(color)).count() as i32;
                     *mg += sign * mobility * mobility_mg(piece);
                     *eg += sign * mobility * mobility_eg(piece);
@@ -347,14 +545,16 @@ impl Evaluator {
                 }
             }
 
-            self.eval_piece_threats(board, color, sign, mg, eg);
-
-            self.eval_king_safety(board, color, sign, mg);
+            self.eval_king_safety(board, atk, color, sign, mg);
             self.eval_rooks_behind_passers(board, color, sign, passed, mg, eg);
             self.eval_hanging_pieces(board, color, sign, mg, eg);
         }
 
+        self.eval_passed_pawn_king_proximity(board, passed, eg);
         self.eval_space(board, pawn_attacks, mg);
+        if phase < TOTAL_PHASE / 2 {
+            self.eval_trapped_bishops(board, atk, mg, eg);
+        }
 
         let approximate = (*mg + *eg) / 2;
         if approximate.abs() > 200 {
@@ -367,53 +567,17 @@ impl Evaluator {
             let sign = color_sign(winning);
             let lksq = board.king_sq(losing);
             let wksq = board.king_sq(winning);
-            let file_push = (3 - lksq.file() as i32).max(lksq.file() as i32 - 4);
-            let rank_push = (3 - lksq.rank() as i32).max(lksq.rank() as i32 - 4);
-            let king_distance = wksq.chebyshev_distance(lksq) as i32;
+            let lfile = SQUARE_FILE[lksq.index()] as i32;
+            let lrank = SQUARE_RANK[lksq.index()] as i32;
+            let file_push = (3 - lfile).max(lfile - 4);
+            let rank_push = (3 - lrank).max(lrank - 4);
+            let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
             *eg += sign * (5 * (file_push + rank_push) + (14 - king_distance) * 4);
         }
     }
 
-    fn eval_piece_threats(
-        &self,
-        board: &Board,
-        color: Color,
-        sign: i32,
-        mg: &mut i32,
-        eg: &mut i32,
-    ) {
-        let them = !color;
-        let targets = board.color_occ(them) & !board.pieces(them, Piece::King);
-        for piece in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
-            let mut pieces = board.pieces(color, piece);
-            while pieces.any() {
-                let sq = pieces.pop_lsb();
-                let mut attacked = attacks_for(piece, sq, board.occupied()) & targets;
-                while attacked.any() {
-                    let target = attacked.pop_lsb();
-                    let Some(victim) = board.piece_on(target) else {
-                        continue;
-                    };
-                    let defended = board
-                        .attackers_to_color(target, board.occupied(), them)
-                        .any();
-                    let base = match victim {
-                        Piece::Pawn => 4,
-                        Piece::Knight | Piece::Bishop => 14,
-                        Piece::Rook => 24,
-                        Piece::Queen => 38,
-                        Piece::King => 0,
-                    };
-                    let bonus = if defended { base } else { base * 2 };
-                    *mg += sign * bonus;
-                    *eg += sign * (bonus / 2);
-                }
-            }
-        }
-    }
-
     fn eval_space(&self, board: &Board, pawn_attacks: &[Bitboard; 2], mg: &mut i32) {
-        let center_files = file_bb(2) | file_bb(3) | file_bb(4) | file_bb(5);
+        let center_files = FILE_BBS[2] | FILE_BBS[3] | FILE_BBS[4] | FILE_BBS[5];
         let white_space_ranks = Bitboard::RANK_2 | Bitboard::RANK_3 | Bitboard::RANK_4;
         let black_space_ranks = Bitboard::RANK_5 | Bitboard::RANK_6 | Bitboard::RANK_7;
         let white_space = center_files
@@ -427,15 +591,23 @@ impl Evaluator {
         *mg += (white_space.count() as i32 - black_space.count() as i32) * 2;
     }
 
-    fn eval_king_safety(&self, board: &Board, color: Color, sign: i32, mg: &mut i32) {
+    fn eval_king_safety(
+        &self,
+        board: &Board,
+        atk: &AttackTables,
+        color: Color,
+        sign: i32,
+        mg: &mut i32,
+    ) {
         let them = !color;
         let king = board.king_sq(color);
         let king_bb = Bitboard::from(king);
-        let mut zone = ATTACKS.king(king) | king_bb;
+        let king_attacks = atk.king(king);
+        let mut zone = king_attacks | king_bb;
         zone |= if color == Color::White {
-            ATTACKS.king(king).north()
+            king_attacks.north()
         } else {
-            ATTACKS.king(king).south()
+            king_attacks.south()
         };
 
         let mut units = 0;
@@ -443,7 +615,7 @@ impl Evaluator {
             let mut pieces = board.pieces(them, piece);
             while pieces.any() {
                 let sq = pieces.pop_lsb();
-                if (attacks_for(piece, sq, board.occupied()) & zone).any() {
+                if (attacks_for(atk, piece, sq, board.occupied()) & zone).any() {
                     units += match piece {
                         Piece::Knight | Piece::Bishop => 2,
                         Piece::Rook => 3,
@@ -458,16 +630,16 @@ impl Evaluator {
         ];
         *mg -= sign * SAFETY[units.min(15) as usize];
 
-        let king_file = king.file() as i32;
+        let king_file = SQUARE_FILE[king.index()] as i32;
         if king_file <= 2 || king_file >= 5 {
-            let king_rank = king.rank() as i32;
+            let king_rank = SQUARE_RANK[king.index()] as i32;
             for df in -1..=1 {
                 let file = king_file + df;
                 if !(0..8).contains(&file) {
                     continue;
                 }
-                let pawns = board.pieces(color, Piece::Pawn) & file_bb(file as usize);
-                let in_front = pawns & forward_ranks(color, king_rank as usize);
+                let pawns = board.pieces(color, Piece::Pawn) & FILE_BBS[file as usize];
+                let in_front = pawns & FORWARD_RANKS[color as usize][king_rank as usize];
                 if in_front.is_empty() {
                     *mg -= sign * if df == 0 { 20 } else { 10 };
                 } else {
@@ -477,9 +649,9 @@ impl Evaluator {
                         in_front.msb()
                     };
                     let distance = if color == Color::White {
-                        pawn_sq.rank() as i32 - king_rank
+                        SQUARE_RANK[pawn_sq.index()] as i32 - king_rank
                     } else {
-                        king_rank - pawn_sq.rank() as i32
+                        king_rank - SQUARE_RANK[pawn_sq.index()] as i32
                     };
                     if distance == 1 {
                         *mg += sign * 15;
@@ -492,11 +664,11 @@ impl Evaluator {
 
         let enemy_pawns = board.pieces(them, Piece::Pawn);
         let mut storm_files = Bitboard::EMPTY;
-        let king_file = king.file() as i32;
+        let king_file = SQUARE_FILE[king.index()] as i32;
         for df in -1..=1 {
             let file = king_file + df;
             if (0..8).contains(&file) {
-                storm_files |= file_bb(file as usize);
+                storm_files |= FILE_BBS[file as usize];
             }
         }
         let mut storm = enemy_pawns & storm_files;
@@ -504,7 +676,13 @@ impl Evaluator {
             let pawn = storm.pop_lsb();
             let rel = relative_rank(them, pawn) as i32;
             if rel >= 3 {
-                *mg -= sign * (rel * if pawn.file() == king.file() { 7 } else { 4 });
+                *mg -= sign
+                    * (rel
+                        * if SQUARE_FILE[pawn.index()] == SQUARE_FILE[king.index()] {
+                            7
+                        } else {
+                            4
+                        });
             }
         }
     }
@@ -522,8 +700,8 @@ impl Evaluator {
         let mut rooks = board.pieces(color, Piece::Rook);
         while rooks.any() {
             let rook = rooks.pop_lsb();
-            let file = rook.file() as usize;
-            let file_passers = passed[color as usize] & file_bb(file);
+            let file = SQUARE_FILE[rook.index()];
+            let file_passers = passed[color as usize] & FILE_BBS[file];
             if file_passers.any() {
                 let passer = if color == Color::White {
                     file_passers.lsb()
@@ -531,9 +709,9 @@ impl Evaluator {
                     file_passers.msb()
                 };
                 let behind = if color == Color::White {
-                    rook.rank() < passer.rank()
+                    SQUARE_RANK[rook.index()] < SQUARE_RANK[passer.index()]
                 } else {
-                    rook.rank() > passer.rank()
+                    SQUARE_RANK[rook.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
                     *mg += sign * 15;
@@ -541,7 +719,7 @@ impl Evaluator {
                 }
             }
 
-            let mut enemy_rooks = board.pieces(them, Piece::Rook) & file_bb(file);
+            let mut enemy_rooks = board.pieces(them, Piece::Rook) & FILE_BBS[file];
             while enemy_rooks.any() && file_passers.any() {
                 let enemy = enemy_rooks.pop_lsb();
                 let passer = if color == Color::White {
@@ -550,9 +728,9 @@ impl Evaluator {
                     file_passers.msb()
                 };
                 let behind = if color == Color::White {
-                    enemy.rank() < passer.rank()
+                    SQUARE_RANK[enemy.index()] < SQUARE_RANK[passer.index()]
                 } else {
-                    enemy.rank() > passer.rank()
+                    SQUARE_RANK[enemy.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
                     *mg -= sign * 10;
@@ -593,17 +771,42 @@ impl Evaluator {
             *eg -= sign * penalty;
         }
     }
+
+    fn eval_passed_pawn_king_proximity(&self, board: &Board, passed: &[Bitboard; 2], eg: &mut i32) {
+        for color in [Color::White, Color::Black] {
+            let them = !color;
+            let sign = color_sign(color);
+            let own_king = board.king_sq(color);
+            let enemy_king = board.king_sq(them);
+            let mut pawns = passed[color as usize];
+            while pawns.any() {
+                let pawn = pawns.pop_lsb();
+                let rel_rank = relative_rank(color, pawn) as i32;
+                let own_dist = KING_DISTANCE[own_king.index()][pawn.index()] as i32;
+                let enemy_dist = KING_DISTANCE[enemy_king.index()][pawn.index()] as i32;
+                *eg += sign * (enemy_dist - own_dist) * (2 + rel_rank);
+            }
+        }
+    }
+
+    fn eval_trapped_bishops(&self, board: &Board, atk: &AttackTables, mg: &mut i32, eg: &mut i32) {
+        for color in [Color::White, Color::Black] {
+            let sign = color_sign(color);
+            let mut bishops = board.pieces(color, Piece::Bishop);
+            while bishops.any() {
+                let sq = bishops.pop_lsb();
+                if (atk.bishop(sq, board.occupied()) & !board.color_occ(color)).is_empty() {
+                    *mg -= sign * 60;
+                    *eg -= sign * 40;
+                }
+            }
+        }
+    }
 }
 
+#[inline(always)]
 pub fn piece_value(piece: Piece) -> i32 {
-    match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
-        Piece::King => MATE_SCORE,
-    }
+    unsafe { *PIECE_VALUES.get_unchecked(piece as usize) }
 }
 
 #[inline(always)]
@@ -612,43 +815,14 @@ fn color_sign(color: Color) -> i32 {
 }
 
 #[inline(always)]
-fn pst_square(color: Color, sq: Square) -> usize {
-    match color {
-        Color::White => sq.index(),
-        Color::Black => (sq.0 ^ 56) as usize,
-    }
-}
-
-fn mg_pst(piece: Piece) -> &'static [i32; 64] {
-    match piece {
-        Piece::Pawn => &MG_PAWN_PST,
-        Piece::Knight => &MG_KNIGHT_PST,
-        Piece::Bishop => &MG_BISHOP_PST,
-        Piece::Rook => &MG_ROOK_PST,
-        Piece::Queen => &MG_QUEEN_PST,
-        Piece::King => &MG_KING_PST,
-    }
-}
-
-fn eg_pst(piece: Piece) -> &'static [i32; 64] {
-    match piece {
-        Piece::Pawn => &EG_PAWN_PST,
-        Piece::Knight => &EG_KNIGHT_PST,
-        Piece::Bishop => &EG_BISHOP_PST,
-        Piece::Rook => &EG_ROOK_PST,
-        Piece::Queen => &EG_QUEEN_PST,
-        Piece::King => &EG_KING_PST,
-    }
-}
-
-fn attacks_for(piece: Piece, sq: Square, occ: Bitboard) -> Bitboard {
+fn attacks_for(atk: &AttackTables, piece: Piece, sq: Square, occ: Bitboard) -> Bitboard {
     match piece {
         Piece::Pawn => Bitboard::EMPTY,
-        Piece::Knight => ATTACKS.knight(sq),
-        Piece::Bishop => ATTACKS.bishop(sq, occ),
-        Piece::Rook => ATTACKS.rook(sq, occ),
-        Piece::Queen => ATTACKS.queen(sq, occ),
-        Piece::King => ATTACKS.king(sq),
+        Piece::Knight => atk.knight(sq),
+        Piece::Bishop => atk.bishop(sq, occ),
+        Piece::Rook => atk.rook(sq, occ),
+        Piece::Queen => atk.queen(sq, occ),
+        Piece::King => atk.king(sq),
     }
 }
 
@@ -676,42 +850,7 @@ fn mobility_eg(piece: Piece) -> i32 {
 
 #[inline(always)]
 fn relative_rank(color: Color, sq: Square) -> u8 {
-    match color {
-        Color::White => sq.rank() as u8,
-        Color::Black => 7 - sq.rank() as u8,
-    }
-}
-
-fn file_bb(file: usize) -> Bitboard {
-    Bitboard(Bitboard::FILE_A.0 << file)
-}
-
-fn adjacent_files(file: usize) -> Bitboard {
-    let mut bb = Bitboard::EMPTY;
-    if file > 0 {
-        bb |= file_bb(file - 1);
-    }
-    if file < 7 {
-        bb |= file_bb(file + 1);
-    }
-    bb
-}
-
-fn forward_ranks(color: Color, rank: usize) -> Bitboard {
-    let mut bb = Bitboard::EMPTY;
-    match color {
-        Color::White => {
-            for r in rank + 1..8 {
-                bb |= Bitboard(0xFFu64 << (r * 8));
-            }
-        }
-        Color::Black => {
-            for r in 0..rank {
-                bb |= Bitboard(0xFFu64 << (r * 8));
-            }
-        }
-    }
-    bb
+    RELATIVE_RANKS[color as usize][sq.index()]
 }
 
 fn forward_square(color: Color, sq: Square) -> Option<Square> {
@@ -719,31 +858,6 @@ fn forward_square(color: Color, sq: Square) -> Option<Square> {
         Color::White => sq.0.checked_add(8).filter(|to| *to < 64).map(Square),
         Color::Black => sq.0.checked_sub(8).map(Square),
     }
-}
-
-fn passed_pawn_mask(color: Color, sq: Square) -> Bitboard {
-    let file = sq.file() as i32;
-    let rank = sq.rank() as i32;
-    let mut bb = Bitboard::EMPTY;
-    for df in -1..=1 {
-        let f = file + df;
-        if !(0..8).contains(&f) {
-            continue;
-        }
-        match color {
-            Color::White => {
-                for r in rank + 1..8 {
-                    bb |= Bitboard::from(Square((r * 8 + f) as u8));
-                }
-            }
-            Color::Black => {
-                for r in 0..rank {
-                    bb |= Bitboard::from(Square((r * 8 + f) as u8));
-                }
-            }
-        }
-    }
-    bb
 }
 
 fn scale_drawish_endgames(board: &Board, mut score: i32) -> i32 {

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::thread;
 
-use whitespine::engine::Engine;
-use whitespine::engine_command::{EngineCommandQueue, EngineControl};
-use whitespine::infra::capitalize_first_letter;
-use whitespine::uci_protocol::UciProtocol;
+use lynx::engine::Engine;
+use lynx::engine_command::{EngineCommandQueue, EngineControl};
+use lynx::infra::capitalize_first_letter;
+use lynx::uci_protocol::UciProtocol;
 
 fn main() {
     println!(

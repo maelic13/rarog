@@ -1,6 +1,6 @@
-# Whitespine
+# Lynx
 
-Whitespine is a UCI-compatible chess engine written in Rust.
+Lynx is a UCI-compatible chess engine written in Rust.
 The engine is intended for use from a chess GUI or engine-testing tool that
 speaks the UCI protocol.
 
@@ -15,8 +15,8 @@ speaks the UCI protocol.
 - Configurable Lazy SMP-style parallel search with persistent workers and a
   full-key validated shared transposition table through the UCI `Threads`
   option
-- Quiescence search with delta pruning, checks/promotions in early qsearch, and
-  SEE-based pruning
+- Capture-focused quiescence search with delta pruning, SEE-based pruning, and
+  bounded check evasions
 - Null-move pruning, ProbCut, singular extensions, futility pruning, late move
   pruning, and late move reductions
 - Move ordering using TT moves, SEE, killers, countermoves, main history,
@@ -74,9 +74,8 @@ Run the board implementation benchmark with:
 cargo bench --bench board
 ```
 
-This benchmark matches the board benchmark used on the `claude` branch. It
-measures legal move generation, capture generation, make/unmake, check
-detection, SEE over captures, game-simulation-style move generation, and
+This benchmark measures legal move generation, capture generation, make/unmake,
+check detection, SEE over captures, game-simulation-style move generation, and
 start-position perft depth 4.
 
 ## Build From Source
@@ -89,10 +88,12 @@ cargo build --release
 
 The executable is created at:
 
-- `target/release/whitespine`
-- `target/release/whitespine.exe` on Windows
+- `target/release/lynx`
+- `target/release/lynx.exe` on Windows
 
 Release builds use LTO and a single codegen unit for engine speed.
+Local release builds also use `target-cpu=native`, so `cargo build --release`
+optimizes Lynx for the CPU on the build machine.
 
 For quick local testing:
 
@@ -126,7 +127,7 @@ The suite covers:
 
 ## Use With A GUI
 
-1. Build or download a Whitespine executable.
+1. Build or download a Lynx executable.
 2. Add it as a UCI engine in your chess GUI.
 3. Configure `Hash` and `Move Overhead` as needed.
 4. Start an engine game or analysis session.
@@ -136,10 +137,23 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-- [Latest release](https://github.com/maelic13/whitespine/releases/latest)
-- [All releases](https://github.com/maelic13/whitespine/releases)
+- [Latest release](https://github.com/maelic13/lynx/releases/latest)
+- [All releases](https://github.com/maelic13/lynx/releases)
 
 Release assets may include standalone executables for Windows, macOS, and Linux.
+GitHub release binaries are built with explicit portable CPU targets instead of
+`target-cpu=native`, so they can be shared safely.
+
+Use the most advanced binary your CPU supports:
+
+| Asset suffix | Use when |
+| --- | --- |
+| `x86-64` | You need the most compatible Intel/AMD 64-bit build. |
+| `avx2` | Your Intel/AMD CPU supports AVX2; this is the usual optimized x64 choice. |
+| `avx512` | Your Intel/AMD CPU supports AVX-512. |
+| `arm64` | You are on ARM64 Linux, Windows on ARM, or Apple Silicon macOS. |
+
+If unsure, use the plain `x86-64` or `arm64` asset for your operating system.
 
 ## License
 

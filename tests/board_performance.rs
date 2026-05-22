@@ -1,7 +1,7 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use whitespine::board::{Board, STARTING_FEN};
+use lynx::board::{Board, STARTING_FEN};
 
 const BENCHMARK_FENS: &[&str] = &[
     STARTING_FEN,
@@ -114,12 +114,12 @@ impl Iterations {
             }
         } else {
             Iterations {
-                legal_moves: 400,
-                captures: 800,
-                make_unmake: 200,
-                check_detection: 20_000,
-                perft: 5,
-                game_simulation: 50,
+                legal_moves: 5_000,
+                captures: 10_000,
+                make_unmake: 2_000,
+                check_detection: 500_000,
+                perft: 30,
+                game_simulation: 300,
             }
         }
     }
