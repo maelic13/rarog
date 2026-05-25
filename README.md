@@ -138,22 +138,24 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.0.1`.
+Current documented release: `1.0.2`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)
 
-Release assets may include standalone executables for Windows, macOS, and Linux.
+Release assets may include standalone executables for Windows, Linux, and
+Apple Silicon macOS. Intel macOS release assets are not published.
 GitHub release binaries are built with explicit portable CPU targets instead of
-`target-cpu=native`, so they can be shared safely.
+`target-cpu=native`, so they can be shared safely. Local `cargo build --release`
+builds continue to use `target-cpu=native` through `.cargo/config.toml`.
 
 Use the most advanced binary your CPU supports:
 
 | Asset suffix | Use when |
 | --- | --- |
 | `x86-64` | You need the most compatible Intel/AMD 64-bit build. |
-| `avx2` | Your Intel/AMD CPU supports AVX2; this is the usual optimized x64 choice. |
-| `avx512` | Your Intel/AMD CPU supports AVX-512. |
+| `avx2` | Your Intel/AMD CPU supports x86-64-v3/AVX2; this is the usual optimized x64 choice. |
+| `avx512` | Your Intel/AMD CPU supports x86-64-v4/AVX-512. |
 | `arm64` | You are on ARM64 Linux, Windows on ARM, or Apple Silicon macOS. |
 
 If unsure, use the plain `x86-64` or `arm64` asset for your operating system.

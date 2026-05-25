@@ -2,6 +2,15 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.0.2] - 2026-05-25
+
+### Changed
+
+- Removed Intel macOS release assets from the GitHub release build matrix.
+  macOS release binaries are now Apple Silicon/ARM64 only.
+- Clarified release asset CPU targets and local native build behavior in the
+  README.
+
 ## [1.0.1] - 2026-05-23
 
 Patch release focused on UCI tournament reliability.

@@ -63,24 +63,6 @@ jobs:
             target: aarch64-pc-windows-msvc
             cpu: generic
             ext: ".exe"
-          - runner: macos-15-intel
-            os_name: macos
-            asset_arch: x86-64
-            target: x86_64-apple-darwin
-            cpu: x86-64
-            ext: ""
-          - runner: macos-15-intel
-            os_name: macos
-            asset_arch: avx2
-            target: x86_64-apple-darwin
-            cpu: x86-64-v3
-            ext: ""
-          - runner: macos-15-intel
-            os_name: macos
-            asset_arch: avx512
-            target: x86_64-apple-darwin
-            cpu: x86-64-v4
-            ext: ""
           - runner: macos-latest
             os_name: macos
             asset_arch: arm64
