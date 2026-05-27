@@ -2,6 +2,35 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.3.0] - 2026-05-27
+
+### Added
+
+- Added incremental pawn, minor-piece, and color-specific non-pawn structure
+  keys for more precise pawn keys and richer correction history indexing.
+- Added low-ply quiet history and pawn-structure-indexed quiet history to
+  improve move ordering in the main search.
+- Added additional continuation-history channels at wider ply distances.
+- Added high-depth null-move verification to reduce tactical risk from
+  aggressive null-move cutoffs.
+- Added capture futility pruning in quiescence search.
+- Added fifty-move-rule dampening to the handcrafted evaluation.
+- Added regression coverage for pawn-key color/structure collisions and
+  evaluation scaling near a fifty-move-rule draw.
+
+### Changed
+
+- Reworked static-evaluation handling so transposition-table entries store raw
+  static evals and apply the current correction history on probe.
+- Improved pruning selectivity with TT-assisted pruning evals, improving-aware
+  futility margins, and refined shallow razoring/null-move conditions.
+- Improved tactical move ordering with SEE-aware capture scores and capture
+  history while ordering losing captures behind quiet candidates.
+- Improved root time usage by extending past the soft limit after material
+  score drops and by stopping early in forced single-legal-move positions.
+- Improved clock allocation for explicit `movestogo` and sudden-death controls
+  with more conservative hard limits and increment handling.
+
 ## [1.2.1] - 2026-05-25
 
 ### Changed

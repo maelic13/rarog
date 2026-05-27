@@ -4,6 +4,9 @@ pub const HISTORY_MAX: i32 = 16_384;
 pub const CAP_HISTORY_MAX: i32 = 16_384;
 pub const CORR_SIZE: usize = 16_384;
 pub const CONT_SIZE: usize = 6 * 64 * 6 * 64;
+pub const LOW_PLY_HISTORY_SIZE: usize = 4;
+pub const PAWN_HISTORY_SIZE: usize = 4_096;
+pub const PIECE_TO_SIZE: usize = 6 * 64;
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct ScoredMove {
@@ -120,4 +123,13 @@ pub(crate) fn history_bonus(depth: i32) -> i32 {
 
 pub(crate) fn cont_index(prev_piece: usize, prev_to: usize, piece: usize, to: usize) -> usize {
     (((prev_piece * 64 + prev_to) * 6 + piece) * 64 + to).min(CONT_SIZE - 1)
+}
+
+pub(crate) fn piece_to_index(piece: usize, to: usize) -> usize {
+    (piece * 64 + to).min(PIECE_TO_SIZE - 1)
+}
+
+pub(crate) fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usize {
+    let slot = pawn_key as usize & (PAWN_HISTORY_SIZE - 1);
+    slot * PIECE_TO_SIZE + piece_to_index(piece, to)
 }

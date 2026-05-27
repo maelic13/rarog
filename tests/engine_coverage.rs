@@ -348,6 +348,15 @@ fn evaluator_scores_material_from_side_to_move_perspective() {
 }
 
 #[test]
+fn evaluator_dampens_static_advantage_near_fifty_move_draw() {
+    let mut evaluator = Evaluator::default();
+    let fresh = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 0 1").expect("valid FEN");
+    let stale = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 90 46").expect("valid FEN");
+
+    assert!(evaluator.evaluate(&stale).abs() < evaluator.evaluate(&fresh).abs());
+}
+
+#[test]
 fn syzygy_disabled_path_leaves_tablebase_probes_unavailable() {
     let board = Board::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
 

@@ -34,13 +34,31 @@ pub(crate) fn compute_runtime_limits(
         };
         if time > 0 {
             let remaining = (time as f64 - engine_options.move_overhead).max(1.0);
-            let moves_to_go = if options.movestogo > 0 {
-                options.movestogo as f64
+            let explicit_moves_to_go = options.movestogo > 0;
+            let moves_to_go = if explicit_moves_to_go {
+                options.movestogo.min(50) as f64
+            } else if remaining < 1_000.0 {
+                (remaining * 0.05).clamp(1.0, 50.0)
             } else {
-                35.0
+                50.0
             };
-            soft_ms = (remaining / moves_to_go + increment as f64 * 0.70).max(1.0);
-            hard_ms = (soft_ms * 3.0).min(remaining * 0.6).max(soft_ms);
+            if explicit_moves_to_go {
+                let usable = (time as f64 + increment as f64 * (moves_to_go - 1.0)
+                    - engine_options.move_overhead * (moves_to_go + 1.0))
+                    .max(1.0);
+                soft_ms = ((0.88 / moves_to_go) * usable)
+                    .min(remaining * 0.88)
+                    .max(1.0);
+                hard_ms = (soft_ms * (1.30 + 0.11 * moves_to_go))
+                    .min(remaining * 0.80)
+                    .max(soft_ms);
+            } else {
+                soft_ms = (remaining / moves_to_go + increment as f64 * 0.75)
+                    .min(remaining * 0.20)
+                    .max(1.0);
+                let reserve_cap = if remaining < 2_000.0 { 0.25 } else { 0.75 };
+                hard_ms = (soft_ms * 3.0).min(remaining * reserve_cap).max(soft_ms);
+            }
         }
     }
 
@@ -137,7 +155,7 @@ mod tests {
         };
         let limits = compute_runtime_limits(options, &EngineOptions::default(), Color::Black, 64);
 
-        assert!((980.0..=1_000.0).contains(&limits.soft_ms));
+        assert!((850.0..=900.0).contains(&limits.soft_ms));
         assert!(limits.hard_ms <= 6_000.0);
     }
 

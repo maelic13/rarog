@@ -16,13 +16,14 @@ speaks the UCI protocol.
   full-key validated shared transposition table through the UCI `Threads`
   option
 - Basic UCI `MultiPV` support for analysis output
-- Capture-focused quiescence search with delta pruning, SEE-based pruning, and
-  bounded check evasions
-- Null-move pruning, ProbCut, singular extensions, futility pruning, late move
-  pruning, and late move reductions
+- Capture-focused quiescence search with delta pruning, capture futility,
+  SEE-based pruning, and bounded check evasions
+- Null-move pruning with verification, ProbCut, singular extensions, futility
+  pruning, late move pruning, and late move reductions
 - Move ordering using TT moves, SEE, killers, countermoves, main history,
-  capture history, and continuation history
-- Correction history and handcrafted tapered evaluation
+  low-ply history, pawn history, capture history, and continuation history
+- Multi-table correction history and handcrafted tapered evaluation with
+  fifty-move-rule dampening
 - Optional Syzygy tablebase probing through the UCI `SyzygyPath`,
   `SyzygyProbeDepth`, `SyzygyProbeLimit`, and `Syzygy50MoveRule` options,
   with root DTZ ranking, WDL fallback, load summaries, and `tbhits` reporting
@@ -132,6 +133,7 @@ The suite covers:
 - Legal move generation and special moves
 - Perft reference positions
 - Hashing and make/unmake correctness
+- Incremental pawn, minor-piece, and non-pawn structure keys
 - Draw and terminal-result handling
 - Search limits, invalid limit parsing, and stop/quit behavior
 - Time-management behavior for fast clocks, `movetime`, side-to-move clocks,
@@ -145,6 +147,7 @@ The suite covers:
 - UCI ponder and infinite-search `bestmove` release timing
 - Quiet/capture move-generation partitioning
 - Evaluation and transposition table behavior
+- Fifty-move-rule evaluation dampening
 - UCI command handling and invalid `setoption` preservation
 
 ## Use With A GUI
@@ -159,7 +162,7 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.2.1`.
+Current documented release: `1.3.0`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)
