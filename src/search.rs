@@ -8,8 +8,9 @@ use std::time::Instant;
 use crate::board::{Board, Color, GameResult, Move, Piece};
 use crate::eval::{Evaluator, INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::move_ordering::{
-    BadCaptureList, CAP_HISTORY_MAX, CONT_SIZE, CORR_SIZE, HISTORY_MAX, ScoredMoveList, cont_index,
-    diversify_root_scores, history_bonus, pick_next, update_hist_entry,
+    BadCaptureList, CAP_HISTORY_MAX, CONT_SIZE, CORR_SIZE, HISTORY_MAX, LOW_PLY_HISTORY_SIZE,
+    PAWN_HISTORY_SIZE, PIECE_TO_SIZE, ScoredMoveList, cont_index, diversify_root_scores,
+    history_bonus, pawn_history_index, pick_next, update_hist_entry,
 };
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::search_threads::{STOP_NONE, STOP_QUIT, STOP_SEARCH, WorkerJob, WorkerPool};
@@ -87,13 +88,20 @@ pub struct Searcher {
     pv_len: [usize; MAX_PLY],
     stack_moves: [Move; MAX_PLY],
     stack_pieces: [Piece; MAX_PLY],
+    stack_static_eval: [i32; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     root_moves: Vec<Move>,
     main_history: Box<[[[i16; 64]; 64]; 2]>,
     cap_history: Box<[[[i16; 6]; 64]; 6]>,
+    low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
+    pawn_history: Vec<i16>,
     cont_history_1: Vec<i16>,
     cont_history_2: Vec<i16>,
+    cont_history_4: Vec<i16>,
+    cont_history_6: Vec<i16>,
     correction_history: Box<[[i16; CORR_SIZE]; 2]>,
+    minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
+    non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
     tt_write_mode: TtWriteMode,
@@ -129,13 +137,20 @@ impl Default for Searcher {
             pv_len: [0; MAX_PLY],
             stack_moves: [Move::NULL; MAX_PLY],
             stack_pieces: [Piece::Pawn; MAX_PLY],
+            stack_static_eval: [VALUE_NONE; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
             main_history: Box::new([[[0; 64]; 64]; 2]),
             cap_history: Box::new([[[0; 6]; 64]; 6]),
+            low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
+            pawn_history: vec![0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE],
             cont_history_1: vec![0; CONT_SIZE],
             cont_history_2: vec![0; CONT_SIZE],
+            cont_history_4: vec![0; CONT_SIZE],
+            cont_history_6: vec![0; CONT_SIZE],
             correction_history: Box::new([[0; CORR_SIZE]; 2]),
+            minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
+            non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             tt_write_mode: TtWriteMode::Main,
@@ -223,9 +238,15 @@ impl Searcher {
     pub fn clear_history(&mut self) {
         self.main_history = Box::new([[[0; 64]; 64]; 2]);
         self.cap_history = Box::new([[[0; 6]; 64]; 6]);
+        self.low_ply_history = Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]);
+        self.pawn_history.fill(0);
         self.cont_history_1.fill(0);
         self.cont_history_2.fill(0);
+        self.cont_history_4.fill(0);
+        self.cont_history_6.fill(0);
         self.correction_history = Box::new([[0; CORR_SIZE]; 2]);
+        self.minor_correction_history = Box::new([[0; CORR_SIZE]; 2]);
+        self.non_pawn_correction_history = Box::new([[[0; CORR_SIZE]; 2]; 2]);
         self.countermove = Box::new([[Move::NULL; 64]; 64]);
         self.killers = [[Move::NULL; 2]; MAX_PLY];
     }
@@ -336,6 +357,7 @@ impl Searcher {
         self.pv_len = [0; MAX_PLY];
         self.stack_moves = [Move::NULL; MAX_PLY];
         self.stack_pieces = [Piece::Pawn; MAX_PLY];
+        self.stack_static_eval = [VALUE_NONE; MAX_PLY];
     }
 
     fn no_legal_moves_result(&mut self, board: &Board) -> SearchResult {
@@ -431,6 +453,7 @@ impl Searcher {
         let mut completed_depth = 0;
         let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
         let mut stable_best_depths = 0usize;
+        let mut last_score_drop = 0;
 
         for depth in 1..=max_depth {
             let previous_bestmove = bestmove;
@@ -470,6 +493,11 @@ impl Searcher {
                     beta = (beta + 75).min(INF_SCORE);
                     continue;
                 }
+                last_score_drop = if completed_depth > 0 {
+                    best_score - score
+                } else {
+                    0
+                };
                 best_score = score;
                 completed_depth = depth;
                 if self.pv_len[0] > 0 {
@@ -496,11 +524,16 @@ impl Searcher {
                 self.send_info(depth, best_score);
             }
 
+            if legal_moves.len() == 1 && depth >= 2 {
+                break;
+            }
+
             if !self.pondering {
                 let elapsed_ms = self.elapsed_ms();
                 if elapsed_ms >= self.limits.hard_ms
                     || (elapsed_ms >= self.limits.soft_ms
-                        && (self.limits.soft_ms >= self.limits.hard_ms || stable_best_depths > 0))
+                        && (self.limits.soft_ms >= self.limits.hard_ms
+                            || (stable_best_depths > 0 && last_score_drop <= 50)))
                 {
                     break;
                 }
@@ -830,30 +863,51 @@ impl Searcher {
             depth -= 1;
         }
 
-        let static_eval = if in_check {
-            VALUE_NONE
+        let (static_eval, raw_static_eval) = if in_check {
+            (VALUE_NONE, VALUE_NONE)
         } else if let Some(entry) = tt_entry {
             if entry.static_eval as i32 != VALUE_NONE {
-                entry.static_eval as i32
+                let raw = entry.static_eval as i32;
+                (self.corrected_eval_from_raw(board, raw), raw)
             } else {
-                self.corrected_eval(board)
+                let raw = self.raw_eval(board);
+                (self.corrected_eval_from_raw(board, raw), raw)
             }
         } else {
-            self.corrected_eval(board)
+            let raw = self.raw_eval(board);
+            (self.corrected_eval_from_raw(board, raw), raw)
+        };
+        self.stack_static_eval[ply] = static_eval;
+        let improving = !in_check
+            && ply >= 2
+            && self.stack_static_eval[ply - 2] != VALUE_NONE
+            && static_eval > self.stack_static_eval[ply - 2];
+        let improving_i = if improving { 1 } else { 0 };
+        let not_improving_i = 1 - improving_i;
+        let eval_for_pruning = if !in_check && tt_score != VALUE_NONE {
+            match tt_bound {
+                Some(Bound::Exact) => tt_score,
+                Some(Bound::Lower) if tt_score > static_eval => tt_score,
+                Some(Bound::Upper) if tt_score < static_eval => tt_score,
+                _ => static_eval,
+            }
+        } else {
+            static_eval
         };
         if !is_pv && !in_check && excluded.is_null() {
-            if depth <= 7 && static_eval - 80 * depth >= beta {
-                return static_eval;
+            let futility_margin = (70 + 20 * not_improving_i) * depth;
+            if depth <= 8 && eval_for_pruning - futility_margin >= beta {
+                return eval_for_pruning;
             }
-            if depth <= 3 && static_eval + 150 * depth < alpha {
+            if depth <= 3 && eval_for_pruning + 150 * depth < alpha {
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
             if allow_null
                 && depth >= 3
-                && static_eval >= beta
+                && eval_for_pruning >= beta - 12 * depth - 24 * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
-                let reduction = 4 + depth / 4 + ((static_eval - beta) / 200).clamp(0, 3);
+                let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
                 let score = -self.negamax(
                     board,
@@ -871,7 +925,31 @@ impl Searcher {
                     return 0;
                 }
                 if score >= beta {
-                    return beta;
+                    if depth >= 10 {
+                        let verify_depth = (depth - reduction).max(1);
+                        let verified = self.negamax(
+                            board,
+                            verify_depth,
+                            beta - 1,
+                            beta,
+                            ply,
+                            false,
+                            false,
+                            Move::NULL,
+                            poll,
+                        );
+                        if self.stopped || self.quit {
+                            return 0;
+                        }
+                        if verified < beta {
+                            // Continue normally when the null cutoff is not stable
+                            // under a verification search with null move disabled.
+                        } else {
+                            return beta;
+                        }
+                    } else {
+                        return beta;
+                    }
                 }
             }
 
@@ -910,7 +988,15 @@ impl Searcher {
                         return 0;
                     }
                     if score >= probcut_beta {
-                        self.store_tt(hash, depth - 3, beta, Bound::Lower, mv, ply, static_eval);
+                        self.store_tt(
+                            hash,
+                            depth - 3,
+                            beta,
+                            Bound::Lower,
+                            mv,
+                            ply,
+                            raw_static_eval,
+                        );
                         return beta;
                     }
                 }
@@ -978,10 +1064,11 @@ impl Searcher {
 
             if !is_pv && !in_check && searched > 0 {
                 if is_quiet {
-                    let prune_candidate = (depth <= 3 && static_eval + 100 * depth <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth))
-                        || (depth <= 4 && quiet_hist < -8_000)
-                        || (depth <= 6 && quiet_hist < -3_500 * depth);
+                    let prune_margin = (90 + 25 * not_improving_i) * depth;
+                    let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
+                        || (depth <= 8 && searched > late_move_prune_count(depth, improving))
+                        || (depth <= 4 && quiet_hist < -10_000)
+                        || (depth <= 6 && quiet_hist < -4_000 * depth);
                     if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
                         continue;
                     }
@@ -1072,6 +1159,12 @@ impl Searcher {
                     } else if is_quiet {
                         reduction += 1;
                     }
+                    if improving {
+                        reduction -= 1;
+                    }
+                    if !tt_move.is_null() && searched >= 4 {
+                        reduction += 1;
+                    }
                     reduction -= hist / 8_192;
                     reduction = reduction.clamp(1, new_depth.max(1));
                     score = -self.negamax(
@@ -1150,7 +1243,7 @@ impl Searcher {
                     if excluded.is_null() {
                         if !is_capture {
                             self.update_cutoff_tables(
-                                board.side_to_move(),
+                                board,
                                 mv,
                                 moving_piece,
                                 previous_move,
@@ -1167,7 +1260,7 @@ impl Searcher {
                                 depth * depth,
                             );
                         }
-                        self.store_tt(hash, depth, beta, Bound::Lower, mv, ply, static_eval);
+                        self.store_tt(hash, depth, beta, Bound::Lower, mv, ply, raw_static_eval);
                     }
                     return beta;
                 }
@@ -1191,15 +1284,10 @@ impl Searcher {
             && static_eval != VALUE_NONE
             && best_score.abs() < MATE_SCORE - MAX_PLY as i32
         {
-            self.update_correction(
-                board.side_to_move(),
-                board.pawn_key(),
-                best_score - static_eval,
-                depth,
-            );
+            self.update_correction(board, best_score - static_eval, depth);
         }
         if excluded.is_null() {
-            self.store_tt(hash, depth, alpha, bound, best_move, ply, static_eval);
+            self.store_tt(hash, depth, alpha, bound, best_move, ply, raw_static_eval);
         }
         alpha
     }
@@ -1243,20 +1331,33 @@ impl Searcher {
             }
         }
 
-        let mut q_static_eval = VALUE_NONE;
+        let mut q_raw_static_eval = VALUE_NONE;
+        let mut stand_pat_for_pruning = VALUE_NONE;
         if !in_check {
-            let stand_pat = if let Some(entry) = tt_entry {
+            let (stand_pat, raw_stand_pat) = if let Some(entry) = tt_entry {
                 if entry.static_eval as i32 != VALUE_NONE {
-                    entry.static_eval as i32
+                    let raw = entry.static_eval as i32;
+                    (self.corrected_eval_from_raw(board, raw), raw)
                 } else {
-                    self.corrected_eval(board)
+                    let raw = self.raw_eval(board);
+                    (self.corrected_eval_from_raw(board, raw), raw)
                 }
             } else {
-                self.corrected_eval(board)
+                let raw = self.raw_eval(board);
+                (self.corrected_eval_from_raw(board, raw), raw)
             };
-            q_static_eval = stand_pat;
+            q_raw_static_eval = raw_stand_pat;
+            stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
-                self.store_tt(hash, 0, beta, Bound::Lower, Move::NULL, ply, stand_pat);
+                self.store_tt(
+                    hash,
+                    0,
+                    beta,
+                    Bound::Lower,
+                    Move::NULL,
+                    ply,
+                    q_raw_static_eval,
+                );
                 return beta;
             }
             if qply >= MAX_QPLY {
@@ -1291,8 +1392,21 @@ impl Searcher {
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
             let mv = picked.mv;
-            if !in_check && board.see(mv) < -50 {
-                continue;
+            if !in_check {
+                let mut gives_check = None;
+                if !mv.is_promo()
+                    && stand_pat_for_pruning != VALUE_NONE
+                    && stand_pat_for_pruning
+                        + board.captured_piece(mv).map(piece_value).unwrap_or(0)
+                        + 150
+                        <= alpha
+                    && !move_gives_check(board, mv, &mut gives_check)
+                {
+                    continue;
+                }
+                if picked.see < -50 {
+                    continue;
+                }
             }
             let moving_piece = board.moving_piece(mv);
             self.stack_moves[ply] = mv;
@@ -1305,7 +1419,7 @@ impl Searcher {
                 return 0;
             }
             if score >= beta {
-                self.store_tt(hash, 0, beta, Bound::Lower, mv, ply, q_static_eval);
+                self.store_tt(hash, 0, beta, Bound::Lower, mv, ply, q_raw_static_eval);
                 return beta;
             }
             if score > alpha {
@@ -1324,7 +1438,7 @@ impl Searcher {
         } else {
             Bound::Upper
         };
-        self.store_tt(hash, 0, alpha, bound, best_move, ply, q_static_eval);
+        self.store_tt(hash, 0, alpha, bound, best_move, ply, q_raw_static_eval);
         alpha
     }
 
@@ -1360,7 +1474,7 @@ impl Searcher {
                 if see >= 0 {
                     20_000_000 + 32 * see + 10 * piece_value(victim) - piece_value(attacker) + hist
                 } else {
-                    8_000_000 + see + hist
+                    -2_000_000 + see + hist
                 }
             } else if mv.is_promo() {
                 18_000_000 + piece_value(mv.promo_piece())
@@ -1381,20 +1495,26 @@ impl Searcher {
     fn score_tactical_moves(&self, board: &Board, moves: &[Move], tt_move: Move) -> ScoredMoveList {
         let mut scored = ScoredMoveList::new();
         for &mv in moves {
+            let mut see = 0;
             let score = if mv == tt_move {
                 30_000_000
             } else if mv.is_capture() {
                 let attacker = board.moving_piece(mv);
                 let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
+                see = board.see(mv);
                 let hist =
                     self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
-                20_000_000 + 16 * piece_value(victim) - piece_value(attacker) + hist
+                if see >= 0 {
+                    20_000_000 + 32 * see + 16 * piece_value(victim) - piece_value(attacker) + hist
+                } else {
+                    -2_000_000 + see + hist
+                }
             } else if mv.is_promo() {
                 18_000_000 + piece_value(mv.promo_piece())
             } else {
                 0
             };
-            scored.push(mv, score, 0);
+            scored.push(mv, score, see);
         }
         scored
     }
@@ -1404,7 +1524,13 @@ impl Searcher {
         let to = mv.to_sq().index();
         let main = self.main_history[color as usize][from][to] as i32;
         let piece = board.moving_piece(mv) as usize;
-        main + self.cont_score(ply, piece, to)
+        let pawn = self.pawn_history[pawn_history_index(board.pawn_key(), piece, to)] as i32;
+        let low_ply = if ply < LOW_PLY_HISTORY_SIZE {
+            self.low_ply_history[ply][from][to] as i32 / (1 + ply as i32)
+        } else {
+            0
+        };
+        2 * main + pawn + low_ply + self.cont_score(ply, piece, to)
     }
 
     fn cont_score(&self, ply: usize, piece: usize, to: usize) -> i32 {
@@ -1431,12 +1557,34 @@ impl Searcher {
                 )] as i32;
             }
         }
+        if ply >= 4 {
+            let prev = self.stack_moves[ply - 4];
+            if !prev.is_null() {
+                score += self.cont_history_4[cont_index(
+                    self.stack_pieces[ply - 4] as usize,
+                    prev.to_sq().index(),
+                    piece,
+                    to,
+                )] as i32;
+            }
+        }
+        if ply >= 6 {
+            let prev = self.stack_moves[ply - 6];
+            if !prev.is_null() {
+                score += self.cont_history_6[cont_index(
+                    self.stack_pieces[ply - 6] as usize,
+                    prev.to_sq().index(),
+                    piece,
+                    to,
+                )] as i32;
+            }
+        }
         score
     }
 
     fn update_cutoff_tables(
         &mut self,
-        color: Color,
+        board: &Board,
         best: Move,
         best_piece: Piece,
         previous: Move,
@@ -1450,10 +1598,13 @@ impl Searcher {
             self.killers[ply][0] = best;
         }
 
+        let color = board.side_to_move();
+        let pawn_key = board.pawn_key();
         let bonus = history_bonus(depth);
-        self.update_quiet_history(color, best, bonus);
+        self.update_quiet_history(color, best, best_piece, pawn_key, ply, bonus);
         for &quiet in quiets {
-            self.update_quiet_history(color, quiet, -bonus);
+            let quiet_piece = board.moving_piece(quiet);
+            self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -bonus);
         }
         for bad_cap in bad_caps.as_slice() {
             self.update_capture_history(bad_cap.attacker, bad_cap.to, bad_cap.captured, -bonus);
@@ -1495,11 +1646,62 @@ impl Searcher {
                 );
             }
         }
+        if ply >= 4 {
+            let prev = self.stack_moves[ply - 4];
+            if !prev.is_null() {
+                update_hist_entry(
+                    &mut self.cont_history_4[cont_index(
+                        self.stack_pieces[ply - 4] as usize,
+                        prev.to_sq().index(),
+                        piece,
+                        to,
+                    )],
+                    bonus / 2,
+                    HISTORY_MAX,
+                );
+            }
+        }
+        if ply >= 6 {
+            let prev = self.stack_moves[ply - 6];
+            if !prev.is_null() {
+                update_hist_entry(
+                    &mut self.cont_history_6[cont_index(
+                        self.stack_pieces[ply - 6] as usize,
+                        prev.to_sq().index(),
+                        piece,
+                        to,
+                    )],
+                    bonus / 3,
+                    HISTORY_MAX,
+                );
+            }
+        }
     }
 
-    fn update_quiet_history(&mut self, color: Color, mv: Move, bonus: i32) {
+    fn update_quiet_history(
+        &mut self,
+        color: Color,
+        mv: Move,
+        piece: Piece,
+        pawn_key: u64,
+        ply: usize,
+        bonus: i32,
+    ) {
         update_hist_entry(
             &mut self.main_history[color as usize][mv.from_sq().index()][mv.to_sq().index()],
+            bonus,
+            HISTORY_MAX,
+        );
+        if ply < LOW_PLY_HISTORY_SIZE {
+            update_hist_entry(
+                &mut self.low_ply_history[ply][mv.from_sq().index()][mv.to_sq().index()],
+                bonus,
+                HISTORY_MAX,
+            );
+        }
+        update_hist_entry(
+            &mut self.pawn_history
+                [pawn_history_index(pawn_key, piece as usize, mv.to_sq().index())],
             bonus,
             HISTORY_MAX,
         );
@@ -1536,10 +1738,26 @@ impl Searcher {
                 }
             }
         }
+        for ply in self.low_ply_history.iter_mut() {
+            for from in ply.iter_mut() {
+                for value in from.iter_mut() {
+                    *value /= 2;
+                }
+            }
+        }
+        for value in &mut self.pawn_history {
+            *value /= 2;
+        }
         for value in &mut self.cont_history_1 {
             *value /= 2;
         }
         for value in &mut self.cont_history_2 {
+            *value /= 2;
+        }
+        for value in &mut self.cont_history_4 {
+            *value /= 2;
+        }
+        for value in &mut self.cont_history_6 {
             *value /= 2;
         }
         for color in self.correction_history.iter_mut() {
@@ -1547,15 +1765,47 @@ impl Searcher {
                 *value /= 2;
             }
         }
+        for color in self.minor_correction_history.iter_mut() {
+            for value in color.iter_mut() {
+                *value /= 2;
+            }
+        }
+        for stm in self.non_pawn_correction_history.iter_mut() {
+            for color in stm.iter_mut() {
+                for value in color.iter_mut() {
+                    *value /= 2;
+                }
+            }
+        }
     }
 
     fn corrected_eval(&mut self, board: &Board) -> i32 {
-        let raw = self.evaluator.evaluate(board);
-        raw + self.correction_value(board.side_to_move(), board.pawn_key())
+        let raw = self.raw_eval(board);
+        self.corrected_eval_from_raw(board, raw)
     }
 
-    fn correction_value(&self, color: Color, pawn_key: u64) -> i32 {
-        self.correction_history[color as usize][pawn_key as usize & (CORR_SIZE - 1)] as i32 / 32
+    fn raw_eval(&mut self, board: &Board) -> i32 {
+        self.evaluator.evaluate(board)
+    }
+
+    fn corrected_eval_from_raw(&self, board: &Board, raw: i32) -> i32 {
+        raw + self.correction_value(board)
+    }
+
+    fn correction_value(&self, board: &Board) -> i32 {
+        let color = board.side_to_move();
+        let us = color as usize;
+        let them = (!color) as usize;
+        let pawn = self.correction_history[us][board.pawn_key() as usize & (CORR_SIZE - 1)] as i32;
+        let minor =
+            self.minor_correction_history[us][board.minor_key() as usize & (CORR_SIZE - 1)] as i32;
+        let own_non_pawn = self.non_pawn_correction_history[us][us]
+            [board.non_pawn_key(color) as usize & (CORR_SIZE - 1)]
+            as i32;
+        let their_non_pawn = self.non_pawn_correction_history[us][them]
+            [board.non_pawn_key(!color) as usize & (CORR_SIZE - 1)]
+            as i32;
+        (pawn + minor + own_non_pawn + their_non_pawn) / 128
     }
 
     fn syzygy_wdl_score(
@@ -1596,10 +1846,30 @@ impl Searcher {
         }
     }
 
-    fn update_correction(&mut self, color: Color, pawn_key: u64, diff: i32, depth: i32) {
+    fn update_correction(&mut self, board: &Board, diff: i32, depth: i32) {
+        let color = board.side_to_move();
+        let us = color as usize;
+        let them = (!color) as usize;
         let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
         update_hist_entry(
-            &mut self.correction_history[color as usize][pawn_key as usize & (CORR_SIZE - 1)],
+            &mut self.correction_history[us][board.pawn_key() as usize & (CORR_SIZE - 1)],
+            scaled,
+            HISTORY_MAX,
+        );
+        update_hist_entry(
+            &mut self.minor_correction_history[us][board.minor_key() as usize & (CORR_SIZE - 1)],
+            scaled,
+            HISTORY_MAX,
+        );
+        update_hist_entry(
+            &mut self.non_pawn_correction_history[us][us]
+                [board.non_pawn_key(color) as usize & (CORR_SIZE - 1)],
+            scaled,
+            HISTORY_MAX,
+        );
+        update_hist_entry(
+            &mut self.non_pawn_correction_history[us][them]
+                [board.non_pawn_key(!color) as usize & (CORR_SIZE - 1)],
             scaled,
             HISTORY_MAX,
         );
@@ -1742,8 +2012,13 @@ fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
     LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
 }
 
-fn late_move_prune_count(depth: i32) -> usize {
-    (3 + depth * depth / 2) as usize
+fn late_move_prune_count(depth: i32, improving: bool) -> usize {
+    let base = 3 + depth * depth / 2;
+    if improving {
+        (base + depth) as usize
+    } else {
+        base as usize
+    }
 }
 
 fn move_gives_check(board: &Board, mv: Move, cache: &mut Option<bool>) -> bool {

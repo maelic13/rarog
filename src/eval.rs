@@ -344,6 +344,8 @@ impl Evaluator {
 
         let mut score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
         score = scale_drawish_endgames(board, score);
+        let rule50 = board.halfmove_clock.min(100) as i32;
+        score -= score * rule50 / 199;
         if board.side_to_move() == Color::White {
             score
         } else {

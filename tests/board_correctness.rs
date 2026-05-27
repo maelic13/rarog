@@ -865,6 +865,18 @@ fn zobrist_different_positions_have_different_hashes() {
     assert_ne!(after_e4.hash, after_d4.hash, "1.e4 vs 1.d4 must differ");
 }
 
+#[test]
+fn pawn_key_distinguishes_color_shifted_structures() {
+    let white_a2_black_a6 = Board::from_fen("4k3/p7/8/8/8/8/P7/4K3 w - - 0 1").unwrap();
+    let white_a6_black_a2 = Board::from_fen("4k3/P7/8/8/8/8/p7/4K3 w - - 0 1").unwrap();
+
+    assert_ne!(
+        white_a2_black_a6.pawn_key(),
+        white_a6_black_a2.pawn_key(),
+        "pawn keys must not collide for color-swapped shifted pawns"
+    );
+}
+
 // -----------------------------------------------------------------------
 // En passant square tracking
 // -----------------------------------------------------------------------

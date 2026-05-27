@@ -83,6 +83,9 @@ pub struct Board {
     pub fullmove: u16,
     /// Incrementally updated Zobrist hash.
     pub hash: u64,
+    pawn_hash: u64,
+    minor_hash: u64,
+    non_pawn_hash: [u64; 2],
     checkers: Bitboard,
     history: Vec<UnmakeInfo>,
 }
@@ -108,6 +111,9 @@ impl Board {
             halfmove_clock: 0,
             fullmove: 1,
             hash: 0,
+            pawn_hash: 0,
+            minor_hash: 0,
+            non_pawn_hash: [0; 2],
             checkers: Bitboard::EMPTY,
             history: Vec::with_capacity(128),
         };
@@ -475,8 +481,17 @@ impl Board {
 
     #[inline(always)]
     pub fn pawn_key(&self) -> u64 {
-        self.pieces(Color::White, Piece::Pawn).0
-            ^ self.pieces(Color::Black, Piece::Pawn).0.rotate_left(32)
+        self.pawn_hash
+    }
+
+    #[inline(always)]
+    pub fn minor_key(&self) -> u64 {
+        self.minor_hash
+    }
+
+    #[inline(always)]
+    pub fn non_pawn_key(&self, color: Color) -> u64 {
+        self.non_pawn_hash[color as usize]
     }
 
     #[inline(always)]
@@ -927,6 +942,16 @@ impl Board {
         self.pieces[color as usize * 6 + piece as usize] |= bb;
         self.occupancy[color as usize] |= bb;
         self.all_occ |= bb;
+        let piece_key = ZOBRIST.piece(color, piece, sq);
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= piece_key,
+            Piece::Knight | Piece::Bishop => {
+                self.minor_hash ^= piece_key;
+                self.non_pawn_hash[color as usize] ^= piece_key;
+            }
+            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
+            Piece::King => {}
+        }
     }
 
     #[inline(always)]
@@ -936,6 +961,16 @@ impl Board {
         self.pieces[color as usize * 6 + piece as usize] ^= bb;
         self.occupancy[color as usize] ^= bb;
         self.all_occ ^= bb;
+        let piece_key = ZOBRIST.piece(color, piece, sq);
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= piece_key,
+            Piece::Knight | Piece::Bishop => {
+                self.minor_hash ^= piece_key;
+                self.non_pawn_hash[color as usize] ^= piece_key;
+            }
+            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
+            Piece::King => {}
+        }
     }
 
     #[inline(always)]
