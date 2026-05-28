@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use lynx::board::{Bitboard, Board, Color, GameResult, Piece, STARTING_FEN, Square};
+use lynx::eval::piece_value;
 
 const ORACLE_FENS: &[&str] = &[
     STARTING_FEN,
@@ -107,6 +108,53 @@ fn legal_quiets_and_captures_partition_all_legal_moves() {
             "quiet/capture partition differs for {fen}"
         );
     }
+}
+
+#[test]
+fn threshold_see_matches_full_see_for_tactical_moves() {
+    let thresholds = [-1200, -600, -100, -50, 0, 50, 100, 300, 600, 1200];
+
+    for fen in ORACLE_FENS {
+        let mut board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
+        let captures = board.generate_legal_captures();
+        for &mv in captures.iter() {
+            let see = board.see(mv);
+            for threshold in thresholds {
+                assert_eq!(
+                    board.see_ge(mv, threshold),
+                    see >= threshold,
+                    "{fen}: {mv} threshold {threshold} see {see}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn threshold_see_handles_promotion_edge_cases() {
+    let quiet_promo = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let promote_to_queen = quiet_promo
+        .parse_move("a7a8q")
+        .expect("quiet promotion must be legal");
+    let quiet_gain = piece_value(Piece::Queen) - piece_value(Piece::Pawn);
+    assert!(promote_to_queen.is_promo());
+    assert!(!promote_to_queen.is_capture());
+    assert_eq!(quiet_promo.see(promote_to_queen), quiet_gain);
+    assert!(quiet_promo.see_ge(promote_to_queen, quiet_gain));
+    assert!(quiet_promo.see_ge(promote_to_queen, quiet_gain - 1));
+    assert!(!quiet_promo.see_ge(promote_to_queen, quiet_gain + 1));
+
+    let capture_promo = Board::from_fen("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let promote_capture = capture_promo
+        .parse_move("a7b8q")
+        .expect("capture promotion must be legal");
+    let capture_gain =
+        piece_value(Piece::Rook) + piece_value(Piece::Queen) - piece_value(Piece::Pawn);
+    assert!(promote_capture.is_promo());
+    assert!(promote_capture.is_capture());
+    assert_eq!(capture_promo.see(promote_capture), capture_gain);
+    assert!(capture_promo.see_ge(promote_capture, capture_gain));
+    assert!(!capture_promo.see_ge(promote_capture, capture_gain + 1));
 }
 
 #[test]

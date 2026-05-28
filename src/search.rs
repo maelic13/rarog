@@ -78,8 +78,10 @@ enum MovePicker {
     },
     Staged {
         captures: ScoredMoveList,
+        bad_captures: ScoredMoveList,
         quiets: Option<ScoredMoveList>,
         capture_index: usize,
+        bad_capture_index: usize,
         quiet_index: usize,
         tt_move: Move,
         ply: usize,
@@ -127,6 +129,9 @@ pub struct Searcher {
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
     syzygy_largest: usize,
+    root_iteration_nodes: u64,
+    root_best_nodes: u64,
+    root_best_effort: f64,
 }
 
 impl Default for Searcher {
@@ -177,6 +182,9 @@ impl Default for Searcher {
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
             syzygy_largest: 0,
+            root_iteration_nodes: 0,
+            root_best_nodes: 0,
+            root_best_effort: 0.0,
         }
     }
 }
@@ -188,11 +196,14 @@ impl MovePicker {
 
     fn staged(searcher: &Searcher, board: &mut Board, tt_move: Move, ply: usize) -> Self {
         let captures = board.generate_legal_captures();
-        let captures = searcher.score_tactical_moves(board, captures.as_slice(), tt_move);
+        let (captures, bad_captures) =
+            searcher.score_staged_captures(board, captures.as_slice(), tt_move);
         Self::Staged {
             captures,
+            bad_captures,
             quiets: None,
             capture_index: 0,
+            bad_capture_index: 0,
             quiet_index: 0,
             tt_move,
             ply,
@@ -211,8 +222,10 @@ impl MovePicker {
             }
             Self::Staged {
                 captures,
+                bad_captures,
                 quiets,
                 capture_index,
+                bad_capture_index,
                 quiet_index,
                 tt_move,
                 ply,
@@ -228,12 +241,17 @@ impl MovePicker {
                         Some(searcher.score_moves(board, quiet_moves.as_slice(), *tt_move, *ply));
                 }
                 let scored = quiets.as_mut().expect("quiets generated");
-                if *quiet_index >= scored.len() {
-                    return None;
+                if *quiet_index < scored.len() {
+                    let picked = pick_next(scored.as_mut_slice(), *quiet_index);
+                    *quiet_index += 1;
+                    return Some(picked);
                 }
-                let picked = pick_next(scored.as_mut_slice(), *quiet_index);
-                *quiet_index += 1;
-                Some(picked)
+                if *bad_capture_index < bad_captures.len() {
+                    let picked = pick_next(bad_captures.as_mut_slice(), *bad_capture_index);
+                    *bad_capture_index += 1;
+                    return Some(picked);
+                }
+                None
             }
         }
     }
@@ -390,9 +408,10 @@ impl Searcher {
                 })
                 .collect::<Vec<_>>();
             if filtered_root_moves.is_empty() {
-                return self.draw_result();
+                legal_moves.as_slice()
+            } else {
+                filtered_root_moves.as_slice()
             }
-            filtered_root_moves.as_slice()
         };
 
         let syzygy_root_moves = self.syzygy_root_moves(&board, root_candidates);
@@ -445,6 +464,9 @@ impl Searcher {
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
         self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
+        self.root_iteration_nodes = 0;
+        self.root_best_nodes = 0;
+        self.root_best_effort = 0.0;
         if age_tt {
             self.tt.new_search();
         }
@@ -569,6 +591,9 @@ impl Searcher {
 
         for depth in 1..=max_depth {
             let previous_bestmove = bestmove;
+            self.root_iteration_nodes = self.nodes;
+            self.root_best_nodes = 0;
+            self.root_best_effort = 0.0;
             let use_aspiration = depth >= 4 && best_score.abs() < MATE_SCORE - MAX_PLY as i32;
             let mut alpha = if use_aspiration {
                 best_score - 25
@@ -591,6 +616,7 @@ impl Searcher {
                     true,
                     true,
                     Move::NULL,
+                    false,
                     poll,
                 );
                 if self.stopped || self.quit {
@@ -612,6 +638,8 @@ impl Searcher {
                 };
                 best_score = score;
                 completed_depth = depth;
+                let iteration_nodes = self.nodes.saturating_sub(self.root_iteration_nodes).max(1);
+                self.root_best_effort = self.root_best_nodes as f64 / iteration_nodes as f64;
                 if self.pv_len[0] > 0 {
                     bestmove = self.pv_table[0][0];
                     pondermove = if self.pv_len[0] > 1 {
@@ -642,9 +670,24 @@ impl Searcher {
 
             if !self.pondering {
                 let elapsed_ms = self.elapsed_ms();
+                let effort_scale = if self.root_best_effort > 0.65 && stable_best_depths > 0 {
+                    0.85
+                } else if self.root_best_effort < 0.25 || stable_best_depths == 0 {
+                    1.20
+                } else {
+                    1.0
+                };
+                let score_scale = if last_score_drop > 80 {
+                    1.25
+                } else if last_score_drop > 40 {
+                    1.10
+                } else {
+                    1.0
+                };
+                let dynamic_soft_ms = self.limits.soft_ms * effort_scale * score_scale;
                 if elapsed_ms >= self.limits.hard_ms
-                    || (elapsed_ms >= self.limits.soft_ms
-                        && (self.limits.soft_ms >= self.limits.hard_ms
+                    || (elapsed_ms >= dynamic_soft_ms
+                        && (dynamic_soft_ms >= self.limits.hard_ms
                             || (stable_best_depths > 0 && last_score_drop <= 50)))
                 {
                     break;
@@ -693,6 +736,7 @@ impl Searcher {
                 self.stack_moves[0] = mv;
                 self.stack_pieces[0] = moving_piece;
                 board.make_move_unchecked(mv);
+                self.tt.prefetch(board.hash);
                 let score = -self.negamax(
                     &mut board,
                     depth as i32 - 1,
@@ -702,6 +746,7 @@ impl Searcher {
                     true,
                     true,
                     Move::NULL,
+                    false,
                     poll,
                 );
                 board.unmake_move(mv);
@@ -900,6 +945,7 @@ impl Searcher {
         is_pv: bool,
         allow_null: bool,
         excluded: Move,
+        cut_node: bool,
         poll: &mut P,
     ) -> i32 {
         if self.check_stop(poll) {
@@ -1021,6 +1067,7 @@ impl Searcher {
             {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
+                self.tt.prefetch(board.hash);
                 let score = -self.negamax(
                     board,
                     depth - reduction,
@@ -1030,6 +1077,7 @@ impl Searcher {
                     false,
                     false,
                     Move::NULL,
+                    true,
                     poll,
                 );
                 board.unmake_null_move();
@@ -1048,6 +1096,7 @@ impl Searcher {
                             false,
                             false,
                             Move::NULL,
+                            false,
                             poll,
                         );
                         if self.stopped || self.quit {
@@ -1077,6 +1126,7 @@ impl Searcher {
                     }
                     self.stack_moves[ply] = mv;
                     board.make_move_unchecked(mv);
+                    self.tt.prefetch(board.hash);
                     let score =
                         -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
                     let score = if score >= probcut_beta {
@@ -1089,6 +1139,7 @@ impl Searcher {
                             false,
                             false,
                             Move::NULL,
+                            true,
                             poll,
                         )
                     } else {
@@ -1165,10 +1216,10 @@ impl Searcher {
 
         while let Some(picked) = move_picker.next(self, board) {
             let mv = picked.mv;
-            legal_move_seen = true;
             if mv == excluded {
                 continue;
             }
+            legal_move_seen = true;
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let see = if is_capture { picked.see as i32 } else { 0 };
@@ -1192,7 +1243,8 @@ impl Searcher {
                         continue;
                     }
                 } else if depth <= 7
-                    && see < -80 * depth
+                    && see < 0
+                    && !board.see_ge(mv, -80 * depth)
                     && !move_gives_check(board, mv, &mut gives_check)
                 {
                     continue;
@@ -1220,6 +1272,7 @@ impl Searcher {
                     false,
                     false,
                     mv,
+                    false,
                     poll,
                 );
                 if self.stopped || self.quit {
@@ -1247,7 +1300,9 @@ impl Searcher {
 
             self.stack_moves[ply] = mv;
             self.stack_pieces[ply] = moving_piece;
+            let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             board.make_move_unchecked(mv);
+            self.tt.prefetch(board.hash);
             let new_depth = depth - 1 + extension;
             let mut score;
 
@@ -1261,6 +1316,7 @@ impl Searcher {
                     child_is_pv,
                     true,
                     Move::NULL,
+                    !child_is_pv && !cut_node,
                     poll,
                 );
             } else {
@@ -1284,6 +1340,15 @@ impl Searcher {
                     if !tt_move.is_null() && searched >= 4 {
                         reduction += 1;
                     }
+                    if cut_node {
+                        reduction += 1;
+                    }
+                    if !is_quiet && see < 0 {
+                        reduction += 1;
+                    }
+                    if !is_pv && !cut_node && quiet_hist > 4_000 {
+                        reduction -= 1;
+                    }
                     reduction -= hist / 8_192;
                     reduction = reduction.clamp(1, new_depth.max(1));
                     score = -self.negamax(
@@ -1295,6 +1360,7 @@ impl Searcher {
                         false,
                         true,
                         Move::NULL,
+                        true,
                         poll,
                     );
                     if score > alpha {
@@ -1307,6 +1373,7 @@ impl Searcher {
                             false,
                             true,
                             Move::NULL,
+                            true,
                             poll,
                         );
                     }
@@ -1320,6 +1387,7 @@ impl Searcher {
                         false,
                         true,
                         Move::NULL,
+                        true,
                         poll,
                     );
                 }
@@ -1333,6 +1401,7 @@ impl Searcher {
                         true,
                         true,
                         Move::NULL,
+                        false,
                         poll,
                     );
                 }
@@ -1344,10 +1413,18 @@ impl Searcher {
                 return 0;
             }
 
+            let move_nodes = if ply == 0 {
+                self.nodes.saturating_sub(nodes_before_move)
+            } else {
+                0
+            };
             searched += 1;
             if score > best_score {
                 best_score = score;
                 best_move = mv;
+                if ply == 0 {
+                    self.root_best_nodes = move_nodes;
+                }
             }
             if score > alpha {
                 alpha = score;
@@ -1514,11 +1591,13 @@ impl Searcher {
         } else {
             self.score_tactical_moves(board, moves.as_slice(), tt_move)
         };
+        let mut tactical_count = 0usize;
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
             let mv = picked.mv;
             if !in_check {
                 let mut gives_check = None;
+                tactical_count += 1;
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
                     && stand_pat_for_pruning
@@ -1529,7 +1608,20 @@ impl Searcher {
                 {
                     continue;
                 }
-                if picked.see < -50 {
+                if !mv.is_promo()
+                    && tactical_count > 6
+                    && picked.see < 0
+                    && !move_gives_check(board, mv, &mut gives_check)
+                {
+                    continue;
+                }
+                if !mv.is_promo() {
+                    let see_threshold = (alpha - stand_pat_for_pruning - 200).clamp(-800, 200);
+                    if !board.see_ge(mv, see_threshold) {
+                        continue;
+                    }
+                }
+                if picked.see < 0 && !board.see_ge(mv, -50) {
                     continue;
                 }
             }
@@ -1537,6 +1629,7 @@ impl Searcher {
             self.stack_moves[ply] = mv;
             self.stack_pieces[ply] = moving_piece;
             board.make_move_unchecked(mv);
+            self.tt.prefetch(board.hash);
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.stack_moves[ply] = Move::NULL;
@@ -1617,31 +1710,68 @@ impl Searcher {
         scored
     }
 
+    fn score_staged_captures(
+        &self,
+        board: &Board,
+        moves: &[Move],
+        tt_move: Move,
+    ) -> (ScoredMoveList, ScoredMoveList) {
+        let mut good = ScoredMoveList::new();
+        let mut bad = ScoredMoveList::new();
+        for &mv in moves {
+            let scored = self.score_tactical_move(board, mv, tt_move);
+            if mv == tt_move || scored.see >= 0 || mv.is_promo() {
+                good.push(scored.mv, scored.score, scored.see as i32);
+            } else {
+                bad.push(scored.mv, scored.score, scored.see as i32);
+            }
+        }
+        (good, bad)
+    }
+
     fn score_tactical_moves(&self, board: &Board, moves: &[Move], tt_move: Move) -> ScoredMoveList {
         let mut scored = ScoredMoveList::new();
         for &mv in moves {
-            let mut see = 0;
-            let score = if mv == tt_move {
-                30_000_000
-            } else if mv.is_capture() {
-                let attacker = board.moving_piece(mv);
-                let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
-                see = board.see(mv);
-                let hist =
-                    self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
-                if see >= 0 {
-                    20_000_000 + 32 * see + 16 * piece_value(victim) - piece_value(attacker) + hist
-                } else {
-                    -2_000_000 + see + hist
-                }
-            } else if mv.is_promo() {
-                18_000_000 + piece_value(mv.promo_piece())
+            let scored_move = self.score_tactical_move(board, mv, tt_move);
+            scored.push(scored_move.mv, scored_move.score, scored_move.see as i32);
+        }
+        scored
+    }
+
+    fn score_tactical_move(&self, board: &Board, mv: Move, tt_move: Move) -> ScoredMove {
+        let mut see = 0;
+        let score = if mv == tt_move {
+            if mv.is_capture() && !board.see_ge(mv, 0) {
+                see = -1;
+            }
+            30_000_000
+        } else if mv.is_capture() {
+            let attacker = board.moving_piece(mv);
+            let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
+            let promo_gain = if mv.is_promo() {
+                piece_value(mv.promo_piece()) - piece_value(Piece::Pawn)
             } else {
                 0
             };
-            scored.push(mv, score, see);
+            let hist =
+                self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+            if board.see_ge(mv, 0) {
+                20_000_000 + 16 * (piece_value(victim) + promo_gain) - piece_value(attacker) + hist
+            } else {
+                see = -1;
+                -2_000_000 + 16 * (piece_value(victim) + promo_gain) - piece_value(attacker) + hist
+            }
+        } else if mv.is_promo() {
+            18_000_000 + piece_value(mv.promo_piece())
+        } else {
+            0
+        };
+
+        ScoredMove {
+            mv,
+            score,
+            see: see as i16,
         }
-        scored
     }
 
     fn quiet_history_score(&self, board: &Board, color: Color, mv: Move, ply: usize) -> i32 {
@@ -2270,5 +2400,43 @@ mod tests {
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
         assert_eq!(result.bestmove, forced);
+    }
+
+    #[test]
+    fn staged_picker_delays_bad_captures_until_after_quiets() {
+        let searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/4p3/3p4/8/2N5/8/4K3 w - - 0 1").expect("valid FEN");
+        let losing_capture = board
+            .parse_move("c3d5")
+            .expect("knight capture must be legal");
+        assert!(losing_capture.is_capture());
+        assert!(!board.see_ge(losing_capture, 0));
+
+        let mut picker = MovePicker::staged(&searcher, &mut board, Move::NULL, 0);
+        let mut quiet_seen = false;
+        let mut losing_capture_seen = false;
+
+        while let Some(picked) = picker.next(&searcher, &mut board) {
+            if picked.mv == losing_capture {
+                assert!(
+                    quiet_seen,
+                    "losing captures should be staged after quiet moves"
+                );
+                losing_capture_seen = true;
+                break;
+            }
+            if board.is_quiet_move(picked.mv) {
+                quiet_seen = true;
+            }
+        }
+
+        assert!(
+            quiet_seen,
+            "test position must have at least one quiet move"
+        );
+        assert!(
+            losing_capture_seen,
+            "test position must include the losing capture"
+        );
     }
 }

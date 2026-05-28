@@ -246,6 +246,26 @@ impl TranspositionTable {
     }
 
     #[inline(always)]
+    pub fn prefetch(&self, key: u64) {
+        match &self.storage {
+            TtStorage::Local(table) => {
+                let ptr = table
+                    .clusters
+                    .as_ptr()
+                    .wrapping_add(key as usize & table.mask);
+                prefetch_ptr(ptr);
+            }
+            TtStorage::Shared(table) => {
+                let ptr = table
+                    .clusters
+                    .as_ptr()
+                    .wrapping_add(key as usize & table.mask);
+                prefetch_ptr(ptr);
+            }
+        }
+    }
+
+    #[inline(always)]
     pub fn store(
         &mut self,
         key: u64,
@@ -273,12 +293,13 @@ impl TranspositionTable {
                 if sample == 0 {
                     return 0;
                 }
+                let age = table.age;
                 let used = table
                     .clusters
                     .iter()
                     .take(sample)
                     .flat_map(|cluster| cluster.entries)
-                    .filter(|entry| entry.bound().is_some())
+                    .filter(|entry| current_entry(*entry, age))
                     .count();
                 used * 1000 / (sample * 3)
             }
@@ -287,17 +308,42 @@ impl TranspositionTable {
                 if sample == 0 {
                     return 0;
                 }
+                let age = table.age.load(Ordering::Relaxed);
                 let used = table
                     .clusters
                     .iter()
                     .take(sample)
                     .flat_map(|cluster| cluster.entries.iter())
                     .filter_map(AtomicTtEntry::load_any)
+                    .filter(|(_, entry)| current_entry(*entry, age))
                     .count();
                 used * 1000 / (sample * 3)
             }
         }
     }
+}
+
+#[inline(always)]
+fn prefetch_ptr<T>(ptr: *const T) {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        core::arch::x86_64::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86_64::_MM_HINT_T0);
+    }
+
+    #[cfg(target_arch = "x86")]
+    unsafe {
+        core::arch::x86::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86::_MM_HINT_T0);
+    }
+
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        let _ = ptr;
+    }
+}
+
+#[inline(always)]
+fn current_entry(entry: TtEntry, age: u8) -> bool {
+    entry.is_occupied() && (entry.flag_age & 0xFC) == age
 }
 
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {

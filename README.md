@@ -19,12 +19,12 @@ speaks the UCI protocol.
   option
 - Basic UCI `MultiPV` support for analysis output
 - Capture-focused quiescence search with delta pruning, capture futility,
-  SEE-based pruning, and bounded check evasions
+  threshold SEE pruning, and bounded check evasions
 - Null-move pruning with verification, ProbCut, singular extensions, futility
   pruning, late move pruning, and late move reductions
-- Staged move picking with lazy quiet generation, so tactical moves can cut off
-  before quiet move lists are built
-- Move ordering using TT moves, SEE, killers, countermoves, main history,
+- Staged move picking with good captures before lazy quiet generation and bad
+  captures delayed until after quiet moves
+- Move ordering using TT moves, threshold SEE, killers, countermoves, main history,
   low-ply history, pawn history, capture history, and continuation history
 - Multi-table and continuation correction history with handcrafted tapered
   evaluation and fifty-move-rule dampening
@@ -150,6 +150,8 @@ The suite covers:
   explicit `movestogo`, and unbounded fixed-depth searches
 - Single-thread determinism and thread-count reconfiguration
 - Threaded search node-limit handling
+- Threshold SEE behavior for captures and promotions
+- Staged move-picker ordering for bad captures after quiet moves
 - Syzygy option parsing, result decoding, root move conversion, root tablebase
   probing, tablebase path counting, and disabled-path probe behavior
 - UCI command ordering, priority quit/stop handling, and stale-search
@@ -157,6 +159,8 @@ The suite covers:
 - UCI ponder and infinite-search `bestmove` release timing
 - Quiet/capture move-generation partitioning
 - Evaluation and transposition table behavior
+- Current-generation `hashfull` accounting for local and shared transposition
+  tables
 - Fifty-move-rule evaluation dampening
 - Rule-50-aware transposition-table mate score recovery
 - UCI command handling and invalid `setoption` preservation
@@ -173,7 +177,7 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.3.1`.
+Current documented release: `1.3.2`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)
