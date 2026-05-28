@@ -310,10 +310,16 @@ pub fn score_to_tt(score: i32, ply: usize) -> i32 {
     }
 }
 
-pub fn score_from_tt(score: i32, ply: usize) -> i32 {
+pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
     if score >= MATE_SCORE - MAX_PLY {
+        if MATE_SCORE - score > 100 - halfmove_clock.min(100) as i32 {
+            return MATE_SCORE - MAX_PLY - 1;
+        }
         score - ply as i32
     } else if score <= -MATE_SCORE + MAX_PLY {
+        if MATE_SCORE + score > 100 - halfmove_clock.min(100) as i32 {
+            return -MATE_SCORE + MAX_PLY + 1;
+        }
         score + ply as i32
     } else {
         score

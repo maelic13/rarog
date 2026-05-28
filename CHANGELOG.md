@@ -2,6 +2,44 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.3.1] - 2026-05-28
+
+### Added
+
+- Added stricter FEN validation for complete ranks, legal pawn ranks, one king
+  per side, adjacent kings, side-not-to-move check legality, castling-right
+  consistency, and valid move counters.
+- Added Stockfish-style en passant canonicalization so EP squares are kept and
+  hashed only when a legal en passant capture exists.
+- Added continuation correction history to the handcrafted-evaluation
+  correction path.
+- Added UCI `go searchmoves` root filtering and `go mate` depth handling.
+- Added regression coverage for invalid FEN rejection, canonical EP handling,
+  rule-50-aware TT mate recovery, insufficient-material search draws,
+  `searchmoves`, and `mate` parsing.
+
+### Changed
+
+- Made transposition-table mate score recovery aware of the current rule-50
+  counter to avoid reusing forced-mate scores past the 50-move horizon.
+- Changed more search cutoffs to preserve fail-soft scores in TT storage and
+  return values.
+- Added staged main-search move picking so captures can be searched before
+  quiet moves are generated at non-root non-check nodes.
+- Reworked soft/hard clock allocation with a more Stockfish-style horizon,
+  explicit `movestogo` support, increment handling, and move-overhead reserve.
+- Extended quiescence search depth and avoided static-evaluation fallback while
+  still in check.
+- Made quiet halfmove-clock increments saturating for robustness on high-clock
+  positions.
+
+### Fixed
+
+- Fixed search scoring for insufficient-material positions so dead draws return
+  an immediate draw result instead of non-zero material/PST scores.
+- Fixed a crash path where illegal FENs with the side not to move already in
+  check could reach move generation.
+
 ## [1.3.0] - 2026-05-27
 
 ### Added

@@ -57,7 +57,7 @@ impl Default for PositionState {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct SearchLimits {
     pub move_time: usize,
     pub white_time: usize,
@@ -69,6 +69,7 @@ pub struct SearchLimits {
     pub nodes: u64,
     pub infinite: bool,
     pub ponder: bool,
+    pub search_moves: Vec<Move>,
 }
 
 impl SearchLimits {
@@ -83,6 +84,7 @@ impl SearchLimits {
         self.nodes = 0;
         self.infinite = false;
         self.ponder = false;
+        self.search_moves.clear();
     }
 }
 
@@ -99,6 +101,7 @@ impl Default for SearchLimits {
             nodes: 0,
             infinite: false,
             ponder: false,
+            search_moves: Vec::new(),
         }
     }
 }
@@ -189,7 +192,6 @@ impl SearchOptions {
         if infinite_index.is_some() {
             self.limits.depth = f64::INFINITY;
             self.limits.infinite = true;
-            return;
         }
 
         if args.is_empty() {
@@ -202,8 +204,10 @@ impl SearchOptions {
         let black_time_index = args.iter().position(|r| r == "btime");
         let black_increment_index = args.iter().position(|r| r == "binc");
         let depth_index = args.iter().position(|r| r == "depth");
+        let mate_index = args.iter().position(|r| r == "mate");
         let movestogo_index = args.iter().position(|r| r == "movestogo");
         let nodes_index = args.iter().position(|r| r == "nodes");
+        let searchmoves_index = args.iter().position(|r| r == "searchmoves");
 
         if let Some(index) = move_time_index {
             self.limits.move_time = Self::parse_usize(args, index, "movetime");
@@ -224,11 +228,30 @@ impl SearchOptions {
         if let Some(index) = depth_index {
             self.limits.depth = Self::parse_f64(args, index, "depth");
         }
+        if let Some(index) = mate_index {
+            let mate = Self::parse_usize(args, index, "mate");
+            if mate > 0 {
+                self.limits.depth = mate.saturating_mul(2).saturating_sub(1) as f64;
+            }
+        }
         if let Some(index) = movestogo_index {
             self.limits.movestogo = Self::parse_usize(args, index, "movestogo");
         }
         if let Some(index) = nodes_index {
             self.limits.nodes = Self::parse_u64(args, index, "nodes");
+        }
+        if let Some(index) = searchmoves_index {
+            for token in args.iter().skip(index + 1) {
+                if Self::is_go_parameter(token) {
+                    break;
+                }
+                if let Some(mv) = Move::from_uci(token) {
+                    self.limits.search_moves.push(mv);
+                } else {
+                    println!("info string Invalid searchmoves move: {token}");
+                    break;
+                }
+            }
         }
     }
 
@@ -344,5 +367,23 @@ impl SearchOptions {
                 2.0
             }
         }
+    }
+
+    fn is_go_parameter(token: &str) -> bool {
+        matches!(
+            token,
+            "searchmoves"
+                | "ponder"
+                | "wtime"
+                | "btime"
+                | "winc"
+                | "binc"
+                | "movestogo"
+                | "depth"
+                | "nodes"
+                | "mate"
+                | "movetime"
+                | "infinite"
+        )
     }
 }
