@@ -2,6 +2,42 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.3.2] - 2026-05-28
+
+### Added
+
+- Added a true threshold `see_ge` implementation so search pruning and move
+  ordering can test exchange safety without always computing full SEE.
+- Added transposition-table prefetching before child probes in main search,
+  quiescence search, null-move search, ProbCut, and MultiPV root searches.
+- Added root-effort-aware soft time scaling so unstable or low-confidence root
+  searches can spend more of the available soft budget.
+- Added regression coverage for promotion SEE thresholds, staged bad-capture
+  ordering, mixed valid/invalid `searchmoves`, and current-generation
+  `hashfull` accounting.
+
+### Changed
+
+- Changed staged move picking to search good captures first, generate quiets
+  lazily, and delay losing captures until after quiet moves.
+- Changed tactical capture scoring and pruning to use threshold SEE in hot
+  paths, reducing full-SEE work during search.
+- Made late-move reductions cut-node aware and slightly more sensitive to
+  losing captures and strong quiet history.
+- Made quiescence pruning use dynamic threshold SEE and late losing-capture
+  filtering.
+- Changed `hashfull` reporting to count only entries from the current TT
+  generation for both local and shared tables.
+
+### Fixed
+
+- Fixed SEE accounting for promotion captures by using the promoted piece as
+  the next attacker in the exchange sequence.
+- Fixed invalid `go searchmoves` input that matches no legal root move to fall
+  back to the full legal root move list instead of returning a spurious draw.
+- Fixed excluded-move searches so the excluded move is not counted as a legal
+  searched move.
+
 ## [1.3.1] - 2026-05-28
 
 ### Added

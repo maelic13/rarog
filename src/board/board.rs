@@ -578,7 +578,11 @@ impl Board {
         }
 
         let from = mv.from_sq();
-        let mut attacker_piece = self.moving_piece(mv);
+        let mut attacker_piece = if mv.is_promo() {
+            mv.promo_piece()
+        } else {
+            self.moving_piece(mv)
+        };
         occ ^= Bitboard::from(from);
         if mv.is_en_passant() {
             let cap_sq = if side == Color::White {
@@ -624,7 +628,76 @@ impl Board {
 
     #[inline(always)]
     pub fn see_ge(&self, mv: Move, threshold: i32) -> bool {
-        self.see(mv) >= threshold
+        if !mv.is_capture() {
+            let gain = if mv.is_promo() {
+                piece_value(mv.promo_piece()) - piece_value(Piece::Pawn)
+            } else {
+                0
+            };
+            return gain >= threshold;
+        }
+
+        let mut balance = self.captured_piece(mv).map(piece_value).unwrap_or(0);
+        if mv.is_promo() {
+            balance += piece_value(mv.promo_piece()) - piece_value(Piece::Pawn);
+        }
+        balance -= threshold;
+        if balance < 0 {
+            return false;
+        }
+
+        let target = mv.to_sq();
+        let from = mv.from_sq();
+        let mut attacker_piece = if mv.is_promo() {
+            mv.promo_piece()
+        } else {
+            self.moving_piece(mv)
+        };
+
+        balance = piece_value(attacker_piece) - balance;
+        if balance <= 0 {
+            return true;
+        }
+
+        let mut occ = self.all_occ ^ Bitboard::from(from);
+        if mv.is_en_passant() {
+            let cap_sq = if self.side_to_move == Color::White {
+                Square(target.0 - 8)
+            } else {
+                Square(target.0 + 8)
+            };
+            occ ^= Bitboard::from(cap_sq);
+        } else if mv.is_capture() {
+            occ ^= Bitboard::from(target);
+        }
+        occ |= Bitboard::from(target);
+
+        let mut side = self.side_to_move;
+        let mut result = true;
+        loop {
+            side = !side;
+            let attackers = self.attackers_to_color(target, occ, side);
+            if attackers.is_empty() {
+                break;
+            }
+
+            let (sq, piece) = self.least_valuable_attacker(attackers, side);
+            attacker_piece = piece;
+            occ ^= Bitboard::from(sq);
+
+            let next_attackers = self.attackers_to_color(target, occ, !side);
+            if (next_attackers & self.pieces(!side, Piece::King)).any() {
+                break;
+            }
+
+            balance = piece_value(attacker_piece) - balance;
+            result = !result;
+            if result == (balance >= 0) {
+                break;
+            }
+        }
+
+        result
     }
 
     pub fn game_result(&self) -> Option<GameResult> {

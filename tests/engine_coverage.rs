@@ -348,6 +348,46 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
 }
 
 #[test]
+fn transposition_table_hashfull_counts_only_current_generation_entries() {
+    let best = Move::from_uci("e2e4").expect("valid UCI move");
+    let key = 0xCAFE_0000_0000_0001;
+    let second_key = 0xCAFE_0000_0000_0002;
+    let fresh_key = 0xBABE_0000_0000_0003;
+    let second_fresh_key = 0xBABE_0000_0000_0004;
+
+    let mut table = TranspositionTable::new(1);
+    table.store(key, 6, 12, Bound::Exact, best, 0, 34);
+    table.store(second_key, 5, 20, Bound::Upper, best, 0, 10);
+    table.prefetch(key);
+    assert!(table.hashfull() > 0);
+
+    table.new_search();
+    assert_eq!(
+        table.hashfull(),
+        0,
+        "hashfull should ignore entries from older TT generations"
+    );
+    assert!(
+        table.probe(key).is_some(),
+        "stale hashfull accounting must not make entries unprobeable"
+    );
+
+    table.store(fresh_key, 4, -8, Bound::Lower, best, 0, -10);
+    table.store(second_fresh_key, 3, -12, Bound::Exact, best, 0, -3);
+    assert!(table.hashfull() > 0);
+
+    let mut shared = TranspositionTable::new(1);
+    shared.make_shared();
+    shared.store(key, 5, 99, Bound::Exact, best, 0, 11);
+    shared.store(second_key, 4, 88, Bound::Lower, best, 0, 22);
+    shared.prefetch(key);
+    assert!(shared.hashfull() > 0);
+    shared.new_search();
+    assert_eq!(shared.hashfull(), 0);
+    assert!(shared.probe(key).is_some());
+}
+
+#[test]
 fn evaluator_scores_material_from_side_to_move_perspective() {
     let mut evaluator = Evaluator::default();
     let white_to_move = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 0 1").expect("valid FEN");
@@ -465,6 +505,32 @@ fn search_respects_searchmoves_root_filter() {
     let result = searcher.search(board, &options, false, || SearchEvent::None);
 
     assert_eq!(result.bestmove, forced);
+}
+
+#[test]
+fn search_uses_matching_searchmoves_when_some_requested_moves_are_illegal() {
+    let board = Board::default();
+    let forced = board.parse_move("a2a3").expect("legal root move");
+    let mut searcher = Searcher::default();
+    let mut options = SearchOptions::default();
+    options.set_search_parameters(&args(&["depth", "2", "searchmoves", "a7a6", "a2a3"]));
+
+    let result = searcher.search(board, &options, false, || SearchEvent::None);
+
+    assert_eq!(result.bestmove, forced);
+}
+
+#[test]
+fn search_falls_back_when_searchmoves_match_no_root_move() {
+    let board = Board::default();
+    let mut searcher = Searcher::default();
+    let mut options = SearchOptions::default();
+    options.set_search_parameters(&args(&["depth", "1", "searchmoves", "a7a6"]));
+
+    let result = searcher.search(board, &options, false, || SearchEvent::None);
+
+    assert_ne!(result.bestmove, Move::NULL);
+    assert_eq!(result.depth, 1);
 }
 
 #[test]
