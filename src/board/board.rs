@@ -10,10 +10,11 @@ use super::bitboard::Bitboard;
 use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
-    PROMO_CAPTURE_KNIGHT, PROMO_KNIGHT,
+    PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
+    PROMO_CAPTURE_ROOK, PROMO_KNIGHT, PROMO_QUEEN, PROMO_ROOK, QUIET,
 };
 use super::piece::{CastlingRights, Color, Piece};
-use super::square::Square;
+use super::square::{Rank, Square};
 use super::zobrist::ZOBRIST;
 
 // -----------------------------------------------------------------------
@@ -383,10 +384,152 @@ impl Board {
     }
 
     pub fn parse_move(&self, input: &str) -> Option<Move> {
-        let parsed = Move::from_uci(input)?;
-        generate_legal_moves(self)
-            .into_iter()
-            .find(|mv| mv.same_uci_move(parsed))
+        self.legal_move(Move::from_uci(input)?)
+    }
+
+    pub fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
+        if mv.is_null() {
+            return None;
+        }
+
+        let from = mv.from_sq();
+        let to = mv.to_sq();
+        let us = self.side_to_move;
+        let them = !us;
+        let (color, piece) = self.piece_at(from)?;
+        if color != us {
+            return None;
+        }
+        match self.piece_at(to) {
+            Some((target_color, _)) if target_color == us => return None,
+            Some((_, Piece::King)) => return None,
+            _ => {}
+        }
+
+        let promotion = mv.promotion();
+        let atk = &*ATTACKS;
+        let to_bb = Bitboard::from(to);
+        let canonical = match piece {
+            Piece::Pawn => {
+                let delta = to.0 as i16 - from.0 as i16;
+                let forward = if us == Color::White { 8 } else { -8 };
+                let start_rank = if us == Color::White {
+                    Rank::R2
+                } else {
+                    Rank::R7
+                };
+                let promotion_rank = if us == Color::White {
+                    Rank::R8
+                } else {
+                    Rank::R1
+                };
+                let reaches_promotion = to.rank() == promotion_rank;
+                if reaches_promotion != promotion.is_some() {
+                    return None;
+                }
+
+                let is_pawn_attack = (atk.pawn(us, from) & to_bb).any();
+                if is_pawn_attack {
+                    if self.color_on(to) == Some(them) {
+                        pawn_move_with_promotion(from, to, true, promotion)
+                    } else if self.ep_square() == Some(to) && self.color_on(to).is_none() {
+                        let cap_sq = if us == Color::White {
+                            Square(to.0 - 8)
+                        } else {
+                            Square(to.0 + 8)
+                        };
+                        (self.piece_at(cap_sq) == Some((them, Piece::Pawn)))
+                            .then_some(Move::new(from, to, EN_PASSANT))
+                    } else {
+                        None
+                    }
+                } else if delta == forward && self.color_on(to).is_none() {
+                    pawn_move_with_promotion(from, to, false, promotion)
+                } else if delta == 2 * forward
+                    && from.rank() == start_rank
+                    && self.color_on(to).is_none()
+                {
+                    let mid = Square((from.0 as i16 + forward) as u8);
+                    (self.color_on(mid).is_none()).then_some(Move::new(from, to, DOUBLE_PUSH))
+                } else {
+                    None
+                }
+            }
+            Piece::Knight => {
+                if promotion.is_some() || (atk.knight(from) & to_bb).is_empty() {
+                    None
+                } else {
+                    Some(Move::new(
+                        from,
+                        to,
+                        capture_or_quiet(self.color_on(to), them),
+                    ))
+                }
+            }
+            Piece::Bishop => {
+                if promotion.is_some() || (atk.bishop(from, self.all_occ) & to_bb).is_empty() {
+                    None
+                } else {
+                    Some(Move::new(
+                        from,
+                        to,
+                        capture_or_quiet(self.color_on(to), them),
+                    ))
+                }
+            }
+            Piece::Rook => {
+                if promotion.is_some() || (atk.rook(from, self.all_occ) & to_bb).is_empty() {
+                    None
+                } else {
+                    Some(Move::new(
+                        from,
+                        to,
+                        capture_or_quiet(self.color_on(to), them),
+                    ))
+                }
+            }
+            Piece::Queen => {
+                if promotion.is_some() || (atk.queen(from, self.all_occ) & to_bb).is_empty() {
+                    None
+                } else {
+                    Some(Move::new(
+                        from,
+                        to,
+                        capture_or_quiet(self.color_on(to), them),
+                    ))
+                }
+            }
+            Piece::King => {
+                if promotion.is_some() {
+                    None
+                } else if (atk.king(from) & to_bb).any() {
+                    Some(Move::new(
+                        from,
+                        to,
+                        capture_or_quiet(self.color_on(to), them),
+                    ))
+                } else {
+                    self.castling_move(from, to, us, them)
+                }
+            }
+        }?;
+
+        Some(canonical)
+    }
+
+    #[inline(always)]
+    pub fn is_pseudo_legal(&self, mv: Move) -> bool {
+        self.pseudo_legal_move(mv).is_some()
+    }
+
+    pub fn legal_move(&self, mv: Move) -> Option<Move> {
+        let canonical = self.pseudo_legal_move(mv)?;
+        self.king_safe_after(canonical).then_some(canonical)
+    }
+
+    #[inline(always)]
+    pub fn is_legal(&self, mv: Move) -> bool {
+        self.legal_move(mv).is_some()
     }
 
     pub fn play_uci(&mut self, input: &str) -> bool {
@@ -498,6 +641,94 @@ impl Board {
         let orthogonal_sliders =
             (self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen)) & !from_bb;
         (atk.rook(their_king, occ) & orthogonal_sliders).any()
+    }
+
+    fn castling_move(&self, from: Square, to: Square, us: Color, them: Color) -> Option<Move> {
+        if self.is_in_check() {
+            return None;
+        }
+
+        let (king_sq, ks_flag, qs_flag, ks_rook, qs_rook, ks_empty, qs_empty, ks_safe, qs_safe) =
+            if us == Color::White {
+                (
+                    Square::E1,
+                    CastlingRights::WHITE_KINGSIDE,
+                    CastlingRights::WHITE_QUEENSIDE,
+                    Square::H1,
+                    Square::A1,
+                    Bitboard::from(Square::F1) | Bitboard::from(Square::G1),
+                    Bitboard::from(Square::B1)
+                        | Bitboard::from(Square::C1)
+                        | Bitboard::from(Square::D1),
+                    [Square::F1, Square::G1],
+                    [Square::D1, Square::C1],
+                )
+            } else {
+                (
+                    Square::E8,
+                    CastlingRights::BLACK_KINGSIDE,
+                    CastlingRights::BLACK_QUEENSIDE,
+                    Square::H8,
+                    Square::A8,
+                    Bitboard::from(Square::F8) | Bitboard::from(Square::G8),
+                    Bitboard::from(Square::B8)
+                        | Bitboard::from(Square::C8)
+                        | Bitboard::from(Square::D8),
+                    [Square::F8, Square::G8],
+                    [Square::D8, Square::C8],
+                )
+            };
+
+        if from != king_sq {
+            return None;
+        }
+        if to == ks_safe[1] {
+            if self.castling.has(ks_flag)
+                && (self.all_occ & ks_empty).is_empty()
+                && (self.pieces(us, Piece::Rook) & Bitboard::from(ks_rook)).any()
+                && !self.is_attacked(ks_safe[0], them)
+                && !self.is_attacked(ks_safe[1], them)
+            {
+                return Some(Move::new(from, to, CASTLE_KINGSIDE));
+            }
+        } else if to == qs_safe[1]
+            && self.castling.has(qs_flag)
+            && (self.all_occ & qs_empty).is_empty()
+            && (self.pieces(us, Piece::Rook) & Bitboard::from(qs_rook)).any()
+            && !self.is_attacked(qs_safe[0], them)
+            && !self.is_attacked(qs_safe[1], them)
+        {
+            return Some(Move::new(from, to, CASTLE_QUEENSIDE));
+        }
+        None
+    }
+
+    fn king_safe_after(&self, mv: Move) -> bool {
+        let us = self.side_to_move;
+        let them = !us;
+        let mut after = self.clone_without_history();
+        after.make_move_unchecked(mv);
+        !after.is_attacked(after.king_sq(us), them)
+    }
+
+    fn clone_without_history(&self) -> Self {
+        Self {
+            pieces: self.pieces,
+            occupancy: self.occupancy,
+            all_occ: self.all_occ,
+            mailbox: self.mailbox,
+            side_to_move: self.side_to_move,
+            castling: self.castling,
+            ep_sq: self.ep_sq,
+            halfmove_clock: self.halfmove_clock,
+            fullmove: self.fullmove,
+            hash: self.hash,
+            pawn_hash: self.pawn_hash,
+            minor_hash: self.minor_hash,
+            non_pawn_hash: self.non_pawn_hash,
+            checkers: self.checkers,
+            history: Vec::with_capacity(1),
+        }
     }
 
     pub fn can_declare_draw(&self) -> bool {
@@ -1365,6 +1596,41 @@ fn fen_char_to_piece(c: char) -> Result<(Color, Piece), String> {
 #[inline(always)]
 fn encode_piece(color: Color, piece: Piece) -> u8 {
     color as u8 * 6 + piece as u8
+}
+
+#[inline(always)]
+fn capture_or_quiet(target: Option<Color>, them: Color) -> u16 {
+    if target == Some(them) { CAPTURE } else { QUIET }
+}
+
+#[inline(always)]
+fn pawn_move_with_promotion(
+    from: Square,
+    to: Square,
+    is_capture: bool,
+    promotion: Option<Piece>,
+) -> Option<Move> {
+    let flag = match promotion {
+        Some(piece) => promotion_flag(piece, is_capture)?,
+        None if is_capture => CAPTURE,
+        None => QUIET,
+    };
+    Some(Move::new(from, to, flag))
+}
+
+#[inline(always)]
+fn promotion_flag(piece: Piece, is_capture: bool) -> Option<u16> {
+    match (piece, is_capture) {
+        (Piece::Knight, false) => Some(PROMO_KNIGHT),
+        (Piece::Bishop, false) => Some(PROMO_BISHOP),
+        (Piece::Rook, false) => Some(PROMO_ROOK),
+        (Piece::Queen, false) => Some(PROMO_QUEEN),
+        (Piece::Knight, true) => Some(PROMO_CAPTURE_KNIGHT),
+        (Piece::Bishop, true) => Some(PROMO_CAPTURE_BISHOP),
+        (Piece::Rook, true) => Some(PROMO_CAPTURE_ROOK),
+        (Piece::Queen, true) => Some(PROMO_CAPTURE_QUEEN),
+        _ => None,
+    }
 }
 
 #[inline(always)]

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use lynx::board::{Bitboard, Board, Color, GameResult, Piece, STARTING_FEN, Square};
+use lynx::board::{Bitboard, Board, Color, GameResult, Move, Piece, STARTING_FEN, Square};
 use lynx::eval::piece_value;
 
 const ORACLE_FENS: &[&str] = &[
@@ -75,6 +75,74 @@ fn legal_captures_are_exact_for_curated_positions() {
             .collect::<BTreeSet<_>>();
         assert_eq!(moves, move_set(expected), "capture set differs for {fen}");
     }
+}
+
+#[test]
+fn impossible_and_friendly_occupied_moves_are_not_legal() {
+    let cases = [
+        ("8/8/8/8/5P2/4K3/8/7k w - - 0 1", &["e3f4", "e3e8"][..]),
+        (
+            "2k5/pp3pp1/5n2/2P5/bPP2P2/P3K3/6Pp/3Q1B1R w - - 0 23",
+            &["e3f4"][..],
+        ),
+        (
+            "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/2b3PP/7R w - - 2 24",
+            &["e3f4"][..],
+        ),
+        (
+            "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/6PP/3b3R b - - 1 23",
+            &["f4e3"][..],
+        ),
+    ];
+
+    for (fen, illegal_moves) in cases {
+        let board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
+        let generated = board.generate_legal_movelist();
+        for illegal in illegal_moves {
+            let raw = Move::from_uci(illegal).expect("valid UCI move shape");
+
+            assert!(
+                !board.is_pseudo_legal(raw),
+                "{illegal} must not be pseudo-legal in {fen}"
+            );
+            assert!(!board.is_legal(raw), "{illegal} must not be legal in {fen}");
+            assert!(
+                board.parse_move(illegal).is_none(),
+                "{illegal} must not parse as legal in {fen}"
+            );
+            assert!(
+                !generated.iter().any(|&mv| mv.same_uci_move(raw)),
+                "{illegal} must not be generated as legal in {fen}"
+            );
+        }
+    }
+}
+
+#[test]
+fn legal_move_validation_canonicalizes_move_flags() {
+    let capture_board =
+        Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
+            .expect("valid FEN");
+    let raw_capture = Move::from_uci("e4d5").expect("valid UCI move shape");
+    let capture = capture_board
+        .legal_move(raw_capture)
+        .expect("e4d5 must be legal");
+    assert!(capture.is_capture());
+
+    let castle_board = Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").expect("valid FEN");
+    let raw_castle = Move::from_uci("e1g1").expect("valid UCI move shape");
+    let castle = castle_board
+        .legal_move(raw_castle)
+        .expect("e1g1 must be legal");
+    assert!(castle.is_castling());
+
+    let mut ep_board = Board::starting_position();
+    for mv in ["e2e4", "a7a6", "e4e5", "d7d5"] {
+        assert!(ep_board.play_uci(mv), "{mv} must be legal");
+    }
+    let raw_ep = Move::from_uci("e5d6").expect("valid UCI move shape");
+    let ep = ep_board.legal_move(raw_ep).expect("e5d6 must be legal");
+    assert!(ep.is_en_passant());
 }
 
 #[test]
