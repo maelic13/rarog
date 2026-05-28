@@ -10,7 +10,7 @@ pub(crate) struct RuntimeLimits {
 }
 
 pub(crate) fn compute_runtime_limits(
-    options: SearchLimits,
+    options: &SearchLimits,
     engine_options: &EngineOptions,
     side_to_move: Color,
     max_depth: usize,
@@ -38,25 +38,30 @@ pub(crate) fn compute_runtime_limits(
             let moves_to_go = if explicit_moves_to_go {
                 options.movestogo.min(50) as f64
             } else if remaining < 1_000.0 {
-                (remaining * 0.05).clamp(1.0, 50.0)
+                14.0
+            } else if increment > 0 {
+                30.0
             } else {
-                50.0
+                40.0
             };
             if explicit_moves_to_go {
                 let usable = (time as f64 + increment as f64 * (moves_to_go - 1.0)
                     - engine_options.move_overhead * (moves_to_go + 1.0))
                     .max(1.0);
-                soft_ms = ((0.88 / moves_to_go) * usable)
+                soft_ms = (usable / (moves_to_go + 1.2))
                     .min(remaining * 0.88)
                     .max(1.0);
-                hard_ms = (soft_ms * (1.30 + 0.11 * moves_to_go))
-                    .min(remaining * 0.80)
+                hard_ms = (soft_ms * (2.20 + 0.08 * moves_to_go))
+                    .min(remaining * 0.82)
                     .max(soft_ms);
             } else {
-                soft_ms = (remaining / moves_to_go + increment as f64 * 0.75)
-                    .min(remaining * 0.20)
+                let increment_scale = if remaining < 2_000.0 { 0.20 } else { 0.70 };
+                let clock_scale = if increment > 0 { 1.0 } else { 0.85 };
+                soft_ms = (remaining * clock_scale / moves_to_go
+                    + increment as f64 * increment_scale)
+                    .min(remaining * 0.22)
                     .max(1.0);
-                let reserve_cap = if remaining < 2_000.0 { 0.25 } else { 0.75 };
+                let reserve_cap = if remaining < 2_000.0 { 0.30 } else { 0.76 };
                 hard_ms = (soft_ms * 3.0).min(remaining * reserve_cap).max(soft_ms);
             }
         }
@@ -93,7 +98,7 @@ mod tests {
             black_increment: 1_000,
             ..SearchLimits::default()
         };
-        let limits = compute_runtime_limits(options, &engine, Color::White, 64);
+        let limits = compute_runtime_limits(&options, &engine, Color::White, 64);
 
         assert_close(limits.soft_ms, 225.0);
         assert_close(limits.hard_ms, 225.0);
@@ -107,7 +112,7 @@ mod tests {
             move_time: 5,
             ..SearchLimits::default()
         };
-        let limits = compute_runtime_limits(options, &engine, Color::Black, 64);
+        let limits = compute_runtime_limits(&options, &engine, Color::Black, 64);
 
         assert_close(limits.soft_ms, 1.0);
         assert_close(limits.hard_ms, 1.0);
@@ -120,7 +125,7 @@ mod tests {
             white_increment: 100,
             ..SearchLimits::default()
         };
-        let limits = compute_runtime_limits(options, &EngineOptions::default(), Color::White, 64);
+        let limits = compute_runtime_limits(&options, &EngineOptions::default(), Color::White, 64);
 
         assert!(limits.soft_ms < 100.0);
         assert!(limits.hard_ms < 300.0);
@@ -137,9 +142,9 @@ mod tests {
         };
 
         let white_limits =
-            compute_runtime_limits(options, &EngineOptions::default(), Color::White, 64);
+            compute_runtime_limits(&options, &EngineOptions::default(), Color::White, 64);
         let black_limits =
-            compute_runtime_limits(options, &EngineOptions::default(), Color::Black, 64);
+            compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 64);
 
         assert!(white_limits.soft_ms < black_limits.soft_ms);
         assert!(white_limits.hard_ms < black_limits.hard_ms);
@@ -153,7 +158,7 @@ mod tests {
             movestogo: 10,
             ..SearchLimits::default()
         };
-        let limits = compute_runtime_limits(options, &EngineOptions::default(), Color::Black, 64);
+        let limits = compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 64);
 
         assert!((850.0..=900.0).contains(&limits.soft_ms));
         assert!(limits.hard_ms <= 6_000.0);
@@ -166,7 +171,7 @@ mod tests {
             ..SearchLimits::default()
         };
         let shallow_limits =
-            compute_runtime_limits(shallow, &EngineOptions::default(), Color::White, 64);
+            compute_runtime_limits(&shallow, &EngineOptions::default(), Color::White, 64);
 
         assert_eq!(shallow_limits.depth, 1);
         assert!(shallow_limits.soft_ms.is_infinite());
@@ -174,7 +179,7 @@ mod tests {
 
         let unlimited = SearchLimits::default();
         let unlimited_limits =
-            compute_runtime_limits(unlimited, &EngineOptions::default(), Color::Black, 42);
+            compute_runtime_limits(&unlimited, &EngineOptions::default(), Color::Black, 42);
 
         assert_eq!(unlimited_limits.depth, 42);
     }

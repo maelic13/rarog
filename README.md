@@ -10,6 +10,8 @@ speaks the UCI protocol.
 - Legal move generation for all standard chess rules, including castling,
   en passant, promotions, repetition, the fifty-move rule, and insufficient
   material detection
+- Strict FEN validation with canonical en passant hashing compatible with
+  Stockfish-style transposition behavior
 - Zobrist hashing, transposition table, and pawn evaluation cache
 - Iterative deepening negamax/PVS search with aspiration windows
 - Configurable Lazy SMP-style parallel search with persistent workers and a
@@ -20,10 +22,14 @@ speaks the UCI protocol.
   SEE-based pruning, and bounded check evasions
 - Null-move pruning with verification, ProbCut, singular extensions, futility
   pruning, late move pruning, and late move reductions
+- Staged move picking with lazy quiet generation, so tactical moves can cut off
+  before quiet move lists are built
 - Move ordering using TT moves, SEE, killers, countermoves, main history,
   low-ply history, pawn history, capture history, and continuation history
-- Multi-table correction history and handcrafted tapered evaluation with
-  fifty-move-rule dampening
+- Multi-table and continuation correction history with handcrafted tapered
+  evaluation and fifty-move-rule dampening
+- Stockfish-style soft/hard time allocation with `movestogo`, increment, and
+  move-overhead handling
 - Optional Syzygy tablebase probing through the UCI `SyzygyPath`,
   `SyzygyProbeDepth`, `SyzygyProbeLimit`, and `Syzygy50MoveRule` options,
   with root DTZ ranking, WDL fallback, load summaries, and `tbhits` reporting
@@ -39,7 +45,7 @@ Supported commands include:
 - `position startpos [moves ...]`
 - `position fen <fen> [moves ...]`
 - `go` with `depth`, `nodes`, `movetime`, `wtime`, `btime`, `winc`, `binc`,
-  `movestogo`, `ponder`, and `infinite`
+  `movestogo`, `mate`, `searchmoves`, `ponder`, and `infinite`
 - `stop`
 - `ponderhit`
 - `quit`
@@ -130,12 +136,16 @@ cargo test --release
 The suite covers:
 
 - FEN parsing and round-tripping
+- Strict FEN legality checks, castling-right validation, and en passant
+  canonicalization
 - Legal move generation and special moves
 - Perft reference positions
 - Hashing and make/unmake correctness
 - Incremental pawn, minor-piece, and non-pawn structure keys
 - Draw and terminal-result handling
+- Insufficient-material draw handling at search root and interior nodes
 - Search limits, invalid limit parsing, and stop/quit behavior
+- UCI `go searchmoves` root filtering and `go mate` depth conversion
 - Time-management behavior for fast clocks, `movetime`, side-to-move clocks,
   explicit `movestogo`, and unbounded fixed-depth searches
 - Single-thread determinism and thread-count reconfiguration
@@ -148,6 +158,7 @@ The suite covers:
 - Quiet/capture move-generation partitioning
 - Evaluation and transposition table behavior
 - Fifty-move-rule evaluation dampening
+- Rule-50-aware transposition-table mate score recovery
 - UCI command handling and invalid `setoption` preservation
 
 ## Use With A GUI
@@ -162,7 +173,7 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.3.0`.
+Current documented release: `1.3.1`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)

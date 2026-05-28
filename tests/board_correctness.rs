@@ -882,31 +882,47 @@ fn pawn_key_distinguishes_color_shifted_structures() {
 // -----------------------------------------------------------------------
 
 #[test]
-fn ep_square_set_after_double_push_and_cleared_afterwards() {
+fn ep_square_is_recorded_only_when_a_legal_capture_exists() {
     let mut board = Board::starting_position();
     assert_eq!(board.ep_square(), None, "no EP at start");
 
-    // Double pawn push sets EP target square (the square the capturing pawn lands on)
+    // A double pawn push without an opposing pawn able to capture is canonicalized
+    // to no EP square, matching Stockfish-style hashing.
     board.play_uci("e2e4");
-    assert_eq!(
-        board.ep_square(),
-        Some(Square::E3),
-        "EP square must be e3 after 1.e4"
-    );
+    assert_eq!(board.ep_square(), None, "1.e4 has no legal EP capture");
 
-    // Any non-EP move clears the EP square
     board.play_uci("e7e5");
-    assert_eq!(
-        board.ep_square(),
-        Some(Square::E6),
-        "EP square must be e6 after 1...e5"
-    );
+    assert_eq!(board.ep_square(), None, "1...e5 has no legal EP capture");
 
     board.play_uci("g1f3"); // quiet move — no double push
     assert_eq!(
         board.ep_square(),
         None,
         "EP square must be cleared after non-double-push move"
+    );
+
+    let mut legal_ep = Board::from_fen("4k3/5p2/8/4P3/8/8/8/4K3 b - - 0 1").unwrap();
+    assert!(legal_ep.play_uci("f7f5"));
+    assert_eq!(
+        legal_ep.ep_square(),
+        Some(Square::F6),
+        "EP square must be kept when e5xf6 is legal"
+    );
+}
+
+#[test]
+fn fen_ep_square_is_canonicalized_when_no_legal_capture_exists() {
+    let board = Board::from_fen("4k3/8/8/8/4P3/8/8/4K3 b - e3 0 1").unwrap();
+
+    assert_eq!(board.ep_square(), None);
+    assert!(board.to_fen().contains(" - "));
+}
+
+#[test]
+fn fen_rejects_positions_where_side_not_to_move_is_in_check() {
+    assert!(
+        Board::from_fen("8/8/8/8/8/8/4KB2/6k1 w - - 0 1").is_err(),
+        "invalid positions must be rejected instead of reaching movegen"
     );
 }
 

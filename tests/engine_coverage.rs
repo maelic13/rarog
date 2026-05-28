@@ -59,6 +59,7 @@ fn search_options_parse_startpos_moves_and_go_limits() {
     assert_eq!(options.limits.movestogo, 20);
     assert_eq!(options.limits.nodes, 12_345);
     assert_eq!(options.limits.depth, 7.0);
+    assert!(options.limits.search_moves.is_empty());
     assert!(options.limits.ponder);
     assert!(!options.limits.infinite);
 
@@ -71,6 +72,10 @@ fn search_options_parse_startpos_moves_and_go_limits() {
     assert!(!options.limits.ponder);
     assert!(!options.limits.infinite);
     assert_eq!(options.limits.depth, 3.0);
+
+    options.set_search_parameters(&args(&["mate", "2", "searchmoves", "e2e4", "g1f3"]));
+    assert_eq!(options.limits.depth, 3.0);
+    assert_eq!(options.limits.search_moves.len(), 2);
 }
 
 #[test]
@@ -142,6 +147,7 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert_eq!(options.limits.depth, f64::INFINITY);
     assert_eq!(options.limits.nodes, 0);
     assert_eq!(options.limits.move_time, 0);
+    assert!(options.limits.search_moves.is_empty());
     assert!(!options.limits.ponder);
     assert!(!options.limits.infinite);
     assert_eq!(options.engine.hash_mb, 256);
@@ -327,10 +333,14 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
 
     let mate_in_three = MATE_SCORE - 3;
     let tt_score = score_to_tt(mate_in_three, 7);
-    assert_eq!(score_from_tt(tt_score, 7), mate_in_three);
+    assert_eq!(score_from_tt(tt_score, 7, 0), mate_in_three);
     let mated_in_three = -MATE_SCORE + 3;
     let tt_score = score_to_tt(mated_in_three, 7);
-    assert_eq!(score_from_tt(tt_score, 7), mated_in_three);
+    assert_eq!(score_from_tt(tt_score, 7, 0), mated_in_three);
+    assert!(
+        score_from_tt(score_to_tt(MATE_SCORE - 12, 0), 0, 95) < MATE_SCORE - 128,
+        "mate scores past the 50-move horizon must not be reused as forced mates"
+    );
 
     table.clear();
     assert!(table.probe(key).is_none());
@@ -422,6 +432,39 @@ fn search_returns_null_move_for_stalemate() {
     assert_eq!(result.score, 0);
     assert_eq!(result.tb_hits, 0);
     assert_eq!(result.exit, SearchExit::Stop);
+}
+
+#[test]
+fn search_treats_insufficient_material_as_draw() {
+    for fen in [
+        "8/8/8/8/8/8/4K3/6k1 w - - 0 1",
+        "7k/8/8/8/8/8/4KN2/8 w - - 0 1",
+        "7k/8/8/8/8/8/4KB2/8 w - - 0 1",
+    ] {
+        let board = Board::from_fen(fen).expect("valid draw FEN");
+        let mut searcher = Searcher::default();
+        let mut options = SearchOptions::default();
+        options.limits.depth = 4.0;
+
+        let result = searcher.search(board, &options, false, || SearchEvent::None);
+
+        assert_eq!(result.score, 0, "{fen}");
+        assert_eq!(result.depth, 0, "{fen}");
+        assert_eq!(result.bestmove, Move::NULL, "{fen}");
+    }
+}
+
+#[test]
+fn search_respects_searchmoves_root_filter() {
+    let board = Board::default();
+    let forced = board.parse_move("a2a3").expect("legal root move");
+    let mut searcher = Searcher::default();
+    let mut options = SearchOptions::default();
+    options.set_search_parameters(&args(&["depth", "2", "searchmoves", "a2a3"]));
+
+    let result = searcher.search(board, &options, false, || SearchEvent::None);
+
+    assert_eq!(result.bestmove, forced);
 }
 
 #[test]

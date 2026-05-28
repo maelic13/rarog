@@ -118,31 +118,56 @@ impl Board {
             history: Vec::with_capacity(128),
         };
 
-        let mut parts = fen.split_whitespace();
+        let parts = fen.split_whitespace().collect::<Vec<_>>();
+        if !(4..=6).contains(&parts.len()) {
+            return Err("FEN must contain 4 to 6 fields".to_string());
+        }
 
         // 1. Piece placement
-        let placement = parts.next().ok_or("missing piece placement")?;
-        let mut sq = 56u8; // start at A8
+        let placement = parts[0];
+        let mut rank = 7u8;
+        let mut file = 0u8;
         for ch in placement.chars() {
             match ch {
                 '/' => {
-                    if sq % 8 != 0 {
-                        return Err(format!("unexpected '/' at square {sq}"));
+                    if file != 8 {
+                        return Err(format!("incomplete FEN rank before '/' in {placement}"));
                     }
-                    sq = sq.wrapping_sub(16); // go down a rank
+                    if rank == 0 {
+                        return Err(format!("too many FEN ranks in {placement}"));
+                    }
+                    rank -= 1;
+                    file = 0;
                 }
-                '1'..='8' => sq += ch as u8 - b'0',
+                '1'..='8' => {
+                    file += ch as u8 - b'0';
+                    if file > 8 {
+                        return Err(format!("too many squares in FEN rank {rank}"));
+                    }
+                }
                 c => {
                     let (color, piece) = fen_char_to_piece(c)?;
-                    board.add_piece(color, piece, Square(sq));
-                    board.hash ^= ZOBRIST.piece(color, piece, Square(sq));
-                    sq += 1;
+                    if file >= 8 {
+                        return Err(format!("too many squares in FEN rank {rank}"));
+                    }
+                    if piece == Piece::Pawn && (rank == 0 || rank == 7) {
+                        return Err("pawns are not legal on the first or eighth rank".to_string());
+                    }
+                    let sq = Square(rank * 8 + file);
+                    board.add_piece(color, piece, sq);
+                    board.hash ^= ZOBRIST.piece(color, piece, sq);
+                    file += 1;
                 }
             }
         }
+        if rank != 0 || file != 8 {
+            return Err(format!(
+                "piece placement must contain 8 complete ranks: {placement}"
+            ));
+        }
 
         // 2. Side to move
-        match parts.next().ok_or("missing side to move")? {
+        match parts[1] {
             "w" => board.side_to_move = Color::White,
             "b" => {
                 board.side_to_move = Color::Black;
@@ -152,40 +177,63 @@ impl Board {
         }
 
         // 3. Castling rights
-        let castling_str = parts.next().ok_or("missing castling rights")?;
+        let castling_str = parts[2];
         let mut cr = CastlingRights::NONE;
+        if castling_str.contains('-') && castling_str.len() > 1 {
+            return Err(format!("invalid castling rights: {castling_str}"));
+        }
         for c in castling_str.chars() {
             match c {
-                'K' => cr.0 |= CastlingRights::WHITE_KINGSIDE.0,
-                'Q' => cr.0 |= CastlingRights::WHITE_QUEENSIDE.0,
-                'k' => cr.0 |= CastlingRights::BLACK_KINGSIDE.0,
-                'q' => cr.0 |= CastlingRights::BLACK_QUEENSIDE.0,
+                'K' if !cr.has(CastlingRights::WHITE_KINGSIDE) => {
+                    cr.0 |= CastlingRights::WHITE_KINGSIDE.0
+                }
+                'Q' if !cr.has(CastlingRights::WHITE_QUEENSIDE) => {
+                    cr.0 |= CastlingRights::WHITE_QUEENSIDE.0
+                }
+                'k' if !cr.has(CastlingRights::BLACK_KINGSIDE) => {
+                    cr.0 |= CastlingRights::BLACK_KINGSIDE.0
+                }
+                'q' if !cr.has(CastlingRights::BLACK_QUEENSIDE) => {
+                    cr.0 |= CastlingRights::BLACK_QUEENSIDE.0
+                }
                 '-' => {}
                 c => return Err(format!("invalid castling char: {c}")),
             }
         }
+        validate_castling_rights(&board, cr)?;
         board.castling = cr;
         board.hash ^= ZOBRIST.castling(cr);
 
         // 4. En passant
-        let ep_str = parts.next().ok_or("missing ep field")?;
-        if ep_str != "-" {
+        let ep_str = parts[3];
+        let ep_candidate = if ep_str != "-" {
             let sq = Square::from_algebraic(ep_str)
                 .ok_or_else(|| format!("invalid ep square: {ep_str}"))?;
-            board.ep_sq = sq.0;
-            board.hash ^= ZOBRIST.ep(sq.file());
-        }
+            Some(sq)
+        } else {
+            None
+        };
 
         // 5. Halfmove clock
-        if let Some(s) = parts.next() {
-            board.halfmove_clock = s.parse::<u8>().unwrap_or(0);
+        if let Some(s) = parts.get(4) {
+            board.halfmove_clock = s
+                .parse::<u8>()
+                .map_err(|_| format!("invalid halfmove clock: {s}"))?;
         }
 
         // 6. Fullmove number
-        if let Some(s) = parts.next() {
-            board.fullmove = s.parse::<u16>().unwrap_or(1);
+        if let Some(s) = parts.get(5) {
+            board.fullmove = s
+                .parse::<u16>()
+                .ok()
+                .filter(|fullmove| *fullmove > 0)
+                .ok_or_else(|| format!("invalid fullmove number: {s}"))?;
         }
 
+        board.validate_position()?;
+        if let Some(ep_sq) = ep_candidate {
+            board.set_legal_ep_square(ep_sq)?;
+        }
         board.checkers = board.calculate_checkers();
         Ok(board)
     }
@@ -464,7 +512,7 @@ impl Board {
         if self.halfmove_clock >= 100 {
             return true;
         }
-        self.halfmove_clock >= 4 && self.is_repetition(2)
+        self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
     }
 
     pub fn has_repeated_position(&self) -> bool {
@@ -572,6 +620,11 @@ impl Board {
             gains[depth] = -gains[depth + 1].max(-gains[depth]);
         }
         gains[0]
+    }
+
+    #[inline(always)]
+    pub fn see_ge(&self, mv: Move, threshold: i32) -> bool {
+        self.see(mv) >= threshold
     }
 
     pub fn game_result(&self) -> Option<GameResult> {
@@ -727,7 +780,7 @@ impl Board {
         } else if moving_piece == Piece::Pawn {
             self.halfmove_clock = 0;
         } else {
-            self.halfmove_clock += 1;
+            self.halfmove_clock = self.halfmove_clock.saturating_add(1);
         }
 
         // Place moving piece on destination (or promotion piece)
@@ -771,8 +824,10 @@ impl Board {
                 } else {
                     Square(to.0 + 8)
                 };
-                self.ep_sq = ep.0;
-                self.hash ^= zob.ep(ep.file());
+                if self.legal_ep_capture_exists(them, ep).unwrap_or(false) {
+                    self.ep_sq = ep.0;
+                    self.hash ^= zob.ep(ep.file());
+                }
             }
             _ => {}
         }
@@ -1003,6 +1058,92 @@ impl Board {
             & self.color_occ(!self.side_to_move)
     }
 
+    fn validate_position(&self) -> Result<(), String> {
+        let white_king = self.pieces(Color::White, Piece::King);
+        let black_king = self.pieces(Color::Black, Piece::King);
+        if white_king.count() != 1 || black_king.count() != 1 {
+            return Err("FEN must contain exactly one king for each side".to_string());
+        }
+
+        let white_king_sq = white_king.lsb();
+        let black_king_sq = black_king.lsb();
+        if white_king_sq.chebyshev_distance(black_king_sq) <= 1 {
+            return Err("kings may not be adjacent".to_string());
+        }
+
+        let just_moved = !self.side_to_move;
+        if self.is_attacked(self.king_sq(just_moved), self.side_to_move) {
+            return Err("side not to move may not be in check".to_string());
+        }
+
+        Ok(())
+    }
+
+    fn set_legal_ep_square(&mut self, ep_sq: Square) -> Result<(), String> {
+        let capturer = self.side_to_move;
+        let captured = !capturer;
+        let expected_rank = if capturer == Color::White { 5 } else { 2 };
+        if ep_sq.rank() as u8 != expected_rank {
+            return Err(format!("invalid en passant rank: {ep_sq}"));
+        }
+        if self.piece_at(ep_sq).is_some() {
+            return Err(format!("en passant target square is occupied: {ep_sq}"));
+        }
+
+        let cap_sq = ep_capture_square(capturer, ep_sq)
+            .ok_or_else(|| format!("invalid en passant square: {ep_sq}"))?;
+        if self.piece_at(cap_sq) != Some((captured, Piece::Pawn)) {
+            return Err(format!("missing en passant capturable pawn at {cap_sq}"));
+        }
+
+        let origin_sq = ep_origin_square(capturer, ep_sq)
+            .ok_or_else(|| format!("invalid en passant square: {ep_sq}"))?;
+        if self.piece_at(origin_sq).is_some() {
+            return Err(format!("en passant origin square is occupied: {origin_sq}"));
+        }
+
+        if self.legal_ep_capture_exists(capturer, ep_sq)? {
+            self.ep_sq = ep_sq.0;
+            self.hash ^= ZOBRIST.ep(ep_sq.file());
+        }
+        Ok(())
+    }
+
+    fn legal_ep_capture_exists(&self, capturer: Color, ep_sq: Square) -> Result<bool, String> {
+        let Some(cap_sq) = ep_capture_square(capturer, ep_sq) else {
+            return Ok(false);
+        };
+        let atk = &*ATTACKS;
+        let mut attackers = atk.pawn(!capturer, ep_sq) & self.pieces(capturer, Piece::Pawn);
+        while attackers.any() {
+            let from = attackers.pop_lsb();
+            if self.ep_capture_is_legal(capturer, from, ep_sq, cap_sq) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    fn ep_capture_is_legal(
+        &self,
+        capturer: Color,
+        from: Square,
+        ep_sq: Square,
+        cap_sq: Square,
+    ) -> bool {
+        let them = !capturer;
+        let king_sq = self.king_sq(capturer);
+        let occ_after =
+            (self.all_occ ^ Bitboard::from(from) ^ Bitboard::from(cap_sq)) | Bitboard::from(ep_sq);
+        let atk = &*ATTACKS;
+        let exposed_rook = (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen))
+            & atk.rook(king_sq, occ_after);
+        let exposed_diag = (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen))
+            & atk.bishop(king_sq, occ_after);
+
+        exposed_rook.is_empty() && exposed_diag.is_empty()
+    }
+
     fn has_insufficient_material(&self) -> bool {
         if (self.pieces(Color::White, Piece::Pawn)
             | self.pieces(Color::Black, Piece::Pawn)
@@ -1072,6 +1213,64 @@ impl Default for Board {
 // -----------------------------------------------------------------------
 // FEN helper
 // -----------------------------------------------------------------------
+
+fn validate_castling_rights(board: &Board, rights: CastlingRights) -> Result<(), String> {
+    let required = [
+        (
+            CastlingRights::WHITE_KINGSIDE,
+            Square::E1,
+            Square::H1,
+            Color::White,
+        ),
+        (
+            CastlingRights::WHITE_QUEENSIDE,
+            Square::E1,
+            Square::A1,
+            Color::White,
+        ),
+        (
+            CastlingRights::BLACK_KINGSIDE,
+            Square::E8,
+            Square::H8,
+            Color::Black,
+        ),
+        (
+            CastlingRights::BLACK_QUEENSIDE,
+            Square::E8,
+            Square::A8,
+            Color::Black,
+        ),
+    ];
+
+    for (right, king_sq, rook_sq, color) in required {
+        if rights.has(right) {
+            if board.piece_at(king_sq) != Some((color, Piece::King))
+                || board.piece_at(rook_sq) != Some((color, Piece::Rook))
+            {
+                return Err(format!(
+                    "castling right {} does not match king/rook placement",
+                    right.as_str()
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn ep_capture_square(capturer: Color, ep_sq: Square) -> Option<Square> {
+    match capturer {
+        Color::White => ep_sq.0.checked_sub(8).map(Square),
+        Color::Black => ep_sq.0.checked_add(8).filter(|sq| *sq < 64).map(Square),
+    }
+}
+
+fn ep_origin_square(capturer: Color, ep_sq: Square) -> Option<Square> {
+    match capturer {
+        Color::White => ep_sq.0.checked_add(8).filter(|sq| *sq < 64).map(Square),
+        Color::Black => ep_sq.0.checked_sub(8).map(Square),
+    }
+}
 
 fn fen_char_to_piece(c: char) -> Result<(Color, Piece), String> {
     match c {
