@@ -2,6 +2,39 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.4.0] - 2026-05-28
+
+Minor release focused on Stockfish-style transposition-table move safety and
+search move ordering.
+
+### Fixed
+
+- Hardened TT/hash move use so stored moves are validated and canonicalized for
+  the current board before search, quiescence, PV construction, or ponder
+  fallback can use them. This prevents stale, aliased, or concurrently observed
+  TT moves from entering searched PVs.
+- Fixed UCI PV safety around malformed TT moves by rejecting impossible piece
+  movement, moves from the wrong side, friendly-occupied destinations, illegal
+  king movement, and malformed special-move encodings before `make_move`.
+
+### Changed
+
+- Reworked the move picker to emit a validated TT move first, then skip the
+  duplicate when generated legal captures, quiets, or bad captures are visited.
+- Changed UCI move parsing to use the same direct legal-move validator as TT
+  move validation, while preserving canonical internal flags for captures,
+  castling, en passant, and promotions.
+- Added TT-derived ponder fallback from the child position when the searched PV
+  does not already contain a ponder move.
+
+### Added
+
+- Added board-level pseudo-legal and legal move validation APIs for raw UCI or
+  TT-shaped moves.
+- Added regression coverage for friendly-occupied king moves, impossible king
+  movement, malformed tournament-derived TT moves, TT-first move picking,
+  TT-derived ponder fallback, and UCI PV replay at `Threads=1` and `Threads=8`.
+
 ## [1.3.4] - 2026-05-28
 
 Patch release focused on completing Stockfish-compatible UCI ponder behavior

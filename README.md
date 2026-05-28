@@ -22,10 +22,13 @@ speaks the UCI protocol.
   threshold SEE pruning, and bounded check evasions
 - Null-move pruning with verification, ProbCut, singular extensions, futility
   pruning, late move pruning, and late move reductions
-- Staged move picking with good captures before lazy quiet generation and bad
-  captures delayed until after quiet moves
-- Move ordering using TT moves, threshold SEE, killers, countermoves, main history,
-  low-ply history, pawn history, capture history, and continuation history
+- Staged move picking with a validated TT move first, good captures before lazy
+  quiet generation, and bad captures delayed until after quiet moves
+- Move ordering using TT moves, threshold SEE, killers, countermoves, main
+  history, low-ply history, pawn history, capture history, and continuation
+  history
+- Direct legal validation for raw UCI and TT-shaped moves, including
+  canonicalized captures, castling, en passant, and promotions
 - Multi-table and continuation correction history with handcrafted tapered
   evaluation and fifty-move-rule dampening
 - Soft/hard time allocation with `movestogo`, increment, and move-overhead
@@ -161,6 +164,8 @@ The suite covers:
 - UCI command ordering, priority quit/stop handling, and stale-search
   cancellation
 - UCI ponder and infinite-search `bestmove` release timing
+- UCI PV replay legality for tournament-derived TT/hash-move regression
+  positions at one and eight search threads
 - FEN compatibility for tournament managers that emit non-standard fullmove `0`
 - Quiet/capture move-generation partitioning
 - Evaluation and transposition table behavior
@@ -168,6 +173,7 @@ The suite covers:
   tables
 - Fifty-move-rule evaluation dampening
 - Rule-50-aware transposition-table mate score recovery
+- TT-first move-picker behavior and TT-derived ponder fallback
 - UCI command handling and invalid `setoption` preservation
 
 ## Use With A GUI
@@ -182,12 +188,12 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.3.4`.
+Current documented release: `1.4.0`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)
 
-Release-preparation checks for `1.3.4`:
+Release-preparation checks for `1.4.0`:
 
 ```bash
 cargo fmt --check
@@ -196,9 +202,9 @@ cargo test
 cargo test --release
 ```
 
-The `1.3.4` build was also smoke-tested against `v1.3.3` with a short
-cutechess regression at `Threads=1` and `Threads=8`; neither run showed an
-obvious strength regression.
+The `1.4.0` build was also checked against `v1.3.4` with the built-in
+benchmark at `Threads=1` and `Threads=8` as a quick local search-speed sanity
+test.
 
 Release assets may include standalone executables for Windows, Linux, and
 Apple Silicon macOS. Intel macOS release assets are not published.

@@ -71,6 +71,8 @@ enum MovePicker {
     Full {
         scored: ScoredMoveList,
         index: usize,
+        tt_move: Move,
+        emitted_tt: bool,
     },
     Staged {
         captures: ScoredMoveList,
@@ -80,6 +82,7 @@ enum MovePicker {
         bad_capture_index: usize,
         quiet_index: usize,
         tt_move: Move,
+        emitted_tt: bool,
         ply: usize,
     },
 }
@@ -188,8 +191,13 @@ impl Default for Searcher {
 }
 
 impl MovePicker {
-    fn full(scored: ScoredMoveList) -> Self {
-        Self::Full { scored, index: 0 }
+    fn full(scored: ScoredMoveList, tt_move: Move) -> Self {
+        Self::Full {
+            scored,
+            index: 0,
+            tt_move,
+            emitted_tt: false,
+        }
     }
 
     fn staged(searcher: &Searcher, board: &mut Board, tt_move: Move, ply: usize) -> Self {
@@ -204,19 +212,33 @@ impl MovePicker {
             bad_capture_index: 0,
             quiet_index: 0,
             tt_move,
+            emitted_tt: false,
             ply,
         }
     }
 
     fn next(&mut self, searcher: &Searcher, board: &mut Board) -> Option<ScoredMove> {
         match self {
-            Self::Full { scored, index } => {
-                if *index >= scored.len() {
-                    return None;
+            Self::Full {
+                scored,
+                index,
+                tt_move,
+                emitted_tt,
+            } => {
+                if !*emitted_tt {
+                    *emitted_tt = true;
+                    if !tt_move.is_null() {
+                        return Some(tt_scored_move(board, *tt_move));
+                    }
                 }
-                let picked = pick_next(scored.as_mut_slice(), *index);
-                *index += 1;
-                Some(picked)
+                while *index < scored.len() {
+                    let picked = pick_next(scored.as_mut_slice(), *index);
+                    *index += 1;
+                    if picked.mv != *tt_move {
+                        return Some(picked);
+                    }
+                }
+                None
             }
             Self::Staged {
                 captures,
@@ -226,12 +248,21 @@ impl MovePicker {
                 bad_capture_index,
                 quiet_index,
                 tt_move,
+                emitted_tt,
                 ply,
             } => {
-                if *capture_index < captures.len() {
+                if !*emitted_tt {
+                    *emitted_tt = true;
+                    if !tt_move.is_null() {
+                        return Some(tt_scored_move(board, *tt_move));
+                    }
+                }
+                while *capture_index < captures.len() {
                     let picked = pick_next(captures.as_mut_slice(), *capture_index);
                     *capture_index += 1;
-                    return Some(picked);
+                    if picked.mv != *tt_move {
+                        return Some(picked);
+                    }
                 }
                 if quiets.is_none() {
                     let quiet_moves = board.generate_legal_quiets();
@@ -239,19 +270,36 @@ impl MovePicker {
                         Some(searcher.score_moves(board, quiet_moves.as_slice(), *tt_move, *ply));
                 }
                 let scored = quiets.as_mut().expect("quiets generated");
-                if *quiet_index < scored.len() {
+                while *quiet_index < scored.len() {
                     let picked = pick_next(scored.as_mut_slice(), *quiet_index);
                     *quiet_index += 1;
-                    return Some(picked);
+                    if picked.mv != *tt_move {
+                        return Some(picked);
+                    }
                 }
-                if *bad_capture_index < bad_captures.len() {
+                while *bad_capture_index < bad_captures.len() {
                     let picked = pick_next(bad_captures.as_mut_slice(), *bad_capture_index);
                     *bad_capture_index += 1;
-                    return Some(picked);
+                    if picked.mv != *tt_move {
+                        return Some(picked);
+                    }
                 }
                 None
             }
         }
+    }
+}
+
+fn tt_scored_move(board: &Board, mv: Move) -> ScoredMove {
+    let see = if mv.is_capture() && !board.see_ge(mv, 0) {
+        -1
+    } else {
+        0
+    };
+    ScoredMove {
+        mv,
+        score: 30_000_000,
+        see,
     }
 }
 
@@ -673,6 +721,10 @@ impl Searcher {
             }
         }
 
+        if pondermove.is_null() {
+            pondermove = self.ponder_from_tt(&board, bestmove);
+        }
+
         SearchResult {
             bestmove,
             pondermove,
@@ -775,6 +827,10 @@ impl Searcher {
             }
         }
 
+        if pondermove.is_null() {
+            pondermove = self.ponder_from_tt(&board, bestmove);
+        }
+
         SearchResult {
             bestmove,
             pondermove,
@@ -852,6 +908,7 @@ impl Searcher {
 
         self.root_move_offset = 0;
         self.shared_state = Some(Arc::clone(&shared_state));
+        let root_for_ponder = root.clone();
         let mut main_poll = || match shared_state.stop_state.load(Ordering::Relaxed) {
             STOP_QUIT => SearchEvent::Quit,
             STOP_SEARCH => SearchEvent::Stop,
@@ -908,6 +965,9 @@ impl Searcher {
         best.nodes = total_nodes;
         best.tb_hits = total_tb_hits;
         best.elapsed_ms = self.start.elapsed().as_millis();
+        if best.pondermove.is_null() {
+            best.pondermove = self.ponder_from_tt(&root_for_ponder, best.bestmove);
+        }
         best.ponderhit = self.ponderhit || helper_results.iter().any(|result| result.ponderhit);
         best.exit = if quit {
             SearchExit::Quit
@@ -976,9 +1036,13 @@ impl Searcher {
             return score;
         }
         let tt_entry = self.tt.probe(hash);
-        let tt_move = tt_entry
+        let mut tt_move = tt_entry
             .and_then(|entry| entry.best_move())
+            .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
+        if ply == 0 && !self.root_moves.is_empty() && !self.root_moves.contains(&tt_move) {
+            tt_move = Move::NULL;
+        }
         let tt_score = tt_entry
             .map(|entry| score_from_tt(entry.score as i32, ply, board.halfmove_clock))
             .unwrap_or(VALUE_NONE);
@@ -1181,7 +1245,7 @@ impl Searcher {
                 let offset = self.root_move_offset % scored.len();
                 diversify_root_scores(scored.as_mut_slice(), offset);
             }
-            MovePicker::full(scored)
+            MovePicker::full(scored, tt_move)
         } else {
             MovePicker::staged(self, board, tt_move, ply)
         };
@@ -1504,6 +1568,7 @@ impl Searcher {
         let tt_entry = self.tt.probe(hash);
         let tt_move = tt_entry
             .and_then(|entry| entry.best_move())
+            .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
         if let Some(entry) = tt_entry
             && entry.depth >= 0
@@ -2310,6 +2375,22 @@ impl Searcher {
         }
     }
 
+    fn ponder_from_tt(&self, root: &Board, bestmove: Move) -> Move {
+        if bestmove.is_null() {
+            return Move::NULL;
+        }
+        let Some(bestmove) = root.legal_move(bestmove) else {
+            return Move::NULL;
+        };
+        let mut child = root.clone();
+        child.make_move_unchecked(bestmove);
+        self.tt
+            .probe(child.hash)
+            .and_then(|entry| entry.best_move())
+            .and_then(|mv| child.legal_move(mv))
+            .unwrap_or(Move::NULL)
+    }
+
     fn result_for_no_legal_moves(&self, board: &Board) -> GameResult {
         if board.is_in_check() {
             match board.side_to_move() {
@@ -2486,6 +2567,52 @@ mod tests {
     }
 
     #[test]
+    fn malformed_tt_move_is_not_searched_or_reported_in_pv() {
+        let root = Board::from_fen("2k5/pp3pp1/5n2/2P5/bPP2P2/P3K3/6Pp/3Q1B1R w - - 0 23")
+            .expect("valid tournament-derived FEN");
+        let illegal = Move::from_uci("e3f4").expect("valid UCI move shape");
+        let mut board = root.clone();
+        let before_fen = board.to_fen();
+        let before_hash = board.hash;
+        let mut searcher = Searcher::default();
+        let engine_options = EngineOptions::default();
+        let limits = SearchLimits {
+            depth: 3.0,
+            ..SearchLimits::default()
+        };
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
+        searcher
+            .tt
+            .store(board.hash, 8, 0, Bound::Exact, illegal, 0, VALUE_NONE);
+
+        let _ = searcher.negamax(
+            &mut board,
+            3,
+            -INF_SCORE,
+            INF_SCORE,
+            0,
+            true,
+            true,
+            Move::NULL,
+            false,
+            &mut || SearchEvent::None,
+        );
+
+        assert_eq!(board.to_fen(), before_fen);
+        assert_eq!(board.hash, before_hash);
+        assert!(
+            !searcher.pv_table[0][..searcher.pv_len[0].min(MAX_PLY)]
+                .iter()
+                .any(|&mv| mv.same_uci_move(illegal)),
+            "malformed TT move must not appear in the root PV"
+        );
+        assert_legal_pv(
+            &root,
+            &searcher.pv_table[0][..searcher.pv_len[0].min(MAX_PLY)],
+        );
+    }
+
+    #[test]
     fn parallel_result_selection_uses_weighted_helper_votes() {
         let e2e4 = Move::from_uci("e2e4").expect("valid move");
         let d2d4 = Move::from_uci("d2d4").expect("valid move");
@@ -2514,6 +2641,38 @@ mod tests {
         let selected = select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
 
         assert_eq!(selected.bestmove, d2d4);
+    }
+
+    #[test]
+    fn staged_picker_emits_valid_quiet_tt_move_first() {
+        let searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
+                .expect("valid FEN");
+        let tt_move = board
+            .legal_move(Move::from_uci("g1f3").expect("valid UCI move shape"))
+            .expect("quiet TT move must be legal");
+
+        let mut picker = MovePicker::staged(&searcher, &mut board, tt_move, 0);
+        let picked = picker.next(&searcher, &mut board).expect("first move");
+
+        assert_eq!(picked.mv, tt_move);
+        assert!(!picked.mv.is_capture());
+    }
+
+    #[test]
+    fn ponder_move_can_be_recovered_from_tt_child() {
+        let mut searcher = Searcher::default();
+        let root = Board::default();
+        let bestmove = root.parse_move("a2a3").expect("legal root move");
+        let mut child = root.clone();
+        child.make_move_unchecked(bestmove);
+        let ponder = child.parse_move("a7a6").expect("legal child move");
+        searcher
+            .tt
+            .store(child.hash, 4, 0, Bound::Exact, ponder, 1, VALUE_NONE);
+
+        assert_eq!(searcher.ponder_from_tt(&root, bestmove), ponder);
     }
 
     #[test]
@@ -2565,6 +2724,19 @@ mod tests {
             elapsed_ms: 0,
             exit: SearchExit::Stop,
             ponderhit: false,
+        }
+    }
+
+    fn assert_legal_pv(root: &Board, pv: &[Move]) {
+        let mut board = root.clone();
+        for &mv in pv {
+            if mv.is_null() {
+                break;
+            }
+            let legal = board
+                .parse_move(&mv.to_string())
+                .unwrap_or_else(|| panic!("PV move {mv} is illegal in {}", board.to_fen()));
+            board.make_move_unchecked(legal);
         }
     }
 }

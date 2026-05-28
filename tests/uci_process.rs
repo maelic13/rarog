@@ -4,6 +4,8 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use lynx::board::Board;
+
 fn run_lynx(input: &str) -> Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_lynx"))
         .stdin(Stdio::piped())
@@ -257,6 +259,34 @@ fn threaded_ponderhit_after_spent_movetime_does_not_restart_search_clock() {
 }
 
 #[test]
+fn emitted_pvs_are_legal_for_tournament_positions_with_threads() {
+    let fens = [
+        "2k5/pp3pp1/5n2/2P5/bPP2P2/P3K3/6Pp/3Q1B1R w - - 0 23",
+        "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/2b3PP/7R w - - 2 24",
+        "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/6PP/3b3R b - - 1 23",
+    ];
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", Duration::from_secs(15));
+
+    for threads in [1, 8] {
+        session.send(&format!("setoption name Threads value {threads}"));
+        session.send("isready");
+        session.expect_line_containing("readyok", Duration::from_secs(5));
+
+        for fen in fens {
+            session.send(&format!("position fen {fen}"));
+            session.send("go depth 4");
+
+            let lines = session.collect_until_line_containing("bestmove", Duration::from_secs(10));
+            assert_uci_pv_lines_are_legal(fen, &lines);
+        }
+    }
+
+    session.quit();
+}
+
+#[test]
 fn unknown_command_and_option_print_explicit_diagnostics() {
     let output = run_lynx("setoption name Not A Real Option value 1\nunknownthing\nquit\n");
 
@@ -304,4 +334,26 @@ fn parse_uci_u64_field(line: &str, field: &str) -> Option<u64> {
         }
     }
     None
+}
+
+fn assert_uci_pv_lines_are_legal(root_fen: &str, lines: &[String]) {
+    let mut saw_pv = false;
+    for line in lines {
+        let parts = line.split_whitespace().collect::<Vec<_>>();
+        let Some(pv_index) = parts.iter().position(|part| *part == "pv") else {
+            continue;
+        };
+        saw_pv = true;
+        let mut board = Board::from_fen(root_fen).unwrap_or_else(|err| panic!("{root_fen}: {err}"));
+        for mv_text in &parts[pv_index + 1..] {
+            let mv = board.parse_move(mv_text).unwrap_or_else(|| {
+                panic!(
+                    "illegal PV move `{mv_text}` in `{}` from line `{line}`",
+                    board.to_fen()
+                )
+            });
+            board.make_move_unchecked(mv);
+        }
+    }
+    assert!(saw_pv, "search should emit at least one PV line: {lines:?}");
 }
