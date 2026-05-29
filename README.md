@@ -17,7 +17,6 @@ speaks the UCI protocol.
 - Configurable Lazy SMP-style parallel search with persistent workers, shared
   stop/node/accounting state, weighted helper result selection, and a full-key
   validated shared transposition table through the UCI `Threads` option
-- Basic UCI `MultiPV` support for analysis output
 - Capture-focused quiescence search with delta pruning, capture futility,
   threshold SEE pruning, and bounded check evasions
 - Null-move pruning with verification, ProbCut, singular extensions, futility
@@ -61,7 +60,6 @@ Supported options:
 - `Ponder` default `false`
 - `Move Overhead` default `10`
 - `Threads` default `1`, min `1`, max `1024`
-- `MultiPV` default `1`, min `1`, max `256`
 - `SyzygyPath` default empty
 - `SyzygyProbeDepth` default `1`, min `1`, max `100`
 - `SyzygyProbeLimit` default `7`, min `0`, max `7`
@@ -123,6 +121,32 @@ Release builds use LTO and a single codegen unit for engine speed.
 Local release builds also use `target-cpu=native`, so `cargo build --release`
 optimizes Lynx for the CPU on the build machine.
 
+Portable release-asset builds can be produced with the cross-platform `xtask`
+helper:
+
+```bash
+cargo xtask build
+cargo xtask build --arch avx2
+cargo xtask build --arch pext
+cargo xtask build --arch arm64
+```
+
+`cargo xtask build` defaults to the compatible x86-64 asset on x86-64 hosts and
+to the ARM64 asset on ARM64 hosts. The helper writes renamed binaries to
+`target/dist`.
+
+Profile-guided optimization can be enabled for a native target:
+
+```bash
+cargo xtask build --arch pext --pgo
+```
+
+PGO builds first create an instrumented engine, train it with the built-in
+`bench` command, merge the generated LLVM profile, and rebuild the optimized
+binary. The helper installs the Rust target with `rustup target add` when
+`rustup` is available. For PGO it also looks for `llvm-profdata` and attempts
+`rustup component add llvm-tools-preview` if the tool is missing.
+
 For quick local testing:
 
 ```bash
@@ -156,7 +180,7 @@ The suite covers:
 - Time-management behavior for fast clocks, `movetime`, side-to-move clocks,
   explicit `movestogo`, and unbounded fixed-depth searches
 - Single-thread determinism and thread-count reconfiguration
-- Threaded search node-limit, MultiPV, stop, quit, UCI info accounting, and
+- Threaded search node-limit, stop, quit, UCI info accounting, and
   ponderhit behavior
 - Threshold SEE behavior for captures and promotions
 - Staged move-picker ordering for bad captures after quiet moves
@@ -191,27 +215,30 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `1.4.1`.
+Current documented release: `1.4.2`.
 
-`1.4.1` is the first public release in the 1.4 series and includes the
-unreleased 1.4.0 TT/hash-move safety work.
+`1.4.2` adds the BMI2/PEXT x86-64 release asset, cross-platform `xtask`
+release builds, optional PGO asset builds, and removes the incomplete UCI
+`MultiPV` path. The single-PV search and handcrafted evaluation behavior remain
+aligned with `1.4.1`.
 
 - [Latest release](https://github.com/maelic13/lynx/releases/latest)
 - [All releases](https://github.com/maelic13/lynx/releases)
 
-Release-preparation checks for `1.4.1`:
+Release-preparation checks for `1.4.2`:
 
 ```bash
 cargo fmt --check
 cargo check
-cargo test
 cargo test --release
+cargo xtask build --arch pext --target x86_64-pc-windows-msvc
 ```
 
-The `1.4.1` work was also checked against the previous local baseline commit
-`11a7a07` with short Cutechess head-to-head smoke matches at `Threads=1` and
-`Threads=8`, plus local board and search benchmarks for quick speed sanity
-checks.
+The `1.4.2` release-preparation work was also checked with PEXT-specific
+release tests, start-position perft, internal `bench 13`, PGO/non-PGO speed
+comparisons, and short Cutechess smoke matches. On the local test machine, PGO
+improved bench NPS by about 4-6% depending on asset, and PEXT PGO was the
+fastest tested Lynx build.
 
 Release assets may include standalone executables for Windows, Linux, and
 Apple Silicon macOS. Intel macOS release assets are not published.
@@ -225,7 +252,7 @@ Use the most advanced binary your CPU supports:
 | --- | --- |
 | `x86-64` | You need the most compatible Intel/AMD 64-bit build. |
 | `avx2` | Your Intel/AMD CPU supports x86-64-v3/AVX2; this is the usual optimized x64 choice. |
-| `avx512` | Your Intel/AMD CPU supports x86-64-v4/AVX-512. |
+| `pext` | Your Intel/AMD CPU supports BMI2/PEXT; benchmark it against `avx2` on your CPU. |
 | `arm64` | You are on ARM64 Linux, Windows on ARM, or Apple Silicon macOS. |
 
 If unsure, use the plain `x86-64` or `arm64` asset for your operating system.

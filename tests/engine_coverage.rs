@@ -148,7 +148,6 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert!(options.set_option(&args(&["name", "Hash", "value", "256"])));
     assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "25"])));
     assert!(options.set_option(&args(&["name", "Threads", "value", "99"])));
-    assert!(options.set_option(&args(&["name", "MultiPV", "value", "3"])));
     assert!(options.set_option(&args(&["name", "Ponder", "value", "true"])));
     assert!(options.set_option(&args(&["name", "SyzygyPath", "value", "C:\\TB\\WDL"])));
     assert!(options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "6"])));
@@ -159,7 +158,6 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert_eq!(options.engine.hash_mb, 256);
     assert_eq!(options.engine.move_overhead, 25.0);
     assert_eq!(options.engine.threads, 99);
-    assert_eq!(options.engine.multi_pv, 3);
     assert!(options.engine.ponder);
     assert_eq!(options.engine.syzygy.path, "C:\\TB\\WDL");
     assert_eq!(options.engine.syzygy.probe_depth, 6);
@@ -184,13 +182,11 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert_eq!(options.engine.hash_mb, 256);
     assert_eq!(options.engine.move_overhead, 25.0);
     assert_eq!(options.engine.syzygy.path, "C:\\TB\\WDL");
-    assert_eq!(options.engine.multi_pv, 3);
 
     let names = SearchOptions::get_uci_options().join("\n");
     assert!(names.contains("option name Hash"));
     assert!(names.contains("option name Move Overhead"));
     assert!(names.contains("option name Threads type spin default 1 min 1 max 1024"));
-    assert!(names.contains("option name MultiPV type spin default 1 min 1 max 256"));
     assert!(names.contains("option name Clear Hash"));
     assert!(names.contains("option name Ponder type check default false"));
     assert!(names.contains("option name SyzygyPath type string default <empty>"));
@@ -206,7 +202,6 @@ fn search_options_invalid_setoption_values_preserve_previous_values() {
     options.set_option(&args(&["name", "Hash", "value", "128"]));
     options.set_option(&args(&["name", "Move", "Overhead", "value", "35"]));
     options.set_option(&args(&["name", "Threads", "value", "4"]));
-    options.set_option(&args(&["name", "MultiPV", "value", "2"]));
     options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "8"]));
     options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "5"]));
     options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "false"]));
@@ -215,7 +210,6 @@ fn search_options_invalid_setoption_values_preserve_previous_values() {
     assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "nan"])));
     assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "5001"])));
     assert!(options.set_option(&args(&["name", "Threads", "value", "bad"])));
-    assert!(options.set_option(&args(&["name", "MultiPV", "value", "bad"])));
     assert!(options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "bad"])));
     assert!(options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "bad"])));
     assert!(options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "maybe"])));
@@ -224,7 +218,6 @@ fn search_options_invalid_setoption_values_preserve_previous_values() {
     assert_eq!(options.engine.hash_mb, 128);
     assert_eq!(options.engine.move_overhead, 35.0);
     assert_eq!(options.engine.threads, 4);
-    assert_eq!(options.engine.multi_pv, 2);
     assert_eq!(options.engine.syzygy.probe_depth, 8);
     assert_eq!(options.engine.syzygy.probe_limit, 5);
     assert!(!options.engine.syzygy.fifty_move_rule);
@@ -254,11 +247,9 @@ fn search_options_clamp_syzygy_values_and_preserve_raw_path() {
     options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "250"]));
     options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "0"]));
     options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "maybe"]));
-    options.set_option(&args(&["name", "MultiPV", "value", "999"]));
 
     assert_eq!(options.engine.syzygy.probe_depth, 100);
     assert_eq!(options.engine.syzygy.probe_limit, 0);
-    assert_eq!(options.engine.multi_pv, 256);
     assert!(
         !options.engine.syzygy.fifty_move_rule,
         "invalid boolean value must leave the previous setting unchanged"

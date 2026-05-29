@@ -1,4 +1,6 @@
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(lynx_pext)");
+
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
     let mut build = cc::Build::new();

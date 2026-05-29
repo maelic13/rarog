@@ -65,11 +65,6 @@ enum TtWriteMode {
     Helper,
 }
 
-struct RootLine {
-    score: i32,
-    pv: Vec<Move>,
-}
-
 enum MovePicker {
     Full {
         scored: ScoredMoveList,
@@ -127,7 +122,6 @@ pub struct Searcher {
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
     tt_write_mode: TtWriteMode,
-    multi_pv: usize,
     syzygy_probe_depth: i32,
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
@@ -181,7 +175,6 @@ impl Default for Searcher {
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             tt_write_mode: TtWriteMode::Main,
-            multi_pv: 1,
             syzygy_probe_depth: 1,
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
@@ -503,7 +496,6 @@ impl Searcher {
         self.pondering = limits.ponder;
         self.ponderhit = false;
         self.limits = compute_runtime_limits(limits, engine_options, side_to_move, MAX_DEPTH);
-        self.multi_pv = engine_options.multi_pv.clamp(1, 256);
         self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
@@ -564,7 +556,7 @@ impl Searcher {
         }
 
         let best_rank = tb_moves.iter().map(|(_, rank, _)| *rank).max()?;
-        let preferred_move = if self.multi_pv <= 1 && probe.used_dtz && best_rank != 0 {
+        let preferred_move = if probe.used_dtz && best_rank != 0 {
             syzygy::probe_root(board, self.syzygy_50_move_rule)
                 .and_then(|probe| probe.best_move)
                 .and_then(|root_move| syzygy::legal_move_from_root_probe(board, root_move))
@@ -608,9 +600,6 @@ impl Searcher {
     ) -> SearchResult {
         self.root_moves.clear();
         self.root_moves.extend_from_slice(legal_moves);
-        if self.multi_pv > 1 {
-            return self.search_root_multipv(board, legal_moves, emit_info, poll);
-        }
         let mut bestmove = legal_moves[0];
         let mut pondermove = Move::NULL;
         let mut best_score = -INF_SCORE;
@@ -720,112 +709,6 @@ impl Searcher {
                         && (dynamic_soft_ms >= self.limits.hard_ms
                             || (stable_best_depths > 0 && last_score_drop <= 50)))
                 {
-                    break;
-                }
-            }
-        }
-
-        if pondermove.is_null() {
-            pondermove = self.ponder_from_tt(&board, bestmove);
-        }
-
-        SearchResult {
-            bestmove,
-            pondermove,
-            score: best_score,
-            depth: completed_depth,
-            nodes: self.nodes,
-            tb_hits: self.tb_hits,
-            elapsed_ms: self.start.elapsed().as_millis(),
-            exit: if self.quit {
-                SearchExit::Quit
-            } else {
-                SearchExit::Stop
-            },
-            ponderhit: self.ponderhit,
-        }
-    }
-
-    fn search_root_multipv<P: FnMut() -> SearchEvent + ?Sized>(
-        &mut self,
-        mut board: Board,
-        legal_moves: &[Move],
-        emit_info: bool,
-        poll: &mut P,
-    ) -> SearchResult {
-        let mut bestmove = legal_moves[0];
-        let mut pondermove = Move::NULL;
-        let mut best_score = -INF_SCORE;
-        let mut completed_depth = 0;
-        let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
-
-        for depth in 1..=max_depth {
-            let mut lines = Vec::with_capacity(legal_moves.len());
-            for &mv in legal_moves {
-                if self.check_stop(poll) {
-                    break;
-                }
-
-                let moving_piece = board.moving_piece(mv);
-                self.stack_moves[0] = mv;
-                self.stack_pieces[0] = moving_piece;
-                board.make_move_unchecked(mv);
-                self.tt.prefetch(board.hash);
-                let score = -self.negamax(
-                    &mut board,
-                    depth as i32 - 1,
-                    -INF_SCORE,
-                    INF_SCORE,
-                    1,
-                    true,
-                    true,
-                    Move::NULL,
-                    false,
-                    poll,
-                );
-                board.unmake_move(mv);
-                self.stack_moves[0] = Move::NULL;
-                self.stack_pieces[0] = Piece::Pawn;
-
-                if self.stopped || self.quit {
-                    break;
-                }
-
-                let mut pv = Vec::with_capacity(MAX_PLY);
-                pv.push(mv);
-                let child_len = self.pv_len[1].min(MAX_PLY);
-                for next_ply in 1..child_len {
-                    let child = self.pv_table[1][next_ply];
-                    if child.is_null() {
-                        break;
-                    }
-                    pv.push(child);
-                }
-                lines.push(RootLine { score, pv });
-            }
-
-            if self.stopped || self.quit || lines.is_empty() {
-                break;
-            }
-
-            lines.sort_by(|a, b| b.score.cmp(&a.score));
-            let best = &lines[0];
-            best_score = best.score;
-            bestmove = best.pv[0];
-            pondermove = best.pv.get(1).copied().unwrap_or(Move::NULL);
-            completed_depth = depth;
-            self.set_root_pv(&best.pv);
-
-            if emit_info {
-                let pv_count = self.multi_pv.min(lines.len());
-                for (index, line) in lines.iter().take(pv_count).enumerate() {
-                    self.send_info_line(depth, line.score, Some(index + 1), &line.pv);
-                }
-            }
-
-            if !self.pondering {
-                let elapsed_ms = self.elapsed_ms();
-                if elapsed_ms >= self.limits.hard_ms || elapsed_ms >= self.limits.soft_ms {
                     break;
                 }
             }
@@ -2350,10 +2233,10 @@ impl Searcher {
             .copied()
             .filter(|mv| !mv.is_null())
             .collect::<Vec<_>>();
-        self.send_info_line(depth, score, None, &pv);
+        self.send_info_line(depth, score, &pv);
     }
 
-    fn send_info_line(&self, depth: usize, score: i32, multipv: Option<usize>, pv: &[Move]) {
+    fn send_info_line(&self, depth: usize, score: i32, pv: &[Move]) {
         let elapsed_ms = self.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
@@ -2367,44 +2250,18 @@ impl Searcher {
             .map(|mv| mv.to_string())
             .collect::<Vec<_>>()
             .join(" ");
-        if let Some(multipv) = multipv {
-            println!(
-                "info depth {} seldepth {} multipv {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
-                depth,
-                self.seldepth,
-                multipv,
-                format_score(score),
-                nodes,
-                nps,
-                self.hashfull(),
-                tb_hits,
-                elapsed_ms,
-                pv
-            );
-        } else {
-            println!(
-                "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
-                depth,
-                self.seldepth,
-                format_score(score),
-                nodes,
-                nps,
-                self.hashfull(),
-                tb_hits,
-                elapsed_ms,
-                pv
-            );
-        }
-    }
-
-    fn set_root_pv(&mut self, pv: &[Move]) {
-        self.pv_len[0] = pv.len().min(MAX_PLY);
-        for (index, mv) in pv.iter().take(MAX_PLY).copied().enumerate() {
-            self.pv_table[0][index] = mv;
-        }
-        for index in self.pv_len[0]..MAX_PLY {
-            self.pv_table[0][index] = Move::NULL;
-        }
+        println!(
+            "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
+            depth,
+            self.seldepth,
+            format_score(score),
+            nodes,
+            nps,
+            self.hashfull(),
+            tb_hits,
+            elapsed_ms,
+            pv
+        );
     }
 
     fn ponder_from_tt(&self, root: &Board, bestmove: Move) -> Move {

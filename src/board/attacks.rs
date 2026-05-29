@@ -1,8 +1,8 @@
 /// Attack tables for all piece types.
 ///
 /// Non-sliding pieces (pawn, knight, king) are stored as simple lookup arrays.
-/// Sliding pieces (bishop, rook, queen) use magic bitboards, initialized at
-/// startup via `LazyLock`.
+/// Sliding pieces (bishop, rook, queen) use either magic bitboards or a
+/// compile-time PEXT table layout, initialized at startup via `LazyLock`.
 use std::sync::LazyLock;
 
 use super::bitboard::Bitboard;
@@ -18,8 +18,8 @@ pub struct AttackTables {
     pub pawn_attacks: [[Bitboard; 64]; 2],
     pub knight_attacks: [Bitboard; 64],
     pub king_attacks: [Bitboard; 64],
-    bishop: [MagicEntry; 64],
-    rook: [MagicEntry; 64],
+    bishop: [SliderEntry; 64],
+    rook: [SliderEntry; 64],
     bishop_table: Vec<Bitboard>,
     rook_table: Vec<Bitboard>,
 }
@@ -27,11 +27,47 @@ pub struct AttackTables {
 pub static ATTACKS: LazyLock<AttackTables> = LazyLock::new(AttackTables::init);
 
 #[derive(Copy, Clone)]
-struct MagicEntry {
+struct SliderEntry {
     mask: u64,
-    magic: u64,
-    shift: u32,
     offset: usize,
+    #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+    magic: u64,
+    #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+    shift: u32,
+}
+
+impl SliderEntry {
+    #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+    const fn new(mask: u64, offset: usize) -> Self {
+        Self { mask, offset }
+    }
+
+    #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+    const fn new(mask: u64, magic: u64, shift: u32, offset: usize) -> Self {
+        Self {
+            mask,
+            offset,
+            magic,
+            shift,
+        }
+    }
+
+    const fn empty() -> Self {
+        #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+        {
+            Self { mask: 0, offset: 0 }
+        }
+
+        #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+        {
+            Self {
+                mask: 0,
+                offset: 0,
+                magic: 0,
+                shift: 0,
+            }
+        }
+    }
 }
 
 impl AttackTables {
@@ -57,15 +93,33 @@ impl AttackTables {
     #[inline(always)]
     pub fn bishop(&self, sq: Square, occ: Bitboard) -> Bitboard {
         let e = unsafe { self.bishop.get_unchecked(sq.index()) };
-        let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
-        unsafe { *self.bishop_table.get_unchecked(idx) }
+        #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+        {
+            let idx = e.offset + pext_index(occ.0, e.mask);
+            return unsafe { *self.bishop_table.get_unchecked(idx) };
+        }
+
+        #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+        {
+            let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
+            unsafe { *self.bishop_table.get_unchecked(idx) }
+        }
     }
 
     #[inline(always)]
     pub fn rook(&self, sq: Square, occ: Bitboard) -> Bitboard {
         let e = unsafe { self.rook.get_unchecked(sq.index()) };
-        let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
-        unsafe { *self.rook_table.get_unchecked(idx) }
+        #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+        {
+            let idx = e.offset + pext_index(occ.0, e.mask);
+            return unsafe { *self.rook_table.get_unchecked(idx) };
+        }
+
+        #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+        {
+            let idx = e.offset + (((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift) as usize;
+            unsafe { *self.rook_table.get_unchecked(idx) }
+        }
     }
 
     #[inline(always)]
@@ -82,62 +136,61 @@ impl AttackTables {
         let knight_attacks = Self::init_knight_attacks();
         let king_attacks = Self::init_king_attacks();
 
-        // Bishop magic tables
-        let mut bishop_entries: [MagicEntry; 64] = std::array::from_fn(|_| MagicEntry {
-            mask: 0,
-            magic: 0,
-            shift: 0,
-            offset: 0,
-        });
+        // Bishop slider tables
+        let mut bishop_entries: [SliderEntry; 64] = std::array::from_fn(|_| SliderEntry::empty());
         let mut bishop_table: Vec<Bitboard> = Vec::new();
+        #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
         let mut rng = Rng::new(0x1234_5678_9ABC_DEF0);
         for sq in 0..64 {
             let sq = Square(sq as u8);
             let mask = bishop_mask(sq);
             let n = mask.count_ones() as u32;
+            #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
             let shift = 64 - n;
             let size = 1usize << n;
             let offset = bishop_table.len();
             bishop_table.resize(offset + size, Bitboard::EMPTY);
-            let magic = find_magic(
-                mask,
-                shift,
-                false,
-                sq,
-                &mut rng,
-                &mut bishop_table[offset..],
-            );
-            bishop_entries[sq.index()] = MagicEntry {
-                mask,
-                magic,
-                shift,
-                offset,
-            };
+            #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+            {
+                init_pext_table(mask, false, sq, &mut bishop_table[offset..]);
+                bishop_entries[sq.index()] = SliderEntry::new(mask, offset);
+            }
+            #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+            {
+                let magic = find_magic(
+                    mask,
+                    shift,
+                    false,
+                    sq,
+                    &mut rng,
+                    &mut bishop_table[offset..],
+                );
+                bishop_entries[sq.index()] = SliderEntry::new(mask, magic, shift, offset);
+            }
         }
 
-        // Rook magic tables
-        let mut rook_entries: [MagicEntry; 64] = std::array::from_fn(|_| MagicEntry {
-            mask: 0,
-            magic: 0,
-            shift: 0,
-            offset: 0,
-        });
+        // Rook slider tables
+        let mut rook_entries: [SliderEntry; 64] = std::array::from_fn(|_| SliderEntry::empty());
         let mut rook_table: Vec<Bitboard> = Vec::new();
         for sq in 0..64 {
             let sq = Square(sq as u8);
             let mask = rook_mask(sq);
             let n = mask.count_ones() as u32;
+            #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
             let shift = 64 - n;
             let size = 1usize << n;
             let offset = rook_table.len();
             rook_table.resize(offset + size, Bitboard::EMPTY);
-            let magic = find_magic(mask, shift, true, sq, &mut rng, &mut rook_table[offset..]);
-            rook_entries[sq.index()] = MagicEntry {
-                mask,
-                magic,
-                shift,
-                offset,
-            };
+            #[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+            {
+                init_pext_table(mask, true, sq, &mut rook_table[offset..]);
+                rook_entries[sq.index()] = SliderEntry::new(mask, offset);
+            }
+            #[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
+            {
+                let magic = find_magic(mask, shift, true, sq, &mut rng, &mut rook_table[offset..]);
+                rook_entries[sq.index()] = SliderEntry::new(mask, magic, shift, offset);
+            }
         }
 
         Self {
@@ -337,12 +390,45 @@ fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
     att
 }
 
+#[cfg(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64")))]
+fn init_pext_table(mask: u64, is_rook: bool, sq: Square, table: &mut [Bitboard]) {
+    let size = 1usize << mask.count_ones();
+    debug_assert_eq!(table.len(), size);
+
+    let mut occ = 0u64;
+    loop {
+        let idx = pext_index(occ, mask);
+        table[idx] = Bitboard(if is_rook {
+            rook_attacks_slow(sq, occ)
+        } else {
+            bishop_attacks_slow(sq, occ)
+        });
+        occ = occ.wrapping_sub(mask) & mask;
+        if occ == 0 {
+            break;
+        }
+    }
+}
+
+#[cfg(all(lynx_pext, target_arch = "x86_64"))]
+#[inline(always)]
+fn pext_index(occ: u64, mask: u64) -> usize {
+    unsafe { std::arch::x86_64::_pext_u64(occ, mask) as usize }
+}
+
+#[cfg(all(lynx_pext, target_arch = "x86"))]
+#[inline(always)]
+fn pext_index(occ: u64, mask: u64) -> usize {
+    unsafe { std::arch::x86::_pext_u64(occ, mask) as usize }
+}
+
 // -----------------------------------------------------------------------
 // Magic finding
 // -----------------------------------------------------------------------
 
 /// Find a magic number for `sq` with the given `mask` / `shift`.
 /// Fills `table[0..size]` with the correct attack bitboards on success.
+#[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
 fn find_magic(
     mask: u64,
     shift: u32,
@@ -408,8 +494,10 @@ fn find_magic(
 // splitmix64 PRNG (sparse variant) — same as basilisk
 // -----------------------------------------------------------------------
 
+#[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
 struct Rng(u64);
 
+#[cfg(not(all(lynx_pext, any(target_arch = "x86", target_arch = "x86_64"))))]
 impl Rng {
     fn new(seed: u64) -> Self {
         Self(seed)
