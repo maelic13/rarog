@@ -2,6 +2,33 @@
 
 All notable changes to Lynx are documented in this file.
 
+## [1.4.2] - 2026-05-29
+
+Release focused on CPU-specific build assets, PGO release builds, and removing
+the incomplete MultiPV analysis path while keeping the 1.4.1 single-PV
+search/eval behavior intact.
+
+### Changed
+
+- Replaced GitHub AVX-512 release assets with BMI2/PEXT x86-64 assets.
+- Switched release-asset construction to the cross-platform `cargo xtask build`
+  helper for base x86-64, AVX2, PEXT, and ARM64 builds.
+- Compacted PEXT slider metadata so PEXT builds no longer carry unused magic
+  multiplier fields.
+
+### Removed
+
+- Removed UCI `MultiPV` support and the sequential MultiPV root-search path.
+
+### Added
+
+- Added a compile-time PEXT sliding-attack table path enabled with
+  `--cfg lynx_pext` and BMI2 code generation.
+- Added a runtime BMI2 check for PEXT builds so users get a clear error instead
+  of an illegal-instruction crash on unsupported CPUs.
+- Added optional PGO release builds through `cargo xtask build --arch <asset>
+  --pgo`.
+
 ## [1.4.1] - 2026-05-28
 
 Patch release combining the unreleased 1.4.0 TT-move safety work with search
