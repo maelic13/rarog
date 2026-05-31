@@ -63,7 +63,6 @@ pub enum GameResult {
     Draw,
 }
 
-/// The chess board.  Square A1 = 0, H8 = 63 (rank-major, little-endian).
 pub struct Board {
     /// `pieces[color * 6 + piece_type]`
     pieces: [Bitboard; 12],

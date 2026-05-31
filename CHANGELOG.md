@@ -5,6 +5,28 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.0.1] - 2026-06-01
+
+Patch release focused on search improvements for higher playing strength.
+
+### Added
+
+- Added Internal Iterative Reduction (IIR) for PV nodes when the TT move is
+  completely absent (previously IIR was restricted to non-PV nodes).
+- Added negative history updates for good captures (SEE ≥ 0) that were searched
+  before a beta cutoff, consistent with existing treatment of bad captures and
+  quiet moves.
+- Added correction history updates for beta-cutoff nodes (Lower bound) when the
+  search score exceeds the static evaluation, and for fail-low nodes (Upper bound)
+  when the search score falls below the static evaluation. Previously correction
+  history was only updated on PV/Exact nodes.
+
+### Changed
+
+- Unified capture history bonus at beta cutoff to use `history_bonus(depth)`
+  (same formula as quiet history) instead of the flat `depth * depth` previously
+  used for captures.
+
 ## [2.0.0] - 2026-05-29
 
 ### Changed

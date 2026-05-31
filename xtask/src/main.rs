@@ -3,9 +3,12 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 const RUSTFLAGS_SEPARATOR: &str = "\x1f";
+const PGO_TRAINING_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -333,14 +336,52 @@ fn run_training_bench(binary: &Path, raw_dir: &Path, depth: u16) -> Result<()> {
         .stdout
         .take()
         .ok_or_else(|| "failed to open engine stdout".to_string())?;
-    let reader = BufReader::new(stdout);
+    let (line_tx, line_rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if line_tx.send(line).is_err() {
+                break;
+            }
+        }
+    });
+
+    let deadline = Instant::now() + PGO_TRAINING_TIMEOUT;
     let mut saw_summary = false;
-    for line in reader.lines() {
-        let line = line.map_err(|err| format!("failed reading engine output: {err}"))?;
-        println_flush(format_args!("{line}"));
-        if line.starts_with("Nodes/second") {
-            saw_summary = true;
-            break;
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            kill_child(&mut child);
+            return Err(format!(
+                "training bench timed out after {} seconds",
+                PGO_TRAINING_TIMEOUT.as_secs()
+            ));
+        }
+
+        match line_rx.recv_timeout(remaining.min(Duration::from_millis(250))) {
+            Ok(Ok(line)) => {
+                println_flush(format_args!("{line}"));
+                if line.starts_with("Nodes/second") {
+                    saw_summary = true;
+                    break;
+                }
+            }
+            Ok(Err(err)) => {
+                kill_child(&mut child);
+                return Err(format!("failed reading engine output: {err}"));
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|err| format!("failed checking engine status: {err}"))?
+                {
+                    if status.success() {
+                        break;
+                    }
+                    return Err(format!("training bench exited with status {status}"));
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
 
@@ -348,9 +389,7 @@ fn run_training_bench(binary: &Path, raw_dir: &Path, depth: u16) -> Result<()> {
         let _ = writeln!(stdin, "quit");
     }
 
-    let status = child
-        .wait()
-        .map_err(|err| format!("failed waiting for engine: {err}"))?;
+    let status = wait_child_with_timeout(&mut child, Duration::from_secs(10))?;
     if !status.success() {
         return Err(format!("training bench exited with status {status}"));
     }
@@ -358,6 +397,33 @@ fn run_training_bench(binary: &Path, raw_dir: &Path, depth: u16) -> Result<()> {
         return Err("training bench did not produce a bench summary".to_string());
     }
     Ok(())
+}
+
+fn wait_child_with_timeout(
+    child: &mut Child,
+    timeout: Duration,
+) -> Result<std::process::ExitStatus> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|err| format!("failed checking engine status: {err}"))?
+        {
+            return Ok(status);
+        }
+        if Instant::now() >= deadline {
+            kill_child(child);
+            return child
+                .wait()
+                .map_err(|err| format!("failed waiting for killed engine: {err}"));
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+}
+
+fn kill_child(child: &mut Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 fn merge_profiles(llvm_profdata: &Path, raw_dir: &Path, profdata: &Path) -> Result<()> {

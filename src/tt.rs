@@ -50,6 +50,11 @@ impl TtEntry {
     }
 
     #[inline(always)]
+    pub fn is_pv_node(self) -> bool {
+        (self.flag_age >> 2) & 1 != 0
+    }
+
+    #[inline(always)]
     pub fn best_move(self) -> Option<Move> {
         (self.mv != 0).then_some(Move(self.mv))
     }
@@ -209,15 +214,33 @@ impl TranspositionTable {
     pub fn clear(&mut self) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                table.clusters.fill(LocalCluster::default());
+                let clusters = table.clusters.as_mut_slice();
+                let num_threads =
+                    std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+                let chunk_size = (clusters.len() / num_threads).max(1);
+                std::thread::scope(|s| {
+                    for chunk in clusters.chunks_mut(chunk_size) {
+                        s.spawn(|| chunk.fill(LocalCluster::default()));
+                    }
+                });
                 table.age = 0;
             }
             TtStorage::Shared(table) => {
-                for cluster in table.clusters.iter() {
-                    for entry in &cluster.entries {
-                        entry.clear();
+                let clusters = table.clusters.as_ref();
+                let num_threads =
+                    std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+                let chunk_size = (clusters.len() / num_threads).max(1);
+                std::thread::scope(|s| {
+                    for chunk in clusters.chunks(chunk_size) {
+                        s.spawn(move || {
+                            for cluster in chunk {
+                                for entry in &cluster.entries {
+                                    entry.clear();
+                                }
+                            }
+                        });
                     }
-                }
+                });
                 table.age.store(0, Ordering::Relaxed);
             }
         }
@@ -226,13 +249,13 @@ impl TranspositionTable {
     pub fn new_search(&mut self) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                table.age = table.age.wrapping_add(4) & 0xFC;
+                table.age = table.age.wrapping_add(8) & 0xF8;
             }
             TtStorage::Shared(table) => {
                 let age = table.age.load(Ordering::Relaxed);
                 table
                     .age
-                    .store(age.wrapping_add(4) & 0xFC, Ordering::Relaxed);
+                    .store(age.wrapping_add(8) & 0xF8, Ordering::Relaxed);
             }
         }
     }
@@ -275,13 +298,14 @@ impl TranspositionTable {
         mv: Move,
         ply: usize,
         static_eval: i32,
+        is_pv: bool,
     ) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                store_local(table, key, depth, score, bound, mv, ply, static_eval);
+                store_local(table, key, depth, score, bound, mv, ply, static_eval, is_pv);
             }
             TtStorage::Shared(table) => {
-                store_shared(table, key, depth, score, bound, mv, ply, static_eval);
+                store_shared(table, key, depth, score, bound, mv, ply, static_eval, is_pv);
             }
         }
     }
@@ -343,7 +367,7 @@ fn prefetch_ptr<T>(ptr: *const T) {
 
 #[inline(always)]
 fn current_entry(entry: TtEntry, age: u8) -> bool {
-    entry.is_occupied() && (entry.flag_age & 0xFC) == age
+    entry.is_occupied() && (entry.flag_age & 0xF8) == age
 }
 
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {
@@ -444,6 +468,7 @@ fn store_local(
     mv: Move,
     ply: usize,
     static_eval: i32,
+    is_pv: bool,
 ) {
     let key16 = (key >> 48) as u16;
     let cluster = &mut table.clusters[key as usize & table.mask];
@@ -467,7 +492,7 @@ fn store_local(
     if replace.key16 == key16
         && bound != Bound::Exact
         && depth < replace.depth as i32 - 3
-        && (replace.flag_age & 0xFC) == table.age
+        && (replace.flag_age & 0xF8) == table.age
     {
         return;
     }
@@ -487,6 +512,7 @@ fn store_local(
         ply,
         static_eval,
         table.age,
+        is_pv,
     );
 }
 
@@ -500,6 +526,7 @@ fn store_shared(
     mv: Move,
     ply: usize,
     static_eval: i32,
+    is_pv: bool,
 ) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = (key >> 48) as u16;
@@ -529,7 +556,7 @@ fn store_shared(
     if replace_key == key
         && bound != Bound::Exact
         && depth < replace_entry.depth as i32 - 3
-        && (replace_entry.flag_age & 0xFC) == age
+        && (replace_entry.flag_age & 0xF8) == age
     {
         return;
     }
@@ -551,6 +578,7 @@ fn store_shared(
             ply,
             static_eval,
             age,
+            is_pv,
         ),
     );
 }
@@ -565,6 +593,7 @@ fn make_entry(
     ply: usize,
     static_eval: i32,
     age: u8,
+    is_pv: bool,
 ) -> TtEntry {
     TtEntry {
         key16,
@@ -572,7 +601,7 @@ fn make_entry(
         static_eval: static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         mv,
         depth: depth.clamp(-1, i8::MAX as i32) as i8,
-        flag_age: age | bound as u8,
+        flag_age: age | bound as u8 | ((is_pv as u8) << 2),
     }
 }
 
@@ -581,6 +610,6 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
     if !entry.is_occupied() {
         return i32::MIN;
     }
-    let age_delta = age.wrapping_sub(entry.flag_age & 0xFC) & 0xFC;
+    let age_delta = age.wrapping_sub(entry.flag_age & 0xF8) & 0xF8;
     entry.depth as i32 - age_delta as i32 / 2
 }

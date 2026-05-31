@@ -13,6 +13,7 @@ use crate::tt::TranspositionTable;
 pub(crate) const STOP_NONE: u8 = 0;
 pub(crate) const STOP_SEARCH: u8 = 1;
 pub(crate) const STOP_QUIT: u8 = 2;
+const SEARCH_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 
 pub(crate) struct SharedSearchState {
     pub stop_state: AtomicU8,
@@ -119,6 +120,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
     let (sender, receiver) = mpsc::channel();
     let handle = thread::Builder::new()
         .name(format!("rarog-search-{index}"))
+        .stack_size(SEARCH_THREAD_STACK_SIZE)
         .spawn(move || {
             let mut worker = Searcher::worker_default();
             while let Ok(message) = receiver.recv() {

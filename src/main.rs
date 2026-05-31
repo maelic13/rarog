@@ -6,6 +6,8 @@ use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::capitalize_first_letter;
 use rarog::uci_protocol::UciProtocol;
 
+const ENGINE_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
+
 fn main() {
     if !pext_build_is_supported() {
         eprintln!(
@@ -25,7 +27,11 @@ fn main() {
     let commands = EngineCommandQueue::default();
     let control = Arc::new(EngineControl::default());
     let mut engine = Engine::new(commands.clone(), Arc::clone(&control));
-    let engine_thread = thread::spawn(move || engine.start());
+    let engine_thread = thread::Builder::new()
+        .name("rarog-engine".to_string())
+        .stack_size(ENGINE_THREAD_STACK_SIZE)
+        .spawn(move || engine.start())
+        .expect("Engine thread failed to start.");
 
     UciProtocol::new(commands, control).uci_loop();
     engine_thread.join().expect("Engine thread failed.");
