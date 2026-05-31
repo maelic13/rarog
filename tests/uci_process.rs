@@ -196,6 +196,46 @@ fn ponderhit_after_spent_movetime_does_not_restart_search_clock() {
 }
 
 #[test]
+fn movetime_100_completes_at_least_one_depth() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", Duration::from_secs(15));
+    session.send("position startpos");
+    session.send("go movetime 100");
+
+    let lines = session.collect_until_line_containing("bestmove", Duration::from_secs(2));
+
+    assert!(
+        lines.iter().any(|line| line.starts_with("info depth 1 ")),
+        "short movetime search should complete depth 1 before bestmove: {lines:?}"
+    );
+    assert!(
+        lines
+            .last()
+            .is_some_and(|line| line.starts_with("bestmove ")),
+        "search should finish with bestmove: {lines:?}"
+    );
+    session.quit();
+}
+
+#[test]
+fn long_endgame_search_does_not_overflow_engine_thread_stack() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", Duration::from_secs(15));
+    session.send("position fen 8/2Pq4/5K2/7k/8/6Q1/8/8 b - - 0 80");
+    session.send("go movetime 100");
+
+    let lines = session.collect_until_line_containing("bestmove", Duration::from_secs(2));
+
+    assert!(
+        lines.iter().any(|line| line.starts_with("info depth ")),
+        "long queen endgame should search and return normally: {lines:?}"
+    );
+    session.quit();
+}
+
+#[test]
 fn threaded_go_nodes_returns_bestmove_and_reports_nodes() {
     let mut session = UciSession::start();
     session.send("uci");

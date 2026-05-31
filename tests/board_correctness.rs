@@ -857,6 +857,19 @@ fn fifty_move_rule_triggers_can_declare_draw() {
     assert!(board.can_declare_draw(), "50-move rule must trigger");
 }
 
+#[test]
+fn board_history_grows_past_long_reversible_game() {
+    let mut board = Board::from_fen("8/8/8/8/8/8/8/K5k1 w - - 0 1").expect("valid FEN");
+    let cycle = ["a1a2", "g1g2", "a2a1", "g2g1"];
+
+    for ply in 0..600 {
+        let mv = cycle[ply % cycle.len()];
+        assert!(board.play_uci(mv), "move {mv} should be legal at ply {ply}");
+    }
+
+    assert_eq!(board.side_to_move(), Color::White);
+}
+
 // -----------------------------------------------------------------------
 // Clock tracking
 // -----------------------------------------------------------------------

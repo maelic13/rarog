@@ -4,7 +4,7 @@ use crate::board::{Move, Piece};
 
 pub const HISTORY_MAX: i32 = 16_384;
 pub const CAP_HISTORY_MAX: i32 = 16_384;
-pub const CORR_SIZE: usize = 16_384;
+pub const CORR_SIZE: usize = 65_536;
 pub const CONT_SIZE: usize = 6 * 64 * 6 * 64;
 pub const LOW_PLY_HISTORY_SIZE: usize = 8;
 pub const PAWN_HISTORY_SIZE: usize = 4_096;

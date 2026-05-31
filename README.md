@@ -238,7 +238,12 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `2.0.0`.
+Current documented release: `2.0.1`.
+
+`2.0.1` is a patch release delivering search improvements for higher playing
+strength. Changes include IIR for PV nodes, negative history updates for good
+captures searched before a beta cutoff, correction history updates for Lower and
+Upper bound nodes, and a unified capture history bonus formula.
 
 `2.0.0` renames the project from Lynx to Rarog. The UCI engine identity,
 Cargo package, executable names, release assets, repository metadata, and
@@ -248,7 +253,7 @@ documentation now use the Rarog name. Lynx releases remain available through
 - [Latest release](https://github.com/maelic13/rarog/releases/latest)
 - [All releases](https://github.com/maelic13/rarog/releases)
 
-Release-preparation checks for `2.0.0`:
+Release-preparation checks for `2.0.1`:
 
 ```bash
 cargo fmt --check
