@@ -194,6 +194,8 @@ The suite covers:
 - Insufficient-material draw handling at search root and interior nodes
 - Legal `bestmove` reporting from root draw positions where legal moves still
   exist
+- Quiescence maximum-ply protection and regression coverage for
+  tournament-derived illegal-move artifacts that were caused by a search panic
 - Search limits, invalid limit parsing, and stop/quit behavior
 - UCI `go searchmoves` root filtering and `go mate` depth conversion
 - Time-management behavior for fast clocks, `movetime`, side-to-move clocks,
@@ -238,7 +240,14 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `2.0.1`.
+Current documented release: `2.0.2`.
+
+`2.0.2` is a tournament-stability patch. It fixes a rare quiescence-search
+panic where a deep tactical/check sequence could reach the final fixed
+search-stack slot and crash before reporting `bestmove`; some GUIs reported
+that crash as an illegal-move artifact. The release also adds direct regression
+coverage for the maximum-ply guard and for the two Little Blitzer artifact
+positions.
 
 `2.0.1` is a patch release delivering search improvements for higher playing
 strength. Changes include IIR for PV nodes, negative history updates for good
@@ -253,7 +262,7 @@ documentation now use the Rarog name. Lynx releases remain available through
 - [Latest release](https://github.com/maelic13/rarog/releases/latest)
 - [All releases](https://github.com/maelic13/rarog/releases)
 
-Release-preparation checks for `2.0.1`:
+Release-preparation checks for `2.0.2`:
 
 ```bash
 cargo fmt --check

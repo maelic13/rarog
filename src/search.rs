@@ -1502,6 +1502,9 @@ impl Searcher {
         if self.check_stop(poll) {
             return 0;
         }
+        if ply >= MAX_PLY - 1 {
+            return self.corrected_eval(board, MAX_PLY - 1);
+        }
         self.pv_len[ply] = ply;
         self.seldepth = self.seldepth.max(ply);
 
@@ -2505,6 +2508,25 @@ mod tests {
         });
 
         assert_eq!(score, -MATE_SCORE);
+    }
+
+    #[test]
+    fn quiescence_stops_before_ply_stack_overflow() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
+        let before = board.to_fen();
+
+        let score = searcher.quiescence(
+            &mut board,
+            -INF_SCORE,
+            INF_SCORE,
+            MAX_PLY - 1,
+            0,
+            &mut || SearchEvent::None,
+        );
+
+        assert_eq!(board.to_fen(), before);
+        assert!(score.abs() < INF_SCORE);
     }
 
     #[test]
