@@ -5,6 +5,39 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.1.0] - 2026-06-01
+
+Feature release focused on threat-aware search and draw/TT safety.
+
+### Added
+
+- Added cached board threat state for piece-specific attacks, attack unions,
+  direct checking squares, pinned pieces, and pinners.
+- Added cached direct-check detection for search ordering and pruning exception
+  paths while keeping exact `gives_check` for correctness-sensitive cases.
+- Added threat-indexed quiet history and destination-threat-indexed capture
+  history.
+- Added rule-50-aware transposition-table hashes using 16 halfmove-clock
+  buckets while preserving the normal position hash for legal identity and
+  repetition.
+- Added conservative upcoming-repetition detection for legal reversible
+  non-pawn moves that can immediately repeat a prior same-side position.
+
+### Changed
+
+- Search now uses rule-50 bucketed TT probe/store/prefetch keys.
+- Search raises alpha to the draw score at non-root nodes when an upcoming
+  repetition is detected.
+- Hot pruning/order paths use cached direct-check tests where discovered-check
+  exactness is not required.
+
+### Tests
+
+- Added board-cache tests for threat state, pins/pinners, direct checks,
+  promotions, and make/unmake consistency.
+- Added tests for upcoming repetition detection and rule-50 TT bucket
+  isolation.
+
 ## [2.0.2] - 2026-06-01
 
 Patch release focused on tournament stability after two Little Blitzer
