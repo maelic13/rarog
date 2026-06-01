@@ -578,6 +578,31 @@ fn search_returns_legal_move_in_root_fifty_move_claim_position() {
 }
 
 #[test]
+fn search_returns_legal_moves_from_little_blitzer_illegal_artifacts() {
+    for fen in [
+        "4k3/p5QR/1p2p3/6p1/8/PP1q4/8/2K5 b - - 4 0",
+        "8/6R1/5P1k/8/2PB1KP1/r7/3r4/8 w - - 7 0",
+    ] {
+        let board = Board::from_fen(fen).expect("valid artifact FEN");
+        let legal_moves = board.generate_legal_movelist();
+        let mut searcher = Searcher::default();
+        let mut options = SearchOptions::default();
+        options.limits.depth = 4.0;
+
+        let result = searcher.search(board, &options, false, || SearchEvent::None);
+
+        assert_ne!(result.bestmove, Move::NULL, "{fen}");
+        assert!(
+            legal_moves
+                .iter()
+                .any(|&legal_move| legal_move.same_uci_move(result.bestmove)),
+            "{} must be legal for {fen}",
+            result.bestmove
+        );
+    }
+}
+
+#[test]
 fn search_respects_searchmoves_root_filter() {
     let board = Board::default();
     let forced = board.parse_move("a2a3").expect("legal root move");

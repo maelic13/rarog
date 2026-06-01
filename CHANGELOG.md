@@ -5,6 +5,26 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.0.2] - 2026-06-01
+
+Patch release focused on tournament stability after two Little Blitzer
+illegal-move artifacts revealed a search panic instead of an actually illegal
+reported move.
+
+### Fixed
+
+- Fixed a rare quiescence-search panic when a deep tactical/check sequence
+  reached the final fixed search-stack slot. Quiescence now stops before
+  touching out-of-range PV/history stacks and returns a static corrected
+  evaluation at the maximum ply, matching the main search's maximum-ply
+  behavior.
+
+### Added
+
+- Added a direct regression test for the quiescence maximum-ply guard.
+- Added regression coverage for the two Little Blitzer artifact positions that
+  verifies search returns legal root moves.
+
 ## [2.0.1] - 2026-06-01
 
 Patch release focused on search improvements for higher playing strength.
