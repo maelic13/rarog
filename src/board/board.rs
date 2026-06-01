@@ -7,7 +7,7 @@ use std::fmt;
 
 use super::attacks::ATTACKS;
 use super::bitboard::Bitboard;
-use super::movegen::generate_legal_moves;
+use super::movegen::{between, generate_legal_moves};
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -86,6 +86,11 @@ pub struct Board {
     minor_hash: u64,
     non_pawn_hash: [u64; 2],
     checkers: Bitboard,
+    piece_threats: [[Bitboard; 6]; 2],
+    all_threats: [Bitboard; 2],
+    checking_squares: [[Bitboard; 6]; 2],
+    pinned: [Bitboard; 2],
+    pinners: [Bitboard; 2],
     history: Vec<UnmakeInfo>,
 }
 
@@ -108,6 +113,11 @@ impl Clone for Board {
             minor_hash: self.minor_hash,
             non_pawn_hash: self.non_pawn_hash,
             checkers: self.checkers,
+            piece_threats: self.piece_threats,
+            all_threats: self.all_threats,
+            checking_squares: self.checking_squares,
+            pinned: self.pinned,
+            pinners: self.pinners,
             history,
         }
     }
@@ -138,6 +148,11 @@ impl Board {
             minor_hash: 0,
             non_pawn_hash: [0; 2],
             checkers: Bitboard::EMPTY,
+            piece_threats: [[Bitboard::EMPTY; 6]; 2],
+            all_threats: [Bitboard::EMPTY; 2],
+            checking_squares: [[Bitboard::EMPTY; 6]; 2],
+            pinned: [Bitboard::EMPTY; 2],
+            pinners: [Bitboard::EMPTY; 2],
             history: Vec::with_capacity(128),
         };
 
@@ -256,7 +271,7 @@ impl Board {
         if let Some(ep_sq) = ep_candidate {
             board.set_legal_ep_square(ep_sq)?;
         }
-        board.checkers = board.calculate_checkers();
+        board.refresh_tactical_state();
         Ok(board)
     }
 
@@ -387,6 +402,31 @@ impl Board {
     #[inline(always)]
     pub fn color_on(&self, sq: Square) -> Option<Color> {
         self.piece_at(sq).map(|(color, _)| color)
+    }
+
+    #[inline(always)]
+    pub fn piece_threats(&self, color: Color, piece: Piece) -> Bitboard {
+        self.piece_threats[color as usize][piece as usize]
+    }
+
+    #[inline(always)]
+    pub fn all_threats(&self, color: Color) -> Bitboard {
+        self.all_threats[color as usize]
+    }
+
+    #[inline(always)]
+    pub fn checking_squares(&self, color: Color, piece: Piece) -> Bitboard {
+        self.checking_squares[color as usize][piece as usize]
+    }
+
+    #[inline(always)]
+    pub fn pinned(&self, color: Color) -> Bitboard {
+        self.pinned[color as usize]
+    }
+
+    #[inline(always)]
+    pub fn pinners(&self, color: Color) -> Bitboard {
+        self.pinners[color as usize]
     }
 
     #[inline(always)]
@@ -663,6 +703,27 @@ impl Board {
         let orthogonal_sliders =
             (self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen)) & !from_bb;
         (atk.rook(their_king, occ) & orthogonal_sliders).any()
+    }
+
+    /// Fast direct-check predicate using cached checking squares.
+    ///
+    /// This intentionally detects checks delivered by the moved piece from its
+    /// destination. Discovered checks, en-passant discovered checks, and
+    /// castling rook checks remain the domain of `gives_check`.
+    #[inline(always)]
+    pub fn is_direct_check(&self, mv: Move) -> bool {
+        if mv.is_castling() {
+            return false;
+        }
+        let piece = if mv.is_promo() {
+            mv.promo_piece()
+        } else {
+            self.moving_piece(mv)
+        };
+        piece != Piece::King
+            && (self.checking_squares[self.side_to_move as usize][piece as usize]
+                & Bitboard::from(mv.to_sq()))
+            .any()
     }
 
     fn castling_move(&self, from: Square, to: Square, us: Color, them: Color) -> Option<Move> {
@@ -1228,7 +1289,7 @@ impl Board {
             hash: old_hash,
             checkers: old_checkers,
         });
-        self.checkers = self.calculate_checkers();
+        self.refresh_tactical_state();
     }
 
     pub fn make_null_move(&mut self) {
@@ -1259,7 +1320,7 @@ impl Board {
             hash: old_hash,
             checkers: old_checkers,
         });
-        self.checkers = Bitboard::EMPTY;
+        self.refresh_tactical_state();
     }
 
     pub fn unmake_null_move(&mut self) {
@@ -1274,7 +1335,8 @@ impl Board {
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
         self.hash = info.hash;
-        self.checkers = info.checkers;
+        self.refresh_tactical_state();
+        debug_assert_eq!(self.checkers, info.checkers);
     }
 
     /// Undo the last move.
@@ -1297,7 +1359,6 @@ impl Board {
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
         self.hash = info.hash;
-        self.checkers = info.checkers;
 
         // Move the piece back from `to` to `from`
         let moved_piece = if flags >= PROMO_KNIGHT {
@@ -1356,6 +1417,8 @@ impl Board {
             }
             _ => {}
         }
+        self.refresh_tactical_state();
+        debug_assert_eq!(self.checkers, info.checkers);
     }
 
     // -----------------------------------------------------------------------
@@ -1428,6 +1491,114 @@ impl Board {
     fn calculate_checkers(&self) -> Bitboard {
         self.attackers_to(self.king_sq(self.side_to_move), self.all_occ)
             & self.color_occ(!self.side_to_move)
+    }
+
+    fn refresh_tactical_state(&mut self) {
+        self.checkers = self.calculate_checkers();
+        self.piece_threats = [[Bitboard::EMPTY; 6]; 2];
+        self.all_threats = [Bitboard::EMPTY; 2];
+        self.checking_squares = [[Bitboard::EMPTY; 6]; 2];
+        self.pinned = [Bitboard::EMPTY; 2];
+        self.pinners = [Bitboard::EMPTY; 2];
+
+        for color in [Color::White, Color::Black] {
+            self.refresh_threats_for(color);
+            self.refresh_checking_squares_for(color);
+            let (pinned, pinners) = self.calculate_pins(color);
+            self.pinned[color as usize] = pinned;
+            self.pinners[color as usize] = pinners;
+        }
+    }
+
+    fn refresh_threats_for(&mut self, color: Color) {
+        let idx = color as usize;
+        let occ = self.all_occ ^ self.pieces(!color, Piece::King);
+        let atk = &*ATTACKS;
+
+        let pawns = self.pieces(color, Piece::Pawn);
+        self.piece_threats[idx][Piece::Pawn as usize] = match color {
+            Color::White => pawns.north_east() | pawns.north_west(),
+            Color::Black => pawns.south_east() | pawns.south_west(),
+        };
+
+        let mut knights = self.pieces(color, Piece::Knight);
+        while knights.any() {
+            self.piece_threats[idx][Piece::Knight as usize] |= atk.knight(knights.pop_lsb());
+        }
+
+        let mut bishops = self.pieces(color, Piece::Bishop);
+        while bishops.any() {
+            self.piece_threats[idx][Piece::Bishop as usize] |= atk.bishop(bishops.pop_lsb(), occ);
+        }
+
+        let mut rooks = self.pieces(color, Piece::Rook);
+        while rooks.any() {
+            self.piece_threats[idx][Piece::Rook as usize] |= atk.rook(rooks.pop_lsb(), occ);
+        }
+
+        let mut queens = self.pieces(color, Piece::Queen);
+        while queens.any() {
+            self.piece_threats[idx][Piece::Queen as usize] |= atk.queen(queens.pop_lsb(), occ);
+        }
+
+        self.piece_threats[idx][Piece::King as usize] = atk.king(self.king_sq(color));
+        for piece in Piece::ALL {
+            self.all_threats[idx] |= self.piece_threats[idx][piece as usize];
+        }
+    }
+
+    fn refresh_checking_squares_for(&mut self, color: Color) {
+        let idx = color as usize;
+        let enemy_king = self.king_sq(!color);
+        let occ = self.all_occ ^ self.pieces(!color, Piece::King);
+        let atk = &*ATTACKS;
+        let bishop = atk.bishop(enemy_king, occ);
+        let rook = atk.rook(enemy_king, occ);
+
+        self.checking_squares[idx][Piece::Pawn as usize] = atk.pawn(!color, enemy_king);
+        self.checking_squares[idx][Piece::Knight as usize] = atk.knight(enemy_king);
+        self.checking_squares[idx][Piece::Bishop as usize] = bishop;
+        self.checking_squares[idx][Piece::Rook as usize] = rook;
+        self.checking_squares[idx][Piece::Queen as usize] = bishop | rook;
+        self.checking_squares[idx][Piece::King as usize] = atk.king(enemy_king);
+    }
+
+    fn calculate_pins(&self, color: Color) -> (Bitboard, Bitboard) {
+        let us = color;
+        let them = !us;
+        let our_occ = self.color_occ(us);
+        let king_sq = self.king_sq(us);
+        let atk = &*ATTACKS;
+        let mut pinned = Bitboard::EMPTY;
+        let mut pinners = Bitboard::EMPTY;
+
+        let bishop_vision = atk.bishop(king_sq, self.all_occ);
+        let xray_bishop = atk.bishop(king_sq, self.all_occ ^ (bishop_vision & our_occ));
+        let mut diag_pinners =
+            (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen)) & xray_bishop;
+        while diag_pinners.any() {
+            let pinner_sq = diag_pinners.pop_lsb();
+            let blockers = between(king_sq, pinner_sq) & our_occ;
+            if blockers.any() && !blockers.more_than_one() {
+                pinned |= blockers;
+                pinners |= Bitboard::from(pinner_sq);
+            }
+        }
+
+        let rook_vision = atk.rook(king_sq, self.all_occ);
+        let xray_rook = atk.rook(king_sq, self.all_occ ^ (rook_vision & our_occ));
+        let mut ortho_pinners =
+            (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen)) & xray_rook;
+        while ortho_pinners.any() {
+            let pinner_sq = ortho_pinners.pop_lsb();
+            let blockers = between(king_sq, pinner_sq) & our_occ;
+            if blockers.any() && !blockers.more_than_one() {
+                pinned |= blockers;
+                pinners |= Bitboard::from(pinner_sq);
+            }
+        }
+
+        (pinned, pinners)
     }
 
     fn validate_position(&self) -> Result<(), String> {

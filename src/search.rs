@@ -1,7 +1,7 @@
 use std::sync::{Arc, LazyLock, atomic::Ordering, mpsc};
 use std::time::Instant;
 
-use crate::board::{Board, Color, GameResult, Move, Piece};
+use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Move, Piece, Square};
 use crate::eval::{Evaluator, INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::move_ordering::{
     BadCaptureList, CAP_HISTORY_MAX, CONT_SIZE, CORR_SIZE, HISTORY_MAX, LOW_PLY_HISTORY_SIZE,
@@ -107,8 +107,8 @@ pub struct Searcher {
     stack_static_eval: [i32; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     root_moves: Vec<Move>,
-    main_history: Box<[[[i16; 64]; 64]; 2]>,
-    cap_history: Box<[[[i16; 6]; 64]; 6]>,
+    quiet_history: Box<[[[[[i16; 64]; 64]; 2]; 2]; 2]>,
+    cap_history: Box<[[[[i16; 2]; 6]; 64]; 6]>,
     low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
     pawn_history: Vec<i16>,
     cont_history_1: Vec<i16>,
@@ -160,8 +160,8 @@ impl Default for Searcher {
             stack_static_eval: [VALUE_NONE; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
-            main_history: Box::new([[[0; 64]; 64]; 2]),
-            cap_history: Box::new([[[0; 6]; 64]; 6]),
+            quiet_history: Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]),
+            cap_history: Box::new([[[[0; 2]; 6]; 64]; 6]),
             low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
             pawn_history: vec![0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE],
             cont_history_1: vec![0; CONT_SIZE],
@@ -376,8 +376,8 @@ impl Searcher {
     }
 
     pub fn clear_history(&mut self) {
-        self.main_history = Box::new([[[0; 64]; 64]; 2]);
-        self.cap_history = Box::new([[[0; 6]; 64]; 6]);
+        self.quiet_history = Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]);
+        self.cap_history = Box::new([[[[0; 2]; 6]; 64]; 6]);
         self.low_ply_history = Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]);
         self.pawn_history.fill(0);
         self.cont_history_1.fill(0);
@@ -1178,8 +1178,6 @@ impl Searcher {
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
             let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
-            let mut gives_check = None;
-
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
                     let prune_margin = (90 + 25 * not_improving_i) * depth;
@@ -1187,18 +1185,15 @@ impl Searcher {
                         || (depth <= 8 && searched > late_move_prune_count(depth, improving))
                         || (depth <= 4 && quiet_hist < -10_000)
                         || (depth <= 7 && quiet_hist < -4_000 * depth);
-                    if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
+                    if prune_candidate && !board.is_direct_check(mv) {
                         continue;
                     }
                 } else if is_capture && see < 0 {
                     let cap_hist = captured_piece.map_or(0, |cap| {
-                        self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
-                            as i32
+                        self.capture_history_score(board, moving_piece, mv.to_sq().index(), cap)
                     });
                     let see_threshold = (-80 * depth - cap_hist / 8).max(-800);
-                    if depth <= 8
-                        && !board.see_ge(mv, see_threshold)
-                        && !move_gives_check(board, mv, &mut gives_check)
+                    if depth <= 8 && !board.see_ge(mv, see_threshold) && !board.is_direct_check(mv)
                     {
                         continue;
                     }
@@ -1245,12 +1240,11 @@ impl Searcher {
                 }
             }
 
-            let checking_move =
-                if depth >= 3 && searched >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
-                    move_gives_check(board, mv, &mut gives_check)
-                } else {
-                    gives_check.unwrap_or(false)
-                };
+            let checking_move = if depth >= 3 && searched >= 2 && (is_quiet || see < 0) {
+                board.is_direct_check(mv)
+            } else {
+                false
+            };
 
             self.stack_moves[ply] = mv;
             self.stack_pieces[ply] = moving_piece;
@@ -1405,10 +1399,13 @@ impl Searcher {
                                 &bad_caps,
                             );
                         } else {
+                            let to_threatened =
+                                self.threatened_index(board, board.side_to_move(), mv.to_sq());
                             self.update_capture_history(
                                 moving_piece,
                                 mv.to_sq().index(),
                                 captured_piece,
+                                to_threatened,
                                 bonus,
                             );
                             for gc in good_caps.as_slice() {
@@ -1416,6 +1413,7 @@ impl Searcher {
                                     gc.attacker,
                                     gc.to,
                                     gc.captured,
+                                    gc.to_threatened,
                                     -bonus,
                                 );
                             }
@@ -1444,10 +1442,21 @@ impl Searcher {
             if is_quiet {
                 quiets.push(mv);
             } else if is_capture {
+                let to_threatened = self.threatened_index(board, board.side_to_move(), mv.to_sq());
                 if see >= 0 {
-                    good_caps.push(moving_piece, mv.to_sq().index(), captured_piece);
+                    good_caps.push(
+                        moving_piece,
+                        mv.to_sq().index(),
+                        captured_piece,
+                        to_threatened,
+                    );
                 } else {
-                    bad_caps.push(moving_piece, mv.to_sq().index(), captured_piece);
+                    bad_caps.push(
+                        moving_piece,
+                        mv.to_sq().index(),
+                        captured_piece,
+                        to_threatened,
+                    );
                 }
             }
         }
@@ -1595,7 +1604,6 @@ impl Searcher {
             let picked = pick_next(scored.as_mut_slice(), index);
             let mv = picked.mv;
             if !in_check {
-                let mut gives_check = None;
                 tactical_count += 1;
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
@@ -1603,14 +1611,14 @@ impl Searcher {
                         + board.captured_piece(mv).map(piece_value).unwrap_or(0)
                         + 150
                         <= alpha
-                    && !move_gives_check(board, mv, &mut gives_check)
+                    && !board.is_direct_check(mv)
                 {
                     continue;
                 }
                 if !mv.is_promo()
                     && tactical_count > 6
                     && picked.see < 0
-                    && !move_gives_check(board, mv, &mut gives_check)
+                    && !board.is_direct_check(mv)
                 {
                     continue;
                 }
@@ -1704,8 +1712,7 @@ impl Searcher {
                 let attacker = board.moving_piece(mv);
                 let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
                 see = board.see(mv);
-                let hist =
-                    self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+                let hist = self.capture_history_score(board, attacker, mv.to_sq().index(), victim);
                 if see >= 0 {
                     20_000_000 + 32 * see + 10 * piece_value(victim) - piece_value(attacker) + hist
                 } else {
@@ -1784,8 +1791,7 @@ impl Searcher {
             } else {
                 0
             };
-            let hist =
-                self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+            let hist = self.capture_history_score(board, attacker, mv.to_sq().index(), victim);
             if board.see_ge(mv, 0) {
                 20_000_000 + 16 * (piece_value(victim) + promo_gain) - piece_value(attacker) + hist
             } else {
@@ -1807,22 +1813,92 @@ impl Searcher {
     }
 
     fn quiet_history_score(&self, board: &Board, color: Color, mv: Move, ply: usize) -> i32 {
-        let from = mv.from_sq().index();
-        let to = mv.to_sq().index();
-        let main = self.main_history[color as usize][from][to] as i32;
+        let from = mv.from_sq();
+        let to = mv.to_sq();
+        let from_idx = from.index();
+        let to_idx = to.index();
+        let from_threatened = self.threatened_index(board, color, from);
+        let to_threatened = self.threatened_index(board, color, to);
+        let main = self.quiet_history[color as usize][from_threatened][to_threatened][from_idx]
+            [to_idx] as i32;
         let piece = board.moving_piece(mv) as usize;
-        let pawn = self.pawn_history[pawn_history_index(board.pawn_key(), piece, to)] as i32;
+        let pawn = self.pawn_history[pawn_history_index(board.pawn_key(), piece, to_idx)] as i32;
         let low_ply = if ply < LOW_PLY_HISTORY_SIZE {
-            self.low_ply_history[ply][from][to] as i32 / (1 + ply as i32)
+            self.low_ply_history[ply][from_idx][to_idx] as i32 / (1 + ply as i32)
         } else {
             0
         };
-        let direct_check = if board.gives_check(mv) {
+        let direct_check = if board.is_direct_check(mv) {
             DIRECT_CHECK_BONUS
         } else {
             0
         };
-        2 * main + pawn + low_ply + self.cont_score(ply, piece, to) + direct_check
+        let threat_score =
+            self.quiet_threat_score(board, color, mv, from_threatened, to_threatened);
+        2 * main
+            + pawn
+            + low_ply
+            + self.cont_score(ply, piece, to_idx)
+            + direct_check
+            + threat_score
+    }
+
+    #[inline(always)]
+    fn threatened_index(&self, board: &Board, color: Color, sq: Square) -> usize {
+        ((board.all_threats(!color) & Bitboard::from(sq)).any()) as usize
+    }
+
+    #[inline(always)]
+    fn capture_history_score(
+        &self,
+        board: &Board,
+        attacker: Piece,
+        to: usize,
+        victim: Piece,
+    ) -> i32 {
+        let to_threatened = self.threatened_index(board, board.side_to_move(), Square(to as u8));
+        self.cap_history[attacker as usize][to][victim as usize][to_threatened] as i32
+    }
+
+    fn quiet_threat_score(
+        &self,
+        board: &Board,
+        color: Color,
+        mv: Move,
+        from_threatened: usize,
+        to_threatened: usize,
+    ) -> i32 {
+        let piece = board.moving_piece(mv);
+        let them = !color;
+        let mut score = 0;
+        if from_threatened != 0
+            && to_threatened == 0
+            && matches!(
+                piece,
+                Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen
+            )
+        {
+            score += 4_000;
+        }
+        let to_bb = Bitboard::from(mv.to_sq());
+        if (board.piece_threats(them, Piece::Pawn) & to_bb).any() {
+            score -= 6_000;
+        } else if ((board.piece_threats(them, Piece::Knight)
+            | board.piece_threats(them, Piece::Bishop))
+            & to_bb)
+            .any()
+        {
+            score -= 2_000;
+        }
+        if to_threatened == 0 {
+            let attacked = attacks_from(board, color, piece, mv.to_sq())
+                & board.color_occ(them)
+                & !board.piece_threats(them, Piece::Pawn);
+            if attacked.any() {
+                score += 1_500;
+            }
+        }
+        score
     }
 
     fn cont_score(&self, ply: usize, piece: usize, to: usize) -> i32 {
@@ -1894,16 +1970,28 @@ impl Searcher {
         let color = board.side_to_move();
         let pawn_key = board.pawn_key();
         let bonus = history_bonus(depth);
-        self.update_quiet_history(color, best, best_piece, pawn_key, ply, bonus);
+        self.update_quiet_history(board, color, best, best_piece, pawn_key, ply, bonus);
         for &quiet in quiets {
             let quiet_piece = board.moving_piece(quiet);
-            self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -bonus);
+            self.update_quiet_history(board, color, quiet, quiet_piece, pawn_key, ply, -bonus);
         }
         for good_cap in good_caps.as_slice() {
-            self.update_capture_history(good_cap.attacker, good_cap.to, good_cap.captured, -bonus);
+            self.update_capture_history(
+                good_cap.attacker,
+                good_cap.to,
+                good_cap.captured,
+                good_cap.to_threatened,
+                -bonus,
+            );
         }
         for bad_cap in bad_caps.as_slice() {
-            self.update_capture_history(bad_cap.attacker, bad_cap.to, bad_cap.captured, -bonus);
+            self.update_capture_history(
+                bad_cap.attacker,
+                bad_cap.to,
+                bad_cap.captured,
+                bad_cap.to_threatened,
+                -bonus,
+            );
         }
 
         if !previous.is_null() {
@@ -1976,6 +2064,7 @@ impl Searcher {
 
     fn update_quiet_history(
         &mut self,
+        board: &Board,
         color: Color,
         mv: Move,
         piece: Piece,
@@ -1983,8 +2072,11 @@ impl Searcher {
         ply: usize,
         bonus: i32,
     ) {
+        let from_threatened = self.threatened_index(board, color, mv.from_sq());
+        let to_threatened = self.threatened_index(board, color, mv.to_sq());
         update_hist_entry(
-            &mut self.main_history[color as usize][mv.from_sq().index()][mv.to_sq().index()],
+            &mut self.quiet_history[color as usize][from_threatened][to_threatened]
+                [mv.from_sq().index()][mv.to_sq().index()],
             bonus,
             HISTORY_MAX,
         );
@@ -2008,11 +2100,12 @@ impl Searcher {
         attacker: Piece,
         to: usize,
         captured: Option<Piece>,
+        to_threatened: usize,
         bonus: i32,
     ) {
         if let Some(captured) = captured {
             update_hist_entry(
-                &mut self.cap_history[attacker as usize][to][captured as usize],
+                &mut self.cap_history[attacker as usize][to][captured as usize][to_threatened],
                 bonus,
                 CAP_HISTORY_MAX,
             );
@@ -2020,17 +2113,23 @@ impl Searcher {
     }
 
     fn age_history(&mut self) {
-        for color in self.main_history.iter_mut() {
-            for from in color.iter_mut() {
-                for value in from.iter_mut() {
-                    *value /= 2;
+        for color in self.quiet_history.iter_mut() {
+            for from_threatened in color.iter_mut() {
+                for to_threatened in from_threatened.iter_mut() {
+                    for from in to_threatened.iter_mut() {
+                        for value in from.iter_mut() {
+                            *value /= 2;
+                        }
+                    }
                 }
             }
         }
         for attacker in self.cap_history.iter_mut() {
             for to in attacker.iter_mut() {
-                for value in to.iter_mut() {
-                    *value /= 2;
+                for captured in to.iter_mut() {
+                    for value in captured.iter_mut() {
+                        *value /= 2;
+                    }
                 }
             }
         }
@@ -2399,14 +2498,15 @@ fn late_move_prune_count(depth: i32, improving: bool) -> usize {
     }
 }
 
-fn move_gives_check(board: &Board, mv: Move, cache: &mut Option<bool>) -> bool {
-    match *cache {
-        Some(gives_check) => gives_check,
-        None => {
-            let gives_check = board.gives_check(mv);
-            *cache = Some(gives_check);
-            gives_check
-        }
+fn attacks_from(board: &Board, color: Color, piece: Piece, sq: Square) -> Bitboard {
+    let atk = &*ATTACKS;
+    match piece {
+        Piece::Pawn => atk.pawn(color, sq),
+        Piece::Knight => atk.knight(sq),
+        Piece::Bishop => atk.bishop(sq, board.occupied()),
+        Piece::Rook => atk.rook(sq, board.occupied()),
+        Piece::Queen => atk.queen(sq, board.occupied()),
+        Piece::King => atk.king(sq),
     }
 }
 
@@ -2657,7 +2757,9 @@ mod tests {
         let checking = board.parse_move("a1e1").expect("legal checking move");
         let quiet = board.parse_move("a1a2").expect("legal quiet move");
         assert!(board.gives_check(checking));
+        assert!(board.is_direct_check(checking));
         assert!(!board.gives_check(quiet));
+        assert!(!board.is_direct_check(quiet));
 
         let mut scored = searcher.score_moves(&board, &[checking, quiet], Move::NULL, 0);
         let moves = scored.as_mut_slice();
@@ -2700,6 +2802,7 @@ mod tests {
         let outside_window = board.parse_move("h2h3").expect("legal quiet move");
 
         searcher.update_quiet_history(
+            &board,
             Color::White,
             in_window,
             Piece::Pawn,
@@ -2708,6 +2811,7 @@ mod tests {
             400,
         );
         searcher.update_quiet_history(
+            &board,
             Color::White,
             outside_window,
             Piece::Pawn,

@@ -269,19 +269,59 @@ fn gives_check_detects_direct_and_discovered_checks_without_mutating_board() {
     let direct_hash = direct.hash;
     let rook_check = direct.parse_move("a1h1").unwrap();
     assert!(direct.gives_check(rook_check));
+    assert!(direct.is_direct_check(rook_check));
     assert_eq!(direct.hash, direct_hash);
 
     let discovered = Board::from_fen("4k3/8/8/8/8/8/K3N3/4R3 w - - 0 1").unwrap();
     let discovered_hash = discovered.hash;
     let discovered_check = discovered.parse_move("e2c1").unwrap();
     assert!(discovered.gives_check(discovered_check));
+    assert!(!discovered.is_direct_check(discovered_check));
     assert_eq!(discovered.hash, discovered_hash);
+
+    let promotion = Board::from_fen("k7/6P1/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+    let promote_check = promotion.parse_move("g7g8q").unwrap();
+    assert!(promotion.gives_check(promote_check));
+    assert!(promotion.is_direct_check(promote_check));
+
+    let castling = Board::from_fen("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1").unwrap();
+    let castle = castling.parse_move("e1g1").unwrap();
+    assert!(!castling.is_direct_check(castle));
 
     let quiet = Board::from_fen(STARTING_FEN).unwrap();
     let quiet_hash = quiet.hash;
     let non_check = quiet.parse_move("e2e4").unwrap();
     assert!(!quiet.gives_check(non_check));
+    assert!(!quiet.is_direct_check(non_check));
     assert_eq!(quiet.hash, quiet_hash);
+}
+
+#[test]
+fn cached_threats_match_direct_attack_queries_after_make_unmake() {
+    for fen in ORACLE_FENS {
+        let mut board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
+        assert_cached_threats_match_direct_queries(&board);
+
+        let before = board.to_fen();
+        let moves = board.generate_legal_movelist();
+        for &mv in moves.as_slice().iter().take(12) {
+            board.make_move(mv);
+            assert_cached_threats_match_direct_queries(&board);
+            board.unmake_move(mv);
+            assert_eq!(board.to_fen(), before, "{fen}: {mv}");
+            assert_cached_threats_match_direct_queries(&board);
+        }
+    }
+}
+
+#[test]
+fn cached_pin_state_identifies_pinned_piece_and_pinner() {
+    let board = Board::from_fen("k3r3/8/8/8/8/8/4R3/4K3 w - - 0 1").unwrap();
+
+    assert_eq!(board.pinned(Color::White), Bitboard::from(Square::E2));
+    assert_eq!(board.pinners(Color::White), Bitboard::from(Square::E8));
+    assert!(board.pinned(Color::Black).is_empty());
+    assert!(board.pinners(Color::Black).is_empty());
 }
 
 #[test]
@@ -1136,4 +1176,27 @@ fn ep_capture_removes_pawn_from_correct_square() {
         None,
         "EP square must be cleared after EP capture"
     );
+}
+
+fn assert_cached_threats_match_direct_queries(board: &Board) {
+    for color in [Color::White, Color::Black] {
+        let mut union = Bitboard::EMPTY;
+        for piece in Piece::ALL {
+            union |= board.piece_threats(color, piece);
+        }
+        assert_eq!(board.all_threats(color), union, "{}", board.to_fen());
+
+        let occ = board.occupied() ^ board.pieces(!color, Piece::King);
+        for sq in 0..64 {
+            let sq = Square(sq);
+            let cached = (board.all_threats(color) & Bitboard::from(sq)).any();
+            let direct = board.is_attacked_with_occ(sq, color, occ);
+            assert_eq!(
+                cached,
+                direct,
+                "{}: cached attack mismatch for {color:?} on {sq}",
+                board.to_fen()
+            );
+        }
+    }
 }
