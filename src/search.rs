@@ -27,7 +27,8 @@ static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25) as i32;
+            *value = (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25))
+                as i32;
         }
     }
     table
@@ -129,6 +130,7 @@ pub struct Searcher {
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
+    cutoff_count: [u8; MAX_PLY],
 }
 
 impl Default for Searcher {
@@ -182,6 +184,7 @@ impl Default for Searcher {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
+            cutoff_count: [0; MAX_PLY],
         }
     }
 }
@@ -897,6 +900,7 @@ impl Searcher {
         }
         self.pv_len[ply] = ply;
         self.seldepth = self.seldepth.max(ply);
+        self.cutoff_count[ply] = 0;
 
         if ply > 0 && board.can_declare_draw_in_search() {
             return 0;
@@ -986,6 +990,9 @@ impl Searcher {
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
         self.stack_static_eval[ply] = static_eval;
+        // Per-node correction magnitude: distance between corrected and raw static eval.
+        // Used by both the early-exit pruning block and LMR adjustments in the move loop.
+        let correction_mag = if in_check { 0 } else { (static_eval - raw_static_eval).abs() };
         let improving = !in_check
             && ply >= 2
             && self.stack_static_eval[ply - 2] != VALUE_NONE
@@ -1003,15 +1010,19 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (70 + 20 * not_improving_i) * depth;
+            let futility_margin =
+                (70 + 20 * not_improving_i) * depth + correction_mag * 60 / 1024;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;
             }
-            if depth <= 3 && eval_for_pruning + 150 * depth < alpha {
+            // Razoring: quadratic depth scaling — much more conservative than the old
+            // linear formula, so we don't rashly drop into qsearch at deeper plies.
+            if depth <= 4 && eval_for_pruning + 200 + 250 * depth * depth < alpha {
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
             if allow_null
                 && depth >= 3
+                && cut_node
                 && eval_for_pruning >= beta - 12 * depth - 24 * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
@@ -1065,7 +1076,7 @@ impl Searcher {
             }
 
             if depth >= 4 {
-                let probcut_beta = beta + 180;
+                let probcut_beta = beta + 200 - 80 * improving_i;
                 let captures = board.generate_legal_captures();
                 let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
                 for index in 0..scored.len().min(8) {
@@ -1182,13 +1193,29 @@ impl Searcher {
 
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
-                    let prune_margin = (90 + 25 * not_improving_i) * depth;
+                    // History term: good-history moves raise the futility threshold
+                    // (harder to prune them); bad-history moves lower it (easier to prune).
+                    let prune_margin =
+                        (90 + 25 * not_improving_i) * depth + quiet_hist / 128;
                     let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth, improving))
+                        || (depth <= 8
+                            && searched > late_move_prune_count(depth, improving, quiet_hist))
                         || (depth <= 4 && quiet_hist < -10_000)
                         || (depth <= 7 && quiet_hist < -4_000 * depth);
                     if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
                         continue;
+                    }
+                    // Quiet SEE pruning: moves that lose material are pruned earlier
+                    // when their history is poor; good history raises the threshold.
+                    if depth >= 2 && depth <= 8 {
+                        let see_threshold = (-15 * depth * depth + 52 * depth
+                            - 23 * quiet_hist / 1024)
+                            .min(0);
+                        if !board.see_ge(mv, see_threshold)
+                            && !move_gives_check(board, mv, &mut gives_check)
+                        {
+                            continue;
+                        }
                     }
                 } else if is_capture && see < 0 {
                     let cap_hist = captured_piece.map_or(0, |cap| {
@@ -1281,30 +1308,53 @@ impl Searcher {
                     && !mv.is_promo()
                     && !checking_move;
                 if reducible {
-                    let hist = quiet_hist;
-                    let mut reduction = lmr_reduction(depth, searched);
+                    // Build reduction in 1024ths from the scaled base table,
+                    // then accumulate weighted adjustments before shifting to
+                    // an integer depth reduction.
+                    let mut r = LMR_TABLE[depth.min(63) as usize][searched.min(63)];
+
+                    // PV / TT-PV nodes: reduce less
                     if tt_pv {
-                        reduction -= 1;
-                    } else if is_quiet {
-                        reduction += 1;
+                        r -= 463;
                     }
-                    if improving {
-                        reduction -= 1;
+                    // Exact TT bound: solid score on file, later moves less likely to flip it
+                    if matches!(tt_bound, Some(Bound::Exact)) {
+                        r += 1405;
                     }
-                    if !tt_move.is_null() && searched >= 4 {
-                        reduction += 1;
+                    // Shallow or absent TT entry: less guidance available
+                    if tt_depth < depth - 1 {
+                        r += 286;
                     }
+                    // Cut node: expected to fail high; later moves are typically bad
                     if cut_node {
-                        reduction += 1;
+                        r += 1810;
+                        if tt_move.is_null() {
+                            r += 2113;
+                        }
                     }
-                    if !is_quiet && see < 0 {
-                        reduction += 1;
+                    // Improving position: don't reduce as much
+                    if improving {
+                        r -= 1024;
                     }
-                    if !tt_pv && !cut_node && quiet_hist > 4_000 {
-                        reduction -= 1;
+                    // History-based adjustment by move type
+                    if is_quiet {
+                        r += 2171 - 179 * quiet_hist / 1024;
+                    } else {
+                        // Bad capture: use capture history for this attacker/target/victim
+                        let cap_hist = captured_piece.map_or(0, |cap| {
+                            self.cap_history[moving_piece as usize][mv.to_sq().index()]
+                                [cap as usize] as i32
+                        });
+                        r += 1724 - 107 * cap_hist / 1024;
                     }
-                    reduction -= hist / 8_192;
-                    reduction = reduction.clamp(1, new_depth.max(1));
+                    // Large correction uncertainty: static eval is unreliable, reduce less
+                    r -= 3403 * correction_mag / 1024;
+                    // Many prior cutoffs at this ply: remaining moves are likely bad
+                    if self.cutoff_count[ply] > 2 {
+                        r += 992;
+                    }
+
+                    let reduction = (r >> 10).clamp(1, new_depth.max(1));
                     score = -self.negamax(
                         board,
                         new_depth - reduction,
@@ -1318,9 +1368,18 @@ impl Searcher {
                         poll,
                     );
                     if score > alpha {
+                        // do-deeper / do-shallower: compare reduced result to the running
+                        // best at this node before deciding how deep to re-search.
+                        let re_depth = if score > best_score + 54 {
+                            new_depth + 1
+                        } else if score < best_score + 8 {
+                            (new_depth - 1).max(0)
+                        } else {
+                            new_depth
+                        };
                         score = -self.negamax(
                             board,
-                            new_depth,
+                            re_depth,
                             -alpha - 1,
                             -alpha,
                             ply + 1,
@@ -1390,6 +1449,7 @@ impl Searcher {
                 self.pv_len[ply] = child_len;
 
                 if score >= beta {
+                    self.cutoff_count[ply] = self.cutoff_count[ply].saturating_add(1);
                     if excluded.is_null() {
                         let bonus = history_bonus(depth);
                         if !is_capture {
@@ -2380,19 +2440,15 @@ impl Searcher {
     }
 }
 
-fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
-    if depth < 3 || move_index < 2 {
-        return 0;
-    }
-    LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
-}
-
-fn late_move_prune_count(depth: i32, improving: bool) -> usize {
+fn late_move_prune_count(depth: i32, improving: bool, hist: i32) -> usize {
     let base = 4 + 2 * depth * depth / 3;
+    // Positive history raises the move count before pruning kicks in;
+    // capped at a modest bonus to avoid suppressing LMP entirely.
+    let hist_bonus = (hist.max(0) / 4096).min(depth);
     if improving {
-        (base + depth) as usize
+        (base + depth + hist_bonus) as usize
     } else {
-        base as usize
+        (base + hist_bonus) as usize
     }
 }
 
