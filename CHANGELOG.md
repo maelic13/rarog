@@ -5,6 +5,57 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.1.0] - 2026-06-01
+
+Minor release delivering a substantial search overhaul for higher playing
+strength, focused on fine-grained, history-aware heuristics.
+
+### Added
+
+- Added fractional late move reductions (LMR): the integer ±1 adjustment
+  system is replaced by a 1024-scaled base table with nine weighted terms —
+  TT-PV flag, exact TT bound, shallow TT depth, cut-node status (with and
+  without a guiding TT move), improving flag, quiet move history, bad-capture
+  history, correction-history magnitude, and a high-cutoff-count signal. The
+  final reduction is `(r >> 10).clamp(1, new_depth)`.
+- Added do-deeper/do-shallower re-search depth adjustment after the LMR
+  zero-window search: if the reduced result exceeds the running node best by
+  more than 54 centipawns, the full-depth re-search is deepened by one ply;
+  if it falls more than 8 centipawns below the running best, it is shallowed
+  by one ply; otherwise the nominal depth is used.
+- Added cutoff-count tracking (`cutoff_count: [u8; MAX_PLY]`): incremented
+  whenever a child search returns a beta cutoff; feeds a `+992` LMR term
+  when more than two prior cutoffs have been seen at the current ply.
+- Added quiet-move SEE pruning in the main move loop (depth 2–8): moves
+  whose SEE falls below `(-15d² + 52d - 23·hist/1024).min(0)` and do not
+  give check are skipped; the threshold is history-weighted so good-history
+  moves survive more aggressive positions.
+
+### Changed
+
+- Correction magnitude (`|corrected_eval − raw_eval|`) is now computed at
+  node entry and reused by both the RFP block and the LMR term, instead of
+  being computed only inside the pruning block.
+- Reverse futility pruning (RFP) margin now includes a `correction_mag ×
+  60 / 1024` additive term: high static-eval uncertainty widens the margin
+  and suppresses premature cutoffs.
+- Quiet-move futility margin in the move loop now adds `quiet_hist / 128`:
+  good-history moves are harder to prune, bad-history moves are pruned more
+  aggressively.
+- Late move pruning count (`late_move_prune_count`) now accepts a history
+  argument: positive quiet history adds up to `depth` extra moves before LMP
+  kicks in.
+- Null-move pruning now requires `cut_node` in addition to the existing
+  conditions; all-node null searches are no longer attempted.
+- Razoring condition changed from linear `eval + 150d < alpha` (depth ≤ 3)
+  to quadratic `eval + 200 + 250d² < alpha` (depth ≤ 4), making the check
+  more conservative at deeper plies.
+- ProbCut beta margin changed from fixed `beta + 180` to improving-aware
+  `beta + 200 - 80 × improving`: the threshold tightens when the position
+  is improving, permitting more aggressive pruning cuts.
+- Removed the `lmr_reduction()` helper function (superseded by the inline
+  fractional reduction block).
+
 ## [2.0.1] - 2026-06-01
 
 Patch release focused on search improvements for higher playing strength.

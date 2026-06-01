@@ -28,8 +28,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   validated shared transposition table through the UCI `Threads` option
 - Capture-focused quiescence search with delta pruning, capture futility,
   threshold SEE pruning, and bounded check evasions
-- Null-move pruning with verification, ProbCut, singular extensions, futility
-  pruning, late move pruning, and late move reductions
+- Null-move pruning (cut-node only) with verification, improving-aware
+  ProbCut, singular extensions, futility pruning, late move pruning, quiet
+  SEE pruning, and fractional history-weighted late move reductions with
+  do-deeper/do-shallower re-search depth adjustment
 - Staged move picking with a validated TT move first, good captures before lazy
   quiet generation, and bad captures delayed until after quiet moves
 - Move ordering using TT moves, threshold SEE, killers, countermoves, main
@@ -238,7 +240,16 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `2.0.1`.
+Current documented release: `2.1.0`.
+
+`2.1.0` is a minor release delivering a substantial search overhaul for higher
+playing strength. The integer ±1 LMR adjustment system is replaced by a
+1024-scaled fractional system with nine history- and correction-aware weighted
+terms, paired with do-deeper/do-shallower re-search depth adjustment. Additional
+changes include history- and correction-weighted pruning thresholds across RFP,
+futility, and LMP, a new quiet SEE prune, cutoff-count tracking feeding back
+into reductions, null-move pruning restricted to cut nodes, quadratic razoring,
+and an improving-aware ProbCut margin. Bench fingerprint: 3,605,789 nodes.
 
 `2.0.1` is a patch release delivering search improvements for higher playing
 strength. Changes include IIR for PV nodes, negative history updates for good
@@ -253,7 +264,7 @@ documentation now use the Rarog name. Lynx releases remain available through
 - [Latest release](https://github.com/maelic13/rarog/releases/latest)
 - [All releases](https://github.com/maelic13/rarog/releases)
 
-Release-preparation checks for `2.0.1`:
+Release-preparation checks for `2.1.0`:
 
 ```bash
 cargo fmt --check
