@@ -14,6 +14,8 @@ pub struct ZobristKeys {
     pub castling_keys: [u64; 16],
     /// `ep_keys[file]` — XOR in when en passant is available on that file
     pub ep_keys: [u64; 8],
+    /// Rule-50 bucket keys used only for search/TT hashing.
+    pub rule50_keys: [u64; 16],
 }
 
 pub static ZOBRIST: ZobristKeys = ZobristKeys::init();
@@ -53,11 +55,19 @@ impl ZobristKeys {
             i += 1;
         }
 
+        let mut rule50_keys = [0u64; 16];
+        let mut i = 0;
+        while i < 16 {
+            rule50_keys[i] = sm64_next(&mut state);
+            i += 1;
+        }
+
         Self {
             piece_keys,
             side_key,
             castling_keys,
             ep_keys,
+            rule50_keys,
         }
     }
 
@@ -79,6 +89,11 @@ impl ZobristKeys {
     #[inline(always)]
     pub fn ep(&self, file: File) -> u64 {
         self.ep_keys[file as usize]
+    }
+
+    #[inline(always)]
+    pub fn rule50(&self, bucket: usize) -> u64 {
+        self.rule50_keys[bucket.min(15)]
     }
 }
 

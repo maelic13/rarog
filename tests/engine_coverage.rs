@@ -402,6 +402,25 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
 }
 
 #[test]
+fn transposition_table_uses_rule50_bucketed_board_hashes() {
+    let low = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1").expect("valid FEN");
+    let high = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 16 1").expect("valid FEN");
+    let best = low.parse_move("a1a2").expect("legal move");
+    let mut table = TranspositionTable::new(1);
+
+    assert_eq!(low.hash, high.hash);
+    assert_ne!(low.tt_hash(), high.tt_hash());
+
+    table.store(low.tt_hash(), 5, 77, Bound::Exact, best, 0, 12, false);
+
+    assert!(table.probe(low.tt_hash()).is_some());
+    assert!(
+        table.probe(high.tt_hash()).is_none(),
+        "same raw position in a different rule-50 bucket must not reuse the TT entry"
+    );
+}
+
+#[test]
 fn transposition_table_hashfull_counts_only_current_generation_entries() {
     let best = Move::from_uci("e2e4").expect("valid UCI move");
     let key = 0xCAFE_0000_0000_0001;

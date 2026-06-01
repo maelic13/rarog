@@ -901,6 +901,12 @@ impl Searcher {
         if ply > 0 && board.can_declare_draw_in_search() {
             return 0;
         }
+        if ply > 0 && board.has_upcoming_repetition() {
+            alpha = alpha.max(0);
+            if alpha >= beta {
+                return 0;
+            }
+        }
 
         let in_check = board.is_in_check();
         if in_check {
@@ -920,7 +926,7 @@ impl Searcher {
         }
 
         let original_alpha = alpha;
-        let hash = board.hash;
+        let hash = board.tt_hash();
         if let Some(score) = self.syzygy_wdl_score(board, depth, ply, excluded) {
             self.store_tt(
                 hash,
@@ -1017,7 +1023,7 @@ impl Searcher {
             {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
-                self.tt.prefetch(board.hash);
+                self.tt.prefetch(board.tt_hash());
                 let score = -self.negamax(
                     board,
                     depth - reduction,
@@ -1076,7 +1082,7 @@ impl Searcher {
                     }
                     self.stack_moves[ply] = mv;
                     board.make_move_unchecked(mv);
-                    self.tt.prefetch(board.hash);
+                    self.tt.prefetch(board.tt_hash());
                     let score =
                         -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
                     let score = if score >= probcut_beta {
@@ -1250,7 +1256,7 @@ impl Searcher {
             self.stack_pieces[ply] = moving_piece;
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             board.make_move_unchecked(mv);
-            self.tt.prefetch(board.hash);
+            self.tt.prefetch(board.tt_hash());
             let new_depth = depth - 1 + extension;
             let mut score;
 
@@ -1522,7 +1528,7 @@ impl Searcher {
         }
 
         let in_check = board.is_in_check();
-        let hash = board.hash;
+        let hash = board.tt_hash();
         let original_alpha = alpha;
         let tt_entry = self.tt.probe(hash);
         let tt_raw_move = tt_entry.and_then(|entry| entry.best_move());
@@ -1636,7 +1642,7 @@ impl Searcher {
             self.stack_moves[ply] = mv;
             self.stack_pieces[ply] = moving_piece;
             board.make_move_unchecked(mv);
-            self.tt.prefetch(board.hash);
+            self.tt.prefetch(board.tt_hash());
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.stack_moves[ply] = Move::NULL;
@@ -2464,7 +2470,7 @@ impl Searcher {
         let mut child = root.clone();
         child.make_move_unchecked(bestmove);
         self.tt
-            .probe(child.hash)
+            .probe(child.tt_hash())
             .and_then(|entry| entry.best_move())
             .and_then(|mv| child.legal_move(mv))
             .unwrap_or(Move::NULL)
@@ -2682,7 +2688,7 @@ mod tests {
         };
         searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
         searcher.tt.store(
-            board.hash,
+            board.tt_hash(),
             8,
             0,
             Bound::Exact,
@@ -2857,9 +2863,16 @@ mod tests {
         let mut child = root.clone();
         child.make_move_unchecked(bestmove);
         let ponder = child.parse_move("a7a6").expect("legal child move");
-        searcher
-            .tt
-            .store(child.hash, 4, 0, Bound::Exact, ponder, 1, VALUE_NONE, false);
+        searcher.tt.store(
+            child.tt_hash(),
+            4,
+            0,
+            Bound::Exact,
+            ponder,
+            1,
+            VALUE_NONE,
+            false,
+        );
 
         assert_eq!(searcher.ponder_from_tt(&root, bestmove), ponder);
     }

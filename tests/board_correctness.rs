@@ -882,6 +882,23 @@ fn threefold_repetition_triggers_can_declare_draw() {
 }
 
 #[test]
+fn upcoming_repetition_detects_one_reversible_move_to_prior_position() {
+    let mut board = Board::starting_position();
+    for mv in ["g1f3", "g8f6", "f3g1"] {
+        assert!(board.play_uci(mv), "move {mv} must be legal");
+    }
+
+    assert!(!board.has_repeated_position());
+    assert!(
+        board.has_upcoming_repetition(),
+        "black can return Nf6-g8 to repeat the starting position"
+    );
+
+    assert!(board.play_uci("f6g8"));
+    assert!(board.has_repeated_position());
+}
+
+#[test]
 fn fifty_move_rule_triggers_can_declare_draw() {
     // Start from a position where we can make 100 quiet (non-pawn, non-capture) moves.
     // Rook and king shuttle without pawn moves or captures until the clock reaches 100.
@@ -1079,6 +1096,20 @@ fn zobrist_different_positions_have_different_hashes() {
     assert_ne!(start.hash, after_e4.hash, "start vs 1.e4 must differ");
     assert_ne!(start.hash, after_d4.hash, "start vs 1.d4 must differ");
     assert_ne!(after_e4.hash, after_d4.hash, "1.e4 vs 1.d4 must differ");
+}
+
+#[test]
+fn tt_hash_adds_rule50_bucket_without_changing_position_hash() {
+    let low = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1").unwrap();
+    let same_bucket = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 15 1").unwrap();
+    let next_bucket = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 16 1").unwrap();
+
+    assert_eq!(low.hash, same_bucket.hash);
+    assert_eq!(low.hash, next_bucket.hash);
+    assert_eq!(low.rule50_bucket(), same_bucket.rule50_bucket());
+    assert_ne!(low.rule50_bucket(), next_bucket.rule50_bucket());
+    assert_eq!(low.tt_hash(), same_bucket.tt_hash());
+    assert_ne!(low.tt_hash(), next_bucket.tt_hash());
 }
 
 #[test]

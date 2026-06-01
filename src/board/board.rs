@@ -879,6 +879,70 @@ impl Board {
         self.halfmove_clock >= 4 && self.is_repetition(2)
     }
 
+    #[inline(always)]
+    pub fn rule50_bucket(&self) -> usize {
+        ((self.halfmove_clock.saturating_sub(8) / 8) as usize).min(15)
+    }
+
+    #[inline(always)]
+    pub fn tt_hash(&self) -> u64 {
+        self.hash ^ ZOBRIST.rule50(self.rule50_bucket())
+    }
+
+    pub fn has_upcoming_repetition(&self) -> bool {
+        if self.halfmove_clock < 3 || self.history.is_empty() {
+            return false;
+        }
+
+        let max_plies = self.halfmove_clock as usize + 1;
+        let mut repeated_hashes = [0u64; 64];
+        let mut repeated_len = 0usize;
+        let mut plies_back = 1usize;
+        while plies_back <= max_plies && plies_back <= self.history.len() {
+            if repeated_len < repeated_hashes.len() {
+                repeated_hashes[repeated_len] = self.history[self.history.len() - plies_back].hash;
+                repeated_len += 1;
+            }
+            plies_back += 2;
+        }
+        if repeated_len == 0 {
+            return false;
+        }
+
+        let legal_moves = self.generate_legal_movelist();
+        for &mv in legal_moves.as_slice() {
+            if !self.is_reversible_repetition_candidate(mv) {
+                continue;
+            }
+            let next_hash = self.hash_after_reversible_piece_move(mv);
+            if repeated_hashes[..repeated_len].contains(&next_hash) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn is_reversible_repetition_candidate(&self, mv: Move) -> bool {
+        !mv.is_capture()
+            && !mv.is_promo()
+            && !mv.is_castling()
+            && !mv.is_en_passant()
+            && self.moving_piece(mv) != Piece::Pawn
+            && self.castling.update(mv.from_sq(), mv.to_sq()) == self.castling
+    }
+
+    fn hash_after_reversible_piece_move(&self, mv: Move) -> u64 {
+        let piece = self.moving_piece(mv);
+        let us = self.side_to_move;
+        let mut hash = self.hash;
+        if self.ep_sq != 255 {
+            hash ^= ZOBRIST.ep(Square(self.ep_sq).file());
+        }
+        hash ^= ZOBRIST.piece(us, piece, mv.from_sq());
+        hash ^= ZOBRIST.piece(us, piece, mv.to_sq());
+        hash ^ ZOBRIST.side()
+    }
+
     pub fn has_non_pawn_material(&self, color: Color) -> bool {
         (self.pieces(color, Piece::Knight)
             | self.pieces(color, Piece::Bishop)
