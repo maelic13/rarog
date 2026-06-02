@@ -1253,16 +1253,20 @@ impl Searcher {
 
             let child_is_pv = is_pv && searched == 0;
             let mut extension = 0;
-            if ply > 0
-                && mv == tt_move
-                && excluded.is_null()
-                && depth >= 4
-                && tt_depth >= depth - 3
-                && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
-                && tt_score.abs() < MATE_SCORE - MAX_PLY as i32
-            {
-                let singular_beta = tt_score - 2 * depth;
-                let singular_depth = (depth - 1) / 2;
+            if singular_eligible(SingularContext {
+                ply,
+                depth,
+                tt_pv,
+                excluded,
+                mv,
+                tt_move,
+                tt_score,
+                tt_depth,
+                tt_bound,
+            }) {
+                let margin = singular_margin(depth, is_pv, tt_pv, cut_node, tt_bound);
+                let singular_beta = tt_score - margin;
+                let singular_depth = singular_search_depth(depth);
                 let singular_score = self.negamax(
                     board,
                     singular_depth,
@@ -1278,16 +1282,19 @@ impl Searcher {
                 if self.stopped || self.quit {
                     return 0;
                 }
-                if singular_score < singular_beta {
-                    extension = if !is_pv && singular_score < singular_beta - 20 {
-                        2
-                    } else {
-                        1
-                    };
-                } else if singular_beta >= beta {
-                    return singular_beta;
-                } else if tt_score >= beta {
-                    extension = -1;
+                match singular_result(SingularResultContext {
+                    depth,
+                    beta,
+                    tt_score,
+                    singular_beta,
+                    singular_score,
+                    margin,
+                    is_pv,
+                    cut_node,
+                }) {
+                    SingularDecision::Extension(value) => extension = value,
+                    SingularDecision::MultiCut(score) => return score,
+                    SingularDecision::None => {}
                 }
             }
 
@@ -2661,6 +2668,98 @@ fn probcut_cutoff_score(beta: i32, probcut_beta: i32, score: i32) -> i32 {
     beta + (score - probcut_beta).clamp(0, (margin / 3).max(1))
 }
 
+#[derive(Copy, Clone)]
+struct SingularContext {
+    ply: usize,
+    depth: i32,
+    tt_pv: bool,
+    excluded: Move,
+    mv: Move,
+    tt_move: Move,
+    tt_score: i32,
+    tt_depth: i32,
+    tt_bound: Option<Bound>,
+}
+
+fn singular_eligible(ctx: SingularContext) -> bool {
+    ctx.ply > 0
+        && ctx.mv == ctx.tt_move
+        && !ctx.tt_move.is_null()
+        && ctx.excluded.is_null()
+        && ctx.depth >= 5 + i32::from(ctx.tt_pv)
+        && ctx.tt_depth >= ctx.depth - 3
+        && !matches!(ctx.tt_bound, Some(Bound::Upper) | None)
+        && ctx.tt_score != VALUE_NONE
+        && ctx.tt_score.abs() < TB_WIN_SCORE
+}
+
+fn singular_margin(
+    depth: i32,
+    is_pv: bool,
+    tt_pv: bool,
+    cut_node: bool,
+    tt_bound: Option<Bound>,
+) -> i32 {
+    let bound_margin = if matches!(tt_bound, Some(Bound::Exact)) {
+        12 + 3 * depth
+    } else {
+        24 + 4 * depth
+    };
+    let pv_mismatch = if is_pv != tt_pv { depth } else { 0 };
+    let cut_bonus = if cut_node { depth / 2 } else { 0 };
+
+    bound_margin + pv_mismatch + cut_bonus
+}
+
+fn singular_search_depth(depth: i32) -> i32 {
+    ((depth - 1) / 2).max(1)
+}
+
+#[derive(Copy, Clone)]
+struct SingularResultContext {
+    depth: i32,
+    beta: i32,
+    tt_score: i32,
+    singular_beta: i32,
+    singular_score: i32,
+    margin: i32,
+    is_pv: bool,
+    cut_node: bool,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum SingularDecision {
+    Extension(i32),
+    MultiCut(i32),
+    None,
+}
+
+fn singular_result(ctx: SingularResultContext) -> SingularDecision {
+    if ctx.singular_score < ctx.singular_beta {
+        let fail_low = ctx.singular_beta - ctx.singular_score;
+        let extension = if !ctx.is_pv && fail_low >= ctx.margin * 2 && ctx.depth >= 7 {
+            2
+        } else {
+            1
+        };
+        return SingularDecision::Extension(extension);
+    }
+
+    if ctx.singular_score >= ctx.beta {
+        if ctx.singular_score.abs() >= TB_WIN_SCORE {
+            return SingularDecision::MultiCut(ctx.singular_score);
+        }
+        let softened = ctx.beta + (ctx.singular_score - ctx.beta).clamp(0, 64);
+        return SingularDecision::MultiCut(softened);
+    }
+
+    if ctx.tt_score >= ctx.beta || ctx.cut_node {
+        return SingularDecision::Extension(-1);
+    }
+
+    SingularDecision::None
+}
+
 fn late_move_prune_count(depth: i32, improving: bool) -> usize {
     let base = 4 + 2 * depth * depth / 3;
     if improving {
@@ -3113,6 +3212,104 @@ mod tests {
         let cutoff = probcut_cutoff_score(beta, probcut_beta, 1_000);
         assert!(cutoff >= beta);
         assert!(cutoff < probcut_beta);
+    }
+
+    #[test]
+    fn singular_eligibility_and_margin_follow_tt_context() {
+        let board = Board::default();
+        let tt_move = board.parse_move("e2e4").expect("legal move");
+        let base = SingularContext {
+            ply: 1,
+            depth: 6,
+            tt_pv: false,
+            excluded: Move::NULL,
+            mv: tt_move,
+            tt_move,
+            tt_score: 120,
+            tt_depth: 6,
+            tt_bound: Some(Bound::Exact),
+        };
+
+        assert!(singular_eligible(base));
+        assert!(!singular_eligible(SingularContext { ply: 0, ..base }));
+        assert!(!singular_eligible(SingularContext {
+            tt_bound: Some(Bound::Upper),
+            ..base
+        }));
+        assert!(!singular_eligible(SingularContext {
+            tt_pv: true,
+            depth: 5,
+            ..base
+        }));
+
+        let exact_margin = singular_margin(8, false, false, false, Some(Bound::Exact));
+        let lower_margin = singular_margin(8, false, false, false, Some(Bound::Lower));
+        let mismatch_margin = singular_margin(8, true, false, false, Some(Bound::Exact));
+
+        assert!(lower_margin > exact_margin);
+        assert!(mismatch_margin > exact_margin);
+        assert_eq!(singular_search_depth(8), 3);
+    }
+
+    #[test]
+    fn singular_result_handles_extension_multicut_and_negative_extension() {
+        let base = SingularResultContext {
+            depth: 8,
+            beta: 100,
+            tt_score: 120,
+            singular_beta: 70,
+            singular_score: 50,
+            margin: 30,
+            is_pv: false,
+            cut_node: true,
+        };
+
+        assert_eq!(singular_result(base), SingularDecision::Extension(1));
+        assert_eq!(
+            singular_result(SingularResultContext {
+                singular_score: -10,
+                ..base
+            }),
+            SingularDecision::Extension(2)
+        );
+        assert_eq!(
+            singular_result(SingularResultContext {
+                singular_score: 300,
+                ..base
+            }),
+            SingularDecision::MultiCut(164)
+        );
+        assert_eq!(
+            singular_result(SingularResultContext {
+                singular_score: 80,
+                ..base
+            }),
+            SingularDecision::Extension(-1)
+        );
+        assert_eq!(
+            singular_result(SingularResultContext {
+                tt_score: 80,
+                singular_score: 80,
+                cut_node: false,
+                ..base
+            }),
+            SingularDecision::None
+        );
+    }
+
+    #[test]
+    fn excluded_move_search_does_not_store_tt_entry() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::default();
+        let excluded = board.parse_move("e2e4").expect("legal move");
+        let hash = board.tt_hash();
+        let mut poll = || SearchEvent::None;
+
+        let _ = searcher.negamax(
+            &mut board, 2, -100, 100, 1, false, false, excluded, false, &mut poll,
+        );
+
+        assert!(searcher.tt.probe(hash).is_none());
     }
 
     #[test]
