@@ -12,11 +12,11 @@ const EVAL_TABLE_SIZE: usize = 32_768;
 // mobility, and king-safety evaluation.  Must be large enough to absorb all
 // evaluation terms not included in the cheap score (~200-400 cp typical range).
 const LAZY_MARGIN: i32 = 600;
-const TOTAL_PHASE: i32 = 24;
+pub const TOTAL_PHASE: i32 = 24;
 
 const MG_VAL: [i32; 6] = [82, 337, 365, 477, 1025, 0];
 const EG_VAL: [i32; 6] = [94, 281, 297, 512, 936, 0];
-const PHASE_W: [i32; 6] = [0, 1, 1, 2, 4, 0];
+pub const PHASE_W: [i32; 6] = [0, 1, 1, 2, 4, 0];
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 
 const MG_PAWN_PST: [i32; 64] = [
@@ -95,8 +95,8 @@ const FILE_BBS: [Bitboard; 8] = [
 const ADJACENT_FILES: [Bitboard; 8] = init_adjacent_files();
 const FORWARD_RANKS: [[Bitboard; 8]; 2] = init_forward_ranks();
 const PASSED_PAWN_MASKS: [[Bitboard; 64]; 2] = init_passed_pawn_masks();
-const MG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(true);
-const EG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(false);
+pub const MG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(true);
+pub const EG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(false);
 const SQUARE_FILE: [usize; 64] = init_square_file();
 const SQUARE_RANK: [usize; 64] = init_square_rank();
 const RELATIVE_RANKS: [[u8; 64]; 2] = init_relative_ranks();

@@ -120,7 +120,54 @@
 //! `scaled = (146 * depth * diff / 128).clamp(-4449, 2659)`
 //! Divisor on read side: `/128` (currently; Reckless uses /69).
 
-use crate::eval::EvalParams;
+use crate::board::{Board, Color, Piece};
+use crate::eval::{EvalParams, EG_TABLE, MG_TABLE, PHASE_W, TOTAL_PHASE};
+
+/// Standalone positional evaluation for tuning.
+///
+/// Evaluates the board using explicit `params` (no global `PARAMS` reference).
+/// Returns a score in centipawns from the side-to-move's perspective.
+///
+/// The evaluation covers material + PSQT (fixed tables) plus the EvalParams
+/// bonus and penalty terms.  The full-engine eval also includes pawn structure,
+/// mobility, king safety, and passed-pawn terms — those are **not** included
+/// here yet; add them incrementally as the tuning coverage expands.
+///
+/// NOTE: The phase-weighting tables (MG_TABLE, EG_TABLE) embed the base
+/// material values (MG_VAL/EG_VAL) plus PST offsets.  Those are currently
+/// hardcoded rather than in EvalParams; adding them to EvalParams is the next
+/// expansion step for full PSQT tuning.
+pub fn tune_eval(board: &Board, params: &EvalParams) -> i32 {
+    let mut mg = 0i32;
+    let mut eg = 0i32;
+    let mut phase = 0i32;
+
+    // Material + PSQT (fixed tables derived from hardcoded MG_VAL/EG_VAL + PSTs)
+    for color in [Color::White, Color::Black] {
+        let sign: i32 = if color == Color::White { 1 } else { -1 };
+        for piece in Piece::ALL {
+            let mut bb = board.pieces(color, piece);
+            phase += bb.count() as i32 * PHASE_W[piece as usize];
+            while bb.any() {
+                let sq = bb.pop_lsb();
+                mg += sign * MG_TABLE[color as usize][piece as usize][sq.index()];
+                eg += sign * EG_TABLE[color as usize][piece as usize][sq.index()];
+            }
+        }
+    }
+    phase = phase.min(TOTAL_PHASE);
+
+    // Tempo
+    let tempo = if board.side_to_move() == Color::White {
+        params.tempo
+    } else {
+        -params.tempo
+    };
+    mg += tempo;
+
+    let score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
+    if board.side_to_move() == Color::White { score } else { -score }
+}
 
 /// Load an `EvalParams` from `path`, starting from `EvalParams::DEFAULT`.
 /// Unknown or malformed lines are silently skipped so a partial file is valid.
@@ -253,4 +300,58 @@ pub fn load_eval_params(path: &str) -> EvalParams {
         }
     }
     p
+}
+
+/// Write `params` to `path` in the load format (one parameter per line).
+pub fn save_eval_params(params: &EvalParams, path: &str) -> std::io::Result<()> {
+    use std::fmt::Write as FmtWrite;
+    let mut out = String::with_capacity(4096);
+    macro_rules! w {
+        ($name:ident) => {
+            let _ = writeln!(out, "{} {}", stringify!($name), params.$name);
+        };
+        ($name:ident[$len:expr]) => {
+            let vals: Vec<String> = (0..$len).map(|i| params.$name[i].to_string()).collect();
+            let _ = writeln!(out, "{} {}", stringify!($name), vals.join(" "));
+        };
+    }
+    w!(tempo);
+    w!(passed_mg[8]); w!(passed_eg[8]);
+    w!(passed_defended_mg); w!(passed_defended_eg_base); w!(passed_defended_eg_rank);
+    w!(passed_free_mg_rank); w!(passed_free_eg_rank); w!(passed_free_safe_eg_rank);
+    w!(candidate_mg); w!(candidate_eg);
+    w!(doubled_mg); w!(doubled_eg);
+    w!(isolated_mg); w!(isolated_eg);
+    w!(defended_mg); w!(defended_eg);
+    w!(backward_mg); w!(backward_eg);
+    w!(bishop_pair_mg); w!(bishop_pair_eg);
+    w!(rook_open_mg); w!(rook_open_eg);
+    w!(rook_semi_mg); w!(rook_semi_eg);
+    w!(rook_seventh_mg); w!(rook_seventh_eg);
+    w!(knight_outpost_mg); w!(knight_outpost_eg);
+    w!(mob_mg[6]); w!(mob_eg[6]);
+    w!(threat_minor_mg); w!(threat_minor_eg);
+    w!(threat_rook_mg); w!(threat_rook_eg);
+    w!(threat_queen_mg); w!(threat_queen_eg);
+    w!(ks_minor_weight); w!(ks_rook_weight); w!(ks_queen_weight);
+    w!(ks_ring_attack);
+    w!(ks_safe_check_queen); w!(ks_safe_check_rook);
+    w!(ks_safe_check_bishop); w!(ks_safe_check_knight);
+    w!(ks_no_queen); w!(ks_divisor); w!(ks_max_penalty);
+    w!(shelter_open_king); w!(shelter_open_adj); w!(shelter_close1); w!(shelter_close2);
+    w!(storm_king_file); w!(storm_adj_file);
+    w!(rook_passer_mg); w!(rook_passer_eg);
+    w!(enemy_rook_passer_mg); w!(enemy_rook_passer_eg);
+    w!(hanging_minor); w!(hanging_rook); w!(hanging_queen);
+    w!(king_prox_base); w!(king_push_weight); w!(king_prox_weight); w!(king_prox_max_dist);
+    w!(space);
+    w!(trapped_bishop_mg); w!(trapped_bishop_eg);
+    w!(ocb_base); w!(ocb_per_pawn); w!(ocb_cap);
+    w!(threat_attack_minor_mg); w!(threat_attack_minor_eg);
+    w!(threat_rook_queen_mg); w!(threat_rook_queen_eg);
+    w!(threat_push_mg); w!(threat_push_eg);
+    w!(restricted_mobility_mg); w!(restricted_mobility_eg);
+    w!(bishop_outpost_mg); w!(bishop_outpost_eg);
+    w!(phalanx_mg[8]); w!(phalanx_eg[8]);
+    std::fs::write(path, out)
 }
