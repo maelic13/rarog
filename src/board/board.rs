@@ -1580,31 +1580,15 @@ impl Board {
         let atk = &*ATTACKS;
 
         let pawns = self.pieces(color, Piece::Pawn);
-        self.piece_threats[idx][Piece::Pawn as usize] = match color {
-            Color::White => pawns.north_east() | pawns.north_west(),
-            Color::Black => pawns.south_east() | pawns.south_west(),
-        };
-
-        let mut knights = self.pieces(color, Piece::Knight);
-        while knights.any() {
-            self.piece_threats[idx][Piece::Knight as usize] |= atk.knight(knights.pop_lsb());
-        }
-
-        let mut bishops = self.pieces(color, Piece::Bishop);
-        while bishops.any() {
-            self.piece_threats[idx][Piece::Bishop as usize] |= atk.bishop(bishops.pop_lsb(), occ);
-        }
-
-        let mut rooks = self.pieces(color, Piece::Rook);
-        while rooks.any() {
-            self.piece_threats[idx][Piece::Rook as usize] |= atk.rook(rooks.pop_lsb(), occ);
-        }
-
-        let mut queens = self.pieces(color, Piece::Queen);
-        while queens.any() {
-            self.piece_threats[idx][Piece::Queen as usize] |= atk.queen(queens.pop_lsb(), occ);
-        }
-
+        self.piece_threats[idx][Piece::Pawn as usize] = atk.pawn_setwise(color, pawns);
+        self.piece_threats[idx][Piece::Knight as usize] =
+            atk.knight_setwise(self.pieces(color, Piece::Knight));
+        self.piece_threats[idx][Piece::Bishop as usize] =
+            atk.bishop_setwise(self.pieces(color, Piece::Bishop), occ);
+        self.piece_threats[idx][Piece::Rook as usize] =
+            atk.rook_setwise(self.pieces(color, Piece::Rook), occ);
+        self.piece_threats[idx][Piece::Queen as usize] =
+            atk.queen_setwise(self.pieces(color, Piece::Queen), occ);
         self.piece_threats[idx][Piece::King as usize] = atk.king(self.king_sq(color));
         for piece in Piece::ALL {
             self.all_threats[idx] |= self.piece_threats[idx][piece as usize];

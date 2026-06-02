@@ -127,6 +127,42 @@ impl AttackTables {
         self.bishop(sq, occ) | self.rook(sq, occ)
     }
 
+    #[inline(always)]
+    pub fn pawn_setwise(&self, color: Color, pawns: Bitboard) -> Bitboard {
+        match color {
+            Color::White => pawns.north_east() | pawns.north_west(),
+            Color::Black => pawns.south_east() | pawns.south_west(),
+        }
+    }
+
+    pub fn knight_setwise(&self, mut knights: Bitboard) -> Bitboard {
+        let mut attacks = Bitboard::EMPTY;
+        while knights.any() {
+            attacks |= self.knight(knights.pop_lsb());
+        }
+        attacks
+    }
+
+    pub fn bishop_setwise(&self, mut bishops: Bitboard, occ: Bitboard) -> Bitboard {
+        let mut attacks = Bitboard::EMPTY;
+        while bishops.any() {
+            attacks |= self.bishop(bishops.pop_lsb(), occ);
+        }
+        attacks
+    }
+
+    pub fn rook_setwise(&self, mut rooks: Bitboard, occ: Bitboard) -> Bitboard {
+        let mut attacks = Bitboard::EMPTY;
+        while rooks.any() {
+            attacks |= self.rook(rooks.pop_lsb(), occ);
+        }
+        attacks
+    }
+
+    pub fn queen_setwise(&self, queens: Bitboard, occ: Bitboard) -> Bitboard {
+        self.bishop_setwise(queens, occ) | self.rook_setwise(queens, occ)
+    }
+
     // -----------------------------------------------------------------------
     // Initialization
     // -----------------------------------------------------------------------

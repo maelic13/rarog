@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rarog::board::{Bitboard, Board, Color, GameResult, Move, Piece, STARTING_FEN, Square};
+use rarog::board::{
+    ATTACKS, Bitboard, Board, Color, GameResult, Move, Piece, STARTING_FEN, Square,
+};
 use rarog::eval::piece_value;
 
 const ORACLE_FENS: &[&str] = &[
@@ -311,6 +313,38 @@ fn cached_threats_match_direct_attack_queries_after_make_unmake() {
             assert_eq!(board.to_fen(), before, "{fen}: {mv}");
             assert_cached_threats_match_direct_queries(&board);
         }
+    }
+}
+
+#[test]
+fn setwise_attacks_match_scalar_attack_unions() {
+    let board =
+        Board::from_fen("r3k2r/1ppq1ppp/p1npbn2/3Np3/2B1P3/2N2Q2/PPP2PPP/R3K2R w KQkq - 0 1")
+            .expect("valid FEN");
+    let atk = &*ATTACKS;
+    let occ = board.occupied();
+
+    for color in [Color::White, Color::Black] {
+        assert_eq!(
+            atk.pawn_setwise(color, board.pieces(color, Piece::Pawn)),
+            scalar_attacks(&board, color, Piece::Pawn)
+        );
+        assert_eq!(
+            atk.knight_setwise(board.pieces(color, Piece::Knight)),
+            scalar_attacks(&board, color, Piece::Knight)
+        );
+        assert_eq!(
+            atk.bishop_setwise(board.pieces(color, Piece::Bishop), occ),
+            scalar_attacks(&board, color, Piece::Bishop)
+        );
+        assert_eq!(
+            atk.rook_setwise(board.pieces(color, Piece::Rook), occ),
+            scalar_attacks(&board, color, Piece::Rook)
+        );
+        assert_eq!(
+            atk.queen_setwise(board.pieces(color, Piece::Queen), occ),
+            scalar_attacks(&board, color, Piece::Queen)
+        );
     }
 }
 
@@ -1230,4 +1264,23 @@ fn assert_cached_threats_match_direct_queries(board: &Board) {
             );
         }
     }
+}
+
+fn scalar_attacks(board: &Board, color: Color, piece: Piece) -> Bitboard {
+    let atk = &*ATTACKS;
+    let occ = board.occupied();
+    let mut pieces = board.pieces(color, piece);
+    let mut attacks = Bitboard::EMPTY;
+    while pieces.any() {
+        let sq = pieces.pop_lsb();
+        attacks |= match piece {
+            Piece::Pawn => atk.pawn(color, sq),
+            Piece::Knight => atk.knight(sq),
+            Piece::Bishop => atk.bishop(sq, occ),
+            Piece::Rook => atk.rook(sq, occ),
+            Piece::Queen => atk.queen(sq, occ),
+            Piece::King => atk.king(sq),
+        };
+    }
+    attacks
 }
