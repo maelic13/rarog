@@ -87,22 +87,39 @@ fn search_at_depth(board: Board, depth: usize) -> Move {
 }
 
 fn search_result_at_depth_with_threads(board: Board, depth: usize, threads: usize) -> SearchResult {
-    let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
-    options.limits.depth = depth as f64;
-    options.engine.threads = threads;
-    searcher.search(board, &options, false, || SearchEvent::None)
+    // Run on an explicit 32 MiB stack so that deep searches in debug builds
+    // (where stack frames are large) do not overflow the test runner's default
+    // thread stack — matching the 16 MiB budget used by real worker threads.
+    std::thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(move || {
+            let mut searcher = Searcher::default();
+            let mut options = SearchOptions::default();
+            options.position.board = board.clone();
+            options.limits.depth = depth as f64;
+            options.engine.threads = threads;
+            searcher.search(board, &options, false, || SearchEvent::None)
+        })
+        .unwrap()
+        .join()
+        .unwrap()
 }
 
 fn search_at_depth_with_threads(board: Board, depth: usize, threads: usize) -> Move {
-    let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
-    options.limits.depth = depth as f64;
-    options.engine.threads = threads;
-    let result = searcher.search(board, &options, false, || SearchEvent::None);
-    result.bestmove
+    std::thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(move || {
+            let mut searcher = Searcher::default();
+            let mut options = SearchOptions::default();
+            options.position.board = board.clone();
+            options.limits.depth = depth as f64;
+            options.engine.threads = threads;
+            let result = searcher.search(board, &options, false, || SearchEvent::None);
+            result.bestmove
+        })
+        .unwrap()
+        .join()
+        .unwrap()
 }
 
 fn mate_in_from_score(score: i32) -> i32 {

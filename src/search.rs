@@ -1237,7 +1237,7 @@ impl Searcher {
             if ply > 0
                 && mv == tt_move
                 && excluded.is_null()
-                && depth >= 4
+                && depth >= 4 + tt_pv as i32
                 && tt_depth >= depth - 3
                 && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
                 && tt_score.abs() < MATE_SCORE - MAX_PLY as i32
@@ -1260,16 +1260,30 @@ impl Searcher {
                     return 0;
                 }
                 if singular_score < singular_beta {
-                    extension = if !is_pv && singular_score < singular_beta - 20 {
-                        2
+                    extension = if !is_pv && singular_score < singular_beta - 40 {
+                        3 // triple: move is far and away best
+                    } else if !is_pv && singular_score < singular_beta - 20 {
+                        2 // double: move is clearly best
                     } else {
-                        1
+                        1 // single: move appears singular
                     };
                 } else if singular_beta >= beta {
-                    return singular_beta;
+                    // Multicut lerp: return a value between singular_beta and beta
+                    // rather than the bare singular_beta to avoid an over-pessimistic
+                    // return when the fail-high margin is narrow.
+                    return singular_beta + (beta - singular_beta) * 34 / 100;
                 } else if tt_score >= beta {
                     extension = -1;
                 }
+            } else if mv == tt_move
+                && excluded.is_null()
+                && depth <= 7
+                && cut_node
+                && eval_for_pruning <= alpha - 25
+            {
+                // LDSE: low-depth singular extension for cut nodes that appear to
+                // be failing low, granted without a full SE verification search.
+                extension = 1;
             }
 
             let checking_move =
@@ -1284,7 +1298,10 @@ impl Searcher {
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             board.make_move_unchecked(mv);
             self.tt.prefetch(board.hash);
-            let new_depth = depth - 1 + extension;
+            // Cap new_depth so extensions can only push depth one ply beyond the
+            // baseline (depth - 1). This prevents runaway depth growth in forcing
+            // lines from compounding extensions, bounding the recursion stack depth.
+            let new_depth = (depth - 1 + extension).min(depth + 1);
             let mut score;
 
             if searched == 0 {
