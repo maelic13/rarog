@@ -1281,30 +1281,21 @@ impl Searcher {
                     && !mv.is_promo()
                     && !checking_move;
                 if reducible {
-                    let hist = quiet_hist;
-                    let mut reduction = lmr_reduction(depth, searched);
-                    if tt_pv {
-                        reduction -= 1;
-                    } else if is_quiet {
-                        reduction += 1;
-                    }
-                    if improving {
-                        reduction -= 1;
-                    }
-                    if !tt_move.is_null() && searched >= 4 {
-                        reduction += 1;
-                    }
-                    if cut_node {
-                        reduction += 1;
-                    }
-                    if !is_quiet && see < 0 {
-                        reduction += 1;
-                    }
-                    if !tt_pv && !cut_node && quiet_hist > 4_000 {
-                        reduction -= 1;
-                    }
-                    reduction -= hist / 8_192;
-                    reduction = reduction.clamp(1, new_depth.max(1));
+                    let reduction = lmr_reduction_scaled(LmrContext {
+                        depth,
+                        move_index: searched,
+                        new_depth,
+                        tt_pv,
+                        cut_node,
+                        improving,
+                        has_tt_move: !tt_move.is_null(),
+                        tt_score,
+                        alpha,
+                        tt_depth,
+                        is_quiet,
+                        quiet_history: quiet_hist,
+                        losing_capture: !is_quiet && see < 0,
+                    });
                     score = -self.negamax(
                         board,
                         new_depth - reduction,
@@ -2495,6 +2486,67 @@ fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
     LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
 }
 
+#[derive(Copy, Clone)]
+struct LmrContext {
+    depth: i32,
+    move_index: usize,
+    new_depth: i32,
+    tt_pv: bool,
+    cut_node: bool,
+    improving: bool,
+    has_tt_move: bool,
+    tt_score: i32,
+    alpha: i32,
+    tt_depth: i32,
+    is_quiet: bool,
+    quiet_history: i32,
+    losing_capture: bool,
+}
+
+fn lmr_reduction_scaled(ctx: LmrContext) -> i32 {
+    let mut scaled = lmr_reduction(ctx.depth, ctx.move_index) * 1024;
+
+    if ctx.tt_pv {
+        scaled -= 1024;
+    } else if ctx.is_quiet {
+        scaled += 1024;
+    }
+    if ctx.cut_node {
+        scaled += 1024;
+    }
+    if !ctx.has_tt_move && ctx.move_index >= 4 {
+        scaled += 256;
+    } else if ctx.has_tt_move && ctx.move_index >= 4 {
+        scaled += 1024;
+    }
+    if ctx.tt_depth >= 0 && ctx.tt_depth < ctx.depth - 3 {
+        scaled += 192;
+    }
+    if ctx.tt_score != VALUE_NONE
+        && ctx.tt_score.abs() < MATE_SCORE - MAX_PLY as i32
+        && ctx.tt_score > ctx.alpha
+    {
+        scaled -= 256;
+    }
+    if ctx.improving {
+        scaled -= 1024;
+    }
+    if ctx.losing_capture {
+        scaled += 1024;
+    }
+    if ctx.is_quiet {
+        scaled -= (ctx.quiet_history / 8).clamp(-768, 768);
+        if !ctx.tt_pv && !ctx.cut_node && ctx.quiet_history > 4_000 {
+            scaled -= 256;
+        }
+        if ctx.quiet_history < -8_000 {
+            scaled += 256;
+        }
+    }
+
+    (scaled / 1024).clamp(1, ctx.new_depth.max(1))
+}
+
 fn late_move_prune_count(depth: i32, improving: bool) -> usize {
     let base = 4 + 2 * depth * depth / 3;
     if improving {
@@ -2836,6 +2888,60 @@ mod tests {
                 [Square::H3.index()],
             0
         );
+    }
+
+    #[test]
+    fn scaled_lmr_reduction_responds_to_search_context() {
+        let base = LmrContext {
+            depth: 8,
+            move_index: 8,
+            new_depth: 7,
+            tt_pv: false,
+            cut_node: false,
+            improving: false,
+            has_tt_move: true,
+            tt_score: VALUE_NONE,
+            alpha: 0,
+            tt_depth: 8,
+            is_quiet: true,
+            quiet_history: 0,
+            losing_capture: false,
+        };
+        let base_reduction = lmr_reduction_scaled(base);
+
+        assert!(
+            lmr_reduction_scaled(LmrContext {
+                tt_pv: true,
+                ..base
+            }) < base_reduction
+        );
+        assert!(
+            lmr_reduction_scaled(LmrContext {
+                improving: true,
+                ..base
+            }) < base_reduction
+        );
+        assert!(
+            lmr_reduction_scaled(LmrContext {
+                quiet_history: 12_000,
+                ..base
+            }) < base_reduction
+        );
+        assert!(
+            lmr_reduction_scaled(LmrContext {
+                cut_node: true,
+                quiet_history: -12_000,
+                ..base
+            }) > base_reduction
+        );
+
+        let losing_capture = LmrContext {
+            is_quiet: false,
+            losing_capture: true,
+            quiet_history: 0,
+            ..base
+        };
+        assert!(lmr_reduction_scaled(losing_capture) >= base_reduction);
     }
 
     #[test]
