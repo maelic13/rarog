@@ -27,8 +27,8 @@ static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25))
-                as i32;
+            *value =
+                (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25)) as i32;
         }
     }
     table
@@ -914,7 +914,14 @@ impl Searcher {
         }
         self.pv_len[ply] = ply;
         self.seldepth = self.seldepth.max(ply);
-        self.cutoff_count[ply] = 0;
+        // Reset the child cutoff counter for this node's children (ply + 1).
+        // Each child increments it on its own beta cutoff, so it accumulates the
+        // number of this node's moves that were refuted; later moves are then
+        // reduced more (see LMR). Skip during a singular search (excluded set) so
+        // we don't clobber the parent node's accumulation at the same ply.
+        if excluded.is_null() {
+            self.cutoff_count[ply + 1] = 0;
+        }
 
         if ply > 0 && board.can_declare_draw_in_search() {
             return 0;
@@ -1006,7 +1013,11 @@ impl Searcher {
         self.stack_static_eval[ply] = static_eval;
         // Per-node correction magnitude: distance between corrected and raw static eval.
         // Used by both the early-exit pruning block and LMR adjustments in the move loop.
-        let correction_mag = if in_check { 0 } else { (static_eval - raw_static_eval).abs() };
+        let correction_mag = if in_check {
+            0
+        } else {
+            (static_eval - raw_static_eval).abs()
+        };
         let improving = !in_check
             && ply >= 2
             && self.stack_static_eval[ply - 2] != VALUE_NONE
@@ -1024,8 +1035,7 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin =
-                (70 + 20 * not_improving_i) * depth + correction_mag * 60 / 1024;
+            let futility_margin = (70 + 20 * not_improving_i) * depth + correction_mag * 60 / 1024;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;
             }
@@ -1209,8 +1219,7 @@ impl Searcher {
                 if is_quiet {
                     // History term: good-history moves raise the futility threshold
                     // (harder to prune them); bad-history moves lower it (easier to prune).
-                    let prune_margin =
-                        (90 + 25 * not_improving_i) * depth + quiet_hist / 128;
+                    let prune_margin = (90 + 25 * not_improving_i) * depth + quiet_hist / 128;
                     let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
                         || (depth <= 8
                             && searched > late_move_prune_count(depth, improving, quiet_hist))
@@ -1222,9 +1231,8 @@ impl Searcher {
                     // Quiet SEE pruning: moves that lose material are pruned earlier
                     // when their history is poor; good history raises the threshold.
                     if depth >= 2 && depth <= 8 {
-                        let see_threshold = (-15 * depth * depth + 52 * depth
-                            - 23 * quiet_hist / 1024)
-                            .min(0);
+                        let see_threshold =
+                            (-15 * depth * depth + 52 * depth - 23 * quiet_hist / 1024).min(0);
                         if !board.see_ge(mv, see_threshold)
                             && !move_gives_check(board, mv, &mut gives_check)
                         {
@@ -1312,10 +1320,10 @@ impl Searcher {
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             board.make_move_unchecked(mv);
             self.tt.prefetch(board.hash);
-            // Cap new_depth so extensions can only push depth one ply beyond the
-            // baseline (depth - 1). This prevents runaway depth growth in forcing
-            // lines from compounding extensions, bounding the recursion stack depth.
-            let new_depth = (depth - 1 + extension).min(depth + 1);
+            // Cap new_depth at depth + 2 so extensions stay bounded (preventing
+            // runaway depth growth in forcing lines) while still letting a triple
+            // extension (+3 over depth-1) search one ply deeper than a double.
+            let new_depth = (depth - 1 + extension).min(depth + 2);
             let mut score;
 
             if searched == 0 {
@@ -1380,8 +1388,10 @@ impl Searcher {
                     }
                     // Large correction uncertainty: static eval is unreliable, reduce less
                     r -= 3403 * correction_mag / 1024;
-                    // Many prior cutoffs at this ply: remaining moves are likely bad
-                    if self.cutoff_count[ply] > 2 {
+                    // Many of this node's children have already cut off (our moves
+                    // are being refuted): the node looks like an all-node, so reduce
+                    // the remaining late moves harder.
+                    if self.cutoff_count[ply + 1] > 2 {
                         r += 992;
                     }
                     // Killer or countermove: these moves have proven useful at this
@@ -1414,7 +1424,9 @@ impl Searcher {
                         // do-deeper / do-shallower: compare reduced result to the running
                         // best at this node before deciding how deep to re-search.
                         let re_depth = if score > best_score + 54 {
-                            new_depth + 1
+                            // Bound by depth + 2 so do-deeper cannot compound with a
+                            // triple extension to push the child beyond the cap.
+                            (new_depth + 1).min(depth + 2)
                         } else if score < best_score + 8 {
                             (new_depth - 1).max(0)
                         } else {
@@ -1492,8 +1504,10 @@ impl Searcher {
                 self.pv_len[ply] = child_len;
 
                 if score >= beta {
-                    self.cutoff_count[ply] = self.cutoff_count[ply].saturating_add(1);
                     if excluded.is_null() {
+                        // Tell the parent node (which reads cutoff_count[parent_ply + 1]
+                        // == cutoff_count[ply]) that a move here produced a cutoff.
+                        self.cutoff_count[ply] = self.cutoff_count[ply].saturating_add(1);
                         let bonus = history_bonus(depth);
                         if !is_capture {
                             self.update_cutoff_tables(
@@ -1604,6 +1618,12 @@ impl Searcher {
     ) -> i32 {
         if self.check_stop(poll) {
             return 0;
+        }
+        // Ply guard: in-check quiescence recurses without a qply limit, so long
+        // forcing check sequences (amplified by search extensions) can otherwise
+        // push `ply` past MAX_PLY and index pv_len/pv_table/stack out of bounds.
+        if ply >= MAX_PLY - 1 {
+            return self.corrected_eval(board, ply);
         }
         self.pv_len[ply] = ply;
         self.seldepth = self.seldepth.max(ply);

@@ -1,7 +1,5 @@
 pub mod bench;
 pub mod board;
-#[cfg(feature = "tune")]
-pub mod tune;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;
@@ -13,4 +11,6 @@ mod search_threads;
 pub mod syzygy;
 mod time_manager;
 pub mod tt;
+#[cfg(feature = "tune")]
+pub mod tune;
 pub mod uci_protocol;

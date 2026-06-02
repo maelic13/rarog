@@ -67,8 +67,8 @@ struct Position {
 }
 
 fn load_dataset(path: &str) -> Vec<Position> {
-    let content = std::fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("Cannot read dataset {path}: {e}"));
+    let content =
+        std::fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read dataset {path}: {e}"));
     let mut positions = Vec::new();
     for (ln, line) in content.lines().enumerate() {
         let line = line.trim();
@@ -85,7 +85,11 @@ fn load_dataset(path: &str) -> Vec<Position> {
         let result: f64 = match result_str.trim().parse() {
             Ok(v) => v,
             Err(_) => {
-                eprintln!("line {}: cannot parse result '{}', skipping", ln + 1, result_str.trim());
+                eprintln!(
+                    "line {}: cannot parse result '{}', skipping",
+                    ln + 1,
+                    result_str.trim()
+                );
                 continue;
             }
         };
@@ -208,12 +212,18 @@ fn build_param_list() -> Vec<ParamEntry> {
     v.push(scalar!(backward_eg, 0, 30));
 
     // Passed pawn rank bonuses (ranks 1..6; ranks 0 and 7 are always 0)
-    v.push(arr_elem!(passed_mg, 1, 0, 150)); v.push(arr_elem!(passed_mg, 2, 0, 150));
-    v.push(arr_elem!(passed_mg, 3, 0, 150)); v.push(arr_elem!(passed_mg, 4, 0, 150));
-    v.push(arr_elem!(passed_mg, 5, 0, 150)); v.push(arr_elem!(passed_mg, 6, 0, 150));
-    v.push(arr_elem!(passed_eg, 1, 0, 250)); v.push(arr_elem!(passed_eg, 2, 0, 250));
-    v.push(arr_elem!(passed_eg, 3, 0, 250)); v.push(arr_elem!(passed_eg, 4, 0, 250));
-    v.push(arr_elem!(passed_eg, 5, 0, 250)); v.push(arr_elem!(passed_eg, 6, 0, 250));
+    v.push(arr_elem!(passed_mg, 1, 0, 150));
+    v.push(arr_elem!(passed_mg, 2, 0, 150));
+    v.push(arr_elem!(passed_mg, 3, 0, 150));
+    v.push(arr_elem!(passed_mg, 4, 0, 150));
+    v.push(arr_elem!(passed_mg, 5, 0, 150));
+    v.push(arr_elem!(passed_mg, 6, 0, 150));
+    v.push(arr_elem!(passed_eg, 1, 0, 250));
+    v.push(arr_elem!(passed_eg, 2, 0, 250));
+    v.push(arr_elem!(passed_eg, 3, 0, 250));
+    v.push(arr_elem!(passed_eg, 4, 0, 250));
+    v.push(arr_elem!(passed_eg, 5, 0, 250));
+    v.push(arr_elem!(passed_eg, 6, 0, 250));
 
     // Piece bonuses
     v.push(scalar!(bishop_pair_mg, 10, 60));
@@ -228,10 +238,14 @@ fn build_param_list() -> Vec<ParamEntry> {
     v.push(scalar!(knight_outpost_eg, 0, 30));
 
     // Mobility (pieces N=1, B=2, R=3, Q=4; skip Pawn=0 and King=5)
-    v.push(arr_elem!(mob_mg, 1, 0, 10)); v.push(arr_elem!(mob_mg, 2, 0, 10));
-    v.push(arr_elem!(mob_mg, 3, 0, 10)); v.push(arr_elem!(mob_mg, 4, 0, 10));
-    v.push(arr_elem!(mob_eg, 1, 0, 12)); v.push(arr_elem!(mob_eg, 2, 0, 12));
-    v.push(arr_elem!(mob_eg, 3, 0, 12)); v.push(arr_elem!(mob_eg, 4, 0, 12));
+    v.push(arr_elem!(mob_mg, 1, 0, 10));
+    v.push(arr_elem!(mob_mg, 2, 0, 10));
+    v.push(arr_elem!(mob_mg, 3, 0, 10));
+    v.push(arr_elem!(mob_mg, 4, 0, 10));
+    v.push(arr_elem!(mob_eg, 1, 0, 12));
+    v.push(arr_elem!(mob_eg, 2, 0, 12));
+    v.push(arr_elem!(mob_eg, 3, 0, 12));
+    v.push(arr_elem!(mob_eg, 4, 0, 12));
 
     // Threats
     v.push(scalar!(threat_minor_mg, 5, 40));
@@ -294,12 +308,18 @@ fn build_param_list() -> Vec<ParamEntry> {
     v.push(scalar!(bishop_outpost_eg, 0, 20));
 
     // Phalanx ranks 1..6 (rank 0 and 7 are always 0)
-    v.push(arr_elem!(phalanx_mg, 1, 0, 40)); v.push(arr_elem!(phalanx_mg, 2, 0, 40));
-    v.push(arr_elem!(phalanx_mg, 3, 0, 40)); v.push(arr_elem!(phalanx_mg, 4, 0, 40));
-    v.push(arr_elem!(phalanx_mg, 5, 0, 40)); v.push(arr_elem!(phalanx_mg, 6, 0, 40));
-    v.push(arr_elem!(phalanx_eg, 1, 0, 40)); v.push(arr_elem!(phalanx_eg, 2, 0, 40));
-    v.push(arr_elem!(phalanx_eg, 3, 0, 40)); v.push(arr_elem!(phalanx_eg, 4, 0, 40));
-    v.push(arr_elem!(phalanx_eg, 5, 0, 40)); v.push(arr_elem!(phalanx_eg, 6, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 1, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 2, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 3, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 4, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 5, 0, 40));
+    v.push(arr_elem!(phalanx_mg, 6, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 1, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 2, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 3, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 4, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 5, 0, 40));
+    v.push(arr_elem!(phalanx_eg, 6, 0, 40));
 
     v
 }
@@ -409,8 +429,10 @@ fn main() {
         i += 1;
     }
 
-    let dataset_path =
-        dataset_path.unwrap_or_else(|| { eprintln!("Usage: tune <dataset> [--options]"); std::process::exit(1); });
+    let dataset_path = dataset_path.unwrap_or_else(|| {
+        eprintln!("Usage: tune <dataset> [--options]");
+        std::process::exit(1);
+    });
 
     // Load dataset
     let positions = load_dataset(&dataset_path);
@@ -442,7 +464,8 @@ fn main() {
     params = run_coordinate_descent(&positions, params, k, iters, step);
 
     // Write result
-    save_eval_params(&params, &out_path).unwrap_or_else(|e| eprintln!("Cannot write {out_path}: {e}"));
+    save_eval_params(&params, &out_path)
+        .unwrap_or_else(|e| eprintln!("Cannot write {out_path}: {e}"));
     eprintln!("Tuned parameters written to {out_path}");
 
     // Print diff vs defaults
@@ -453,9 +476,18 @@ fn main() {
         let orig = (entry.get)(&defaults);
         let tuned = (entry.get)(&params);
         if tuned != orig {
-            println!("{:35} default={:5}  tuned={:5}  delta={:+}", entry.name, orig, tuned, tuned - orig);
+            println!(
+                "{:35} default={:5}  tuned={:5}  delta={:+}",
+                entry.name,
+                orig,
+                tuned,
+                tuned - orig
+            );
             changed += 1;
         }
     }
-    eprintln!("{changed}/{} parameters changed from defaults.", param_list.len());
+    eprintln!(
+        "{changed}/{} parameters changed from defaults.",
+        param_list.len()
+    );
 }

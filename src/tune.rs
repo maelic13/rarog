@@ -121,7 +121,7 @@
 //! Divisor on read side: `/128` (currently; Reckless uses /69).
 
 use crate::board::{Board, Color, Piece};
-use crate::eval::{EvalParams, EG_TABLE, MG_TABLE, PHASE_W, TOTAL_PHASE};
+use crate::eval::{EG_TABLE, EvalParams, MG_TABLE, PHASE_W, TOTAL_PHASE};
 
 /// Standalone positional evaluation for tuning.
 ///
@@ -166,7 +166,11 @@ pub fn tune_eval(board: &Board, params: &EvalParams) -> i32 {
     mg += tempo;
 
     let score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
-    if board.side_to_move() == Color::White { score } else { -score }
+    if board.side_to_move() == Color::White {
+        score
+    } else {
+        -score
+    }
 }
 
 /// Load an `EvalParams` from `path`, starting from `EvalParams::DEFAULT`.
@@ -191,7 +195,9 @@ pub fn load_eval_params(path: &str) -> EvalParams {
             None => continue,
         };
         let rest = parts.next().unwrap_or("").trim();
-        let mut vals = rest.split_whitespace().filter_map(|s| s.parse::<i32>().ok());
+        let mut vals = rest
+            .split_whitespace()
+            .filter_map(|s| s.parse::<i32>().ok());
 
         macro_rules! scalar {
             ($field:ident) => {
@@ -316,42 +322,87 @@ pub fn save_eval_params(params: &EvalParams, path: &str) -> std::io::Result<()> 
         };
     }
     w!(tempo);
-    w!(passed_mg[8]); w!(passed_eg[8]);
-    w!(passed_defended_mg); w!(passed_defended_eg_base); w!(passed_defended_eg_rank);
-    w!(passed_free_mg_rank); w!(passed_free_eg_rank); w!(passed_free_safe_eg_rank);
-    w!(candidate_mg); w!(candidate_eg);
-    w!(doubled_mg); w!(doubled_eg);
-    w!(isolated_mg); w!(isolated_eg);
-    w!(defended_mg); w!(defended_eg);
-    w!(backward_mg); w!(backward_eg);
-    w!(bishop_pair_mg); w!(bishop_pair_eg);
-    w!(rook_open_mg); w!(rook_open_eg);
-    w!(rook_semi_mg); w!(rook_semi_eg);
-    w!(rook_seventh_mg); w!(rook_seventh_eg);
-    w!(knight_outpost_mg); w!(knight_outpost_eg);
-    w!(mob_mg[6]); w!(mob_eg[6]);
-    w!(threat_minor_mg); w!(threat_minor_eg);
-    w!(threat_rook_mg); w!(threat_rook_eg);
-    w!(threat_queen_mg); w!(threat_queen_eg);
-    w!(ks_minor_weight); w!(ks_rook_weight); w!(ks_queen_weight);
+    w!(passed_mg[8]);
+    w!(passed_eg[8]);
+    w!(passed_defended_mg);
+    w!(passed_defended_eg_base);
+    w!(passed_defended_eg_rank);
+    w!(passed_free_mg_rank);
+    w!(passed_free_eg_rank);
+    w!(passed_free_safe_eg_rank);
+    w!(candidate_mg);
+    w!(candidate_eg);
+    w!(doubled_mg);
+    w!(doubled_eg);
+    w!(isolated_mg);
+    w!(isolated_eg);
+    w!(defended_mg);
+    w!(defended_eg);
+    w!(backward_mg);
+    w!(backward_eg);
+    w!(bishop_pair_mg);
+    w!(bishop_pair_eg);
+    w!(rook_open_mg);
+    w!(rook_open_eg);
+    w!(rook_semi_mg);
+    w!(rook_semi_eg);
+    w!(rook_seventh_mg);
+    w!(rook_seventh_eg);
+    w!(knight_outpost_mg);
+    w!(knight_outpost_eg);
+    w!(mob_mg[6]);
+    w!(mob_eg[6]);
+    w!(threat_minor_mg);
+    w!(threat_minor_eg);
+    w!(threat_rook_mg);
+    w!(threat_rook_eg);
+    w!(threat_queen_mg);
+    w!(threat_queen_eg);
+    w!(ks_minor_weight);
+    w!(ks_rook_weight);
+    w!(ks_queen_weight);
     w!(ks_ring_attack);
-    w!(ks_safe_check_queen); w!(ks_safe_check_rook);
-    w!(ks_safe_check_bishop); w!(ks_safe_check_knight);
-    w!(ks_no_queen); w!(ks_divisor); w!(ks_max_penalty);
-    w!(shelter_open_king); w!(shelter_open_adj); w!(shelter_close1); w!(shelter_close2);
-    w!(storm_king_file); w!(storm_adj_file);
-    w!(rook_passer_mg); w!(rook_passer_eg);
-    w!(enemy_rook_passer_mg); w!(enemy_rook_passer_eg);
-    w!(hanging_minor); w!(hanging_rook); w!(hanging_queen);
-    w!(king_prox_base); w!(king_push_weight); w!(king_prox_weight); w!(king_prox_max_dist);
+    w!(ks_safe_check_queen);
+    w!(ks_safe_check_rook);
+    w!(ks_safe_check_bishop);
+    w!(ks_safe_check_knight);
+    w!(ks_no_queen);
+    w!(ks_divisor);
+    w!(ks_max_penalty);
+    w!(shelter_open_king);
+    w!(shelter_open_adj);
+    w!(shelter_close1);
+    w!(shelter_close2);
+    w!(storm_king_file);
+    w!(storm_adj_file);
+    w!(rook_passer_mg);
+    w!(rook_passer_eg);
+    w!(enemy_rook_passer_mg);
+    w!(enemy_rook_passer_eg);
+    w!(hanging_minor);
+    w!(hanging_rook);
+    w!(hanging_queen);
+    w!(king_prox_base);
+    w!(king_push_weight);
+    w!(king_prox_weight);
+    w!(king_prox_max_dist);
     w!(space);
-    w!(trapped_bishop_mg); w!(trapped_bishop_eg);
-    w!(ocb_base); w!(ocb_per_pawn); w!(ocb_cap);
-    w!(threat_attack_minor_mg); w!(threat_attack_minor_eg);
-    w!(threat_rook_queen_mg); w!(threat_rook_queen_eg);
-    w!(threat_push_mg); w!(threat_push_eg);
-    w!(restricted_mobility_mg); w!(restricted_mobility_eg);
-    w!(bishop_outpost_mg); w!(bishop_outpost_eg);
-    w!(phalanx_mg[8]); w!(phalanx_eg[8]);
+    w!(trapped_bishop_mg);
+    w!(trapped_bishop_eg);
+    w!(ocb_base);
+    w!(ocb_per_pawn);
+    w!(ocb_cap);
+    w!(threat_attack_minor_mg);
+    w!(threat_attack_minor_eg);
+    w!(threat_rook_queen_mg);
+    w!(threat_rook_queen_eg);
+    w!(threat_push_mg);
+    w!(threat_push_eg);
+    w!(restricted_mobility_mg);
+    w!(restricted_mobility_eg);
+    w!(bishop_outpost_mg);
+    w!(bishop_outpost_eg);
+    w!(phalanx_mg[8]);
+    w!(phalanx_eg[8]);
     std::fs::write(path, out)
 }

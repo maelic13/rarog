@@ -642,17 +642,15 @@ impl Board {
                 return true;
             }
             // Discovered check: sliders unblocked by the king or rook moving.
-            let diagonal_sliders =
-                (self.pieces(us, Piece::Bishop) | self.pieces(us, Piece::Queen))
-                    & !from_bb
-                    & !rook_from_bb;
+            let diagonal_sliders = (self.pieces(us, Piece::Bishop) | self.pieces(us, Piece::Queen))
+                & !from_bb
+                & !rook_from_bb;
             if (atk.bishop(their_king, occ) & diagonal_sliders).any() {
                 return true;
             }
-            let orthogonal_sliders =
-                (self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen))
-                    & !from_bb
-                    & !rook_from_bb;
+            let orthogonal_sliders = (self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen))
+                & !from_bb
+                & !rook_from_bb;
             return (atk.rook(their_king, occ) & orthogonal_sliders).any();
         }
 

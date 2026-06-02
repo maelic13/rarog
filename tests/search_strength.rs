@@ -22,6 +22,31 @@ fn threaded_search_finds_fools_mate_in_one() {
 }
 
 #[test]
+fn deep_search_in_check_heavy_positions_does_not_overflow_ply() {
+    // Regression: quiescence had no ply guard, so long forcing check sequences
+    // (amplified by search extensions) could push `ply` past MAX_PLY and panic
+    // with an out-of-bounds index. These positions reproduced the crash at
+    // sufficient depth; the search must now complete with a legal best move.
+    for fen in [
+        "4k3/p5QR/1p2p3/6p1/8/PP1q4/8/2K5 b - - 4 0",
+        "8/6R1/5P1k/8/2PB1KP1/r7/3r4/8 w - - 7 0",
+        "6k1/5ppp/8/8/8/8/5PPP/3qQ1K1 w - - 0 1",
+    ] {
+        let board = Board::from_fen(fen).expect("valid FEN");
+        let legal_moves = board.generate_legal_movelist();
+        let result = search_result_at_depth_with_threads(board, 16, 1);
+        assert!(!result.bestmove.is_null(), "{fen}");
+        assert!(
+            legal_moves
+                .iter()
+                .any(|&legal_move| legal_move.same_uci_move(result.bestmove)),
+            "{} must be legal for {fen}",
+            result.bestmove
+        );
+    }
+}
+
+#[test]
 fn search_continues_to_resolve_shorter_mate() {
     let board = Board::from_fen("4K3/2Q5/6k1/8/8/8/8/8 w - - 0 1").unwrap();
 

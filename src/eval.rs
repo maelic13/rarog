@@ -292,9 +292,9 @@ pub struct EvalParams {
     pub passed_defended_eg_base: i32,
     pub passed_defended_eg_rank: i32, // × rel_rank
     // Free-path (stop square empty) extras.
-    pub passed_free_mg_rank: i32,     // × rel_rank
-    pub passed_free_eg_rank: i32,     // × rel_rank
-    pub passed_free_safe_eg_rank: i32,// × rel_rank, stop also unattacked
+    pub passed_free_mg_rank: i32,      // × rel_rank
+    pub passed_free_eg_rank: i32,      // × rel_rank
+    pub passed_free_safe_eg_rank: i32, // × rel_rank, stop also unattacked
 
     // Candidate passer (can potentially become passed).
     pub candidate_mg: i32,
@@ -305,7 +305,7 @@ pub struct EvalParams {
     pub doubled_eg: i32,
     pub isolated_mg: i32,
     pub isolated_eg: i32,
-    pub defended_mg: i32,  // defended by own pawn (non-passer)
+    pub defended_mg: i32, // defended by own pawn (non-passer)
     pub defended_eg: i32,
     pub backward_mg: i32,
     pub backward_eg: i32,
@@ -376,9 +376,9 @@ pub struct EvalParams {
     pub king_prox_base: i32, // (enemy_dist − own_dist) × (base + rel_rank)
 
     // Endgame king-centralisation bonus (applied when one side is clearly winning).
-    pub king_push_weight: i32,     // × (file_push + rank_push)
-    pub king_prox_weight: i32,     // × (max_dist − king_distance)
-    pub king_prox_max_dist: i32,   // maximum Chebyshev distance on an 8×8 board
+    pub king_push_weight: i32,   // × (file_push + rank_push)
+    pub king_prox_weight: i32,   // × (max_dist − king_distance)
+    pub king_prox_max_dist: i32, // maximum Chebyshev distance on an 8×8 board
 
     // Space bonus per safe central square not occupied by own pawn.
     pub space: i32,
@@ -395,9 +395,9 @@ pub struct EvalParams {
     // New threat terms (7b).
     pub threat_attack_minor_mg: i32, // our minor attacks enemy minor
     pub threat_attack_minor_eg: i32,
-    pub threat_rook_queen_mg: i32,   // our rook attacks enemy queen
+    pub threat_rook_queen_mg: i32, // our rook attacks enemy queen
     pub threat_rook_queen_eg: i32,
-    pub threat_push_mg: i32,         // safe pawn push threatens enemy piece
+    pub threat_push_mg: i32, // safe pawn push threatens enemy piece
     pub threat_push_eg: i32,
 
     // Restricted mobility: penalty for pieces with at most one safe move.
@@ -418,87 +418,87 @@ impl EvalParams {
     /// This is the ground truth used by both the compile-time const path
     /// and the runtime-loading path of the `tune` feature.
     pub const DEFAULT: EvalParams = EvalParams {
-    tempo: 10,
-    passed_mg: [0, 5, 10, 20, 35, 60, 100, 0],
-    passed_eg: [0, 10, 17, 35, 62, 100, 170, 0],
-    passed_defended_mg: 8,
-    passed_defended_eg_base: 6,
-    passed_defended_eg_rank: 4,
-    passed_free_mg_rank: 2,
-    passed_free_eg_rank: 6,
-    passed_free_safe_eg_rank: 8,
-    candidate_mg: 6,
-    candidate_eg: 10,
-    doubled_mg: 10,
-    doubled_eg: 20,
-    isolated_mg: 15,
-    isolated_eg: 20,
-    defended_mg: 7,
-    defended_eg: 5,
-    backward_mg: 10,
-    backward_eg: 15,
-    bishop_pair_mg: 30,
-    bishop_pair_eg: 50,
-    rook_open_mg: 25,
-    rook_open_eg: 10,
-    rook_semi_mg: 12,
-    rook_semi_eg: 8,
-    rook_seventh_mg: 20,
-    rook_seventh_eg: 40,
-    knight_outpost_mg: 25,
-    knight_outpost_eg: 15,
-    mob_mg: [0, 4, 5, 2, 1, 0],
-    mob_eg: [0, 4, 5, 4, 2, 0],
-    threat_minor_mg: 18,
-    threat_minor_eg: 12,
-    threat_rook_mg: 28,
-    threat_rook_eg: 18,
-    threat_queen_mg: 45,
-    threat_queen_eg: 30,
-    ks_minor_weight: 2,
-    ks_rook_weight: 3,
-    ks_queen_weight: 5,
-    ks_ring_attack: 3,
-    ks_safe_check_queen: 35,
-    ks_safe_check_rook: 18,
-    ks_safe_check_bishop: 10,
-    ks_safe_check_knight: 10,
-    ks_no_queen: 20,
-    ks_divisor: 12,
-    ks_max_penalty: 200,
-    shelter_open_king: 20,
-    shelter_open_adj: 10,
-    shelter_close1: 15,
-    shelter_close2: 7,
-    storm_king_file: 7,
-    storm_adj_file: 4,
-    rook_passer_mg: 15,
-    rook_passer_eg: 25,
-    enemy_rook_passer_mg: 10,
-    enemy_rook_passer_eg: 20,
-    hanging_minor: 45,
-    hanging_rook: 60,
-    hanging_queen: 80,
-    king_prox_base: 2,
-    king_push_weight: 5,
-    king_prox_weight: 4,
-    king_prox_max_dist: 14,
-    space: 2,
-    trapped_bishop_mg: 60,
-    trapped_bishop_eg: 40,
-    ocb_base: 32,
-    ocb_per_pawn: 4,
-    ocb_cap: 48,
-    threat_attack_minor_mg: 8,
-    threat_attack_minor_eg: 5,
-    threat_rook_queen_mg: 10,
-    threat_rook_queen_eg: 8,
-    threat_push_mg: 5,
-    threat_push_eg: 4,
-    restricted_mobility_mg: 5,
-    restricted_mobility_eg: 4,
-    bishop_outpost_mg: 8,
-    bishop_outpost_eg: 5,
+        tempo: 10,
+        passed_mg: [0, 5, 10, 20, 35, 60, 100, 0],
+        passed_eg: [0, 10, 17, 35, 62, 100, 170, 0],
+        passed_defended_mg: 8,
+        passed_defended_eg_base: 6,
+        passed_defended_eg_rank: 4,
+        passed_free_mg_rank: 2,
+        passed_free_eg_rank: 6,
+        passed_free_safe_eg_rank: 8,
+        candidate_mg: 6,
+        candidate_eg: 10,
+        doubled_mg: 10,
+        doubled_eg: 20,
+        isolated_mg: 15,
+        isolated_eg: 20,
+        defended_mg: 7,
+        defended_eg: 5,
+        backward_mg: 10,
+        backward_eg: 15,
+        bishop_pair_mg: 30,
+        bishop_pair_eg: 50,
+        rook_open_mg: 25,
+        rook_open_eg: 10,
+        rook_semi_mg: 12,
+        rook_semi_eg: 8,
+        rook_seventh_mg: 20,
+        rook_seventh_eg: 40,
+        knight_outpost_mg: 25,
+        knight_outpost_eg: 15,
+        mob_mg: [0, 4, 5, 2, 1, 0],
+        mob_eg: [0, 4, 5, 4, 2, 0],
+        threat_minor_mg: 18,
+        threat_minor_eg: 12,
+        threat_rook_mg: 28,
+        threat_rook_eg: 18,
+        threat_queen_mg: 45,
+        threat_queen_eg: 30,
+        ks_minor_weight: 2,
+        ks_rook_weight: 3,
+        ks_queen_weight: 5,
+        ks_ring_attack: 3,
+        ks_safe_check_queen: 35,
+        ks_safe_check_rook: 18,
+        ks_safe_check_bishop: 10,
+        ks_safe_check_knight: 10,
+        ks_no_queen: 20,
+        ks_divisor: 12,
+        ks_max_penalty: 200,
+        shelter_open_king: 20,
+        shelter_open_adj: 10,
+        shelter_close1: 15,
+        shelter_close2: 7,
+        storm_king_file: 7,
+        storm_adj_file: 4,
+        rook_passer_mg: 15,
+        rook_passer_eg: 25,
+        enemy_rook_passer_mg: 10,
+        enemy_rook_passer_eg: 20,
+        hanging_minor: 45,
+        hanging_rook: 60,
+        hanging_queen: 80,
+        king_prox_base: 2,
+        king_push_weight: 5,
+        king_prox_weight: 4,
+        king_prox_max_dist: 14,
+        space: 2,
+        trapped_bishop_mg: 60,
+        trapped_bishop_eg: 40,
+        ocb_base: 32,
+        ocb_per_pawn: 4,
+        ocb_cap: 48,
+        threat_attack_minor_mg: 8,
+        threat_attack_minor_eg: 5,
+        threat_rook_queen_mg: 10,
+        threat_rook_queen_eg: 8,
+        threat_push_mg: 5,
+        threat_push_eg: 4,
+        restricted_mobility_mg: 5,
+        restricted_mobility_eg: 4,
+        bishop_outpost_mg: 8,
+        bishop_outpost_eg: 5,
         phalanx_mg: [0, 3, 5, 7, 10, 13, 16, 0],
         phalanx_eg: [0, 3, 5, 7, 10, 13, 16, 0],
     };
@@ -667,7 +667,11 @@ impl Evaluator {
             }
         }
         phase = phase.min(TOTAL_PHASE);
-        let tempo = if board.side_to_move() == Color::White { PARAMS.tempo } else { -PARAMS.tempo };
+        let tempo = if board.side_to_move() == Color::White {
+            PARAMS.tempo
+        } else {
+            -PARAMS.tempo
+        };
         mg += tempo;
         let cheap_score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
         let cheap_value = if board.side_to_move() == Color::White {
@@ -733,8 +737,9 @@ impl Evaluator {
 
                     if (atk.pawn(them, sq) & our_pawns).any() {
                         mg += sign * PARAMS.passed_defended_mg;
-                        eg += sign * (PARAMS.passed_defended_eg_base
-                            + rel_rank as i32 * PARAMS.passed_defended_eg_rank);
+                        eg += sign
+                            * (PARAMS.passed_defended_eg_base
+                                + rel_rank as i32 * PARAMS.passed_defended_eg_rank);
                     }
 
                     if let Some(stop) = forward_square(us, sq)
@@ -771,10 +776,14 @@ impl Evaluator {
                     eg += sign * PARAMS.defended_eg;
                 }
                 // Phalanx: a friendly pawn directly to the left or right on the same rank.
-                let west = sq.0.checked_sub(1).filter(|&s| SQUARE_FILE[s as usize] == file.wrapping_sub(1));
-                let east = sq.0.checked_add(1).filter(|&s| SQUARE_FILE[s as usize] == file + 1);
-                let is_phalanx =
-                    west.is_some_and(|s| (our_pawns & Bitboard::from(Square(s))).any())
+                let west =
+                    sq.0.checked_sub(1)
+                        .filter(|&s| SQUARE_FILE[s as usize] == file.wrapping_sub(1));
+                let east =
+                    sq.0.checked_add(1)
+                        .filter(|&s| SQUARE_FILE[s as usize] == file + 1);
+                let is_phalanx = west
+                    .is_some_and(|s| (our_pawns & Bitboard::from(Square(s))).any())
                     || east.is_some_and(|s| (our_pawns & Bitboard::from(Square(s))).any());
                 if is_phalanx {
                     mg += sign * PARAMS.phalanx_mg[rel_rank];
@@ -933,7 +942,11 @@ impl Evaluator {
             // Safe pawn push threats: push one step and attack an enemy non-pawn.
             let enemy_non_pawns = board.color_occ(them) & !board.pieces(them, Piece::Pawn);
             let our_pawns_push_src = board.pieces(color, Piece::Pawn)
-                & !(if color == Color::White { Bitboard::RANK_7 } else { Bitboard::RANK_2 });
+                & !(if color == Color::White {
+                    Bitboard::RANK_7
+                } else {
+                    Bitboard::RANK_2
+                });
             let push_dest = if color == Color::White {
                 our_pawns_push_src.north()
             } else {
@@ -1110,7 +1123,12 @@ impl Evaluator {
                 let file_pawns = pawns[color as usize] & FILE_BBS[file as usize];
                 let in_front = file_pawns & FORWARD_RANKS[color as usize][king_rank as usize];
                 if in_front.is_empty() {
-                    *mg -= sign * if df == 0 { PARAMS.shelter_open_king } else { PARAMS.shelter_open_adj };
+                    *mg -= sign
+                        * if df == 0 {
+                            PARAMS.shelter_open_king
+                        } else {
+                            PARAMS.shelter_open_adj
+                        };
                 } else {
                     let pawn_sq = if color == Color::White {
                         in_front.lsb()
