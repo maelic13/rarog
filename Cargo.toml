@@ -15,6 +15,13 @@ resolver = "3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Enable the SPSA/Texel tuning infrastructure.  When active, EvalParams and
+# SearchParams are loaded at runtime from a file path given by the
+# RAROG_TUNE_FILE / RAROG_SEARCH_TUNE_FILE environment variables instead of
+# using the compile-time defaults.  This does NOT ship any new UCI options.
+tune = []
+
 [dependencies]
 
 [build-dependencies]

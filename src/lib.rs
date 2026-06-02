@@ -1,5 +1,7 @@
 pub mod bench;
 pub mod board;
+#[cfg(feature = "tune")]
+pub mod tune;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;

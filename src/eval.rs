@@ -413,8 +413,11 @@ pub struct EvalParams {
     pub phalanx_eg: [i32; 8],
 }
 
-/// Default evaluation parameters — identical to the original inline constants.
-pub const PARAMS: EvalParams = EvalParams {
+impl EvalParams {
+    /// Default values — identical to the original inline constants.
+    /// This is the ground truth used by both the compile-time const path
+    /// and the runtime-loading path of the `tune` feature.
+    pub const DEFAULT: EvalParams = EvalParams {
     tempo: 10,
     passed_mg: [0, 5, 10, 20, 35, 60, 100, 0],
     passed_eg: [0, 10, 17, 35, 62, 100, 170, 0],
@@ -496,9 +499,30 @@ pub const PARAMS: EvalParams = EvalParams {
     restricted_mobility_eg: 4,
     bishop_outpost_mg: 8,
     bishop_outpost_eg: 5,
-    phalanx_mg: [0, 3, 5, 7, 10, 13, 16, 0],
-    phalanx_eg: [0, 3, 5, 7, 10, 13, 16, 0],
-};
+        phalanx_mg: [0, 3, 5, 7, 10, 13, 16, 0],
+        phalanx_eg: [0, 3, 5, 7, 10, 13, 16, 0],
+    };
+}
+
+// ---------------------------------------------------------------------------
+// PARAMS: compile-time constant (default) or runtime-loaded (tune feature).
+// ---------------------------------------------------------------------------
+//
+// Normal builds: PARAMS is a const — zero runtime cost, fully inlined.
+// `--features tune` builds: PARAMS is a LazyLock that reads from the file
+// path in the RAROG_TUNE_FILE environment variable on first access.
+// All call sites use `PARAMS.field_name` identically in both cases because
+// LazyLock<EvalParams> auto-derefs to EvalParams.
+
+#[cfg(not(feature = "tune"))]
+pub const PARAMS: EvalParams = EvalParams::DEFAULT;
+
+#[cfg(feature = "tune")]
+pub static PARAMS: std::sync::LazyLock<EvalParams> =
+    std::sync::LazyLock::new(|| match std::env::var("RAROG_TUNE_FILE") {
+        Ok(path) => crate::tune::load_eval_params(&path),
+        Err(_) => EvalParams::DEFAULT,
+    });
 
 #[derive(Copy, Clone, Default)]
 struct PawnEntry {
