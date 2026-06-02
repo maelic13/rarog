@@ -23,6 +23,7 @@ const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
+const SEE_UNKNOWN: i16 = i16::MIN;
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
@@ -224,7 +225,7 @@ impl MovePicker {
                 if !*emitted_tt {
                     *emitted_tt = true;
                     if !tt_move.is_null() {
-                        return Some(tt_scored_move(board, *tt_move));
+                        return Some(tt_scored_move(*tt_move));
                     }
                 }
                 while *index < scored.len() {
@@ -250,7 +251,7 @@ impl MovePicker {
                 if !*emitted_tt {
                     *emitted_tt = true;
                     if !tt_move.is_null() {
-                        return Some(tt_scored_move(board, *tt_move));
+                        return Some(tt_scored_move(*tt_move));
                     }
                 }
                 while *capture_index < captures.len() {
@@ -286,12 +287,8 @@ impl MovePicker {
     }
 }
 
-fn tt_scored_move(board: &Board, mv: Move) -> ScoredMove {
-    let see = if mv.is_capture() && !board.see_ge(mv, 0) {
-        -1
-    } else {
-        0
-    };
+fn tt_scored_move(mv: Move) -> ScoredMove {
+    let see = if mv.is_capture() { SEE_UNKNOWN } else { 0 };
     ScoredMove {
         mv,
         score: 30_000_000,
@@ -1174,7 +1171,7 @@ impl Searcher {
             legal_move_seen = true;
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
-            let see = if is_capture { picked.see as i32 } else { 0 };
+            let mut see = if is_capture { picked.see as i32 } else { 0 };
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
             let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
@@ -1444,6 +1441,9 @@ impl Searcher {
             if is_quiet {
                 quiets.push(mv);
             } else if is_capture {
+                if see == SEE_UNKNOWN as i32 {
+                    see = if board.see_ge(mv, 0) { 0 } else { -1 };
+                }
                 if see >= 0 {
                     good_caps.push(moving_piece, mv.to_sq().index(), captured_piece);
                 } else {

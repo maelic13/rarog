@@ -5,6 +5,29 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.1.0] - 2026-06-02
+
+Release focused on engine hot-path cleanup and AVX2 PGO benchmark throughput
+while preserving the built-in bench fingerprint.
+
+### Changed
+
+- Reduced repeated move-flag decoding in quiet/capture classification helpers.
+- Reworked cached checker calculation to compute only opponent checking pieces
+  instead of building a generic all-attacker set and masking it afterward.
+- Split insufficient-material detection into faster early exits for positions
+  with pawns or major pieces.
+- Folded evaluation phase accumulation into the existing piece iteration,
+  avoiding a redundant popcount pass over every piece bitboard.
+- Deferred SEE classification for TT captures until it is actually needed for
+  post-search capture-history bookkeeping.
+
+### Verified
+
+- Rebuilt the Windows AVX2 PGO asset with `cargo xtask build --arch avx2 --pgo`.
+- Verified the built-in `bench 13` fingerprint remained `4,713,975` searched
+  nodes after the optimization pass.
+
 ## [2.0.2] - 2026-06-01
 
 Patch release focused on tournament stability after two Little Blitzer

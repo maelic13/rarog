@@ -240,7 +240,13 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 ## Releases
 
-Current documented release: `2.0.2`.
+Current documented release: `2.1.0`.
+
+`2.1.0` is a hot-path optimization release. It reduces redundant move-flag
+decoding, tightens cached checker calculation, speeds common draw-detection
+early exits, removes redundant evaluation popcounts, and defers TT-capture SEE
+work until capture-history bookkeeping actually needs it. The built-in
+`bench 13` search fingerprint remains unchanged at `4,713,975` nodes.
 
 `2.0.2` is a tournament-stability patch. It fixes a rare quiescence-search
 panic where a deep tactical/check sequence could reach the final fixed
@@ -262,7 +268,7 @@ documentation now use the Rarog name. Lynx releases remain available through
 - [Latest release](https://github.com/maelic13/rarog/releases/latest)
 - [All releases](https://github.com/maelic13/rarog/releases)
 
-Release-preparation checks for `2.0.2`:
+Release-preparation checks for `2.1.0`:
 
 ```bash
 cargo fmt --check

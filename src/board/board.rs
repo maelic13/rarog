@@ -397,7 +397,7 @@ impl Board {
 
     #[inline(always)]
     pub fn is_quiet_move(&self, mv: Move) -> bool {
-        !mv.is_capture() && !mv.is_promo() && !mv.is_castling()
+        mv.flags() <= DOUBLE_PUSH
     }
 
     #[inline(always)]
@@ -589,9 +589,10 @@ impl Board {
     }
 
     pub fn captured_piece(&self, mv: Move) -> Option<Piece> {
-        if mv.is_en_passant() {
+        let flags = mv.flags();
+        if flags == EN_PASSANT {
             Some(Piece::Pawn)
-        } else if mv.is_capture() {
+        } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
             debug_assert!(self.mailbox[mv.to_sq().index()] < 12);
             Some(self.piece_type_at_unchecked(mv.to_sq()))
         } else {
@@ -1426,8 +1427,16 @@ impl Board {
 
     #[inline(always)]
     fn calculate_checkers(&self) -> Bitboard {
-        self.attackers_to(self.king_sq(self.side_to_move), self.all_occ)
-            & self.color_occ(!self.side_to_move)
+        let attacker = !self.side_to_move;
+        let king_sq = self.king_sq(self.side_to_move);
+        let atk = &*ATTACKS;
+        let diagonal = self.pieces(attacker, Piece::Bishop) | self.pieces(attacker, Piece::Queen);
+        let orthogonal = self.pieces(attacker, Piece::Rook) | self.pieces(attacker, Piece::Queen);
+
+        atk.pawn(!attacker, king_sq) & self.pieces(attacker, Piece::Pawn)
+            | atk.knight(king_sq) & self.pieces(attacker, Piece::Knight)
+            | atk.bishop(king_sq, self.all_occ) & diagonal
+            | atk.rook(king_sq, self.all_occ) & orthogonal
     }
 
     fn validate_position(&self) -> Result<(), String> {
@@ -1517,14 +1526,16 @@ impl Board {
     }
 
     fn has_insufficient_material(&self) -> bool {
-        if (self.pieces(Color::White, Piece::Pawn)
-            | self.pieces(Color::Black, Piece::Pawn)
-            | self.pieces(Color::White, Piece::Rook)
+        let pawns = self.pieces(Color::White, Piece::Pawn) | self.pieces(Color::Black, Piece::Pawn);
+        if pawns.any() {
+            return false;
+        }
+
+        let majors = self.pieces(Color::White, Piece::Rook)
             | self.pieces(Color::Black, Piece::Rook)
             | self.pieces(Color::White, Piece::Queen)
-            | self.pieces(Color::Black, Piece::Queen))
-        .any()
-        {
+            | self.pieces(Color::Black, Piece::Queen);
+        if majors.any() {
             return false;
         }
 

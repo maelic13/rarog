@@ -338,9 +338,10 @@ impl Evaluator {
             let sign = color_sign(color);
             for piece in Piece::ALL {
                 let mut bb = board.pieces(color, piece);
-                phase += bb.count() as i32 * PHASE_W[piece as usize];
+                let phase_weight = PHASE_W[piece as usize];
                 while bb.any() {
                     let sq = bb.pop_lsb();
+                    phase += phase_weight;
                     mg += sign * MG_TABLE[color as usize][piece as usize][sq.index()];
                     eg += sign * EG_TABLE[color as usize][piece as usize][sq.index()];
                 }
