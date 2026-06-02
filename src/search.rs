@@ -284,6 +284,22 @@ impl MovePicker {
             }
         }
     }
+
+    fn skip_quiets(&mut self) {
+        if let Self::Staged {
+            quiets,
+            quiet_index,
+            ..
+        } = self
+        {
+            if let Some(scored) = quiets {
+                *quiet_index = scored.len();
+            } else {
+                *quiets = Some(ScoredMoveList::new());
+                *quiet_index = 0;
+            }
+        }
+    }
 }
 
 fn tt_scored_move(board: &Board, mv: Move) -> ScoredMove {
@@ -1187,11 +1203,16 @@ impl Searcher {
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
                     let prune_margin = (90 + 25 * not_improving_i) * depth;
-                    let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth, improving))
-                        || (depth <= 4 && quiet_hist < -10_000)
+                    let futility_prune = depth <= 3 && eval_for_pruning + prune_margin <= alpha;
+                    let lmp_prune =
+                        depth <= 8 && searched > late_move_prune_count(depth, improving);
+                    let history_prune = (depth <= 4 && quiet_hist < -10_000)
                         || (depth <= 7 && quiet_hist < -4_000 * depth);
-                    if prune_candidate && !board.is_direct_check(mv) {
+                    if (futility_prune || lmp_prune || history_prune) && !board.is_direct_check(mv)
+                    {
+                        if futility_prune || lmp_prune {
+                            move_picker.skip_quiets();
+                        }
                         continue;
                     }
                 } else if is_capture && see < 0 {
@@ -3018,6 +3039,38 @@ mod tests {
         assert!(
             losing_capture_seen,
             "test position must include the losing capture"
+        );
+    }
+
+    #[test]
+    fn staged_picker_can_skip_quiets_without_skipping_bad_captures() {
+        let searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/4p3/3p4/8/2N5/8/4K3 w - - 0 1").expect("valid FEN");
+        let losing_capture = board
+            .parse_move("c3d5")
+            .expect("knight capture must be legal");
+        assert!(losing_capture.is_capture());
+        assert!(!board.see_ge(losing_capture, 0));
+
+        let mut picker = MovePicker::staged(&searcher, &mut board, Move::NULL, 0);
+        picker.skip_quiets();
+
+        let mut quiet_seen = false;
+        let mut losing_capture_seen = false;
+        while let Some(picked) = picker.next(&searcher, &mut board) {
+            if board.is_quiet_move(picked.mv) {
+                quiet_seen = true;
+            }
+            if picked.mv == losing_capture {
+                losing_capture_seen = true;
+                break;
+            }
+        }
+
+        assert!(!quiet_seen, "quiet stage should be exhausted");
+        assert!(
+            losing_capture_seen,
+            "bad captures must still be emitted after quiets are skipped"
         );
     }
 
