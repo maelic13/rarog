@@ -618,8 +618,10 @@ impl Searcher {
             self.root_best_nodes = 0;
             self.root_best_effort = 0.0;
             let use_aspiration = depth >= 4 && best_score.abs() < MATE_SCORE - MAX_PLY as i32;
-            let mut alpha_delta = 25;
-            let mut beta_delta = 25;
+            // Score-scaled initial delta: wider windows for more decisive positions.
+            let initial_delta = 12 + best_score * best_score / 16000;
+            let mut alpha_delta = initial_delta;
+            let mut beta_delta = initial_delta;
             let mut alpha = if use_aspiration {
                 (best_score - alpha_delta).max(-INF_SCORE)
             } else {
@@ -630,12 +632,16 @@ impl Searcher {
             } else {
                 INF_SCORE
             };
+            // Search depth for aspiration re-searches. Reduced on repeated fail-highs
+            // so we quickly re-confirm the beta bound before a final full-depth pass.
+            let mut asp_depth = depth as i32;
+            let asp_floor = (depth as i32 - 4).max(1);
             let mut iteration_elapsed_ms = 0.0;
 
             loop {
                 let score = self.negamax(
                     &mut board,
-                    depth as i32,
+                    asp_depth,
                     alpha,
                     beta,
                     0,
@@ -649,14 +655,19 @@ impl Searcher {
                     break;
                 }
                 if score <= alpha {
-                    alpha_delta = (alpha_delta + alpha_delta / 2 + 5).min(INF_SCORE);
+                    // Fail-low: widen alpha by ~20% and reset to full depth.
+                    alpha_delta += alpha_delta * 26 / 128;
                     alpha = (best_score - alpha_delta).max(-INF_SCORE);
                     beta = (alpha + beta) / 2;
+                    asp_depth = depth as i32;
                     continue;
                 }
                 if score >= beta {
-                    beta_delta = (beta_delta + beta_delta / 2 + 5).min(INF_SCORE);
+                    // Fail-high: widen beta by ~47% and reduce search depth so
+                    // repeated fail-highs are resolved cheaply.
+                    beta_delta += beta_delta * 60 / 128;
                     beta = (best_score + beta_delta).min(INF_SCORE);
+                    asp_depth = (asp_depth - 1).max(asp_floor);
                     continue;
                 }
                 last_score_drop = if completed_depth > 0 {
