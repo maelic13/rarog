@@ -275,6 +275,182 @@ const fn pst_value(piece: usize, sq: usize, mg: bool) -> i32 {
     }
 }
 
+/// All hand-crafted evaluation weights in one place.
+/// The default values reproduce the original inline constants exactly, so this
+/// type can be introduced without changing playing strength or the bench
+/// fingerprint.  Steps 8 and 9 tune these values with SPSA and Texel tuning.
+#[derive(Copy, Clone, Debug)]
+pub struct EvalParams {
+    // Tempo bonus (added to mg for the side to move).
+    pub tempo: i32,
+
+    // Passed-pawn rank bonus (index = relative rank 0..7).
+    pub passed_mg: [i32; 8],
+    pub passed_eg: [i32; 8],
+    // Defended passed pawn extras.
+    pub passed_defended_mg: i32,
+    pub passed_defended_eg_base: i32,
+    pub passed_defended_eg_rank: i32, // × rel_rank
+    // Free-path (stop square empty) extras.
+    pub passed_free_mg_rank: i32,     // × rel_rank
+    pub passed_free_eg_rank: i32,     // × rel_rank
+    pub passed_free_safe_eg_rank: i32,// × rel_rank, stop also unattacked
+
+    // Candidate passer (can potentially become passed).
+    pub candidate_mg: i32,
+    pub candidate_eg: i32,
+
+    // Pawn structure bonuses / penalties.
+    pub doubled_mg: i32,
+    pub doubled_eg: i32,
+    pub isolated_mg: i32,
+    pub isolated_eg: i32,
+    pub defended_mg: i32,  // defended by own pawn (non-passer)
+    pub defended_eg: i32,
+    pub backward_mg: i32,
+    pub backward_eg: i32,
+
+    // Piece bonuses.
+    pub bishop_pair_mg: i32,
+    pub bishop_pair_eg: i32,
+    pub rook_open_mg: i32,
+    pub rook_open_eg: i32,
+    pub rook_semi_mg: i32,
+    pub rook_semi_eg: i32,
+    pub rook_seventh_mg: i32,
+    pub rook_seventh_eg: i32,
+    pub knight_outpost_mg: i32,
+    pub knight_outpost_eg: i32,
+
+    // Mobility bonus per safe square, indexed by Piece as usize (Pawn=0 … King=5).
+    pub mob_mg: [i32; 6],
+    pub mob_eg: [i32; 6],
+
+    // Pawn-threat bonuses on enemy pieces.
+    pub threat_minor_mg: i32,
+    pub threat_minor_eg: i32,
+    pub threat_rook_mg: i32,
+    pub threat_rook_eg: i32,
+    pub threat_queen_mg: i32,
+    pub threat_queen_eg: i32,
+
+    // King-safety: attacker unit weights.
+    pub ks_minor_weight: i32, // knight / bishop
+    pub ks_rook_weight: i32,
+    pub ks_queen_weight: i32,
+    // King-danger → score table (index clamped to 0..15).
+    pub ks_table: [i32; 16],
+
+    // Pawn shelter (positive = king-safety bonus from own pawn in front).
+    pub shelter_open_king: i32, // penalty when own pawn absent on king file
+    pub shelter_open_adj: i32,  // penalty when absent on adjacent file
+    pub shelter_close1: i32,    // bonus when pawn is 1 step ahead
+    pub shelter_close2: i32,    // bonus when pawn is 2 steps ahead
+
+    // Pawn-storm penalty per relative rank of enemy pawn approaching the king.
+    pub storm_king_file: i32,
+    pub storm_adj_file: i32,
+
+    // Rooks behind passed pawns.
+    pub rook_passer_mg: i32,
+    pub rook_passer_eg: i32,
+    pub enemy_rook_passer_mg: i32,
+    pub enemy_rook_passer_eg: i32,
+
+    // Hanging piece penalties (undefended + attacked).
+    pub hanging_minor: i32,
+    pub hanging_rook: i32,
+    pub hanging_queen: i32,
+
+    // Passed-pawn king-proximity scale (endgame).
+    pub king_prox_base: i32, // (enemy_dist − own_dist) × (base + rel_rank)
+
+    // Endgame king-centralisation bonus (applied when one side is clearly winning).
+    pub king_push_weight: i32,     // × (file_push + rank_push)
+    pub king_prox_weight: i32,     // × (max_dist − king_distance)
+    pub king_prox_max_dist: i32,   // maximum Chebyshev distance on an 8×8 board
+
+    // Space bonus per safe central square not occupied by own pawn.
+    pub space: i32,
+
+    // Trapped bishop penalty.
+    pub trapped_bishop_mg: i32,
+    pub trapped_bishop_eg: i32,
+
+    // Opposite-colour bishop endgame scaling.
+    pub ocb_base: i32,
+    pub ocb_per_pawn: i32,
+    pub ocb_cap: i32,
+}
+
+/// Default evaluation parameters — identical to the original inline constants.
+pub const PARAMS: EvalParams = EvalParams {
+    tempo: 10,
+    passed_mg: [0, 5, 10, 20, 35, 60, 100, 0],
+    passed_eg: [0, 10, 17, 35, 62, 100, 170, 0],
+    passed_defended_mg: 8,
+    passed_defended_eg_base: 6,
+    passed_defended_eg_rank: 4,
+    passed_free_mg_rank: 2,
+    passed_free_eg_rank: 6,
+    passed_free_safe_eg_rank: 8,
+    candidate_mg: 6,
+    candidate_eg: 10,
+    doubled_mg: 10,
+    doubled_eg: 20,
+    isolated_mg: 15,
+    isolated_eg: 20,
+    defended_mg: 7,
+    defended_eg: 5,
+    backward_mg: 10,
+    backward_eg: 15,
+    bishop_pair_mg: 30,
+    bishop_pair_eg: 50,
+    rook_open_mg: 25,
+    rook_open_eg: 10,
+    rook_semi_mg: 12,
+    rook_semi_eg: 8,
+    rook_seventh_mg: 20,
+    rook_seventh_eg: 40,
+    knight_outpost_mg: 25,
+    knight_outpost_eg: 15,
+    mob_mg: [0, 4, 5, 2, 1, 0],
+    mob_eg: [0, 4, 5, 4, 2, 0],
+    threat_minor_mg: 18,
+    threat_minor_eg: 12,
+    threat_rook_mg: 28,
+    threat_rook_eg: 18,
+    threat_queen_mg: 45,
+    threat_queen_eg: 30,
+    ks_minor_weight: 2,
+    ks_rook_weight: 3,
+    ks_queen_weight: 5,
+    ks_table: [0, 0, 10, 25, 40, 60, 80, 95, 105, 110, 112, 114, 115, 116, 117, 118],
+    shelter_open_king: 20,
+    shelter_open_adj: 10,
+    shelter_close1: 15,
+    shelter_close2: 7,
+    storm_king_file: 7,
+    storm_adj_file: 4,
+    rook_passer_mg: 15,
+    rook_passer_eg: 25,
+    enemy_rook_passer_mg: 10,
+    enemy_rook_passer_eg: 20,
+    hanging_minor: 45,
+    hanging_rook: 60,
+    hanging_queen: 80,
+    king_prox_base: 2,
+    king_push_weight: 5,
+    king_prox_weight: 4,
+    king_prox_max_dist: 14,
+    space: 2,
+    trapped_bishop_mg: 60,
+    trapped_bishop_eg: 40,
+    ocb_base: 32,
+    ocb_per_pawn: 4,
+    ocb_cap: 48,
+};
+
 #[derive(Copy, Clone, Default)]
 struct PawnEntry {
     key: u64,
@@ -362,9 +538,9 @@ impl Evaluator {
         self.eval_piece_activity(board, atk, &mut mg, &mut eg, &passed, &pawn_attacks, phase);
 
         let tempo = if board.side_to_move() == Color::White {
-            10
+            PARAMS.tempo
         } else {
-            -10
+            -PARAMS.tempo
         };
         mg += tempo;
 
@@ -418,7 +594,7 @@ impl Evaluator {
             }
         }
         phase = phase.min(TOTAL_PHASE);
-        let tempo = if board.side_to_move() == Color::White { 10 } else { -10 };
+        let tempo = if board.side_to_move() == Color::White { PARAMS.tempo } else { -PARAMS.tempo };
         mg += tempo;
         let cheap_score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
         let cheap_value = if board.side_to_move() == Color::White {
@@ -469,8 +645,6 @@ impl Evaluator {
                 our_pawns.south_east() | our_pawns.south_west()
             };
 
-            let passed_mg = [0, 5, 10, 20, 35, 60, 100, 0];
-            let passed_eg = [0, 10, 17, 35, 62, 100, 170, 0];
             let mut tmp = our_pawns;
             passed[us as usize] = Bitboard::EMPTY;
             while tmp.any() {
@@ -481,21 +655,22 @@ impl Evaluator {
 
                 if (PASSED_PAWN_MASKS[us as usize][sq.index()] & their_pawns).is_empty() {
                     passed[us as usize] |= Bitboard::from(sq);
-                    mg += sign * passed_mg[rel_rank];
-                    eg += sign * passed_eg[rel_rank];
+                    mg += sign * PARAMS.passed_mg[rel_rank];
+                    eg += sign * PARAMS.passed_eg[rel_rank];
 
                     if (atk.pawn(them, sq) & our_pawns).any() {
-                        mg += sign * 8;
-                        eg += sign * (6 + rel_rank as i32 * 4);
+                        mg += sign * PARAMS.passed_defended_mg;
+                        eg += sign * (PARAMS.passed_defended_eg_base
+                            + rel_rank as i32 * PARAMS.passed_defended_eg_rank);
                     }
 
                     if let Some(stop) = forward_square(us, sq)
                         && (occupied & Bitboard::from(stop)).is_empty()
                     {
-                        mg += sign * (rel_rank as i32 * 2);
-                        eg += sign * (rel_rank as i32 * 6);
+                        mg += sign * (rel_rank as i32 * PARAMS.passed_free_mg_rank);
+                        eg += sign * (rel_rank as i32 * PARAMS.passed_free_eg_rank);
                         if board.attackers_to_color(stop, occupied, them).is_empty() {
-                            eg += sign * (rel_rank as i32 * 8);
+                            eg += sign * (rel_rank as i32 * PARAMS.passed_free_safe_eg_rank);
                         }
                     }
                 } else if rel_rank >= 3
@@ -505,22 +680,22 @@ impl Evaluator {
                         & FORWARD_RANKS[us as usize][SQUARE_RANK[sq.index()]])
                     .is_empty()
                 {
-                    mg += sign * 6;
-                    eg += sign * 10;
+                    mg += sign * PARAMS.candidate_mg;
+                    eg += sign * PARAMS.candidate_eg;
                 }
 
                 let file_bb = FILE_BBS[file];
                 if (our_pawns & file_bb).more_than_one() {
-                    mg -= sign * 10;
-                    eg -= sign * 20;
+                    mg -= sign * PARAMS.doubled_mg;
+                    eg -= sign * PARAMS.doubled_eg;
                 }
                 if (our_pawns & adjacent).is_empty() {
-                    mg -= sign * 15;
-                    eg -= sign * 20;
+                    mg -= sign * PARAMS.isolated_mg;
+                    eg -= sign * PARAMS.isolated_eg;
                 }
                 if (atk.pawn(them, sq) & our_pawns).any() {
-                    mg += sign * 7;
-                    eg += sign * 5;
+                    mg += sign * PARAMS.defended_mg;
+                    eg += sign * PARAMS.defended_eg;
                 }
 
                 let stop_sq = if us == Color::White {
@@ -532,8 +707,8 @@ impl Evaluator {
                     && let Some(stop) = stop_sq.filter(|sq| *sq < 64)
                     && (atk.pawn(us, Square(stop)) & their_pawns).any()
                 {
-                    mg -= sign * 10;
-                    eg -= sign * 15;
+                    mg -= sign * PARAMS.backward_mg;
+                    eg -= sign * PARAMS.backward_eg;
                 }
             }
         }
@@ -573,8 +748,8 @@ impl Evaluator {
             let own_occ = color_occ[color as usize];
 
             if board.pieces(color, Piece::Bishop).more_than_one() {
-                *mg += sign * 30;
-                *eg += sign * 50;
+                *mg += sign * PARAMS.bishop_pair_mg;
+                *eg += sign * PARAMS.bishop_pair_eg;
             }
 
             let mut rooks = board.pieces(color, Piece::Rook);
@@ -584,15 +759,15 @@ impl Evaluator {
                 let own_file_empty = (own_pawns & FILE_BBS[file]).is_empty();
                 let their_file_empty = (their_pawns & FILE_BBS[file]).is_empty();
                 if own_file_empty && their_file_empty {
-                    *mg += sign * 25;
-                    *eg += sign * 10;
+                    *mg += sign * PARAMS.rook_open_mg;
+                    *eg += sign * PARAMS.rook_open_eg;
                 } else if own_file_empty {
-                    *mg += sign * 12;
-                    *eg += sign * 8;
+                    *mg += sign * PARAMS.rook_semi_mg;
+                    *eg += sign * PARAMS.rook_semi_eg;
                 }
                 if relative_rank(color, sq) == 6 {
-                    *mg += sign * 20;
-                    *eg += sign * 40;
+                    *mg += sign * PARAMS.rook_seventh_mg;
+                    *eg += sign * PARAMS.rook_seventh_eg;
                 }
             }
 
@@ -603,8 +778,8 @@ impl Evaluator {
                     && (atk.pawn(them, sq) & own_pawns).any()
                     && (atk.pawn(color, sq) & their_pawns).is_empty()
                 {
-                    *mg += sign * 25;
-                    *eg += sign * 15;
+                    *mg += sign * PARAMS.knight_outpost_mg;
+                    *eg += sign * PARAMS.knight_outpost_eg;
                 }
             }
 
@@ -625,16 +800,16 @@ impl Evaluator {
                 let sq = threats.pop_lsb();
                 match board.piece_on(sq) {
                     Some(Piece::Knight | Piece::Bishop) => {
-                        *mg += sign * 18;
-                        *eg += sign * 12;
+                        *mg += sign * PARAMS.threat_minor_mg;
+                        *eg += sign * PARAMS.threat_minor_eg;
                     }
                     Some(Piece::Rook) => {
-                        *mg += sign * 28;
-                        *eg += sign * 18;
+                        *mg += sign * PARAMS.threat_rook_mg;
+                        *eg += sign * PARAMS.threat_rook_eg;
                     }
                     Some(Piece::Queen) => {
-                        *mg += sign * 45;
-                        *eg += sign * 30;
+                        *mg += sign * PARAMS.threat_queen_mg;
+                        *eg += sign * PARAMS.threat_queen_eg;
                     }
                     _ => {}
                 }
@@ -667,7 +842,9 @@ impl Evaluator {
             let file_push = (3 - lfile).max(lfile - 4);
             let rank_push = (3 - lrank).max(lrank - 4);
             let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
-            *eg += sign * (5 * (file_push + rank_push) + (14 - king_distance) * 4);
+            *eg += sign
+                * (PARAMS.king_push_weight * (file_push + rank_push)
+                    + (PARAMS.king_prox_max_dist - king_distance) * PARAMS.king_prox_weight);
         }
     }
 
@@ -683,7 +860,7 @@ impl Evaluator {
             & black_space_ranks
             & !board.pieces(Color::Black, Piece::Pawn)
             & !pawn_attacks[Color::White as usize];
-        *mg += (white_space.count() as i32 - black_space.count() as i32) * 2;
+        *mg += (white_space.count() as i32 - black_space.count() as i32) * PARAMS.space;
     }
 
     fn eval_king_safety(
@@ -714,18 +891,15 @@ impl Evaluator {
                 let sq = pieces.pop_lsb();
                 if (attacks_for(atk, piece, sq, occupied) & zone).any() {
                     units += match piece {
-                        Piece::Knight | Piece::Bishop => 2,
-                        Piece::Rook => 3,
-                        Piece::Queen => 5,
+                        Piece::Knight | Piece::Bishop => PARAMS.ks_minor_weight,
+                        Piece::Rook => PARAMS.ks_rook_weight,
+                        Piece::Queen => PARAMS.ks_queen_weight,
                         _ => 0,
                     };
                 }
             }
         }
-        const SAFETY: [i32; 16] = [
-            0, 0, 10, 25, 40, 60, 80, 95, 105, 110, 112, 114, 115, 116, 117, 118,
-        ];
-        *mg -= sign * SAFETY[units.min(15) as usize];
+        *mg -= sign * PARAMS.ks_table[units.min(15) as usize];
 
         let king_file = SQUARE_FILE[king.index()] as i32;
         if king_file <= 2 || king_file >= 5 {
@@ -738,7 +912,7 @@ impl Evaluator {
                 let file_pawns = pawns[color as usize] & FILE_BBS[file as usize];
                 let in_front = file_pawns & FORWARD_RANKS[color as usize][king_rank as usize];
                 if in_front.is_empty() {
-                    *mg -= sign * if df == 0 { 20 } else { 10 };
+                    *mg -= sign * if df == 0 { PARAMS.shelter_open_king } else { PARAMS.shelter_open_adj };
                 } else {
                     let pawn_sq = if color == Color::White {
                         in_front.lsb()
@@ -751,9 +925,9 @@ impl Evaluator {
                         king_rank - SQUARE_RANK[pawn_sq.index()] as i32
                     };
                     if distance == 1 {
-                        *mg += sign * 15;
+                        *mg += sign * PARAMS.shelter_close1;
                     } else if distance == 2 {
-                        *mg += sign * 7;
+                        *mg += sign * PARAMS.shelter_close2;
                     }
                 }
             }
@@ -776,9 +950,9 @@ impl Evaluator {
                 *mg -= sign
                     * (rel
                         * if SQUARE_FILE[pawn.index()] == SQUARE_FILE[king.index()] {
-                            7
+                            PARAMS.storm_king_file
                         } else {
-                            4
+                            PARAMS.storm_adj_file
                         });
             }
         }
@@ -811,8 +985,8 @@ impl Evaluator {
                     SQUARE_RANK[rook.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
-                    *mg += sign * 15;
-                    *eg += sign * 25;
+                    *mg += sign * PARAMS.rook_passer_mg;
+                    *eg += sign * PARAMS.rook_passer_eg;
                 }
             }
 
@@ -830,8 +1004,8 @@ impl Evaluator {
                     SQUARE_RANK[enemy.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
-                    *mg -= sign * 10;
-                    *eg -= sign * 20;
+                    *mg -= sign * PARAMS.enemy_rook_passer_mg;
+                    *eg -= sign * PARAMS.enemy_rook_passer_eg;
                 }
             }
         }
@@ -878,7 +1052,7 @@ impl Evaluator {
                 let rel_rank = relative_rank(color, pawn) as i32;
                 let own_dist = KING_DISTANCE[own_king.index()][pawn.index()] as i32;
                 let enemy_dist = KING_DISTANCE[enemy_king.index()][pawn.index()] as i32;
-                *eg += sign * (enemy_dist - own_dist) * (2 + rel_rank);
+                *eg += sign * (enemy_dist - own_dist) * (PARAMS.king_prox_base + rel_rank);
             }
         }
     }
@@ -890,8 +1064,8 @@ impl Evaluator {
             while bishops.any() {
                 let sq = bishops.pop_lsb();
                 if (atk.bishop(sq, board.occupied()) & !board.color_occ(color)).is_empty() {
-                    *mg -= sign * 60;
-                    *eg -= sign * 40;
+                    *mg -= sign * PARAMS.trapped_bishop_mg;
+                    *eg -= sign * PARAMS.trapped_bishop_eg;
                 }
             }
         }
@@ -906,9 +1080,9 @@ pub fn piece_value(piece: Piece) -> i32 {
 #[inline(always)]
 fn hanging_piece_penalty(piece: Piece) -> i32 {
     match piece {
-        Piece::Knight | Piece::Bishop => 45,
-        Piece::Rook => 60,
-        Piece::Queen => 80,
+        Piece::Knight | Piece::Bishop => PARAMS.hanging_minor,
+        Piece::Rook => PARAMS.hanging_rook,
+        Piece::Queen => PARAMS.hanging_queen,
         _ => 0,
     }
 }
@@ -932,24 +1106,12 @@ fn attacks_for(atk: &AttackTables, piece: Piece, sq: Square, occ: Bitboard) -> B
 
 #[inline(always)]
 fn mobility_mg(piece: Piece) -> i32 {
-    match piece {
-        Piece::Knight => 4,
-        Piece::Bishop => 5,
-        Piece::Rook => 2,
-        Piece::Queen => 1,
-        _ => 0,
-    }
+    PARAMS.mob_mg[piece as usize]
 }
 
 #[inline(always)]
 fn mobility_eg(piece: Piece) -> i32 {
-    match piece {
-        Piece::Knight => 4,
-        Piece::Bishop => 5,
-        Piece::Rook => 4,
-        Piece::Queen => 2,
-        _ => 0,
-    }
+    PARAMS.mob_eg[piece as usize]
 }
 
 #[inline(always)]
@@ -978,8 +1140,8 @@ fn scale_drawish_endgames(board: &Board, mut score: i32) -> i32 {
             let pawns = (board.pieces(Color::White, Piece::Pawn)
                 | board.pieces(Color::Black, Piece::Pawn))
             .count() as i32;
-            let scale = 32 + pawns * 4;
-            score = score * scale.min(48) / 48;
+            let scale = PARAMS.ocb_base + pawns * PARAMS.ocb_per_pawn;
+            score = score * scale.min(PARAMS.ocb_cap) / PARAMS.ocb_cap;
         }
     }
 
