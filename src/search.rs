@@ -114,6 +114,7 @@ pub struct Searcher {
     pawn_history: Vec<i16>,
     cont_history_1: Vec<i16>,
     cont_history_2: Vec<i16>,
+    cont_history_3: Vec<i16>,
     cont_history_4: Vec<i16>,
     cont_history_6: Vec<i16>,
     correction_history: Box<[[i16; CORR_SIZE]; 2]>,
@@ -168,6 +169,7 @@ impl Default for Searcher {
             pawn_history: vec![0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE],
             cont_history_1: vec![0; CONT_SIZE],
             cont_history_2: vec![0; CONT_SIZE],
+            cont_history_3: vec![0; CONT_SIZE],
             cont_history_4: vec![0; CONT_SIZE],
             cont_history_6: vec![0; CONT_SIZE],
             correction_history: Box::new([[0; CORR_SIZE]; 2]),
@@ -385,6 +387,7 @@ impl Searcher {
         self.pawn_history.fill(0);
         self.cont_history_1.fill(0);
         self.cont_history_2.fill(0);
+        self.cont_history_3.fill(0);
         self.cont_history_4.fill(0);
         self.cont_history_6.fill(0);
         self.correction_history = Box::new([[0; CORR_SIZE]; 2]);
@@ -1381,6 +1384,18 @@ impl Searcher {
                     if self.cutoff_count[ply] > 2 {
                         r += 992;
                     }
+                    // Killer or countermove: these moves have proven useful at this
+                    // ply/position before, so reduce one ply less.
+                    if is_quiet
+                        && (mv == self.killers[ply][0]
+                            || mv == self.killers[ply][1]
+                            || (!previous_move.is_null()
+                                && mv
+                                    == self.countermove[previous_move.from_sq().index()]
+                                        [previous_move.to_sq().index()]))
+                    {
+                        r -= 1024;
+                    }
 
                     let reduction = (r >> 10).clamp(1, new_depth.max(1));
                     score = -self.negamax(
@@ -1934,6 +1949,17 @@ impl Searcher {
                 )] as i32;
             }
         }
+        if ply >= 3 {
+            let prev = self.stack_moves[ply - 3];
+            if !prev.is_null() {
+                score += self.cont_history_3[cont_index(
+                    self.stack_pieces[ply - 3] as usize,
+                    prev.to_sq().index(),
+                    piece,
+                    to,
+                )] as i32;
+            }
+        }
         if ply >= 4 {
             let prev = self.stack_moves[ply - 4];
             if !prev.is_null() {
@@ -2018,6 +2044,21 @@ impl Searcher {
                 update_hist_entry(
                     &mut self.cont_history_2[cont_index(
                         self.stack_pieces[ply - 2] as usize,
+                        prev.to_sq().index(),
+                        piece,
+                        to,
+                    )],
+                    bonus,
+                    HISTORY_MAX,
+                );
+            }
+        }
+        if ply >= 3 {
+            let prev = self.stack_moves[ply - 3];
+            if !prev.is_null() {
+                update_hist_entry(
+                    &mut self.cont_history_3[cont_index(
+                        self.stack_pieces[ply - 3] as usize,
                         prev.to_sq().index(),
                         piece,
                         to,
@@ -2135,6 +2176,9 @@ impl Searcher {
         for value in &mut self.cont_history_2 {
             *value /= 2;
         }
+        for value in &mut self.cont_history_3 {
+            *value /= 2;
+        }
         for value in &mut self.cont_history_4 {
             *value /= 2;
         }
@@ -2246,7 +2290,7 @@ impl Searcher {
         let color = board.side_to_move();
         let us = color as usize;
         let them = (!color) as usize;
-        let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
+        let scaled = (146 * depth.max(1) * diff / 128).clamp(-4449, 2659);
         update_hist_entry(
             &mut self.correction_history[us][board.pawn_key() as usize & (CORR_SIZE - 1)],
             scaled,
