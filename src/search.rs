@@ -105,6 +105,8 @@ pub struct Searcher {
     stack_moves: [Move; MAX_PLY],
     stack_pieces: [Piece; MAX_PLY],
     stack_static_eval: [i32; MAX_PLY],
+    stack_searched: [u16; MAX_PLY],
+    stack_move_was_tt: [bool; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     root_moves: Vec<Move>,
     quiet_history: Box<[[[[[i16; 64]; 64]; 2]; 2]; 2]>,
@@ -158,6 +160,8 @@ impl Default for Searcher {
             stack_moves: [Move::NULL; MAX_PLY],
             stack_pieces: [Piece::Pawn; MAX_PLY],
             stack_static_eval: [VALUE_NONE; MAX_PLY],
+            stack_searched: [0; MAX_PLY],
+            stack_move_was_tt: [false; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
             quiet_history: Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]),
@@ -406,6 +410,8 @@ impl Searcher {
         self.continuation_correction_history.fill(0);
         self.countermove = Box::new([[Move::NULL; 64]; 64]);
         self.killers = [[Move::NULL; 2]; MAX_PLY];
+        self.stack_searched = [0; MAX_PLY];
+        self.stack_move_was_tt = [false; MAX_PLY];
     }
 
     pub fn hashfull(&self) -> usize {
@@ -530,6 +536,8 @@ impl Searcher {
         self.stack_moves = [Move::NULL; MAX_PLY];
         self.stack_pieces = [Piece::Pawn; MAX_PLY];
         self.stack_static_eval = [VALUE_NONE; MAX_PLY];
+        self.stack_searched = [0; MAX_PLY];
+        self.stack_move_was_tt = [false; MAX_PLY];
     }
 
     fn no_legal_moves_result(&mut self, board: &Board) -> SearchResult {
@@ -912,6 +920,8 @@ impl Searcher {
             return self.corrected_eval(board, ply);
         }
         self.pv_len[ply] = ply;
+        self.stack_searched[ply] = 0;
+        self.stack_move_was_tt[ply] = false;
         self.seldepth = self.seldepth.max(ply);
 
         if ply > 0 && board.can_declare_draw_in_search() {
@@ -964,6 +974,12 @@ impl Searcher {
         let tt_depth = tt_entry.map(|entry| entry.depth as i32).unwrap_or(-1);
         let tt_bound = tt_entry.and_then(|entry| entry.bound());
         let tt_pv = is_pv || tt_entry.map_or(false, |e| e.is_pv_node());
+        let mut tt_move = tt_raw_move
+            .and_then(|mv| board.legal_move(mv))
+            .unwrap_or(Move::NULL);
+        if ply == 0 && !self.root_moves.is_empty() && !self.root_moves.contains(&tt_move) {
+            tt_move = Move::NULL;
+        }
         if !is_pv
             && excluded.is_null()
             && let Some(entry) = tt_entry
@@ -973,16 +989,13 @@ impl Searcher {
             let score = score_from_tt(entry.score as i32, ply, board.halfmove_clock);
             match bound {
                 Bound::Exact => return score,
-                Bound::Lower if score >= beta => return score,
+                Bound::Lower if score >= beta => {
+                    self.update_tt_cutoff_history(board, tt_move, ply, depth, score);
+                    return score;
+                }
                 Bound::Upper if score <= alpha => return score,
                 _ => {}
             }
-        }
-        let mut tt_move = tt_raw_move
-            .and_then(|mv| board.legal_move(mv))
-            .unwrap_or(Move::NULL);
-        if ply == 0 && !self.root_moves.is_empty() && !self.root_moves.contains(&tt_move) {
-            tt_move = Move::NULL;
         }
 
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
@@ -1304,6 +1317,8 @@ impl Searcher {
                 false
             };
 
+            self.stack_searched[ply] = searched.min(u16::MAX as usize) as u16;
+            self.stack_move_was_tt[ply] = mv == tt_move;
             self.stack_moves[ply] = mv;
             self.stack_pieces[ply] = moving_piece;
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
@@ -1532,6 +1547,16 @@ impl Searcher {
             if bound == Bound::Exact || (bound == Bound::Upper && diff < 0) {
                 self.update_correction(board, diff, depth, ply);
             }
+        }
+        if excluded.is_null() && bound == Bound::Upper {
+            self.update_fail_low_parent_history(
+                board,
+                previous_move,
+                ply,
+                depth,
+                best_score,
+                static_eval,
+            );
         }
         if excluded.is_null() {
             self.store_tt(
@@ -2047,8 +2072,11 @@ impl Searcher {
             self.countermove[previous.from_sq().index()][previous.to_sq().index()] = best;
         }
 
-        let piece = best_piece as usize;
-        let to = best.to_sq().index();
+        self.update_continuation_history(best_piece, best.to_sq().index(), ply, bonus);
+    }
+
+    fn update_continuation_history(&mut self, piece: Piece, to: usize, ply: usize, bonus: i32) {
+        let piece = piece as usize;
         if ply >= 1 {
             let prev = self.stack_moves[ply - 1];
             if !prev.is_null() {
@@ -2109,6 +2137,81 @@ impl Searcher {
                 );
             }
         }
+    }
+
+    fn update_tt_cutoff_history(
+        &mut self,
+        board: &Board,
+        tt_move: Move,
+        ply: usize,
+        depth: i32,
+        score: i32,
+    ) {
+        if tt_move.is_null()
+            || score.abs() >= TB_WIN_SCORE
+            || ply == 0
+            || self.stack_searched[ply - 1] > 3
+            || !board.is_quiet_move(tt_move)
+        {
+            return;
+        }
+
+        let piece = board.moving_piece(tt_move);
+        let bonus = tt_cutoff_history_bonus(depth, self.stack_searched[ply - 1] as usize);
+        self.update_quiet_history(
+            board,
+            board.side_to_move(),
+            tt_move,
+            piece,
+            board.pawn_key(),
+            ply,
+            bonus,
+        );
+        self.update_continuation_history(piece, tt_move.to_sq().index(), ply, bonus);
+    }
+
+    fn update_fail_low_parent_history(
+        &mut self,
+        board: &Board,
+        previous: Move,
+        ply: usize,
+        depth: i32,
+        best_score: i32,
+        static_eval: i32,
+    ) {
+        if ply == 0
+            || previous.is_null()
+            || previous.is_capture()
+            || previous.promotion().is_some()
+            || static_eval == VALUE_NONE
+            || best_score.abs() >= TB_WIN_SCORE
+        {
+            return;
+        }
+
+        let previous_piece = self.stack_pieces[ply - 1];
+        let previous_color = !board.side_to_move();
+        let previous_searched = self.stack_searched[ply - 1] as usize;
+        let was_tt_move = self.stack_move_was_tt[ply - 1];
+        let bonus = fail_low_parent_history_bonus(
+            depth,
+            previous_searched,
+            was_tt_move,
+            static_eval - best_score,
+        );
+        if bonus <= 0 {
+            return;
+        }
+
+        self.update_quiet_history(
+            board,
+            previous_color,
+            previous,
+            previous_piece,
+            board.pawn_key(),
+            ply - 1,
+            bonus,
+        );
     }
 
     fn update_quiet_history(
@@ -2760,6 +2863,29 @@ fn singular_result(ctx: SingularResultContext) -> SingularDecision {
     SingularDecision::None
 }
 
+fn tt_cutoff_history_bonus(depth: i32, previous_searched: usize) -> i32 {
+    let divisor = 4 + previous_searched.min(3) as i32;
+    (history_bonus(depth) / divisor).clamp(8, HISTORY_MAX / 16)
+}
+
+fn fail_low_parent_history_bonus(
+    depth: i32,
+    previous_searched: usize,
+    was_tt_move: bool,
+    eval_drop: i32,
+) -> i32 {
+    if eval_drop <= 0 {
+        return 0;
+    }
+
+    let searched_penalty = previous_searched.min(6) as i32 * 4;
+    let tt_bonus = if was_tt_move { 12 } else { 0 };
+    let bonus =
+        history_bonus(depth) / 10 + eval_drop.clamp(0, 400) / 16 + tt_bonus - searched_penalty;
+
+    bonus.clamp(0, HISTORY_MAX / 20)
+}
+
 fn late_move_prune_count(depth: i32, improving: bool) -> usize {
     let base = 4 + 2 * depth * depth / 3;
     if improving {
@@ -3310,6 +3436,58 @@ mod tests {
         );
 
         assert!(searcher.tt.probe(hash).is_none());
+    }
+
+    #[test]
+    fn tt_cutoff_history_update_rewards_quiet_tt_move_modestly() {
+        let mut searcher = Searcher::default();
+        let board = Board::default();
+        let tt_move = board.parse_move("e2e4").expect("legal quiet");
+        searcher.stack_searched[0] = 2;
+
+        assert_eq!(
+            searcher.quiet_history_score(&board, Color::White, tt_move, 1),
+            0
+        );
+        searcher.update_tt_cutoff_history(&board, tt_move, 1, 6, 120);
+
+        let updated = searcher.quiet_history_score(&board, Color::White, tt_move, 1);
+        assert!(updated > 0);
+        assert!(updated < history_bonus(6));
+    }
+
+    #[test]
+    fn fail_low_parent_history_rewards_previous_quiet_move() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::default();
+        let previous = board.parse_move("e2e4").expect("legal quiet");
+        searcher.stack_moves[0] = previous;
+        searcher.stack_pieces[0] = Piece::Pawn;
+        searcher.stack_searched[0] = 1;
+        searcher.stack_move_was_tt[0] = true;
+        board.make_move_unchecked(previous);
+
+        assert_eq!(
+            searcher.quiet_history_score(&board, Color::White, previous, 0),
+            0
+        );
+        searcher.update_fail_low_parent_history(&board, previous, 1, 5, -80, 120);
+
+        assert!(
+            searcher.quiet_history_score(&board, Color::White, previous, 0) > 0,
+            "a quiet move should be rewarded when the opponent fail-lows after it"
+        );
+    }
+
+    #[test]
+    fn step_seven_history_bonuses_stay_below_normal_cutoff_bonus() {
+        assert!(tt_cutoff_history_bonus(8, 0) < history_bonus(8));
+        assert!(tt_cutoff_history_bonus(8, 3) < tt_cutoff_history_bonus(8, 0));
+        assert_eq!(fail_low_parent_history_bonus(8, 0, false, -1), 0);
+        assert!(
+            fail_low_parent_history_bonus(8, 1, true, 300)
+                > fail_low_parent_history_bonus(8, 5, false, 300)
+        );
     }
 
     #[test]
