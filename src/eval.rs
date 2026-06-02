@@ -338,8 +338,18 @@ pub struct EvalParams {
     pub ks_minor_weight: i32, // knight / bishop
     pub ks_rook_weight: i32,
     pub ks_queen_weight: i32,
-    // King-danger → score table (index clamped to 0..15).
-    pub ks_table: [i32; 16],
+    // Per ring-square attacked (in addition to attacker weight).
+    pub ks_ring_attack: i32,
+    // Safe check bonuses (piece can give check on a square not defended by king/pawns).
+    pub ks_safe_check_queen: i32,
+    pub ks_safe_check_rook: i32,
+    pub ks_safe_check_bishop: i32,
+    pub ks_safe_check_knight: i32,
+    // Relief: subtract this from danger when the attacker has no queen.
+    pub ks_no_queen: i32,
+    // Quadratic conversion: penalty = (danger² / divisor).min(max_penalty).
+    pub ks_divisor: i32,
+    pub ks_max_penalty: i32,
 
     // Pawn shelter (positive = king-safety bonus from own pawn in front).
     pub shelter_open_king: i32, // penalty when own pawn absent on king file
@@ -381,6 +391,26 @@ pub struct EvalParams {
     pub ocb_base: i32,
     pub ocb_per_pawn: i32,
     pub ocb_cap: i32,
+
+    // New threat terms (7b).
+    pub threat_attack_minor_mg: i32, // our minor attacks enemy minor
+    pub threat_attack_minor_eg: i32,
+    pub threat_rook_queen_mg: i32,   // our rook attacks enemy queen
+    pub threat_rook_queen_eg: i32,
+    pub threat_push_mg: i32,         // safe pawn push threatens enemy piece
+    pub threat_push_eg: i32,
+
+    // Restricted mobility: penalty for pieces with at most one safe move.
+    pub restricted_mobility_mg: i32,
+    pub restricted_mobility_eg: i32,
+
+    // Bishop outpost: bishop on a square not attacked by enemy pawns, supported by own pawn.
+    pub bishop_outpost_mg: i32,
+    pub bishop_outpost_eg: i32,
+
+    // Phalanx / connected pawn bonus (indexed by relative rank 0..7).
+    pub phalanx_mg: [i32; 8],
+    pub phalanx_eg: [i32; 8],
 }
 
 /// Default evaluation parameters — identical to the original inline constants.
@@ -425,7 +455,14 @@ pub const PARAMS: EvalParams = EvalParams {
     ks_minor_weight: 2,
     ks_rook_weight: 3,
     ks_queen_weight: 5,
-    ks_table: [0, 0, 10, 25, 40, 60, 80, 95, 105, 110, 112, 114, 115, 116, 117, 118],
+    ks_ring_attack: 3,
+    ks_safe_check_queen: 35,
+    ks_safe_check_rook: 18,
+    ks_safe_check_bishop: 10,
+    ks_safe_check_knight: 10,
+    ks_no_queen: 20,
+    ks_divisor: 12,
+    ks_max_penalty: 200,
     shelter_open_king: 20,
     shelter_open_adj: 10,
     shelter_close1: 15,
@@ -449,6 +486,18 @@ pub const PARAMS: EvalParams = EvalParams {
     ocb_base: 32,
     ocb_per_pawn: 4,
     ocb_cap: 48,
+    threat_attack_minor_mg: 8,
+    threat_attack_minor_eg: 5,
+    threat_rook_queen_mg: 10,
+    threat_rook_queen_eg: 8,
+    threat_push_mg: 5,
+    threat_push_eg: 4,
+    restricted_mobility_mg: 5,
+    restricted_mobility_eg: 4,
+    bishop_outpost_mg: 8,
+    bishop_outpost_eg: 5,
+    phalanx_mg: [0, 3, 5, 7, 10, 13, 16, 0],
+    phalanx_eg: [0, 3, 5, 7, 10, 13, 16, 0],
 };
 
 #[derive(Copy, Clone, Default)]
@@ -697,6 +746,16 @@ impl Evaluator {
                     mg += sign * PARAMS.defended_mg;
                     eg += sign * PARAMS.defended_eg;
                 }
+                // Phalanx: a friendly pawn directly to the left or right on the same rank.
+                let west = sq.0.checked_sub(1).filter(|&s| SQUARE_FILE[s as usize] == file.wrapping_sub(1));
+                let east = sq.0.checked_add(1).filter(|&s| SQUARE_FILE[s as usize] == file + 1);
+                let is_phalanx =
+                    west.is_some_and(|s| (our_pawns & Bitboard::from(Square(s))).any())
+                    || east.is_some_and(|s| (our_pawns & Bitboard::from(Square(s))).any());
+                if is_phalanx {
+                    mg += sign * PARAMS.phalanx_mg[rel_rank];
+                    eg += sign * PARAMS.phalanx_eg[rel_rank];
+                }
 
                 let stop_sq = if us == Color::White {
                     sq.0.checked_add(8)
@@ -792,6 +851,11 @@ impl Evaluator {
                     let mobility = (attacks & safe & !own_occ).count() as i32;
                     *mg += sign * mobility * mobility_mg(piece);
                     *eg += sign * mobility * mobility_eg(piece);
+                    // Restricted mobility: extra penalty for pieces with ≤ 1 safe move.
+                    if mobility <= 1 {
+                        *mg -= sign * PARAMS.restricted_mobility_mg;
+                        *eg -= sign * PARAMS.restricted_mobility_eg;
+                    }
                 }
             }
 
@@ -812,6 +876,66 @@ impl Evaluator {
                         *eg += sign * PARAMS.threat_queen_eg;
                     }
                     _ => {}
+                }
+            }
+
+            // Minor piece attacks enemy minor.
+            let our_minors =
+                board.pieces(color, Piece::Knight) | board.pieces(color, Piece::Bishop);
+            let their_minors =
+                board.pieces(them, Piece::Knight) | board.pieces(them, Piece::Bishop);
+            let mut minor_iter = our_minors;
+            while minor_iter.any() {
+                let sq = minor_iter.pop_lsb();
+                let piece = board.piece_on(sq).unwrap_or(Piece::Knight);
+                let attacks = attacks_for(atk, piece, sq, occupied);
+                if (attacks & their_minors).any() {
+                    *mg += sign * PARAMS.threat_attack_minor_mg;
+                    *eg += sign * PARAMS.threat_attack_minor_eg;
+                }
+            }
+
+            // Rook attacks enemy queen.
+            let enemy_queens = board.pieces(them, Piece::Queen);
+            let mut our_rooks = board.pieces(color, Piece::Rook);
+            while our_rooks.any() && enemy_queens.any() {
+                let sq = our_rooks.pop_lsb();
+                if (atk.rook(sq, occupied) & enemy_queens).any() {
+                    *mg += sign * PARAMS.threat_rook_queen_mg;
+                    *eg += sign * PARAMS.threat_rook_queen_eg;
+                }
+            }
+
+            // Safe pawn push threats: push one step and attack an enemy non-pawn.
+            let enemy_non_pawns = board.color_occ(them) & !board.pieces(them, Piece::Pawn);
+            let our_pawns_push_src = board.pieces(color, Piece::Pawn)
+                & !(if color == Color::White { Bitboard::RANK_7 } else { Bitboard::RANK_2 });
+            let push_dest = if color == Color::White {
+                our_pawns_push_src.north()
+            } else {
+                our_pawns_push_src.south()
+            } & !occupied;
+            let push_attacks = if color == Color::White {
+                push_dest.north_east() | push_dest.north_west()
+            } else {
+                push_dest.south_east() | push_dest.south_west()
+            };
+            let push_threat_count = (push_attacks & enemy_non_pawns).count() as i32;
+            if push_threat_count > 0 {
+                *mg += sign * push_threat_count * PARAMS.threat_push_mg;
+                *eg += sign * push_threat_count * PARAMS.threat_push_eg;
+            }
+
+            // Bishop outpost: bishop on a hole (not attacked by enemy pawns) supported
+            // by own pawn.  Uses the same pawn-attack geometry as knight outpost.
+            let mut bishops_iter = board.pieces(color, Piece::Bishop);
+            while bishops_iter.any() {
+                let sq = bishops_iter.pop_lsb();
+                let not_attacked = (atk.pawn(color, sq) & their_pawns).is_empty();
+                let supported = (atk.pawn(them, sq) & own_pawns).any();
+                if not_attacked && supported {
+                    *mg += sign * PARAMS.bishop_outpost_mg;
+                    *eg += sign * PARAMS.bishop_outpost_eg;
                 }
             }
 
@@ -884,22 +1008,72 @@ impl Evaluator {
             king_attacks.south()
         };
 
-        let mut units = 0;
+        // Squares defended by the side whose king we're evaluating (own king + own pawns).
+        // A "safe check" square is one NOT defended by king or pawns.
+        let own_pawn_bb = board.pieces(color, Piece::Pawn);
+        let own_pawn_attacks = if color == Color::White {
+            own_pawn_bb.north_east() | own_pawn_bb.north_west()
+        } else {
+            own_pawn_bb.south_east() | own_pawn_bb.south_west()
+        };
+        let defended_by_king_and_pawns = king_attacks | own_pawn_attacks;
+
+        let mut king_danger = 0i32;
         for piece in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+            let piece_weight = match piece {
+                Piece::Knight | Piece::Bishop => PARAMS.ks_minor_weight,
+                Piece::Rook => PARAMS.ks_rook_weight,
+                Piece::Queen => PARAMS.ks_queen_weight,
+                _ => 0,
+            };
+            let safe_check_bonus = match piece {
+                Piece::Knight => PARAMS.ks_safe_check_knight,
+                Piece::Bishop => PARAMS.ks_safe_check_bishop,
+                Piece::Rook => PARAMS.ks_safe_check_rook,
+                Piece::Queen => PARAMS.ks_safe_check_queen,
+                _ => 0,
+            };
+            // Squares this piece type attacks from the king square (for check detection).
+            let king_check_squares = match piece {
+                Piece::Knight => atk.knight(king),
+                Piece::Bishop => atk.bishop(king, occupied),
+                Piece::Rook => atk.rook(king, occupied),
+                Piece::Queen => atk.queen(king, occupied),
+                _ => Bitboard::EMPTY,
+            };
+
             let mut pieces = board.pieces(them, piece);
             while pieces.any() {
                 let sq = pieces.pop_lsb();
-                if (attacks_for(atk, piece, sq, occupied) & zone).any() {
-                    units += match piece {
-                        Piece::Knight | Piece::Bishop => PARAMS.ks_minor_weight,
-                        Piece::Rook => PARAMS.ks_rook_weight,
-                        Piece::Queen => PARAMS.ks_queen_weight,
-                        _ => 0,
-                    };
+                let attacks = attacks_for(atk, piece, sq, occupied);
+                let zone_attacks = attacks & zone;
+                if zone_attacks.any() {
+                    king_danger += piece_weight;
+                    king_danger += zone_attacks.count() as i32 * PARAMS.ks_ring_attack;
+                }
+                // Safe check: can this piece move to a square that checks the king
+                // and is not defended by the king's own pawns/king?
+                let safe_checks = attacks
+                    & king_check_squares
+                    & !defended_by_king_and_pawns
+                    & !board.color_occ(them);
+                if safe_checks.any() {
+                    king_danger += safe_check_bonus;
                 }
             }
         }
-        *mg -= sign * PARAMS.ks_table[units.min(15) as usize];
+
+        // No-queen relief: attacking without a queen is far less dangerous.
+        if board.pieces(them, Piece::Queen).is_empty() {
+            king_danger -= PARAMS.ks_no_queen;
+        }
+
+        // Convert to a penalty quadratically; only meaningful when positive.
+        if king_danger > 0 {
+            let penalty =
+                (king_danger * king_danger / PARAMS.ks_divisor).min(PARAMS.ks_max_penalty);
+            *mg -= sign * penalty;
+        }
 
         let king_file = SQUARE_FILE[king.index()] as i32;
         if king_file <= 2 || king_file >= 5 {
