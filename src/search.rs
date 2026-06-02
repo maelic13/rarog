@@ -996,11 +996,11 @@ impl Searcher {
                 let raw = entry.static_eval as i32;
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             } else {
-                let raw = self.raw_eval(board);
+                let raw = self.raw_eval_lazy(board, alpha, beta);
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             }
         } else {
-            let raw = self.raw_eval(board);
+            let raw = self.raw_eval_lazy(board, alpha, beta);
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
         self.stack_static_eval[ply] = static_eval;
@@ -1641,11 +1641,11 @@ impl Searcher {
                     let raw = entry.static_eval as i32;
                     (self.corrected_eval_from_raw(board, raw, ply), raw)
                 } else {
-                    let raw = self.raw_eval(board);
+                    let raw = self.raw_eval_lazy(board, alpha, beta);
                     (self.corrected_eval_from_raw(board, raw, ply), raw)
                 }
             } else {
-                let raw = self.raw_eval(board);
+                let raw = self.raw_eval_lazy(board, alpha, beta);
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             };
             q_raw_static_eval = raw_stand_pat;
@@ -2214,6 +2214,10 @@ impl Searcher {
 
     fn raw_eval(&mut self, board: &Board) -> i32 {
         self.evaluator.evaluate(board)
+    }
+
+    fn raw_eval_lazy(&mut self, board: &Board, alpha: i32, beta: i32) -> i32 {
+        self.evaluator.evaluate_lazy(board, alpha, beta)
     }
 
     fn corrected_eval_from_raw(&self, board: &Board, raw: i32, ply: usize) -> i32 {

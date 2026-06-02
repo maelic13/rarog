@@ -7,6 +7,11 @@ pub const VALUE_NONE: i32 = 32_002;
 
 const PAWN_TABLE_SIZE: usize = 16_384;
 const EVAL_TABLE_SIZE: usize = 32_768;
+// Conservative lazy-eval margin: if the cheap material+PST score is this many
+// centipawns outside the search window, skip the expensive pawn-structure,
+// mobility, and king-safety evaluation.  Must be large enough to absorb all
+// evaluation terms not included in the cheap score (~200-400 cp typical range).
+const LAZY_MARGIN: i32 = 600;
 const TOTAL_PHASE: i32 = 24;
 
 const MG_VAL: [i32; 6] = [82, 337, 365, 477, 1025, 0];
@@ -379,6 +384,57 @@ impl Evaluator {
             occupied: true,
         };
         value
+    }
+
+    /// Like [`evaluate`] but returns a cheap material+PST estimate when the
+    /// position is clearly outside `[alpha, beta]` by at least `LAZY_MARGIN`,
+    /// skipping the expensive pawn-structure, mobility, and king-safety loops.
+    /// The full-eval cache is still consulted first; the lazy path is only taken
+    /// on a cache miss where the cheap score is far from the window.
+    pub fn evaluate_lazy(&mut self, board: &Board, alpha: i32, beta: i32) -> i32 {
+        let eval_slot = board.hash as usize & (EVAL_TABLE_SIZE - 1);
+        let cached = self.eval_table[eval_slot];
+        if cached.occupied
+            && cached.key == board.hash
+            && cached.halfmove_clock == board.halfmove_clock
+        {
+            return cached.value;
+        }
+
+        // Cheap eval: material + PSQT + tempo (phase-interpolated).
+        let mut mg = 0i32;
+        let mut eg = 0i32;
+        let mut phase = 0i32;
+        for color in [Color::White, Color::Black] {
+            let sign = color_sign(color);
+            for piece in Piece::ALL {
+                let mut bb = board.pieces(color, piece);
+                phase += bb.count() as i32 * PHASE_W[piece as usize];
+                while bb.any() {
+                    let sq = bb.pop_lsb();
+                    mg += sign * MG_TABLE[color as usize][piece as usize][sq.index()];
+                    eg += sign * EG_TABLE[color as usize][piece as usize][sq.index()];
+                }
+            }
+        }
+        phase = phase.min(TOTAL_PHASE);
+        let tempo = if board.side_to_move() == Color::White { 10 } else { -10 };
+        mg += tempo;
+        let cheap_score = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
+        let cheap_value = if board.side_to_move() == Color::White {
+            cheap_score
+        } else {
+            -cheap_score
+        };
+
+        // Lazy gate: skip the expensive loops when the position is far outside
+        // the window regardless of pawn structure, mobility, or king safety.
+        if cheap_value + LAZY_MARGIN < alpha || cheap_value - LAZY_MARGIN > beta {
+            return cheap_value;
+        }
+
+        // Full evaluation (computes and caches the complete result).
+        self.evaluate(board)
     }
 
     fn eval_pawns(

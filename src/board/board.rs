@@ -611,9 +611,49 @@ impl Board {
 
     pub fn gives_check(&self, mv: Move) -> bool {
         if mv.is_castling() {
-            let mut board = self.clone();
-            board.make_move(mv);
-            return board.is_in_check();
+            // Avoid cloning the board: directly compute whether the rook's
+            // new position gives check or a discovered check is opened.
+            let us = self.side_to_move;
+            let them = !us;
+            let from_bb = Bitboard::from(mv.from_sq());
+            let to_bb = Bitboard::from(mv.to_sq());
+            let atk = &*ATTACKS;
+            let their_king = self.king_sq(them);
+            let their_king_bb = Bitboard::from(their_king);
+            let (rook_from, rook_to) = if mv.flags() == CASTLE_KINGSIDE {
+                if us == Color::White {
+                    (Square::H1, Square::F1)
+                } else {
+                    (Square::H8, Square::F8)
+                }
+            } else {
+                if us == Color::White {
+                    (Square::A1, Square::D1)
+                } else {
+                    (Square::A8, Square::D8)
+                }
+            };
+            let rook_from_bb = Bitboard::from(rook_from);
+            let rook_to_bb = Bitboard::from(rook_to);
+            // Occupancy after castling: king and rook have both moved.
+            let occ = (self.all_occ ^ from_bb ^ rook_from_bb) | to_bb | rook_to_bb;
+            // Direct check by the rook at its new square.
+            if (atk.rook(rook_to, occ) & their_king_bb).any() {
+                return true;
+            }
+            // Discovered check: sliders unblocked by the king or rook moving.
+            let diagonal_sliders =
+                (self.pieces(us, Piece::Bishop) | self.pieces(us, Piece::Queen))
+                    & !from_bb
+                    & !rook_from_bb;
+            if (atk.bishop(their_king, occ) & diagonal_sliders).any() {
+                return true;
+            }
+            let orthogonal_sliders =
+                (self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen))
+                    & !from_bb
+                    & !rook_from_bb;
+            return (atk.rook(their_king, occ) & orthogonal_sliders).any();
         }
 
         let us = self.side_to_move;
