@@ -500,6 +500,24 @@ fn evaluator_rewards_advanced_protected_passers_over_back_rank_pawns() {
 }
 
 #[test]
+fn evaluator_rewards_connected_passers_over_split_passers() {
+    let mut evaluator = Evaluator::default();
+    let connected = Board::from_fen("4k3/8/3PP3/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let split = Board::from_fen("4k3/8/2P2P2/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+
+    assert!(evaluator.evaluate(&connected) > evaluator.evaluate(&split));
+}
+
+#[test]
+fn evaluator_penalizes_blockaded_passer() {
+    let mut evaluator = Evaluator::default();
+    let free = Board::from_fen("4k3/n7/3P4/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let blocked = Board::from_fen("4k3/3n4/3P4/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+
+    assert!(evaluator.evaluate(&free) > evaluator.evaluate(&blocked));
+}
+
+#[test]
 fn evaluator_scales_known_drawish_minor_endgames() {
     let mut evaluator = Evaluator::default();
     let two_knights_vs_bare_king =

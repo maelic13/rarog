@@ -433,13 +433,24 @@ impl Evaluator {
                         eg += sign * (6 + rel_rank as i32 * 4);
                     }
 
-                    if let Some(stop) = forward_square(us, sq)
-                        && (occupied & Bitboard::from(stop)).is_empty()
-                    {
-                        mg += sign * (rel_rank as i32 * 2);
-                        eg += sign * (rel_rank as i32 * 6);
-                        if board.attackers_to_color(stop, occupied, them).is_empty() {
-                            eg += sign * (rel_rank as i32 * 8);
+                    if connected_passer(our_pawns, adjacent, us, sq) {
+                        mg += sign * (6 + rel_rank as i32 * 2);
+                        eg += sign * (10 + rel_rank as i32 * 5);
+                    }
+
+                    if let Some(stop) = forward_square(us, sq) {
+                        if (occupied & Bitboard::from(stop)).is_empty() {
+                            mg += sign * (rel_rank as i32 * 2);
+                            eg += sign * (rel_rank as i32 * 6);
+                            if board.attackers_to_color(stop, occupied, them).is_empty() {
+                                eg += sign * (rel_rank as i32 * 8);
+                            }
+                        } else if board
+                            .piece_at(stop)
+                            .is_some_and(|(blocker, _)| blocker == them)
+                        {
+                            mg -= sign * (8 + rel_rank as i32 * 2);
+                            eg -= sign * (14 + rel_rank as i32 * 6);
                         }
                     }
                 } else if rel_rank >= 3
@@ -872,6 +883,23 @@ fn attacks_for(atk: &AttackTables, piece: Piece, sq: Square, occ: Bitboard) -> B
         Piece::Queen => atk.queen(sq, occ),
         Piece::King => atk.king(sq),
     }
+}
+
+fn connected_passer(
+    our_pawns: Bitboard,
+    adjacent_files: Bitboard,
+    color: Color,
+    sq: Square,
+) -> bool {
+    let rank = relative_rank(color, sq) as i32;
+    let mut adjacent_pawns = our_pawns & adjacent_files;
+    while adjacent_pawns.any() {
+        let other = adjacent_pawns.pop_lsb();
+        if (relative_rank(color, other) as i32 - rank).abs() <= 1 {
+            return true;
+        }
+    }
+    false
 }
 
 #[inline(always)]
