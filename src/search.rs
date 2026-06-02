@@ -1380,6 +1380,7 @@ impl Searcher {
                         is_quiet,
                         quiet_history: quiet_hist,
                         losing_capture: !is_quiet && see < 0,
+                        helper_jitter: helper_lmr_jitter(self.root_move_offset, ply, searched),
                     });
                     score = -self.negamax(
                         board,
@@ -2688,6 +2689,7 @@ struct LmrContext {
     is_quiet: bool,
     quiet_history: i32,
     losing_capture: bool,
+    helper_jitter: i32,
 }
 
 fn lmr_reduction_scaled(ctx: LmrContext) -> i32 {
@@ -2721,6 +2723,7 @@ fn lmr_reduction_scaled(ctx: LmrContext) -> i32 {
     if ctx.losing_capture {
         scaled += 1024;
     }
+    scaled += ctx.helper_jitter;
     if ctx.is_quiet {
         scaled -= (ctx.quiet_history / 8).clamp(-768, 768);
         if !ctx.tt_pv && !ctx.cut_node && ctx.quiet_history > 4_000 {
@@ -2732,6 +2735,18 @@ fn lmr_reduction_scaled(ctx: LmrContext) -> i32 {
     }
 
     (scaled / 1024).clamp(1, ctx.new_depth.max(1))
+}
+
+fn helper_lmr_jitter(root_move_offset: usize, ply: usize, move_index: usize) -> i32 {
+    if root_move_offset == 0 || ply < 2 || move_index < 4 {
+        return 0;
+    }
+
+    match (root_move_offset + ply + move_index) % 3 {
+        0 => -128,
+        1 => 0,
+        _ => 128,
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -2946,6 +2961,11 @@ fn select_parallel_result(results: &[SearchResult], root_moves: &[Move]) -> Opti
         .filter(|(_, result)| is_root_result(result, root_moves))
         .collect::<Vec<_>>();
     let min_score = root_results.iter().map(|(_, result)| result.score).min()?;
+    let max_depth = root_results
+        .iter()
+        .map(|(_, result)| result.depth)
+        .max()
+        .unwrap_or(0);
 
     let mut votes: Vec<(Move, i64)> = Vec::new();
     for (_, result) in &root_results {
@@ -2956,9 +2976,14 @@ fn select_parallel_result(results: &[SearchResult], root_moves: &[Move]) -> Opti
             votes.push((result.bestmove, vote_value));
         }
     }
+    let max_vote = votes.iter().map(|(_, vote)| *vote).max().unwrap_or(0);
 
     root_results
         .into_iter()
+        .filter(|(_, result)| {
+            result.depth == max_depth
+                || vote_for_move(&votes, result.bestmove) * 4 >= max_vote.saturating_mul(3)
+        })
         .max_by(|(left_index, left), (right_index, right)| {
             let left_vote = vote_for_move(&votes, left.bestmove);
             let right_vote = vote_for_move(&votes, right.bestmove);
@@ -2991,7 +3016,7 @@ fn parallel_result_key(
     result: &SearchResult,
     vote: i64,
     main_thread: bool,
-) -> (i32, i64, bool, usize, i32, bool) {
+) -> (i32, usize, i64, u64, bool, i32, bool) {
     let decisive_rank = if result.score >= TB_WIN_SCORE {
         2
     } else if result.score <= -TB_WIN_SCORE {
@@ -3001,9 +3026,10 @@ fn parallel_result_key(
     };
     (
         decisive_rank,
-        vote,
-        !result.pondermove.is_null(),
         result.depth,
+        vote,
+        result.nodes,
+        !result.pondermove.is_null(),
         result.score,
         main_thread,
     )
@@ -3180,6 +3206,36 @@ mod tests {
     }
 
     #[test]
+    fn parallel_result_selection_rejects_shallow_low_consensus_outlier() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let results = vec![
+            test_search_result(e2e4, 30, 12),
+            test_search_result(d2d4, 120, 7),
+        ];
+
+        let selected = select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
+
+        assert_eq!(selected.bestmove, e2e4);
+    }
+
+    #[test]
+    fn parallel_result_selection_keeps_depth_ahead_of_shallow_consensus() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let results = vec![
+            test_search_result(e2e4, 20, 10),
+            test_search_result(d2d4, 60, 9),
+            test_search_result(d2d4, 55, 9),
+            test_search_result(d2d4, 50, 9),
+        ];
+
+        let selected = select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
+
+        assert_eq!(selected.bestmove, e2e4);
+    }
+
+    #[test]
     fn quiet_direct_checks_receive_ordering_bonus() {
         let searcher = Searcher::default();
         let board = Board::from_fen("4k3/8/8/8/8/8/8/R6K w - - 0 1").expect("valid FEN");
@@ -3277,6 +3333,7 @@ mod tests {
             is_quiet: true,
             quiet_history: 0,
             losing_capture: false,
+            helper_jitter: 0,
         };
         let base_reduction = lmr_reduction_scaled(base);
 
@@ -3313,6 +3370,16 @@ mod tests {
             ..base
         };
         assert!(lmr_reduction_scaled(losing_capture) >= base_reduction);
+    }
+
+    #[test]
+    fn helper_lmr_jitter_is_small_and_helper_only() {
+        assert_eq!(helper_lmr_jitter(0, 5, 8), 0);
+        assert_eq!(helper_lmr_jitter(2, 1, 8), 0);
+        assert_eq!(helper_lmr_jitter(2, 5, 3), 0);
+
+        let jitter = helper_lmr_jitter(2, 5, 8);
+        assert!((-128..=128).contains(&jitter));
     }
 
     #[test]
