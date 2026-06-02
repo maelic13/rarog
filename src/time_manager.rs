@@ -9,6 +9,51 @@ pub(crate) struct RuntimeLimits {
     pub hard_ms: f64,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub(crate) struct RootTimeSignals {
+    pub stable_best_depths: usize,
+    pub eval_stable_depths: usize,
+    pub best_move_changes: usize,
+    pub best_effort: f64,
+    pub score_drop: i32,
+}
+
+pub(crate) fn soft_time_multiplier(signals: RootTimeSignals) -> f64 {
+    let mut multiplier: f64 = 1.0;
+
+    if signals.stable_best_depths >= 2 && signals.eval_stable_depths >= 1 {
+        multiplier *= 0.82;
+    } else if signals.stable_best_depths == 0 {
+        multiplier *= 1.18;
+    }
+
+    if signals.best_move_changes >= 2 {
+        multiplier *= 1.18;
+    } else if signals.best_move_changes == 0 && signals.stable_best_depths >= 3 {
+        multiplier *= 0.92;
+    }
+
+    if signals.score_drop > 90 {
+        multiplier *= 1.28;
+    } else if signals.score_drop > 45 {
+        multiplier *= 1.12;
+    }
+
+    if signals.best_effort < 0.23 {
+        multiplier *= 1.18;
+    } else if signals.best_effort > 0.72 && signals.stable_best_depths >= 1 {
+        multiplier *= 0.86;
+    }
+
+    multiplier.clamp(0.55, 1.75)
+}
+
+pub(crate) fn root_signals_ready_to_stop(signals: RootTimeSignals) -> bool {
+    signals.stable_best_depths >= 1
+        && signals.score_drop <= 55
+        && (signals.eval_stable_depths >= 1 || signals.best_effort >= 0.62)
+}
+
 pub(crate) fn compute_runtime_limits(
     options: &SearchLimits,
     engine_options: &EngineOptions,
@@ -182,5 +227,53 @@ mod tests {
             compute_runtime_limits(&unlimited, &EngineOptions::default(), Color::Black, 42);
 
         assert_eq!(unlimited_limits.depth, 42);
+    }
+
+    #[test]
+    fn stable_root_signals_reduce_soft_time() {
+        let stable = RootTimeSignals {
+            stable_best_depths: 3,
+            eval_stable_depths: 2,
+            best_move_changes: 0,
+            best_effort: 0.78,
+            score_drop: 0,
+        };
+        let unstable = RootTimeSignals {
+            stable_best_depths: 0,
+            eval_stable_depths: 0,
+            best_move_changes: 3,
+            best_effort: 0.15,
+            score_drop: 120,
+        };
+
+        assert!(soft_time_multiplier(stable) < 1.0);
+        assert!(soft_time_multiplier(unstable) > 1.0);
+        assert!(soft_time_multiplier(stable) < soft_time_multiplier(unstable));
+    }
+
+    #[test]
+    fn root_signals_stop_only_when_best_and_eval_are_reliable() {
+        let stable = RootTimeSignals {
+            stable_best_depths: 1,
+            eval_stable_depths: 1,
+            best_move_changes: 0,
+            best_effort: 0.50,
+            score_drop: 20,
+        };
+        let low_confidence = RootTimeSignals {
+            stable_best_depths: 1,
+            eval_stable_depths: 0,
+            best_move_changes: 1,
+            best_effort: 0.20,
+            score_drop: 20,
+        };
+        let score_drop = RootTimeSignals {
+            score_drop: 90,
+            ..stable
+        };
+
+        assert!(root_signals_ready_to_stop(stable));
+        assert!(!root_signals_ready_to_stop(low_confidence));
+        assert!(!root_signals_ready_to_stop(score_drop));
     }
 }

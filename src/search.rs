@@ -12,7 +12,10 @@ use crate::move_ordering::{
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::search_threads::{STOP_QUIT, STOP_SEARCH, SharedSearchState, WorkerJob, WorkerPool};
 use crate::syzygy::{self, Wdl};
-use crate::time_manager::{RuntimeLimits, compute_runtime_limits};
+use crate::time_manager::{
+    RootTimeSignals, RuntimeLimits, compute_runtime_limits, root_signals_ready_to_stop,
+    soft_time_multiplier,
+};
 use crate::tt::{Bound, TranspositionTable, score_from_tt};
 
 const MAX_DEPTH: usize = 100;
@@ -124,6 +127,7 @@ pub struct Searcher {
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
     tt_write_mode: TtWriteMode,
+    soft_stop_voted: bool,
     syzygy_probe_depth: i32,
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
@@ -179,6 +183,7 @@ impl Default for Searcher {
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             tt_write_mode: TtWriteMode::Main,
+            soft_stop_voted: false,
             syzygy_probe_depth: 1,
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
@@ -525,6 +530,7 @@ impl Searcher {
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
         self.root_best_effort = 0.0;
+        self.soft_stop_voted = false;
         if age_tt {
             self.tt.new_search();
         }
@@ -630,7 +636,10 @@ impl Searcher {
         let mut completed_depth = 0;
         let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
         let mut stable_best_depths = 0usize;
+        let mut eval_stable_depths = 0usize;
+        let mut best_move_changes = 0usize;
         let mut last_score_drop = 0;
+        let mut score_average = 0.0;
 
         for depth in 1..=max_depth {
             let previous_bestmove = bestmove;
@@ -680,11 +689,22 @@ impl Searcher {
                     beta = (best_score + beta_delta).min(INF_SCORE);
                     continue;
                 }
-                last_score_drop = if completed_depth > 0 {
+                let previous_completed_depth = completed_depth;
+                last_score_drop = if previous_completed_depth > 0 {
                     best_score - score
                 } else {
                     0
                 };
+                if previous_completed_depth > 0 {
+                    if ((score as f64) - score_average).abs() <= 18.0 {
+                        eval_stable_depths += 1;
+                    } else {
+                        eval_stable_depths = 0;
+                    }
+                    score_average = score_average * 0.60 + score as f64 * 0.40;
+                } else {
+                    score_average = score as f64;
+                }
                 best_score = score;
                 completed_depth = depth;
                 iteration_elapsed_ms = (self.elapsed_ms() - iteration_start_ms).max(0.0);
@@ -701,6 +721,9 @@ impl Searcher {
                         stable_best_depths += 1;
                     } else {
                         stable_best_depths = 0;
+                        if previous_completed_depth > 0 {
+                            best_move_changes += 1;
+                        }
                     }
                 }
                 break;
@@ -720,30 +743,24 @@ impl Searcher {
 
             if !self.pondering {
                 let elapsed_ms = self.elapsed_ms();
-                let effort_scale = if self.root_best_effort > 0.65 && stable_best_depths > 0 {
-                    0.85
-                } else if self.root_best_effort < 0.25 || stable_best_depths == 0 {
-                    1.20
-                } else {
-                    1.0
+                let root_signals = RootTimeSignals {
+                    stable_best_depths,
+                    eval_stable_depths,
+                    best_move_changes,
+                    best_effort: self.root_best_effort,
+                    score_drop: last_score_drop,
                 };
-                let score_scale = if last_score_drop > 80 {
-                    1.25
-                } else if last_score_drop > 40 {
-                    1.10
-                } else {
-                    1.0
-                };
-                let dynamic_soft_ms = self.limits.soft_ms * effort_scale * score_scale;
+                let dynamic_soft_ms = self.limits.soft_ms * soft_time_multiplier(root_signals);
                 let next_iteration_would_hit_hard = self.limits.hard_ms.is_finite()
                     && iteration_elapsed_ms > 0.0
                     && elapsed_ms + iteration_elapsed_ms * 1.75 + 1.0 >= self.limits.hard_ms;
-                if elapsed_ms >= self.limits.hard_ms
-                    || next_iteration_would_hit_hard
-                    || (elapsed_ms >= dynamic_soft_ms
-                        && (dynamic_soft_ms >= self.limits.hard_ms
-                            || (stable_best_depths > 0 && last_score_drop <= 50)))
-                {
+                let local_soft_stop = elapsed_ms >= dynamic_soft_ms
+                    && (dynamic_soft_ms >= self.limits.hard_ms
+                        || root_signals_ready_to_stop(root_signals));
+                if elapsed_ms >= self.limits.hard_ms || next_iteration_would_hit_hard {
+                    break;
+                }
+                if local_soft_stop && self.shared_soft_stop_ready() {
                     break;
                 }
             }
@@ -795,7 +812,7 @@ impl Searcher {
         poll: &mut P,
     ) -> SearchResult {
         self.tt.make_shared();
-        let shared_state = Arc::new(SharedSearchState::new(self.tb_hits));
+        let shared_state = Arc::new(SharedSearchState::new(self.tb_hits, threads));
         let helper_count = threads.saturating_sub(1);
         let root_len = root_moves.len();
         let mut worker_engine_options = engine_options;
@@ -827,6 +844,7 @@ impl Searcher {
             }
         }
         drop(result_tx);
+        shared_state.set_soft_stop_voters(launched_helpers + 1);
 
         self.root_move_offset = 0;
         self.shared_state = Some(Arc::clone(&shared_state));
@@ -2471,6 +2489,20 @@ impl Searcher {
         }
         self.tt
             .store(key, depth, score, bound, mv, ply, static_eval, is_pv);
+    }
+
+    fn shared_soft_stop_ready(&mut self) -> bool {
+        let Some(shared_state) = &self.shared_state else {
+            return true;
+        };
+        if !self.soft_stop_voted {
+            self.soft_stop_voted = true;
+            if shared_state.vote_soft_stop() {
+                shared_state.request_stop();
+                return true;
+            }
+        }
+        shared_state.stop_state.load(Ordering::Relaxed) == STOP_SEARCH
     }
 
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {

@@ -1,6 +1,6 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering},
     mpsc::{self, Sender},
 };
 use std::thread::{self, JoinHandle};
@@ -20,15 +20,19 @@ pub(crate) struct SharedSearchState {
     pub ponderhit: AtomicBool,
     pub nodes: AtomicU64,
     pub tb_hits: AtomicU64,
+    soft_stop_votes: AtomicUsize,
+    soft_stop_voters: AtomicUsize,
 }
 
 impl SharedSearchState {
-    pub(crate) fn new(initial_tb_hits: u64) -> Self {
+    pub(crate) fn new(initial_tb_hits: u64, soft_stop_voters: usize) -> Self {
         Self {
             stop_state: AtomicU8::new(STOP_NONE),
             ponderhit: AtomicBool::new(false),
             nodes: AtomicU64::new(0),
             tb_hits: AtomicU64::new(initial_tb_hits),
+            soft_stop_votes: AtomicUsize::new(0),
+            soft_stop_voters: AtomicUsize::new(soft_stop_voters.max(1)),
         }
     }
 
@@ -42,6 +46,17 @@ impl SharedSearchState {
 
     pub(crate) fn request_quit(&self) {
         self.stop_state.store(STOP_QUIT, Ordering::Relaxed);
+    }
+
+    pub(crate) fn set_soft_stop_voters(&self, voters: usize) {
+        self.soft_stop_voters
+            .store(voters.max(1), Ordering::Relaxed);
+    }
+
+    pub(crate) fn vote_soft_stop(&self) -> bool {
+        let votes = self.soft_stop_votes.fetch_add(1, Ordering::Relaxed) + 1;
+        let voters = self.soft_stop_voters.load(Ordering::Relaxed).max(1);
+        votes * 2 > voters
     }
 }
 
@@ -158,7 +173,7 @@ mod tests {
 
     #[test]
     fn shared_stop_request_sets_search_stop() {
-        let state = SharedSearchState::new(0);
+        let state = SharedSearchState::new(0, 1);
 
         state.request_stop();
 
@@ -167,11 +182,19 @@ mod tests {
 
     #[test]
     fn shared_stop_request_does_not_overwrite_quit() {
-        let state = SharedSearchState::new(0);
+        let state = SharedSearchState::new(0, 1);
 
         state.request_quit();
         state.request_stop();
 
         assert_eq!(state.stop_state.load(Ordering::Relaxed), STOP_QUIT);
+    }
+
+    #[test]
+    fn soft_stop_votes_require_majority() {
+        let state = SharedSearchState::new(0, 3);
+
+        assert!(!state.vote_soft_stop());
+        assert!(state.vote_soft_stop());
     }
 }
