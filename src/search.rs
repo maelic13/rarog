@@ -26,6 +26,8 @@ const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
+const CORR_BUCKETS: usize = 16;
+const CONT_CORR_OFFSETS: usize = 3;
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
@@ -120,9 +122,9 @@ pub struct Searcher {
     cont_history_2: Vec<i16>,
     cont_history_4: Vec<i16>,
     cont_history_6: Vec<i16>,
-    correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
+    correction_history: Vec<i16>,
+    minor_correction_history: Vec<i16>,
+    non_pawn_correction_history: Vec<i16>,
     continuation_correction_history: Vec<i16>,
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
@@ -176,10 +178,10 @@ impl Default for Searcher {
             cont_history_2: vec![0; CONT_SIZE],
             cont_history_4: vec![0; CONT_SIZE],
             cont_history_6: vec![0; CONT_SIZE],
-            correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
-            continuation_correction_history: vec![0; PIECE_TO_SIZE],
+            correction_history: vec![0; CORR_BUCKETS * 2 * CORR_SIZE],
+            minor_correction_history: vec![0; CORR_BUCKETS * 2 * CORR_SIZE],
+            non_pawn_correction_history: vec![0; CORR_BUCKETS * 2 * 2 * CORR_SIZE],
+            continuation_correction_history: vec![0; CONT_CORR_OFFSETS * PIECE_TO_SIZE],
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             tt_write_mode: TtWriteMode::Main,
@@ -409,9 +411,9 @@ impl Searcher {
         self.cont_history_2.fill(0);
         self.cont_history_4.fill(0);
         self.cont_history_6.fill(0);
-        self.correction_history = Box::new([[0; CORR_SIZE]; 2]);
-        self.minor_correction_history = Box::new([[0; CORR_SIZE]; 2]);
-        self.non_pawn_correction_history = Box::new([[[0; CORR_SIZE]; 2]; 2]);
+        self.correction_history.fill(0);
+        self.minor_correction_history.fill(0);
+        self.non_pawn_correction_history.fill(0);
         self.continuation_correction_history.fill(0);
         self.countermove = Box::new([[Move::NULL; 64]; 64]);
         self.killers = [[Move::NULL; 2]; MAX_PLY];
@@ -2330,22 +2332,14 @@ impl Searcher {
         for value in &mut self.cont_history_6 {
             *value /= 2;
         }
-        for color in self.correction_history.iter_mut() {
-            for value in color.iter_mut() {
-                *value /= 2;
-            }
+        for value in &mut self.correction_history {
+            *value /= 2;
         }
-        for color in self.minor_correction_history.iter_mut() {
-            for value in color.iter_mut() {
-                *value /= 2;
-            }
+        for value in &mut self.minor_correction_history {
+            *value /= 2;
         }
-        for stm in self.non_pawn_correction_history.iter_mut() {
-            for color in stm.iter_mut() {
-                for value in color.iter_mut() {
-                    *value /= 2;
-                }
-            }
+        for value in &mut self.non_pawn_correction_history {
+            *value /= 2;
         }
         for value in &mut self.continuation_correction_history {
             *value /= 2;
@@ -2369,28 +2363,42 @@ impl Searcher {
         let color = board.side_to_move();
         let us = color as usize;
         let them = (!color) as usize;
-        let pawn = self.correction_history[us][board.pawn_key() as usize & (CORR_SIZE - 1)] as i32;
-        let minor =
-            self.minor_correction_history[us][board.minor_key() as usize & (CORR_SIZE - 1)] as i32;
-        let own_non_pawn = self.non_pawn_correction_history[us][us]
-            [board.non_pawn_key(color) as usize & (CORR_SIZE - 1)]
+        let bucket = board.rule50_bucket();
+        let pawn =
+            self.correction_history[corr_index(bucket, us, board.pawn_key() as usize)] as i32;
+        let minor = self.minor_correction_history
+            [corr_index(bucket, us, board.minor_key() as usize)] as i32;
+        let own_non_pawn = self.non_pawn_correction_history
+            [non_pawn_corr_index(bucket, us, us, board.non_pawn_key(color) as usize)]
             as i32;
-        let their_non_pawn = self.non_pawn_correction_history[us][them]
-            [board.non_pawn_key(!color) as usize & (CORR_SIZE - 1)]
+        let their_non_pawn = self.non_pawn_correction_history
+            [non_pawn_corr_index(bucket, us, them, board.non_pawn_key(!color) as usize)]
             as i32;
-        let continuation = if ply >= 1 {
-            let prev = self.stack_moves[ply - 1];
-            if prev.is_null() {
-                0
-            } else {
-                self.continuation_correction_history
-                    [piece_to_index(self.stack_pieces[ply - 1] as usize, prev.to_sq().index())]
-                    as i32
-            }
-        } else {
-            0
-        };
-        (pawn + minor + own_non_pawn + their_non_pawn + continuation / 2) / 128
+        let continuation = self.continuation_correction_value(ply);
+        (pawn + minor + own_non_pawn + their_non_pawn + continuation) / 128
+    }
+
+    fn continuation_correction_value(&self, ply: usize) -> i32 {
+        let cont1 = self.continuation_correction_at(ply, 1, 0);
+        let cont2 = self.continuation_correction_at(ply, 2, 1);
+        let cont4 = self.continuation_correction_at(ply, 4, 2);
+        cont1 / 2 + cont2 / 4 + cont4 / 4
+    }
+
+    fn continuation_correction_at(&self, ply: usize, offset: usize, slot: usize) -> i32 {
+        if ply < offset {
+            return 0;
+        }
+        let prev = self.stack_moves[ply - offset];
+        if prev.is_null() {
+            return 0;
+        }
+
+        self.continuation_correction_history[continuation_corr_index(
+            slot,
+            self.stack_pieces[ply - offset] as usize,
+            prev.to_sq().index(),
+        )] as i32
     }
 
     fn syzygy_wdl_score(
@@ -2435,40 +2443,59 @@ impl Searcher {
         let color = board.side_to_move();
         let us = color as usize;
         let them = (!color) as usize;
+        let bucket = board.rule50_bucket();
         let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
         update_hist_entry(
-            &mut self.correction_history[us][board.pawn_key() as usize & (CORR_SIZE - 1)],
+            &mut self.correction_history[corr_index(bucket, us, board.pawn_key() as usize)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.minor_correction_history[us][board.minor_key() as usize & (CORR_SIZE - 1)],
+            &mut self.minor_correction_history[corr_index(bucket, us, board.minor_key() as usize)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.non_pawn_correction_history[us][us]
-                [board.non_pawn_key(color) as usize & (CORR_SIZE - 1)],
+            &mut self.non_pawn_correction_history
+                [non_pawn_corr_index(bucket, us, us, board.non_pawn_key(color) as usize)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.non_pawn_correction_history[us][them]
-                [board.non_pawn_key(!color) as usize & (CORR_SIZE - 1)],
+            &mut self.non_pawn_correction_history
+                [non_pawn_corr_index(bucket, us, them, board.non_pawn_key(!color) as usize)],
             scaled,
             HISTORY_MAX,
         );
-        if ply >= 1 {
-            let prev = self.stack_moves[ply - 1];
-            if !prev.is_null() {
-                update_hist_entry(
-                    &mut self.continuation_correction_history
-                        [piece_to_index(self.stack_pieces[ply - 1] as usize, prev.to_sq().index())],
-                    scaled / 2,
-                    HISTORY_MAX,
-                );
-            }
+        self.update_continuation_correction(ply, 1, 0, scaled / 2);
+        self.update_continuation_correction(ply, 2, 1, scaled / 3);
+        self.update_continuation_correction(ply, 4, 2, scaled / 4);
+    }
+
+    fn update_continuation_correction(
+        &mut self,
+        ply: usize,
+        offset: usize,
+        slot: usize,
+        bonus: i32,
+    ) {
+        if ply < offset {
+            return;
         }
+        let prev = self.stack_moves[ply - offset];
+        if prev.is_null() {
+            return;
+        }
+
+        update_hist_entry(
+            &mut self.continuation_correction_history[continuation_corr_index(
+                slot,
+                self.stack_pieces[ply - offset] as usize,
+                prev.to_sq().index(),
+            )],
+            bonus,
+            HISTORY_MAX,
+        );
     }
 
     fn store_tt(
@@ -2935,6 +2962,19 @@ fn fail_low_parent_history_bonus(
         history_bonus(depth) / 10 + eval_drop.clamp(0, 400) / 16 + tt_bonus - searched_penalty;
 
     bonus.clamp(0, HISTORY_MAX / 20)
+}
+
+fn corr_index(bucket: usize, color: usize, key: usize) -> usize {
+    ((bucket.min(CORR_BUCKETS - 1) * 2 + color.min(1)) * CORR_SIZE) + (key & (CORR_SIZE - 1))
+}
+
+fn non_pawn_corr_index(bucket: usize, stm: usize, color: usize, key: usize) -> usize {
+    (((bucket.min(CORR_BUCKETS - 1) * 2 + stm.min(1)) * 2 + color.min(1)) * CORR_SIZE)
+        + (key & (CORR_SIZE - 1))
+}
+
+fn continuation_corr_index(slot: usize, piece: usize, to: usize) -> usize {
+    slot.min(CONT_CORR_OFFSETS - 1) * PIECE_TO_SIZE + piece_to_index(piece, to)
 }
 
 fn late_move_prune_count(depth: i32, improving: bool) -> usize {
@@ -3591,6 +3631,45 @@ mod tests {
             fail_low_parent_history_bonus(8, 1, true, 300)
                 > fail_low_parent_history_bonus(8, 5, false, 300)
         );
+    }
+
+    #[test]
+    fn correction_history_is_isolated_by_rule50_bucket() {
+        let mut searcher = Searcher::default();
+        let low = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1").expect("valid FEN");
+        let high = Board::from_fen("4k3/8/8/8/8/8/8/R3K3 w Q - 24 1").expect("valid FEN");
+
+        assert_ne!(low.rule50_bucket(), high.rule50_bucket());
+        searcher.update_correction(&low, 120, 4, 0);
+
+        assert!(searcher.correction_value(&low, 0) > 0);
+        assert_eq!(searcher.correction_value(&high, 0), 0);
+    }
+
+    #[test]
+    fn continuation_correction_uses_deeper_offsets() {
+        let mut searcher = Searcher::default();
+        let board = Board::default();
+        let e2e4 = board.parse_move("e2e4").expect("legal move");
+        let e7e5 = Move::from_uci("e7e5").expect("valid move");
+        let g1f3 = board.parse_move("g1f3").expect("legal move");
+        let b8c6 = Move::from_uci("b8c6").expect("valid move");
+
+        searcher.stack_moves[0] = e2e4;
+        searcher.stack_pieces[0] = Piece::Pawn;
+        searcher.stack_moves[1] = e7e5;
+        searcher.stack_pieces[1] = Piece::Pawn;
+        searcher.stack_moves[2] = g1f3;
+        searcher.stack_pieces[2] = Piece::Knight;
+        searcher.stack_moves[3] = b8c6;
+        searcher.stack_pieces[3] = Piece::Knight;
+
+        searcher.update_correction(&board, 180, 4, 4);
+
+        assert!(searcher.continuation_correction_at(4, 1, 0) > 0);
+        assert!(searcher.continuation_correction_at(4, 2, 1) > 0);
+        assert!(searcher.continuation_correction_at(4, 4, 2) > 0);
+        assert!(searcher.continuation_correction_value(4) > 0);
     }
 
     #[test]
