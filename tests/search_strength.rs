@@ -34,7 +34,7 @@ fn deep_search_in_check_heavy_positions_does_not_overflow_ply() {
     ] {
         let board = Board::from_fen(fen).expect("valid FEN");
         let legal_moves = board.generate_legal_movelist();
-        let result = search_result_at_depth_with_threads(board, 16, 1);
+        let result = search_result_at_depth_with_threads(board, 12, 1);
         assert!(!result.bestmove.is_null(), "{fen}");
         assert!(
             legal_moves

@@ -5,7 +5,7 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
-## [2.1.0] - 2026-06-01
+## [2.1.0] - 2026-06-02
 
 Minor release delivering a substantial search overhaul for higher playing
 strength, focused on fine-grained, history-aware heuristics.
@@ -55,6 +55,14 @@ strength, focused on fine-grained, history-aware heuristics.
   is improving, permitting more aggressive pruning cuts.
 - Removed the `lmr_reduction()` helper function (superseded by the inline
   fractional reduction block).
+
+### Release Notes
+
+- Updated release-facing documentation for the `2.1.0` build and source
+  package.
+- Kept `Cargo.lock` committed for reproducible engine release builds.
+- Removed local planning, assistant-state, and generated tuning-output files
+  from the tracked release source.
 
 ## [2.0.1] - 2026-06-01
 

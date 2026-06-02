@@ -242,7 +242,7 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 Current documented release: `2.1.0`.
 
-`2.1.0` is a minor release delivering a substantial search overhaul for higher
+`2.1.0` is the current minor release, delivering a substantial search overhaul for higher
 playing strength. The integer ±1 LMR adjustment system is replaced by a
 1024-scaled fractional system with nine history- and correction-aware weighted
 terms, paired with do-deeper/do-shallower re-search depth adjustment. Additional
@@ -263,6 +263,12 @@ documentation now use the Rarog name. Lynx releases remain available through
 
 - [Latest release](https://github.com/maelic13/rarog/releases/latest)
 - [All releases](https://github.com/maelic13/rarog/releases)
+
+Source releases include the engine source, tests, benchmarks, release workflow,
+`xtask` asset builder, bundled Fathom tablebase probing code, logos,
+documentation, and the committed `Cargo.lock` for reproducible dependency
+resolution. Local IDE state, assistant state, build output, package staging, and
+generated tuning artifacts are ignored and are not part of a release.
 
 Release-preparation checks for `2.1.0`:
 
