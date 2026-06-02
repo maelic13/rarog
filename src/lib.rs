@@ -5,6 +5,7 @@ pub mod engine_command;
 pub mod eval;
 pub mod infra;
 mod move_ordering;
+mod params;
 pub mod search;
 pub mod search_options;
 mod search_threads;

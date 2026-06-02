@@ -9,6 +9,7 @@ use crate::move_ordering::{
     diversify_root_scores, history_bonus, pawn_history_index, pick_next, piece_to_index,
     update_hist_entry,
 };
+use crate::params;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::search_threads::{STOP_QUIT, STOP_SEARCH, SharedSearchState, WorkerJob, WorkerPool};
 use crate::syzygy::{self, Wdl};
@@ -24,7 +25,6 @@ const MAX_QPLY: usize = 16;
 const MIN_PARALLEL_DEPTH: usize = 4;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
 const CORR_BUCKETS: usize = 16;
 const CONT_CORR_OFFSETS: usize = 3;
@@ -1928,7 +1928,7 @@ impl Searcher {
             0
         };
         let direct_check = if board.is_direct_check(mv) {
-            DIRECT_CHECK_BONUS
+            params::direct_check_bonus()
         } else {
             0
         };
@@ -2817,8 +2817,13 @@ fn probcut_static_margin(depth: i32) -> i32 {
 }
 
 fn probcut_margin(depth: i32, improving: bool) -> i32 {
-    let improving_bonus = if improving { 28 } else { 0 };
-    (188 + 4 * depth - improving_bonus).clamp(160, 260)
+    let improving_bonus = if improving {
+        params::probcut_improving_bonus()
+    } else {
+        0
+    };
+    (params::probcut_base_margin() + params::probcut_depth_margin() * depth - improving_bonus)
+        .clamp(160, 260)
 }
 
 fn probcut_see_threshold(probcut_beta: i32, eval_for_pruning: i32) -> i32 {
@@ -2882,9 +2887,9 @@ fn singular_margin(
     tt_bound: Option<Bound>,
 ) -> i32 {
     let bound_margin = if matches!(tt_bound, Some(Bound::Exact)) {
-        12 + 3 * depth
+        params::singular_exact_base_margin() + params::singular_exact_depth_margin() * depth
     } else {
-        24 + 4 * depth
+        params::singular_lower_base_margin() + params::singular_lower_depth_margin() * depth
     };
     let pv_mismatch = if is_pv != tt_pv { depth } else { 0 };
     let cut_bonus = if cut_node { depth / 2 } else { 0 };
@@ -2942,7 +2947,7 @@ fn singular_result(ctx: SingularResultContext) -> SingularDecision {
 }
 
 fn tt_cutoff_history_bonus(depth: i32, previous_searched: usize) -> i32 {
-    let divisor = 4 + previous_searched.min(3) as i32;
+    let divisor = params::tt_cutoff_history_divisor_base() + previous_searched.min(3) as i32;
     (history_bonus(depth) / divisor).clamp(8, HISTORY_MAX / 16)
 }
 
@@ -2958,8 +2963,10 @@ fn fail_low_parent_history_bonus(
 
     let searched_penalty = previous_searched.min(6) as i32 * 4;
     let tt_bonus = if was_tt_move { 12 } else { 0 };
-    let bonus =
-        history_bonus(depth) / 10 + eval_drop.clamp(0, 400) / 16 + tt_bonus - searched_penalty;
+    let bonus = history_bonus(depth) / params::fail_low_parent_history_divisor()
+        + eval_drop.clamp(0, 400) / params::fail_low_parent_eval_divisor()
+        + tt_bonus
+        - searched_penalty;
 
     bonus.clamp(0, HISTORY_MAX / 20)
 }
@@ -2978,7 +2985,7 @@ fn continuation_corr_index(slot: usize, piece: usize, to: usize) -> usize {
 }
 
 fn late_move_prune_count(depth: i32, improving: bool) -> usize {
-    let base = 4 + 2 * depth * depth / 3;
+    let base = params::late_move_prune_base() + 2 * depth * depth / 3;
     if improving {
         (base + depth) as usize
     } else {
@@ -3303,7 +3310,7 @@ mod tests {
             .expect("quiet move scored")
             .score;
 
-        assert!(checking_score >= quiet_score + DIRECT_CHECK_BONUS);
+        assert!(checking_score >= quiet_score + params::direct_check_bonus());
     }
 
     #[test]
