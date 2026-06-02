@@ -986,11 +986,12 @@ impl Searcher {
         }
         let tt_entry = self.tt.probe(hash);
         let tt_raw_move = tt_entry.and_then(|entry| entry.best_move());
+        let tt_bound = tt_entry.and_then(|entry| entry.bound());
         let tt_score = tt_entry
+            .filter(|_| tt_bound.is_some())
             .map(|entry| score_from_tt(entry.score as i32, ply, board.halfmove_clock))
             .unwrap_or(VALUE_NONE);
         let tt_depth = tt_entry.map(|entry| entry.depth as i32).unwrap_or(-1);
-        let tt_bound = tt_entry.and_then(|entry| entry.bound());
         let tt_pv = is_pv || tt_entry.map_or(false, |e| e.is_pv_node());
         let mut tt_move = tt_raw_move
             .and_then(|mv| board.legal_move(mv))
@@ -1027,7 +1028,7 @@ impl Searcher {
         let (static_eval, raw_static_eval) = if in_check {
             (VALUE_NONE, VALUE_NONE)
         } else if let Some(entry) = tt_entry {
-            if entry.static_eval as i32 != VALUE_NONE {
+            if entry.has_static_eval() {
                 let raw = entry.static_eval as i32;
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             } else {
@@ -1038,6 +1039,9 @@ impl Searcher {
             let raw = self.raw_eval(board);
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
+        if !in_check && excluded.is_null() && tt_entry.is_none() && raw_static_eval != VALUE_NONE {
+            self.tt.store_eval(hash, raw_static_eval);
+        }
         self.stack_static_eval[ply] = static_eval;
         let improving = !in_check
             && ply >= 2
@@ -1639,7 +1643,7 @@ impl Searcher {
         let mut stand_pat_for_pruning = VALUE_NONE;
         if !in_check {
             let (stand_pat, raw_stand_pat) = if let Some(entry) = tt_entry {
-                if entry.static_eval as i32 != VALUE_NONE {
+                if entry.has_static_eval() {
                     let raw = entry.static_eval as i32;
                     (self.corrected_eval_from_raw(board, raw, ply), raw)
                 } else {

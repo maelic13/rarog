@@ -5,9 +5,10 @@ use std::sync::{
 };
 
 use crate::board::Move;
-use crate::eval::MATE_SCORE;
+use crate::eval::{MATE_SCORE, VALUE_NONE};
 
 const MAX_PLY: i32 = 128;
+const EVAL_ONLY_FLAG: u8 = 4;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bound {
@@ -46,12 +47,17 @@ impl TtEntry {
 
     #[inline(always)]
     fn is_occupied(self) -> bool {
-        self.flag_age & 3 != 0
+        self.bound().is_some() || self.flag_age & EVAL_ONLY_FLAG != 0
     }
 
     #[inline(always)]
     pub fn is_pv_node(self) -> bool {
-        (self.flag_age >> 2) & 1 != 0
+        self.bound().is_some() && (self.flag_age >> 2) & 1 != 0
+    }
+
+    #[inline(always)]
+    pub fn has_static_eval(self) -> bool {
+        self.static_eval as i32 != VALUE_NONE
     }
 
     #[inline(always)]
@@ -109,7 +115,9 @@ impl AtomicTtEntry {
     #[inline(always)]
     fn unpack(key: u64, data: u64) -> Option<TtEntry> {
         let flag_age = (data >> 56) as u8;
-        Bound::from_bits(flag_age)?;
+        if Bound::from_bits(flag_age).is_none() && flag_age & EVAL_ONLY_FLAG == 0 {
+            return None;
+        }
 
         Some(TtEntry {
             key16: (key >> 48) as u16,
@@ -310,6 +318,14 @@ impl TranspositionTable {
         }
     }
 
+    #[inline(always)]
+    pub fn store_eval(&mut self, key: u64, static_eval: i32) {
+        match &mut self.storage {
+            TtStorage::Local(table) => store_eval_local(table, key, static_eval),
+            TtStorage::Shared(table) => store_eval_shared(table, key, static_eval),
+        }
+    }
+
     pub fn hashfull(&self) -> usize {
         match &self.storage {
             TtStorage::Local(table) => {
@@ -318,14 +334,25 @@ impl TranspositionTable {
                     return 0;
                 }
                 let age = table.age;
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| cluster.entries)
+                let used = (0..sample)
+                    .flat_map(|sample_index| {
+                        let cluster_index = sample_index * table.clusters.len() / sample;
+                        table.clusters[cluster_index].entries
+                    })
                     .filter(|entry| current_entry(*entry, age))
                     .count();
-                used * 1000 / (sample * 3)
+                if used > 0 {
+                    (used * 1000 / (sample * 3)).max(1)
+                } else if table
+                    .clusters
+                    .iter()
+                    .flat_map(|cluster| cluster.entries)
+                    .any(|entry| current_entry(entry, age))
+                {
+                    1
+                } else {
+                    0
+                }
             }
             TtStorage::Shared(table) => {
                 let sample = table.clusters.len().min(334);
@@ -333,15 +360,27 @@ impl TranspositionTable {
                     return 0;
                 }
                 let age = table.age.load(Ordering::Relaxed);
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| cluster.entries.iter())
+                let used = (0..sample)
+                    .flat_map(|sample_index| {
+                        let cluster_index = sample_index * table.clusters.len() / sample;
+                        table.clusters[cluster_index].entries.iter()
+                    })
                     .filter_map(AtomicTtEntry::load_any)
                     .filter(|(_, entry)| current_entry(*entry, age))
                     .count();
-                used * 1000 / (sample * 3)
+                if used > 0 {
+                    (used * 1000 / (sample * 3)).max(1)
+                } else if table
+                    .clusters
+                    .iter()
+                    .flat_map(|cluster| cluster.entries.iter())
+                    .filter_map(AtomicTtEntry::load_any)
+                    .any(|(_, entry)| current_entry(entry, age))
+                {
+                    1
+                } else {
+                    0
+                }
             }
         }
     }
@@ -584,6 +623,77 @@ fn store_shared(
 }
 
 #[inline(always)]
+fn store_eval_local(table: &mut LocalTable, key: u64, static_eval: i32) {
+    if static_eval == VALUE_NONE {
+        return;
+    }
+
+    let key16 = (key >> 48) as u16;
+    let cluster = &mut table.clusters[key as usize & table.mask];
+
+    let mut replace_index = 0usize;
+    let mut replace_quality = i32::MAX;
+    for index in 0..cluster.entries.len() {
+        let entry = cluster.entries[index];
+        if entry.key16 == key16 && entry.is_occupied() {
+            if !entry.has_static_eval() {
+                cluster.entries[index].static_eval =
+                    static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+            }
+            return;
+        }
+        let quality = entry_quality(entry, table.age);
+        if quality < replace_quality {
+            replace_quality = quality;
+            replace_index = index;
+        }
+    }
+
+    let replace = cluster.entries[replace_index];
+    if current_deep_exact(replace, table.age, 4) {
+        return;
+    }
+    cluster.entries[replace_index] = make_eval_entry(key16, static_eval, table.age);
+}
+
+#[inline(always)]
+fn store_eval_shared(table: &SharedTable, key: u64, static_eval: i32) {
+    if static_eval == VALUE_NONE {
+        return;
+    }
+
+    let age = table.age.load(Ordering::Relaxed);
+    let key16 = (key >> 48) as u16;
+    let cluster = &table.clusters[key as usize & table.mask];
+
+    let mut replace_index = 0usize;
+    let mut replace_quality = i32::MAX;
+    let mut replace_entry = TtEntry::default();
+    for (index, slot) in cluster.entries.iter().enumerate() {
+        let (entry_key, entry) = slot.load_any().unwrap_or_default();
+        if entry_key == key && entry.is_occupied() {
+            if !entry.has_static_eval() {
+                let mut updated = entry;
+                updated.static_eval = static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                slot.store(key, updated);
+            }
+            return;
+        }
+        let quality = entry_quality(entry, age);
+        if quality < replace_quality {
+            replace_quality = quality;
+            replace_index = index;
+            replace_entry = entry;
+        }
+    }
+
+    if current_deep_exact(replace_entry, age, 4) {
+        return;
+    }
+    cluster.entries[replace_index].store(key, make_eval_entry(key16, static_eval, age));
+}
+
+#[inline(always)]
 fn make_entry(
     key16: u16,
     depth: i32,
@@ -606,10 +716,66 @@ fn make_entry(
 }
 
 #[inline(always)]
+fn make_eval_entry(key16: u16, static_eval: i32, age: u8) -> TtEntry {
+    TtEntry {
+        key16,
+        score: 0,
+        static_eval: static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        mv: 0,
+        depth: -1,
+        flag_age: age | EVAL_ONLY_FLAG,
+    }
+}
+
+#[inline(always)]
 fn entry_quality(entry: TtEntry, age: u8) -> i32 {
     if !entry.is_occupied() {
         return i32::MIN;
     }
     let age_delta = age.wrapping_sub(entry.flag_age & 0xF8) & 0xF8;
     entry.depth as i32 - age_delta as i32 / 2
+}
+
+#[inline(always)]
+fn current_deep_exact(entry: TtEntry, age: u8, min_depth: i32) -> bool {
+    entry.bound() == Some(Bound::Exact)
+        && entry.depth as i32 >= min_depth
+        && (entry.flag_age & 0xF8) == age
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eval_only_entries_probe_without_bound_or_move() {
+        let mut tt = TranspositionTable::new(1);
+        let key = 0x1234_5678_9abc_def0;
+
+        tt.store_eval(key, 321);
+        let entry = tt.probe(key).expect("eval-only entry should probe");
+
+        assert_eq!(entry.bound(), None);
+        assert_eq!(entry.static_eval, 321);
+        assert!(entry.has_static_eval());
+        assert_eq!(entry.best_move(), None);
+        assert_eq!(entry.depth, -1);
+    }
+
+    #[test]
+    fn eval_only_store_fills_missing_eval_without_replacing_bound() {
+        let mut tt = TranspositionTable::new(1);
+        let key = 0x2234_5678_9abc_def0;
+        let best = Move::from_uci("e2e4").expect("valid move");
+
+        tt.store(key, 8, 44, Bound::Exact, best, 0, VALUE_NONE, true);
+        tt.store_eval(key, -125);
+
+        let entry = tt.probe(key).expect("entry should remain");
+        assert_eq!(entry.bound(), Some(Bound::Exact));
+        assert_eq!(entry.score, 44);
+        assert_eq!(entry.static_eval, -125);
+        assert_eq!(entry.best_move(), Some(best));
+        assert!(entry.is_pv_node());
+    }
 }
