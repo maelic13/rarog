@@ -95,8 +95,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Resolve SPRT bounds from mode unless explicitly overridden.
-if ($null -eq $Elo0) { $Elo0 = [int](if ($Mode -eq "simplify") { -5 } else { 0 }) }
-if ($null -eq $Elo1) { $Elo1 = [int](if ($Mode -eq "simplify") {  0 } else { 5 }) }
+if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 0 } }
+if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 5 } }
 
 # Locate fastchess.
 $fastchess = $FastchessPath
