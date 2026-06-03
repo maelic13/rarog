@@ -1,0 +1,53 @@
+{
+  "_comment": "Phase 1 SPSA config: LMR weighted terms. Requires Phase 1 UCI options to be wired up first.",
+  "_prereq": "Each 'name' must match a UCI 'option name ... type spin' in src/search_options.rs",
+
+  "engine": "D:\\chess\\engines\\rarog-phase1-pext-pgo.exe",
+  "book":   "D:\\chess\\books\\SuperGM_4mvs.pgn",
+  "cutechess": "D:\\chess\\cutechess-cli\\cutechess-cli.exe",
+
+  "hash":          64,
+  "concurrency":   7,
+  "games_per_iter": 100,
+  "max_iterations": 3000,
+  "save_interval":  50,
+
+  "params": [
+    {
+      "name":    "LmrTtPv",
+      "_note":   "LMR reduction for PV/TT-PV nodes (in 1024ths, negative = reduce less)",
+      "default": -463,
+      "value":   -463,
+      "min":     -800,
+      "max":     0,
+      "c":       32
+    },
+    {
+      "name":    "LmrExactBound",
+      "_note":   "LMR reduction when TT bound is Exact (in 1024ths)",
+      "default": 1405,
+      "value":   1405,
+      "min":     800,
+      "max":     2048,
+      "c":       48
+    },
+    {
+      "name":    "LmrCutNode",
+      "_note":   "LMR extra reduction at cut nodes (in 1024ths)",
+      "default": 1810,
+      "value":   1810,
+      "min":     1024,
+      "max":     3072,
+      "c":       64
+    },
+    {
+      "name":    "LmrShallowTt",
+      "_note":   "LMR reduction when TT entry depth < depth-1 (in 1024ths)",
+      "default": 286,
+      "value":   286,
+      "min":     0,
+      "max":     512,
+      "c":       24
+    }
+  ]
+}

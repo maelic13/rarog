@@ -1,0 +1,408 @@
+# Rarog HCE Improvement Plan
+
+> Implementation guide for taking Rarog from the current `v2.1.0-codex-work`
+> state to a measurably stronger hand-crafted-eval (HCE) engine, by porting
+> already-written search/eval features under a proper SPRT + SPSA testing
+> discipline. **No NNUE.**
+>
+> This document is meant to be handed to an implementation model (see
+> "Recommended model" at the bottom). Work **one phase at a time, one feature at
+> a time**, and never merge a change that does not pass its SPRT gate.
+
+---
+
+## 0. Background — why this plan exists
+
+Three independent attempts to improve `2.0.2` were tested in long Little Blitzer
+round-robins (RR, 64 MB, 100 ms/move):
+
+| Engine (branch)              | NPS      | Depth | Elo (run1 / run2) vs 2.0.2 |
+|------------------------------|----------|-------|-----------------------------|
+| 2.0.2 (baseline, `master`)   | ~2.61 M  | 13.4  | 0 / 0                       |
+| 2.1.0 Codex Work (`v2.1.0-codex-work`) | ~2.61 M  | 13.4  | +0.1 / +0.6 (noise) |
+| 2.1.0 Codex (`v2.1.0-codex`) | ~1.79 M  | 14.8  | −9 / −76                    |
+| 2.1.0 Claude (`v2.1.0-claude`) | ~2.53 M | 13.5 | −33 / −70                   |
+
+**Key conclusions:**
+
+1. **`v2.1.0-codex-work` is behavior-identical to `2.0.2`** (same `bench 13`
+   fingerprint `4,713,975`). Its changes are safe micro-optimizations with **no
+   measurable strength or NPS benefit**. Keep them as clean baseline; expect
+   nothing from them.
+2. **Speed is not the bottleneck.** Rarog runs at ~2.6 M NPS but only reaches
+   depth ~13. Stockfish reaches depth ~24 at ~1.1 M NPS. The gap is **search
+   efficiency (pruning/ordering/extensions) and eval quality**, not raw speed.
+3. **The Codex and Claude branches added the *right* features but regressed**,
+   because new search heuristics and eval terms are defined by their tuning
+   constants. Shipping them with hand-guessed values loses Elo until tuned.
+4. **None of the three attempts were SPRT-tested.** They were judged on noisy
+   9,000-game round-robins. The missing piece is a fast, statistically valid
+   test/tune loop — that is the true prerequisite, upstream of every feature.
+
+**Therefore: build the harness first, tune what already ships, then port the
+already-written features incrementally — each one SPRT-gated and SPSA/Texel-tuned
+on entry.**
+
+---
+
+## 1. Inventory — what exists, and where
+
+All commits below are reachable from the current repo. Branch heads:
+
+| Branch              | Head      | Head subject     | What it contains |
+|---------------------|-----------|------------------|------------------|
+| `master`            | `5a8ce52` | Version 2.02     | Baseline (== 2.0.2) |
+| `v2.1.0-codex-work` | `4c87c9d` | Version 2.1.0    | **Current.** Micro-opts only, == 2.0.2 behavior |
+| `v2.1.0-codex`      | `3de254f` | Step 15          | **Search-efficiency rewrite** (see below) |
+| `v2.1.0-claude`     | `870fac0` | Release prep     | **Eval expansion + `tune.rs` harness** (see below) |
+| `improvements`      | `8c453c1` | Version 2.0.1    | Small move-ordering refinements |
+
+> Baseline reference for all diffs: `5a8ce52` (2.0.2). Diff a branch with
+> `git diff 5a8ce52 <branch> -- <path>`. The codex/claude branches are built in
+> incremental "Step N" commits (`git log --oneline 5a8ce52..<branch>`), which
+> makes cherry-picking individual features straightforward.
+
+### 1a. `v2.1.0-codex` — search efficiency (this is the "deeper search" work)
+
+Diff: `src/search.rs` (+1452), `src/board/board.rs`, `src/board/attacks.rs`,
+`src/board/zobrist.rs`, `src/move_ordering.rs`, `src/search_threads.rs`,
+`src/tt.rs` (+194), `src/time_manager.rs` (+93, new), `src/params.rs` (+61, new),
+`src/eval.rs` (+42).
+
+Features added (each roughly isolated in a Step commit — inspect with
+`git log --oneline 5a8ce52..v2.1.0-codex`):
+
+- **ProbCut** — `probcut_allowed`, `probcut_margin`, `probcut_see_threshold`,
+  `probcut_verification_depth`, `probcut_cutoff_score`, `probcut_tt_depth`.
+- **Multi-cut** via singular search — `SingularDecision::MultiCut`.
+- **Extended correction history** — minor-piece, non-pawn, and continuation
+  correction histories (beyond the pawn correction already in baseline).
+- **Threat-aware history** — `threatened_index`, `quiet_threat_score`.
+- **TT-cutoff / fail-low-parent history** — `update_tt_cutoff_history`,
+  `update_fail_low_parent_history`.
+- **Time management** — `src/time_manager.rs`.
+- **TT overhaul** — `src/tt.rs`.
+- **`src/params.rs`** — search constants already extracted into `const fn`s
+  (ProbCut margins, singular margins, history divisors, LMP base). **Not yet
+  wired to UCI options.** This is a head start for Phase 1/2 tuning.
+
+### 1b. `v2.1.0-claude` — eval expansion + tuning harness (this is the HCE + tuning work)
+
+Diff: `src/eval.rs` (+606), `src/search.rs` (+268), `src/board/board.rs`,
+`src/tune.rs` (+408, new), `src/lib.rs`.
+
+- **`EvalParams` struct** in `src/eval.rs` — every eval weight hoisted into one
+  struct with `DEFAULT` values that reproduce the baseline material/PST exactly.
+- **New eval terms** (each with its own weights in `EvalParams`): tempo, passed
+  pawns (defended / free-path / safe-path by rank), candidate passers, mobility
+  (per piece), bishop pair, rook open/semi/seventh, knight outposts, pawn
+  threats (minor/rook/queen), king safety (attacker weights, ring-square
+  attacks, safe checks, danger² conversion, queen-relief), pawn shelter, pawn
+  storm, rooks behind passed pawns. Lazy-eval margin for skipping expensive
+  terms.
+- **`src/tune.rs`** — tuning harness gated behind `--features tune`:
+  - Eval: loads weights from a text file at `RAROG_TUNE_FILE` (one param per
+    line, arrays space-separated) → ready for **Texel tuning**.
+  - Search: documents the exact SPSA target list and LMR weighted-term defaults
+    (e.g. `lmr_tt_pv=-463`, `lmr_exact_bound=+1405`, `lmr_cut_node=+1810`) and
+    the recipe to extract them into a `SearchParams` struct loaded from
+    `RAROG_SEARCH_TUNE_FILE`.
+
+### 1c. `improvements` — small move-ordering refinements
+
+Diff: `src/move_ordering.rs`, `src/search.rs`, `src/tt.rs`, `src/main.rs`.
+
+- Check-awareness in ordering (`CHECK_UNKNOWN/TRUE/FALSE`, `move_gives_check`).
+- SEE-based capture pruning (`see_ge(mv, -80*depth)`).
+- Check-aware `quiet_history_score`.
+
+Smallest and most self-contained of the three → **ideal first feature to port**
+to validate the harness.
+
+### 1d. Existing tooling in `v2.1.0-codex-work` (reuse, don't reinvent)
+
+- **`bench` UCI command** — `bench [depth]` runs a fixed position suite and
+  reports a repeatable node fingerprint. `bench 13` == `4,713,975` on baseline.
+  **Use this as the regression-safety check: any "behavior-preserving" refactor
+  must keep the fingerprint; any real change will move it — that's expected.**
+- **`xtask`** — `cargo xtask build --arch pext --pgo` builds the optimized
+  PGO asset for testing on this machine (see `xtask/src/main.rs`, `README.md`
+  §PGO). `avx2` is for distribution; **`pext` is the correct arch for local
+  testing** since the CPU supports BMI2/PEXT and it is slightly faster.
+- **UCI options** are declared in `src/search_options.rs`
+  (`get_uci_options()` → `option name … type spin …`). SPSA via fastchess /
+  OpenBench sets parameters **through UCI options**, so Phase 1 must expose
+  tunables here.
+- `cargo bench --bench board` — board/movegen microbenchmarks.
+
+---
+
+## 2. Guiding principles (apply to every phase)
+
+1. **SPRT-gate everything.** No change is "good" until it passes a sequential
+   probability ratio test in self-play. Default bounds: `elo0=0 elo1=5`,
+   `alpha=beta=0.05`. A pass means "≥0 Elo with 95% confidence"; tighten to
+   `elo0=0 elo1=3` for small features.
+2. **One change at a time.** Never merge a branch wholesale (that is exactly
+   what regressed). Port a single feature, test it, keep or drop it, then move
+   to the next.
+3. **Tune on entry.** When a new heuristic/term is introduced, SPSA-tune (search
+   constant) or Texel-tune (eval weight) its constants *before* the SPRT
+   accept/reject decision. Most regressions here are untuned constants.
+4. **Default-equivalence first.** When refactoring constants into a struct/UCI
+   option, the defaults must reproduce current behavior exactly — verify with
+   `bench 13` fingerprint before tuning.
+5. **Commit each kept step separately with a descriptive message.** After a
+   feature passes its SPRT gate, commit it on the integration branch before
+   touching anything else. Never bundle multiple features in one commit — if
+   something later needs reverting you want surgical precision. The
+   incremental-step style of the codex/claude branches is the right model.
+6. **Always use `pext --pgo` builds for testing.** Build test binaries with
+   `cargo xtask build --arch pext --pgo`; the result lands in `target/dist/`.
+   Use `tools/build_test.ps1` to build and copy to `D:\chess\engines\` with
+   a human-readable name. Never SPRT-test a `cargo build --release` binary —
+   PGO changes the hot-path timing enough to affect measured NPS/Elo.
+7. **Test time controls mirror reality.** Use fixed 100 ms/move (`st=0.1` in
+   cutechess-cli) and the `SuperGM_4mvs.pgn` opening book to match the
+   existing Little Blitzer conditions.
+
+---
+
+## 3. Phase 0 — Testing & tuning harness (prerequisite, do this first)
+
+**Goal:** a one-command, SPRT-gated self-play test, and an SPSA loop driven
+through UCI options. Nothing else proceeds until this works.
+
+### Steps
+
+1. **Install a match runner.** Prefer **fastchess** (actively maintained,
+   built-in SPRT + SPSA). cutechess-cli is the fallback.
+2. **Pick an opening book.** Reuse the existing tournament books referenced in
+   the task (`SuperGM_4mvs.pgn`) or a standard 8-move book; store the path in
+   the harness config.
+3. **Write a repo helper script** (e.g. `tools/sprt.ps1` and/or
+   `tools/sprt.sh`) that:
+   - takes two engine binaries (or one binary + two option sets),
+   - runs fastchess with SPRT bounds `elo0=0 elo1=5 alpha=0.05 beta=0.05`,
+   - uses the chosen book, a fixed short TC, concurrency = (cores−1),
+   - prints the SPRT verdict (accept H1 / accept H0 / continue).
+4. **Write an SPSA helper** (e.g. `tools/spsa.ps1`) that drives fastchess SPSA
+   tuning against a UCI-exposed parameter list (see Phase 1) and writes the
+   tuned values back to a file.
+5. **Document usage** at the top of each script and in this file's appendix.
+6. **Smoke-test the harness**: run `codex-work` vs `master` — it must return a
+   ~0 Elo / accept-H0 result (they are behavior-identical). If it doesn't, the
+   harness is wrong. This is your calibration check.
+
+### Done when
+`tools/sprt.*` reproduces the "codex-work ≈ master" null result, and an SPSA dry
+run perturbs a UCI parameter and converges.
+
+---
+
+## 4. Phase 1 — Expose and SPSA-tune the *existing* constants
+
+**Goal:** strength gain with zero new search behavior — only re-tuning values
+that already ship in `codex-work`. Lowest risk, highest confidence.
+
+### Steps
+
+1. **Extract live search constants into a `SearchParams` struct** (model it on
+   the codex branch's `src/params.rs` — port that file as the starting point).
+   Targets already identified in `src/search.rs`:
+   - Futility margin base/improving (`70`, `20`) — `search.rs:1003`
+   - Razoring coefficient (`150`) — `search.rs:1007`
+   - Null-move margins (`12`, `24`) — `search.rs:1012`
+   - LMP prune margin base/improving (`90`, `25`) — `search.rs:1182`
+   - Quiet-history prune coefficient (`-4000`) — `search.rs:1186`
+   - SEE pruning threshold (`-80`, `/8`, `-800`) — `search.rs:1195`
+   - Singular beta multiplier (`2`) — `search.rs:1215`
+   - LMP count formula (`4 + 2·d²/3`) — `search.rs:2394`
+   - Aspiration delta (`25`) — `search.rs:615`
+   - LMR formula coefficients (`0.75`, `2.25`) and weighted terms documented in
+     `v2.1.0-claude:src/tune.rs`.
+2. **Expose each as a UCI spin option** in `src/search_options.rs` with default
+   = current value, sensible min/max. Hide them behind a `tune` cargo feature or
+   a `UCI_TuneMode` flag so production builds stay clean.
+3. **Verify default-equivalence**: `bench 13` fingerprint unchanged; SPRT vs
+   `codex-work` returns ~0 Elo.
+4. **SPSA-tune** in batches (don't tune all 20+ at once): group A = LMR terms,
+   group B = futility/razor/null-move, group C = LMP + SEE pruning,
+   group D = aspiration/singular. Run 20k–60k games per group via the Phase 0
+   SPSA helper.
+5. **SPRT-confirm** the tuned set vs `codex-work` as the gate to keep it.
+
+### Expected
++10–30 Elo, low risk. **This is the first real strength milestone.**
+
+---
+
+## 5. Phase 2 — Port search-efficiency features from `v2.1.0-codex`
+
+**Goal:** close the depth gap. Port **one feature at a time** from the codex
+branch, tune its constants, SPRT-gate, keep or drop.
+
+### Recommended order (cheapest/safest first)
+
+1. **`improvements` branch: check-aware ordering + SEE capture pruning.** Small,
+   self-contained → use it to shake out the harness. Cherry-pick
+   `move_ordering.rs` + the `see_ge(mv, -80*depth)` pruning. SPSA-tune the SEE
+   coefficient. SPRT-gate.
+2. **ProbCut** (`v2.1.0-codex`). Port `probcut_*` helpers + the in-search call
+   site. SPSA-tune `probcut_base_margin` (188), `probcut_depth_margin` (4),
+   `probcut_improving_bonus` (28), verification depth. SPRT-gate.
+3. **Extended correction history** (minor / non-pawn / continuation). Port the
+   history arrays + update/probe sites. Tune the correction divisors. SPRT-gate.
+4. **Multi-cut / singular refinements** (`SingularDecision::MultiCut`, singular
+   margins). Tune `singular_*` margins. SPRT-gate.
+5. **TT-cutoff / fail-low-parent history**, threat-aware history. Tune divisors.
+   SPRT-gate.
+6. **Time management** (`time_manager.rs`) — only relevant if you test with real
+   clocks rather than fixed nodes/ms; port last, validate against fixed-TC games.
+
+> Skip the codex `tt.rs` overhaul unless a specific feature needs it — measure
+> it in isolation; TT changes are easy to get subtly wrong.
+
+### Per-feature checklist (use for every item above)
+
+- [ ] Cherry-pick / re-implement the single feature onto a fresh branch off
+      `v2.1.0-codex-work` (or the running integration branch).
+- [ ] `cargo build`, `cargo test`, `cargo clippy` clean.
+- [ ] `bench 13` runs (fingerprint *will* change — record the new value).
+- [ ] Expose new constants as UCI options (Phase 0/1 mechanism).
+- [ ] SPSA-tune the new constants (Phase 0 helper).
+- [ ] **SPRT vs current integration head** (`elo0=0 elo1=3`).
+- [ ] If accept-H1 → commit + merge into integration branch. If accept-H0 →
+      discard and document why.
+
+### Expected
+This is where the depth-13→deeper gain lives. Each accepted feature is typically
++3 to +15 Elo; cumulative over several features is significant.
+
+---
+
+## 6. Phase 3 — Port eval terms from `v2.1.0-claude` (Texel-tuned)
+
+**Goal:** richer, properly-tuned HCE. Same one-at-a-time discipline.
+
+### Steps
+
+1. **Port the `EvalParams` struct + `tune.rs`** from `v2.1.0-claude` onto the
+   integration branch first, with **all new terms disabled / zero-weighted** so
+   the eval is still default-equivalent (`bench 13` may differ slightly; verify
+   SPRT ~0 vs head).
+2. **Build a Texel data set**: extract quiet positions from your own
+   `Results.pgn` / `Results2.pgn` (and any other large PGN), label by game
+   result. Filter out positions in check / with hanging captures (quiescence).
+3. **Enable and Texel-tune one term group at a time**, in this order
+   (highest historical value first):
+   1. Mobility (per piece)
+   2. King safety (attacker weights, safe checks, danger² conversion, shelter,
+      storm)
+   3. Passed pawns (rank table, defended/free/safe-path extras, rooks behind
+      passers)
+   4. Bishop pair, rook open/semi/seventh, knight outposts
+   5. Pawn threats, tempo, candidate passers
+4. After Texel-tuning each group, **SPRT-gate** it in self-play (Texel loss
+   reduction does not always equal Elo — the game test is the authority).
+5. Re-run a **global Texel pass** over material/PST + all kept terms once the set
+   is stable, then a final SPRT confirmation.
+
+### Expected
+A well-tuned mobility + king-safety + passed-pawn set is typically a solid gain
+on a previously PST-only eval. This is the largest HCE lever short of NNUE.
+
+---
+
+## 7. Release & regression discipline
+
+- Keep `v2.1.0-codex-work` (or `master`) as the **gauntlet baseline**. After
+  each phase, run a **multi-opponent gauntlet** (vs 2.0.2, Stockfish 18-2500,
+  Basilisk 1.4.9) in Little Blitzer to confirm the SPRT self-play gains transfer
+  against external opponents (self-play can over-fit).
+- Rebuild the PGO asset (`cargo xtask build --arch pext --pgo`, or `avx2` for
+  a distribution build) before any gauntlet — tuning changes the hot paths.
+- Bump version + CHANGELOG only when a phase clears both SPRT and the external
+  gauntlet.
+
+---
+
+## 8. Risks & gotchas
+
+- **Untuned constants are the #1 failure mode** (proven by both prior branches).
+  Never SPRT-judge a new heuristic before tuning its constants.
+- **Self-play over-fit.** Confirm gains against external engines periodically.
+- **SPSA needs UCI-exposed params.** If a constant isn't a UCI option,
+  `tools/spsa.py` can't perturb it — wire it up first (Phase 1 step 2).
+- **TT / Zobrist changes** (codex `tt.rs`, `zobrist.rs`) can introduce subtle
+  correctness bugs that only show as a slow Elo bleed. Port them isolated and
+  watch for hash-move legality assertions / `bench` instability.
+- **Don't trust the `bench` fingerprint as a strength signal** — it only proves
+  *behavior identity*. A changed fingerprint is neither good nor bad; only SPRT
+  decides.
+- **Time-management features** must be tested under real clocks, not fixed
+  ms/move, or their effect is invisible.
+
+---
+
+## 9. Quick command reference
+
+```powershell
+# Inspect what a branch added, step by step
+git log --oneline 5a8ce52..v2.1.0-codex
+git diff 5a8ce52 v2.1.0-codex -- src/search.rs
+
+# Cherry-pick a single feature step onto an integration branch
+git checkout -b feat/probcut v2.1.0-codex-work
+git cherry-pick <step-commit>      # or re-implement the isolated diff
+
+# Regression-identity check (refactors only) — Windows PowerShell
+echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 4,713,975 on baseline
+
+# Build a named pext-PGO test binary → D:\chess\engines\rarog-<name>-pext-pgo.exe
+./tools/build_test.ps1 -Suffix feat-probcut
+
+# SPRT self-play — calibration smoke-test (expect H0, ~0 Elo)
+./tools/sprt.ps1 `
+    -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+    -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
+    -NameA "CW" -NameB "2.0.2"
+
+# SPRT self-play — new feature vs integration head
+./tools/sprt.ps1 `
+    -EngineA "D:\chess\engines\rarog-feat-probcut-pext-pgo.exe" `
+    -EngineB "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+    -NameA "ProbCut" -NameB "Head" -Elo1 3
+
+# SPSA tuning (requires Phase 1 UCI options exposed first)
+python tools/spsa.py tools/spsa_configs/phase1_lmr.json
+```
+
+---
+
+## 10. Recommended model for implementation
+
+**Primary driver: Sonnet 4.6 (medium).** Rationale:
+
+- The work is **incremental, plan-driven, and test-gated** — port one feature,
+  run the harness, read the verdict, decide, repeat. That is precisely where
+  Sonnet 4.6 excels: disciplined multi-step tool use, following an explicit
+  checklist, and staying inside guardrails. The SPRT/`bench`-fingerprint gates
+  do the quality control, so the model doesn't need to "be right" in one shot —
+  it needs to execute the loop faithfully, which Sonnet does reliably and
+  cost-effectively.
+- Most steps are **mechanical porting + wiring** (extract constants, expose UCI
+  options, cherry-pick an isolated diff, write the harness scripts). High
+  volume, low ambiguity → Sonnet 4.6 medium is the efficient fit.
+
+**Optional specialist for Phase 2 internals: Codex 5.5 (medium).** The dense
+search-algorithm ports (ProbCut verification search, correction-history indexing,
+multi-cut/singular interaction) are the one place where a model with strong
+algorithmic-code density helps. If Sonnet struggles on a specific search feature,
+hand that single feature to Codex 5.5 medium, then return to Sonnet for the
+test/tune loop.
+
+**Bottom line:** Drive the whole plan with **Sonnet 4.6 medium**; escalate
+individual gnarly search ports to **Codex 5.5 medium** only if needed. Do **not**
+let either model merge a feature that hasn't passed its SPRT gate — the process,
+not the model, is what guarantees the result.

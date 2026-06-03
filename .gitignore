@@ -12,3 +12,9 @@ Cargo.lock
 
 # Other
 .idea/
+
+# Testing harness outputs
+tools/results/*
+!tools/results/.gitkeep
+__pycache__/
+*.pyc
