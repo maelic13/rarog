@@ -1,11 +1,13 @@
 /// Tunable search parameters.
 ///
 /// Every field maps 1-to-1 to a UCI `spin` option declared in
-/// `search_options.rs`.  The defaults reproduce the original inline constants
-/// exactly — `bench 13` must return `4,713,975` nodes with all defaults
-/// unchanged.
+/// `search_options.rs`.
 ///
-/// For SPSA tuning, copy the three weather-factory config files from
+/// Defaults are the Phase 1 SPSA-tuned values (weather-factory + fastchess,
+/// tc=1+0.01, SuperGM_4mvs, 2271 iterations / 72672 games).  The original
+/// hand-coded values are shown in comments for reference.
+///
+/// For re-tuning, copy the three weather-factory config files from
 /// `tools/spsa_configs/` into your weather-factory root and run `python
 /// main.py`.  See `tools/spsa_configs/README.md` for full setup.
 #[derive(Clone, Debug)]
@@ -53,19 +55,19 @@ pub struct SearchParams {
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
-            aspiration_delta: 25,
-            futility_base: 70,
-            futility_improving: 20,
-            razoring_coeff: 150,
-            nm_depth_coeff: 12,
-            nm_improving_bonus: 24,
-            lmp_base: 90,
-            lmp_improving: 25,
-            quiet_hist_prune_coeff: 4_000,
-            see_pruning_coeff: 80,
-            see_pruning_max: 800,
-            singular_beta_mult: 2,
-            lmp_count_base: 4,
+            aspiration_delta:       29,  // was 25
+            futility_base:          82,  // was 70
+            futility_improving:     51,  // was 20
+            razoring_coeff:        194,  // was 150
+            nm_depth_coeff:         14,  // was 12
+            nm_improving_bonus:     25,  // was 24
+            lmp_base:              115,  // was 90
+            lmp_improving:          53,  // was 25
+            quiet_hist_prune_coeff: 4_372, // was 4000
+            see_pruning_coeff:      75,  // was 80
+            see_pruning_max:       801,  // was 800
+            singular_beta_mult:      4,  // was 2
+            lmp_count_base:          2,  // was 4
         }
     }
 }
