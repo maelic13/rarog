@@ -173,13 +173,17 @@ Update this as each step is completed.
 ### Phase 1 — SPSA-tune existing constants
 - [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
 - [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
-- [x] Default-equivalence verified — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓
+- [x] **SPRT gate #1 (default-equivalence)** — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓ (refactor is behavior-safe)
 - [x] SPSA group B: pruning/margin constants tuned — commit `fae334a`
       (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
-- [ ] **Next: SPRT confirmation** — build `phase1-tuned`, run vs `codex-work` head (`elo0=0 elo1=5`)
+- [ ] **SPRT gate #2 (tuned-set confirmation)** — build `phase1-tuned`, run vs `codex-work` head (`elo0=0 elo1=5`). *In progress; trending toward H0 (no gain) — likely SPSA-vs-SPRT TC mismatch, see note below.*
 - [ ] SPSA group A: LMR terms  ← *blocked until LMR weighted terms are ported from v2.1.0-claude*
 - [ ] Gate tunable options behind `--features tune` before release
+
+> **Phase 1 has two distinct SPRT gates — keep both.** #1 proves the
+> param-extraction refactor changed no behavior; #2 proves the SPSA-tuned values
+> are actually stronger. They are not duplicates; never drop one to "simplify."
 
 ### Phase 2 — Port search features
 - [ ] `improvements` branch: check-aware ordering + SEE pruning (harness shakeout)
@@ -199,9 +203,10 @@ Update this as each step is completed.
 - [ ] Pawn threats / tempo tuned + SPRT confirmed
 - [ ] Global Texel re-pass + final SPRT
 
-### Phase 4 — NNUE readiness (architectural discipline, not implementation)
-- [ ] Not planned for implementation. Keep the door open *during Phase 3* by
-      following the rules in PLAN.md §10 and the ground rules below.
+### NNUE readiness (NOT a scheduled phase — guardrails only)
+- [ ] Not planned, not scheduled. The only action is to keep the eval boundary
+      clean *throughout Phases 1–3* (PLAN.md §10 + the eval-boundary ground rule
+      below). No NNUE tasks to track.
 
 ### Release gates (after each phase)
 - [ ] Little Blitzer gauntlet vs 2.0.2, Stockfish 18-2500, Basilisk 1.4.9
@@ -268,15 +273,12 @@ binaries don't pollute the UCI option list shown to GUIs.
 - **Run the Little Blitzer gauntlet at the end of each phase**, not just
   after individual features. Self-play can over-fit; external opponents catch
   it.
-- **Keep the eval boundary clean (NNUE door open).** The search must only
-  reach eval through `Evaluator::eval()`. Never call eval helpers, piece
-  values, or PST lookups directly from `search.rs`. Never let pruning margins
-  depend on eval internals. This costs nothing now and makes a future HCE→NNUE
-  switch a single-file replacement rather than a surgical rewrite. If the model
-  proposes code that crosses this boundary, reject it. Full rules in PLAN.md §10.
-- **Protect the eval interface (NNUE guardrail).** All eval expansion and Texel
-  refactors (Phase 3) must preserve a single entry point that takes a board and
-  returns a side-to-move score, without leaking eval internals into search. See
-  `PLAN.md` §11 for the full rationale. The `EvalParams` struct and `tune.rs`
-  loader are HCE-specific and can be ignored by a future NNUE build — that is
-  only possible if the boundary stays clean throughout Phases 0–3.
+- **Keep the eval boundary clean (NNUE door open).** The search must only reach
+  eval through `Evaluator::eval()` — a single function taking a board and
+  returning a side-to-move score. Never call eval helpers, piece values, PST
+  lookups, or mobility counts directly from `search.rs`; never let pruning
+  margins depend on eval internals. This costs nothing now (it is just clean
+  design) and makes a future HCE→NNUE switch a localized replacement rather than
+  a surgical rewrite. If the model proposes code that crosses this boundary,
+  reject it. Full guardrails in PLAN.md §10 — note NNUE is **not scheduled**;
+  this is the only thing to keep in mind for it during normal HCE work.
