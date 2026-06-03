@@ -255,22 +255,31 @@ that already ship in `codex-work`. Lowest risk, highest confidence.
    13` fingerprint unchanged is the primary proof; optionally an SPRT vs
    `codex-work` with symmetric bounds (`elo0=-3 elo1=3`) to confirm ~0 Elo. This
    gate proves the wiring is safe.
-4. **SPSA-tune** in batches (don't tune all 20+ at once). Ready-made
-   weather-factory parameter sets already exist:
-   - `tools/spsa_configs/config_lmr.json` — the LMR weighted terms.
+4. **SPSA-tune each group separately, with its own SPRT after each.**
+   Ready-made weather-factory parameter sets exist for both groups:
    - `tools/spsa_configs/config_pruning.json` — futility / razor / null-move /
      LMP / SEE / aspiration / singular margins.
-   Their option names must match the UCI options you exposed in step 2. Run each
-   group to convergence (typically tens of thousands of games at `tc=1`).
-5. **SPRT gate #2 — tuned-set confirmation** (strength). Confirm the tuned set
-   vs `codex-work` at `st=0.1` (the deployment condition) with gainer bounds
-   (`elo0=0 elo1=5`). SPSA over-fits, so this game test at the real TC is the
-   authority on whether the tuning actually helped.
+   - `tools/spsa_configs/config_lmr.json` — LMR weighted terms (blocked until
+     the LMR weighted terms are ported from `v2.1.0-claude:src/tune.rs`).
 
-> **These two SPRTs are distinct gates, not a duplicate.** #1 proves the
-> refactor is behavior-safe; #2 proves the tuned numbers are stronger. Never
-> collapse them into one — a passing #1 says nothing about strength, and #2 is
-> meaningless if #1 hasn't established a clean baseline.
+   For each group, the workflow is:
+   a. Run SPSA to convergence (`tc=1`, typically tens of thousands of games).
+   b. Bake the tuned values in as the new defaults.
+   c. **SPRT-confirm** vs the pre-tuning head at `st=0.1` (`elo0=0 elo1=5`).
+      SPSA over-fits, so this game test at the real TC is the authority.
+      If H1 accepted → keep and move to the next group.
+      If H0 accepted → investigate (TC mismatch? bad ranges? rollback and move on).
+
+5. **After all groups pass their individual SPRTs**, the Phase 1 milestone is
+   complete. The combined tuned binary is the new integration head going into
+   Phase 2.
+
+> **Every SPSA run earns its own SPRT.** Each tuning group tunes different
+> search behavior, may transfer differently to deployment TC, and must be
+> independently confirmed. Gate #1 (step 3) proves the wiring is safe. Each
+> group's SPRT in step 4 proves its tuned values actually help. Never collapse
+> these — a passing gate #1 says nothing about strength, and tuning group B
+> having passed says nothing about whether group A's values are good.
 
 ### Expected
 +10–30 Elo, low risk. **This is the first real strength milestone.**

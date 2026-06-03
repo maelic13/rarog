@@ -174,16 +174,17 @@ Update this as each step is completed.
 - [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
 - [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
 - [x] **SPRT gate #1 (default-equivalence)** — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓ (refactor is behavior-safe)
-- [x] SPSA group B: pruning/margin constants tuned — commit `fae334a`
+- [x] SPSA group B (pruning/margin constants) tuned — commit `fae334a`
       (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
-- [ ] **SPRT gate #2 (tuned-set confirmation)** — build `phase1-tuned`, run vs `codex-work` head (`elo0=0 elo1=5`). *In progress; trending toward H0 (no gain) — likely SPSA-vs-SPRT TC mismatch, see note below.*
-- [ ] SPSA group A: LMR terms  ← *blocked until LMR weighted terms are ported from v2.1.0-claude*
+- [ ] **SPRT group B confirmation** (`elo0=0 elo1=5`, `st=0.1`). *In progress; trending toward H0 — likely SPSA-vs-SPRT TC mismatch.*
+- [ ] SPSA group A (LMR terms) ← *blocked until LMR weighted terms ported from v2.1.0-claude*
+- [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`) ← follows group A SPSA
 - [ ] Gate tunable options behind `--features tune` before release
 
-> **Phase 1 has two distinct SPRT gates — keep both.** #1 proves the
-> param-extraction refactor changed no behavior; #2 proves the SPSA-tuned values
-> are actually stronger. They are not duplicates; never drop one to "simplify."
+> Every SPSA group earns its own SPRT. The groups tune different behavior and
+> may transfer differently to `st=0.1`. Never skip a group's SPRT or roll two
+> groups into one confirmation test.
 
 ### Phase 2 — Port search features
 - [ ] `improvements` branch: check-aware ordering + SEE pruning (harness shakeout)
