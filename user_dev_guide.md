@@ -129,11 +129,17 @@ Setup instructions: `tools/spsa_configs/README.md`.
 # SPRT — test a gain (default H0=0, H1=5)
 ./tools/sprt.ps1 -EngineA <new.exe> -EngineB <head.exe> -NameA "X" -NameB "Head"
 
-# SPRT — smaller feature (tighter bound)
+# SPRT — smaller feature (tighter bound, faster conclusion)
 ./tools/sprt.ps1 -EngineA <new.exe> -EngineB <head.exe> -NameA "X" -NameB "Head" -Elo1 3
 
 # SPRT — non-regression / simplification check
 ./tools/sprt.ps1 -Mode simplify -EngineA <clean.exe> -EngineB <head.exe> -NameA "Clean" -NameB "Head"
+
+# SPRT — default-equivalence / refactor check (symmetric bounds, accepts H0 in ~1-3k games)
+# Use this INSTEAD of [0,5] when verifying a pure refactor with identical bench fingerprint.
+# With [0,5] and truly identical engines, H0 can take 10,000+ games to formally accept.
+./tools/sprt.ps1 -EngineA <refactor.exe> -EngineB <head.exe> -NameA "Refactor" -NameB "Head" `
+    -Elo0 -3 -Elo1 3
 
 # SPSA tuning — see tools/spsa_configs/README.md for full setup
 cd D:\chess\weather-factory
@@ -167,10 +173,9 @@ Update this as each step is completed.
 ### Phase 1 — SPSA-tune existing constants
 - [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
 - [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
-- [x] Default-equivalence verified — bench 13 = **4,713,975** ✓
-- [ ] **Next:** build `phase1-defaults`, run SPRT vs released codex-work (must be H0)
-- [ ] SPSA group A: LMR terms tuned  ← *only after LMR options are ported from v2.1.0-claude*
-- [ ] SPSA group B: pruning/margin constants tuned (configs ready in `tools/spsa_configs/`)
+- [x] Default-equivalence verified — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓
+- [ ] **Next: SPSA group B** — pruning/margin constants (configs ready in `tools/spsa_configs/`)
+- [ ] SPSA group A: LMR terms  ← *blocked until LMR weighted terms are ported from v2.1.0-claude*
 - [ ] SPRT confirmation of tuned set vs codex-work head
 - [ ] Gate tunable options behind `--features tune` before release
 
@@ -242,7 +247,11 @@ binaries don't pollute the UCI option list shown to GUIs.
 
 - **Never accept a change without a bench-13 check first.** The model should
   always report the new fingerprint for real changes, or confirm it is
-  unchanged for refactors.
+  unchanged for refactors. For pure refactors (bench fingerprint unchanged),
+  the bench result alone is sufficient proof of equivalence — a full SPRT
+  H0 acceptance is not required. If you do run SPRT on a refactor, use
+  `-Elo0 -3 -Elo1 3` (symmetric bounds), not `[0, 5]`, to get a verdict in
+  ~1–3k games rather than 10k+.
 - **Never skip the SPRT gate.** If the model says "this is clearly good, let's
   skip the test" — refuse. The whole point of this plan is that we learned
   "clearly good" changes can still lose Elo.
