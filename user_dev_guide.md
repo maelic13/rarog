@@ -174,7 +174,10 @@ Update this as each step is completed.
 - [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
 - [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
 - [x] Default-equivalence verified — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓
-- [ ] **Next: SPSA group B** — pruning/margin constants (configs ready in `tools/spsa_configs/`)
+- [x] SPSA group B: pruning/margin constants tuned — commit `fae334a`
+      (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
+      LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
+- [ ] **Next: SPRT confirmation** — build `phase1-tuned`, run vs `codex-work` head
 - [ ] SPSA group A: LMR terms  ← *blocked until LMR weighted terms are ported from v2.1.0-claude*
 - [ ] SPRT confirmation of tuned set vs codex-work head
 - [ ] Gate tunable options behind `--features tune` before release
@@ -262,3 +265,9 @@ binaries don't pollute the UCI option list shown to GUIs.
 - **Run the Little Blitzer gauntlet at the end of each phase**, not just
   after individual features. Self-play can over-fit; external opponents catch
   it.
+- **Protect the eval interface (NNUE guardrail).** All eval expansion and Texel
+  refactors (Phase 3) must preserve a single entry point that takes a board and
+  returns a side-to-move score, without leaking eval internals into search. See
+  `PLAN.md` §11 for the full rationale. The `EvalParams` struct and `tune.rs`
+  loader are HCE-specific and can be ignored by a future NNUE build — that is
+  only possible if the boundary stays clean throughout Phases 0–3.
