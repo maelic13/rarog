@@ -89,7 +89,9 @@ $cutechessJson = @{
     hash         = 64
     threads      = 15
     save_rate    = 10
-    pgnout       = "tuner/games.pgn"
+    # weather-factory builds the arg as "-pgnout $pgnout" (no file= prefix),
+    # so the value itself must carry "file=" for fastchess to accept it.
+    pgnout       = "file=tuner/games.pgn"
     use_fastchess = $true
 } | ConvertTo-Json
 $cutechessJson | Out-File (Join-Path $wfRoot "cutechess.json") -Encoding utf8 -NoNewline

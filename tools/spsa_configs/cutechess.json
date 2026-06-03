@@ -6,6 +6,6 @@
     "hash": 64,
     "threads": 15,
     "save_rate": 10,
-    "pgnout": "tuner/games.pgn",
+    "pgnout": "file=tuner/games.pgn",
     "use_fastchess": true
 }
