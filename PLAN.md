@@ -3,7 +3,7 @@
 > Implementation guide for taking Rarog from the current `v2.1.0-codex-work`
 > state to a measurably stronger hand-crafted-eval (HCE) engine, by porting
 > already-written search/eval features under a proper SPRT + SPSA testing
-> discipline. **No NNUE.**
+> discipline. **No NNUE for now** — but keep the door open (see §11).
 >
 > This document is meant to be handed to an implementation model (see
 > "Recommended model" at the bottom). Work **one phase at a time, one feature at
@@ -418,7 +418,75 @@ cd D:\chess\weather-factory; python main.py
 
 ---
 
-## 10. Recommended model for implementation
+## 10. Phase 4 — NNUE readiness (architectural, not implementation)
+
+**Status: not planned for now. Keep the door open during Phases 2–3.**
+
+NNUE is not part of the current roadmap. However, if the decision is ever made
+to switch from HCE to NNUE, the cost of that switch is determined by
+architectural decisions made during Phase 3. The goal of this section is to
+define what *not* to do so the option stays open without any additional work.
+
+### Why the architecture matters more than the feature
+
+The main cost of a future HCE→NNUE switch is not training a network — it is
+disentangling eval logic that leaked into the search. If eval knowledge lives
+only in `src/eval.rs` behind the `Evaluator` struct, the switch is a file
+replacement. If piece values, mobility scores, and danger bonuses are inlined
+into pruning margins and move ordering, the switch requires a surgical rewrite.
+
+### What to preserve (enforce during Phase 3)
+
+1. **Single eval entry point.** The search must only call `Evaluator::eval()`
+   (and its quiescence variant). Never call eval helper functions from
+   `search.rs` directly — not piece values, not PST lookups, not mobility
+   counts. NNUE replaces the `Evaluator`, not the search.
+
+2. **No eval-scale assumptions in search constants.** NNUE networks use a
+   different internal centipawn scale (typically 1/400 of a pawn rather than
+   1/100). Pruning margins, aspiration windows, and SEE thresholds that are
+   hardcoded as "200 cp" must remain tunable (which Phase 1 already ensures via
+   UCI params) rather than derived from eval internals.
+
+3. **Clean make/unmake hooks.** NNUE requires an incremental accumulator that
+   is updated on every `make_move` / `unmake_move`. The board already has these
+   hooks. During Phase 3, do not add any eval state into the search stack that
+   would need to be replicated in the accumulator — keep eval state inside
+   `Evaluator`.
+
+4. **`EvalParams` is HCE-only.** The `EvalParams` struct (ported in Phase 3
+   from `v2.1.0-claude`) holds HCE weights. When designing it, keep it as an
+   `Evaluator` internal detail — do not leak it into `SearchOptions` or the
+   search loop. NNUE will discard `EvalParams` entirely and replace it with
+   network weights; that replacement should touch zero search code.
+
+5. **Texel infrastructure is reusable.** The Texel data pipeline (quiet
+   positions from PGNs, labeled by game result) is also the standard dataset
+   format for NNUE supervised training. Build it generically in Phase 3 rather
+   than tightly coupling it to HCE term enumeration.
+
+### What would actually change for NNUE (for reference)
+
+- `Evaluator::eval()` — replaced with NNUE inference (accumulator read + output
+  layer multiply).
+- `Evaluator` gets `refresh_accumulator()` and `update_accumulator(mv)` methods
+  called from `Board::make_move` / `Board::unmake_move`.
+- `EvalParams` disappears; the network file path becomes a UCI `string` option.
+- `tune.rs` Texel infrastructure is repurposed for data generation; training
+  moves to an external tool (bullet, marlinflow, etc.).
+- Everything else — search, move ordering, SPRT harness, weather-factory — is
+  unchanged.
+
+### Verdict
+
+No code changes needed now. The discipline to enforce is: **during Phase 3,
+never let the search know how the eval works.** If a reviewer would need to
+understand mobility counting to understand a pruning condition, that is a
+boundary violation.
+
+---
+
+## 11. Recommended model for implementation
 
 **Primary driver: Sonnet 4.6 (medium).** Rationale:
 
@@ -444,3 +512,30 @@ test/tune loop.
 individual gnarly search ports to **Codex 5.5 medium** only if needed. Do **not**
 let either model merge a feature that hasn't passed its SPRT gate — the process,
 not the model, is what guarantees the result.
+
+---
+
+## 11. Far-future: keeping the NNUE door open (NOT scheduled)
+
+This plan is **HCE-only**, and NNUE is **explicitly out of scope** for every
+phase above. NNUE is, however, the single biggest remaining strength lever versus
+Stockfish, and a plausible *eventual* direction. It is recorded here only so the
+HCE work above does not paint us into a corner — none of these are tasks to do
+now, they are guardrails to observe **while** doing Phases 0–3:
+
+- **Keep the eval behind a single clean interface.** All eval expansion and Texel
+  refactors (Phase 3) must preserve one entry point that takes a board and
+  returns a side-to-move score, without leaking eval internals into search. A
+  future NNUE evaluator should be droppable behind the same signature with no
+  search rewrite. The `EvalParams` struct + `tune.rs` loader are HCE-specific and
+  can simply be ignored by an NNUE build.
+- **Keep board state NNUE-friendly.** NNUE needs cheap *incremental* access to
+  piece placement on `make_move`/`unmake_move` (the accumulator is updated from
+  exactly the squares that change). Preserve incremental piece keys / per-square
+  piece lookup; do not regress to a from-scratch board scan on each move.
+- **Don't over-couple the harness to HCE.** The Phase 0 SPRT/SPSA harness is
+  evaluation-agnostic (it drives binaries over UCI) and is reusable as-is for an
+  NNUE project — keep it that way.
+- **When the time comes**, NNUE is its own multi-phase project (net architecture,
+  training-data pipeline, SIMD accumulator, quantization), gated by the same
+  SPRT harness built in Phase 0. Begin it only after HCE tuning is exhausted.
