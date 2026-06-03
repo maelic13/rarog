@@ -1,0 +1,11 @@
+{
+    "engine": "rarog-phase1-pext-pgo.exe",
+    "book": "SuperGM_4mvs.pgn",
+    "games": 32,
+    "tc": 1,
+    "hash": 64,
+    "threads": 15,
+    "save_rate": 10,
+    "pgnout": "tuner/games.pgn",
+    "use_fastchess": true
+}

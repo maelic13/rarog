@@ -1,0 +1,32 @@
+{
+    "_comment": "weather-factory parameter set: LMR weighted terms (in 1024ths). Each key MUST match a UCI spin option in src/search_options.rs. Defaults from v2.1.0-claude:src/tune.rs.",
+
+    "LmrTtPv": {
+        "_source": "LMR reduction for PV/TT-PV nodes",
+        "value": -463,
+        "min_value": -800,
+        "max_value": 0,
+        "step": 40
+    },
+    "LmrExactBound": {
+        "_source": "LMR reduction when TT bound is Exact",
+        "value": 1405,
+        "min_value": 800,
+        "max_value": 2048,
+        "step": 60
+    },
+    "LmrCutNode": {
+        "_source": "LMR extra reduction at cut nodes",
+        "value": 1810,
+        "min_value": 1024,
+        "max_value": 3072,
+        "step": 80
+    },
+    "LmrShallowTt": {
+        "_source": "LMR reduction when TT entry depth < depth-1",
+        "value": 286,
+        "min_value": 0,
+        "max_value": 512,
+        "step": 30
+    }
+}

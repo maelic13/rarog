@@ -1,65 +1,79 @@
 <#
 .SYNOPSIS
-    Run an SPRT self-play match between two Rarog binaries using cutechess-cli.
+    Run an SPRT self-play match between two Rarog binaries using fastchess.
 
 .DESCRIPTION
-    Starts a cutechess-cli match with the built-in SPRT stopping rule.  The
-    match runs until the test accepts H0 (no meaningful improvement) or H1
-    (improvement ≥ Elo1).  Real-time output is printed to the console.
+    Starts a fastchess match with the built-in SPRT stopping rule.  The match
+    runs until the test accepts H0 (no meaningful improvement) or H1
+    (improvement).  Real-time output is printed to the console.
 
-    Use pext-PGO builds (see tools/build_test.ps1) for both engines.
+    Tooling:
+      - fastchess (NOT cutechess-cli): faster, no Qt dependency, built-in SPRT.
+        Download a release from https://github.com/Disservin/fastchess/releases
+        and place it at $FastchessPath (default D:\chess\fastchess\fastchess.exe),
+        or pass -FastchessPath. The cutechess GUI is still handy for *viewing*
+        the resulting PGNs, but is not used to run matches.
 
-    CALIBRATION CHECK (run this first, before any feature testing):
+    Conditions (chosen to match the Little Blitzer deployment exactly):
+      - st=0.1  -> fixed 100 ms/move (Little Blitzer = "100ms per move").
+                   Fixed movetime, so engine time-management is NOT exercised
+                   (correct: it is not used in deployment either).
+      - Hash 64 MB, Threads 1, SuperGM_4mvs.pgn opening book (random order),
+        each opening played from both colours (-games 2 -repeat).
+      - model=normalized (nElo) — fastchess default, more time-control-robust
+        than logistic Elo.
+
+    IMPORTANT — concurrency and fixed movetime:
+      With fixed movetime, oversubscribing cores adds timing noise (each engine
+      gets 100 ms wall but fewer nodes). Keep -Concurrency <= PHYSICAL cores - 1.
+      This machine has 16 physical cores, so the default is 15. Do NOT raise it
+      to the 30 logical processors as in the old cutechess tournament script —
+      that was fine for tc-based play but is noisy for fixed movetime.
+
+    CALIBRATION CHECK — run this FIRST, before testing any feature:
         ./tools/sprt.ps1 `
             -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
             -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
             -NameA "CW" -NameB "2.0.2"
-        Expected result: H0 accepted (the two engines are behavior-identical).
-        If the harness returns H1 here, something is wrong — investigate before
-        trusting any further SPRT results.
+        Expected: H0 accepted (these two are behavior-identical). If the harness
+        returns H1 here, something is wrong — fix it before trusting any result.
 
 .PARAMETER EngineA
-    Path to the new/candidate engine (the one you are testing).
+    Path to the new/candidate engine (usually in D:\chess\engines\test_engines).
 
 .PARAMETER EngineB
-    Path to the baseline engine (the current integration head).
+    Path to the baseline engine (the current integration head, or a released
+    reference in D:\chess\engines).
 
-.PARAMETER NameA
-    Display name for engine A in cutechess output.  Default: "New"
+.PARAMETER NameA / NameB
+    Display names. Defaults: "New" / "Base".
 
-.PARAMETER NameB
-    Display name for engine B.  Default: "Base"
-
-.PARAMETER Elo0
-    Lower bound: H0 is "A is at most Elo0 better than B".  Default: 0.
-    For a small incremental feature use 0; for a large expected gain use -3.
+.PARAMETER Mode
+    "gainer"       -> H0: elo<=0,  H1: elo>=Elo1  (default; test a real gain).
+    "simplify"     -> H0: elo<=-5, H1: elo>=0     (non-regression / cleanup).
+    The explicit -Elo0/-Elo1 parameters override the mode if supplied.
 
 .PARAMETER Elo1
-    Upper bound: H1 is "A is at least Elo1 better than B".  Default: 5.
-    Tighten to 3 for small, incremental features (e.g. one search constant).
-
-.PARAMETER Alpha
-    False-positive rate.  Default: 0.05
-
-.PARAMETER Beta
-    False-negative rate.  Default: 0.05
+    Upper SPRT bound for "gainer" mode. Default 5 (nElo). Use 3 for small,
+    incremental features (e.g. a single tuned search constant) to demand a
+    cleaner signal.
 
 .PARAMETER Hash
-    Hash table size in MB per engine.  Default: 64 (matches tournament).
+    Hash MB per engine. Default 64 (matches deployment).
 
 .PARAMETER Concurrency
-    Parallel games.  Default: logical CPU count − 1, minimum 1.
-    Set lower if the machine is also running other work.
+    Parallel games. Default 15 (physical cores - 1 on this machine).
 
 .PARAMETER Book
-    Path to the opening book PGN.
-    Default: D:\chess\books\SuperGM_4mvs.pgn (matches existing tournament).
+    Opening book PGN. Default D:\chess\books\SuperGM_4mvs.pgn.
+
+.PARAMETER FastchessPath
+    Path to fastchess.exe. Default D:\chess\fastchess\fastchess.exe (or found on PATH).
 
 .EXAMPLE
-    # Feature test: new ProbCut port vs current integration head
     ./tools/sprt.ps1 `
-        -EngineA "D:\chess\engines\rarog-feat-probcut-pext-pgo.exe" `
-        -EngineB "D:\chess\engines\rarog-head-pext-pgo.exe" `
+        -EngineA "D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe" `
+        -EngineB "D:\chess\engines\test_engines\rarog-head-pext-pgo.exe" `
         -NameA "ProbCut" -NameB "Head" -Elo1 3
 #>
 param(
@@ -67,65 +81,70 @@ param(
     [Parameter(Mandatory)][string]$EngineB,
     [string]$NameA = "New",
     [string]$NameB = "Base",
-    [double]$Elo0 = 0,
-    [double]$Elo1 = 5,
+    [ValidateSet("gainer", "simplify")][string]$Mode = "gainer",
+    [Nullable[double]]$Elo0 = $null,
+    [Nullable[double]]$Elo1 = $null,
     [double]$Alpha = 0.05,
     [double]$Beta  = 0.05,
     [int]$Hash = 64,
-    [int]$Concurrency = [Math]::Max(1, $env:NUMBER_OF_PROCESSORS - 1),
-    [string]$Book = "D:\chess\books\SuperGM_4mvs.pgn"
+    [int]$Concurrency = 15,
+    [string]$Book = "D:\chess\books\SuperGM_4mvs.pgn",
+    [string]$FastchessPath = "D:\chess\fastchess\fastchess.exe"
 )
 
 $ErrorActionPreference = "Stop"
 
-$cutechess = "D:\chess\cutechess-cli\cutechess-cli.exe"
-if (-not (Test-Path $cutechess)) {
-    throw "cutechess-cli not found at: $cutechess"
+# Resolve SPRT bounds from mode unless explicitly overridden.
+if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 0 } }
+if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 5 } }
+
+# Locate fastchess.
+$fastchess = $FastchessPath
+if (-not (Test-Path $fastchess)) {
+    $onPath = Get-Command fastchess -ErrorAction SilentlyContinue
+    if ($onPath) { $fastchess = $onPath.Source }
+    else {
+        throw "fastchess not found at '$FastchessPath' or on PATH. Download from " +
+              "https://github.com/Disservin/fastchess/releases and place it there."
+    }
 }
-if (-not (Test-Path $EngineA)) {
-    throw "EngineA not found: $EngineA"
+foreach ($p in @($EngineA, $EngineB, $Book)) {
+    if (-not (Test-Path $p)) { throw "Not found: $p" }
 }
-if (-not (Test-Path $EngineB)) {
-    throw "EngineB not found: $EngineB"
-}
-if (-not (Test-Path $Book)) {
-    throw "Opening book not found: $Book"
-}
+
+$EngineA = (Resolve-Path $EngineA).Path
+$EngineB = (Resolve-Path $EngineB).Path
 
 $resultsDir = Join-Path $PSScriptRoot "results"
 New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null
-
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $pgnOut    = Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.pgn"
 
-$EngineA = Resolve-Path $EngineA
-$EngineB = Resolve-Path $EngineB
-
 Write-Host ""
 Write-Host "======================================================="
-Write-Host "  SPRT: $NameA  vs  $NameB"
-Write-Host "  H0: A <= +${Elo0}   H1: A >= +${Elo1}   alpha=$Alpha  beta=$Beta"
-Write-Host "  TC: 100 ms/move   Hash: ${Hash} MB   Conc: $Concurrency"
+Write-Host "  SPRT ($Mode): $NameA  vs  $NameB"
+Write-Host "  H0: elo<=$Elo0   H1: elo>=$Elo1   alpha=$Alpha  beta=$Beta  (nElo)"
+Write-Host "  TC: st=0.1 (100 ms/move)   Hash: ${Hash} MB   Conc: $Concurrency"
 Write-Host "  Book: $(Split-Path $Book -Leaf)"
+Write-Host "  Runner: $fastchess"
 Write-Host "  PGN:  $pgnOut"
 Write-Host "======================================================="
 Write-Host ""
 
-# -each st=0.1 → 100 ms per move (matches existing tournament settings)
-# -rounds 50000 → effectively unlimited; SPRT stops it early
-# -games 2 -repeat → each opening played once per colour
-& $cutechess `
-    -engine "name=$NameA" "cmd=$EngineA" proto=uci "option.Hash=$Hash" option.Threads=1 `
-    -engine "name=$NameB" "cmd=$EngineB" proto=uci "option.Hash=$Hash" option.Threads=1 `
+# NOTE: flag names follow the fastchess man page (man.md). If your installed
+# fastchess build rejects a flag, run `fastchess --help` and adjust here.
+& $fastchess `
+    -engine "cmd=$EngineA" "name=$NameA" "option.Hash=$Hash" "option.Threads=1" `
+    -engine "cmd=$EngineB" "name=$NameB" "option.Hash=$Hash" "option.Threads=1" `
     -each st=0.1 `
     -openings "file=$Book" format=pgn order=random `
     -rounds 50000 -games 2 -repeat `
     -concurrency $Concurrency `
-    -sprt "elo0=$Elo0" "elo1=$Elo1" "alpha=$Alpha" "beta=$Beta" `
-    -pgnout "$pgnOut" `
-    -draw movenumber=40 movecount=10 score=5 `
-    -resign movecount=3 score=600 `
-    -ratinginterval 200
+    -sprt "elo0=$Elo0" "elo1=$Elo1" "alpha=$Alpha" "beta=$Beta" model=normalized `
+    -draw movenumber=40 movecount=8 score=10 `
+    -resign movecount=3 score=600 twosided=true `
+    -pgnout "file=$pgnOut" `
+    -output format=fastchess
 
 Write-Host ""
 Write-Host "Match finished. PGN saved to: $pgnOut"

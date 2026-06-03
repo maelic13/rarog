@@ -130,9 +130,8 @@ to validate the harness.
   §PGO). `avx2` is for distribution; **`pext` is the correct arch for local
   testing** since the CPU supports BMI2/PEXT and it is slightly faster.
 - **UCI options** are declared in `src/search_options.rs`
-  (`get_uci_options()` → `option name … type spin …`). SPSA via fastchess /
-  OpenBench sets parameters **through UCI options**, so Phase 1 must expose
-  tunables here.
+  (`get_uci_options()` → `option name … type spin …`). SPSA (weather-factory)
+  sets parameters **through UCI options**, so Phase 1 must expose tunables here.
 - `cargo bench --bench board` — board/movegen microbenchmarks.
 
 ---
@@ -159,44 +158,70 @@ to validate the harness.
    incremental-step style of the codex/claude branches is the right model.
 6. **Always use `pext --pgo` builds for testing.** Build test binaries with
    `cargo xtask build --arch pext --pgo`; the result lands in `target/dist/`.
-   Use `tools/build_test.ps1` to build and copy to `D:\chess\engines\` with
-   a human-readable name. Never SPRT-test a `cargo build --release` binary —
-   PGO changes the hot-path timing enough to affect measured NPS/Elo.
-7. **Test time controls mirror reality.** Use fixed 100 ms/move (`st=0.1` in
-   cutechess-cli) and the `SuperGM_4mvs.pgn` opening book to match the
-   existing Little Blitzer conditions.
+   Use `tools/build_test.ps1` to build and copy to
+   `D:\chess\engines\test_engines\` (kept separate from released engines) with a
+   human-readable name. Never SPRT-test a `cargo build --release` binary — PGO
+   changes the hot-path timing enough to affect measured NPS/Elo.
+7. **Test time controls mirror reality.** SPRT at fixed 100 ms/move (`st=0.1`
+   in fastchess) with the `SuperGM_4mvs.pgn` book — exactly the Little Blitzer
+   condition. (SPSA runs slightly longer at `tc=1`; see Phase 0 settings table.)
 
 ---
 
 ## 3. Phase 0 — Testing & tuning harness (prerequisite, do this first)
 
-**Goal:** a one-command, SPRT-gated self-play test, and an SPSA loop driven
-through UCI options. Nothing else proceeds until this works.
+**Goal:** a one-command, SPRT-gated self-play test, plus an SPSA tuning loop.
+Nothing else proceeds until the SPRT harness reproduces the known null result.
+
+### Tooling decisions (already scaffolded in `tools/`)
+
+- **Match runner / SPRT: [fastchess](https://github.com/Disservin/fastchess).**
+  Faster than cutechess-cli, no Qt dependency, built-in SPRT. **fastchess has no
+  built-in SPSA** (a common misconception). Install a release binary to
+  `D:\chess\fastchess\fastchess.exe`. The cutechess **GUI** is still useful for
+  eyeballing PGNs, but is not used to run matches.
+- **SPSA tuner: [weather-factory](https://github.com/jnlt3/weather-factory).**
+  The community-standard external SPSA driver; it perturbs UCI options and runs
+  fastchess mini-matches (`use_fastchess: true`). Configs live in
+  `tools/spsa_configs/` (see its `README.md`).
+- **Test binaries: separate folder.** Build with `tools/build_test.ps1`, which
+  produces `pext --pgo` binaries into **`D:\chess\engines\test_engines\`**, kept
+  apart from released engines in `D:\chess\engines\`.
+
+### Chosen settings (rationale)
+
+| Setting | Value | Why |
+|---|---|---|
+| TC (SPRT) | `st=0.1` (100 ms/move, fixed) | **Exactly** the Little Blitzer deployment condition. Fixed movetime ⇒ time-management not exercised (correct — it isn't used in deployment). |
+| TC (SPSA) | `tc=1` → 1+0.01 | Near the fast-blitz regime but long enough to avoid bullet timing jitter; weather-factory is tc-based (auto increment = tc/100). The final `st=0.1` SPRT bridges the small gap. |
+| Hash | 64 MB | matches deployment |
+| Threads (engine) | 1 | clean single-threaded comparison |
+| Concurrency | **15** (physical cores − 1; this box has 16) | Fixed movetime is noise-sensitive to oversubscription — do **not** use the 30 logical processors from the old cutechess script. |
+| Book | `SuperGM_4mvs.pgn`, `order=random`, `-games 2 -repeat` | matches the tournament; both colours per opening removes bias |
+| SPRT model | `normalized` (nElo) | fastchess default; more TC-robust than logistic |
+| SPRT gainer bounds | `elo0=0 elo1=5 alpha=0.05 beta=0.05` | accept H1 = real gain. Tighten `elo1=3` for tiny features. |
+| SPRT simplify bounds | `elo0=-5 elo1=0` | non-regression test for cleanups (accept H1 = "not meaningfully worse"). |
+| Draw adj. | `movenumber=40 movecount=8 score=10` | speeds up dead-drawn games |
+| Resign adj. | `movecount=3 score=600 twosided=true` | `twosided` avoids false resigns when the two engines' evals disagree |
+| SPSA `A` | iterations / 10 | weather-factory's only recommended change (`spsa.json`) |
+| SPSA `a,c,alpha,gamma` | defaults | leave unchanged per weather-factory guidance |
 
 ### Steps
 
-1. **Install a match runner.** Prefer **fastchess** (actively maintained,
-   built-in SPRT + SPSA). cutechess-cli is the fallback.
-2. **Pick an opening book.** Reuse the existing tournament books referenced in
-   the task (`SuperGM_4mvs.pgn`) or a standard 8-move book; store the path in
-   the harness config.
-3. **Write a repo helper script** (e.g. `tools/sprt.ps1` and/or
-   `tools/sprt.sh`) that:
-   - takes two engine binaries (or one binary + two option sets),
-   - runs fastchess with SPRT bounds `elo0=0 elo1=5 alpha=0.05 beta=0.05`,
-   - uses the chosen book, a fixed short TC, concurrency = (cores−1),
-   - prints the SPRT verdict (accept H1 / accept H0 / continue).
-4. **Write an SPSA helper** (e.g. `tools/spsa.ps1`) that drives fastchess SPSA
-   tuning against a UCI-exposed parameter list (see Phase 1) and writes the
-   tuned values back to a file.
-5. **Document usage** at the top of each script and in this file's appendix.
-6. **Smoke-test the harness**: run `codex-work` vs `master` — it must return a
-   ~0 Elo / accept-H0 result (they are behavior-identical). If it doesn't, the
-   harness is wrong. This is your calibration check.
+1. **Install fastchess** → `D:\chess\fastchess\fastchess.exe` (or add to PATH).
+2. **Clone weather-factory** and populate its `tuner\` folder — see
+   `tools/spsa_configs/README.md` for the exact setup.
+3. **Scripts are already written:** `tools/sprt.ps1` (fastchess SPRT, settings
+   above) and `tools/build_test.ps1` (named `pext --pgo` builds into
+   `test_engines`). The SPSA configs are in `tools/spsa_configs/`.
+4. **Calibration smoke-test (do this first):** run `tools/sprt.ps1` with the
+   released `codex-work` vs `2.0.2` binaries. It **must** return accept-H0 / ~0
+   Elo — they are behavior-identical. If it returns H1, the harness is wrong;
+   fix it before trusting anything else.
 
 ### Done when
-`tools/sprt.*` reproduces the "codex-work ≈ master" null result, and an SPSA dry
-run perturbs a UCI parameter and converges.
+`tools/sprt.ps1` reproduces the "codex-work ≈ 2.0.2" null result (accept-H0),
+and a weather-factory dry run perturbs a (Phase-1) UCI parameter and runs games.
 
 ---
 
@@ -226,11 +251,16 @@ that already ship in `codex-work`. Lowest risk, highest confidence.
    a `UCI_TuneMode` flag so production builds stay clean.
 3. **Verify default-equivalence**: `bench 13` fingerprint unchanged; SPRT vs
    `codex-work` returns ~0 Elo.
-4. **SPSA-tune** in batches (don't tune all 20+ at once): group A = LMR terms,
-   group B = futility/razor/null-move, group C = LMP + SEE pruning,
-   group D = aspiration/singular. Run 20k–60k games per group via the Phase 0
-   SPSA helper.
-5. **SPRT-confirm** the tuned set vs `codex-work` as the gate to keep it.
+4. **SPSA-tune** in batches (don't tune all 20+ at once). Ready-made
+   weather-factory parameter sets already exist:
+   - `tools/spsa_configs/config_lmr.json` — the LMR weighted terms.
+   - `tools/spsa_configs/config_pruning.json` — futility / razor / null-move /
+     LMP / SEE / aspiration / singular margins.
+   Their option names must match the UCI options you exposed in step 2. Run each
+   group to convergence (typically tens of thousands of games at `tc=1`).
+5. **SPRT-confirm** the tuned set vs `codex-work` at `st=0.1` (the deployment
+   condition) as the gate to keep it — SPSA over-fits, so the game test at the
+   real TC is the authority.
 
 ### Expected
 +10–30 Elo, low risk. **This is the first real strength milestone.**
@@ -333,7 +363,8 @@ on a previously PST-only eval. This is the largest HCE lever short of NNUE.
   Never SPRT-judge a new heuristic before tuning its constants.
 - **Self-play over-fit.** Confirm gains against external engines periodically.
 - **SPSA needs UCI-exposed params.** If a constant isn't a UCI option,
-  `tools/spsa.py` can't perturb it — wire it up first (Phase 1 step 2).
+  weather-factory has nothing to set — wire up the UCI option first (Phase 1
+  step 2).
 - **TT / Zobrist changes** (codex `tt.rs`, `zobrist.rs`) can introduce subtle
   correctness bugs that only show as a slow Elo bleed. Port them isolated and
   watch for hash-move legality assertions / `bench` instability.
@@ -359,23 +390,29 @@ git cherry-pick <step-commit>      # or re-implement the isolated diff
 # Regression-identity check (refactors only) — Windows PowerShell
 echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 4,713,975 on baseline
 
-# Build a named pext-PGO test binary → D:\chess\engines\rarog-<name>-pext-pgo.exe
+# Build a named pext-PGO test binary
+#   → D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe
 ./tools/build_test.ps1 -Suffix feat-probcut
 
-# SPRT self-play — calibration smoke-test (expect H0, ~0 Elo)
+# SPRT self-play — calibration smoke-test (expect accept-H0, ~0 Elo)
 ./tools/sprt.ps1 `
     -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
     -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
     -NameA "CW" -NameB "2.0.2"
 
-# SPRT self-play — new feature vs integration head
+# SPRT self-play — new feature vs integration head (tight bound for small feature)
 ./tools/sprt.ps1 `
-    -EngineA "D:\chess\engines\rarog-feat-probcut-pext-pgo.exe" `
-    -EngineB "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+    -EngineA "D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe" `
+    -EngineB "D:\chess\engines\test_engines\rarog-head-pext-pgo.exe" `
     -NameA "ProbCut" -NameB "Head" -Elo1 3
 
-# SPSA tuning (requires Phase 1 UCI options exposed first)
-python tools/spsa.py tools/spsa_configs/phase1_lmr.json
+# SPRT self-play — simplification / non-regression check
+./tools/sprt.ps1 -Mode simplify `
+    -EngineA "<cleaned>.exe" -EngineB "<head>.exe" -NameA "Clean" -NameB "Head"
+
+# SPSA tuning (requires Phase 1 UCI options + weather-factory setup)
+#   see tools/spsa_configs/README.md
+cd D:\chess\weather-factory; python main.py
 ```
 
 ---
