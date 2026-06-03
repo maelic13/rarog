@@ -139,8 +139,12 @@ Setup instructions: `tools/spsa_configs/README.md`.
 cd D:\chess\weather-factory
 python main.py
 
-# Bench fingerprint check (run from repo root, PowerShell)
-echo "bench 13`nquit" | .\target\release\rarog.exe
+# Bench fingerprint check — run the release binary directly in a terminal:
+#   .\target\release\rarog.exe
+#   bench 13
+#   quit
+# Expected baseline: "Nodes searched  : 4713975"
+# (PowerShell piping is unreliable for this; type the commands interactively)
 
 # Inspect what a branch added
 git log --oneline 5a8ce52..v2.1.0-codex
@@ -153,20 +157,22 @@ git diff 5a8ce52 v2.1.0-codex -- src/search.rs
 
 Update this as each step is completed.
 
-### Phase 0 — Harness ✅ (code done, verification pending)
+### Phase 0 — Harness ✅
 - [x] fastchess SPRT script (`tools/sprt.ps1`)
 - [x] pext-PGO build script (`tools/build_test.ps1`)
 - [x] weather-factory configs (`tools/spsa_configs/`)
-- [ ] fastchess installed at `D:\chess\fastchess\fastchess.exe`
-- [ ] Calibration test passed (H0 accepted: codex-work ≈ 2.0.2)
+- [x] fastchess installed at `D:\chess\fastchess\fastchess.exe`
+- [x] Calibration test passed (H0 accepted: codex-work ≈ 2.0.2, ~10k games)
 
 ### Phase 1 — SPSA-tune existing constants
-- [ ] `SearchParams` struct + `src/params.rs` ported
-- [ ] Constants exposed as UCI spin options
-- [ ] Default-equivalence verified (bench 13 unchanged)
-- [ ] SPSA group A: LMR terms tuned
-- [ ] SPSA group B: pruning/margin constants tuned
+- [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
+- [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
+- [x] Default-equivalence verified — bench 13 = **4,713,975** ✓
+- [ ] **Next:** build `phase1-defaults`, run SPRT vs released codex-work (must be H0)
+- [ ] SPSA group A: LMR terms tuned  ← *only after LMR options are ported from v2.1.0-claude*
+- [ ] SPSA group B: pruning/margin constants tuned (configs ready in `tools/spsa_configs/`)
 - [ ] SPRT confirmation of tuned set vs codex-work head
+- [ ] Gate tunable options behind `--features tune` before release
 
 ### Phase 2 — Port search features
 - [ ] `improvements` branch: check-aware ordering + SEE pruning (harness shakeout)
@@ -212,6 +218,23 @@ Update this as each step is completed.
 > "Bench 13 returned 0 nodes — engine crashed on startup."
 
 The model will diagnose and fix. You don't need to understand the error.
+
+---
+
+## Why search constants are UCI options (and when to remove them)
+
+weather-factory (the SPSA driver) has no interface to the engine other than UCI.
+To perturb `FutilityBase`, it sends `setoption name FutilityBase value 65` before
+each mini-match. There is no other mechanism — UCI options are required.
+
+This is standard practice: Stockfish, Ethereal, and most modern engines expose
+constants during development behind a compile-time flag (e.g. `--features tune`),
+then strip them from release builds. The v2.1.0-claude branch already scaffolded
+this with `tune.rs` and `--features tune`.
+
+**Current state:** options are always-on (no feature flag yet). Fine for development.
+**Before any public release:** gate them behind `--features tune` so production
+binaries don't pollute the UCI option list shown to GUIs.
 
 ---
 
