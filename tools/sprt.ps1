@@ -82,8 +82,8 @@ param(
     [string]$NameA = "New",
     [string]$NameB = "Base",
     [ValidateSet("gainer", "simplify")][string]$Mode = "gainer",
-    [Nullable[double]]$Elo0 = $null,
-    [Nullable[double]]$Elo1 = $null,
+    [Nullable[int]]$Elo0 = $null,
+    [Nullable[int]]$Elo1 = $null,
     [double]$Alpha = 0.05,
     [double]$Beta  = 0.05,
     [int]$Hash = 64,
@@ -95,8 +95,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Resolve SPRT bounds from mode unless explicitly overridden.
-if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 0 } }
-if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 5 } }
+if ($null -eq $Elo0) { $Elo0 = [int](if ($Mode -eq "simplify") { -5 } else { 0 }) }
+if ($null -eq $Elo1) { $Elo1 = [int](if ($Mode -eq "simplify") {  0 } else { 5 }) }
 
 # Locate fastchess.
 $fastchess = $FastchessPath
@@ -143,8 +143,8 @@ Write-Host ""
     -sprt "elo0=$Elo0" "elo1=$Elo1" "alpha=$Alpha" "beta=$Beta" model=normalized `
     -draw movenumber=40 movecount=8 score=10 `
     -resign movecount=3 score=600 twosided=true `
-    -pgnout "file=$pgnOut" `
-    -output format=fastchess
+    -pgnout "$pgnOut" `
+    -output format=fastchess   # console ticker format (not the PGN path)
 
 Write-Host ""
 Write-Host "Match finished. PGN saved to: $pgnOut"

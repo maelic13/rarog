@@ -7,7 +7,7 @@ This folder holds ready-made weather-factory config files for Rarog.
 
 ## One-time setup
 
-1. **Build fastchess** (or download a release) to `D:\chess\fastchess\fastchess.exe`
+1. **Download fastchess** to `D:\chess\fastchess\fastchess.exe`
    — https://github.com/Disservin/fastchess/releases
 2. **Clone weather-factory:**
    ```powershell
@@ -19,10 +19,18 @@ This folder holds ready-made weather-factory config files for Rarog.
      `rarog-phase1-pext-pgo.exe` (build with `tools\build_test.ps1 -Suffix phase1`,
      then copy from `D:\chess\engines\test_engines\`)
    - the opening book `SuperGM_4mvs.pgn` (copy from `D:\chess\books\`)
-4. **Copy the three config files** for the group you are tuning into the
+
+## Per-run setup
+
+4. **Update `A` in `spsa.json`** to `planned_iterations / 10`.
+   This is weather-factory's only required change per run.
+   Example: planning 10 000 iterations → set `"A": 1000`.
+   The other fields (`a`, `c`, `alpha`, `gamma`) should stay at their defaults.
+
+5. **Copy the three config files** for the group you are tuning into the
    weather-factory root (next to `main.py`):
-   - `cutechess.json`        (runner settings — same for every group)
-   - `spsa.json`             (SPSA hyper-params — same for every group)
+   - `cutechess.json`             (runner settings — same for every group)
+   - `spsa.json`                  (SPSA hyper-params — updated per step 4)
    - `config_<group>.json` → rename to `config.json` (the parameter set)
 
 ## Run
@@ -41,29 +49,55 @@ SPSA optimizes a noisy objective and **over-fits**. The tuned values are only a
 *candidate*. Always finish by:
 
 1. Baking the tuned values in as the new UCI-option defaults (or passing them
-   explicitly), building a `pext --pgo` binary with `tools\build_test.ps1`.
+   explicitly), then building a fresh `pext --pgo` binary with `tools\build_test.ps1`.
 2. Running `tools\sprt.ps1` (st=0.1, the deployment condition) of the tuned
    binary vs the pre-tuning head. **Keep the tuned values only if SPRT accepts H1.**
 
-## Settings rationale (see also `cutechess.json` comments)
+## Settings rationale
 
 | Setting | Value | Why |
 |---|---|---|
 | Runner | fastchess (`use_fastchess: true`) | less overhead than cutechess-cli |
-| `tc` | `1` → 1+0.01 s | Near the fast-blitz regime of the 100 ms/move deployment, while staying long enough to avoid bullet timing jitter. The final st=0.1 SPRT bridges the small gap. |
+| `tc` | `1` → 1+0.01 s | Near the fast-blitz regime of the 100 ms/move deployment; avoids bullet timing jitter. The final st=0.1 SPRT bridges the small gap. |
 | `hash` | 64 | matches deployment |
 | `threads` | 15 | concurrency = physical cores (16) − 1 |
 | `games` | 32 | per iteration; multiple of 2 and ≈ 2×threads for a stable gradient |
-| `A` (spsa.json) | iterations / 10 | weather-factory's only recommended change; set with your planned iteration budget (e.g. 10000 iters → A=1000) |
+| `A` (spsa.json) | iterations / 10 | **must update per run** (see step 4 above) |
 | `a`, `c`, `alpha`, `gamma` | defaults | do not change (weather-factory guidance) |
-| per-param `step` | see each config | sized to cause a ~2–3 Elo swing, per weather-factory guidance |
+| per-param `step` | see tables below | sized to cause a ~2–3 Elo swing per weather-factory guidance |
 
 ## Parameter groups (tune one group at a time)
 
-- `config_lmr.json`     — LMR weighted terms.
-- `config_pruning.json` — futility / razor / null-move / LMP / SEE / aspiration / singular margins.
+Tune **one config file per run**. Do not combine both groups into one run —
+the gradient becomes too noisy with many parameters at once.
+
+### config_lmr.json — LMR weighted terms (in 1024ths)
+
+All defaults from `v2.1.0-claude:src/tune.rs`.
+
+| UCI option name  | Default | Range       | Step | Source in search.rs |
+|------------------|---------|-------------|------|---------------------|
+| `LmrTtPv`        | −463    | [−800, 0]   | 40   | LMR reduction for PV / TT-PV nodes |
+| `LmrExactBound`  | 1405    | [800, 2048] | 60   | Reduction when TT bound is Exact |
+| `LmrCutNode`     | 1810    | [1024, 3072]| 80   | Extra reduction at cut nodes |
+| `LmrShallowTt`   | 286     | [0, 512]    | 30   | Reduction when TT entry depth < depth−1 |
+
+### config_pruning.json — Pruning / margin constants
+
+All defaults from `src/search.rs`.
+
+| UCI option name        | Default | Range        | Step | Source in search.rs |
+|------------------------|---------|--------------|------|---------------------|
+| `FutilityBase`         | 70      | [30, 150]    | 10   | `:1003`  `(70 + 20·not_improving) · depth` |
+| `FutilityImproving`    | 20      | [0, 60]      | 8    | `:1003`  the `20` coefficient |
+| `RazoringCoeff`        | 150     | [60, 300]    | 20   | `:1007`  `150 · depth` |
+| `NullMoveDepthCoeff`   | 12      | [4, 30]      | 4    | `:1012`  `12 · depth` |
+| `NullMoveImprovingBonus` | 24    | [0, 60]      | 8    | `:1012`  `24 · improving_i` |
+| `LmpBase`              | 90      | [40, 180]    | 14   | `:1182`  `(90 + 25·not_improving) · depth` |
+| `SeePruningCoeff`      | 80      | [30, 160]    | 12   | `:1195`  `−80 · depth` (tune the magnitude) |
+| `AspirationDelta`      | 25      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
+| `SingularBetaMult`     | 2       | [1, 6]       | 1    | `:1215`  `tt_score − 2·depth` |
 
 Each parameter name **must** match a UCI `spin` option exposed in
 `src/search_options.rs` (Phase 1 work). Until those options exist, weather-factory
-has nothing to set — wire up the UCI options first. The `_source` notes in each
-config point at the constant's location in `src/search.rs`.
+has nothing to set — wire up the UCI options first.

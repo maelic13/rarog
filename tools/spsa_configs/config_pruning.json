@@ -1,64 +1,53 @@
 {
-    "_comment": "weather-factory parameter set: pruning / margin constants. Each key MUST match a UCI spin option in src/search_options.rs. Values + _source line refs from src/search.rs.",
-
     "FutilityBase": {
-        "_source": "search.rs:1003  (70 + 20*not_improving) * depth",
         "value": 70,
         "min_value": 30,
         "max_value": 150,
         "step": 10
     },
     "FutilityImproving": {
-        "_source": "search.rs:1003  the '20' coefficient",
         "value": 20,
         "min_value": 0,
         "max_value": 60,
         "step": 8
     },
     "RazoringCoeff": {
-        "_source": "search.rs:1007  150 * depth",
         "value": 150,
         "min_value": 60,
         "max_value": 300,
         "step": 20
     },
     "NullMoveDepthCoeff": {
-        "_source": "search.rs:1012  12 * depth",
         "value": 12,
         "min_value": 4,
         "max_value": 30,
         "step": 4
     },
     "NullMoveImprovingBonus": {
-        "_source": "search.rs:1012  24 * improving_i",
         "value": 24,
         "min_value": 0,
         "max_value": 60,
         "step": 8
     },
     "LmpBase": {
-        "_source": "search.rs:1182  (90 + 25*not_improving) * depth",
         "value": 90,
         "min_value": 40,
         "max_value": 180,
         "step": 14
     },
     "SeePruningCoeff": {
-        "_source": "search.rs:1195  -80 * depth (tune the magnitude 80)",
         "value": 80,
         "min_value": 30,
         "max_value": 160,
         "step": 12
     },
     "AspirationDelta": {
-        "_source": "search.rs:615  initial aspiration half-window (25 cp)",
         "value": 25,
         "min_value": 10,
         "max_value": 60,
         "step": 6
     },
     "SingularBetaMult": {
-        "_source": "search.rs:1215  tt_score - 2*depth",
         "value": 2,
         "min_value": 1,
         "max_value": 6,

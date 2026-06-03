@@ -52,7 +52,7 @@ All commits below are reachable from the current repo. Branch heads:
 | Branch              | Head      | Head subject     | What it contains |
 |---------------------|-----------|------------------|------------------|
 | `master`            | `5a8ce52` | Version 2.02     | Baseline (== 2.0.2) |
-| `v2.1.0-codex-work` | `4c87c9d` | Version 2.1.0    | **Current.** Micro-opts only, == 2.0.2 behavior |
+| `v2.1.0-codex-work` | `be4cdc0` | Phase 0 harness  | **Current.** Micro-opts only, == 2.0.2 behavior + Phase 0 tools |
 | `v2.1.0-codex`      | `3de254f` | Step 15          | **Search-efficiency rewrite** (see below) |
 | `v2.1.0-claude`     | `870fac0` | Release prep     | **Eval expansion + `tune.rs` harness** (see below) |
 | `improvements`      | `8c453c1` | Version 2.0.1    | Small move-ordering refinements |
@@ -215,9 +215,10 @@ Nothing else proceeds until the SPRT harness reproduces the known null result.
    above) and `tools/build_test.ps1` (named `pext --pgo` builds into
    `test_engines`). The SPSA configs are in `tools/spsa_configs/`.
 4. **Calibration smoke-test (do this first):** run `tools/sprt.ps1` with the
-   released `codex-work` vs `2.0.2` binaries. It **must** return accept-H0 / ~0
-   Elo — they are behavior-identical. If it returns H1, the harness is wrong;
-   fix it before trusting anything else.
+   released `codex-work` vs `2.0.2` binaries (both in `D:\chess\engines\`, not
+   `test_engines\` — these are the already-distributed reference builds). It
+   **must** return accept-H0 / ~0 Elo — they are behavior-identical. If it
+   returns H1, the harness is wrong; fix it before trusting anything else.
 
 ### Done when
 `tools/sprt.ps1` reproduces the "codex-work ≈ 2.0.2" null result (accept-H0),
