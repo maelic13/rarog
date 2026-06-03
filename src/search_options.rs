@@ -1,4 +1,5 @@
 use crate::board::{Board, Move};
+use crate::params::SearchParams;
 
 pub const MAX_THREADS: usize = 1024;
 
@@ -29,6 +30,7 @@ pub struct EngineOptions {
     pub ponder: bool,
     pub threads: usize,
     pub syzygy: SyzygyOptions,
+    pub search_params: SearchParams,
 }
 
 impl Default for EngineOptions {
@@ -40,6 +42,7 @@ impl Default for EngineOptions {
             ponder: false,
             threads: 1,
             syzygy: SyzygyOptions::default(),
+            search_params: SearchParams::default(),
         }
     }
 }
@@ -128,6 +131,20 @@ impl SearchOptions {
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
             String::from("option name Syzygy50MoveRule type check default true"),
+            // Tunable search parameters (SPSA targets — see tools/spsa_configs/).
+            String::from("option name AspirationDelta type spin default 25 min 5 max 100"),
+            String::from("option name FutilityBase type spin default 70 min 20 max 200"),
+            String::from("option name FutilityImproving type spin default 20 min 0 max 80"),
+            String::from("option name RazoringCoeff type spin default 150 min 50 max 300"),
+            String::from("option name NullMoveDepthCoeff type spin default 12 min 2 max 40"),
+            String::from("option name NullMoveImprovingBonus type spin default 24 min 0 max 80"),
+            String::from("option name LmpBase type spin default 90 min 30 max 200"),
+            String::from("option name LmpImproving type spin default 25 min 0 max 80"),
+            String::from("option name QuietHistPruneCoeff type spin default 4000 min 1000 max 10000"),
+            String::from("option name SeePruningCoeff type spin default 80 min 20 max 200"),
+            String::from("option name SeePruningMax type spin default 800 min 200 max 1600"),
+            String::from("option name SingularBetaMult type spin default 2 min 1 max 8"),
+            String::from("option name LmpCountBase type spin default 4 min 1 max 12"),
         ])
     }
 
@@ -356,6 +373,85 @@ impl SearchOptions {
                     true
                 }
             },
+            // Tunable search parameters.
+            "aspirationdelta" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.aspiration_delta = v.clamp(5, 100);
+                }
+                true
+            }
+            "futilitybase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.futility_base = v.clamp(20, 200);
+                }
+                true
+            }
+            "futilityimproving" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.futility_improving = v.clamp(0, 80);
+                }
+                true
+            }
+            "razoringcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.razoring_coeff = v.clamp(50, 300);
+                }
+                true
+            }
+            "nullmovedepthcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.nm_depth_coeff = v.clamp(2, 40);
+                }
+                true
+            }
+            "nullmoveimprovingbonus" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.nm_improving_bonus = v.clamp(0, 80);
+                }
+                true
+            }
+            "lmpbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_base = v.clamp(30, 200);
+                }
+                true
+            }
+            "lmpimproving" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_improving = v.clamp(0, 80);
+                }
+                true
+            }
+            "quiethistprunecoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.quiet_hist_prune_coeff = v.clamp(1_000, 10_000);
+                }
+                true
+            }
+            "seepruningcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.see_pruning_coeff = v.clamp(20, 200);
+                }
+                true
+            }
+            "seepruningmax" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.see_pruning_max = v.clamp(200, 1_600);
+                }
+                true
+            }
+            "singularbetamult" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.singular_beta_mult = v.clamp(1, 8);
+                }
+                true
+            }
+            "lmpcountbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_count_base = v.clamp(1, 12);
+                }
+                true
+            }
             _ => {
                 println!("No such option: {option_name_raw}");
                 false

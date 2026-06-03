@@ -1,5 +1,6 @@
 pub mod bench;
 pub mod board;
+pub mod params;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;

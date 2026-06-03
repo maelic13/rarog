@@ -93,10 +93,14 @@ All defaults from `src/search.rs`.
 | `RazoringCoeff`        | 150     | [60, 300]    | 20   | `:1007`  `150 · depth` |
 | `NullMoveDepthCoeff`   | 12      | [4, 30]      | 4    | `:1012`  `12 · depth` |
 | `NullMoveImprovingBonus` | 24    | [0, 60]      | 8    | `:1012`  `24 · improving_i` |
-| `LmpBase`              | 90      | [40, 180]    | 14   | `:1182`  `(90 + 25·not_improving) · depth` |
+| `LmpBase`              | 90      | [40, 180]    | 14   | `:1182`  `(90 + 25·not_improving) · depth` — base |
+| `LmpImproving`         | 25      | [0, 60]      | 8    | `:1182`  the `25` coefficient |
+| `QuietHistPruneCoeff`  | 4000    | [1000, 8000] | 400  | `:1186`  `−4000 · depth` (stored positive) |
 | `SeePruningCoeff`      | 80      | [30, 160]    | 12   | `:1195`  `−80 · depth` (tune the magnitude) |
+| `SeePruningMax`        | 800     | [200, 1600]  | 80   | `:1195`  `.max(−800)` floor magnitude |
 | `AspirationDelta`      | 25      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
 | `SingularBetaMult`     | 2       | [1, 6]       | 1    | `:1215`  `tt_score − 2·depth` |
+| `LmpCountBase`         | 4       | [1, 10]      | 1    | `:2394`  `base = 4 + 2·d²/3` — tune the 4 |
 
 Each parameter name **must** match a UCI `spin` option exposed in
 `src/search_options.rs` (Phase 1 work). Until those options exist, weather-factory

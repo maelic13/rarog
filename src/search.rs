@@ -9,6 +9,7 @@ use crate::move_ordering::{
     diversify_root_scores, history_bonus, pawn_history_index, pick_next, piece_to_index,
     update_hist_entry,
 };
+use crate::params::SearchParams;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::search_threads::{STOP_QUIT, STOP_SEARCH, SharedSearchState, WorkerJob, WorkerPool};
 use crate::syzygy::{self, Wdl};
@@ -127,6 +128,7 @@ pub struct Searcher {
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
     syzygy_largest: usize,
+    params: SearchParams,
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
@@ -180,6 +182,7 @@ impl Default for Searcher {
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
             syzygy_largest: 0,
+            params: SearchParams::default(),
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
@@ -496,6 +499,7 @@ impl Searcher {
         self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
+        self.params = engine_options.search_params.clone();
         self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
@@ -612,8 +616,8 @@ impl Searcher {
             self.root_best_nodes = 0;
             self.root_best_effort = 0.0;
             let use_aspiration = depth >= 4 && best_score.abs() < MATE_SCORE - MAX_PLY as i32;
-            let mut alpha_delta = 25;
-            let mut beta_delta = 25;
+            let mut alpha_delta = self.params.aspiration_delta;
+            let mut beta_delta = self.params.aspiration_delta;
             let mut alpha = if use_aspiration {
                 (best_score - alpha_delta).max(-INF_SCORE)
             } else {
@@ -1000,16 +1004,16 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (70 + 20 * not_improving_i) * depth;
+            let futility_margin = (self.params.futility_base + self.params.futility_improving * not_improving_i) * depth;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;
             }
-            if depth <= 3 && eval_for_pruning + 150 * depth < alpha {
+            if depth <= 3 && eval_for_pruning + self.params.razoring_coeff * depth < alpha {
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
             if allow_null
                 && depth >= 3
-                && eval_for_pruning >= beta - 12 * depth - 24 * improving_i
+                && eval_for_pruning >= beta - self.params.nm_depth_coeff * depth - self.params.nm_improving_bonus * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
@@ -1179,11 +1183,11 @@ impl Searcher {
 
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
-                    let prune_margin = (90 + 25 * not_improving_i) * depth;
+                    let prune_margin = (self.params.lmp_base + self.params.lmp_improving * not_improving_i) * depth;
                     let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth, improving))
+                        || (depth <= 8 && searched > late_move_prune_count(depth, improving, self.params.lmp_count_base))
                         || (depth <= 4 && quiet_hist < -10_000)
-                        || (depth <= 7 && quiet_hist < -4_000 * depth);
+                        || (depth <= 7 && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
                     if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
                         continue;
                     }
@@ -1192,7 +1196,7 @@ impl Searcher {
                         self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-80 * depth - cap_hist / 8).max(-800);
+                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8).max(-self.params.see_pruning_max);
                     if depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, mv, &mut gives_check)
@@ -1212,7 +1216,7 @@ impl Searcher {
                 && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
                 && tt_score.abs() < MATE_SCORE - MAX_PLY as i32
             {
-                let singular_beta = tt_score - 2 * depth;
+                let singular_beta = tt_score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
                 let singular_score = self.negamax(
                     board,
@@ -2390,8 +2394,8 @@ fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
     LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
 }
 
-fn late_move_prune_count(depth: i32, improving: bool) -> usize {
-    let base = 4 + 2 * depth * depth / 3;
+fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
+    let base = count_base + 2 * depth * depth / 3;
     if improving {
         (base + depth) as usize
     } else {
