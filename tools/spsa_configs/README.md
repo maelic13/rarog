@@ -77,10 +77,10 @@ All defaults from `v2.1.0-claude:src/tune.rs`.
 
 | UCI option name  | Default | Range       | Step | Source in search.rs |
 |------------------|---------|-------------|------|---------------------|
-| `LmrTtPv`        | −463    | [−800, 0]   | 40   | LMR reduction for PV / TT-PV nodes |
-| `LmrExactBound`  | 1405    | [800, 2048] | 60   | Reduction when TT bound is Exact |
-| `LmrCutNode`     | 1810    | [1024, 3072]| 80   | Extra reduction at cut nodes |
-| `LmrShallowTt`   | 286     | [0, 512]    | 30   | Reduction when TT entry depth < depth−1 |
+| `LmrTtPvAdj`     | 463     | [0, 1024]   | 40   | PV/TT-PV nodes: reduce less (subtracted) |
+| `LmrExactBound`  | 1405    | [512, 3072] | 60   | Exact TT bound: reduce more |
+| `LmrCutNode`     | 1810    | [512, 3072] | 80   | Cut node: reduce more |
+| `LmrShallowTt`   | 286     | [0, 1024]   | 30   | Shallow/absent TT entry: reduce more |
 
 ### config_pruning.json — Pruning / margin constants
 

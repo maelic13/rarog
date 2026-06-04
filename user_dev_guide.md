@@ -178,9 +178,12 @@ Update this as each step is completed.
       (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
 - [x] **SPRT group B confirmation** — **H1 accepted** after 19,458 games. nElo +6.17 ± 4.88, LOS 99.34%.
-- [ ] SPSA group A (LMR terms) ← *blocked until LMR weighted terms ported from v2.1.0-claude*
-- [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`) ← follows group A SPSA
-- [ ] Gate tunable options behind `--features tune` before release
+- [x] Gate tunable options behind `--features tune` — commit `2fe6cc4`
+- [x] SPSA group A (LMR terms) unblocked: 1024x LMR table + 4 tunable adjustments ported
+      from v2.1.0-claude (LmrTtPvAdj, LmrExactBound, LmrCutNode, LmrShallowTt)
+- [ ] **SPRT gate #2 (LMR port default-equivalence)** — build, run `[-3, 3]` SPRT vs Phase2 head
+- [ ] SPSA group A tuning (run weather-factory with `config_lmr.json` and `--features tune` binary)
+- [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`)
 
 > Every SPSA group earns its own SPRT. The groups tune different behavior and
 > may transfer differently to `st=0.1`. Never skip a group's SPRT or roll two

@@ -50,6 +50,19 @@ pub struct SearchParams {
 
     /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
     pub lmp_count_base: i32,
+
+    // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
+    // Applied to the 1024x-scaled LMR_TABLE base, then `>> 10` gives integer
+    // ply reduction.  Negative values reduce less; positive values reduce more.
+
+    /// PV / TT-PV nodes: reduce less (stored positive; subtracted).
+    pub lmr_tt_pv_adj: i32,
+    /// Exact TT bound: solid score on file, later moves less likely to flip it.
+    pub lmr_exact_bound: i32,
+    /// Shallow or absent TT entry: less guidance available.
+    pub lmr_shallow_tt: i32,
+    /// Cut node: expected to fail high; later moves are typically bad.
+    pub lmr_cut_node: i32,
 }
 
 impl Default for SearchParams {
@@ -68,6 +81,11 @@ impl Default for SearchParams {
             see_pruning_max:       801,  // was 800
             singular_beta_mult:      4,  // was 2
             lmp_count_base:          2,  // was 4
+            // LMR weighted adjustments (1024ths) — defaults from v2.1.0-claude:src/tune.rs.
+            lmr_tt_pv_adj:         463,
+            lmr_exact_bound:      1405,
+            lmr_shallow_tt:        286,
+            lmr_cut_node:         1810,
         }
     }
 }
@@ -92,5 +110,9 @@ mod tests {
         assert!(p.see_pruning_max > 0);
         assert!(p.singular_beta_mult > 0);
         assert!(p.lmp_count_base > 0);
+        assert!(p.lmr_tt_pv_adj > 0);
+        assert!(p.lmr_exact_bound > 0);
+        assert!(p.lmr_shallow_tt > 0);
+        assert!(p.lmr_cut_node > p.lmr_tt_pv_adj, "cut node must reduce more than pv relief");
     }
 }
