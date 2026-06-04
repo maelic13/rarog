@@ -179,10 +179,11 @@ Update this as each step is completed.
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
 - [x] **SPRT group B confirmation** — **H1 accepted** after 19,458 games. nElo +6.17 ± 4.88, LOS 99.34%.
 - [x] Gate tunable options behind `--features tune` — commit `2fe6cc4`
-- [x] SPSA group A (LMR terms) unblocked: 1024x LMR table + 4 tunable adjustments ported
-      from v2.1.0-claude (LmrTtPvAdj, LmrExactBound, LmrCutNode, LmrShallowTt)
-- [ ] **SPRT gate #2 (LMR port default-equivalence)** — run `[-3, 3]` SPRT vs phase1-defaults
-- [ ] SPSA group A tuning (run weather-factory with `config_lmr.json` and `--features tune` binary)
+- [~] SPSA group A (LMR terms): 1024ths LMR port **reverted** — H0, −15 nElo regression.
+      Approach was wrong: ported claude-branch defaults (tuned for its full system) instead of
+      defaults that reproduce current behavior. Redo required: keep existing adjustment logic,
+      expose 4 params with defaults matching *current* behavior, SPSA finds new values.
+- [ ] SPSA group A redo: minimal 1024ths LMR port (default-equivalent), then SPSA
 - [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`)
 
 > Every SPSA group earns its own SPRT. The groups tune different behavior and

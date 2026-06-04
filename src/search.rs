@@ -25,15 +25,11 @@ const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
 const SEE_UNKNOWN: i16 = i16::MIN;
-/// LMR base reduction table, stored in 1024ths of a ply.
-/// Adjustments are added/subtracted in 1024ths, then `>> 10` gives the integer
-/// ply reduction.  The 1024x scale allows sub-ply tuning via SPSA.
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value =
-                (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25)) as i32;
+            *value = (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25) as i32;
         }
     }
     table
@@ -1286,52 +1282,30 @@ impl Searcher {
                     && !mv.is_promo()
                     && !checking_move;
                 if reducible {
-                    // All arithmetic in 1024ths; final `>> 10` converts to integer plies.
-                    let mut r = lmr_reduction(depth, searched);
-
-                    // PV / TT-PV: reduce less (stored positive → subtract).
+                    let hist = quiet_hist;
+                    let mut reduction = lmr_reduction(depth, searched);
                     if tt_pv {
-                        r -= self.params.lmr_tt_pv_adj;
+                        reduction -= 1;
+                    } else if is_quiet {
+                        reduction += 1;
                     }
-                    // Exact TT bound: score is well established, later moves unlikely to flip.
-                    if matches!(tt_bound, Some(Bound::Exact)) {
-                        r += self.params.lmr_exact_bound;
-                    }
-                    // Shallow or absent TT entry: less guidance available.
-                    if tt_depth < depth - 1 {
-                        r += self.params.lmr_shallow_tt;
-                    }
-                    // Cut node: expected to fail high; later moves are usually bad.
-                    if cut_node {
-                        r += self.params.lmr_cut_node;
-                    }
-                    // Improving position: don't reduce as much.
                     if improving {
-                        r -= 1024;
+                        reduction -= 1;
                     }
-                    // History-based per-move adjustment.
-                    if is_quiet {
-                        r += 2_171 - 179 * quiet_hist / 1024;
-                    } else {
-                        // Bad capture: use capture history for this attacker/target/victim.
-                        let cap_hist = captured_piece.map_or(0, |cap| {
-                            self.cap_history[moving_piece as usize][mv.to_sq().index()]
-                                [cap as usize] as i32
-                        });
-                        r += 1_724 - 107 * cap_hist / 1024;
+                    if !tt_move.is_null() && searched >= 4 {
+                        reduction += 1;
                     }
-                    // Killer / countermove: historically useful at this position — reduce less.
-                    if is_quiet
-                        && (mv == self.killers[ply][0]
-                            || mv == self.killers[ply][1]
-                            || (!previous_move.is_null()
-                                && mv
-                                    == self.countermove[previous_move.from_sq().index()]
-                                        [previous_move.to_sq().index()]))
-                    {
-                        r -= 1024;
+                    if cut_node {
+                        reduction += 1;
                     }
-                    let reduction = (r >> 10).clamp(1, new_depth.max(1));
+                    if !is_quiet && see < 0 {
+                        reduction += 1;
+                    }
+                    if !tt_pv && !cut_node && quiet_hist > 4_000 {
+                        reduction -= 1;
+                    }
+                    reduction -= hist / 8_192;
+                    reduction = reduction.clamp(1, new_depth.max(1));
                     score = -self.negamax(
                         board,
                         new_depth - reduction,

@@ -1,26 +1,26 @@
 {
-    "LmrTtPvAdj": {
-        "value": 463,
-        "min_value": 0,
-        "max_value": 1024,
+    "LmrTtPv": {
+        "value": -463,
+        "min_value": -800,
+        "max_value": 0,
         "step": 40
     },
     "LmrExactBound": {
         "value": 1405,
-        "min_value": 512,
-        "max_value": 3072,
+        "min_value": 800,
+        "max_value": 2048,
         "step": 60
     },
     "LmrCutNode": {
         "value": 1810,
-        "min_value": 512,
+        "min_value": 1024,
         "max_value": 3072,
         "step": 80
     },
     "LmrShallowTt": {
         "value": 286,
         "min_value": 0,
-        "max_value": 1024,
+        "max_value": 512,
         "step": 30
     }
 }
