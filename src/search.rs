@@ -25,11 +25,15 @@ const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
 const SEE_UNKNOWN: i16 = i16::MIN;
+/// LMR base reduction table scaled to 1024ths of a ply.
+/// All adjustments below accumulate in 1024ths; `>> 10` converts to integer
+/// ply reduction.  This allows sub-ply SPSA tuning of the 4 key adjustments.
 static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
     let mut table = [[0; 64]; 64];
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25) as i32;
+            *value =
+                (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25)) as i32;
         }
     }
     table
@@ -1282,30 +1286,39 @@ impl Searcher {
                     && !mv.is_promo()
                     && !checking_move;
                 if reducible {
-                    let hist = quiet_hist;
-                    let mut reduction = lmr_reduction(depth, searched);
+                    // Accumulate in 1024ths; `>> 10` gives integer ply reduction.
+                    // Defaults for lmr_* params = 1024, reproducing the original ±1 ply
+                    // behavior exactly.  SPSA tunes from this baseline.
+                    let mut r = lmr_reduction(depth, searched);
+                    // PV / TT-PV nodes: reduce less (param stored positive, subtracted).
                     if tt_pv {
-                        reduction -= 1;
+                        r -= self.params.lmr_tt_pv_adj;
                     } else if is_quiet {
-                        reduction += 1;
+                        r += 1024;
                     }
                     if improving {
-                        reduction -= 1;
+                        r -= 1024;
                     }
+                    // Exact TT bound: new term, default 0 (no current behavior displaced).
+                    if matches!(tt_bound, Some(Bound::Exact)) {
+                        r += self.params.lmr_exact_bound;
+                    }
+                    // Shallow / absent TT entry.
                     if !tt_move.is_null() && searched >= 4 {
-                        reduction += 1;
+                        r += self.params.lmr_shallow_tt;
                     }
+                    // Cut node.
                     if cut_node {
-                        reduction += 1;
+                        r += self.params.lmr_cut_node;
                     }
                     if !is_quiet && see < 0 {
-                        reduction += 1;
+                        r += 1024;
                     }
                     if !tt_pv && !cut_node && quiet_hist > 4_000 {
-                        reduction -= 1;
+                        r -= 1024;
                     }
-                    reduction -= hist / 8_192;
-                    reduction = reduction.clamp(1, new_depth.max(1));
+                    r -= quiet_hist * 1024 / 8_192; // equivalent to original hist / 8_192
+                    let reduction = (r >> 10).clamp(1, new_depth.max(1));
                     score = -self.negamax(
                         board,
                         new_depth - reduction,

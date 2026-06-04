@@ -152,6 +152,11 @@ impl SearchOptions {
             String::from("option name SeePruningMax type spin default 800 min 200 max 1600"),
             String::from("option name SingularBetaMult type spin default 2 min 1 max 8"),
             String::from("option name LmpCountBase type spin default 4 min 1 max 12"),
+            // LMR weighted adjustments (1024ths of a ply; default 1024 = 1 ply = current behavior).
+            String::from("option name LmrTtPvAdj type spin default 1024 min 0 max 2048"),
+            String::from("option name LmrExactBound type spin default 0 min 0 max 2048"),
+            String::from("option name LmrShallowTt type spin default 1024 min 0 max 2048"),
+            String::from("option name LmrCutNode type spin default 1024 min 0 max 2048"),
         ]);
         opts
     }
@@ -470,6 +475,34 @@ impl SearchOptions {
             "lmpcountbase" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmp_count_base = v.clamp(1, 12);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrttpvadj" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_tt_pv_adj = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrexactbound" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_exact_bound = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrshallowtt" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_shallow_tt = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrcutnode" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_cut_node = v.clamp(0, 2_048);
                 }
                 true
             }

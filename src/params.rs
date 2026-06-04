@@ -50,6 +50,20 @@ pub struct SearchParams {
 
     /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
     pub lmp_count_base: i32,
+
+    // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
+    // Applied to the 1024x-scaled LMR_TABLE base; `>> 10` gives integer ply.
+    // Defaults of 1024 reproduce the original ±1 ply behavior exactly, so
+    // bench 13 is unchanged and SPSA tunes from a correct baseline.
+
+    /// PV / TT-PV nodes: reduce less (stored positive; subtracted). Default = 1024 (1 ply).
+    pub lmr_tt_pv_adj: i32,
+    /// Exact TT bound: additional reduction. Default = 0 (not in original code; new term).
+    pub lmr_exact_bound: i32,
+    /// Shallow / absent TT entry: searched >= 4 and no tt_move. Default = 1024 (1 ply).
+    pub lmr_shallow_tt: i32,
+    /// Cut node: reduce more. Default = 1024 (1 ply).
+    pub lmr_cut_node: i32,
 }
 
 impl Default for SearchParams {
@@ -68,6 +82,11 @@ impl Default for SearchParams {
             see_pruning_max:       801,  // was 800
             singular_beta_mult:      4,  // was 2
             lmp_count_base:          2,  // was 4
+            // LMR adjustments — defaults reproduce original ±1-ply behavior exactly.
+            lmr_tt_pv_adj:        1024,  // 1 ply (original: -1)
+            lmr_exact_bound:         0,  // 0 = not in original code; SPSA finds value
+            lmr_shallow_tt:       1024,  // 1 ply (original: +1 when !tt_move && searched>=4)
+            lmr_cut_node:         1024,  // 1 ply (original: +1)
         }
     }
 }
@@ -92,5 +111,9 @@ mod tests {
         assert!(p.see_pruning_max > 0);
         assert!(p.singular_beta_mult > 0);
         assert!(p.lmp_count_base > 0);
+        assert!(p.lmr_tt_pv_adj >= 0);
+        assert!(p.lmr_exact_bound >= 0);
+        assert!(p.lmr_shallow_tt >= 0);
+        assert!(p.lmr_cut_node >= 0);
     }
 }
