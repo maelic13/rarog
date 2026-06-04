@@ -181,7 +181,7 @@ Update this as each step is completed.
 - [x] Gate tunable options behind `--features tune` — commit `2fe6cc4`
 - [x] SPSA group A (LMR terms) unblocked: 1024x LMR table + 4 tunable adjustments ported
       from v2.1.0-claude (LmrTtPvAdj, LmrExactBound, LmrCutNode, LmrShallowTt)
-- [ ] **SPRT gate #2 (LMR port default-equivalence)** — build, run `[-3, 3]` SPRT vs Phase2 head
+- [ ] **SPRT gate #2 (LMR port default-equivalence)** — run `[-3, 3]` SPRT vs phase1-defaults
 - [ ] SPSA group A tuning (run weather-factory with `config_lmr.json` and `--features tune` binary)
 - [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`)
 
@@ -190,7 +190,7 @@ Update this as each step is completed.
 > groups into one confirmation test.
 
 ### Phase 2 — Port search features
-- [x] `improvements` branch: check-aware ordering (pre-computed `gives_check` sentinel in `ScoredMove`, check-aware `quiet_history_score`) — *bench fingerprint will change; SPRT pending*
+- [~] `improvements` branch: check-aware ordering — **H0 discarded** (~11k games, LLR flat −0.5 to −0.8; use `[-3,3]` bounds for small features next time)
 - [ ] ProbCut
 - [ ] Extended correction history
 - [ ] Multi-cut / singular refinements

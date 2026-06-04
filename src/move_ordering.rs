@@ -10,33 +10,12 @@ pub const LOW_PLY_HISTORY_SIZE: usize = 8;
 pub const PAWN_HISTORY_SIZE: usize = 4_096;
 pub const PIECE_TO_SIZE: usize = 6 * 64;
 
-/// Sentinel values for `ScoredMove::gives_check`.
-/// Using `i8` instead of `Option<bool>` keeps the field one byte and avoids
-/// repeated `board.gives_check()` calls once it has been computed.
-pub(crate) const CHECK_UNKNOWN: i8 = -1;
-pub(crate) const CHECK_FALSE: i8 = 0;
-pub(crate) const CHECK_TRUE: i8 = 1;
-
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct ScoredMove {
     pub mv: Move,
     pub score: i32,
     pub see: i16,
     pub quiet_history: i32,
-    /// Whether this move gives check. `CHECK_UNKNOWN` until computed.
-    pub gives_check: i8,
-}
-
-impl Default for ScoredMove {
-    fn default() -> Self {
-        Self {
-            mv: Move::NULL,
-            score: 0,
-            see: 0,
-            quiet_history: 0,
-            gives_check: CHECK_UNKNOWN,
-        }
-    }
 }
 
 pub(crate) struct ScoredMoveList {
@@ -60,25 +39,12 @@ impl ScoredMoveList {
 
     #[inline(always)]
     pub fn push_with_history(&mut self, mv: Move, score: i32, see: i32, quiet_history: i32) {
-        self.push_with_history_and_check(mv, score, see, quiet_history, CHECK_UNKNOWN);
-    }
-
-    #[inline(always)]
-    pub fn push_with_history_and_check(
-        &mut self,
-        mv: Move,
-        score: i32,
-        see: i32,
-        quiet_history: i32,
-        gives_check: i8,
-    ) {
         debug_assert!(self.len < self.moves.len());
         self.moves[self.len].write(ScoredMove {
             mv,
             score,
             see: see.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
             quiet_history,
-            gives_check,
         });
         self.len += 1;
     }
