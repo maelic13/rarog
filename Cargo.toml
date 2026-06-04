@@ -15,6 +15,14 @@ resolver = "3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Exposes all SearchParams as UCI spin options for SPSA tuning via weather-factory.
+# Production builds must NOT use this feature — it pollutes the UCI option list shown
+# to GUIs. Only used when running tools/spsa_configs/ tuning workflows.
+# Build: cargo xtask build --arch pext --pgo (+ add --features tune to the xtask or
+# pass CARGO_ENCODED_RUSTFLAGS directly if needed).
+tune = []
+
 [dependencies]
 
 [build-dependencies]

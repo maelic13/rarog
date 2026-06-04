@@ -121,7 +121,7 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
-        Vec::from([
+        let mut opts = vec![
             String::from("option name Hash type spin default 64 min 1 max 33554432"),
             String::from("option name Clear Hash type button"),
             String::from("option name Ponder type check default false"),
@@ -131,7 +131,12 @@ impl SearchOptions {
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
             String::from("option name Syzygy50MoveRule type check default true"),
-            // Tunable search parameters (SPSA targets — see tools/spsa_configs/).
+        ];
+        // Tunable search parameters — only exposed when compiled with --features tune.
+        // weather-factory sets these via UCI setoption; production builds omit them
+        // so they don't pollute the option list shown to GUIs.
+        #[cfg(feature = "tune")]
+        opts.extend([
             String::from("option name AspirationDelta type spin default 25 min 5 max 100"),
             String::from("option name FutilityBase type spin default 70 min 20 max 200"),
             String::from("option name FutilityImproving type spin default 20 min 0 max 80"),
@@ -145,7 +150,8 @@ impl SearchOptions {
             String::from("option name SeePruningMax type spin default 800 min 200 max 1600"),
             String::from("option name SingularBetaMult type spin default 2 min 1 max 8"),
             String::from("option name LmpCountBase type spin default 4 min 1 max 12"),
-        ])
+        ]);
+        opts
     }
 
     pub fn reset(&mut self) {
@@ -373,79 +379,92 @@ impl SearchOptions {
                     true
                 }
             },
-            // Tunable search parameters.
+            // Tunable search parameters — only active when compiled with --features tune.
+            #[cfg(feature = "tune")]
             "aspirationdelta" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.aspiration_delta = v.clamp(5, 100);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "futilitybase" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.futility_base = v.clamp(20, 200);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "futilityimproving" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.futility_improving = v.clamp(0, 80);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "razoringcoeff" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.razoring_coeff = v.clamp(50, 300);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "nullmovedepthcoeff" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.nm_depth_coeff = v.clamp(2, 40);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "nullmoveimprovingbonus" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.nm_improving_bonus = v.clamp(0, 80);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "lmpbase" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmp_base = v.clamp(30, 200);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "lmpimproving" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmp_improving = v.clamp(0, 80);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "quiethistprunecoeff" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.quiet_hist_prune_coeff = v.clamp(1_000, 10_000);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "seepruningcoeff" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.see_pruning_coeff = v.clamp(20, 200);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "seepruningmax" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.see_pruning_max = v.clamp(200, 1_600);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "singularbetamult" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.singular_beta_mult = v.clamp(1, 8);
                 }
                 true
             }
+            #[cfg(feature = "tune")]
             "lmpcountbase" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmp_count_base = v.clamp(1, 12);
