@@ -4,10 +4,10 @@ use std::time::Instant;
 use crate::board::{Board, Color, GameResult, Move, Piece};
 use crate::eval::{Evaluator, INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::move_ordering::{
-    BadCaptureList, CAP_HISTORY_MAX, CONT_SIZE, CORR_SIZE, HISTORY_MAX, LOW_PLY_HISTORY_SIZE,
-    PAWN_HISTORY_SIZE, PIECE_TO_SIZE, ScoredMove, ScoredMoveList, cont_index,
-    diversify_root_scores, history_bonus, pawn_history_index, pick_next, piece_to_index,
-    update_hist_entry,
+    BadCaptureList, CAP_HISTORY_MAX, CHECK_FALSE, CHECK_TRUE, CHECK_UNKNOWN, CONT_SIZE, CORR_SIZE,
+    HISTORY_MAX, LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE, ScoredMove,
+    ScoredMoveList, cont_index, diversify_root_scores, history_bonus, pawn_history_index,
+    pick_next, piece_to_index, update_hist_entry,
 };
 use crate::params::SearchParams;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
@@ -297,6 +297,7 @@ fn tt_scored_move(mv: Move) -> ScoredMove {
         score: 30_000_000,
         see,
         quiet_history: 0,
+        gives_check: CHECK_UNKNOWN,
     }
 }
 
@@ -1179,7 +1180,7 @@ impl Searcher {
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
             let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
-            let mut gives_check = None;
+            let mut gives_check = picked.gives_check;
 
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
@@ -1250,7 +1251,7 @@ impl Searcher {
                 if depth >= 3 && searched >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
                     move_gives_check(board, mv, &mut gives_check)
                 } else {
-                    gives_check.unwrap_or(false)
+                    gives_check == CHECK_TRUE
                 };
 
             self.stack_moves[ply] = mv;
@@ -1599,7 +1600,7 @@ impl Searcher {
             let picked = pick_next(scored.as_mut_slice(), index);
             let mv = picked.mv;
             if !in_check {
-                let mut gives_check = None;
+                let mut gives_check = CHECK_UNKNOWN;
                 tactical_count += 1;
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
@@ -1702,6 +1703,7 @@ impl Searcher {
 
         for &mv in moves {
             let mut see = 0;
+            let mut gives_check = CHECK_UNKNOWN;
             let score = if mv == tt_move {
                 30_000_000
             } else if mv.is_capture() {
@@ -1724,7 +1726,9 @@ impl Searcher {
             } else if mv == counter {
                 15_800_000
             } else {
-                self.quiet_history_score(board, board.side_to_move(), mv, ply)
+                let check = board.gives_check(mv);
+                gives_check = if check { CHECK_TRUE } else { CHECK_FALSE };
+                self.quiet_history_score(board, board.side_to_move(), mv, ply, check)
             };
             let quiet_history = if !mv.is_capture()
                 && !mv.is_promo()
@@ -1737,7 +1741,7 @@ impl Searcher {
             } else {
                 0
             };
-            scored.push_with_history(mv, score, see, quiet_history);
+            scored.push_with_history_and_check(mv, score, see, quiet_history, gives_check);
         }
         scored
     }
@@ -1807,10 +1811,18 @@ impl Searcher {
             score,
             see: see as i16,
             quiet_history: 0,
+            gives_check: CHECK_UNKNOWN,
         }
     }
 
-    fn quiet_history_score(&self, board: &Board, color: Color, mv: Move, ply: usize) -> i32 {
+    fn quiet_history_score(
+        &self,
+        board: &Board,
+        color: Color,
+        mv: Move,
+        ply: usize,
+        gives_check: bool,
+    ) -> i32 {
         let from = mv.from_sq().index();
         let to = mv.to_sq().index();
         let main = self.main_history[color as usize][from][to] as i32;
@@ -1821,11 +1833,7 @@ impl Searcher {
         } else {
             0
         };
-        let direct_check = if board.gives_check(mv) {
-            DIRECT_CHECK_BONUS
-        } else {
-            0
-        };
+        let direct_check = if gives_check { DIRECT_CHECK_BONUS } else { 0 };
         2 * main + pawn + low_ply + self.cont_score(ply, piece, to) + direct_check
     }
 
@@ -2403,12 +2411,13 @@ fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize 
     }
 }
 
-fn move_gives_check(board: &Board, mv: Move, cache: &mut Option<bool>) -> bool {
+fn move_gives_check(board: &Board, mv: Move, cache: &mut i8) -> bool {
     match *cache {
-        Some(gives_check) => gives_check,
-        None => {
+        CHECK_FALSE => false,
+        CHECK_TRUE => true,
+        _ => {
             let gives_check = board.gives_check(mv);
-            *cache = Some(gives_check);
+            *cache = if gives_check { CHECK_TRUE } else { CHECK_FALSE };
             gives_check
         }
     }
@@ -2690,10 +2699,13 @@ mod tests {
         searcher.low_ply_history[7][from][to] = 800;
 
         assert_eq!(
-            searcher.quiet_history_score(&board, Color::White, mv, 7),
+            searcher.quiet_history_score(&board, Color::White, mv, 7, false),
             100
         );
-        assert_eq!(searcher.quiet_history_score(&board, Color::White, mv, 8), 0);
+        assert_eq!(
+            searcher.quiet_history_score(&board, Color::White, mv, 8, false),
+            0
+        );
     }
 
     #[test]

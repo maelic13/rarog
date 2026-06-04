@@ -177,7 +177,7 @@ Update this as each step is completed.
 - [x] SPSA group B (pruning/margin constants) tuned — commit `fae334a`
       (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
-- [ ] **SPRT group B confirmation** (`elo0=0 elo1=5`, `st=0.1`). *In progress; trending toward H0 — likely SPSA-vs-SPRT TC mismatch.*
+- [x] **SPRT group B confirmation** — **H1 accepted** after 19,458 games. nElo +6.17 ± 4.88, LOS 99.34%.
 - [ ] SPSA group A (LMR terms) ← *blocked until LMR weighted terms ported from v2.1.0-claude*
 - [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`) ← follows group A SPSA
 - [ ] Gate tunable options behind `--features tune` before release
@@ -187,7 +187,7 @@ Update this as each step is completed.
 > groups into one confirmation test.
 
 ### Phase 2 — Port search features
-- [ ] `improvements` branch: check-aware ordering + SEE pruning (harness shakeout)
+- [x] `improvements` branch: check-aware ordering (pre-computed `gives_check` sentinel in `ScoredMove`, check-aware `quiet_history_score`) — *bench fingerprint will change; SPRT pending*
 - [ ] ProbCut
 - [ ] Extended correction history
 - [ ] Multi-cut / singular refinements
