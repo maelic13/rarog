@@ -121,6 +121,8 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
+        // `mut` is needed when compiled with --features tune (the extend below).
+        #[allow(unused_mut)]
         let mut opts = vec![
             String::from("option name Hash type spin default 64 min 1 max 33554432"),
             String::from("option name Clear Hash type button"),
