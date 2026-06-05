@@ -16,25 +16,32 @@
 
 .PARAMETER ConfigGroup
     Which parameter group to tune.
-    "pruning"  (default) – 13 pruning / margin constants, ready to tune now.
-    "lmr"                – LMR weighted terms (blocked: needs Phase 3 port first).
+    "pruning"  – 13 pruning / margin constants (original group B).
+    "lmr"      – 4 LMR weighted adjustments (group A; requires --features tune binary).
 
 .PARAMETER Iterations
     Planned total iterations (used to set A = Iterations / 10 in spsa.json).
     Default: 5000.  At ~12 s/iteration this is roughly 17 hours; stop
     earlier with Ctrl-C if values stabilise sooner.
 
+.PARAMETER EngineSuffix
+    Suffix of the binary in D:\chess\engines\test_engines\ to use as the engine.
+    Defaults: "phase1-lmr-tune" for lmr group, "phase1-lmr-pext-pgo" for pruning.
+    The lmr group REQUIRES a -Tune binary (built with --features tune).
+
 .EXAMPLE
-    # Standard first run — pruning group, 5 000 iterations
-    ./tools/setup_spsa.ps1
+    # LMR group — requires tune binary built first:
+    #   ./tools/build_test.ps1 -Suffix phase1-lmr-tune -Tune
+    ./tools/setup_spsa.ps1 -ConfigGroup lmr
 
 .EXAMPLE
     # Shorter overnight run (~7 hours)
-    ./tools/setup_spsa.ps1 -Iterations 2000
+    ./tools/setup_spsa.ps1 -ConfigGroup lmr -Iterations 2000
 #>
 param(
-    [ValidateSet("pruning","lmr")][string]$ConfigGroup = "pruning",
-    [int]$Iterations = 5000
+    [ValidateSet("pruning","lmr")][string]$ConfigGroup = "lmr",
+    [int]$Iterations = 5000,
+    [string]$EngineSuffix = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,8 +50,22 @@ $wfRoot    = "D:\chess\weather-factory"
 $repoRoot  = Split-Path -Parent $PSScriptRoot
 $configs   = Join-Path $repoRoot "tools\spsa_configs"
 $fastchess = "D:\chess\fastchess\fastchess.exe"
-$engine    = "D:\chess\engines\test_engines\rarog-phase1-defaults-pext-pgo.exe"
 $book      = "D:\chess\books\SuperGM_4mvs.pgn"
+
+# Resolve engine path — lmr group needs a -tune binary (--features tune).
+if ($EngineSuffix -eq "") {
+    $EngineSuffix = if ($ConfigGroup -eq "lmr") { "phase1-lmr-tune" } else { "phase1-lmr-pext-pgo" }
+}
+$engineFile = if ($ConfigGroup -eq "lmr") {
+    "rarog-$EngineSuffix-tune.exe"
+} else {
+    "rarog-$EngineSuffix-pext-pgo.exe"
+}
+$engine = "D:\chess\engines\test_engines\$engineFile"
+
+if ($ConfigGroup -eq "lmr" -and -not ($engine -match "tune")) {
+    Write-Warning "LMR group tuning requires a --features tune binary. Use: ./tools/build_test.ps1 -Suffix $EngineSuffix -Tune"
+}
 
 # ── 1. Validate prerequisites ────────────────────────────────────────────────
 foreach ($f in @($fastchess, $engine, $book)) {
