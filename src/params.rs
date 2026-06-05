@@ -69,19 +69,19 @@ pub struct SearchParams {
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
-            aspiration_delta:       29,  // was 25
-            futility_base:          82,  // was 70
-            futility_improving:     51,  // was 20
-            razoring_coeff:        194,  // was 150
-            nm_depth_coeff:         14,  // was 12
-            nm_improving_bonus:     25,  // was 24
-            lmp_base:              115,  // was 90
-            lmp_improving:          53,  // was 25
-            quiet_hist_prune_coeff: 4_372, // was 4000
-            see_pruning_coeff:      75,  // was 80
-            see_pruning_max:       801,  // was 800
-            singular_beta_mult:      4,  // was 2
-            lmp_count_base:          2,  // was 4
+            aspiration_delta:       31,  // was 25 → 29 → 31
+            futility_base:          86,  // was 70 → 82 → 86
+            futility_improving:     49,  // was 20 → 51 → 49
+            razoring_coeff:        191,  // was 150 → 194 → 191
+            nm_depth_coeff:         15,  // was 12 → 14 → 15
+            nm_improving_bonus:     25,  // was 24 (unchanged)
+            lmp_base:              115,  // was 90 (unchanged)
+            lmp_improving:          57,  // was 25 → 53 → 57
+            quiet_hist_prune_coeff: 4_419, // was 4000 → 4372 → 4419
+            see_pruning_coeff:      81,  // was 80 → 75 → 81
+            see_pruning_max:       811,  // was 800 → 801 → 811
+            singular_beta_mult:      4,  // was 2 (unchanged)
+            lmp_count_base:          2,  // was 4 (unchanged)
             // LMR adjustments — defaults reproduce original ±1-ply behavior exactly.
             lmr_tt_pv_adj:        1024,  // 1 ply (original: -1)
             lmr_exact_bound:         0,  // 0 = not in original code; SPSA finds value

@@ -90,6 +90,15 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 $tuner = Join-Path $wfRoot "tuner"
 New-Item -ItemType Directory -Force -Path $tuner | Out-Null
 
+# IMPORTANT: delete any leftover state.json from a previous run.
+# weather-factory always resumes from state.json if it exists, ignoring config.json.
+# This caused Group B to re-run instead of Group A starting fresh.
+$stateFile = Join-Path $tuner "state.json"
+if (Test-Path $stateFile) {
+    Remove-Item $stateFile -Force
+    Write-Host "Deleted old tuner\state.json (would resume previous group otherwise)."
+}
+
 $engineName = Split-Path $engine -Leaf
 Write-Host "Copying engine  → $tuner\$engineName"
 Copy-Item $engine  (Join-Path $tuner $engineName) -Force
