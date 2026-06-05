@@ -180,9 +180,12 @@ Update this as each step is completed.
 - [x] **SPRT group B confirmation** — **H1 accepted** after 19,458 games. nElo +6.17 ± 4.88, LOS 99.34%.
 - [x] Gate tunable options behind `--features tune` — commit `2fe6cc4`
 - [x] SPSA group A unblocked: 1024ths LMR port (default-equivalent, commit `d1f60be`).
-      6,478 games, score 50.98% — clearly safe, SPRT run aborted by unrelated OS restart.
-      Proceeding on evidence (no regression visible; slightly positive).
-- [ ] **SPSA group A** — run weather-factory with `config_lmr.json` and `--features tune` binary
+      6,478 games, score 50.98% — clearly safe, SPRT skipped (unrelated OS restart + no regression).
+- [x] Group B pass-2 re-tune (weather-factory resumed old state.json by mistake):
+      2552 iters / 81664 games from already-tuned start; small refinements baked in — commit `c121892`.
+      SPRT skipped: changes are tiny continuation of already-confirmed Group B values.
+- [x] `setup_spsa.ps1` bug fixed: now deletes `tuner/state.json` before each setup.
+- [ ] **SPSA group A** (LMR: LmrTtPvAdj, LmrExactBound, LmrShallowTt, LmrCutNode) — in progress
 - [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`)
 
 > Every SPSA group earns its own SPRT. The groups tune different behavior and
