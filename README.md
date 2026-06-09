@@ -242,11 +242,17 @@ Hiarcs Chess Explorer. Other UCI-compatible GUIs should also work.
 
 Current documented release: `2.1.0`.
 
-`2.1.0` is a hot-path optimization release. It reduces redundant move-flag
-decoding, tightens cached checker calculation, speeds common draw-detection
-early exits, removes redundant evaluation popcounts, and defers TT-capture SEE
-work until capture-history bookkeeping actually needs it. The built-in
-`bench 13` search fingerprint remains unchanged at `4,713,975` nodes.
+`2.1.0` is a Phase 1 search-tuning release. It keeps the safe hot-path cleanup
+from the codex-work baseline, adds repo-local fastchess/weather-factory tooling,
+and bakes in the SPRT-confirmed pruning/margin SPSA tune. The accepted tune
+changed futility, razoring, null-move, LMP, SEE, aspiration, and singular-beta
+defaults and passed self-play with `nElo +6.17 ± 4.88` after 19,458 games.
+The tuned `bench 13` search fingerprint is `5,318,762` nodes.
+
+The LMR weighted-term SPSA candidate was tested separately and rejected as
+inconclusive after large confirmation runs, so LMR values remain
+default-equivalent while the UCI-tunable infrastructure stays available behind
+`--features tune`.
 
 `2.0.2` is a tournament-stability patch. It fixes a rare quiescence-search
 panic where a deep tactical/check sequence could reach the final fixed
@@ -272,10 +278,13 @@ Release-preparation checks for `2.1.0`:
 
 ```bash
 cargo fmt --check
-cargo check --release
+cargo test --lib
+cargo test --test engine_coverage --test search_strength
+cargo test --release --test uci_process -- --test-threads=1
 cargo test --release
-cargo xtask build --arch avx2 --target x86_64-pc-windows-msvc
-cargo xtask build --arch avx2 --target x86_64-pc-windows-msvc --pgo
+cargo build --release --features tune
+cargo xtask build --arch pext --pgo
+cargo xtask build --arch avx2 --pgo
 ```
 
 The final Lynx-branded release was `1.4.3`. It was checked with internal

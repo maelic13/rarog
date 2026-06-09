@@ -16,6 +16,11 @@ Cargo.lock
 # Testing harness outputs
 tools/results/*
 !tools/results/.gitkeep
+tools/bin/*
+!tools/bin/.gitkeep
+tools/test_engines/*
+!tools/test_engines/.gitkeep
+tools/weather-factory/
 __pycache__/
 *.pyc
 

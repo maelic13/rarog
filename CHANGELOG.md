@@ -5,13 +5,33 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
-## [2.1.0] - 2026-06-02
+## [2.1.0] - 2026-06-09
 
-Release focused on engine hot-path cleanup and AVX2 PGO benchmark throughput
-while preserving the built-in bench fingerprint.
+Release focused on measured Phase 1 search-parameter tuning plus a
+repo-contained testing/tuning harness. The accepted strength change is the
+SPRT-confirmed pruning/margin tune; the LMR SPSA candidate was rejected as
+inconclusive and reverted to default-equivalent values.
+
+### Added
+
+- Added `SearchParams` for search constants and tune-mode UCI spin options
+  behind `--features tune`, allowing weather-factory SPSA to perturb search
+  parameters without exposing development options in production builds.
+- Added default-equivalent 1024ths-of-a-ply LMR adjustment parameters
+  (`LmrTtPvAdj`, `LmrExactBound`, `LmrShallowTt`, `LmrCutNode`) so future LMR
+  tuning can be done through UCI options without changing baseline behavior.
+- Added repo-local testing helpers under `tools/`, including fastchess SPRT,
+  pext-PGO test builds, SPSA setup, local tool setup, opening book storage,
+  test-engine storage, and weather-factory configs.
 
 ### Changed
 
+- Baked in the accepted Phase 1 pruning/margin SPSA tune:
+  `AspirationDelta=31`, `FutilityBase=86`, `FutilityImproving=49`,
+  `RazoringCoeff=191`, `NullMoveDepthCoeff=15`,
+  `NullMoveImprovingBonus=25`, `LmpBase=115`, `LmpImproving=57`,
+  `QuietHistPruneCoeff=4419`, `SeePruningCoeff=81`, `SeePruningMax=811`,
+  `SingularBetaMult=4`, and `LmpCountBase=2`.
 - Reduced repeated move-flag decoding in quiet/capture classification helpers.
 - Reworked cached checker calculation to compute only opponent checking pieces
   instead of building a generic all-attacker set and masking it afterward.
@@ -21,12 +41,29 @@ while preserving the built-in bench fingerprint.
   avoiding a redundant popcount pass over every piece bitboard.
 - Deferred SEE classification for TT captures until it is actually needed for
   post-search capture-history bookkeeping.
+- Made development/test helper paths repo-local (`tools/bin`, `tools/books`,
+  `tools/test_engines`, `tools/weather-factory`) instead of relying on
+  machine-global `D:\chess` helper paths.
 
 ### Verified
 
-- Rebuilt the Windows AVX2 PGO asset with `cargo xtask build --arch avx2 --pgo`.
-- Verified the built-in `bench 13` fingerprint remained `4,713,975` searched
-  nodes after the optimization pass.
+- Phase 1 Group B pruning/margin tune: SPSA ran 2271 iterations / 72672 games;
+  SPRT accepted H1 after 19458 games with `nElo +6.17 ± 4.88`, LOS `99.34%`.
+- Phase 1 Group A LMR tune: SPSA ran 3565 iterations / 114080 games; `[0,5]`
+  and `[0,3]` confirmation runs stayed inconclusive after ~54k and ~58k games,
+  so the candidate was rejected and the LMR values were reverted to
+  default-equivalent settings.
+- External Little Blitzer gauntlet in progress showed Rarog 2.1.0 ahead of
+  Rarog 2.0.2 by about +11.6 Elo after ~2065 games/player, supporting transfer
+  of the accepted Phase 1 tune.
+- Verified `cargo fmt --check`, `cargo test --lib`,
+  `cargo test --test engine_coverage --test search_strength`,
+  `cargo build --release --features tune`,
+  `cargo test --release --test uci_process -- --test-threads=1`, and the full
+  `cargo test --release` suite.
+- Rebuilt Windows `pext` and `avx2` PGO release assets. Both produced the
+  expected tuned `bench 13` fingerprint of `5,318,762` searched nodes and
+  responded correctly to `uci`; production builds expose no tune-only options.
 
 ## [2.0.2] - 2026-06-01
 

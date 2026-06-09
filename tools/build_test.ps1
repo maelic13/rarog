@@ -16,8 +16,8 @@
     support --features, and (b) SPSA accuracy does not depend on absolute NPS —
     both sides of each mini-match use the same binary.
 
-    Output always goes to D:\chess\engines\test_engines\ (separate from released
-    engines in D:\chess\engines\).
+    Output always goes to tools\test_engines\ (repo-local and separate from
+    released engines).
 
 .PARAMETER Suffix
     Short label for the output file.
@@ -28,7 +28,7 @@
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
 
 .PARAMETER TestEnginesDir
-    Destination directory.  Default: D:\chess\engines\test_engines
+    Destination directory.  Default: tools\test_engines
 
 .EXAMPLE
     # Normal SPRT binary
@@ -36,12 +36,12 @@
 
 .EXAMPLE
     # SPSA tuning binary (exposes UCI options)
-    ./tools/build_test.ps1 -Suffix phase1-lmr-tune -Tune
+    ./tools/build_test.ps1 -Suffix phase1-lmr -Tune
 #>
 param(
     [Parameter(Mandatory)][string]$Suffix,
     [switch]$Tune,
-    [string]$TestEnginesDir = "D:\chess\engines\test_engines"
+    [string]$TestEnginesDir = "$PSScriptRoot\test_engines"
 )
 
 $ErrorActionPreference = "Stop"

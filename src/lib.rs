@@ -1,11 +1,11 @@
 pub mod bench;
 pub mod board;
-pub mod params;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;
 pub mod infra;
 mod move_ordering;
+pub mod params;
 pub mod search;
 pub mod search_options;
 mod search_threads;

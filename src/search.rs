@@ -1008,7 +1008,9 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (self.params.futility_base + self.params.futility_improving * not_improving_i) * depth;
+            let futility_margin = (self.params.futility_base
+                + self.params.futility_improving * not_improving_i)
+                * depth;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;
             }
@@ -1017,7 +1019,10 @@ impl Searcher {
             }
             if allow_null
                 && depth >= 3
-                && eval_for_pruning >= beta - self.params.nm_depth_coeff * depth - self.params.nm_improving_bonus * improving_i
+                && eval_for_pruning
+                    >= beta
+                        - self.params.nm_depth_coeff * depth
+                        - self.params.nm_improving_bonus * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
@@ -1187,11 +1192,20 @@ impl Searcher {
 
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
-                    let prune_margin = (self.params.lmp_base + self.params.lmp_improving * not_improving_i) * depth;
+                    let prune_margin = (self.params.lmp_base
+                        + self.params.lmp_improving * not_improving_i)
+                        * depth;
                     let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth, improving, self.params.lmp_count_base))
+                        || (depth <= 8
+                            && searched
+                                > late_move_prune_count(
+                                    depth,
+                                    improving,
+                                    self.params.lmp_count_base,
+                                ))
                         || (depth <= 4 && quiet_hist < -10_000)
-                        || (depth <= 7 && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
+                        || (depth <= 7
+                            && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
                     if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
                         continue;
                     }
@@ -1200,7 +1214,8 @@ impl Searcher {
                         self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8).max(-self.params.see_pruning_max);
+                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
+                        .max(-self.params.see_pruning_max);
                     if depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, mv, &mut gives_check)

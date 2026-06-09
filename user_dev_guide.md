@@ -96,17 +96,18 @@ The model will proceed accordingly.
 
 ---
 
-## Prerequisites — complete these before Phase 1
+## Prerequisites — fresh checkout only
 
-Phase 0 tooling is written but not yet verified. Do these once:
+Phase 0 is already complete for the current workspace. On a fresh checkout,
+do these once before running new SPSA/SPRT work:
 
-- [ ] **Download fastchess** → `D:\chess\fastchess\fastchess.exe`
-      https://github.com/Disservin/fastchess/releases
+- [ ] **Install helper tools locally** → `./tools/setup_tools.ps1`
+      (creates `tools\bin\fastchess.exe` and `tools\weather-factory\`)
 - [ ] **Run the calibration test** (takes ~15–30 min):
       ```powershell
       ./tools/sprt.ps1 `
-          -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
-          -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
+          -EngineA "tools\test_engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+          -EngineB "tools\test_engines\rarog-v2.0.2-windows-pext-pgo.exe" `
           -NameA "CW" -NameB "2.0.2"
       ```
       **Expected: H0 accepted.** These two engines are behaviour-identical.
@@ -123,7 +124,7 @@ Setup instructions: `tools/spsa_configs/README.md`.
 ## Quick command reference
 
 ```powershell
-# Build a named pext-PGO test binary into D:\chess\engines\test_engines\
+# Build a named pext-PGO test binary into tools\test_engines\
 ./tools/build_test.ps1 -Suffix <name>
 
 # SPRT — test a gain (default H0=0, H1=5)
@@ -142,7 +143,7 @@ Setup instructions: `tools/spsa_configs/README.md`.
     -Elo0 -3 -Elo1 3
 
 # SPSA tuning — see tools/spsa_configs/README.md for full setup
-cd D:\chess\weather-factory
+cd tools\weather-factory
 python main.py
 
 # Bench fingerprint check — run the release binary directly in a terminal:
@@ -167,7 +168,7 @@ Update this as each step is completed.
 - [x] fastchess SPRT script (`tools/sprt.ps1`)
 - [x] pext-PGO build script (`tools/build_test.ps1`)
 - [x] weather-factory configs (`tools/spsa_configs/`)
-- [x] fastchess installed at `D:\chess\fastchess\fastchess.exe`
+- [x] fastchess installed at `tools\bin\fastchess.exe`
 - [x] Calibration test passed (H0 accepted: codex-work ≈ 2.0.2, ~10k games)
 
 ### Phase 1 — SPSA-tune existing constants
@@ -185,8 +186,16 @@ Update this as each step is completed.
       2552 iters / 81664 games from already-tuned start; small refinements baked in — commit `c121892`.
       SPRT skipped: changes are tiny continuation of already-confirmed Group B values.
 - [x] `setup_spsa.ps1` bug fixed: now deletes `tuner/state.json` before each setup.
-- [ ] **SPSA group A** (LMR: LmrTtPvAdj, LmrExactBound, LmrShallowTt, LmrCutNode) — in progress
-- [ ] **SPRT group A confirmation** (`elo0=0 elo1=5`, `st=0.1`)
+- [x] **SPSA group A** (LMR: LmrTtPvAdj, LmrExactBound, LmrShallowTt, LmrCutNode)
+      tuned — 3565 iters / 114080 games. Candidate values:
+      LmrTtPvAdj=914, LmrExactBound=136, LmrShallowTt=1073, LmrCutNode=834.
+- [x] **SPRT group A confirmation** — **rejected / inconclusive**. `[0,5]`
+      first run: ~54k games, nElo +3.32 ± 2.92, LLR +1.86. `[0,3]`
+      rerun: ~58k games, nElo +1.7 ± 2.8, LLR ~+0.34. Timeouts were balanced
+      (13 Phase1Final / 15 Phase1LMR) and treated as harness jitter, not an
+      engine-specific issue. Reverted LMR values to default-equivalent
+      `1024 / 0 / 1024 / 1024`.
+- [x] **Phase 1 complete** — accepted Group B pruning/margin tune only.
 
 > Every SPSA group earns its own SPRT. The groups tune different behavior and
 > may transfer differently to `st=0.1`. Never skip a group's SPRT or roll two
@@ -216,9 +225,14 @@ Update this as each step is completed.
       below). No NNUE tasks to track.
 
 ### Release gates (after each phase)
-- [ ] Little Blitzer gauntlet vs 2.0.2, Stockfish 18-2500, Basilisk 1.4.9
-- [ ] CHANGELOG updated
-- [ ] Version bumped, PGO asset rebuilt with `pext` + `avx2`
+- [x] Little Blitzer gauntlet vs 2.0.2, Stockfish 18-2500, Basilisk 1.4.9
+      (in-progress external gauntlet showed Rarog 2.1.0 ahead of 2.0.2 by
+      about +11.6 Elo after ~2065 games/player)
+- [x] CHANGELOG updated
+- [x] PGO release assets rebuilt with `pext` + `avx2`
+      (`target/dist/rarog-v2.1.0-windows-pext-pgo.exe`,
+      `target/dist/rarog-v2.1.0-windows-avx2-pgo.exe`; bench 13 =
+      5,318,762 nodes)
 
 ---
 

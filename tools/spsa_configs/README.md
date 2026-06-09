@@ -7,28 +7,32 @@ This folder holds ready-made weather-factory config files for Rarog.
 
 ## One-time setup
 
-1. **Download fastchess** to `D:\chess\fastchess\fastchess.exe`
-   — https://github.com/Disservin/fastchess/releases
-2. **Clone weather-factory:**
-   ```powershell
-   git clone https://github.com/jnlt3/weather-factory D:\chess\weather-factory
-   ```
-3. **Populate its `tuner\` folder** with:
-   - `fastchess.exe`  (copy from `D:\chess\fastchess\`)
-   - the Rarog test binary you are tuning, e.g.
-     `rarog-phase1-pext-pgo.exe` (build with `tools\build_test.ps1 -Suffix phase1`,
-     then copy from `D:\chess\engines\test_engines\`)
-   - the opening book `SuperGM_4mvs.pgn` (copy from `D:\chess\books\`)
+Run the repo-local setup helper if the tool folders are missing:
+
+```powershell
+./tools/setup_tools.ps1
+```
+
+This keeps helper tools inside the Rarog repo:
+
+| Tool | Repo-local path |
+|---|---|
+| fastchess | `tools\bin\fastchess.exe` |
+| weather-factory | `tools\weather-factory\` |
+| opening book | `tools\books\SuperGM_4mvs.pgn` |
+| test engines | `tools\test_engines\` |
+
+`tools\setup_spsa.ps1` populates `tools\weather-factory\tuner\` for each run.
 
 ## Per-run setup
 
-4. **Update `A` in `spsa.json`** to `planned_iterations / 10`.
+1. **Update `A` in `spsa.json`** to `planned_iterations / 10`.
    This is weather-factory's only required change per run.
    Example: planning 10 000 iterations → set `"A": 1000`.
    The other fields (`a`, `c`, `alpha`, `gamma`) should stay at their defaults.
 
-5. **Copy the three config files** for the group you are tuning into the
-   weather-factory root (next to `main.py`):
+2. **Run `setup_spsa.ps1`** for the group you are tuning. It writes the three
+   config files into the weather-factory root (next to `main.py`):
    - `cutechess.json`             (runner settings — same for every group)
    - `spsa.json`                  (SPSA hyper-params — updated per step 4)
    - `config_<group>.json` → rename to `config.json` (the parameter set)
@@ -36,7 +40,7 @@ This folder holds ready-made weather-factory config files for Rarog.
 ## Run
 
 ```powershell
-cd D:\chess\weather-factory
+cd tools\weather-factory
 python main.py        # progress + tuned values written to its own state files
 ```
 
@@ -73,14 +77,16 @@ the gradient becomes too noisy with many parameters at once.
 
 ### config_lmr.json — LMR weighted terms (in 1024ths)
 
-All defaults from `v2.1.0-claude:src/tune.rs`.
+Defaults are the default-equivalent 1024ths LMR values. The Phase 1 group A
+SPSA candidate (`914 / 136 / 1073 / 834`) was rejected after the `[0,3]` SPRT
+remained inconclusive at ~58k games (`nElo ~+1.7`, LLR ~0.34).
 
 | UCI option name  | Default | Range       | Step | Source in search.rs |
 |------------------|---------|-------------|------|---------------------|
-| `LmrTtPv`        | −463    | [−800, 0]   | 40   | LMR reduction for PV / TT-PV nodes |
-| `LmrExactBound`  | 1405    | [800, 2048] | 60   | Reduction when TT bound is Exact |
-| `LmrCutNode`     | 1810    | [1024, 3072]| 80   | Extra reduction at cut nodes |
-| `LmrShallowTt`   | 286     | [0, 512]    | 30   | Reduction when TT entry depth < depth−1 |
+| `LmrTtPvAdj`     | 1024    | [0, 2048]   | 80   | LMR reduction for PV / TT-PV nodes (stored positive; subtracted) |
+| `LmrExactBound`  | 0       | [0, 2048]   | 80   | Reduction when TT bound is Exact |
+| `LmrShallowTt`   | 1024    | [0, 2048]   | 80   | Reduction when TT entry depth < depth−1 |
+| `LmrCutNode`     | 1024    | [0, 2048]   | 80   | Extra reduction at cut nodes |
 
 ### config_pruning.json — Pruning / margin constants
 

@@ -159,7 +159,7 @@ to validate the harness.
 6. **Always use `pext --pgo` builds for testing.** Build test binaries with
    `cargo xtask build --arch pext --pgo`; the result lands in `target/dist/`.
    Use `tools/build_test.ps1` to build and copy to
-   `D:\chess\engines\test_engines\` (kept separate from released engines) with a
+   `tools\test_engines\` (kept separate from released engines) with a
    human-readable name. Never SPRT-test a `cargo build --release` binary — PGO
    changes the hot-path timing enough to affect measured NPS/Elo.
 7. **Test time controls mirror reality.** SPRT at fixed 100 ms/move (`st=0.1`
@@ -178,15 +178,15 @@ Nothing else proceeds until the SPRT harness reproduces the known null result.
 - **Match runner / SPRT: [fastchess](https://github.com/Disservin/fastchess).**
   Faster than cutechess-cli, no Qt dependency, built-in SPRT. **fastchess has no
   built-in SPSA** (a common misconception). Install a release binary to
-  `D:\chess\fastchess\fastchess.exe`. The cutechess **GUI** is still useful for
+  `tools\bin\fastchess.exe`. The cutechess **GUI** is still useful for
   eyeballing PGNs, but is not used to run matches.
 - **SPSA tuner: [weather-factory](https://github.com/jnlt3/weather-factory).**
   The community-standard external SPSA driver; it perturbs UCI options and runs
   fastchess mini-matches (`use_fastchess: true`). Configs live in
   `tools/spsa_configs/` (see its `README.md`).
 - **Test binaries: separate folder.** Build with `tools/build_test.ps1`, which
-  produces `pext --pgo` binaries into **`D:\chess\engines\test_engines\`**, kept
-  apart from released engines in `D:\chess\engines\`.
+  produces `pext --pgo` binaries into **`tools\test_engines\`**, kept
+  apart from release packaging outputs.
 
 ### Chosen settings (rationale)
 
@@ -208,15 +208,16 @@ Nothing else proceeds until the SPRT harness reproduces the known null result.
 
 ### Steps
 
-1. **Install fastchess** → `D:\chess\fastchess\fastchess.exe` (or add to PATH).
-2. **Clone weather-factory** and populate its `tuner\` folder — see
-   `tools/spsa_configs/README.md` for the exact setup.
+1. **Install helper tools locally** → `tools\setup_tools.ps1` creates
+   `tools\bin\fastchess.exe` and `tools\weather-factory\`.
+2. **Populate weather-factory's `tuner\` folder** with `tools\setup_spsa.ps1`
+   — see `tools/spsa_configs/README.md` for the exact setup.
 3. **Scripts are already written:** `tools/sprt.ps1` (fastchess SPRT, settings
    above) and `tools/build_test.ps1` (named `pext --pgo` builds into
    `test_engines`). The SPSA configs are in `tools/spsa_configs/`.
 4. **Calibration smoke-test (do this first):** run `tools/sprt.ps1` with the
-   released `codex-work` vs `2.0.2` binaries (both in `D:\chess\engines\`, not
-   `test_engines\` — these are the already-distributed reference builds). It
+   released `codex-work` vs `2.0.2` binaries copied into `tools\test_engines\`
+   (or pass explicit external paths if you keep released builds elsewhere). It
    **must** return accept-H0 / ~0 Elo — they are behavior-identical. If it
    returns H1, the harness is wrong; fix it before trusting anything else.
 
@@ -270,9 +271,12 @@ that already ship in `codex-work`. Lowest risk, highest confidence.
       If H1 accepted → keep and move to the next group.
       If H0 accepted → investigate (TC mismatch? bad ranges? rollback and move on).
 
-5. **After all groups pass their individual SPRTs**, the Phase 1 milestone is
-   complete. The combined tuned binary is the new integration head going into
-   Phase 2.
+5. **Close Phase 1 only with groups that pass their individual SPRTs.** If a
+   tuned group remains inconclusive after a large confirmation run, revert its
+   candidate defaults and document the rejection before moving on. For the
+   current Phase 1 result, Group B pruning/margins passed H1 and was kept;
+   Group A LMR stayed inconclusive after ~58k `[0,3]` SPRT games and was
+   reverted to default-equivalent values.
 
 > **Every SPSA run earns its own SPRT.** Each tuning group tunes different
 > search behavior, may transfer differently to deployment TC, and must be
@@ -410,19 +414,19 @@ git cherry-pick <step-commit>      # or re-implement the isolated diff
 echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 4,713,975 on baseline
 
 # Build a named pext-PGO test binary
-#   → D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe
+#   → tools\test_engines\rarog-feat-probcut-pext-pgo.exe
 ./tools/build_test.ps1 -Suffix feat-probcut
 
 # SPRT self-play — calibration smoke-test (expect accept-H0, ~0 Elo)
 ./tools/sprt.ps1 `
-    -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
-    -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
+    -EngineA "tools\test_engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+    -EngineB "tools\test_engines\rarog-v2.0.2-windows-pext-pgo.exe" `
     -NameA "CW" -NameB "2.0.2"
 
 # SPRT self-play — new feature vs integration head (tight bound for small feature)
 ./tools/sprt.ps1 `
-    -EngineA "D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe" `
-    -EngineB "D:\chess\engines\test_engines\rarog-head-pext-pgo.exe" `
+    -EngineA "tools\test_engines\rarog-feat-probcut-pext-pgo.exe" `
+    -EngineB "tools\test_engines\rarog-head-pext-pgo.exe" `
     -NameA "ProbCut" -NameB "Head" -Elo1 3
 
 # SPRT self-play — simplification / non-regression check
@@ -431,7 +435,7 @@ echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 4,713,975 on basel
 
 # SPSA tuning (requires Phase 1 UCI options + weather-factory setup)
 #   see tools/spsa_configs/README.md
-cd D:\chess\weather-factory; python main.py
+cd tools\weather-factory; python main.py
 ```
 
 ---

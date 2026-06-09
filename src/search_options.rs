@@ -139,20 +139,22 @@ impl SearchOptions {
         // so they don't pollute the option list shown to GUIs.
         #[cfg(feature = "tune")]
         opts.extend([
-            String::from("option name AspirationDelta type spin default 25 min 5 max 100"),
-            String::from("option name FutilityBase type spin default 70 min 20 max 200"),
-            String::from("option name FutilityImproving type spin default 20 min 0 max 80"),
-            String::from("option name RazoringCoeff type spin default 150 min 50 max 300"),
-            String::from("option name NullMoveDepthCoeff type spin default 12 min 2 max 40"),
-            String::from("option name NullMoveImprovingBonus type spin default 24 min 0 max 80"),
-            String::from("option name LmpBase type spin default 90 min 30 max 200"),
-            String::from("option name LmpImproving type spin default 25 min 0 max 80"),
-            String::from("option name QuietHistPruneCoeff type spin default 4000 min 1000 max 10000"),
-            String::from("option name SeePruningCoeff type spin default 80 min 20 max 200"),
-            String::from("option name SeePruningMax type spin default 800 min 200 max 1600"),
-            String::from("option name SingularBetaMult type spin default 2 min 1 max 8"),
-            String::from("option name LmpCountBase type spin default 4 min 1 max 12"),
-            // LMR weighted adjustments (1024ths of a ply; default 1024 = 1 ply = current behavior).
+            String::from("option name AspirationDelta type spin default 31 min 5 max 100"),
+            String::from("option name FutilityBase type spin default 86 min 20 max 200"),
+            String::from("option name FutilityImproving type spin default 49 min 0 max 80"),
+            String::from("option name RazoringCoeff type spin default 191 min 50 max 300"),
+            String::from("option name NullMoveDepthCoeff type spin default 15 min 2 max 40"),
+            String::from("option name NullMoveImprovingBonus type spin default 25 min 0 max 80"),
+            String::from("option name LmpBase type spin default 115 min 30 max 200"),
+            String::from("option name LmpImproving type spin default 57 min 0 max 80"),
+            String::from(
+                "option name QuietHistPruneCoeff type spin default 4419 min 1000 max 10000",
+            ),
+            String::from("option name SeePruningCoeff type spin default 81 min 20 max 200"),
+            String::from("option name SeePruningMax type spin default 811 min 200 max 1600"),
+            String::from("option name SingularBetaMult type spin default 4 min 1 max 8"),
+            String::from("option name LmpCountBase type spin default 2 min 1 max 12"),
+            // LMR weighted adjustments (1024ths of a ply; default-equivalent).
             String::from("option name LmrTtPvAdj type spin default 1024 min 0 max 2048"),
             String::from("option name LmrExactBound type spin default 0 min 0 max 2048"),
             String::from("option name LmrShallowTt type spin default 1024 min 0 max 2048"),

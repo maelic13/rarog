@@ -10,7 +10,7 @@
     Tooling:
       - fastchess (NOT cutechess-cli): faster, no Qt dependency, built-in SPRT.
         Download a release from https://github.com/Disservin/fastchess/releases
-        and place it at $FastchessPath (default D:\chess\fastchess\fastchess.exe),
+        and place it at $FastchessPath (default tools\bin\fastchess.exe),
         or pass -FastchessPath. The cutechess GUI is still handy for *viewing*
         the resulting PGNs, but is not used to run matches.
 
@@ -32,18 +32,18 @@
 
     CALIBRATION CHECK — run this FIRST, before testing any feature:
         ./tools/sprt.ps1 `
-            -EngineA "D:\chess\engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
-            -EngineB "D:\chess\engines\rarog-v2.0.2-windows-pext-pgo.exe" `
+            -EngineA "tools\test_engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
+            -EngineB "tools\test_engines\rarog-v2.0.2-windows-pext-pgo.exe" `
             -NameA "CW" -NameB "2.0.2"
         Expected: H0 accepted (these two are behavior-identical). If the harness
         returns H1 here, something is wrong — fix it before trusting any result.
 
 .PARAMETER EngineA
-    Path to the new/candidate engine (usually in D:\chess\engines\test_engines).
+    Path to the new/candidate engine (usually in tools\test_engines).
 
 .PARAMETER EngineB
     Path to the baseline engine (the current integration head, or a released
-    reference in D:\chess\engines).
+    reference copied into tools\test_engines).
 
 .PARAMETER NameA / NameB
     Display names. Defaults: "New" / "Base".
@@ -64,16 +64,21 @@
 .PARAMETER Concurrency
     Parallel games. Default 15 (physical cores - 1 on this machine).
 
+.PARAMETER TimeMargin
+    fastchess timeout margin in milliseconds. Default 20. This prevents small
+    Windows scheduler / process IO jitter at st=0.1 from being counted as a
+    time forfeit. It does not change the engine's fixed 100 ms/move budget.
+
 .PARAMETER Book
-    Opening book PGN. Default D:\chess\books\SuperGM_4mvs.pgn.
+    Opening book PGN. Default tools\books\SuperGM_4mvs.pgn.
 
 .PARAMETER FastchessPath
-    Path to fastchess.exe. Default D:\chess\fastchess\fastchess.exe (or found on PATH).
+    Path to fastchess.exe. Default tools\bin\fastchess.exe (or found on PATH).
 
 .EXAMPLE
     ./tools/sprt.ps1 `
-        -EngineA "D:\chess\engines\test_engines\rarog-feat-probcut-pext-pgo.exe" `
-        -EngineB "D:\chess\engines\test_engines\rarog-head-pext-pgo.exe" `
+        -EngineA "tools\test_engines\rarog-feat-probcut-pext-pgo.exe" `
+        -EngineB "tools\test_engines\rarog-head-pext-pgo.exe" `
         -NameA "ProbCut" -NameB "Head" -Elo1 3
 #>
 param(
@@ -88,8 +93,9 @@ param(
     [double]$Beta  = 0.05,
     [int]$Hash = 64,
     [int]$Concurrency = 15,
-    [string]$Book = "D:\chess\books\SuperGM_4mvs.pgn",
-    [string]$FastchessPath = "D:\chess\fastchess\fastchess.exe"
+    [int]$TimeMargin = 20,
+    [string]$Book = "$PSScriptRoot\books\SuperGM_4mvs.pgn",
+    [string]$FastchessPath = "$PSScriptRoot\bin\fastchess.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,7 +130,7 @@ Write-Host ""
 Write-Host "======================================================="
 Write-Host "  SPRT ($Mode): $NameA  vs  $NameB"
 Write-Host "  H0: elo<=$Elo0   H1: elo>=$Elo1   alpha=$Alpha  beta=$Beta  (nElo)"
-Write-Host "  TC: st=0.1 (100 ms/move)   Hash: ${Hash} MB   Conc: $Concurrency"
+Write-Host "  TC: st=0.1 (100 ms/move)   Margin: ${TimeMargin} ms   Hash: ${Hash} MB   Conc: $Concurrency"
 Write-Host "  Book: $(Split-Path $Book -Leaf)"
 Write-Host "  Runner: $fastchess"
 Write-Host "  PGN:  $pgnOut"
@@ -136,7 +142,7 @@ Write-Host ""
 & $fastchess `
     -engine "cmd=$EngineA" "name=$NameA" "option.Hash=$Hash" "option.Threads=1" `
     -engine "cmd=$EngineB" "name=$NameB" "option.Hash=$Hash" "option.Threads=1" `
-    -each st=0.1 `
+    -each st=0.1 "timemargin=$TimeMargin" `
     -openings "file=$Book" format=pgn order=random `
     -rounds 50000 -games 2 -repeat `
     -concurrency $Concurrency `

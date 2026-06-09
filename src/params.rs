@@ -4,8 +4,8 @@
 /// `search_options.rs`.
 ///
 /// Defaults are the Phase 1 SPSA-tuned values (weather-factory + fastchess,
-/// tc=1+0.01, SuperGM_4mvs, 2271 iterations / 72672 games).  The original
-/// hand-coded values are shown in comments for reference.
+/// tc=1+0.01, SuperGM_4mvs).  The original hand-coded values are shown in
+/// comments for reference.
 ///
 /// For re-tuning, copy the three weather-factory config files from
 /// `tools/spsa_configs/` into your weather-factory root and run `python
@@ -55,7 +55,6 @@ pub struct SearchParams {
     // Applied to the 1024x-scaled LMR_TABLE base; `>> 10` gives integer ply.
     // Defaults of 1024 reproduce the original ±1 ply behavior exactly, so
     // bench 13 is unchanged and SPSA tunes from a correct baseline.
-
     /// PV / TT-PV nodes: reduce less (stored positive; subtracted). Default = 1024 (1 ply).
     pub lmr_tt_pv_adj: i32,
     /// Exact TT bound: additional reduction. Default = 0 (not in original code; new term).
@@ -69,24 +68,26 @@ pub struct SearchParams {
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
-            aspiration_delta:       31,  // was 25 → 29 → 31
-            futility_base:          86,  // was 70 → 82 → 86
-            futility_improving:     49,  // was 20 → 51 → 49
-            razoring_coeff:        191,  // was 150 → 194 → 191
-            nm_depth_coeff:         15,  // was 12 → 14 → 15
-            nm_improving_bonus:     25,  // was 24 (unchanged)
-            lmp_base:              115,  // was 90 (unchanged)
-            lmp_improving:          57,  // was 25 → 53 → 57
+            aspiration_delta: 31,          // was 25 → 29 → 31
+            futility_base: 86,             // was 70 → 82 → 86
+            futility_improving: 49,        // was 20 → 51 → 49
+            razoring_coeff: 191,           // was 150 → 194 → 191
+            nm_depth_coeff: 15,            // was 12 → 14 → 15
+            nm_improving_bonus: 25,        // was 24 (unchanged)
+            lmp_base: 115,                 // was 90 (unchanged)
+            lmp_improving: 57,             // was 25 → 53 → 57
             quiet_hist_prune_coeff: 4_419, // was 4000 → 4372 → 4419
-            see_pruning_coeff:      81,  // was 80 → 75 → 81
-            see_pruning_max:       811,  // was 800 → 801 → 811
-            singular_beta_mult:      4,  // was 2 (unchanged)
-            lmp_count_base:          2,  // was 4 (unchanged)
+            see_pruning_coeff: 81,         // was 80 → 75 → 81
+            see_pruning_max: 811,          // was 800 → 801 → 811
+            singular_beta_mult: 4,         // was 2 (unchanged)
+            lmp_count_base: 2,             // was 4 (unchanged)
             // LMR adjustments — defaults reproduce original ±1-ply behavior exactly.
-            lmr_tt_pv_adj:        1024,  // 1 ply (original: -1)
-            lmr_exact_bound:         0,  // 0 = not in original code; SPSA finds value
-            lmr_shallow_tt:       1024,  // 1 ply (original: +1 when !tt_move && searched>=4)
-            lmr_cut_node:         1024,  // 1 ply (original: +1)
+            // Group A SPSA candidate (914 / 136 / 1073 / 834) was rejected:
+            // [0,3] SPRT stayed inconclusive after ~58k games (nElo ~+1.7).
+            lmr_tt_pv_adj: 1024,  // 1 ply (original: -1)
+            lmr_exact_bound: 0,   // 0 = not in original code
+            lmr_shallow_tt: 1024, // 1 ply (original: +1 when !tt_move && searched>=4)
+            lmr_cut_node: 1024,   // 1 ply (original: +1)
         }
     }
 }
