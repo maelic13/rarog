@@ -72,7 +72,7 @@ SPSA optimizes a noisy objective and **over-fits**. The tuned values are only a
 
 ## Parameter groups (tune one group at a time)
 
-Tune **one config file per run**. Do not combine both groups into one run —
+Tune **one config file per run**. Do not combine groups into one run —
 the gradient becomes too noisy with many parameters at once.
 
 ### config_lmr.json — LMR weighted terms (in 1024ths)
@@ -111,3 +111,14 @@ All defaults from `src/search.rs`.
 Each parameter name **must** match a UCI `spin` option exposed in
 `src/search_options.rs` (Phase 1 work). Until those options exist, weather-factory
 has nothing to set — wire up the UCI options first.
+
+### config_probcut.json — Phase 2 ProbCut margins
+
+Defaults are the `v2.1.0-codex` ProbCut seed values ported onto the Phase 1
+integration branch. Tune these before treating the feature as accepted.
+
+| UCI option name | Default | Range | Step | Source in search.rs |
+|-----------------|---------|-------|------|---------------------|
+| `ProbCutBaseMargin` | 188 | [120, 260] | 12 | `probcut_margin`: base margin added to beta |
+| `ProbCutDepthMargin` | 4 | [0, 16] | 2 | `probcut_margin`: margin per remaining depth |
+| `ProbCutImprovingBonus` | 28 | [0, 80] | 8 | `probcut_margin`: subtracted when improving |

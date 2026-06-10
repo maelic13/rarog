@@ -154,6 +154,9 @@ impl SearchOptions {
             String::from("option name SeePruningMax type spin default 811 min 200 max 1600"),
             String::from("option name SingularBetaMult type spin default 4 min 1 max 8"),
             String::from("option name LmpCountBase type spin default 2 min 1 max 12"),
+            String::from("option name ProbCutBaseMargin type spin default 188 min 120 max 260"),
+            String::from("option name ProbCutDepthMargin type spin default 4 min 0 max 16"),
+            String::from("option name ProbCutImprovingBonus type spin default 28 min 0 max 80"),
             // LMR weighted adjustments (1024ths of a ply; default-equivalent).
             String::from("option name LmrTtPvAdj type spin default 1024 min 0 max 2048"),
             String::from("option name LmrExactBound type spin default 0 min 0 max 2048"),
@@ -477,6 +480,27 @@ impl SearchOptions {
             "lmpcountbase" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmp_count_base = v.clamp(1, 12);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "probcutbasemargin" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.probcut_base_margin = v.clamp(120, 260);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "probcutdepthmargin" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.probcut_depth_margin = v.clamp(0, 16);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "probcutimprovingbonus" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.probcut_improving_bonus = v.clamp(0, 80);
                 }
                 true
             }

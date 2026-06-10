@@ -16,12 +16,13 @@
       - Run ./tools/setup_tools.ps1 once if tools\bin\fastchess.exe or
         tools\weather-factory\main.py is missing.
       - Build the tune binary you want to use:
-        ./tools/build_test.ps1 -Suffix phase1-lmr -Tune
+        ./tools/build_test.ps1 -Suffix phase2-probcut -Tune
 
 .PARAMETER ConfigGroup
     Which parameter group to tune.
     "pruning" - pruning / margin constants.
     "lmr"     - LMR weighted adjustments.
+    "probcut" - Phase 2 ProbCut margins.
 
 .PARAMETER Iterations
     Planned total iterations (used to set A = Iterations / 10 in spsa.json).
@@ -29,7 +30,8 @@
 
 .PARAMETER EngineSuffix
     Suffix of the binary in tools\test_engines.
-    If omitted, defaults to phase1-lmr for LMR and phase1-pruning for pruning.
+    If omitted, defaults to phase1-lmr for LMR, phase1-pruning for pruning,
+    and phase2-probcut for ProbCut.
     Examples:
       phase1-lmr       -> tools\test_engines\rarog-phase1-lmr-tune.exe
       phase1-lmr-tune  -> tools\test_engines\rarog-phase1-lmr-tune.exe
@@ -40,11 +42,11 @@
     SPSA run. By default, old state/games/graphs are archived before a new run.
 
 .EXAMPLE
-    ./tools/build_test.ps1 -Suffix phase1-lmr -Tune
-    ./tools/setup_spsa.ps1 -ConfigGroup lmr -EngineSuffix phase1-lmr
+    ./tools/build_test.ps1 -Suffix phase2-probcut -Tune
+    ./tools/setup_spsa.ps1 -ConfigGroup probcut -EngineSuffix phase2-probcut
 #>
 param(
-    [ValidateSet("pruning","lmr")][string]$ConfigGroup = "lmr",
+    [ValidateSet("pruning","lmr","probcut")][string]$ConfigGroup = "lmr",
     [int]$Iterations = 5000,
     [string]$EngineSuffix = "",
     [switch]$Resume
@@ -59,7 +61,11 @@ $fastchess = Join-Path $PSScriptRoot "bin\fastchess.exe"
 $book      = Join-Path $PSScriptRoot "books\SuperGM_4mvs.pgn"
 
 if ($EngineSuffix -eq "") {
-    $EngineSuffix = if ($ConfigGroup -eq "lmr") { "phase1-lmr" } else { "phase1-pruning" }
+    $EngineSuffix = switch ($ConfigGroup) {
+        "lmr" { "phase1-lmr" }
+        "pruning" { "phase1-pruning" }
+        "probcut" { "phase2-probcut" }
+    }
 }
 
 if ($EngineSuffix.EndsWith(".exe")) {

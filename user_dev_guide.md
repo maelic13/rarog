@@ -89,7 +89,7 @@ These are moments where the choice is genuinely yours:
 | **SPSA converges to an outlier** (e.g. a constant at its range boundary) | Accept the outlier, widen the range and re-run, or discard? | Widen and re-run if it looks plausible; discard if it feels wrong |
 | **Feature touches risky code** (tt.rs, zobrist.rs) | Proceed with caution or skip this feature? | Your call based on appetite |
 | **End of a phase** | Run the Little Blitzer gauntlet before moving on? | Yes, always recommended |
-| **Phase 2 time-management feature** | Port it (only useful with real clocks, not our fixed-TC testing) or skip? | Plan recommends skip unless you switch to tc-based testing |
+| **Time forfeits after the TM rewrite (2.2)** | Enable the overhead safety valve, or investigate the specific GUI? | Enable the valve (`min(MoveOverhead, movetime/10)`), re-test |
 
 When you hit one of these, just answer the question in plain English.
 The model will proceed accordingly.
@@ -101,9 +101,9 @@ The model will proceed accordingly.
 Phase 0 is already complete for the current workspace. On a fresh checkout,
 do these once before running new SPSA/SPRT work:
 
-- [ ] **Install helper tools locally** → `./tools/setup_tools.ps1`
+- [x] **Install helper tools locally** → `./tools/setup_tools.ps1`
       (creates `tools\bin\fastchess.exe` and `tools\weather-factory\`)
-- [ ] **Run the calibration test** (takes ~15–30 min):
+- [x] **Run the calibration test** (takes ~15–30 min):
       ```powershell
       ./tools/sprt.ps1 `
           -EngineA "tools\test_engines\rarog-v2.1.0-windows-pext-pgo-codex-work.exe" `
@@ -113,7 +113,7 @@ do these once before running new SPSA/SPRT work:
       **Expected: H0 accepted.** These two engines are behaviour-identical.
       If it returns H1, stop and report — the harness needs investigation
       before any further results can be trusted.
-- [ ] **Report the calibration result** to the model and say "Phase 0 complete,
+- [x] **Report the calibration result** to the model and say "Phase 0 complete,
       implement next step."
 
 Weather-factory (for SPSA) is only needed from Phase 1 step 4 onward.
@@ -201,27 +201,86 @@ Update this as each step is completed.
 > may transfer differently to `st=0.1`. Never skip a group's SPRT or roll two
 > groups into one confirmation test.
 
-### Phase 2 — Port search features
+### Phase 2 — Repairs & proven tuning
+(re-scoped 2026-06-10 after the cross-engine measurements — see PLAN.md §5.0
+finding 10; item numbers = PLAN.md §5 sub-sections. Codex ports and the speed
+pass moved to Phase 4: eval fitting comes first.)
 - [~] `improvements` branch: check-aware ordering — **H0 discarded** (~11k games, LLR flat −0.5 to −0.8; use `[-3,3]` bounds for small features next time)
-- [ ] ProbCut
-- [ ] Extended correction history
-- [ ] Multi-cut / singular refinements
-- [ ] TT-cutoff / fail-low-parent history
-- [ ] (Optional) Time management
+- [~] 2.1 ProbCut — ported from `v2.1.0-codex`; bench 13 = **4,632,725**;
+      SPSA tune `config_probcut.json`, then SPRT vs Phase 1
+- [ ] 2.2 Stockfish-style time management rewrite (full movetime budget as a
+      pure hard limit; optimum/maximum split for clock play; SF soft-stop
+      factors; stopOnPonderhit). Bench unchanged. Two SPRTs: `[0,5]` at
+      st=0.1 + clock-mode non-regression `[-5,0]` at tc=10+0.1. Watch for
+      time forfeits (must be zero).
+- [ ] 2.3 History maintenance per SF/Reckless: delete per-search halving,
+      persist across searches, reset only `low_ply_history` per search.
+      Bench changes; SPRT `[0,3]`. Fallback if H0: keep halving but only
+      every 2nd search.
+- [ ] 2.4 LMR formula coefficients exposed (`LmrTableBase`=768,
+      `LmrTableDiv`=2304, `LmrHistDiv`=8192) + SPSA group A **redo** with all
+      7 LMR params + SPRT. (Basilisk's identical re-tune passed +15.6 Elo;
+      Rarog's first attempt lacked exactly these three knobs.)
+- [ ] 2.5 Per-move quiet futility pruning, depth ≤ 8 (seed `FpBase=180`,
+      `FpCoeff=128`) + SPSA + SPRT.
+- [ ] 2.6 LMR do-deeper/do-shallower re-search (seeds 64 / 8, deeper margin
+      includes `+2*reduction`) + SPSA + SPRT.
+- Extended correction history — **removed: already in baseline** (verified
+  against `master`; porting it would be a no-op)
+- Codex time management — **superseded** by 2.2 (SF-style rewrite)
 
-### Phase 3 — Port eval terms
-- [ ] `EvalParams` struct + `tune.rs` ported (all new terms disabled)
-- [ ] Texel dataset built from Results.pgn / Results2.pgn
-- [ ] Mobility tuned + SPRT confirmed
-- [ ] King safety tuned + SPRT confirmed
-- [ ] Passed pawns tuned + SPRT confirmed
-- [ ] Bishop pair / rook terms / knight outposts tuned + SPRT confirmed
-- [ ] Pawn threats / tempo tuned + SPRT confirmed
-- [ ] Global Texel re-pass + final SPRT
+### Phase 3 — Texel-tune the eval (gradient-trace pipeline)
+(linear-trace gradient tuner with Adam, NOT coordinate descent — full
+self-contained specs including the loss function, trace design, and dataset
+recipe are in PLAN.md §6.)
+- [ ] 3.0 `EvalParams` struct + param registry over the **existing** eval
+      weights (bench-identical; release bench wall-time within ~3%)
+- [ ] 3.1 Loader (`RAROG_EVAL_FILE`) + `dumpeval` round-trip
+      (`--features tune` only)
+- [ ] 3.2 Trace instrumentation (`texel` feature; bypass BOTH eval caches) +
+      tuner binary (K-fit, Adam, group masks, L2-to-PeSTO for PSTs;
+      acceptance: reconstruction == evaluate() exactly on 10k positions)
+- [ ] 3.3 Dataset: node-limited self-play datagen (~60k games, nodes=8000)
+      + extraction filters + holdout by game; ≥1.5M train positions
+- [ ] 3.4a Material tuned + SPRT (pipeline proof — debug, don't proceed, if
+      it fails)
+- [ ] 3.4b Scalars (non-KS, non-PST) tuned + SPRT
+- [ ] 3.4c King safety block tuned + SPRT
+- [ ] 3.4d PSTs + material refit (L2 toward PeSTO) + SPRT
+- [ ] 3.4e Global polish + SPRT (stop here regardless)
+- [ ] 3.5 New eval terms ported one at a time (claude-branch terms, then the
+      structural upgrades in PLAN.md §6: attack maps, threats package, king
+      safety v2, per-count mobility), each trace-instrumented + retuned + SPRT
+- [ ] 3.6 External gauntlet + CHANGELOG + PGO assets
+
+### Phase 4 — Search-efficiency wave (EBF gap) + consolidation
+(track EBF with the protocol in PLAN.md §7: three fixed positions,
+`go movetime 1000`, EBF ≈ nodes^(1/depth), averaged; re-measure after each
+accepted item; target ~2.2 → ~1.9. Trend metric only — SPRT decides.)
+- [ ] Second SPSA wave over all search constants (pruning, LMR, Phase-2
+      additions) at the post-Phase-3 head — eval scale changed, margins must
+      re-fit; SPRT each group
+- [ ] Search-wave items (PLAN.md §7 step 2): history bonus/malus formula
+      (seeds 170/90/1700, 180/100/1500); qsearch TT-bound stand-pat;
+      LMR tt-move-is-capture; qsearch quiet checks (cap 4–6, SEE ≥ 0);
+      double-extension cap (default 8, non-regression gate); razoring
+      depth ≤ 1 experiment
+- [ ] Codex ports (moved from Phase 2): multi-cut / singular refinements;
+      threat-aware history (prefer Reckless's threat-indexed shape if the
+      codex port fails); TT-cutoff / fail-low-parent history;
+      (optional) `tt.rs` overhaul
+- [ ] Speed pass: profile first, then apply the micro-opt list in PLAN.md §7
+      step 4; bench-identity gate per change, target ≥2.9 M NPS
+- [ ] Reckless-derived menu (PLAN.md §7 step 5): aspiration-window
+      modernization; correction-magnitude-aware margins; hindsight
+      reductions; cutoff-count LMR term; bad-noisy futility; qsearch SEE
+      threshold from `(alpha − eval)`
+- [ ] External gauntlet + release; extend opponent ladder (SF capped 2800+)
+      as milestones fall
 
 ### NNUE readiness (NOT a scheduled phase — guardrails only)
 - [ ] Not planned, not scheduled. The only action is to keep the eval boundary
-      clean *throughout Phases 1–3* (PLAN.md §10 + the eval-boundary ground rule
+      clean *throughout Phases 1–4* (PLAN.md §11 + the eval-boundary ground rule
       below). No NNUE tasks to track.
 
 ### Release gates (after each phase)
@@ -301,5 +360,5 @@ binaries don't pollute the UCI option list shown to GUIs.
   margins depend on eval internals. This costs nothing now (it is just clean
   design) and makes a future HCE→NNUE switch a localized replacement rather than
   a surgical rewrite. If the model proposes code that crosses this boundary,
-  reject it. Full guardrails in PLAN.md §10 — note NNUE is **not scheduled**;
+  reject it. Full guardrails in PLAN.md §11 — note NNUE is **not scheduled**;
   this is the only thing to keep in mind for it during normal HCE work.
