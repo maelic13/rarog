@@ -12,6 +12,7 @@ Cargo.lock
 
 # Other
 .idea/
+.DS_Store
 
 # Testing harness outputs
 tools/results/*
