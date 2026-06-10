@@ -1,4 +1,5 @@
 use crate::board::{Board, Move};
+use crate::params::SearchParams;
 
 pub const MAX_THREADS: usize = 1024;
 
@@ -29,6 +30,7 @@ pub struct EngineOptions {
     pub ponder: bool,
     pub threads: usize,
     pub syzygy: SyzygyOptions,
+    pub search_params: SearchParams,
 }
 
 impl Default for EngineOptions {
@@ -40,6 +42,7 @@ impl Default for EngineOptions {
             ponder: false,
             threads: 1,
             syzygy: SyzygyOptions::default(),
+            search_params: SearchParams::default(),
         }
     }
 }
@@ -118,7 +121,9 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
-        Vec::from([
+        // `mut` is needed when compiled with --features tune (the extend below).
+        #[allow(unused_mut)]
+        let mut opts = vec![
             String::from("option name Hash type spin default 64 min 1 max 33554432"),
             String::from("option name Clear Hash type button"),
             String::from("option name Ponder type check default false"),
@@ -128,7 +133,41 @@ impl SearchOptions {
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
             String::from("option name Syzygy50MoveRule type check default true"),
-        ])
+        ];
+        // Tunable search parameters — only exposed when compiled with --features tune.
+        // weather-factory sets these via UCI setoption; production builds omit them
+        // so they don't pollute the option list shown to GUIs.
+        #[cfg(feature = "tune")]
+        opts.extend([
+            String::from("option name AspirationDelta type spin default 31 min 5 max 100"),
+            String::from("option name FutilityBase type spin default 86 min 20 max 200"),
+            String::from("option name FutilityNotImproving type spin default 49 min 0 max 80"),
+            String::from("option name RazoringCoeff type spin default 191 min 50 max 300"),
+            String::from("option name NullMoveDepthCoeff type spin default 15 min 2 max 40"),
+            String::from("option name NullMoveImprovingBonus type spin default 25 min 0 max 80"),
+            String::from("option name LmpBase type spin default 115 min 30 max 200"),
+            String::from("option name LmpNotImproving type spin default 57 min 0 max 80"),
+            String::from(
+                "option name QuietHistPruneCoeff type spin default 4419 min 1000 max 10000",
+            ),
+            String::from("option name SeePruningCoeff type spin default 81 min 20 max 200"),
+            String::from("option name SeePruningMax type spin default 811 min 200 max 1600"),
+            String::from("option name SingularBetaMult type spin default 4 min 1 max 8"),
+            String::from("option name LmpCountBase type spin default 2 min 1 max 12"),
+            // LMR weighted adjustments (1024ths of a ply).
+            String::from("option name LmrTtPvAdj type spin default 887 min 0 max 2048"),
+            String::from("option name LmrExactBound type spin default 109 min 0 max 2048"),
+            String::from("option name LmrShallowTt type spin default 656 min 0 max 2048"),
+            String::from("option name LmrCutNode type spin default 780 min 0 max 2048"),
+            // LMR table formula coefficients (1024ths).
+            String::from("option name LmrTableBase type spin default 646 min 512 max 1024"),
+            String::from("option name LmrTableDiv type spin default 2335 min 1536 max 3072"),
+            String::from("option name LmrHistDiv type spin default 8395 min 4096 max 16384"),
+            // Per-move quiet futility pruning (Phase 2.7).
+            String::from("option name FpBase type spin default 184 min 0 max 400"),
+            String::from("option name FpCoeff type spin default 117 min 0 max 300"),
+        ]);
+        opts
     }
 
     pub fn reset(&mut self) {
@@ -356,6 +395,161 @@ impl SearchOptions {
                     true
                 }
             },
+            // Tunable search parameters — only active when compiled with --features tune.
+            #[cfg(feature = "tune")]
+            "aspirationdelta" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.aspiration_delta = v.clamp(5, 100);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "futilitybase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.futility_base = v.clamp(20, 200);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "futilitynotimproving" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.futility_not_improving = v.clamp(0, 80);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "razoringcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.razoring_coeff = v.clamp(50, 300);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "nullmovedepthcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.nm_depth_coeff = v.clamp(2, 40);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "nullmoveimprovingbonus" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.nm_improving_bonus = v.clamp(0, 80);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmpbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_base = v.clamp(30, 200);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmpnotimproving" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_not_improving = v.clamp(0, 80);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "quiethistprunecoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.quiet_hist_prune_coeff = v.clamp(1_000, 10_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "seepruningcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.see_pruning_coeff = v.clamp(20, 200);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "seepruningmax" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.see_pruning_max = v.clamp(200, 1_600);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "singularbetamult" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.singular_beta_mult = v.clamp(1, 8);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmpcountbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmp_count_base = v.clamp(1, 12);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrttpvadj" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_tt_pv_adj = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrexactbound" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_exact_bound = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrshallowtt" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_shallow_tt = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrcutnode" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_cut_node = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrtablebase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_table_base = v.clamp(512, 1_024);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrtablediv" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_table_div = v.clamp(1_536, 3_072);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrhistdiv" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_hist_div = v.clamp(4_096, 16_384);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "fpbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.fp_base = v.clamp(0, 400);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "fpcoeff" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.fp_coeff = v.clamp(0, 300);
+                }
+                true
+            }
             _ => {
                 println!("No such option: {option_name_raw}");
                 false

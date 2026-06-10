@@ -64,7 +64,7 @@ impl ScoredMoveList {
 #[derive(Copy, Clone)]
 pub(crate) struct BadCapture {
     pub attacker: Piece,
-    pub to: usize,
+    pub to: u8,
     pub captured: Option<Piece>,
 }
 
@@ -83,7 +83,7 @@ impl BadCaptureList {
     }
 
     #[inline(always)]
-    pub fn push(&mut self, attacker: Piece, to: usize, captured: Option<Piece>) {
+    pub fn push(&mut self, attacker: Piece, to: u8, captured: Option<Piece>) {
         debug_assert!(self.len < self.items.len());
         self.items[self.len].write(BadCapture {
             attacker,
@@ -145,4 +145,22 @@ pub(crate) fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usiz
 fn uninit_array<T, const N: usize>() -> [MaybeUninit<T>; N] {
     // An array of `MaybeUninit<T>` is valid without initializing its elements.
     unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bad_capture_struct_stays_shrunk() {
+        // Phase 2.9.3: `to: usize` (8 bytes) padded BadCapture to 16 bytes;
+        // `to: u8` (a 0-63 square fits easily) drops it to ~3-4 bytes. Guard
+        // against this creeping back up, since each BadCaptureList is [_; 256]
+        // and two are allocated per negamax frame.
+        assert!(
+            std::mem::size_of::<BadCapture>() <= 4,
+            "size_of::<BadCapture>() = {}",
+            std::mem::size_of::<BadCapture>()
+        );
+    }
 }

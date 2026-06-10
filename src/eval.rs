@@ -77,6 +77,149 @@ const EG_KING_PST: [i32; 64] = [
     16, 7, -9, -27, -11, 4, 13, 14, 4, -5, -17, -53, -34, -21, -11, -28, -14, -24, -43,
 ];
 
+/// Flatten the six per-piece PST consts into one `[i32; 384]` array in
+/// `Piece::ALL` order (Pawn,Knight,Bishop,Rook,Queen,King), white POV — the
+/// uniform `[i32; N]` shape every `EvalParams` field uses (Phase 3.1).
+fn build_default_pst(mg: bool) -> [i32; 384] {
+    let tables: [&[i32; 64]; 6] = if mg {
+        [
+            &MG_PAWN_PST,
+            &MG_KNIGHT_PST,
+            &MG_BISHOP_PST,
+            &MG_ROOK_PST,
+            &MG_QUEEN_PST,
+            &MG_KING_PST,
+        ]
+    } else {
+        [
+            &EG_PAWN_PST,
+            &EG_KNIGHT_PST,
+            &EG_BISHOP_PST,
+            &EG_ROOK_PST,
+            &EG_QUEEN_PST,
+            &EG_KING_PST,
+        ]
+    };
+    let mut out = [0i32; 384];
+    for (piece, table) in tables.iter().enumerate() {
+        out[piece * 64..piece * 64 + 64].copy_from_slice(table.as_slice());
+    }
+    out
+}
+
+/// Every tunable eval weight, hoisted out of inline literals (Phase 3.1).
+/// Uniform `[i32; N]` shape (scalars as `[i32; 1]`) so the Phase 3.2/3.3
+/// tune-time loader and Texel tuner can address every field by
+/// `(name, index)` through `EVAL_PARAM_NAMES`/`get`/`set` below. This step is
+/// a default-equivalence refactor only: every default here reproduces the
+/// constant it replaces exactly, so `bench 13` is unchanged.
+macro_rules! eval_params {
+    ( $( $field:ident : $len:literal = $default:expr; )* ) => {
+        #[derive(Clone)]
+        pub struct EvalParams {
+            $( pub $field: [i32; $len], )*
+        }
+
+        impl Default for EvalParams {
+            fn default() -> Self {
+                Self {
+                    $( $field: $default, )*
+                }
+            }
+        }
+
+        /// (name, length) for every field — addresses the Phase 3.2/3.3
+        /// tune-time loader/dumper and Texel tuner (not wired up yet).
+        #[allow(dead_code)]
+        pub const EVAL_PARAM_NAMES: &[(&str, usize)] = &[
+            $( (stringify!($field), $len), )*
+        ];
+
+        impl EvalParams {
+            #[allow(dead_code)]
+            pub fn get(&self, name: &str, idx: usize) -> i32 {
+                match name {
+                    $( stringify!($field) => self.$field[idx], )*
+                    _ => panic!("unknown eval param: {name}"),
+                }
+            }
+
+            #[allow(dead_code)]
+            pub fn set(&mut self, name: &str, idx: usize, value: i32) {
+                match name {
+                    $( stringify!($field) => self.$field[idx] = value, )*
+                    _ => panic!("unknown eval param: {name}"),
+                }
+            }
+        }
+    };
+}
+
+eval_params! {
+    mg_val: 6 = MG_VAL;
+    eg_val: 6 = EG_VAL;
+    pst_mg: 384 = build_default_pst(true);
+    pst_eg: 384 = build_default_pst(false);
+    passed_mg: 8 = [0, 5, 10, 20, 35, 60, 100, 0];
+    passed_eg: 8 = [0, 10, 17, 35, 62, 100, 170, 0];
+    passed_supported_mg: 1 = [8];
+    passed_supported_eg_base: 1 = [6];
+    passed_supported_eg_per_rank: 1 = [4];
+    passed_freestop_mg_per_rank: 1 = [2];
+    passed_freestop_eg_per_rank: 1 = [6];
+    passed_safestop_eg_per_rank: 1 = [8];
+    passed_candidate_mg: 1 = [6];
+    passed_candidate_eg: 1 = [10];
+    pawn_doubled_mg: 1 = [10];
+    pawn_doubled_eg: 1 = [20];
+    pawn_isolated_mg: 1 = [15];
+    pawn_isolated_eg: 1 = [20];
+    pawn_connected_mg: 1 = [7];
+    pawn_connected_eg: 1 = [5];
+    pawn_backward_mg: 1 = [10];
+    pawn_backward_eg: 1 = [15];
+    bishop_pair_mg: 1 = [30];
+    bishop_pair_eg: 1 = [50];
+    rook_open_mg: 1 = [25];
+    rook_open_eg: 1 = [10];
+    rook_semiopen_mg: 1 = [12];
+    rook_semiopen_eg: 1 = [8];
+    rook_7th_mg: 1 = [20];
+    rook_7th_eg: 1 = [40];
+    rook_behind_passer_mg: 1 = [15];
+    rook_behind_passer_eg: 1 = [25];
+    enemy_rook_behind_passer_mg: 1 = [10];
+    enemy_rook_behind_passer_eg: 1 = [20];
+    knight_outpost_mg: 1 = [25];
+    knight_outpost_eg: 1 = [15];
+    mob_mg: 4 = [4, 5, 2, 1];
+    mob_eg: 4 = [4, 5, 4, 2];
+    threat_minor_mg: 1 = [18];
+    threat_minor_eg: 1 = [12];
+    threat_rook_mg: 1 = [28];
+    threat_rook_eg: 1 = [18];
+    threat_queen_mg: 1 = [45];
+    threat_queen_eg: 1 = [30];
+    king_safety_unit_minor: 1 = [2];
+    king_safety_unit_rook: 1 = [3];
+    king_safety_unit_queen: 1 = [5];
+    king_safety_table: 16 = [0, 0, 10, 25, 40, 60, 80, 95, 105, 110, 112, 114, 115, 116, 117, 118];
+    shelter_missing_file_mg: 1 = [20];
+    shelter_missing_adjacent_mg: 1 = [10];
+    shelter_dist1_mg: 1 = [15];
+    shelter_dist2_mg: 1 = [7];
+    storm_file_weight: 1 = [7];
+    storm_adjacent_weight: 1 = [4];
+    hanging_minor: 1 = [45];
+    hanging_rook: 1 = [60];
+    hanging_queen: 1 = [80];
+    passer_proximity_base: 1 = [2];
+    space_weight: 1 = [2];
+    tempo: 1 = [10];
+    trapped_bishop_mg: 1 = [60];
+    trapped_bishop_eg: 1 = [40];
+}
+
 const FILE_BBS: [Bitboard; 8] = [
     Bitboard::FILE_A,
     Bitboard::FILE_B,
@@ -90,8 +233,6 @@ const FILE_BBS: [Bitboard; 8] = [
 const ADJACENT_FILES: [Bitboard; 8] = init_adjacent_files();
 const FORWARD_RANKS: [[Bitboard; 8]; 2] = init_forward_ranks();
 const PASSED_PAWN_MASKS: [[Bitboard; 64]; 2] = init_passed_pawn_masks();
-const MG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(true);
-const EG_TABLE: [[[i32; 64]; 6]; 2] = init_eval_table(false);
 const SQUARE_FILE: [usize; 64] = init_square_file();
 const SQUARE_RANK: [usize; 64] = init_square_rank();
 const RELATIVE_RANKS: [[u8; 64]; 2] = init_relative_ranks();
@@ -227,47 +368,32 @@ const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
     table
 }
 
-const fn init_eval_table(mg: bool) -> [[[i32; 64]; 6]; 2] {
-    let mut table = [[[0i32; 64]; 6]; 2];
-    let mut piece = 0usize;
-    while piece < 6 {
-        let mut sq = 0usize;
-        while sq < 64 {
-            table[Color::White as usize][piece][sq] =
-                piece_base(piece, mg) + pst_value(piece, sq, mg);
-            table[Color::Black as usize][piece][sq] =
-                piece_base(piece, mg) + pst_value(piece, sq ^ 56, mg);
-            sq += 1;
-        }
-        piece += 1;
-    }
-    table
+/// Material + PST combined per (color, piece, square), rebuilt from
+/// `EvalParams` whenever params change (Phase 3.1 — these used to be
+/// `const`-baked `MG_TABLE`/`EG_TABLE`; now `params.mg_val`/`params.pst_mg`
+/// are tunable data, so the table must be a runtime-built `Evaluator` field).
+#[derive(Clone)]
+pub struct EvalTables {
+    mg: [[[i32; 64]; 6]; 2],
+    eg: [[[i32; 64]; 6]; 2],
 }
 
-const fn piece_base(piece: usize, mg: bool) -> i32 {
-    if mg { MG_VAL[piece] } else { EG_VAL[piece] }
-}
-
-const fn pst_value(piece: usize, sq: usize, mg: bool) -> i32 {
-    if mg {
-        match piece {
-            0 => MG_PAWN_PST[sq],
-            1 => MG_KNIGHT_PST[sq],
-            2 => MG_BISHOP_PST[sq],
-            3 => MG_ROOK_PST[sq],
-            4 => MG_QUEEN_PST[sq],
-            _ => MG_KING_PST[sq],
-        }
-    } else {
-        match piece {
-            0 => EG_PAWN_PST[sq],
-            1 => EG_KNIGHT_PST[sq],
-            2 => EG_BISHOP_PST[sq],
-            3 => EG_ROOK_PST[sq],
-            4 => EG_QUEEN_PST[sq],
-            _ => EG_KING_PST[sq],
+fn build_tables(params: &EvalParams) -> EvalTables {
+    let mut mg = [[[0i32; 64]; 6]; 2];
+    let mut eg = [[[0i32; 64]; 6]; 2];
+    for piece in 0..6 {
+        for sq in 0..64 {
+            mg[Color::White as usize][piece][sq] =
+                params.mg_val[piece] + params.pst_mg[piece * 64 + sq];
+            mg[Color::Black as usize][piece][sq] =
+                params.mg_val[piece] + params.pst_mg[piece * 64 + (sq ^ 56)];
+            eg[Color::White as usize][piece][sq] =
+                params.eg_val[piece] + params.pst_eg[piece * 64 + sq];
+            eg[Color::Black as usize][piece][sq] =
+                params.eg_val[piece] + params.pst_eg[piece * 64 + (sq ^ 56)];
         }
     }
+    EvalTables { mg, eg }
 }
 
 #[derive(Copy, Clone, Default)]
@@ -291,13 +417,19 @@ struct EvalEntry {
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
+    params: EvalParams,
+    tables: Box<EvalTables>,
 }
 
 impl Default for Evaluator {
     fn default() -> Self {
+        let params = EvalParams::default();
+        let tables = Box::new(build_tables(&params));
         Self {
             pawn_table: vec![PawnEntry::default(); PAWN_TABLE_SIZE],
             eval_table: vec![EvalEntry::default(); EVAL_TABLE_SIZE],
+            params,
+            tables,
         }
     }
 }
@@ -338,11 +470,12 @@ impl Evaluator {
             let sign = color_sign(color);
             for piece in Piece::ALL {
                 let mut bb = board.pieces(color, piece);
-                phase += bb.count() as i32 * PHASE_W[piece as usize];
+                let phase_weight = PHASE_W[piece as usize];
                 while bb.any() {
                     let sq = bb.pop_lsb();
-                    mg += sign * MG_TABLE[color as usize][piece as usize][sq.index()];
-                    eg += sign * EG_TABLE[color as usize][piece as usize][sq.index()];
+                    phase += phase_weight;
+                    mg += sign * self.tables.mg[color as usize][piece as usize][sq.index()];
+                    eg += sign * self.tables.eg[color as usize][piece as usize][sq.index()];
                 }
             }
         }
@@ -357,9 +490,9 @@ impl Evaluator {
         self.eval_piece_activity(board, atk, &mut mg, &mut eg, &passed, &pawn_attacks, phase);
 
         let tempo = if board.side_to_move() == Color::White {
-            10
+            self.params.tempo[0]
         } else {
-            -10
+            -self.params.tempo[0]
         };
         mg += tempo;
 
@@ -413,8 +546,6 @@ impl Evaluator {
                 our_pawns.south_east() | our_pawns.south_west()
             };
 
-            let passed_mg = [0, 5, 10, 20, 35, 60, 100, 0];
-            let passed_eg = [0, 10, 17, 35, 62, 100, 170, 0];
             let mut tmp = our_pawns;
             passed[us as usize] = Bitboard::EMPTY;
             while tmp.any() {
@@ -425,21 +556,24 @@ impl Evaluator {
 
                 if (PASSED_PAWN_MASKS[us as usize][sq.index()] & their_pawns).is_empty() {
                     passed[us as usize] |= Bitboard::from(sq);
-                    mg += sign * passed_mg[rel_rank];
-                    eg += sign * passed_eg[rel_rank];
+                    mg += sign * self.params.passed_mg[rel_rank];
+                    eg += sign * self.params.passed_eg[rel_rank];
 
                     if (atk.pawn(them, sq) & our_pawns).any() {
-                        mg += sign * 8;
-                        eg += sign * (6 + rel_rank as i32 * 4);
+                        mg += sign * self.params.passed_supported_mg[0];
+                        eg += sign
+                            * (self.params.passed_supported_eg_base[0]
+                                + rel_rank as i32 * self.params.passed_supported_eg_per_rank[0]);
                     }
 
                     if let Some(stop) = forward_square(us, sq)
                         && (occupied & Bitboard::from(stop)).is_empty()
                     {
-                        mg += sign * (rel_rank as i32 * 2);
-                        eg += sign * (rel_rank as i32 * 6);
+                        mg += sign * (rel_rank as i32 * self.params.passed_freestop_mg_per_rank[0]);
+                        eg += sign * (rel_rank as i32 * self.params.passed_freestop_eg_per_rank[0]);
                         if board.attackers_to_color(stop, occupied, them).is_empty() {
-                            eg += sign * (rel_rank as i32 * 8);
+                            eg += sign
+                                * (rel_rank as i32 * self.params.passed_safestop_eg_per_rank[0]);
                         }
                     }
                 } else if rel_rank >= 3
@@ -449,22 +583,22 @@ impl Evaluator {
                         & FORWARD_RANKS[us as usize][SQUARE_RANK[sq.index()]])
                     .is_empty()
                 {
-                    mg += sign * 6;
-                    eg += sign * 10;
+                    mg += sign * self.params.passed_candidate_mg[0];
+                    eg += sign * self.params.passed_candidate_eg[0];
                 }
 
                 let file_bb = FILE_BBS[file];
                 if (our_pawns & file_bb).more_than_one() {
-                    mg -= sign * 10;
-                    eg -= sign * 20;
+                    mg -= sign * self.params.pawn_doubled_mg[0];
+                    eg -= sign * self.params.pawn_doubled_eg[0];
                 }
                 if (our_pawns & adjacent).is_empty() {
-                    mg -= sign * 15;
-                    eg -= sign * 20;
+                    mg -= sign * self.params.pawn_isolated_mg[0];
+                    eg -= sign * self.params.pawn_isolated_eg[0];
                 }
                 if (atk.pawn(them, sq) & our_pawns).any() {
-                    mg += sign * 7;
-                    eg += sign * 5;
+                    mg += sign * self.params.pawn_connected_mg[0];
+                    eg += sign * self.params.pawn_connected_eg[0];
                 }
 
                 let stop_sq = if us == Color::White {
@@ -476,8 +610,8 @@ impl Evaluator {
                     && let Some(stop) = stop_sq.filter(|sq| *sq < 64)
                     && (atk.pawn(us, Square(stop)) & their_pawns).any()
                 {
-                    mg -= sign * 10;
-                    eg -= sign * 15;
+                    mg -= sign * self.params.pawn_backward_mg[0];
+                    eg -= sign * self.params.pawn_backward_eg[0];
                 }
             }
         }
@@ -509,6 +643,42 @@ impl Evaluator {
             board.pieces(Color::Black, Piece::Pawn),
         ];
 
+        // Attack-map substrate (Phase 3.0): compute every piece's attack
+        // bitboard once per evaluate() call, then reuse it for mobility,
+        // king safety, and hanging-piece detection below instead of
+        // recomputing attacks_for()/attackers_to_color() per consumer.
+        // attacked[color] is the union over all of color's pieces (incl.
+        // pawns and king) of squares they attack with the current
+        // occupancy — equivalent to attackers_to_color(sq, occupied, color)
+        // being non-empty for any sq, by the same symmetric attack-table
+        // argument attackers_to_color itself relies on.
+        let mut attacks_from_sq = [[Bitboard::EMPTY; 64]; 2];
+        let mut attacked_by = [[Bitboard::EMPTY; 6]; 2];
+        let mut attacked = [Bitboard::EMPTY; 2];
+        let mut attacked2 = [Bitboard::EMPTY; 2];
+        for color in [Color::White, Color::Black] {
+            let ci = color as usize;
+            attacked_by[ci][Piece::Pawn as usize] = pawn_attacks[ci];
+            attacked[ci] |= pawn_attacks[ci];
+
+            let king_atk = atk.king(board.king_sq(color));
+            attacked_by[ci][Piece::King as usize] = king_atk;
+            attacked2[ci] |= attacked[ci] & king_atk;
+            attacked[ci] |= king_atk;
+
+            for piece in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+                let mut bb = board.pieces(color, piece);
+                while bb.any() {
+                    let sq = bb.pop_lsb();
+                    let atks = attacks_for(atk, piece, sq, occupied);
+                    attacks_from_sq[ci][sq.index()] = atks;
+                    attacked_by[ci][piece as usize] |= atks;
+                    attacked2[ci] |= attacked[ci] & atks;
+                    attacked[ci] |= atks;
+                }
+            }
+        }
+
         for color in [Color::White, Color::Black] {
             let sign = color_sign(color);
             let them = !color;
@@ -517,8 +687,8 @@ impl Evaluator {
             let own_occ = color_occ[color as usize];
 
             if board.pieces(color, Piece::Bishop).more_than_one() {
-                *mg += sign * 30;
-                *eg += sign * 50;
+                *mg += sign * self.params.bishop_pair_mg[0];
+                *eg += sign * self.params.bishop_pair_eg[0];
             }
 
             let mut rooks = board.pieces(color, Piece::Rook);
@@ -528,15 +698,15 @@ impl Evaluator {
                 let own_file_empty = (own_pawns & FILE_BBS[file]).is_empty();
                 let their_file_empty = (their_pawns & FILE_BBS[file]).is_empty();
                 if own_file_empty && their_file_empty {
-                    *mg += sign * 25;
-                    *eg += sign * 10;
+                    *mg += sign * self.params.rook_open_mg[0];
+                    *eg += sign * self.params.rook_open_eg[0];
                 } else if own_file_empty {
-                    *mg += sign * 12;
-                    *eg += sign * 8;
+                    *mg += sign * self.params.rook_semiopen_mg[0];
+                    *eg += sign * self.params.rook_semiopen_eg[0];
                 }
                 if relative_rank(color, sq) == 6 {
-                    *mg += sign * 20;
-                    *eg += sign * 40;
+                    *mg += sign * self.params.rook_7th_mg[0];
+                    *eg += sign * self.params.rook_7th_eg[0];
                 }
             }
 
@@ -547,20 +717,21 @@ impl Evaluator {
                     && (atk.pawn(them, sq) & own_pawns).any()
                     && (atk.pawn(color, sq) & their_pawns).is_empty()
                 {
-                    *mg += sign * 25;
-                    *eg += sign * 15;
+                    *mg += sign * self.params.knight_outpost_mg[0];
+                    *eg += sign * self.params.knight_outpost_eg[0];
                 }
             }
 
             let safe = !pawn_attacks[them as usize];
             for piece in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+                let mob_idx = mobility_index(piece);
                 let mut pieces = board.pieces(color, piece);
                 while pieces.any() {
                     let sq = pieces.pop_lsb();
-                    let attacks = attacks_for(atk, piece, sq, occupied);
+                    let attacks = attacks_from_sq[color as usize][sq.index()];
                     let mobility = (attacks & safe & !own_occ).count() as i32;
-                    *mg += sign * mobility * mobility_mg(piece);
-                    *eg += sign * mobility * mobility_eg(piece);
+                    *mg += sign * mobility * self.params.mob_mg[mob_idx];
+                    *eg += sign * mobility * self.params.mob_eg[mob_idx];
                 }
             }
 
@@ -569,25 +740,33 @@ impl Evaluator {
                 let sq = threats.pop_lsb();
                 match board.piece_on(sq) {
                     Some(Piece::Knight | Piece::Bishop) => {
-                        *mg += sign * 18;
-                        *eg += sign * 12;
+                        *mg += sign * self.params.threat_minor_mg[0];
+                        *eg += sign * self.params.threat_minor_eg[0];
                     }
                     Some(Piece::Rook) => {
-                        *mg += sign * 28;
-                        *eg += sign * 18;
+                        *mg += sign * self.params.threat_rook_mg[0];
+                        *eg += sign * self.params.threat_rook_eg[0];
                     }
                     Some(Piece::Queen) => {
-                        *mg += sign * 45;
-                        *eg += sign * 30;
+                        *mg += sign * self.params.threat_queen_mg[0];
+                        *eg += sign * self.params.threat_queen_eg[0];
                     }
                     _ => {}
                 }
             }
 
-            self.eval_king_safety(board, atk, color, sign, mg, occupied, &pawns);
+            self.eval_king_safety(
+                board,
+                color,
+                sign,
+                mg,
+                &pawns,
+                &attacks_from_sq[them as usize],
+            );
             self.eval_rooks_behind_passers(board, color, sign, passed, mg, eg);
-            self.eval_hanging_pieces(board, color, sign, mg, eg, occupied);
+            self.eval_hanging_pieces(board, color, sign, mg, eg, &attacked);
         }
+        let _ = attacked2; // reserved attack-map substrate output for later Phase 3 steps
 
         self.eval_passed_pawn_king_proximity(board, passed, eg);
         self.eval_space(board, pawn_attacks, mg);
@@ -627,23 +806,23 @@ impl Evaluator {
             & black_space_ranks
             & !board.pieces(Color::Black, Piece::Pawn)
             & !pawn_attacks[Color::White as usize];
-        *mg += (white_space.count() as i32 - black_space.count() as i32) * 2;
+        *mg +=
+            (white_space.count() as i32 - black_space.count() as i32) * self.params.space_weight[0];
     }
 
     fn eval_king_safety(
         &self,
         board: &Board,
-        atk: &AttackTables,
         color: Color,
         sign: i32,
         mg: &mut i32,
-        occupied: Bitboard,
         pawns: &[Bitboard; 2],
+        their_attacks_from_sq: &[Bitboard; 64],
     ) {
         let them = !color;
         let king = board.king_sq(color);
         let king_bb = Bitboard::from(king);
-        let king_attacks = atk.king(king);
+        let king_attacks = ATTACKS.king(king);
         let mut zone = king_attacks | king_bb;
         zone |= if color == Color::White {
             king_attacks.north()
@@ -656,20 +835,17 @@ impl Evaluator {
             let mut pieces = board.pieces(them, piece);
             while pieces.any() {
                 let sq = pieces.pop_lsb();
-                if (attacks_for(atk, piece, sq, occupied) & zone).any() {
+                if (their_attacks_from_sq[sq.index()] & zone).any() {
                     units += match piece {
-                        Piece::Knight | Piece::Bishop => 2,
-                        Piece::Rook => 3,
-                        Piece::Queen => 5,
+                        Piece::Knight | Piece::Bishop => self.params.king_safety_unit_minor[0],
+                        Piece::Rook => self.params.king_safety_unit_rook[0],
+                        Piece::Queen => self.params.king_safety_unit_queen[0],
                         _ => 0,
                     };
                 }
             }
         }
-        const SAFETY: [i32; 16] = [
-            0, 0, 10, 25, 40, 60, 80, 95, 105, 110, 112, 114, 115, 116, 117, 118,
-        ];
-        *mg -= sign * SAFETY[units.min(15) as usize];
+        *mg -= sign * self.params.king_safety_table[units.min(15) as usize];
 
         let king_file = SQUARE_FILE[king.index()] as i32;
         if king_file <= 2 || king_file >= 5 {
@@ -682,7 +858,12 @@ impl Evaluator {
                 let file_pawns = pawns[color as usize] & FILE_BBS[file as usize];
                 let in_front = file_pawns & FORWARD_RANKS[color as usize][king_rank as usize];
                 if in_front.is_empty() {
-                    *mg -= sign * if df == 0 { 20 } else { 10 };
+                    *mg -= sign
+                        * if df == 0 {
+                            self.params.shelter_missing_file_mg[0]
+                        } else {
+                            self.params.shelter_missing_adjacent_mg[0]
+                        };
                 } else {
                     let pawn_sq = if color == Color::White {
                         in_front.lsb()
@@ -695,9 +876,9 @@ impl Evaluator {
                         king_rank - SQUARE_RANK[pawn_sq.index()] as i32
                     };
                     if distance == 1 {
-                        *mg += sign * 15;
+                        *mg += sign * self.params.shelter_dist1_mg[0];
                     } else if distance == 2 {
-                        *mg += sign * 7;
+                        *mg += sign * self.params.shelter_dist2_mg[0];
                     }
                 }
             }
@@ -720,9 +901,9 @@ impl Evaluator {
                 *mg -= sign
                     * (rel
                         * if SQUARE_FILE[pawn.index()] == SQUARE_FILE[king.index()] {
-                            7
+                            self.params.storm_file_weight[0]
                         } else {
-                            4
+                            self.params.storm_adjacent_weight[0]
                         });
             }
         }
@@ -755,8 +936,8 @@ impl Evaluator {
                     SQUARE_RANK[rook.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
-                    *mg += sign * 15;
-                    *eg += sign * 25;
+                    *mg += sign * self.params.rook_behind_passer_mg[0];
+                    *eg += sign * self.params.rook_behind_passer_eg[0];
                 }
             }
 
@@ -774,8 +955,8 @@ impl Evaluator {
                     SQUARE_RANK[enemy.index()] > SQUARE_RANK[passer.index()]
                 };
                 if behind {
-                    *mg -= sign * 10;
-                    *eg -= sign * 20;
+                    *mg -= sign * self.params.enemy_rook_behind_passer_mg[0];
+                    *eg -= sign * self.params.enemy_rook_behind_passer_eg[0];
                 }
             }
         }
@@ -788,7 +969,7 @@ impl Evaluator {
         sign: i32,
         mg: &mut i32,
         eg: &mut i32,
-        occupied: Bitboard,
+        attacked: &[Bitboard; 2],
     ) {
         let them = !color;
         let mut pieces = board.color_occ(color)
@@ -799,12 +980,18 @@ impl Evaluator {
             let Some(piece) = board.piece_on(sq) else {
                 continue;
             };
-            let attackers = board.attackers_to_color(sq, occupied, them);
-            let defenders = board.attackers_to_color(sq, occupied, color);
-            if attackers.is_empty() || defenders.any() {
+            let sq_bb = Bitboard::from(sq);
+            let is_attacked = (attacked[them as usize] & sq_bb).any();
+            let is_defended = (attacked[color as usize] & sq_bb).any();
+            if !is_attacked || is_defended {
                 continue;
             }
-            let penalty = hanging_piece_penalty(piece);
+            let penalty = match piece {
+                Piece::Knight | Piece::Bishop => self.params.hanging_minor[0],
+                Piece::Rook => self.params.hanging_rook[0],
+                Piece::Queen => self.params.hanging_queen[0],
+                _ => 0,
+            };
             *mg -= sign * penalty;
             *eg -= sign * penalty;
         }
@@ -822,7 +1009,9 @@ impl Evaluator {
                 let rel_rank = relative_rank(color, pawn) as i32;
                 let own_dist = KING_DISTANCE[own_king.index()][pawn.index()] as i32;
                 let enemy_dist = KING_DISTANCE[enemy_king.index()][pawn.index()] as i32;
-                *eg += sign * (enemy_dist - own_dist) * (2 + rel_rank);
+                *eg += sign
+                    * (enemy_dist - own_dist)
+                    * (self.params.passer_proximity_base[0] + rel_rank);
             }
         }
     }
@@ -834,8 +1023,8 @@ impl Evaluator {
             while bishops.any() {
                 let sq = bishops.pop_lsb();
                 if (atk.bishop(sq, board.occupied()) & !board.color_occ(color)).is_empty() {
-                    *mg -= sign * 60;
-                    *eg -= sign * 40;
+                    *mg -= sign * self.params.trapped_bishop_mg[0];
+                    *eg -= sign * self.params.trapped_bishop_eg[0];
                 }
             }
         }
@@ -845,16 +1034,6 @@ impl Evaluator {
 #[inline(always)]
 pub fn piece_value(piece: Piece) -> i32 {
     unsafe { *PIECE_VALUES.get_unchecked(piece as usize) }
-}
-
-#[inline(always)]
-fn hanging_piece_penalty(piece: Piece) -> i32 {
-    match piece {
-        Piece::Knight | Piece::Bishop => 45,
-        Piece::Rook => 60,
-        Piece::Queen => 80,
-        _ => 0,
-    }
 }
 
 #[inline(always)]
@@ -874,25 +1053,16 @@ fn attacks_for(atk: &AttackTables, piece: Piece, sq: Square, occ: Bitboard) -> B
     }
 }
 
+/// Index into `EvalParams::mob_mg`/`mob_eg` (N,B,R,Q only — the array is
+/// sized 4, not 6, since pawns/king have no mobility term).
 #[inline(always)]
-fn mobility_mg(piece: Piece) -> i32 {
+fn mobility_index(piece: Piece) -> usize {
     match piece {
-        Piece::Knight => 4,
-        Piece::Bishop => 5,
+        Piece::Knight => 0,
+        Piece::Bishop => 1,
         Piece::Rook => 2,
-        Piece::Queen => 1,
-        _ => 0,
-    }
-}
-
-#[inline(always)]
-fn mobility_eg(piece: Piece) -> i32 {
-    match piece {
-        Piece::Knight => 4,
-        Piece::Bishop => 5,
-        Piece::Rook => 4,
-        Piece::Queen => 2,
-        _ => 0,
+        Piece::Queen => 3,
+        _ => unreachable!("mobility_index called on a piece with no mobility term"),
     }
 }
 

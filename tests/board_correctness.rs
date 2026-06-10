@@ -23,6 +23,11 @@ const ORACLE_FENS: &[&str] = &[
     "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
     "r3k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1",
     "4k3/8/8/8/8/2b5/4r3/4K3 w - - 0 1",
+    // Castling that delivers a rook check (exercises the gives_check castle
+    // path's true branch): queenside puts the rook on d1 → checks the king on
+    // d8; kingside puts the rook on f1 → checks the king on f8.
+    "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",
+    "5k2/8/8/8/8/8/8/4K2R w K - 0 1",
 ];
 
 #[test]

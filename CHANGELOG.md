@@ -5,6 +5,124 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.1.0] - 2026-06-19
+
+Release focused on a repo-contained SPRT/SPSA testing harness and a long
+sequence of individually SPRT-gated search-tuning and robustness fixes. The
+single largest change is a Stockfish-style time-management rewrite that fixed
+a movetime budget bug — by far the dominant contributor to the cumulative
+strength gain. Several speculative search-feature ports were tried and
+rejected by the harness; they are listed below for transparency, since they
+cost real development time even though they did not ship.
+
+### Added
+
+- Added `SearchParams` for search constants and tune-mode UCI spin options
+  behind `--features tune`, allowing weather-factory SPSA to perturb search
+  parameters without exposing development options in production builds.
+- Added default-equivalent 1024ths-of-a-ply LMR adjustment parameters
+  (`LmrTtPvAdj`, `LmrExactBound`, `LmrShallowTt`, `LmrCutNode`, plus the LMR
+  table formula coefficients) so LMR tuning can be done through UCI options
+  without changing baseline behavior.
+- Added per-move quiet futility pruning (separate from the existing static
+  futility margin), SPSA-tuned and SPRT-confirmed.
+- Added a clock-mode time-safety valve: an absolute `2*MoveOverhead` reserve
+  that binds only in genuine time scrambles, leaving normal time allocation
+  untouched.
+- Added repo-local testing/tuning helpers under `tools/`, including fastchess
+  SPRT, pext-PGO test builds, SPSA setup (weather-factory), local tool setup,
+  opening book storage, test-engine storage, and weather-factory configs.
+- Added an optional `target-cpu=native` build path (`cargo xtask build --arch native`)
+  for local/own-match binaries that can use CPU-specific instructions beyond
+  the portable `x86-64-v3`/`avx2`/`pext` release assets.
+
+### Changed
+
+- Rewrote time management in the style of Stockfish: clock-mode budgeting now
+  ports SF's `timeman.cpp` structure (optimum/maximum from elapsed time,
+  game-ply-aware scaling) and between-iteration stopping uses SF's
+  falling-eval / best-move-instability / effort-factor heuristics. Fixed a
+  movetime bug where a small budget (e.g. 100 ms/move) collapsed to depth 1
+  because the overhead subtraction could reduce the budget to ~1 ms.
+- Reworked quiescence search's TT-bound stand-pat handling.
+- Baked in the accepted Phase 1 pruning/margin SPSA tune:
+  `AspirationDelta=31`, `FutilityBase=86`, `FutilityImproving=49`,
+  `RazoringCoeff=191`, `NullMoveDepthCoeff=15`,
+  `NullMoveImprovingBonus=25`, `LmpBase=115`, `LmpImproving=57`,
+  `QuietHistPruneCoeff=4419`, `SeePruningCoeff=81`, `SeePruningMax=811`,
+  `SingularBetaMult=4`, and `LmpCountBase=2`.
+- Baked in SPSA-tuned quiet futility margins (`FpBase=184`, `FpCoeff=117`)
+  and a re-tuned LMR table after harness correction.
+- Shrunk the `BadCapture` struct (16 → 3 bytes) and removed a per-call board
+  clone from `gives_check`'s castling path (replaced with a direct rook-attack
+  test), eliminating the one allocator touch on a search-reachable path.
+- Removed the dead `do_shallower` LMR re-search arm: the move loop's
+  `alpha >= best_score` invariant made its trigger condition provably
+  unreachable, so it was a no-op that only cost a redundant guard check.
+- Reduced repeated move-flag decoding in quiet/capture classification helpers.
+- Reworked cached checker calculation to compute only opponent checking pieces
+  instead of building a generic all-attacker set and masking it afterward.
+- Split insufficient-material detection into faster early exits for positions
+  with pawns or major pieces.
+- Folded evaluation phase accumulation into the existing piece iteration,
+  avoiding a redundant popcount pass over every piece bitboard.
+- Deferred SEE classification for TT captures until it is actually needed for
+  post-search capture-history bookkeeping.
+- Made development/test helper paths repo-local (`tools/bin`, `tools/books`,
+  `tools/test_engines`, `tools/weather-factory`) instead of relying on
+  machine-global `D:\chess` helper paths.
+
+### Fixed
+
+- Fixed clock-mode time forfeits at fast time controls (28 forfeits in a
+  ~2,200-game gauntlet, down to 0) via the new time-safety valve, without
+  regressing normal-time allocation.
+
+### Evaluated and rejected (for transparency, not shipped)
+
+- ProbCut port from a search-efficiency rewrite branch: **−24.5 ± 8.5 Elo**,
+  reverted to the original implementation.
+- Persisting history tables across searches (dropping the per-search aging):
+  **−12.4 ± 6.2 Elo**, reverted.
+- A singular-extension double-extension budget cap: inconclusive (H0),
+  reverted.
+- An LMR "do-deeper" re-search margin (do-shallower proved structurally dead;
+  do-deeper alone): **−1.4 ± 2.7 Elo**, reverted to the futility baseline.
+
+### Internal (no behavior change)
+
+- Began an eval-rewrite groundwork program (attack-map substrate, all tunable
+  eval weights hoisted into a parameter struct) to prepare for a future
+  data-fit tuning campaign. Bench-fingerprint-identical throughout; no effect
+  on this release's playing strength.
+
+### Verified
+
+- Phase 1 Group B pruning/margin tune: SPSA ran 2271 iterations / 72672 games;
+  SPRT accepted H1 after 19458 games with `nElo +6.17 ± 4.88`, LOS `99.34%`.
+- Time-management rewrite: SPRT accepted H1 at `+81 Elo` (762 games,
+  `st=0.1`); a separate non-regression SPRT confirmed no clock-mode
+  regression.
+- Quiescence TT-bound stand-pat refinement: accepted, `+6.5 Elo` (`st=0.1`).
+- Per-move quiet futility pruning: SPRT accepted H1, `+7.98 ± 4.42 Elo`
+  (nElo `+10.97`).
+- Harness-corrected LMR retune (after unifying SPSA/SPRT at `tc=3+0.03`):
+  SPRT accepted H1, `+4 Elo`.
+- Phase 2.9-close batch non-regression SPRT (time-safety valve + robustness +
+  micro-optimizations, cumulative): `15,976` games, `Elo +2.02 ± 3.62`,
+  `nElo +3.01 ± 5.39`, LOS `86.3%`, LLR `2.39` (`81.2%` of the way to the H1
+  bound and still trending up when accepted). Cross-harness time-loss check
+  (fastchess PGN `[Termination "..."]` tags): zero time-forfeit terminations
+  across all games.
+- Verified `cargo fmt --check`, `cargo test --lib`,
+  `cargo test --test engine_coverage --test search_strength`,
+  `cargo build --release --features tune`,
+  `cargo test --release --test uci_process -- --test-threads=1`, and the full
+  `cargo test --release` suite.
+- Rebuilt Windows `pext` and `avx2` PGO release assets. Both produced the
+  current `bench 13` fingerprint of `5,446,782` searched nodes and responded
+  correctly to `uci`; production builds expose no tune-only options.
+
 ## [2.0.2] - 2026-06-01
 
 Patch release focused on tournament stability after two Little Blitzer

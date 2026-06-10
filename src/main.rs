@@ -26,11 +26,20 @@ fn main() {
 
     let commands = EngineCommandQueue::default();
     let control = Arc::new(EngineControl::default());
-    let mut engine = Engine::new(commands.clone(), Arc::clone(&control));
+    let engine_commands = commands.clone();
+    let engine_control = Arc::clone(&control);
     let engine_thread = thread::Builder::new()
         .name("rarog-engine".to_string())
         .stack_size(ENGINE_THREAD_STACK_SIZE)
-        .spawn(move || engine.start())
+        // Construct the Engine (which owns the large inline-array Searcher)
+        // *inside* this 16 MB thread, not on the caller's stack. In debug builds
+        // the default 1 MB Windows main-thread stack overflows while building the
+        // Searcher (no copy elision); doing it here keeps the big frames on the
+        // large stack the search already runs on. Zero search impact.
+        .spawn(move || {
+            let mut engine = Engine::new(engine_commands, engine_control);
+            engine.start();
+        })
         .expect("Engine thread failed to start.");
 
     UciProtocol::new(commands, control).uci_loop();

@@ -1,0 +1,14 @@
+{
+    "FpBase": {
+        "value": 184,
+        "min_value": 0,
+        "max_value": 400,
+        "step": 20
+    },
+    "FpCoeff": {
+        "value": 117,
+        "min_value": 0,
+        "max_value": 300,
+        "step": 15
+    }
+}

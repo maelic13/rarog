@@ -1,0 +1,44 @@
+{
+    "LmrTtPvAdj": {
+        "value": 887,
+        "min_value": 0,
+        "max_value": 2048,
+        "step": 80
+    },
+    "LmrExactBound": {
+        "value": 109,
+        "min_value": 0,
+        "max_value": 2048,
+        "step": 80
+    },
+    "LmrShallowTt": {
+        "value": 656,
+        "min_value": 0,
+        "max_value": 2048,
+        "step": 80
+    },
+    "LmrCutNode": {
+        "value": 780,
+        "min_value": 0,
+        "max_value": 2048,
+        "step": 80
+    },
+    "LmrTableBase": {
+        "value": 646,
+        "min_value": 512,
+        "max_value": 1024,
+        "step": 50
+    },
+    "LmrTableDiv": {
+        "value": 2335,
+        "min_value": 1536,
+        "max_value": 3072,
+        "step": 50
+    },
+    "LmrHistDiv": {
+        "value": 8395,
+        "min_value": 4096,
+        "max_value": 16384,
+        "step": 300
+    }
+}

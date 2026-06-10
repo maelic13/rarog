@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock, atomic::Ordering, mpsc};
+use std::sync::{Arc, atomic::Ordering, mpsc};
 use std::time::Instant;
 
 use crate::board::{Board, Color, GameResult, Move, Piece};
@@ -9,6 +9,7 @@ use crate::move_ordering::{
     diversify_root_scores, history_bonus, pawn_history_index, pick_next, piece_to_index,
     update_hist_entry,
 };
+use crate::params::SearchParams;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::search_threads::{STOP_QUIT, STOP_SEARCH, SharedSearchState, WorkerJob, WorkerPool};
 use crate::syzygy::{self, Wdl};
@@ -23,15 +24,19 @@ const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
-static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
-    let mut table = [[0; 64]; 64];
+const SEE_UNKNOWN: i16 = i16::MIN;
+fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
+    let base_f = base as f64 / 1024.0;
+    let div_f = div as f64 / 1024.0;
+    let mut table = Box::new([[0i32; 64]; 64]);
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25) as i32;
+            *value = (1024.0 * (base_f + (depth as f64).ln() * (move_index as f64).ln() / div_f))
+                as i32;
         }
     }
     table
-});
+}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
     None,
@@ -98,6 +103,7 @@ pub struct Searcher {
     quit: bool,
     pondering: bool,
     ponderhit: bool,
+    stop_on_ponderhit: bool,
     start: Instant,
     limits: RuntimeLimits,
     pv_table: [[Move; MAX_PLY]; MAX_PLY],
@@ -107,6 +113,8 @@ pub struct Searcher {
     stack_static_eval: [i32; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     root_moves: Vec<Move>,
+    lmr_table: Box<[[i32; 64]; 64]>,
+    lmr_table_key: (i32, i32),
     main_history: Box<[[[i16; 64]; 64]; 2]>,
     cap_history: Box<[[[i16; 6]; 64]; 6]>,
     low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
@@ -126,6 +134,7 @@ pub struct Searcher {
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
     syzygy_largest: usize,
+    params: SearchParams,
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
@@ -146,12 +155,14 @@ impl Default for Searcher {
             quit: false,
             pondering: false,
             ponderhit: false,
+            stop_on_ponderhit: false,
             start: Instant::now(),
             limits: RuntimeLimits {
                 depth: MAX_DEPTH,
                 nodes: 0,
-                soft_ms: f64::INFINITY,
-                hard_ms: f64::INFINITY,
+                optimum_ms: f64::INFINITY,
+                maximum_ms: f64::INFINITY,
+                movetime_mode: false,
             },
             pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
             pv_len: [0; MAX_PLY],
@@ -160,6 +171,8 @@ impl Default for Searcher {
             stack_static_eval: [VALUE_NONE; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
+            lmr_table: build_lmr_table(768, 2304),
+            lmr_table_key: (768, 2304),
             main_history: Box::new([[[0; 64]; 64]; 2]),
             cap_history: Box::new([[[0; 6]; 64]; 6]),
             low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
@@ -179,6 +192,7 @@ impl Default for Searcher {
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
             syzygy_largest: 0,
+            params: SearchParams::default(),
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
@@ -224,7 +238,7 @@ impl MovePicker {
                 if !*emitted_tt {
                     *emitted_tt = true;
                     if !tt_move.is_null() {
-                        return Some(tt_scored_move(board, *tt_move));
+                        return Some(tt_scored_move(*tt_move));
                     }
                 }
                 while *index < scored.len() {
@@ -250,7 +264,7 @@ impl MovePicker {
                 if !*emitted_tt {
                     *emitted_tt = true;
                     if !tt_move.is_null() {
-                        return Some(tt_scored_move(board, *tt_move));
+                        return Some(tt_scored_move(*tt_move));
                     }
                 }
                 while *capture_index < captures.len() {
@@ -286,12 +300,8 @@ impl MovePicker {
     }
 }
 
-fn tt_scored_move(board: &Board, mv: Move) -> ScoredMove {
-    let see = if mv.is_capture() && !board.see_ge(mv, 0) {
-        -1
-    } else {
-        0
-    };
+fn tt_scored_move(mv: Move) -> ScoredMove {
+    let see = if mv.is_capture() { SEE_UNKNOWN } else { 0 };
     ScoredMove {
         mv,
         score: 30_000_000,
@@ -429,7 +439,9 @@ impl Searcher {
         self.shared_state = None;
         self.root_move_offset = 0;
         self.tt_write_mode = TtWriteMode::Main;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), true, true);
+        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+            + (root.side_to_move() == Color::Black) as u32;
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, true, true);
 
         let board = root;
         let legal_moves = board.generate_legal_movelist();
@@ -484,6 +496,7 @@ impl Searcher {
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         side_to_move: Color,
+        game_ply: u32,
         age_tt: bool,
         age_history: bool,
     ) {
@@ -495,10 +508,17 @@ impl Searcher {
         self.quit = false;
         self.pondering = limits.ponder;
         self.ponderhit = false;
-        self.limits = compute_runtime_limits(limits, engine_options, side_to_move, MAX_DEPTH);
+        self.stop_on_ponderhit = false;
+        self.limits = compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
         self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
+        self.params = engine_options.search_params.clone();
+        let table_key = (self.params.lmr_table_base, self.params.lmr_table_div);
+        if table_key != self.lmr_table_key {
+            self.lmr_table = build_lmr_table(table_key.0, table_key.1);
+            self.lmr_table_key = table_key;
+        }
         self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
@@ -605,18 +625,17 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
-        let mut stable_best_depths = 0usize;
-        let mut last_score_drop = 0;
+        let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
+        let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
 
         for depth in 1..=max_depth {
             let previous_bestmove = bestmove;
-            let iteration_start_ms = self.elapsed_ms();
             self.root_iteration_nodes = self.nodes;
             self.root_best_nodes = 0;
             self.root_best_effort = 0.0;
             let use_aspiration = depth >= 4 && best_score.abs() < MATE_SCORE - MAX_PLY as i32;
-            let mut alpha_delta = 25;
-            let mut beta_delta = 25;
+            let mut alpha_delta = self.params.aspiration_delta;
+            let mut beta_delta = self.params.aspiration_delta;
             let mut alpha = if use_aspiration {
                 (best_score - alpha_delta).max(-INF_SCORE)
             } else {
@@ -627,7 +646,6 @@ impl Searcher {
             } else {
                 INF_SCORE
             };
-            let mut iteration_elapsed_ms = 0.0;
 
             loop {
                 let score = self.negamax(
@@ -656,14 +674,8 @@ impl Searcher {
                     beta = (best_score + beta_delta).min(INF_SCORE);
                     continue;
                 }
-                last_score_drop = if completed_depth > 0 {
-                    best_score - score
-                } else {
-                    0
-                };
                 best_score = score;
                 completed_depth = depth;
-                iteration_elapsed_ms = (self.elapsed_ms() - iteration_start_ms).max(0.0);
                 let iteration_nodes = self.nodes.saturating_sub(self.root_iteration_nodes).max(1);
                 self.root_best_effort = self.root_best_nodes as f64 / iteration_nodes as f64;
                 if self.pv_len[0] > 0 {
@@ -673,11 +685,6 @@ impl Searcher {
                     } else {
                         Move::NULL
                     };
-                    if bestmove == previous_bestmove {
-                        stable_best_depths += 1;
-                    } else {
-                        stable_best_depths = 0;
-                    }
                 }
                 break;
             }
@@ -694,32 +701,47 @@ impl Searcher {
                 break;
             }
 
-            if !self.pondering {
-                let elapsed_ms = self.elapsed_ms();
-                let effort_scale = if self.root_best_effort > 0.65 && stable_best_depths > 0 {
-                    0.85
-                } else if self.root_best_effort < 0.25 || stable_best_depths == 0 {
-                    1.20
-                } else {
-                    1.0
-                };
-                let score_scale = if last_score_drop > 80 {
-                    1.25
-                } else if last_score_drop > 40 {
-                    1.10
-                } else {
-                    1.0
-                };
-                let dynamic_soft_ms = self.limits.soft_ms * effort_scale * score_scale;
-                let next_iteration_would_hit_hard = self.limits.hard_ms.is_finite()
-                    && iteration_elapsed_ms > 0.0
-                    && elapsed_ms + iteration_elapsed_ms * 1.75 + 1.0 >= self.limits.hard_ms;
-                if elapsed_ms >= self.limits.hard_ms
-                    || next_iteration_would_hit_hard
-                    || (elapsed_ms >= dynamic_soft_ms
-                        && (dynamic_soft_ms >= self.limits.hard_ms
-                            || (stable_best_depths > 0 && last_score_drop <= 50)))
-                {
+            // Update best-move instability and score EWMA for the soft-stop formula.
+            tot_best_move_changes /= 2.0;
+            if bestmove != previous_bestmove {
+                tot_best_move_changes += 1.0;
+            }
+            // prev_avg_score feeds into fallingEval next iteration; init to 0 on depth 1.
+            prev_avg_score = if completed_depth <= 1 {
+                best_score as f64
+            } else {
+                (prev_avg_score * 2.0 + best_score as f64) / 3.0
+            };
+
+            // SF-style between-iteration stop.
+            // movetime mode: no soft stop — check_stop (every 2048 nodes) fires at maximum_ms.
+            // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
+            let elapsed_ms = self.elapsed_ms();
+            if elapsed_ms >= self.limits.maximum_ms {
+                break;
+            }
+            if !self.limits.movetime_mode {
+                // fallingEval: ↑ when score is falling (want more time); seeds from SF.
+                let falling_eval =
+                    (0.1187 + 0.0221 * (prev_avg_score - best_score as f64))
+                        .clamp(0.572, 1.708);
+                // bestMoveInstab: ↑ when best move changed recently.
+                let best_move_instab = 1.10 + 2.29 * tot_best_move_changes;
+                // effortFactor: linear interp — at effort≤0.79 → 0.924; at effort≥1.0 → 0.71.
+                let t =
+                    ((self.root_best_effort - 0.79) / (1.0 - 0.79)).clamp(0.0, 1.0);
+                let effort_factor = (0.924 + t * (0.71 - 0.924)).clamp(0.71, 0.924);
+                let total_time = self.limits.optimum_ms
+                    * falling_eval
+                    * best_move_instab
+                    * effort_factor;
+                let soft_target = total_time.min(self.limits.maximum_ms);
+                if self.pondering {
+                    // While pondering: flag to stop immediately on ponderhit.
+                    if elapsed_ms >= soft_target {
+                        self.stop_on_ponderhit = true;
+                    }
+                } else if elapsed_ms >= soft_target {
                     break;
                 }
             }
@@ -754,7 +776,9 @@ impl Searcher {
         legal_moves: &[Move],
         poll: &mut P,
     ) -> SearchResult {
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), false, true);
+        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+            + (root.side_to_move() == Color::Black) as u32;
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, false, true);
         self.search_root(root, legal_moves, false, poll)
     }
 
@@ -1003,16 +1027,21 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (70 + 20 * not_improving_i) * depth;
+            let futility_margin = (self.params.futility_base
+                + self.params.futility_not_improving * not_improving_i)
+                * depth;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;
             }
-            if depth <= 3 && eval_for_pruning + 150 * depth < alpha {
+            if depth <= 3 && eval_for_pruning + self.params.razoring_coeff * depth < alpha {
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
             if allow_null
                 && depth >= 3
-                && eval_for_pruning >= beta - 12 * depth - 24 * improving_i
+                && eval_for_pruning
+                    >= beta
+                        - self.params.nm_depth_coeff * depth
+                        - self.params.nm_improving_bonus * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
@@ -1174,7 +1203,7 @@ impl Searcher {
             legal_move_seen = true;
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
-            let see = if is_capture { picked.see as i32 } else { 0 };
+            let mut see = if is_capture { picked.see as i32 } else { 0 };
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
             let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
@@ -1182,12 +1211,32 @@ impl Searcher {
 
             if !tt_pv && !in_check && searched > 0 {
                 if is_quiet {
-                    let prune_margin = (90 + 25 * not_improving_i) * depth;
+                    let prune_margin = (self.params.lmp_base
+                        + self.params.lmp_not_improving * not_improving_i)
+                        * depth;
                     let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8 && searched > late_move_prune_count(depth, improving))
+                        || (depth <= 8
+                            && searched
+                                > late_move_prune_count(
+                                    depth,
+                                    improving,
+                                    self.params.lmp_count_base,
+                                ))
                         || (depth <= 4 && quiet_hist < -10_000)
-                        || (depth <= 7 && quiet_hist < -4_000 * depth);
+                        || (depth <= 7
+                            && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
                     if prune_candidate && !move_gives_check(board, mv, &mut gives_check) {
+                        continue;
+                    }
+                    // Per-move quiet futility pruning (Phase 2.7): a quiet move
+                    // whose TT-refined static eval plus a margin can't reach alpha
+                    // is skipped. Plain skip (no fail-soft best_score update), to
+                    // match the existing LMP/SEE prunes in this loop.
+                    if depth <= 8
+                        && eval_for_pruning + self.params.fp_base + self.params.fp_coeff * depth
+                            <= alpha
+                        && !move_gives_check(board, mv, &mut gives_check)
+                    {
                         continue;
                     }
                 } else if is_capture && see < 0 {
@@ -1195,7 +1244,8 @@ impl Searcher {
                         self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-80 * depth - cap_hist / 8).max(-800);
+                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
+                        .max(-self.params.see_pruning_max);
                     if depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, mv, &mut gives_check)
@@ -1215,7 +1265,7 @@ impl Searcher {
                 && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
                 && tt_score.abs() < MATE_SCORE - MAX_PLY as i32
             {
-                let singular_beta = tt_score - 2 * depth;
+                let singular_beta = tt_score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
                 let singular_score = self.negamax(
                     board,
@@ -1281,30 +1331,41 @@ impl Searcher {
                     && !mv.is_promo()
                     && !checking_move;
                 if reducible {
-                    let hist = quiet_hist;
-                    let mut reduction = lmr_reduction(depth, searched);
+                    // Accumulate in 1024ths; `>> 10` gives integer ply reduction.
+                    // Defaults for lmr_* params = 1024, reproducing the original ±1 ply
+                    // behavior exactly.  SPSA tunes from this baseline.
+                    // `reducible` already guarantees depth >= 3 && searched >= 2, so the
+                    // table lookup is always in the populated region.
+                    let mut r = self.lmr_table[depth.min(63) as usize][searched.min(63)];
+                    // PV / TT-PV nodes: reduce less (param stored positive, subtracted).
                     if tt_pv {
-                        reduction -= 1;
+                        r -= self.params.lmr_tt_pv_adj;
                     } else if is_quiet {
-                        reduction += 1;
+                        r += 1024;
                     }
                     if improving {
-                        reduction -= 1;
+                        r -= 1024;
                     }
+                    // Exact TT bound: new term, default 0 (no current behavior displaced).
+                    if matches!(tt_bound, Some(Bound::Exact)) {
+                        r += self.params.lmr_exact_bound;
+                    }
+                    // Shallow / absent TT entry.
                     if !tt_move.is_null() && searched >= 4 {
-                        reduction += 1;
+                        r += self.params.lmr_shallow_tt;
                     }
+                    // Cut node.
                     if cut_node {
-                        reduction += 1;
+                        r += self.params.lmr_cut_node;
                     }
                     if !is_quiet && see < 0 {
-                        reduction += 1;
+                        r += 1024;
                     }
                     if !tt_pv && !cut_node && quiet_hist > 4_000 {
-                        reduction -= 1;
+                        r -= 1024;
                     }
-                    reduction -= hist / 8_192;
-                    reduction = reduction.clamp(1, new_depth.max(1));
+                    r -= quiet_hist * 1024 / self.params.lmr_hist_div;
+                    let reduction = (r >> 10).clamp(1, new_depth.max(1));
                     score = -self.negamax(
                         board,
                         new_depth - reduction,
@@ -1318,6 +1379,12 @@ impl Searcher {
                         poll,
                     );
                     if score > alpha {
+                        // Full-depth verification re-search. (A do-deeper / do-shallower
+                        // LMR re-search adjustment was tried as Phase 2.8 and dropped:
+                        // do_shallower was proven dead, and SPSA-tuned do_deeper failed
+                        // its SPRT gate at st=0.1 — -1.38 Elo for ~4% more nodes
+                        // (bench 5,612,008 vs 5,401,662), a TC-transfer failure like the
+                        // 2.4 LMR tune. See PLAN §5 2.8.)
                         score = -self.negamax(
                             board,
                             new_depth,
@@ -1414,7 +1481,7 @@ impl Searcher {
                             for gc in good_caps.as_slice() {
                                 self.update_capture_history(
                                     gc.attacker,
-                                    gc.to,
+                                    gc.to as usize,
                                     gc.captured,
                                     -bonus,
                                 );
@@ -1444,10 +1511,13 @@ impl Searcher {
             if is_quiet {
                 quiets.push(mv);
             } else if is_capture {
+                if see == SEE_UNKNOWN as i32 {
+                    see = if board.see_ge(mv, 0) { 0 } else { -1 };
+                }
                 if see >= 0 {
-                    good_caps.push(moving_piece, mv.to_sq().index(), captured_piece);
+                    good_caps.push(moving_piece, mv.to_sq().0, captured_piece);
                 } else {
-                    bad_caps.push(moving_piece, mv.to_sq().index(), captured_piece);
+                    bad_caps.push(moving_piece, mv.to_sq().0, captured_piece);
                 }
             }
         }
@@ -1549,6 +1619,23 @@ impl Searcher {
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             };
             q_raw_static_eval = raw_stand_pat;
+            // Mirror the main search's eval_for_pruning TT-bound refinement.
+            // If the TT score is bounded (Exact, or a one-sided bound that
+            // agrees with the bound direction), use it as the stand_pat instead
+            // of the raw static eval — cheap cutoffs we would otherwise miss.
+            let stand_pat = if let Some(entry) = tt_entry
+                && let Some(bound) = entry.bound()
+            {
+                let tt_score = score_from_tt(entry.score as i32, ply, board.halfmove_clock);
+                match bound {
+                    Bound::Exact => tt_score,
+                    Bound::Lower if tt_score > stand_pat => tt_score,
+                    Bound::Upper if tt_score < stand_pat => tt_score,
+                    _ => stand_pat,
+                }
+            } else {
+                stand_pat
+            };
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
                 self.store_tt(
@@ -1900,10 +1987,10 @@ impl Searcher {
             self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -bonus);
         }
         for good_cap in good_caps.as_slice() {
-            self.update_capture_history(good_cap.attacker, good_cap.to, good_cap.captured, -bonus);
+            self.update_capture_history(good_cap.attacker, good_cap.to as usize, good_cap.captured, -bonus);
         }
         for bad_cap in bad_caps.as_slice() {
-            self.update_capture_history(bad_cap.attacker, bad_cap.to, bad_cap.captured, -bonus);
+            self.update_capture_history(bad_cap.attacker, bad_cap.to as usize, bad_cap.captured, -bonus);
         }
 
         if !previous.is_null() {
@@ -2259,13 +2346,16 @@ impl Searcher {
                 SearchEvent::PonderHit => {
                     self.pondering = false;
                     self.ponderhit = true;
+                    if self.stop_on_ponderhit {
+                        self.stopped = true;
+                    }
                     if let Some(shared_state) = &self.shared_state {
                         shared_state.ponderhit.store(true, Ordering::Relaxed);
                     }
                 }
                 SearchEvent::None => {}
             }
-            if !self.pondering && self.elapsed_ms() >= self.limits.hard_ms {
+            if !self.pondering && self.elapsed_ms() >= self.limits.maximum_ms {
                 self.stopped = true;
             }
         }
@@ -2383,15 +2473,8 @@ impl Searcher {
     }
 }
 
-fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
-    if depth < 3 || move_index < 2 {
-        return 0;
-    }
-    LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
-}
-
-fn late_move_prune_count(depth: i32, improving: bool) -> usize {
-    let base = 4 + 2 * depth * depth / 3;
+fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
+    let base = count_base + 2 * depth * depth / 3;
     if improving {
         (base + depth) as usize
     } else {
@@ -2539,7 +2622,7 @@ mod tests {
             depth: 1.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
 
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
@@ -2555,8 +2638,9 @@ mod tests {
         searcher.limits = RuntimeLimits {
             depth: 64,
             nodes: 0,
-            soft_ms: 1.0,
-            hard_ms: 1.0,
+            optimum_ms: 1.0,
+            maximum_ms: 1.0,
+            movetime_mode: false,
         };
 
         let stopped = searcher.check_stop(&mut || SearchEvent::PonderHit);
@@ -2580,7 +2664,7 @@ mod tests {
             depth: 3.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
         searcher.tt.store(
             board.hash,
             8,

@@ -17,6 +17,7 @@ enum Arch {
     Base,
     Avx2,
     Pext,
+    Native,
     Arm64,
 }
 
@@ -115,7 +116,7 @@ fn parse_args() -> Result<Config> {
 
 fn print_usage() {
     println!(
-        "Usage:\n  cargo xtask build [--arch base|x86-64|avx2|pext|arm64] [--target <triple>] [--pgo] [--bench-depth <n>]\n\nExamples:\n  cargo xtask build\n  cargo xtask build --arch avx2\n  cargo xtask build --arch pext --pgo\n  cargo xtask build --arch arm64 --target aarch64-apple-darwin"
+        "Usage:\n  cargo xtask build [--arch base|x86-64|avx2|pext|native|arm64] [--target <triple>] [--pgo] [--bench-depth <n>]\n\nExamples:\n  cargo xtask build\n  cargo xtask build --arch avx2\n  cargo xtask build --arch pext --pgo\n  cargo xtask build --arch native --pgo\n  cargo xtask build --arch arm64 --target aarch64-apple-darwin"
     );
 }
 
@@ -124,9 +125,10 @@ fn parse_arch(value: &str) -> Result<Arch> {
         "base" | "x86-64" | "x86_64" | "x64" => Ok(Arch::Base),
         "avx2" => Ok(Arch::Avx2),
         "pext" | "bmi2" => Ok(Arch::Pext),
+        "native" => Ok(Arch::Native),
         "arm64" | "aarch64" => Ok(Arch::Arm64),
         _ => Err(format!(
-            "unknown arch `{value}`; expected base, avx2, pext, or arm64"
+            "unknown arch `{value}`; expected base, avx2, pext, native, or arm64"
         )),
     }
 }
@@ -163,7 +165,7 @@ fn default_target(arch: Arch) -> String {
 
 fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
     match arch {
-        Arch::Base | Arch::Avx2 | Arch::Pext if !target.starts_with("x86_64-") => Err(format!(
+        Arch::Base | Arch::Avx2 | Arch::Pext | Arch::Native if !target.starts_with("x86_64-") => Err(format!(
             "`--arch {}` requires an x86_64 target, got `{target}`",
             arch_arg_name(arch)
         )),
@@ -179,6 +181,7 @@ fn arch_arg_name(arch: Arch) -> &'static str {
         Arch::Base => "base",
         Arch::Avx2 => "avx2",
         Arch::Pext => "pext",
+        Arch::Native => "native",
         Arch::Arm64 => "arm64",
     }
 }
@@ -188,6 +191,7 @@ fn asset_arch_name(arch: Arch) -> &'static str {
         Arch::Base => "x86-64",
         Arch::Avx2 => "avx2",
         Arch::Pext => "pext",
+        Arch::Native => "native",
         Arch::Arm64 => "arm64",
     }
 }
@@ -203,6 +207,15 @@ fn rustflags(arch: Arch) -> Vec<String> {
             "target-cpu=x86-64-v3".into(),
             "-C".into(),
             "target-feature=+bmi2".into(),
+        ],
+        // Local-only: tunes for the exact host CPU (e.g. znver3) instead of
+        // the portable x86-64-v3 baseline. Not for distributed assets, since
+        // the resulting binary is not guaranteed to run on other machines.
+        Arch::Native => vec![
+            "--cfg".into(),
+            "rarog_pext".into(),
+            "-C".into(),
+            "target-cpu=native".into(),
         ],
         Arch::Arm64 => vec!["-C".into(), "target-cpu=generic".into()],
     }
