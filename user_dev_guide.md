@@ -211,11 +211,22 @@ pass moved to Phase 4: eval fitting comes first.)
       implementation (cut-node gating, SEE threshold, verification search)
       was -25 Elo vs the original flat `beta+180` code already in master.
       Reverted to original. Commit `426e6e8`.
-- [ ] 2.2 Stockfish-style time management rewrite (full movetime budget as a
-      pure hard limit; optimum/maximum split for clock play; SF soft-stop
-      factors; stopOnPonderhit). Bench unchanged. Two SPRTs: `[0,5]` at
-      st=0.1 + clock-mode non-regression `[-5,0]` at tc=10+0.1. Watch for
-      time forfeits (must be zero).
+- [~] 2.2 Stockfish-style time management rewrite — **implemented**, commit
+      `72f1c54`. Bench 13 unchanged. Run two SPRTs:
+      (i) `[0,5]` at st=0.1 (deployment gain):
+      ```powershell
+      ./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-phase2-tm-pext-pgo.exe" `
+          -EngineB "tools\test_engines\rarog-phase1-final-pext-pgo.exe" `
+          -NameA "TM-rewrite" -NameB "Phase1"
+      ```
+      (ii) Clock non-regression `[-5,0]` at tc=10+0.1 after (i) passes:
+      ```powershell
+      ./tools/sprt.ps1 -Mode simplify `
+          -EngineA "tools\test_engines\rarog-phase2-tm-pext-pgo.exe" `
+          -EngineB "tools\test_engines\rarog-phase1-final-pext-pgo.exe" `
+          -NameA "TM-rewrite" -NameB "Phase1" -TC "10+0.1"
+      ```
+      Watch for time forfeits (must be zero in both).
 - [ ] 2.3 History maintenance per SF/Reckless: delete per-search halving,
       persist across searches, reset only `low_ply_history` per search.
       Bench changes; SPRT `[0,3]`. Fallback if H0: keep halving but only
