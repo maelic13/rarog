@@ -438,7 +438,7 @@ impl Searcher {
         self.tt_write_mode = TtWriteMode::Main;
         let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, true, true);
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, true);
 
         let board = root;
         let legal_moves = board.generate_legal_movelist();
@@ -495,7 +495,6 @@ impl Searcher {
         side_to_move: Color,
         game_ply: u32,
         age_tt: bool,
-        age_history: bool,
     ) {
         self.start = Instant::now();
         self.nodes = 0;
@@ -518,8 +517,13 @@ impl Searcher {
         if age_tt {
             self.tt.new_search();
         }
-        if age_history {
-            self.age_history();
+        // low_ply_history is indexed by ply from root, so it's search-scoped; reset it.
+        // All other history tables persist across searches within a game — they are
+        // bounded by gravity in update_hist_entry and cleared only on ucinewgame.
+        for ply in self.low_ply_history.iter_mut() {
+            for from in ply.iter_mut() {
+                from.fill(0);
+            }
         }
         self.pv_table = [[Move::NULL; MAX_PLY]; MAX_PLY];
         self.pv_len = [0; MAX_PLY];
@@ -770,7 +774,7 @@ impl Searcher {
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, false, true);
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, false);
         self.search_root(root, legal_moves, false, poll)
     }
 
@@ -2062,65 +2066,6 @@ impl Searcher {
         }
     }
 
-    fn age_history(&mut self) {
-        for color in self.main_history.iter_mut() {
-            for from in color.iter_mut() {
-                for value in from.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for attacker in self.cap_history.iter_mut() {
-            for to in attacker.iter_mut() {
-                for value in to.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for ply in self.low_ply_history.iter_mut() {
-            for from in ply.iter_mut() {
-                for value in from.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for value in &mut self.pawn_history {
-            *value /= 2;
-        }
-        for value in &mut self.cont_history_1 {
-            *value /= 2;
-        }
-        for value in &mut self.cont_history_2 {
-            *value /= 2;
-        }
-        for value in &mut self.cont_history_4 {
-            *value /= 2;
-        }
-        for value in &mut self.cont_history_6 {
-            *value /= 2;
-        }
-        for color in self.correction_history.iter_mut() {
-            for value in color.iter_mut() {
-                *value /= 2;
-            }
-        }
-        for color in self.minor_correction_history.iter_mut() {
-            for value in color.iter_mut() {
-                *value /= 2;
-            }
-        }
-        for stm in self.non_pawn_correction_history.iter_mut() {
-            for color in stm.iter_mut() {
-                for value in color.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for value in &mut self.continuation_correction_history {
-            *value /= 2;
-        }
-    }
-
     fn corrected_eval(&mut self, board: &Board, ply: usize) -> i32 {
         let raw = self.raw_eval(board);
         self.corrected_eval_from_raw(board, raw, ply)
@@ -2585,7 +2530,7 @@ mod tests {
             depth: 1.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true);
 
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
@@ -2627,7 +2572,7 @@ mod tests {
             depth: 3.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true);
         searcher.tt.store(
             board.hash,
             8,
