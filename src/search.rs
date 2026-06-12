@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock, atomic::Ordering, mpsc};
+use std::sync::{Arc, atomic::Ordering, mpsc};
 use std::time::Instant;
 
 use crate::board::{Board, Color, GameResult, Move, Piece};
@@ -25,19 +25,18 @@ const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 const DIRECT_CHECK_BONUS: i32 = 32_000;
 const TB_WIN_SCORE: i32 = MATE_SCORE - MAX_PLY as i32 * 2;
 const SEE_UNKNOWN: i16 = i16::MIN;
-/// LMR base reduction table scaled to 1024ths of a ply.
-/// All adjustments below accumulate in 1024ths; `>> 10` converts to integer
-/// ply reduction.  This allows sub-ply SPSA tuning of the 4 key adjustments.
-static LMR_TABLE: LazyLock<[[i32; 64]; 64]> = LazyLock::new(|| {
-    let mut table = [[0; 64]; 64];
+fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
+    let base_f = base as f64 / 1024.0;
+    let div_f = div as f64 / 1024.0;
+    let mut table = Box::new([[0i32; 64]; 64]);
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value =
-                (1024.0 * (0.75 + (depth as f64).ln() * (move_index as f64).ln() / 2.25)) as i32;
+            *value = (1024.0 * (base_f + (depth as f64).ln() * (move_index as f64).ln() / div_f))
+                as i32;
         }
     }
     table
-});
+}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
     None,
@@ -114,6 +113,8 @@ pub struct Searcher {
     stack_static_eval: [i32; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     root_moves: Vec<Move>,
+    lmr_table: Box<[[i32; 64]; 64]>,
+    lmr_table_key: (i32, i32),
     main_history: Box<[[[i16; 64]; 64]; 2]>,
     cap_history: Box<[[[i16; 6]; 64]; 6]>,
     low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
@@ -170,6 +171,8 @@ impl Default for Searcher {
             stack_static_eval: [VALUE_NONE; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
+            lmr_table: build_lmr_table(768, 2304),
+            lmr_table_key: (768, 2304),
             main_history: Box::new([[[0; 64]; 64]; 2]),
             cap_history: Box::new([[[0; 6]; 64]; 6]),
             low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
@@ -511,6 +514,11 @@ impl Searcher {
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
         self.params = engine_options.search_params.clone();
+        let table_key = (self.params.lmr_table_base, self.params.lmr_table_div);
+        if table_key != self.lmr_table_key {
+            self.lmr_table = build_lmr_table(table_key.0, table_key.1);
+            self.lmr_table_key = table_key;
+        }
         self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
@@ -1315,7 +1323,11 @@ impl Searcher {
                     // Accumulate in 1024ths; `>> 10` gives integer ply reduction.
                     // Defaults for lmr_* params = 1024, reproducing the original ±1 ply
                     // behavior exactly.  SPSA tunes from this baseline.
-                    let mut r = lmr_reduction(depth, searched);
+                    let mut r = if depth < 3 || searched < 2 {
+                        0
+                    } else {
+                        self.lmr_table[depth.min(63) as usize][searched.min(63)]
+                    };
                     // PV / TT-PV nodes: reduce less (param stored positive, subtracted).
                     if tt_pv {
                         r -= self.params.lmr_tt_pv_adj;
@@ -1343,7 +1355,7 @@ impl Searcher {
                     if !tt_pv && !cut_node && quiet_hist > 4_000 {
                         r -= 1024;
                     }
-                    r -= quiet_hist * 1024 / 8_192; // equivalent to original hist / 8_192
+                    r -= quiet_hist * 1024 / self.params.lmr_hist_div;
                     let reduction = (r >> 10).clamp(1, new_depth.max(1));
                     score = -self.negamax(
                         board,
@@ -2427,13 +2439,6 @@ impl Searcher {
             GameResult::Stalemate
         }
     }
-}
-
-fn lmr_reduction(depth: i32, move_index: usize) -> i32 {
-    if depth < 3 || move_index < 2 {
-        return 0;
-    }
-    LMR_TABLE[depth.min(63) as usize][move_index.min(63)]
 }
 
 fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {

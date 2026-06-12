@@ -159,6 +159,10 @@ impl SearchOptions {
             String::from("option name LmrExactBound type spin default 0 min 0 max 2048"),
             String::from("option name LmrShallowTt type spin default 1024 min 0 max 2048"),
             String::from("option name LmrCutNode type spin default 1024 min 0 max 2048"),
+            // LMR table formula coefficients (1024ths; defaults reproduce original formula).
+            String::from("option name LmrTableBase type spin default 768 min 512 max 1024"),
+            String::from("option name LmrTableDiv type spin default 2304 min 1536 max 3072"),
+            String::from("option name LmrHistDiv type spin default 8192 min 4096 max 16384"),
         ]);
         opts
     }
@@ -505,6 +509,27 @@ impl SearchOptions {
             "lmrcutnode" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.lmr_cut_node = v.clamp(0, 2_048);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrtablebase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_table_base = v.clamp(512, 1_024);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrtablediv" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_table_div = v.clamp(1_536, 3_072);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lmrhistdiv" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lmr_hist_div = v.clamp(4_096, 16_384);
                 }
                 true
             }

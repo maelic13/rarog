@@ -22,5 +22,23 @@
         "min_value": 0,
         "max_value": 2048,
         "step": 80
+    },
+    "LmrTableBase": {
+        "value": 768,
+        "min_value": 512,
+        "max_value": 1024,
+        "step": 50
+    },
+    "LmrTableDiv": {
+        "value": 2304,
+        "min_value": 1536,
+        "max_value": 3072,
+        "step": 50
+    },
+    "LmrHistDiv": {
+        "value": 8192,
+        "min_value": 4096,
+        "max_value": 16384,
+        "step": 300
     }
 }

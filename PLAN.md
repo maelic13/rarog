@@ -512,13 +512,17 @@ instead.
 From finding 4.
 - Expose `LmrTableBase` (default 768 = 0.75·1024), `LmrTableDiv` (default
   2304 = 2.25·1024), and `LmrHistDiv` (default 8192, currently hard-coded at
-  search.rs:1359) as tune options. **Implementation note:** `LMR_TABLE` is a
-  `static LazyLock` (search.rs:31) — make it a per-`Searcher` table rebuilt in
-  `configure()` when the table params change (keep the static for non-tune
-  builds if convenient). Default-equivalence gate: bench 13 unchanged.
-- New `config_lmr.json` = these 3 + the existing 4 adjustments (7 params).
-  SPSA to convergence, bake, SPRT `[0,3]`. Basilisk's identical re-tune was
-  worth +15.6 Elo; this is the most promising tuning item left.
+  search.rs line with `quiet_hist * 1024 / 8_192`) as tune options.
+  **Implementation:** replace `static LazyLock<LMR_TABLE>` (search.rs:31) with
+  a `lmr_table: Box<[[i32; 64]; 64]>` on `Searcher`. Track the last-built
+  `(base, div)` pair; rebuild in `reset_search_state` only when they change
+  (zero overhead for non-tune builds). `lmr_hist_div` used live from
+  `self.params`. Default-equivalence gate: bench 13 must be unchanged.
+- `config_lmr.json` = all 7 params (4 existing + 3 new). Steps: existing
+  ~80, new table params ~50 (ranges wider: base [512,1024], div [1536,3072],
+  hist [4096,16384]). SPSA to convergence, bake, SPRT `[0,3]`.
+  Basilisk's identical re-tune was worth +15.6 Elo; this is the most
+  promising tuning item left.
 
 #### 2.5 Per-move quiet futility pruning
 

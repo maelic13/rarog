@@ -52,7 +52,7 @@ pub struct SearchParams {
     pub lmp_count_base: i32,
 
     // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
-    // Applied to the 1024x-scaled LMR_TABLE base; `>> 10` gives integer ply.
+    // Applied to the 1024x-scaled LMR table base; `>> 10` gives integer ply.
     // Defaults of 1024 reproduce the original ±1 ply behavior exactly, so
     // bench 13 is unchanged and SPSA tunes from a correct baseline.
     /// PV / TT-PV nodes: reduce less (stored positive; subtracted). Default = 1024 (1 ply).
@@ -63,6 +63,17 @@ pub struct SearchParams {
     pub lmr_shallow_tt: i32,
     /// Cut node: reduce more. Default = 1024 (1 ply).
     pub lmr_cut_node: i32,
+
+    // ── LMR table formula coefficients (in 1024ths) ──────────────────────────
+    // Table formula: 1024 * (base/1024 + ln(depth)*ln(move_idx) / (div/1024))
+    // Defaults reproduce the original formula (0.75 + ln*ln/2.25) exactly.
+    /// Additive base constant (1024ths). Default = 768 (= 0.75 * 1024).
+    pub lmr_table_base: i32,
+    /// Logarithm divisor (1024ths). Default = 2304 (= 2.25 * 1024).
+    pub lmr_table_div: i32,
+    /// History divisor in the per-move history adjustment. Default = 8192.
+    /// Applied as: `r -= quiet_hist * 1024 / lmr_hist_div`.
+    pub lmr_hist_div: i32,
 }
 
 impl Default for SearchParams {
@@ -88,6 +99,10 @@ impl Default for SearchParams {
             lmr_exact_bound: 0,   // 0 = not in original code
             lmr_shallow_tt: 1024, // 1 ply (original: +1 when !tt_move && searched>=4)
             lmr_cut_node: 1024,   // 1 ply (original: +1)
+            // LMR table formula — defaults reproduce original formula exactly.
+            lmr_table_base: 768,  // 0.75 * 1024
+            lmr_table_div: 2304,  // 2.25 * 1024
+            lmr_hist_div: 8192,   // matches hard-coded 8_192 in search
         }
     }
 }
@@ -116,5 +131,8 @@ mod tests {
         assert!(p.lmr_exact_bound >= 0);
         assert!(p.lmr_shallow_tt >= 0);
         assert!(p.lmr_cut_node >= 0);
+        assert!(p.lmr_table_base > 0);
+        assert!(p.lmr_table_div > 0);
+        assert!(p.lmr_hist_div > 0);
     }
 }

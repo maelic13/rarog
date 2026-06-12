@@ -222,10 +222,11 @@ pass moved to Phase 4: eval fitting comes first.)
       (commit `c9ccc08`), bench 4,503,153; SPRT `[0,3]`: **H0**, -12.4 ± 6.2 Elo
       after 6514 games. Reverted (commit `54ef011`). Fallback (halve every 2nd
       search) skipped — starting -12 Elo in the hole makes passing [0,3] unlikely.
-- [ ] 2.4 LMR formula coefficients exposed (`LmrTableBase`=768,
+- [~] 2.4 LMR formula coefficients exposed (`LmrTableBase`=768,
       `LmrTableDiv`=2304, `LmrHistDiv`=8192) + SPSA group A **redo** with all
       7 LMR params + SPRT. (Basilisk's identical re-tune passed +15.6 Elo;
       Rarog's first attempt lacked exactly these three knobs.)
+      Bench must be unchanged (default-equivalence). SPSA then SPRT `[0,3]`.
 - [ ] 2.5 Per-move quiet futility pruning, depth ≤ 8 (seed `FpBase=180`,
       `FpCoeff=128`) + SPSA + SPRT.
 - [ ] 2.6 LMR do-deeper/do-shallower re-search (seeds 64 / 8, deeper margin
