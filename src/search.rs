@@ -104,6 +104,7 @@ pub struct Searcher {
     quit: bool,
     pondering: bool,
     ponderhit: bool,
+    stop_on_ponderhit: bool,
     start: Instant,
     limits: RuntimeLimits,
     pv_table: [[Move; MAX_PLY]; MAX_PLY],
@@ -153,12 +154,14 @@ impl Default for Searcher {
             quit: false,
             pondering: false,
             ponderhit: false,
+            stop_on_ponderhit: false,
             start: Instant::now(),
             limits: RuntimeLimits {
                 depth: MAX_DEPTH,
                 nodes: 0,
-                soft_ms: f64::INFINITY,
-                hard_ms: f64::INFINITY,
+                optimum_ms: f64::INFINITY,
+                maximum_ms: f64::INFINITY,
+                movetime_mode: false,
             },
             pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
             pv_len: [0; MAX_PLY],
@@ -433,7 +436,9 @@ impl Searcher {
         self.shared_state = None;
         self.root_move_offset = 0;
         self.tt_write_mode = TtWriteMode::Main;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), true, true);
+        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+            + (root.side_to_move() == Color::Black) as u32;
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, true, true);
 
         let board = root;
         let legal_moves = board.generate_legal_movelist();
@@ -488,6 +493,7 @@ impl Searcher {
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         side_to_move: Color,
+        game_ply: u32,
         age_tt: bool,
         age_history: bool,
     ) {
@@ -499,7 +505,8 @@ impl Searcher {
         self.quit = false;
         self.pondering = limits.ponder;
         self.ponderhit = false;
-        self.limits = compute_runtime_limits(limits, engine_options, side_to_move, MAX_DEPTH);
+        self.stop_on_ponderhit = false;
+        self.limits = compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
         self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
@@ -610,12 +617,11 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
-        let mut stable_best_depths = 0usize;
-        let mut last_score_drop = 0;
+        let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
+        let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
 
         for depth in 1..=max_depth {
             let previous_bestmove = bestmove;
-            let iteration_start_ms = self.elapsed_ms();
             self.root_iteration_nodes = self.nodes;
             self.root_best_nodes = 0;
             self.root_best_effort = 0.0;
@@ -632,7 +638,6 @@ impl Searcher {
             } else {
                 INF_SCORE
             };
-            let mut iteration_elapsed_ms = 0.0;
 
             loop {
                 let score = self.negamax(
@@ -661,14 +666,8 @@ impl Searcher {
                     beta = (best_score + beta_delta).min(INF_SCORE);
                     continue;
                 }
-                last_score_drop = if completed_depth > 0 {
-                    best_score - score
-                } else {
-                    0
-                };
                 best_score = score;
                 completed_depth = depth;
-                iteration_elapsed_ms = (self.elapsed_ms() - iteration_start_ms).max(0.0);
                 let iteration_nodes = self.nodes.saturating_sub(self.root_iteration_nodes).max(1);
                 self.root_best_effort = self.root_best_nodes as f64 / iteration_nodes as f64;
                 if self.pv_len[0] > 0 {
@@ -678,11 +677,6 @@ impl Searcher {
                     } else {
                         Move::NULL
                     };
-                    if bestmove == previous_bestmove {
-                        stable_best_depths += 1;
-                    } else {
-                        stable_best_depths = 0;
-                    }
                 }
                 break;
             }
@@ -699,32 +693,47 @@ impl Searcher {
                 break;
             }
 
-            if !self.pondering {
-                let elapsed_ms = self.elapsed_ms();
-                let effort_scale = if self.root_best_effort > 0.65 && stable_best_depths > 0 {
-                    0.85
-                } else if self.root_best_effort < 0.25 || stable_best_depths == 0 {
-                    1.20
-                } else {
-                    1.0
-                };
-                let score_scale = if last_score_drop > 80 {
-                    1.25
-                } else if last_score_drop > 40 {
-                    1.10
-                } else {
-                    1.0
-                };
-                let dynamic_soft_ms = self.limits.soft_ms * effort_scale * score_scale;
-                let next_iteration_would_hit_hard = self.limits.hard_ms.is_finite()
-                    && iteration_elapsed_ms > 0.0
-                    && elapsed_ms + iteration_elapsed_ms * 1.75 + 1.0 >= self.limits.hard_ms;
-                if elapsed_ms >= self.limits.hard_ms
-                    || next_iteration_would_hit_hard
-                    || (elapsed_ms >= dynamic_soft_ms
-                        && (dynamic_soft_ms >= self.limits.hard_ms
-                            || (stable_best_depths > 0 && last_score_drop <= 50)))
-                {
+            // Update best-move instability and score EWMA for the soft-stop formula.
+            tot_best_move_changes /= 2.0;
+            if bestmove != previous_bestmove {
+                tot_best_move_changes += 1.0;
+            }
+            // prev_avg_score feeds into fallingEval next iteration; init to 0 on depth 1.
+            prev_avg_score = if completed_depth <= 1 {
+                best_score as f64
+            } else {
+                (prev_avg_score * 2.0 + best_score as f64) / 3.0
+            };
+
+            // SF-style between-iteration stop.
+            // movetime mode: no soft stop — check_stop (every 2048 nodes) fires at maximum_ms.
+            // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
+            let elapsed_ms = self.elapsed_ms();
+            if elapsed_ms >= self.limits.maximum_ms {
+                break;
+            }
+            if !self.limits.movetime_mode {
+                // fallingEval: ↑ when score is falling (want more time); seeds from SF.
+                let falling_eval =
+                    (0.1187 + 0.0221 * (prev_avg_score - best_score as f64))
+                        .clamp(0.572, 1.708);
+                // bestMoveInstab: ↑ when best move changed recently.
+                let best_move_instab = 1.10 + 2.29 * tot_best_move_changes;
+                // effortFactor: linear interp — at effort≤0.79 → 0.924; at effort≥1.0 → 0.71.
+                let t =
+                    ((self.root_best_effort - 0.79) / (1.0 - 0.79)).clamp(0.0, 1.0);
+                let effort_factor = (0.924 + t * (0.71 - 0.924)).clamp(0.71, 0.924);
+                let total_time = self.limits.optimum_ms
+                    * falling_eval
+                    * best_move_instab
+                    * effort_factor;
+                let soft_target = total_time.min(self.limits.maximum_ms);
+                if self.pondering {
+                    // While pondering: flag to stop immediately on ponderhit.
+                    if elapsed_ms >= soft_target {
+                        self.stop_on_ponderhit = true;
+                    }
+                } else if elapsed_ms >= soft_target {
                     break;
                 }
             }
@@ -759,7 +768,9 @@ impl Searcher {
         legal_moves: &[Move],
         poll: &mut P,
     ) -> SearchResult {
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), false, true);
+        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+            + (root.side_to_move() == Color::Black) as u32;
+        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, false, true);
         self.search_root(root, legal_moves, false, poll)
     }
 
@@ -2291,13 +2302,16 @@ impl Searcher {
                 SearchEvent::PonderHit => {
                     self.pondering = false;
                     self.ponderhit = true;
+                    if self.stop_on_ponderhit {
+                        self.stopped = true;
+                    }
                     if let Some(shared_state) = &self.shared_state {
                         shared_state.ponderhit.store(true, Ordering::Relaxed);
                     }
                 }
                 SearchEvent::None => {}
             }
-            if !self.pondering && self.elapsed_ms() >= self.limits.hard_ms {
+            if !self.pondering && self.elapsed_ms() >= self.limits.maximum_ms {
                 self.stopped = true;
             }
         }
@@ -2571,7 +2585,7 @@ mod tests {
             depth: 1.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
 
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
@@ -2587,8 +2601,9 @@ mod tests {
         searcher.limits = RuntimeLimits {
             depth: 64,
             nodes: 0,
-            soft_ms: 1.0,
-            hard_ms: 1.0,
+            optimum_ms: 1.0,
+            maximum_ms: 1.0,
+            movetime_mode: false,
         };
 
         let stopped = searcher.check_stop(&mut || SearchEvent::PonderHit);
@@ -2612,7 +2627,7 @@ mod tests {
             depth: 3.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), true, true);
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
         searcher.tt.store(
             board.hash,
             8,
