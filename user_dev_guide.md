@@ -218,10 +218,10 @@ pass moved to Phase 4: eval fitting comes first.)
       (ii) `[-5,0]` simplify — **H1** (no regression; also gains in clock mode),
           +72.6 ± 18.8 Elo (nElo +98.3), 762 games.
       Zero time forfeits in both runs.
-- [ ] 2.3 History maintenance per SF/Reckless: delete per-search halving,
-      persist across searches, reset only `low_ply_history` per search.
-      Bench changes; SPRT `[0,3]`. Fallback if H0: keep halving but only
-      every 2nd search.
+- [x] 2.3 History maintenance per SF/Reckless — **dropped**. Implemented
+      (commit `c9ccc08`), bench 4,503,153; SPRT `[0,3]`: **H0**, -12.4 ± 6.2 Elo
+      after 6514 games. Reverted (commit `54ef011`). Fallback (halve every 2nd
+      search) skipped — starting -12 Elo in the hole makes passing [0,3] unlikely.
 - [ ] 2.4 LMR formula coefficients exposed (`LmrTableBase`=768,
       `LmrTableDiv`=2304, `LmrHistDiv`=8192) + SPSA group A **redo** with all
       7 LMR params + SPRT. (Basilisk's identical re-tune passed +15.6 Elo;
