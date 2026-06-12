@@ -226,11 +226,21 @@ pass moved to Phase 4: eval fitting comes first.)
       `LmrTableDiv`=2304, `LmrHistDiv`=8192) + SPSA group A **redo** with all
       7 LMR params + SPRT. (Basilisk's identical re-tune passed +15.6 Elo;
       Rarog's first attempt lacked exactly these three knobs.)
-      Bench must be unchanged (default-equivalence). SPSA then SPRT `[0,3]`.
-- [ ] 2.5 Per-move quiet futility pruning, depth ≤ 8 (seed `FpBase=180`,
-      `FpCoeff=128`) + SPSA + SPRT.
-- [ ] 2.6 LMR do-deeper/do-shallower re-search (seeds 64 / 8, deeper margin
-      includes `+2*reduction`) + SPSA + SPRT.
+      Implemented (commit `dd1abc5`), bench unchanged ✓. SPSA in progress;
+      then SPRT `[0,3]`.
+- [ ] 2.5 QSearch TT-bound stand-pat refinement (problem fix from external
+      review — verified real). Apply the main search's `eval_for_pruning`
+      TT-bound refinement to qsearch stand-pat. SPRT `[0,3]`.
+- [ ] 2.6 Singular double-extension budget cap (robustness fix from external
+      review). Cap `extension = 2` per line (SF-style counter, cap ~12).
+      SPRT `[-3,3]` non-regression.
+- [ ] 2.7 Per-move quiet futility pruning, depth ≤ 8 (seed `FpBase=180`,
+      `FpCoeff=128`) + SPSA + SPRT. (was 2.5; cp-margins re-tuned in Phase 4
+      after the eval re-fit)
+- [ ] 2.8 LMR do-deeper/do-shallower re-search (seeds 64 / 8, deeper margin
+      includes `+2*reduction`) + SPSA + SPRT. (was 2.6)
+- [ ] 2.9 Test-infra: fix debug-build stack overflow so `cargo test` is fully
+      green (pre-existing; no SPRT).
 - Extended correction history — **removed: already in baseline** (verified
   against `master`; porting it would be a no-op)
 - Codex time management — **superseded** by 2.2 (SF-style rewrite)

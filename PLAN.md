@@ -316,6 +316,15 @@ keep or drop.
 > wave (EBF gap) plus the speed pass and margin re-tunes. The codex ports and
 > NPS work that previously sat here moved to Phase 4 — they are speculative
 > or small, and must not delay the eval work.
+>
+> Note on tuning-twice: Phase 3 changes the centipawn scale, so
+> centipawn-denominated margins tuned in Phase 2 (futility, do-deeper) will
+> shift and are re-tuned in the Phase 4 SPSA wave — that re-tune is already
+> planned and is machine time, not lost work. It is NOT a reason to defer
+> Phase 2 search items: the LMR coefficients (2.4) live in depth/move-index
+> space and survive an eval re-fit, the cp-margin seeds come from Basilisk
+> which shares Rarog's current eval, and a stronger engine produces better
+> Phase 3 self-play data.
 
 ### 5.0 Analysis findings that drive the new ordering
 
@@ -502,10 +511,13 @@ call); histories persist across searches within a game (gravity in
 (already implemented in `new_game`). Exception: **reset `low_ply_history` at
 every search start** (it is indexed relative to the root ply; SF refills it
 each search). Worker threads (`reset_worker_state_for_new_game`) get the same
-treatment. Bench fingerprint changes — record it. SPRT `[0,3]`. If it fails,
-fall back to a halfway variant — keep `age_history()` but call it only every
-2nd search (a counter on `Searcher`, reset in `new_game`) — and SPRT that
-instead.
+treatment. Bench fingerprint changes — record it. SPRT `[0,3]`.
+
+**Outcome 2026-06-12: dropped.** Implemented, SPRT `[0,3]` H0 at
+-12.4 ± 6.2 Elo (6,514 games); reverted. The per-search halving carries real
+Elo value (fresh history outweighs accumulated signal at this TC). The
+halve-every-2nd-search fallback was skipped — a -12 Elo starting deficit
+makes passing `[0,3]` implausible. Do not retry without new evidence.
 
 #### 2.4 LMR formula coefficients + SPSA group A redo
 
@@ -524,7 +536,32 @@ From finding 4.
   Basilisk's identical re-tune was worth +15.6 Elo; this is the most
   promising tuning item left.
 
-#### 2.5 Per-move quiet futility pruning
+#### 2.5 QSearch TT-bound stand-pat refinement (problem fix)
+
+From the 2026-06-12 external review (verified against the code). The main
+search refines its pruning eval with usable TT bounds
+(`eval_for_pruning`, search.rs ~1019: Exact → tt_score; Lower and
+tt_score > static_eval → tt_score; Upper and tt_score < static_eval →
+tt_score). Quiescence uses the TT entry only as a cached *raw* eval and
+never applies the same bound refinement to its stand-pat, missing cheap
+cutoffs qsearch could take for free. Fix: apply the identical 3-arm bound
+refinement to `stand_pat` after computing it (tt_score already probed at the
+top of `quiescence`). Small, self-contained; bench changes — record it.
+SPRT `[0,3]`.
+
+#### 2.6 Singular double-extension budget cap (robustness fix)
+
+From the same review, verified: the singular path grants `extension = 2`
+(search.rs ~1276) with no per-line budget. Total growth is bounded by
+`MAX_PLY = 128`, so it cannot run away entirely, but a pathological tactical
+line can still consume a disproportionate share of the budget. Fix the
+standard way: count double-extensions along the current line (a small
+counter on the stack or passed down; SF capped at ~12 per line) and only
+allow `extension = 2` while under the cap. Expected ~0 Elo at st=0.1 but
+protects against rare time-loss blowups. Bench may change — record it.
+SPRT `[-3,3]` (non-regression; accept if no loss).
+
+#### 2.7 Per-move quiet futility pruning
 
 From finding 7. In the move loop's non-PV pruning block (search.rs:1217-1250),
 alongside the existing LMP conditions, add for quiet moves:
@@ -537,8 +574,10 @@ if depth <= 8 && static_eval != VALUE_NONE
 ```
 Seeds `fp_base=180`, `fp_coeff=128` (Basilisk); expose both as tune options,
 SPSA (may share a run with 2.4 if ranges are set), SPRT `[0,3]`.
+Note: these margins are centipawn-scaled and will shift after the Phase 3
+eval re-fit; the Phase 4 SPSA wave re-tunes them (planned, not lost work).
 
-#### 2.6 LMR "do deeper / do shallower" re-search
+#### 2.8 LMR "do deeper / do shallower" re-search
 
 Standard in SF and Reckless, absent in Rarog: when the reduced LMR search
 returns `score > alpha` and a full-depth re-search is triggered
@@ -549,7 +588,29 @@ do_shallower = score < best_score + shallower_margin
 re-search at new_depth + (do_deeper ? 1 : do_shallower ? -1 : 0)
 ```
 Seeds: `deeper_margin=64`, `shallower_margin=8`. Expose both as tune options,
-SPSA-tune, SPRT `[0,3]`.
+SPSA-tune, SPRT `[0,3]`. Same centipawn-margin caveat as 2.7.
+
+#### 2.9 Test-infra fix: debug builds overflow the main-thread stack (no SPRT)
+
+Pre-existing, test-only: the `uci_process` integration tests fail in debug
+builds because constructing the large `Searcher` on the default 1 MB Windows
+main-thread stack overflows. Fix cheaply: the big history tables are already
+boxed, so the likely culprit is a large stack-constructed intermediate
+(`Searcher` contains several inline `[..; MAX_PLY]` arrays); either box
+those, construct the `Searcher` directly on the heap, or run the engine's
+main loop on a thread spawned with an explicit larger stack size (as SF
+does). Zero search impact; gate: `cargo test` fully green in debug. No SPRT.
+
+> **External-review disposition (2026-06-12, PROBLEMS.md from
+> Antigravity/Gemini 3.1 Pro):** items 1 (eval untuned → Phase 3),
+> 3 (quiet futility → 2.7), 6 (history formula → Phase 4) were already
+> planned; 4 and 5 were valid and new → added as 2.5 and 2.6; 2 (age_history
+> "tax") is overstated — the halving costs <1% of a 100 ms budget and
+> removing it measured -12.4 Elo (2.3); 7 (EBF gap) is a summary, not an
+> item. Gemini's proposal to defer all Phase 2 search tuning until after the
+> eval re-fit was rejected: LMR params are not centipawn-scaled, the margin
+> re-tune is already planned in Phase 4, and a stronger engine improves
+> Phase 3 datagen quality.
 
 > **That's the whole phase.** The codex ports (multi-cut, threat history,
 > TT-cutoff history), the speed pass, and the other search features moved to
