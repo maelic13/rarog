@@ -73,7 +73,7 @@ and give you the SPRT command to confirm them.
 
 When the model asks you to verify a refactor didn't change behaviour:
 
-> "Bench 13 result: **4,713,975 nodes** ✓"  (matches baseline — safe)
+> "Bench 13 result: **5,318,762 nodes** ✓"  (matches Phase 1 final baseline — safe)
 > "Bench 13 result: **4,891,203 nodes**"      (changed — expected for real features)
 
 ---
@@ -150,7 +150,7 @@ python main.py
 #   .\target\release\rarog.exe
 #   bench 13
 #   quit
-# Expected baseline: "Nodes searched  : 4713975"
+# Expected baseline: "Nodes searched  : 5318762" (Phase 1 final, after LMR-1024ths port)
 # (PowerShell piping is unreliable for this; type the commands interactively)
 
 # Inspect what a branch added
@@ -174,7 +174,7 @@ Update this as each step is completed.
 ### Phase 1 — SPSA-tune existing constants
 - [x] `SearchParams` struct + `src/params.rs` — commit `2b39f24`
 - [x] 13 constants exposed as UCI spin options (`src/search_options.rs`)
-- [x] **SPRT gate #1 (default-equivalence)** — bench 13 = **4,713,975** ✓, SPRT ~2.4k games score 49.57% LLR=-0.68 ✓ (refactor is behavior-safe)
+- [x] **SPRT gate #1 (default-equivalence)** — bench 13 = **4,713,975** ✓ (pre-LMR port), SPRT ~2.4k games score 49.57% LLR=-0.68 ✓ (refactor is behavior-safe)
 - [x] SPSA group B (pruning/margin constants) tuned — commit `fae334a`
       (2271 iters / 72672 games; biggest movers: FutilityImproving 20→51,
       LmpImproving 25→53, SingularBetaMult 2→4, LmpBase 90→115)
@@ -211,22 +211,13 @@ pass moved to Phase 4: eval fitting comes first.)
       implementation (cut-node gating, SEE threshold, verification search)
       was -25 Elo vs the original flat `beta+180` code already in master.
       Reverted to original. Commit `426e6e8`.
-- [~] 2.2 Stockfish-style time management rewrite — **implemented**, commit
-      `72f1c54`. Bench 13 unchanged. Run two SPRTs:
-      (i) `[0,5]` at st=0.1 (deployment gain):
-      ```powershell
-      ./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-phase2-tm-pext-pgo.exe" `
-          -EngineB "tools\test_engines\rarog-phase1-final-pext-pgo.exe" `
-          -NameA "TM-rewrite" -NameB "Phase1"
-      ```
-      (ii) Clock non-regression `[-5,0]` at tc=10+0.1 after (i) passes:
-      ```powershell
-      ./tools/sprt.ps1 -Mode simplify `
-          -EngineA "tools\test_engines\rarog-phase2-tm-pext-pgo.exe" `
-          -EngineB "tools\test_engines\rarog-phase1-final-pext-pgo.exe" `
-          -NameA "TM-rewrite" -NameB "Phase1" -TC "10+0.1"
-      ```
-      Watch for time forfeits (must be zero in both).
+- [x] 2.2 Stockfish-style time management rewrite — **confirmed**. Commit
+      `72f1c54`. Bench 13 = 5,318,762 (unchanged from Phase 1 final).
+      (i) `[0,5]` st=0.1 — **H1**, +81.2 ± 19.5 Elo (nElo +106.6), 762 games.
+          The broken `max(movetime-10ms, 1ms)` was capping to depth 1 at st=0.1.
+      (ii) `[-5,0]` simplify — **H1** (no regression; also gains in clock mode),
+          +72.6 ± 18.8 Elo (nElo +98.3), 762 games.
+      Zero time forfeits in both runs.
 - [ ] 2.3 History maintenance per SF/Reckless: delete per-search halving,
       persist across searches, reset only `low_ply_history` per search.
       Bench changes; SPRT `[0,3]`. Fallback if H0: keep halving but only

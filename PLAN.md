@@ -26,7 +26,7 @@ round-robins (RR, 64 MB, 100 ms/move):
 **Key conclusions:**
 
 1. **`v2.1.0-codex-work` is behavior-identical to `2.0.2`** (same `bench 13`
-   fingerprint `4,713,975`). Its changes are safe micro-optimizations with **no
+   fingerprint after LMR-1024ths port: `5,318,762`). Its changes are safe micro-optimizations with **no
    measurable strength or NPS benefit**. Keep them as clean baseline; expect
    nothing from them.
 2. **Speed is not the bottleneck.** Rarog runs at ~2.6 M NPS but only reaches
@@ -126,7 +126,7 @@ inventory only — do not retry as-is.
 ### 1d. Existing tooling in `v2.1.0-codex-work` (reuse, don't reinvent)
 
 - **`bench` UCI command** — `bench [depth]` runs a fixed position suite and
-  reports a repeatable node fingerprint. `bench 13` == `4,713,975` on baseline.
+  reports a repeatable node fingerprint. `bench 13` == `5,318,762` on Phase 1 final baseline.
   **Use this as the regression-safety check: any "behavior-preserving" refactor
   must keep the fingerprint; any real change will move it — that's expected.**
 - **`xtask`** — `cargo xtask build --arch pext --pgo` builds the optimized
