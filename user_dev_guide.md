@@ -206,8 +206,11 @@ Update this as each step is completed.
 finding 10; item numbers = PLAN.md §5 sub-sections. Codex ports and the speed
 pass moved to Phase 4: eval fitting comes first.)
 - [~] `improvements` branch: check-aware ordering — **H0 discarded** (~11k games, LLR flat −0.5 to −0.8; use `[-3,3]` bounds for small features next time)
-- [~] 2.1 ProbCut — ported from `v2.1.0-codex`; bench 13 = **4,632,725**;
-      SPSA tune `config_probcut.json`, then SPRT vs Phase 1
+- [x] 2.1 ProbCut — **dropped**. SPSA tuned to 165/1/31 (base/depth/improving);
+      SPRT [0,3]: **H0**, -24.5 ± 8.5 Elo after 3380 games. The codex-branch
+      implementation (cut-node gating, SEE threshold, verification search)
+      was -25 Elo vs the original flat `beta+180` code already in master.
+      Reverted to original. Commit `426e6e8`.
 - [ ] 2.2 Stockfish-style time management rewrite (full movetime budget as a
       pure hard limit; optimum/maximum split for clock play; SF soft-stop
       factors; stopOnPonderhit). Bench unchanged. Two SPRTs: `[0,5]` at
