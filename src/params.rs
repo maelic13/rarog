@@ -51,13 +51,6 @@ pub struct SearchParams {
     /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
     pub lmp_count_base: i32,
 
-    /// ProbCut base margin. Formula: `base + depth_margin * depth - improving_bonus * improving`.
-    pub probcut_base_margin: i32,
-    /// ProbCut depth margin coefficient.
-    pub probcut_depth_margin: i32,
-    /// ProbCut margin reduction when improving.
-    pub probcut_improving_bonus: i32,
-
     // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
     // Applied to the 1024x-scaled LMR_TABLE base; `>> 10` gives integer ply.
     // Defaults of 1024 reproduce the original ±1 ply behavior exactly, so
@@ -88,10 +81,6 @@ impl Default for SearchParams {
             see_pruning_max: 811,          // was 800 → 801 → 811
             singular_beta_mult: 4,         // was 2 (unchanged)
             lmp_count_base: 2,             // was 4 (unchanged)
-            // Phase 2 ProbCut seed values ported from v2.1.0-codex; tune before keeping.
-            probcut_base_margin: 188,    // codex seed
-            probcut_depth_margin: 4,     // codex seed
-            probcut_improving_bonus: 28, // codex seed
             // LMR adjustments — defaults reproduce original ±1-ply behavior exactly.
             // Group A SPSA candidate (914 / 136 / 1073 / 834) was rejected:
             // [0,3] SPRT stayed inconclusive after ~58k games (nElo ~+1.7).
@@ -123,8 +112,6 @@ mod tests {
         assert!(p.see_pruning_max > 0);
         assert!(p.singular_beta_mult > 0);
         assert!(p.lmp_count_base > 0);
-        assert!(p.probcut_base_margin > p.probcut_improving_bonus);
-        assert!(p.probcut_depth_margin >= 0);
         assert!(p.lmr_tt_pv_adj >= 0);
         assert!(p.lmr_exact_bound >= 0);
         assert!(p.lmr_shallow_tt >= 0);

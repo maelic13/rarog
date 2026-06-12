@@ -1074,37 +1074,25 @@ impl Searcher {
                 }
             }
 
-            if probcut_allowed(ProbCutContext {
-                depth,
-                beta,
-                eval_for_pruning,
-                tt_pv,
-                cut_node,
-                tt_score,
-                tt_bound,
-                excluded,
-            }) {
-                let margin = probcut_margin(&self.params, depth, improving);
-                let probcut_beta = beta + margin;
-                let see_threshold = probcut_see_threshold(probcut_beta, eval_for_pruning);
+            if depth >= 4 {
+                let probcut_beta = beta + 180;
                 let captures = board.generate_legal_captures();
                 let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
-                for index in 0..scored.len().min(probcut_candidate_limit(depth)) {
+                for index in 0..scored.len().min(8) {
                     let picked = pick_next(scored.as_mut_slice(), index);
                     let mv = picked.mv;
-                    if !board.see_ge(mv, see_threshold) {
+                    if !board.see_ge(mv, 0) {
                         continue;
                     }
                     self.stack_moves[ply] = mv;
                     board.make_move_unchecked(mv);
                     self.tt.prefetch(board.hash);
-                    let mut score =
+                    let score =
                         -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
-                    if score >= probcut_beta {
-                        let verify_depth = probcut_verification_depth(depth, score - probcut_beta);
-                        score = -self.negamax(
+                    let score = if score >= probcut_beta {
+                        -self.negamax(
                             board,
-                            verify_depth,
+                            depth - 4,
                             -probcut_beta,
                             -probcut_beta + 1,
                             ply + 1,
@@ -1113,32 +1101,20 @@ impl Searcher {
                             Move::NULL,
                             true,
                             poll,
-                        );
-                        if score < probcut_beta {
-                            score = -self.negamax(
-                                board,
-                                verify_depth,
-                                -beta,
-                                -beta + 1,
-                                ply + 1,
-                                false,
-                                false,
-                                Move::NULL,
-                                true,
-                                poll,
-                            );
-                        }
-                    }
+                        )
+                    } else {
+                        score
+                    };
                     board.unmake_move(mv);
                     self.stack_moves[ply] = Move::NULL;
                     if self.stopped || self.quit {
                         return 0;
                     }
-                    if score >= beta {
-                        let cutoff_score = probcut_cutoff_score(beta, probcut_beta, score);
+                    if score >= probcut_beta {
+                        let cutoff_score = score - (probcut_beta - beta);
                         self.store_tt(
                             hash,
-                            probcut_tt_depth(depth),
+                            depth - 3,
                             cutoff_score,
                             Bound::Lower,
                             mv,
@@ -2455,80 +2431,6 @@ fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize 
     }
 }
 
-#[derive(Copy, Clone)]
-struct ProbCutContext {
-    depth: i32,
-    beta: i32,
-    eval_for_pruning: i32,
-    tt_pv: bool,
-    cut_node: bool,
-    tt_score: i32,
-    tt_bound: Option<Bound>,
-    excluded: Move,
-}
-
-fn probcut_allowed(ctx: ProbCutContext) -> bool {
-    if ctx.depth < 4
-        || !ctx.cut_node
-        || ctx.tt_pv
-        || !ctx.excluded.is_null()
-        || ctx.beta.abs() >= TB_WIN_SCORE
-        || ctx.eval_for_pruning == VALUE_NONE
-    {
-        return false;
-    }
-
-    let tt_supports_cut = matches!(ctx.tt_bound, Some(Bound::Exact | Bound::Lower))
-        && ctx.tt_score != VALUE_NONE
-        && ctx.tt_score.abs() < TB_WIN_SCORE
-        && ctx.tt_score >= ctx.beta - 96;
-    let static_supports_cut = ctx.eval_for_pruning >= ctx.beta - probcut_static_margin(ctx.depth);
-
-    tt_supports_cut || static_supports_cut
-}
-
-fn probcut_static_margin(depth: i32) -> i32 {
-    (220 + 12 * depth).min(360)
-}
-
-fn probcut_margin(params: &SearchParams, depth: i32, improving: bool) -> i32 {
-    let improving_bonus = if improving {
-        params.probcut_improving_bonus
-    } else {
-        0
-    };
-    (params.probcut_base_margin + params.probcut_depth_margin * depth - improving_bonus)
-        .clamp(160, 260)
-}
-
-fn probcut_see_threshold(probcut_beta: i32, eval_for_pruning: i32) -> i32 {
-    (probcut_beta - eval_for_pruning).clamp(0, 500)
-}
-
-fn probcut_candidate_limit(depth: i32) -> usize {
-    (6 + depth / 2).clamp(8, 12) as usize
-}
-
-fn probcut_verification_depth(depth: i32, overshoot: i32) -> i32 {
-    let reduction = if overshoot >= 300 {
-        5
-    } else if overshoot >= 120 {
-        4
-    } else {
-        3
-    };
-    (depth - reduction).max(1)
-}
-
-fn probcut_tt_depth(depth: i32) -> i32 {
-    (depth - 3).max(1)
-}
-
-fn probcut_cutoff_score(beta: i32, probcut_beta: i32, score: i32) -> i32 {
-    let margin = probcut_beta - beta;
-    beta + (score - probcut_beta).clamp(0, (margin / 3).max(1))
-}
-
 fn move_gives_check(board: &Board, mv: Move, cache: &mut Option<bool>) -> bool {
     match *cache {
         Some(gives_check) => gives_check,
@@ -2926,64 +2828,6 @@ mod tests {
             losing_capture_seen,
             "test position must include the losing capture"
         );
-    }
-
-    #[test]
-    fn probcut_requires_cut_node_and_near_beta_evidence() {
-        let base = ProbCutContext {
-            depth: 6,
-            beta: 100,
-            eval_for_pruning: -400,
-            tt_pv: false,
-            cut_node: true,
-            tt_score: VALUE_NONE,
-            tt_bound: None,
-            excluded: Move::NULL,
-        };
-
-        assert!(!probcut_allowed(base));
-        assert!(probcut_allowed(ProbCutContext {
-            eval_for_pruning: -120,
-            ..base
-        }));
-        assert!(probcut_allowed(ProbCutContext {
-            tt_score: 40,
-            tt_bound: Some(Bound::Lower),
-            ..base
-        }));
-        assert!(!probcut_allowed(ProbCutContext {
-            cut_node: false,
-            eval_for_pruning: -120,
-            ..base
-        }));
-        assert!(!probcut_allowed(ProbCutContext {
-            tt_pv: true,
-            eval_for_pruning: -120,
-            ..base
-        }));
-        assert!(!probcut_allowed(ProbCutContext {
-            beta: TB_WIN_SCORE,
-            eval_for_pruning: TB_WIN_SCORE,
-            ..base
-        }));
-    }
-
-    #[test]
-    fn probcut_helpers_scale_without_returning_raw_overshoot() {
-        let params = SearchParams::default();
-        let shallow = probcut_verification_depth(8, 40);
-        let decisive = probcut_verification_depth(8, 320);
-
-        assert!(decisive < shallow);
-        assert_eq!(probcut_see_threshold(320, 250), 70);
-        assert_eq!(probcut_see_threshold(320, 500), 0);
-        assert!(probcut_margin(&params, 8, true) < probcut_margin(&params, 8, false));
-
-        let beta = 100;
-        let probcut_beta = 300;
-        let cutoff = probcut_cutoff_score(beta, probcut_beta, 1_000);
-        assert!(cutoff >= beta);
-        assert!(cutoff < probcut_beta);
     }
 
     fn test_search_result(bestmove: Move, score: i32, depth: usize) -> SearchResult {
