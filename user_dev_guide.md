@@ -218,7 +218,7 @@ pass moved to Phase 4: eval fitting comes first.)
       (ii) `[-5,0]` simplify — **H1** (no regression; also gains in clock mode),
           +72.6 ± 18.8 Elo (nElo +98.3), 762 games.
       Zero time forfeits in both runs.
-- [~] 2.3 History maintenance per SF/Reckless: delete per-search halving,
+- [ ] 2.3 History maintenance per SF/Reckless: delete per-search halving,
       persist across searches, reset only `low_ply_history` per search.
       Bench changes; SPRT `[0,3]`. Fallback if H0: keep halving but only
       every 2nd search.
