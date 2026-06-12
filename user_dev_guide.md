@@ -142,7 +142,13 @@ Setup instructions: `tools/spsa_configs/README.md`.
 ./tools/sprt.ps1 -EngineA <refactor.exe> -EngineB <head.exe> -NameA "Refactor" -NameB "Head" `
     -Elo0 -3 -Elo1 3
 
-# SPSA tuning — see tools/spsa_configs/README.md for full setup
+# SPSA tuning — see tools/spsa_configs/README.md for full setup.
+# 1. Build the tune binary (once per code change):
+./tools/build_test.ps1 -Suffix <name> -Tune
+# 2. Point weather-factory at the right config group + binary
+#    (archives old tuner state automatically; -Resume keeps it):
+./tools/setup_spsa.ps1 -ConfigGroup <pruning|lmr|probcut> -EngineSuffix <name>
+# 3. Run it (Ctrl-C when values look stable; state saved every 10 iters):
 cd tools\weather-factory
 python main.py
 
@@ -204,7 +210,12 @@ Update this as each step is completed.
 ### Phase 2 — Repairs & proven tuning
 (re-scoped 2026-06-10 after the cross-engine measurements — see PLAN.md §5.0
 finding 10; item numbers = PLAN.md §5 sub-sections. Codex ports and the speed
-pass moved to Phase 4: eval fitting comes first.)
+pass moved to Phase 4: eval fitting comes first. 2026-06-12: external review
+triaged — items 2.5/2.6 added as fixes, futility/do-deeper renumbered to
+2.7/2.8, test-infra fix added as 2.9.)
+
+> **Next action:** run the 2.4 LMR SPSA (7 params) with the
+> `rarog-phase2-lmr-tune.exe` binary, then report the tuned values.
 - [~] `improvements` branch: check-aware ordering — **H0 discarded** (~11k games, LLR flat −0.5 to −0.8; use `[-3,3]` bounds for small features next time)
 - [x] 2.1 ProbCut — **dropped**. SPSA tuned to 165/1/31 (base/depth/improving);
       SPRT [0,3]: **H0**, -24.5 ± 8.5 Elo after 3380 games. The codex-branch
