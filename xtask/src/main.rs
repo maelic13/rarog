@@ -165,10 +165,12 @@ fn default_target(arch: Arch) -> String {
 
 fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
     match arch {
-        Arch::Base | Arch::Avx2 | Arch::Pext | Arch::Native if !target.starts_with("x86_64-") => Err(format!(
-            "`--arch {}` requires an x86_64 target, got `{target}`",
-            arch_arg_name(arch)
-        )),
+        Arch::Base | Arch::Avx2 | Arch::Pext | Arch::Native if !target.starts_with("x86_64-") => {
+            Err(format!(
+                "`--arch {}` requires an x86_64 target, got `{target}`",
+                arch_arg_name(arch)
+            ))
+        }
         Arch::Arm64 if !target.starts_with("aarch64-") => Err(format!(
             "`--arch arm64` requires an aarch64 target, got `{target}`"
         )),

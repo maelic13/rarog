@@ -1,0 +1,16 @@
+[package]
+name = "texel-tuner"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Offline Texel eval tuner (Phase 3.3). Depends on the rarog lib with the
+# `texel` feature so it can read the per-position EvalTrace and reconstruct the
+# linear eval. Never linked into the engine; pure dev tooling. Parallelism uses
+# std::thread::scope (no external crates) to keep the engine dependency-free.
+[[bin]]
+name = "rarog-texel"
+path = "src/main.rs"
+
+[dependencies]
+rarog = { path = "../..", features = ["texel"] }

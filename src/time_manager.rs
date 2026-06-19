@@ -71,16 +71,14 @@ pub(crate) fn compute_runtime_limits(
             };
 
             // SF: timeLeft = max(1, time + inc*(mtg-1) - overhead*(2+mtg))
-            let time_left = (time as f64 + increment as f64 * (mtg - 1.0)
-                - overhead * (2.0 + mtg))
-                .max(1.0);
+            let time_left =
+                (time as f64 + increment as f64 * (mtg - 1.0) - overhead * (2.0 + mtg)).max(1.0);
 
             let ply = game_ply as f64;
 
             let (opt_scale, max_scale) = if explicit_mtg {
                 // Explicit movestogo branch (SF timeman.cpp)
-                let opt = ((0.88 + ply / 116.4) / mtg)
-                    .min(0.88 * time as f64 / time_left);
+                let opt = ((0.88 + ply / 116.4) / mtg).min(0.88 * time as f64 / time_left);
                 let max = 1.3 + 0.11 * mtg;
                 (opt, max)
             } else {
@@ -88,8 +86,7 @@ pub(crate) fn compute_runtime_limits(
                 let log_t = (time_left / 1000.0).max(1e-9).log10();
                 let opt_const = (0.0029869 + 0.00033554 * log_t).min(0.004905);
                 let max_const = (3.3744 + 3.0608 * log_t).max(3.1441);
-                let opt = (0.012112
-                    + (ply + 3.22713_f64).max(0.0).powf(0.46866) * opt_const)
+                let opt = (0.012112 + (ply + 3.22713_f64).max(0.0).powf(0.46866) * opt_const)
                     .min(0.19404 * time as f64 / time_left);
                 let max = (6.873_f64).min(max_const + ply / 12.352);
                 (opt, max)
@@ -97,9 +94,8 @@ pub(crate) fn compute_runtime_limits(
 
             optimum_ms = (opt_scale * time_left).max(1.0);
             // SF: maximum = max(optimum, min(0.8097*time - overhead, maxScale*optimum))
-            maximum_ms = ((0.8097 * time as f64 - overhead)
-                .min(max_scale * optimum_ms))
-                .max(optimum_ms);
+            maximum_ms =
+                ((0.8097 * time as f64 - overhead).min(max_scale * optimum_ms)).max(optimum_ms);
 
             // Time-safety reserve (Phase 2.9.1). The SF maximum above leaves
             // only ~19% of the clock plus one Move Overhead unused; at low
@@ -140,7 +136,13 @@ mod tests {
     use super::*;
 
     fn limits(game_ply: u32, options: SearchLimits) -> RuntimeLimits {
-        compute_runtime_limits(&options, &EngineOptions::default(), Color::White, game_ply, 64)
+        compute_runtime_limits(
+            &options,
+            &EngineOptions::default(),
+            Color::White,
+            game_ply,
+            64,
+        )
     }
 
     #[test]
@@ -229,12 +231,10 @@ mod tests {
             ..SearchLimits::default()
         };
 
-        let white = compute_runtime_limits(
-            &options, &EngineOptions::default(), Color::White, 0, 64,
-        );
-        let black = compute_runtime_limits(
-            &options, &EngineOptions::default(), Color::Black, 0, 64,
-        );
+        let white =
+            compute_runtime_limits(&options, &EngineOptions::default(), Color::White, 0, 64);
+        let black =
+            compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 0, 64);
 
         assert!(white.optimum_ms < black.optimum_ms);
         assert!(white.maximum_ms < black.maximum_ms);
@@ -248,12 +248,14 @@ mod tests {
             movestogo: 10,
             ..SearchLimits::default()
         };
-        let lim = compute_runtime_limits(
-            &options, &EngineOptions::default(), Color::Black, 0, 64,
-        );
+        let lim = compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 0, 64);
 
         // mtg=10, timeLeft≈9880, optScale≈0.088 → optimum≈869
-        assert!((800.0..=950.0).contains(&lim.optimum_ms), "optimum_ms={}", lim.optimum_ms);
+        assert!(
+            (800.0..=950.0).contains(&lim.optimum_ms),
+            "optimum_ms={}",
+            lim.optimum_ms
+        );
         assert!(lim.maximum_ms <= 10_000.0);
     }
 
@@ -311,13 +313,23 @@ mod tests {
 
     #[test]
     fn depth_is_clamped_and_absent_clock_is_unbounded() {
-        let shallow = limits(0, SearchLimits { depth: 0.25, ..SearchLimits::default() });
+        let shallow = limits(
+            0,
+            SearchLimits {
+                depth: 0.25,
+                ..SearchLimits::default()
+            },
+        );
         assert_eq!(shallow.depth, 1);
         assert!(shallow.optimum_ms.is_infinite());
         assert!(shallow.maximum_ms.is_infinite());
 
         let unlimited = compute_runtime_limits(
-            &SearchLimits::default(), &EngineOptions::default(), Color::Black, 0, 42,
+            &SearchLimits::default(),
+            &EngineOptions::default(),
+            Color::Black,
+            0,
+            42,
         );
         assert_eq!(unlimited.depth, 42);
     }

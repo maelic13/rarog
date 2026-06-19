@@ -473,11 +473,17 @@ fn syzygy_disabled_path_leaves_tablebase_probes_unavailable() {
 #[test]
 fn evaluator_rewards_advanced_protected_passers_over_back_rank_pawns() {
     let mut evaluator = Evaluator::default();
+    // Enemy king parked on the a-file so it is far from *both* pawn pairs — the
+    // comparison isolates pawn advancement. (With the king on e8 it sits right
+    // next to the advanced e6 pawn, and the Phase-4.6 eval correctly discounts
+    // the under-pressure advanced pawns, which is the more accurate read.)
     let advanced_connected =
-        Board::from_fen("4k3/8/4P3/3P4/8/8/8/4K3 w - - 0 1").expect("valid FEN");
-    let undeveloped = Board::from_fen("4k3/8/8/8/8/3P4/4P3/4K3 w - - 0 1").expect("valid FEN");
+        Board::from_fen("k7/8/4P3/3P4/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let undeveloped = Board::from_fen("k7/8/8/8/8/3P4/4P3/4K3 w - - 0 1").expect("valid FEN");
 
-    assert!(evaluator.evaluate(&advanced_connected) > evaluator.evaluate(&undeveloped));
+    let a = evaluator.evaluate(&advanced_connected);
+    let u = evaluator.evaluate(&undeveloped);
+    assert!(a > u, "advanced={a} undeveloped={u}");
 }
 
 #[test]

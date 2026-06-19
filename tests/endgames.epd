@@ -1,0 +1,38 @@
+# Phase 3.11 permanent endgame regression suite.
+# Format:  <FEN> ; <verdict> <free-text comment>
+# Verdicts:
+#   draw       -> static eval is exactly 0 (insufficient material / framework draw)
+#   kbnk-mate  -> K+B+N vs K; the engine must drive the bare king into the
+#                 bishop-coloured corner and deliver checkmate within a move budget.
+# Lines starting with '#' and blank lines are ignored.
+
+# --- Pawnless insufficient-material draws (forced to a dead draw) ---
+8/8/8/4k3/8/8/4K3/8 w - - 0 1 ; draw KK bare kings
+8/8/8/4k3/8/8/4K3/5N2 w - - 0 1 ; draw KNK lone knight cannot mate
+8/8/8/4k3/8/8/4K3/5B2 w - - 0 1 ; draw KBK lone bishop cannot mate
+4k1b1/8/8/8/8/8/4K3/4B3 w - - 0 1 ; draw KBKB minor vs minor
+8/8/8/4k3/8/8/4K3/4N1N1 w - - 0 1 ; draw KNNK two knights cannot force mate
+
+# --- KBNK mate, dark-squared bishop: mate in 1 (Bf2-d4#) ---
+7k/8/6KN/8/8/8/5B2/8 w - - 0 1 ; kbnk-mate dark bishop, bare king in dark (h8) corner
+
+# --- KPK (king + pawn vs king): bitbase-confirmed draws ---
+k7/8/8/8/8/8/P7/K7 w - - 0 1 ; draw KPK rook pawn, defender holds the corner
+8/8/8/8/8/4k3/4P3/4K3 w - - 0 1 ; draw KPK defender holds the opposition
+8/8/8/3k4/8/3P4/3K4/8 w - - 0 1 ; draw KPK defender in front of the pawn
+7k/8/8/8/8/7P/7K/8 w - - 0 1 ; draw KPK rook pawn, defender reaches h8
+
+# --- KPK (king + pawn vs king): bitbase-confirmed wins (pawn side to move) ---
+4k3/8/4K3/4P3/8/8/8/8 w - - 0 1 ; win KPK king on a key square (e6/e5 vs e8)
+2k5/8/2K5/2P5/8/8/8/8 w - - 0 1 ; win KPK king on the 6th in front of the pawn
+8/3P4/3K4/8/8/8/6k1/8 w - - 0 1 ; win KPK pawn on the 7th, enemy king cut off
+
+# --- KBP wrong-coloured bishop + rook pawn, defender in the corner ---
+7k/8/5K2/7P/8/8/8/1B6 w - - 0 1 ; draw KBP wrong bishop + h-pawn, Black king on h8
+
+# --- KQ vs KP fortress (rook/bishop pawn on the 7th, king guarding) — dead draws ---
+8/8/6K1/8/8/8/1kp5/7Q w - - 0 1 ; draw KQKP bishop-pawn fortress
+8/8/6K1/8/8/8/pk6/7Q w - - 0 1 ; draw KQKP rook-pawn fortress
+
+# KRKP (~x0.25 partial scale) and OCB passer relaxation are partial-scale terms;
+# they are covered by the src/eval.rs `endgame_311c_tests` unit tests.

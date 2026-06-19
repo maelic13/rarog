@@ -21,12 +21,37 @@ states the sequencing principle that the whole program depends on.
 
 | Area | Current state |
 |---|---|
-| Branch | `v2.1.0-codex-work` integration branch |
+| Branch | `master` (the long-lived `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20) |
 | Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9** are closed |
-| Current accepted head | Phase 3.1 `EvalParams` struct, `bench 13 = 5,446,782` |
+| Current accepted head | **PHASE 4 COMPLETE** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316** (4.1–4.7); real figure pending the gauntlet. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
-| Next implementation step | **Phase 3.2 — tune-time loader/dumper** (`--features tune`, `RAROG_EVAL_FILE` + `dumpeval`, no games until Phase 4) |
+| Next implementation step | **End-of-Phase-4 validation: LTC confirm + external gauntlet (§10)** — the over-fit transfer check after a +316 STC self-play campaign. Then **Phase 5** (search-efficiency wave), and the §4.8 data-refresh decision after that. |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) |
+
+> **Bench fingerprint re-baseline (2026-06-22, Phase 3.11b).** The canonical
+> `bench 13` fingerprint moved **`5,446,782` → `5,354,975`**. Cause: the new
+> **KPK bitbase** (correct king+pawn-vs-king draw recognition) is reachable in
+> the bench search tree, and scoring those positions as exact draws prunes
+> slightly faster (~1.7 % fewer nodes). This is the **first intentional
+> behaviour change in Phase 3** — steps 3.0–3.11a were all behaviour-identical
+> at `5,446,782`; from **3.11b onward the canonical fingerprint is `5,354,975`**.
+> Historical "bench 5,446,782 unchanged" notes on earlier steps remain accurate
+> for those steps. The datagen base binary `rarog-phase3-base-pext-pgo.exe` was
+> built pre-KPK at `5,446,782`; the Phase-3.4 dataset is unaffected (it is just
+> `FEN;result` labels).
+>
+> **Bench fingerprint re-baseline (2026-06-23, Phase 3.14).** The canonical
+> `bench 13` fingerprint moved **`5,354,975` → `4,978,006`** when the eval cache
+> was made a true memoisation. Root cause: the passed-pawn free-stop / safe-stop
+> bonuses depend on **non-pawn occupancy and enemy attacks**, yet they were
+> scored inside `eval_pawns`, whose result is cached by a **pawn-structure-only**
+> key — so the pawn cache (and the whole-eval cache built on top of it) returned
+> stale values whenever pieces moved but pawns did not, and the engine played a
+> *different* eval than a cold recompute (and than the Texel tuner fits). The fix
+> moves those bonuses to `eval_passed_pawn_advance`, run every evaluation outside
+> the cache; the eval value at every position is **unchanged** (verified), only
+> the cache is now exact. Guarded permanently by `tests/eval_cache.rs`
+> (cache == cold recompute). **3.11c is bench-neutral and unaffected.**
 
 Closed-phase checklist:
 
@@ -35,7 +60,7 @@ Closed-phase checklist:
 - [x] Phase 2 — repairs and proven tuning
 - [x] Phase 2.5 — harness-corrected retries (2.5.1 LMR redo **accepted, H1 +4 Elo**; 2.5.2 relocated to Phase 5)
 - [x] Phase 2.9 — robustness & free speed (2.9.1 time-safety, 2.9.2 native build, 2.9.3 BadCapture shrink, 2.9.4 gives_check clone removal, 2.9.5 get_unchecked investigated/no-op; close-SPRT accepted: +2.0 Elo, LOS 86%, LLR 81%→H1, 0 time losses cross-harness)
-- [ ] **Phase 3 — eval infrastructure & behaviour-identical build-out (3.0–3.1 done; NEXT: Step 3.2, tune-time loader/dumper)**
+- [x] **Phase 3 — eval infrastructure & build-out CLOSED** (3.0–3.14 structure; 3.15 inert-gating rejected; 3.16 lazy eval **accepted, +4.4 Elo**, bench 5,315,678, eval pure). The seeded-0 vs-`p25` NPS gate is superseded (terms are pure overhead until tuned); real vs-`p25` check is the Phase-4 boundary.
 - [ ] Phase 4 — eval data-fit campaign (staged Texel)
 - [ ] Phase 5 — search-efficiency wave (deferred SPSA + refinements)
 
@@ -111,11 +136,11 @@ All commits below are reachable from the current repo. Branch heads:
 
 | Branch              | Reference | What it contains |
 |---------------------|-----------|------------------|
-| `master`            | `5a8ce52` | Historical 2.0.2 baseline |
-| `v2.1.0-codex-work` | current integration branch | Phases 0/1/2/2.5 accepted; current accepted search fingerprint is `bench 13 = 5,446,782` (Phase 2.5.1 LMR) |
-| `v2.1.0-codex`      | `3de254f` | Search-efficiency rewrite source branch (see below) |
-| `v2.1.0-claude`     | `870fac0` | Eval expansion + `tune.rs` source branch (see below) |
-| `improvements`      | `8c453c1` | Small move-ordering refinements, already tried and discarded |
+| `master`            | current integration branch | Phases 0/1/2/2.5/2.9/3.0/3.1 accepted; current fingerprint is `bench 13 = 5,446,782`. The old `v2.1.0-codex-work` branch was squash-rebased onto `master` 2026-06-20 and deleted — this *is* that work, just consolidated. |
+| `v2.1.0-codex`      | `3de254f` | Search-efficiency rewrite source branch (see below) — reference-only, kept for the Phase 5 feature menu |
+| `v2.1.0-claude`     | `870fac0` | Eval expansion + `tune.rs` source branch (see below) — reference-only, kept for the Phase 5 feature menu |
+| ~~`improvements`~~  | deleted 2026-06-20 | Small move-ordering refinements; already fully harvested (ported + reverted, commit `0465384`) |
+| ~~`claude`~~        | deleted 2026-06-20 | Stale orphaned pointer, identical to an already-merged commit |
 
 > Baseline reference for all diffs: `5a8ce52` (2.0.2). Diff a branch with
 > `git diff 5a8ce52 <branch> -- <path>`. The codex/claude branches are built in
@@ -186,9 +211,11 @@ inventory only — do not retry as-is.
 ### 1d. Existing tooling in the integration branch (reuse, don't reinvent)
 
 - **`bench` UCI command** — `bench [depth]` runs a fixed position suite and
-  reports a repeatable node fingerprint. `bench 13` == `5,446,782` on the current
-  head (Phase 2.5.1 LMR); it was `5,401,662` at the Phase 2.7 futility baseline
-  and `5,318,762` at the Phase 1 final.
+  reports a repeatable node fingerprint. `bench 13` == `4,978,006` on the current
+  head (Phase 3.14, after the eval-cache fix); it was `5,354,975` through
+  3.11b–3.12 (KPK re-baseline), `5,446,782` through Phases 2.5.1–3.11a,
+  `5,401,662` at the Phase 2.7 futility baseline, and `5,318,762` at the Phase 1
+  final.
   **Use this as the regression-safety check: any "behavior-preserving" refactor
   must keep the fingerprint; any real change will move it — that's expected.**
 - **`xtask`** — `cargo xtask build --arch pext --pgo` builds the optimized
@@ -799,42 +826,14 @@ re-search at new_depth + (do_deeper ? 1 : do_shallower ? -1 : 0)
 Seeds: `deeper_margin=64`, `shallower_margin=8`. Expose both as tune options,
 SPSA-tune, SPRT `[0,3]`. Same centipawn-margin caveat as 2.7.
 
-**Implementation 2026-06-15:** added in the reducible LMR branch
-(search.rs:1383-1409). After the reduced search beats alpha, the full-depth
-re-search depth is `new_depth + do_deeper - do_shallower`, with
-`do_deeper = score > best_score + DeeperMargin + 2*reduction` and
-`do_shallower = score < best_score + ShallowerMargin`. The `searched >= 2`
-reducible gate guarantees `best_score` is a real value (never `-INF`).
-`DeeperMargin`/`ShallowerMargin` exposed (tune feature, clamps 0..200 / 0..100),
-`config_dodeeper.json` and the `dodeeper` setup_spsa group added. Workflow: SPSA
-first (no shared-eval seed-transfer evidence like 2.7's Basilisk seeds), then
-SPRT `[0,3]` vs the Futility baseline.
-
-**Guard fix 2026-06-16:** the first SPSA drove `ShallowerMargin` to its floor
-(79 / 0) — diagnosed as a missing SF-style `newDepth > d` guard. When
-`do_shallower` fired with `reduction == 1`, `research_depth` collapsed to the
-already-searched `reduced_depth`, so the verification re-search redid an
-identical search for the same score (wasted nodes that biased the tuner toward
-suppressing the shallower arm). Added the guard: only re-search when
-`research_depth > reduced_depth`, else keep the reduced score (already > alpha).
-Reset params to the 64 / 8 seeds and re-SPSA on the corrected code. The guard
-removes the redundant searches — bench 13 dropped 4,975,169 → 4,263,407 at the
-seeds. SPSA then SPRT `[0,3]` vs the Futility baseline.
-
-**Do-shallower arm removed 2026-06-16:** the corrected re-SPSA *still* drove
-`ShallowerMargin` to 0 (gradient pinned at ≈−7.7 the whole run) while
-`DeeperMargin` converged near ~67. This time it's a clean verdict, not an
-artifact: the move loop keeps `alpha >= best_score` as an invariant
-(search.rs:1457-1465), so inside `score > alpha` we always have
-`score > best_score`, making `do_shallower = score < best_score + 0` *provably
-unable to fire*. Margin 0 ≡ no arm. Removed the `do_shallower` term, the
-`ShallowerMargin` param/option/config entry, and the now always-true
-`research_depth > reduced_depth` guard; the verification re-search is
-unconditional again at `new_depth + do_deeper`. Removing the arm (≡ margin 0)
-changes the default from the seed margin 8 → full verification on every
-re-search → cleaner TT bounds and pruning: bench 13 = **3,513,657** (was
-4,263,407 at the margin-8 seed). `config_dodeeper.json` is now a single
-`DeeperMargin` param.
+**Implemented then fully reverted (2026-06-15/16).** Both arms were added in the
+reducible LMR branch and the do-deeper arm SPSA-tuned. Key reusable finding: the
+**do_shallower arm can provably never fire** — the move loop keeps
+`alpha >= best_score`, so inside `score > alpha` we always have
+`score > best_score`, making `do_shallower = score < best_score + margin`
+unreachable for any margin ≥ 0. That arm (and its `ShallowerMargin` param) was
+removed; the removal is kept independently as a correct simplification. The
+do-deeper arm was then tuned/gated below.
 
 **Outcome 2026-06-16 — DROPPED (do_deeper failed its gate; whole 2.8 reverted).**
 The do-deeper-only re-SPSA converged cleanly to **DeeperMargin = 37** (3698 iters
@@ -867,7 +866,7 @@ those, construct the `Searcher` directly on the heap, or run the engine's
 main loop on a thread spawned with an explicit larger stack size (as SF
 does). Zero search impact; gate: `cargo test` fully green in debug. No SPRT.
 
-**Outcome 2026-06-16 — DONE (commit pending).** Root-caused: `main.rs`
+**Outcome 2026-06-16 — DONE.** Root-caused: `main.rs`
 constructed `Engine` (which owns the inline-array `Searcher`, dominated by
 `pv_table: [[Move; 128]; 128]`) on the 1 MB main thread *before* moving it into
 the existing 16 MB engine thread — and in debug (no copy elision) that
@@ -1228,21 +1227,10 @@ will show on the 5950X, where the host CPU (`znver3`) has instructions beyond
 `cargo test --release` suite green. **No games needed (build-flag change,
 bench-identical) — proceed to 2.9.3.**
 
-#### 2.9.3 Shrink the `BadCapture` struct (verified valid) — Sonnet 4.6 medium
-`BadCapture` (move_ordering.rs:64-69) carries **`to: usize` (8 bytes)** for a
-0–63 square, padding the struct to **16 bytes**; with two `BadCaptureList`
-`[_; 256]` per negamax frame that is ~8 KB of stack. Change `to: usize → u8` (and
-`captured: Option<Piece>` stays 1 byte) so `BadCapture` is ~4 bytes → each list
-drops 4 KB → ~6 KB less per frame, improving D-cache locality of the genuinely
-hot data (board + TT). **This struct shrink is bench-identical and zero-risk.**
-*Capacity reduction is separate and riskier:* the lists are sized 256 because a
-pathological position can exceed any small cap, and `push` indexes a safe array
-(a real overflow would panic in release, not just debug). If you also shrink
-capacity, make `push` **saturate** (drop extra entries) rather than rely on a
-cap ≤ the true max — do not assume 64 is safe. Prefer the struct shrink alone
-unless a profile shows the list size itself matters.
-
 #### 2.9.3 Shrink the `BadCapture` struct — **DONE 2026-06-19**
+*(Capacity reduction was considered separately and left alone: the `[_; 256]`
+lists are sized for pathological positions; if ever shrunk, make `push`
+saturate rather than assume a smaller cap is safe.)*
 Changed `to: usize → u8` in `BadCapture` (`move_ordering.rs:64-69`); `attacker:
 Piece` and `captured: Option<Piece>` were already 1 byte each (`Piece` is
 `#[repr(u8)]`, and `Option<Piece>` is niche-optimized to 1 byte since only 6 of
@@ -1565,16 +1553,56 @@ Rust-specific implementation notes:
 wall-time within ~3% of parent (the indirection must not cost NPS — PGO
 usually erases it).
 
-#### 3.2 Tune-time loader and dumper (`--features tune` only)
+#### 3.2 Tune-time loader and dumper (`--features tune` only) — **DONE 2026-06-20**
 
-- Env var `RAROG_EVAL_FILE` → load params (`name index value` per line,
-  unknown name = hard error), re-run `Evaluator::build_tables`, **clear the
-  pawn cache and the eval cache** (`Evaluator::clear_pawn_table` clears both).
-- `dumpeval` console command (like `bench`) writes current params in the same
-  format — defines the round-trip the tuner emits.
-- Gate: dump → load → dump is byte-identical; release builds expose neither.
+`EvalParams::load_from_env()`/`load_from_str()`/`dump()` (all `#[cfg(feature =
+"tune")]`, in `src/eval.rs`) implement the `RAROG_EVAL_FILE` round trip: one
+`name index value` line per scalar (in `EVAL_PARAM_NAMES` order), unknown
+field name is a hard `panic!` (catches stale/typo'd tuner output), a file
+that omits fields is valid (omitted fields keep their default). `Evaluator::
+default()` calls `load_from_env()` under the `tune` feature instead of
+`EvalParams::default()` — since this always builds a fresh `EvalTables` and
+fresh (empty) pawn/eval caches, "re-run build_tables, clear both caches" is
+satisfied for free by construction, with no separate runtime-reload path
+needed (each tuner iteration is a fresh process). `dumpeval` console command
+(`src/uci_protocol.rs`) prints `EvalParams::load_from_env().dump()` —
+gated `#[cfg(feature = "tune")]` so production builds don't even recognize
+the command (verified: plain `cargo build --release` reports `Unknown
+command: 'dumpeval'`). **Gate verified**: dump → edit one value → reload via
+`RAROG_EVAL_FILE` → dump again is byte-identical (checked by hand and by the
+new `eval::tune_tests` unit tests: round-trip identity, partial-file
+defaults, unknown-field hard error). `bench 13` unchanged at `5,446,782` on
+the plain release build; all 50 tests pass; no new clippy warnings in either
+build configuration (34 in both, same pre-existing set).
 
-#### 3.3 Trace instrumentation + tuner binary (+ reconstruction acceptance test)
+#### 3.3 Trace instrumentation + tuner binary (+ reconstruction acceptance test) — **DONE 2026-06-22**
+
+Implemented exactly as specified below. **Trace machinery** (`src/eval.rs`,
+`#[cfg(feature = "texel")]`): the `eval_params!` macro now also generates
+`EvalCounts` (same field layout, net white−black counts), `EvalTrace`
+(`mg`/`eg` counts + `phase` + `frozen_mg`/`frozen_eg` + `raw`), `reconstruct()`,
+`flat_coeffs()`, and `EvalParams::{FLAT_SIZE, to_flat, set_from_flat}`. Every
+`mg += sign·W·n` / `eg += …` site records via `tr_mg!`/`tr_eg!` (no-ops without
+the feature, so production builds are byte-identical — `bench 13 = 5,446,782`).
+Both eval caches (pawn + whole-eval) are bypassed under `texel`. The two frozen
+non-linear contributions (mate-drive mop-up; passer-king-proximity `rel_rank`
+constant) accumulate into `frozen_eg` and are excluded from the linear `raw`,
+so they land in the tuner's per-position `rest`. The king-safety table is traced
+one-hot on the bucket index (the unit weights pick the bucket, so they are not
+linear features — matches the reference). **Reconstruction gate**: a `texel`
+unit test (`eval::texel_tests`) plays 400 random games and asserts
+`reconstruct(defaults) == raw` on >5 k positions — exact, so it catches any
+wrong count (not the reference's weaker tautological check). **Tuner binary**:
+`tools/texel-tuner` (workspace member, binary `rarog-texel`, depends on the lib
+with `features=["texel"]`), a faithful Rust port — golden-section K-fit,
+full-batch Adam (lr 0.3, β 0.9/0.999), the staged group masks, `--verify`, the
+`linear_delta_scale` (a `pub fn` in `eval.rs` mirroring `scale_drawish_endgames`
++ rule-50), domain clamps (penalty magnitudes ≥0, monotone passer/threat/danger
+tables), and the `name index value` output that the Phase-3.2 `RAROG_EVAL_FILE`
+loader reads. Parallelised with `std::thread::scope` (no external crate — engine
+stays dependency-free). Validated end-to-end: `--verify` PASS, a `material`
+tuning run loads → fits K → Adam reduces loss → writes 873-line output → loads
+back via `RAROG_EVAL_FILE`/`dumpeval` byte-consistent. **Model used: Opus 4.8.**
 
 > **Reference implementation already on disk.** Basilisk's complete, proven
 > tuner is ported to `tools/texel/reference/basilisk_tuner.cpp`. It implements
@@ -1635,7 +1663,39 @@ usually erases it).
      positions, reconstructed `E(default)` equals `evaluate()` **exactly**
      (integer-for-integer). Any mismatch is a trace bug; fix before tuning.
 
-#### 3.4 Dataset (self-play primary)
+#### 3.4 Dataset (self-play primary) — **DONE 2026-06-22 (user ran the games)**
+
+**Result:** 330,000 self-play games (phase3-base PGO binary,
+`tools/test_engines/rarog-phase3-base-pext-pgo.exe`, `bench 5,446,782`,
+node-limited; Beast-seeded EPD book, two datagen passes appended) → `extract.py`
+(`skip_start=16`, `skip_end=6`, `max_per_game=12`, holdout 5%, global dedup) →
+**2,190,548 train + 116,112 holdout** unique positions (from 3,162,226 raw
+candidates; ≥1.5M target met). Tuner `--verify` **PASS** (10,000/10,000
+reconstruct exactly). Outputs at `tools/texel/data/{train,holdout}.csv`; source
+PGN `tools/texel/data/selfplay.pgn`. This is the Phase-4 training corpus.
+
+The full pipeline (`sample_fens.py` → `datagen.ps1` → `extract.py` →
+`--verify`) was verified end-to-end and the long self-play run was performed by
+the user per the standing rule. Exact commands (run from repo root):
+
+```powershell
+# 1. Sample a diverse opening book from the Beast pool (source stays intact).
+python tools\texel\sample_fens.py "A:\Chess\Beast\data\txt\positions.txt" `
+    --out tools\texel\data\beast_seed.epd --count 50000 --min-pieces 6
+# 2. Self-play datagen (node-limited; appends to data\selfplay.pgn). USER RUNS.
+.\tools\datagen.ps1 -Suffix phase3-base -Rounds 30000 -Nodes 8000 `
+    -Book tools\texel\data\beast_seed.epd -BookFormat epd -Concurrency 24
+#    Optional second pass for variety (different node count appends):
+.\tools\datagen.ps1 -Suffix phase3-base -Rounds 15000 -Nodes 5000 `
+    -Book tools\texel\data\beast_seed.epd -BookFormat epd -Concurrency 24
+# 3. Extract labelled positions (train + holdout, split by game).
+python tools\texel\extract.py tools\texel\data\selfplay.pgn `
+    --out-dir tools\texel\data --train train.csv --holdout holdout.csv
+# 4. Reconstruction gate, then (Phase 4) tune a stage:
+cargo run --release -p texel-tuner -- --verify tools\texel\data\holdout.csv
+```
+
+Original spec retained below for reference.
 
 **The toolchain is already built** (`tools/texel/`, ported from Basilisk's
 working pipeline — see `tools/texel/README.md`). The scripts run today; only the
@@ -1678,7 +1738,30 @@ games is well under an hour and leaves cores free.
 Only if the first Phase-4 SPRT fails: add the rigorous quietness filter (drop
 positions where qsearch ≠ static eval) and regenerate.
 
-#### 3.5 King-safety v2 — structure (behaviour-identical; the #1 eval lever)
+#### 3.5 King-safety v2 — structure (behaviour-identical; the #1 eval lever) — **DONE 2026-06-22**
+
+`eval_king_safety` (`src/eval.rs`) is rebuilt into a single `danger` accumulator
+fed the attack maps via a `KsMaps` bundle (from the 3.0 substrate). Implemented
+inputs, all new weights seeded **0** so `danger == units` today (`bench
+5,446,782` unchanged, reconstruction exact): **weak king-ring** (`ks_weak_ring`
+— zone squares attacked by them, not defended by us or only-once-defended &
+doubly-attacked); **safe checks per type** (`ks_safe_check_{knight,bishop,rook,
+queen}` — enemy check-from squares the enemy attacks with that type and we don't
+defend); **king-flank pressure** (`ks_flank_attack` — enemy attacks − our
+defenses over the king's 3 files, clamped ≥0); **pawnless flank**
+(`ks_pawnless_flank`); **queen-relief** (`ks_queen_relief`, a reduction when the
+attacker has no queen). The **conversion table** `king_safety_table` is
+lengthened 16→40, the `.min(15)` cap removed (now
+`danger.clamp(0, len-1)`), entries 0..15 = old `SAFETY`, 16..39 = 118 (the old
+cap), so today's play is identical and Phase 4 can shape the danger tail. The
+table is Texel-tunable (one-hot per bucket); the danger-*input* weights are
+non-linear bucket selectors, so they are **SPSA-tuned in Phase 5**, not Texel
+(noted in the tuner — they have zero Texel gradient). **Blockers/pins near the
+king is deferred to Phase 5** (`maps.own_occ` reserved): 3.0 did not build pin
+masks, it is the lowest-value input of the set, and adding it ×0 with no real
+pin computation would be a fake stub. **Model used: Opus 4.8.**
+
+Original spec retained below.
 
 Rebuild the king-safety term (eval.rs:634-730) into a single tunable
 king-danger accumulator, seeded to reproduce today's output exactly, every new
@@ -1692,6 +1775,13 @@ sub-term seeded **0** so bench is unchanged. New `EvalParams` inputs:
   the enemy king's check rays). One weight per piece type, seed 0.
 - **Queen-relief** — a danger *reduction* when the attacking side has no queen
   (the SF "no-queen" term). Seed 0.
+- **King-flank attack/defense** — count enemy attacks vs our defenses on the
+  king's flank (the SF `flank` danger input), and a **pawnless-flank penalty**
+  when the king sits on a flank with no friendly pawns. Seed 0.
+- **Blockers/pins near the king** — pieces pinned or blocking in front of our
+  king do not really defend it; fold a danger contribution keyed off the pin
+  masks (compute the pin masks in the 3.0 substrate while slider info is hot, the
+  same masks 3.7's mobility-area refinement will reuse). Seed 0.
 - **Conversion table** — replace the hard-capped `SAFETY[16]` (max 118) with a
   longer tunable `safety[N]` table (N≈40): seed entries `0..15` to today's
   values and `16..N-1` to `SAFETY[15]=118`, and **remove the `.min(15)` cap** —
@@ -1704,7 +1794,22 @@ sub-term seeded **0** so bench is unchanged. New `EvalParams` inputs:
 high** — densest interacting term in the eval and the highest-leverage
 correctness target; pairs with 3.6 (same substrate, same reviewer).
 
-#### 3.6 Threats package — structure (behaviour-identical)
+#### 3.6 Threats package — structure (behaviour-identical) — **DONE 2026-06-22**
+
+Added to `eval_piece_activity` (per-color loop), all weights seeded **0** (bench
+`5,446,782` unchanged, reconstruction exact), all linearly traced so Phase 4.2
+can Texel-tune them: **threat_by_minor / threat_by_rook** (per victim type, mg/eg
+arrays of 6); **threat_hanging_refined** (per victim, the generalized weak-piece
+condition — enemy piece we attack that is undefended, or doubly-attacked while
+defended only once; the old flat hanging penalty stays active and is dropped in
+the Phase-4 tuned step); **threat_safe_pawn_push** (enemy non-pawn pieces a pawn
+attacks after a safe single/double push); **threat_weak_piece** (our piece
+attacked by a strictly lower-valued enemy piece); **threat_restricted** (squares
+both sides attack that the enemy does not strongly protect). All added to the
+tuner's `threats` group. **Overloaded defender deferred** (the plan marks it
+optional/defer): it needs sole-defender bookkeeping that doesn't fall out cheaply
+from these loops and is invisible to the bench/reconstruction gates while
+seeded 0, so it is better added when actually tuned. **Model used: Opus 4.8.**
 
 Keep the existing pawn-threat term and flat hanging penalty active; seed all
 new threat fields **0**:
@@ -1731,7 +1836,18 @@ new threat fields **0**:
 
 **Gate:** bench unchanged; reconstruction exact. **Model: Opus 4.8 high.**
 
-#### 3.7 Per-count mobility tables (behaviour-identical)
+#### 3.7 Per-count mobility tables (behaviour-identical) — **DONE 2026-06-22**
+
+Replaced the linear `mob_mg[4]`/`mob_eg[4]` × count with one-hot per-count
+tables `mob_n_{mg,eg}[9]`, `mob_b_{mg,eg}[14]`, `mob_r_{mg,eg}[15]`,
+`mob_q_{mg,eg}[28]`, seeded `table[i] = i · old_weight` via a `mob_seed::<N>()`
+const fn (old weights N/B/R/Q = 4/5/2/1 mg, 4/5/4/2 eg). The eval loop indexes
+the table by the safe-mobility count (clamped to table length) and traces
+one-hot; `mobility_index` removed. Mobility *area* (`safe & !own_occ`) left
+exactly as today (the area refinement is a Phase-5 behaviour change). `bench
+5,446,782` unchanged, reconstruction exact. Tuner `mobility` group updated to
+the 8 tables, clamped `[-150,400]` and enforced non-decreasing in the count.
+**Model used: Opus 4.8.**
 
 Replace linear `mobility × weight` (eval.rs:557-566, 878-898) with one-hot
 tables `mob_n[9] mob_b[14] mob_r[15] mob_q[28]` (mg/eg each), **seeded
@@ -1742,7 +1858,24 @@ is a tuned/tested micro-step in **Phase 5** (it interacts with the fit — defer
 **Gate:** bench unchanged. **Model: Opus 4.8 medium** (or GPT-5.5 high) — large
 table count, careful seeding.
 
-#### 3.8 Pawn structure + passed-pawn detail — structure (behaviour-identical)
+#### 3.8 Pawn structure + passed-pawn detail — structure (behaviour-identical) — **DONE 2026-06-22**
+
+Implemented (bench `5,446,782` unchanged, reconstruction exact, all traced /
+added to the tuner `pawnstruct`+`passers` groups): **rank-scaled connected** —
+`pawn_connected_{mg,eg}` became per-rel-rank `[8]` tables seeded constant (7,5),
+indexed by the pawn's relative rank (identical until tuned); **pawn levers**
+(`pawn_lever_{mg,eg}`, our pawn attacking an enemy pawn) and **doubled-isolated**
+(`pawn_doubled_isolated_{mg,eg}`, extra penalty when both) in the pawn cache,
+seeded 0; **blocked passer** (`blocked_passer_{mg,eg}`, our passer blocked by an
+enemy piece on its stop square) and **ideal blockader** (`ideal_blockader_{mg,eg}`,
+our knight directly in front of an enemy passer) in a new `eval_passer_blockade`
+in the piece-activity pass (they need piece squares, so outside `PawnEntry`),
+seeded 0. **Deferred** (documented): the **candidate/majority-breakthrough**
+term (overlaps the existing `passed_candidate` term and is fiddly) and the full
+**promotion-path passer-safety** SF-classical shape (large, high bug-risk while
+seeded 0 and invisible to the bench/reconstruction gates) — both are better
+added in the focused Phase-4.4 passer tuning step when they are actually
+exercised. **Model used: Opus 4.8.**
 
 Hoist the existing pawn terms (doubled/isolated/backward/connected,
 eval.rs:457-482) and passed-pawn extras (417-455) into `EvalParams`, then add,
@@ -1759,6 +1892,14 @@ seeded inert:
   because the pawn isn't passed yet. Seed 0; tuned with the passer scalars in
   4.4. (The "pawn levers" field above is the move-creating-a-lever signal; this
   is the resulting-majority signal — keep both, they fit independently.)
+- **Promotion-path passer safety** — upgrade today's single "safe stop square"
+  test to the SF-classical `passed` shape: score the attacked/defended status of
+  the squares on the pawn's *path to promotion*, whether the immediate block
+  square is defended, friendly/enemy king distance to the block and next squares,
+  and rook/queen support behind the passer. Needs the attack maps (3.0) and piece
+  squares, so it lives in the piece-activity pass, not `PawnEntry`. Seed 0; tuned
+  with passers in 4.4. (Distinct from the unstoppable rule-of-square term in 3.12,
+  which is a binary near-win; this grades how *safe* a still-stoppable passer is.)
 - **Rook behind passed pawn (Tarrasch) + ideal blockader** — eg-weighted: a bonus
   when our rook is on the passer's file *behind* it (own passer → supports the
   push; enemy passer → restrains it), and a small bonus for a **knight on the
@@ -1771,43 +1912,73 @@ This extends `PawnEntry` (eval.rs:273-280); keep the pawn cache correct and make
 sure the `texel` feature bypasses it (§11 Risks). **Gate:** bench unchanged.
 **Model: Opus 4.8 medium.**
 
-#### 3.9 Material imbalance hooks (behaviour-identical; optional block)
+#### 3.9 Material imbalance hooks (behaviour-identical; optional block) — **DONE 2026-06-22**
 
-Add SF-style symmetric quadratic-imbalance coefficient tables (own-pair and
-opponent-pair matrices) + redundancy terms (rook-pair, knight-with-pawns,
-rook-with-pawns), **all coefficients seeded 0**. Bishop pair stays as today
-until Phase 4 folds it into the imbalance fit. Skip entirely for a leaner eval;
-it is the lowest-yield, fiddliest block. **Gate:** bench unchanged. **Model:
-Opus 4.8 high** (quadratic bookkeeping is error-prone).
+Added `eval_imbalance` (called from `evaluate` after `eval_piece_activity`):
+two 6×6 coefficient matrices `imbalance_ours[36]` / `imbalance_theirs[36]`
+(indexed `pt1*6+pt2` over `[bishop_pair, pawn, knight, bishop, rook, queen]`,
+lower triangle `pt2<=pt1` used), the SF-style symmetric quadratic form over
+per-color count products, **all coefficients seeded 0** (bench `5,446,782`
+unchanged, reconstruction exact). The redundancy terms (rook-pair,
+knight-with-pawns, rook-with-pawns) are entries of these matrices
+(`ours[rook][rook]`, `ours[knight][pawn]`, `ours[rook][pawn]`), not separate
+fields, matching SF. The bishop-pair scalar stays active as today (folded into
+the imbalance fit in Phase 4.5). **Deviation from SF, deliberate:** no `/16`
+divisor — the value is `Σ coeff·countproduct` added phase-independently to mg
+and eg, so the term is *exactly linear* in the coefficients and cleanly
+Texel-traceable (count = net white−black count product, recorded in both mg and
+eg). Since coefficients are seeded 0 and tuned from scratch, SF's `/16`
+integer-scaling convention is unnecessary; the scale is the tuner's to find. New
+tuner `imbalance` group (72 params); coefficients clamped `[-300,300]` (signed).
+**Model used: Opus 4.8.**
 
-#### 3.10 Small positional terms — structure (behaviour-identical, batch)
+#### 3.10 Small positional terms — structure (behaviour-identical, batch) — **DONE 2026-06-22**
 
-Add, all seeded 0: bishop-pair-scaled-by-pawn-count (replacing flat `(30,50)`
-once tuned), bishop outposts (mirror the knight-outpost logic, eval.rs:544-554),
-trapped-rook-by-own-uncastled-king, connected rooks, bishop on a long diagonal
-bearing on the enemy king, bad bishop (own pawns on the bishop's colour), and an
-**initiative/complexity** term (a score nudge scaled by total pawns / passed
-pawns / both-flanks presence, like SF's `Initiative`).
+Added, all seeded 0 (`bench 13 = 5,446,782` unchanged, reconstruction exact
+against `tools/texel/data/holdout.csv`):
+- **Bishop-pair-scaled-by-pawn-count** (`bishop_pair_pawn_mg/eg`) — additive on
+  top of the existing flat `bishop_pair_{mg,eg}` bonus, weighted by `8 −
+  total_pawns`. The flat term stays active; this is tuned alongside it and can
+  absorb it once Phase 4 fits both.
+- **Bishop outposts** (`bishop_outpost_mg/eg`) — mirrors the knight-outpost
+  logic exactly (same rank/attack/defend conditions), applied per bishop.
+- **Trapped rook by own uncastled king** (`rook_trapped_mg/eg`) — fires when
+  the king is still on its home square with all castling rights for that side
+  gone, the rook sits in its starting corner (a1/h1/a8/h8), and the rook's raw
+  attack-minus-own-occupancy mobility is `≤ 3`.
+- **Connected rooks** (`rook_connected_mg/eg`) — both own rooks aligned on a
+  rank or file with nothing (`movegen::between`) between them.
+- **Bishop on a long diagonal bearing on the enemy king**
+  (`bishop_long_diagonal_mg/eg`) — bishop on one of the 12 non-corner squares
+  of the two main diagonals (`LONG_DIAGONALS` bitboard) whose current attack
+  set (blockers included) reaches the enemy king or a king-ring square.
+- **Bad bishop** (`bad_bishop_mg/eg`) — penalty scaled by the count of own
+  pawns on the bishop's own square colour (light/dark via
+  `Bitboard::LIGHT_SQUARES`/`DARK_SQUARES`).
+- **Initiative/complexity** (`initiative_weight`) — single coefficient times a
+  complexity proxy (`total_pawns + king-file distance + both-flanks-pawns
+  indicator`), signed by the current eg score's sign (mirrors SF's
+  `Initiative`, simplified to one linear weight since it is seeded 0 and fit
+  from scratch — no SF-style internal sub-tuning needed).
 
-Two non-SF-classical terms (from the Ethereal/RubiChess survey — see the
-HCE-source note below §3.12), both **optional and possibly redundant**, so add
-only if cheap and prune in Phase 4 if they don't earn their fit:
-- **Closedness / locked-centre** — adjust knight value *up* and rook value
-  *down*, and dampen the complexity/initiative term, as the centre locks (count
-  of fixed/rammed pawns). *Caveat: per-count mobility (3.7) already penalises a
-  knight's low mobility in closed positions, so the marginal lever is the
-  material-value swing only — keep it small.* Seed 0, tune in 4.4/4.5.
-- **Central-king / lost-castling danger** — a penalty for a king stuck in the
-  centre with castling rights gone, *separate* from the king-ring attack model
-  (3.5), which scores nothing until attackers arrive. *Caveat: the king PST
-  already encodes much of "king on e1 vs g1"; this only adds the explicit
-  rights-lost / development-stage signal. Could instead live as a king-danger
-  input in 3.5.* Seed 0, tune in 4.1/4.4.
+Both optional non-SF-classical terms were included too (cheap, a few lines
+each):
+- **Closedness / locked-centre** (`closedness_knight_mg`, `closedness_rook_mg`)
+  — `rammed_pawn_count × own_piece_count × weight`, mg-only, one signed weight
+  per piece type (knight expected positive, rook expected negative once
+  tuned). Deliberately a single weight, not a table — 3.7's per-count mobility
+  already prices a knight's reduced mobility in closed positions, so the only
+  marginal lever left is the material-value swing itself.
+- **Central-king / lost-castling danger** (`king_centrality_danger_mg`) — fires
+  when the king is on its home square with all castling rights for that
+  colour gone (same predicate as the trapped-rook check above, reused).
 
-**Gate:** bench
-unchanged. **Model: Sonnet 4.6 medium** (each is a few lines; batch them).
+New tuner group `smallpos` (16 params) in `tools/texel-tuner`; clamps added
+(bishop-pair-pawn ±20, most bonuses [0,200], initiative [0,30], closedness
+±30 signed, king-centrality-danger [0,100]). All tuned in Phase 4.4/4.5.
+**Model used: Sonnet 4.6.**
 
-#### 3.11 Scale-factor framework + endgame knowledge
+#### 3.11 Scale-factor framework + endgame knowledge — **DONE 2026-06-22 (3.11a framework+KBNK, 3.11b KPK+KBP, 3.11c KQKP/KRKP/OCB)**
 
 Introduce a `ScaleFactor` (0–64, `NORMAL = 64`) applied to the endgame side of
 the tapered score before the 50-move damping. Seed it to `NORMAL` everywhere
@@ -1816,8 +1987,10 @@ patterns absent from the bench suite (so bench stays `5,446,782`):
 - generalise the OCB scaling (eval.rs:912-928) into the framework, scaled by
   passed-pawn count;
 - rook-endgame drawishness; "extra material but no pawns and insufficient mating
-  material → draw"; KQKP / KRKP / KQKR heuristics; KBP wrong-bishop-wrong-corner
-  draw;
+  material → draw"; exact **KPK** handling (a compact bitbase or an opposition /
+  rule-of-the-square evaluator) so KPK is scored correctly without tablebases and
+  Syzygy stays optional; KQKP / KRKP / KQKR heuristics; KBP
+  wrong-bishop-wrong-corner draw;
 - a **correct KX K mop-up incl. KBNK driving the bare king to the
   bishop-coloured corner** — the generic corner-drive (eval.rs:599-616) cannot
   win KBNK reliably. Keep the generic mop-up for the general case; add the
@@ -1828,6 +2001,77 @@ too rare for self-play to measure. **Model:** framework + KBNK corner math
 **Opus 4.8 high**; the individual endgame functions are well-bounded → **GPT-5.5
 high** (or Sonnet 4.6 medium once the pattern exists). Buys Elo *and* removes
 "threw away a won/drawn ending" losses that hurt against Critter-class opponents.
+
+**Done in this pass (the Opus 4.8 high portion — framework + KBNK + suite):**
+- **`ScaleFactor` framework** (`SCALE_NORMAL = 64`): `scale_endgame()` dispatches
+  to `specialized_endgame_scale()` (returns a scale factor in `0..=64`; the
+  tapered score is multiplied by `sf/64`) before falling through to the
+  pre-existing OCB + KNNK handling. The OCB scaling keeps its **exact `/48`
+  whole-score integer arithmetic** (folding it into a `/64` eg-side factor would
+  change the integer result on OCB positions present in the bench tree, breaking
+  the fingerprint) — so the OCB→framework *generalisation with passed-pawn
+  scaling* is a behaviour-changing item deferred to **Phase 4**, not done here.
+  `linear_delta_scale` (texel) mirrors the new factor for tuner fidelity.
+- **Pawnless insufficient-material draws** via the framework: KK, KNK, KBK, and
+  minor-vs-minor → forced dead draw (`sf = 0`). KBN-vs-K is deliberately *not*
+  matched (it is a win). KNNK keeps its existing handling.
+- **KBNK correct corner-drive**: for the exact K+B+N-vs-bare-K pattern, the
+  mop-up drives the losing king to a corner the winning **bishop can actually
+  reach** (its own colour) instead of the nearest corner. **Bug found & fixed
+  while building this:** the corner constants must follow *this engine's* colour
+  convention, in which `a1 ∈ LIGHT_SQUARES` — the light-reachable corners are
+  a1/h8, the dark ones h1/a8. An earlier draft had them inverted (would have
+  driven the king to the unmatable corner); the regression suite's
+  difference-of-differences direction test catches that inversion.
+- **Permanent endgame regression suite** (`tests/endgames.epd` +
+  `tests/endgames.rs`): draws assert static eval `== 0`; the KBNK position is
+  played out at fixed depth and must reach **checkmate** (not stalemate) by the
+  bishop+knight side within a move budget; plus a confound-cancelling static
+  test that the corner drive points to the bishop's colour. `cargo test` clean.
+
+**Done in 3.11b (per-EG functions, this pass — Opus 4.8):**
+- **Exact KPK** via a generated **bitbase** (`src/kpk.rs`, the standard
+  Stockfish iterative/retrograde classification; pawn normalised to White,
+  Black-pawn positions mirrored vertically). Plugs into
+  `specialized_endgame_scale()`: a drawn KPK is forced to `0`, a won one falls
+  through (`None`) so normal eval scores it. Unit tests cover key-square wins
+  (both sides to move), the opposition draw, and the rook-pawn corner draw.
+  **This moved the bench fingerprint** `5,446,782 → 5,354,975` — KPK is
+  reachable in the bench tree (see the re-baseline note in the checkpoint); the
+  fingerprint was re-baselined with the user's sign-off.
+- **KBP wrong-coloured-bishop rook-pawn draw** (`kbp_wrong_corner_draw`): strong
+  side has K + one bishop + pawns all on a single rook file, the bishop is the
+  wrong colour to guard the queening square, and the bare defending king holds
+  that corner → dead draw (`0`). Does **not** fire in the bench suite.
+- Regression suite extended with KPK draw/win and KBP-draw positions.
+
+**Done in 3.11c (lower-confidence endgame heuristics — Opus 4.8, bench-neutral
+at `5,354,975`, reconstruction exact):**
+- **KQKP fortress draw** (`kqkp_fortress_scale`): KQ-vs-KP is a fortress draw
+  **only for rook/bishop pawns** (a/c/f/h) on the 7th with the defending king
+  guarding the queening square and the queen's king far → `Some(0)`. Knight and
+  centre pawns are **wins** and return `None` (not scaled). Encoded as a
+  correctness test, not a tautological constant.
+- **KRKP drawish** (`krkp_drawish_scale`): a conservative **partial** scale
+  (×0.25) in the clear draw zone (pawn on the 7th escorted by its king, rook's
+  king distance > 4). Never a forced draw, so a wrong guess cannot zero out an
+  actually-won KRKP.
+- **OCB passed-pawn refinement** (`opposite_bishop_scale`): the opposite-bishop
+  draw-scaling is relaxed upward by passed-pawn count; passer-free positions
+  keep the exact pre-3.11 `/48` value, so the fingerprint is unchanged.
+- Regression suite extended with a KQKP-fortress draw EPD line and four
+  correctness unit tests (incl. guards that knight-pawn KQKP and KQ-vs-KR stay
+  clearly *winning*).
+
+> **Deliberately NOT implemented (and why):** **KQ-vs-KR** is a *win*, so it is
+> never scaled toward draw; and **broad rook-endgame drawishness** is left to
+> Phase 4 as a **tunable** scale term rather than a hardcoded rule — a fixed
+> blanket scale on common R+P-vs-R positions would mis-draw won endings. (A
+> first GPT-5.5 attempt at 3.11c did exactly that: a broad rook scaler that
+> collapsed `bench 13` ~29 % and scaled won rook endings toward draw; it was
+> dropped and reimplemented narrowly here.)
+
+**Model used (3.11a+3.11b+3.11c): Opus 4.8 high.**
 
 **Permanent endgame regression suite (`tests/endgames.epd`).** Build this once
 and keep it forever — it protects mating technique against any future eval/search
@@ -1851,12 +2095,38 @@ model cannot curate the FENs, the user can paste known textbook positions (KBNK,
 Lucena/Philidor, KQ vs KP, etc.) — the test harness is the work, the positions
 are public knowledge.*
 
-#### 3.12 Gauntlet-driven eval additions (added 2026-06-19, after re-surveying SF-classical terms)
+#### 3.12 Gauntlet-driven eval additions (added 2026-06-19, after re-surveying SF-classical terms) — **core DONE 2026-06-22 (Opus 4.8)**
 
 A fresh pass over the Stockfish-classical eval surfaced terms the §15 backlog
-missed. Add each as inert-seeded structure (bench `5,446,782` unchanged) in the
+missed. Add each as inert-seeded structure (bench `5,354,975` unchanged) in the
 step shown; they are tuned in the matching Phase-4 stage. **Models:** Opus 4.8
 medium for the endgame/passer items, Sonnet 4.6 medium for the small terms.
+
+**Done in this pass (all seeded 0, bench `5,354,975` unchanged, reconstruction
+exact, new tuner `gauntlet` group of 10 params):**
+- **Unstoppable passed pawn** (`unstoppable_passer_eg`, eg-only) — rule of the
+  square: passed pawn with a clear path whose promotion the enemy king cannot
+  reach in time (accounts for side-to-move and the 2nd-rank double-step).
+- **Minor behind pawn** (`minor_behind_pawn_mg/eg`) — a knight/bishop with a
+  friendly pawn directly in front of it.
+- **Pawn islands** (`pawn_islands_mg/eg`, in the pawn cache) — penalty scaling
+  with the count of maximal own-pawn groups on consecutive files.
+- **Queen infiltration** (`queen_infiltration_mg/eg`) — our queen on relative
+  rank ≥ 4 on a square no enemy pawn attacks.
+- **King protector** (`king_protector_mg/eg`) — penalty proportional to the sum
+  of each own minor's distance from our king.
+- **Space-shape upgrade** (`space_piece_mg`) — SF-style space weighted by own
+  piece count, added alongside the flat `space_weight` term (which stays active
+  until Phase 4 retires it). *Simplification: the "extra credit for squares
+  behind 2–3 pawns" nuance is omitted; the piece-count weighting is the main
+  SF idea.*
+
+**Deferred (note):** the optional low-yield trio (bishop x-ray on pawns,
+rook+queen battery, slider-on-queen threat) and the **winnable/complexity
+coupling** of the 3.10 initiative term with the 3.11 scale-factor framework —
+the coupling is a cross-term design item better done with the data in hand, so
+it is left for Phase 4.4/4.5. The **exposed-queen** penalty is folded into the
+existing threats package rather than duplicated here.
 
 - **Unstoppable passed pawn (rule of the square)** — a passed pawn the enemy king
   cannot catch (king outside the pawn's promotion square, accounting for
@@ -1899,19 +2169,218 @@ pull in anything material that only one of them has:
 This is a *term-selection* checklist (what to build), distinct from the §10
 *strength* ladder (who to play). One survey pass — not a recurring gate.
 
+#### 3.13 Permanent endgame regression suite
+
+The permanent endgame regression suite (`tests/endgames.epd` +
+`tests/endgames.rs`) is described in detail in §3.11 above — it is the gate for
+every specialised endgame function. Filed as its own step here so the numbering
+matches `user_dev_guide.md`. **Status:** the harness plus the KBNK-mate playout,
+the insufficient-material-draw cases, and the corner-direction test are **DONE**
+(built with the 3.11 framework, Opus 4.8); extend it with KPK/KRKP/KQKP/OCB/
+rook-draw lines as the 3.11 per-EG functions land. **Model:** Sonnet 4.6 medium.
+
+#### 3.14 Eval-cache correctness fix — **DONE 2026-06-23 (Opus 4.8)**
+
+> **Numbering note:** `3.12` is the gauntlet-driven eval-term survey and `3.13`
+> is the endgame regression suite, so this fix is filed as **3.14**. It is still
+> inside Phase 3 and therefore still gated to complete **before Phase 4** begins,
+> as required.
+
+**Root cause (found & fixed).** Not a hash-key problem in `eval_table` — the
+`(board.hash, halfmove_clock)` key is complete. The impurity was in the **pawn
+cache**: the passed-pawn **free-stop / safe-stop** bonuses depend on non-pawn
+occupancy (`board.occupied()`) and enemy attacks (`attackers_to_color`), yet
+they were scored *inside* `eval_pawns`, whose `(mg, eg)` result is cached by a
+**pawn-structure-only** key (`pawn_key`). So when pieces moved but pawns did
+not, the pawn cache (and the whole-eval cache built on its output) returned
+stale values, and the engine played a different eval than a cold recompute — at
+the current head, `bench 13` was `5,354,975` cached vs `4,978,006` cold (a clean
+re-measure of the original ~10 % symptom).
+
+**Fix.** Move the free-stop / safe-stop scoring out of `eval_pawns` into a new
+`eval_passed_pawn_advance`, run every evaluation (outside any cache), **before**
+`eval_piece_activity` so the running `mg`/`eg` seen by downstream nonlinear terms
+(notably the mop-up's `(mg+eg)/2` test) is byte-identical to the pre-fix
+ordering. Verified the **eval value at every position is unchanged** (a
+fresh-evaluator walk over hundreds of positions shows 0 diffs vs the pre-fix
+code); only the cache is now exact. The whole eval is a pure function of the
+position: `bench 13` is now identical with the cache active or bypassed
+(**`4,978,006`**), re-baselined from `5,354,975`. Permanent guard:
+`tests/eval_cache.rs` walks positions through a long-lived evaluator and asserts
+every result equals a fresh (cold) evaluator — it fails on the pre-fix code and
+passes after. Reconstruction stays exact (the trace simply moved with the term).
+
+**Symptom (measured).** Toggling the whole-eval cache (`Evaluator::eval_table`,
+`EVAL_TABLE_SIZE = 32768`, keyed by `(board.hash, halfmove_clock)`) shifts the
+fixed-depth `bench 13` node count by ~10 %: **5,446,782** with the cache active
+vs **4,924,891** with cache reads bypassed. The probe preserved
+`-C target-cpu=native` in both builds, so this is **not** an FMA/`f64`
+LMR-table rounding artifact. For a *pure* `evaluate()` behind an *exact*
+`(hash, halfmove_clock)` key, a cache hit must equal a cold recompute — so a
+different search tree means the cache is returning values that differ from a
+fresh evaluation. This is **pre-existing** (the cache predates Phase 3) and does
+not affect any shipped Phase-3 fingerprint (every diff is fingerprint-*stable*),
+but it means the engine plays a subtly different eval than the one the Texel
+tuner fits, so it must be root-caused before Phase 4 spends games and a fit on
+the wrong target.
+
+**Why it must precede Phase 4.** The tuner traces and fits the *cold* `evaluate()`
+(the `texel` feature bypasses both caches). If the cache the engine actually
+plays with diverges from that cold eval, then (a) the fit optimises a function
+the engine never exactly runs, and (b) it likely costs Elo today. Phase 3 only
+needs fingerprint *stability*, which holds — but Phase 4 needs the played eval
+and the fitted eval to be the **same function**.
+
+**Hypotheses to check, cheapest first (root-cause, do not paper over):**
+1. **Key incompleteness** — the most likely cause. `board.hash` (and/or the key
+   pair) may not capture every input that `evaluate()` actually depends on, so
+   two positions that evaluate differently collide on the same key. Audit that
+   `evaluate()` reads *nothing* outside what `(board.hash, halfmove_clock)`
+   uniquely determines (e.g. side-to-move folded into hash, castling/ep state,
+   any `Evaluator` scratch state that should be per-position). Mirror against the
+   Zobrist update sites.
+2. **Stale / cross-contaminated entry** — an `Evaluator`-local field written
+   during one position's eval and read on a later cache *hit* for another (state
+   that should be recomputed but is instead carried over with the cached score).
+3. **Pawn-cache interaction** — bisect `eval_table` vs `pawn_table` (`pawn_key()`):
+   bypass each independently to attribute the 10 % to one cache. If it's the pawn
+   cache, the same key-completeness audit applies to `pawn_key()`.
+4. **Collision policy** — confirm the table stores/compares enough of the key to
+   reject collisions (full key vs truncated index), and that replacement can't
+   serve a wrong-key entry.
+
+**Acceptance for the fix.** After the fix, bypassing vs using the eval cache must
+yield the **identical** `bench 13` node count (whatever value that is — the fix
+may legitimately move the shipping fingerprint, since it changes the played
+eval). Add a **deterministic `cargo test`** that, for a few thousand positions,
+asserts `cached_eval(pos) == cold_eval(pos)` integer-for-integer — this is the
+permanent guard that the cache is a true memoisation. Re-baseline the canonical
+`bench 13` fingerprint in this doc and `user_dev_guide.md` to the post-fix value
+and note the change explicitly (it is the one *intended* fingerprint move in
+Phase 3). No SPRT/long games for the root-cause itself; a non-regression SPRT can
+be folded into the Phase 3 gate if the fingerprint moves.
+
+**Model:** **Opus 4.8 high.** This is a subtle correctness/determinism bug
+(hash-key completeness, cache-state lifetime) where a wrong "fix" silently moves
+the fingerprint without addressing the cause — it needs careful source-level
+root-causing, not a mechanical edit. Background-investigation repro chip already
+exists (`task_c2666035`).
+
+#### 3.15 Eval hot-loop cleanup / inert-block gating — **INVESTIGATED & REJECTED for Rarog 2026-06-23**
+
+> **Why (measured, 2026-06-23).** The Phase-3 gate NPS SPRT vs the Phase-2.5
+> head failed: **−32.6 ± 9.3 Elo, H0 accepted** (2694 games, `3+0.03`). Root
+> cause is **NPS, not correctness**: `bench 13` NPS dropped **3,429,963 →
+> 2,669,172 (−22 %)** because the enlarged eval computes every node even though
+> every new weight is seeded 0; the bench *fingerprint* (node count) is blind to
+> NPS, so it surfaced only at the gate.
+
+**Two things were tried and both rejected:**
+1. **Hot-loop micro-opt** (reuse the substrate, collapse the imbalance loops,
+   trim sweeps) — profiling (an eval-throughput micro-bench) showed the loops are
+   **already compiler-optimised**; a hand "collapse imbalance" attempt *regressed*
+   it (307 → 324 ns/eval). There is no redundant *recomputation* to remove; the
+   cost is genuine work.
+2. **Inert-block gating** (skip a fully-seeded-0 block in production via an
+   `EvalActive` flag) — this *did* recover +15 % NPS byte-identically, but it
+   **only helps the transient seeded-0 head**: once Phase 4 tunes the weights
+   nonzero, every block reactivates and the gating does **nothing** in the
+   shipping engine. It is pure scaffolding for a gate we don't actually care
+   about, so it was **reverted** — we optimise the *resulting* function, not the
+   seeded-0 checkpoint. (Commit `66c7ba9`, dropped.)
+
+**Conclusion.** There is no behaviour-identical NPS to recover here. The durable
+lever is **3.16 lazy eval**, which speeds up the *tuned* eval too. **Important
+corollary:** the seeded-0 enlarged eval is *strictly* pure overhead in
+non-decided positions (new terms compute, contribute 0), so the **gate NPS SPRT
+vs the Phase-2.5 head can never pass at the seeded-0 head** — it can only be
+beaten once Phase 4 activates the terms and adds Elo. The right validation for
+3.16 is a **lazy-on vs lazy-off** non-regression SPRT (does the approximation
+cost Elo?), and the real vs-p25 comparison belongs at the Phase-4 boundary.
+
+#### 3.16 Lazy eval (behaviour-changing, SPRT-gated) — **ACCEPTED 2026-06-23 (Opus 4.8)**
+
+> **Status: ACCEPTED.** `LAZY_MARGIN = 600`; the mop-up is extracted to
+> `apply_mop_up` and runs on **both** paths so mating technique (KBNK, KXK)
+> survives a lazy skip (endgame suite still mates). Lazy is
+> `#[cfg(not(feature = "texel"))]`, so the tuner fits the full eval; the eval
+> stays pure (`cache==cold`) and reconstruction is exact. **`bench 13`
+> re-baselined `4,978,006 → 5,315,678`**; per-node NPS **~2.50M → ~2.80M
+> (+11.8 %)**, durable on the tuned eval.
+>
+> **SPRT (lazy-on vs lazy-off, `3+0.03`, 15,314 games): +4.42 ± 3.90 Elo, LOS
+> 98.7 %, LLR 2.95 → H1 accepted `[-3,0]`.** Lazy is a *net gain*, not just a
+> free speedup — the deeper search from +11.8 % NPS outweighs the coarser eval
+> (and at seeded-0 the skipped terms contribute ~0). The margin can be re-checked
+> after Phase 4 grows the positional weights.
+
+The big lever. When the **tapered material + PST margin** (the cheap part of the
+eval, already computed) is so large that no positional term could flip the
+bound, **return early** and skip the expensive king-safety / threats / mobility /
+imbalance / small-terms block (SF-style lazy eval). Material/PST are **not**
+seeded 0, so the margin is meaningful and stable today.
+
+Key constraints:
+- **Disabled under `--features texel`** — the tuner must trace/fit the *full*
+  eval, so the lazy early-return is `#[cfg(not(feature = "texel"))]`. The eval
+  stays a pure function of the position (lazy is deterministic), so
+  `tests/eval_cache.rs` (cache == cold) still holds and the cache stores the
+  lazy value.
+- **Conservative margin.** Too tight → wrong skips cost Elo; too loose → little
+  NPS back. Start wide (skip only when |material+PST tapered| ≫ the largest
+  plausible positional swing), measure, then tighten under SPRT.
+- Changes the played eval for clearly-decided positions → **`bench 13`
+  fingerprint moves** (re-baseline, documented).
+
+**Gate:** (a) a **non-regression SPRT** `[-3,0]` of the lazy head vs the
+pre-lazy (3.15) head — lazy must not lose Elo from over-eager skips; **and**
+(b) re-run the **Phase-3 gate NPS SPRT `[-3,0]` vs the Phase-2.5 head** — it must
+now **pass H1** (the 22 % NPS hole closed). Re-baseline the fingerprint, update
+both docs. **Model: Opus 4.8 high** (search-sensitive margin; a wrong bound
+silently weakens play).
+
+> **Sequencing.** 3.15 (free, bench-identical) → 3.16 (behaviour-changing,
+> SPRT-gated) → re-run the gate NPS SPRT. Only then is Phase 3 closed and Phase 4
+> may begin. Doing this before Phase 4 keeps the per-stage tuning SPRTs from
+> having to climb out of a 22 % NPS hole.
+
 ### Phase 3 gate (end of phase)
 
-- `bench 13 == 5,446,782` — every step above is behaviour-identical for
-  non-endgame positions, and the 3.11 endgame functions don't fire in the bench
-  suite.
+- `bench 13 == 5,315,678` (re-baselined three times in Phase 3: `5,446,782` →
+  `5,354,975` at 3.11b for the **KPK bitbase**; → `4,978,006` at 3.14 for the
+  **eval-cache fix**; → `5,315,678` at 3.16 for **lazy eval**). The whole eval is
+  a pure function of the position (`tests/eval_cache.rs` guards cache == cold,
+  and lazy is deterministic).
 - **Reconstruction acceptance test passes:** for 10,000 random dataset positions
   the tuner's reconstructed `E(default)` equals `evaluate()`
   **integer-for-integer** with the full enlarged trace. Any mismatch is a trace
   bug — fix before Phase 4.
+- **Per-term trace/eval regression assertions — DONE 2026-06-23.** (a) eval
+  **colour symmetry** (`tests/eval_invariants.rs::eval_is_colour_symmetric` —
+  `evaluate()` is invariant under a colour-flip + vertical mirror across 200+
+  positions); (b) **seeded-zero inert-but-tunable**
+  (`src/eval.rs::seeded_zero_terms_are_inert_but_tunable`, `--features texel` —
+  a seeded-0 term fires with a nonzero trace count yet contributes 0 at the
+  default weights, and perturbing the weight changes the reconstructed eval, so
+  it is wired/tunable); (c) **nonzero activation**
+  (`new_terms_activate_on_curated_positions` — curated positions trigger the
+  passer/free-stop/safe-stop, mobility, imbalance, threat-by-minor, and
+  minor-behind-pawn terms). This is what makes the Step 4.0 feature-support
+  diagnostics trustworthy.
+- **Eval-cache correctness (3.14) resolved:** bypassing vs using the eval cache
+  yields the identical `bench 13` node count, the cache==cold-eval `cargo test`
+  guard passes, and the canonical fingerprint is re-baselined to the post-fix
+  value here and in `user_dev_guide.md`. This is a hard gate — Phase 4 must not
+  start while the played eval and the fitted eval differ.
 - `cargo test` clean (incl. the new endgame unit tests).
-- One non-regression / NPS SPRT `[-3,0]` vs the Phase 2.5 head (the only games
-  spent in Phase 3) confirming the attack-map refactor cost no NPS — PGO usually
-  erases the indirection, and 3.0 should net slightly positive.
+- ~~One non-regression / NPS SPRT `[-3,0]` vs the Phase 2.5 head~~ **— superseded.**
+  This **FAILED (2026-06-23: −32.6 ± 9.3 Elo, −22 % NPS)** and **cannot pass at the
+  seeded-0 head**: the new terms are pure overhead until Phase 4 tunes them, so a
+  seeded-0 enlarged eval is strictly slower than the 2.5 eval for the same quality
+  (no byte-identical optimisation can fix that — see 3.15). **Replacement gate:** a
+  **lazy-on (3.16) vs lazy-off non-regression SPRT** (does lazy cost Elo at equal
+  eval?). The real vs-`p25` comparison moves to the **Phase-4 boundary**, where the
+  tuned eval + lazy NPS beats `p25`.
 - **Eval-cost budget (whole enlarged eval).** The new terms are seeded 0 but
   their *structure still computes* (attack-map reads, threat/passer loops run,
   then multiply by 0), so the full eval cost is already paid at the Phase 3 head
@@ -1951,7 +2420,7 @@ optional small L2 toward PeSTO for PST entries only. Frozen non-linear pieces
 (50-move damping, scale factors, mate-drive, zone-construction *logic*) live in
 the per-position `scale`/`rest` constants so reconstruction stays exact.
 
-#### 4.0 Bucketed holdout diagnostics + targeted-data policy (set up before staging) — Sonnet 4.6 medium
+#### 4.0 Tuner/data readiness gate — bucketed holdout, feature support, constraints (set up before staging) — Sonnet 4.6 medium; Opus 4.8 high for tuner-core changes
 
 The single global holdout-loss number can fall while a *critical* eval domain
 silently regresses (king attacks, passers, pawn endings) — and because we fit
@@ -1969,6 +2438,38 @@ reporting layer, not new instrumentation. A stage is only "clean" if it improves
 or holds **every** bucket; a bucket that regresses while global loss drops is the
 signal to investigate *before* the SPRT, not after a confusing H0.
 
+**Bucketed reporter — built (2026-06-24).** Ten buckets: phase
+(opening `≥16` / middlegame / endgame `<6`), material class (no-queens, OCB,
+rook-ending, pawn-ending — from the board), and king-attack / passer / threat
+(from the trace family activations already computed for the row). Two entry
+points: `rarog-texel --buckets <data.csv>` prints a current-eval snapshot (the
+baselines), and **every `--tune` now prints a base→final per-bucket table** with
+a `<-- REGRESSED` flag on any bucket whose loss rose under the fit. Holdout
+baselines (116k): opening **0.1598** (noisiest), middlegame 0.1096, endgame
+**0.0825** (settled), no-queens 0.0921, OCB 0.0841, rook-ending **0.0790**,
+pawn-ending **0.1230** (only 2.9k positions — thin, watch it), king-attack
+0.1047, passer 0.1022, threat 0.1039 (aggregate 0.1019). Verified on a `passers`
+test fit: every bucket improved, strongest in endgame (−0.00054) and passer
+(−0.00041), no regressions.
+
+**Nonlinear king-safety fit path — built & validated (2026-06-24).** The
+feature-support audit proved the 11 danger-index inputs are invisible to the
+linear gradient. `rarog-texel --tune-kingsafety <train> <holdout> [out]
+[--epochs N] [--max-positions N]` is the dedicated path: it **re-evaluates** the
+dataset with perturbed weights (new texel-gated `Evaluator::set_params` rebuilds
+the derived tables), so it sees the table-bucket nonlinearity the trace cannot.
+It co-tunes the 11 inputs + the 40-entry safety table (51 params) by integer
+coordinate descent with a shrinking step (robust to the table's step-function
+shape and the integer grid; `clamp_weights` keeps the table non-decreasing and
+the inputs non-negative — the shape constraints from the gate table). A
+6-epoch / 60k smoke fit moved the dead inputs off zero sensibly
+(`ks_safe_check_queen +12`, `ks_safe_check_bishop +8`, `ks_pawnless_flank +16`),
+pushed the table tail up into the danger² shape (danger 15–28: 118 → 158–194),
+and improved **every** bucket (holdout −0.00073; sharpest in opening −0.00134,
+king-attack −0.00073, passer/threat). This is the **Stage-4.1 fit engine**; the
+real run (full data, step→1) + SPRT is Stage 4.1 itself. Production bench
+unaffected (`set_params` is `#[cfg(feature="texel")]`; `bench` = 5,315,678).
+
 **Targeted-data policy (companion rule).** If a bucket regresses or is noisy, do
 **not** globally retune or globally regenerate. Generate/import *targeted* quiet
 positions for that bucket only (e.g. more king-attack or pawn-ending FENs via a
@@ -1977,18 +2478,97 @@ stalled *aggregate* holdout (the existing 4.x rule). This keeps the eval fit
 honest in the domains HCE strength actually depends on (king safety, passers,
 endgames) without paying to refit everything.
 
+**Tuner/data readiness items (clear before staging).** Strong HCE evals are won
+as much by the **tuning process** as by term selection; the Phase-3 structure
+only pays off if the linear-trace fitter can measure and constrain it. The
+bucketed-holdout + targeted-data rules above are two rows of this gate; the rest:
+
+| Item | Requirement | Why |
+|---|---|---|
+| Nonlinear king-safety support | Rarog's king-danger uses a **danger² conversion + a long `safety[N]` table**, which the pure linear-trace gradient cannot fit. Either feed the tuner *linearised* traced inputs, or add an Ethereal-style finite-difference / special path for the conversion divisor, unit weights, and safety-curve shape. (This is also what the optional 4.1b SPSA polish targets — but decide the tuner support **here**, not after a failed fit.) | The fitter cannot learn knobs whose coefficient is zero-seeded or depends on the safety-table index. Stage 4.1 must not pretend to tune untunable params. |
+| Feature-support diagnostics | Count nonzero observations per parameter and per bucket; warn / freeze / merge very sparse params before fitting. | Stops rare HCE terms (endgame, queen-pressure, restricted squares) from learning random signs or giant values off a handful of positions. |
+| Phase/domain-balanced sampling | `datagen.ps1`/`extract.py` enforce quotas (or sampling probabilities) for opening/mid/endgame, pawn endings, passers, quiet threats, and king attacks. | Waiting for self-play to *naturally* supply rare terms leaves the tuner underdetermined. |
+| Blended labels | Optionally train on `α·result + (1−α)·score_target` (a search-score / WDL teacher target). Engine output stays pure HCE — teacher labels are training data only. | Result-only labels are noisy; blended targets smooth the gradient and shrink the dataset needed. |
+| Binary feature cache | A versioned trace/feature cache (schema + params hash + bucket metadata + labels) so repeated staged fits don't rebuild traces. | Phase 4 reruns many fits; a cache makes them fast and reproducible. |
+| Regularization / shape constraints | L2-to-prior beyond PSTs, monotonic/smooth passed-pawn and safety curves, sign constraints on obvious penalties, optional PST smoothing. | The §15/early scalar experience shows broad fits produce implausible signs; constraints make the fit robust instead of decorative. |
+
+**Gate status (2026-06-24).** Nonlinear king-safety support ✅ (`--tune-kingsafety`),
+feature-support ✅, bucketed-holdout ✅, regularization/shape ✅ (see below).
+Phase/domain-balanced sampling and blended labels are **regen-dependent** — the
+*capability* is in place but only takes effect on a new datagen pass over the
+2.19M set, which is the user's call (the current set is already sufficient for
+Stage 4.1: 75k/116k holdout positions carry a king attack). Specifically:
+`extract.py` now computes game phase (faithful to engine `PHASE_W`), always
+prints the train/holdout phase mix, and takes `--balance-phase R` to downsample
+over-represented phase buckets to `R×` the smallest. Domain (king-attack /
+passer / threat) balancing stays **post-hoc** via the bucketed reporter +
+targeted `sample_fens.py` append — replicating the engine's real eval buckets in
+python-chess would risk diverging from them. **Blended labels need no tuner
+change**: `parse_target` already accepts any float in `[0,1]`, so a `fen;0.62`
+blended target works as soon as datagen emits a WDL/search-score column. Binary feature cache **deprioritized**: measured trace-build load is
+~1–2 s for the full set (Rust + parallel `thread::scope`), so a versioned cache
+would save seconds, not the minutes its rationale assumed; revisit only if reruns
+become a bottleneck.
+
+**Regularization / shape — built (2026-06-24).** Shape constraints already live
+in `clamp_weights` (non-decreasing safety table, non-decreasing passer bonuses,
+non-negative penalties/king-danger inputs, pinned king material & pawn rank-1/8
+PST). Added **L2-to-prior** to the linear tuner: `--tune … --l2 <λ>` adds
+`2λ(w−prior)` to each active gradient, prior = the current hand-tuned default. It
+is a *guard*, not a default win — on a well-supported group it pulls the fit back
+toward prior (measured: `passers` holdout 0.0974→0.0980 at λ=2e-5), so it is
+**off by default** (`λ=0`) and meant for sparse/suspect terms or a fit that shows
+implausible signs. Usable scale is gentle (`λ≈1e-6…2e-5`; `λ≥8e-5` fully pins to
+prior). Verify holdout doesn't regress when applying it.
+
+A stage is only "clean" when the aggregate holdout **and** the relevant buckets
+hold or improve, the feature-support diagnostics are sane, and the reconstruction
+test (3.3) still passes exactly.
+
+**Feature-support diagnostics — built & run (2026-06-23).** `rarog-texel
+--feature-support <dataset.csv> [--max-positions N]` counts, per flat weight,
+the positions whose **linear trace** gives it a nonzero tapered coefficient (the
+positions that can supply gradient signal), with an opening/mid/endgame phase
+breakdown and mean |signal|. It flags any weight active in fewer than
+`max(200, 0.05%·N)` positions. Run on the full 2.19M train set, three classes of
+sparse weight emerged:
+
+1. **Structurally always-zero — freeze permanently, never tune:** king material
+   (`mg_val[5]`/`eg_val[5]`), pawn PST on ranks 1/8 (`pst_*[0..7,56..63]`), and
+   passer-on-rank-1/8 (`passed_*[0,7]`). These *cannot* occur; a fitter touching
+   them is fitting noise.
+2. **Nonlinear king-safety units — zero in the linear trace (the critical
+   finding):** all 11 of `king_safety_unit_{minor,rook,queen}`, `ks_weak_ring`,
+   `ks_safe_check_{knight,bishop,rook,queen}`, `ks_queen_relief`,
+   `ks_flank_attack`, `ks_pawnless_flank` report **0 activations**. They enter
+   eval through the danger²→`safety[N]` table lookup, so the linear gradient is
+   structurally blind to them. **This confirms the "Nonlinear king-safety
+   support" gate row above is a hard blocker, not a caveat:** Stage 4.1 must fit
+   these via a finite-difference / SPSA path (perturb weight → re-eval → ΔMSE),
+   *not* the linear trace, which would leave them frozen at their seed. Only the
+   `king_safety_table[40]` itself is linearly traceable (≈34% activation).
+3. **Genuinely rare even at 2.19M (freeze at hand value or merge):**
+   `pawn_lever` (0.03%), `trapped_bishop` (0.03%), `rook_trapped` (0.05%) — ~700–
+   1040 activations each, too few for a stable sign/magnitude. `threat_rook`
+   (0.34%) and `threat_queen` (0.22%) clear the cut on the full set and are
+   tunable, but watch their per-bucket loss.
+
+153 weights total fall under the cut on the full train set (210 on the 116k
+holdout — the extra ~57 are borderline terms the larger set rescues). The
+freeze/SPSA split above is the Step-4.1 entry contract.
+
 **Stages — biggest lever first to bank/de-risk early; PSTs + material last so
 they balance against the complete term set (fit once, no redo):**
 
 | Stage | Group unfrozen | Gate | Notes |
 |---|---|---|---|
-| 4.1 | King safety (safety table + attacker / safe-check / weak-ring / relief weights) | `[0,5]` | Biggest lever; the 3.5 structure comes alive here. |
-| 4.2 | Threats (minor/rook tables, hanging refinement, pawn-push, weak-piece, restricted) | `[0,3]` | Drop the old flat hanging term in the accepted tuned step. |
-| 4.3 | Mobility (per-count tables) | `[0,3]` | |
-| 4.4 | Remaining scalars (pawn structure, passers, bishop pair, rook files/7th, outposts, space, tempo, small positional terms) | `[0,5]` | Mobility-area refinement is Phase 5, not here. |
-| 4.5 | Material imbalance | `[0,3]` | Skip if 3.9 was skipped. |
-| 4.6 | Material + PSTs definitive refit (~780) | `[0,5]` | L2 toward PeSTO; full dataset. Biggest block, last, balanced against everything above. |
-| 4.7 | Global polish — everything unfrozen, low lr | `[0,3]` | Stop here regardless of outcome. |
+| 4.1 | King safety (safety table + attacker / safe-check / weak-ring / relief weights) | `[0,5]` | Biggest lever; the 3.5 structure comes alive here. **✅ ACCEPTED +42.5 Elo** (see below). |
+| 4.2 | Threats (minor/rook tables, hanging refinement, pawn-push, weak-piece, restricted) | `[0,3]` | Drop the old flat hanging term in the accepted tuned step. **✅ ACCEPTED +45.2 Elo** (see below). |
+| 4.3 | Mobility (per-count tables) | `[0,3]` | **✅ ACCEPTED +24.1 Elo** (see below). |
+| 4.4 | Remaining scalars (pawn structure, passers, bishop pair, rook files/7th, outposts, space, tempo, small positional terms) | `[0,5]` | Mobility-area refinement is Phase 5, not here. **✅ ACCEPTED +85.2 Elo** (see below). |
+| 4.5 | Material imbalance | `[0,3]` | Skip if 3.9 was skipped. **✅ ACCEPTED +26.7 Elo** (the OCB-regression bet paid off; see below). |
+| 4.6 | Material + PSTs definitive refit (~780) | `[0,5]` | L2 toward PeSTO; full dataset. Biggest block, last, balanced against everything above. **✅ ACCEPTED +27.6 Elo** (see below). |
+| 4.7 | Global polish — everything unfrozen, low lr | `[0,3]` | Stop here regardless of outcome. **✅ ACCEPTED +65.0 Elo** (see below). |
 
 Per-stage sanity rule: wildly implausible values (flipped signs on
 well-understood terms, non-monotonic passer/safety tables) indicate a
@@ -1998,6 +2578,172 @@ found. The reconstruction acceptance test in step 3.3 must pass before any fit.
 
 **Dataset:** self-play primary (step 3.4). Regenerate with the strength-improved
 head between major stages only if holdout loss stalls; otherwise reuse.
+
+**Stage 4.1 — king-safety fit ✅ ACCEPTED +42.5 Elo (2026-06-24).** SPRT
+`KSafety41` vs `Phase3Lazy`: **+42.47 ± 13.45 Elo** (nElo +61.06 ± 19.14),
+LOS 100%, LLR 2.95, H1 at 1266 games (W422 L268 D576, 56.1%). A huge stage —
+king safety is the biggest lever, and the 11 nonlinear danger inputs were
+literally **0/untunable by the linear trace** before, so activating them
+properly banked outsized Elo. `rarog-phase41-ksafety-pext-pgo.exe` is the **new
+head** and the Stage-4.2 baseline; canonical bench **5,178,378**. History below.
+
+Ran
+`rarog-texel --tune-kingsafety train holdout --epochs 80` on the full 2.19M set
+(K=2.045; coordinate descent converged at step 1, epoch 63). **Holdout
+0.10188570 → 0.10104598 (−0.00084), every bucket improved, no regressions**
+(opening −0.00175, middlegame −0.00106, king-attack −0.00094, passer −0.00093,
+threat −0.00088, rook-ending −0.00073, endgame −0.00045). Fitted values
+(sane — dead inputs activated, table monotonic & danger²-shaped):
+- `king_safety_unit_rook` 3→2; `ks_safe_check_knight` 0→2, `…_bishop` 0→4,
+  `…_rook` 0→4, `…_queen` 0→16; `ks_queen_relief` 0→2; `ks_pawnless_flank` 0→12.
+  (`ks_weak_ring`, `ks_flank_attack`, `king_safety_unit_minor/queen` unchanged.)
+- `king_safety_table` tail lifted from the old flat 118 cap to 240–366.
+
+Baked into `EvalParams::default()`; all 61 tests pass incl. trace
+reconstruction. **Bench 5,315,678 → 5,178,378** (eval changed, so node count
+moves — expected in Phase 4). Candidate binary
+`tools/test_engines/rarog-phase41-ksafety-pext-pgo.exe`. **SPRT to run (user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase41-ksafety-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase3-lazy-pext-pgo.exe" `
+  -NameA "KSafety41" -NameB "Phase3Lazy"
+```
+(`gainer` mode, H0 ≤0 / H1 ≥5 nElo, `tc=3+0.03`.) On H1 → mark accepted, this
+is the new head. On H0 → `git revert` the 4.1 bake (the fit path & tooling stay).
+
+**Stage 4.2 — threats fit ✅ ACCEPTED +45.2 Elo (2026-06-24).** SPRT `Threats42`
+vs `KSafety41`: **+45.22 ± 11.16 Elo** (nElo +61.94 ± 15.11), LOS 100%, LLR 2.95,
+H1 at 2032 games (W673 L410 D949, 56.5%). Another large stage — the threat
+package (per-victim tables, refined hanging, weak-piece, safe-pawn-push) was
+almost entirely seeded 0, so activating it banked big. `rarog-phase42-threats-pext-pgo.exe`
+is the **new head** and Stage-4.3 baseline; canonical bench **5,144,732**. Fit
+details below.
+
+Tuned the `threats`
+group **plus the old flat hanging term jointly** (new `threats42` tuner group),
+so the fit resolves their overlap instead of dropping the flat term blind. Linear
+Adam, 500 epochs, full 2.19M set (K=2.017). **Holdout 0.10104 → 0.10004
+(−0.00100), every bucket improved, no regressions** (opening −0.00223, threat
+−0.00103, king-attack −0.00096, pawn-ending −0.00096). Notable: the joint fit
+**drove the flat hanging penalty to ~0** (minor 45→0, rook 60→2, queen 80→2) — the
+refined hanging term absorbed it, so the plan's "drop the old flat hanging term"
+happened **data-driven**, not forced. Per-victim threat tables activated
+(`threat_by_minor` 0→41–73, `threat_by_rook` 0→24–50, `threat_weak_piece` 0→26);
+the three base threat scalars converged to a common (38, 25). Baked into defaults;
+all tests pass (the `seeded_zero_terms_are_inert_but_tunable` gate switched its
+threat example to `threat_safe_pawn_push_eg`, still seeded 0). **Bench 5,178,378
+→ 5,144,732.** Candidate `rarog-phase42-threats-pext-pgo.exe`. **SPRT to run
+(user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase42-threats-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase41-ksafety-pext-pgo.exe" `
+  -NameA "Threats42" -NameB "KSafety41" -Elo1 3
+```
+(`gainer`, H0 ≤0 / H1 ≥3 nElo per the stage's `[0,3]` gate, `tc=3+0.03`.) On H1 →
+new head; on H0 → `git revert` the 4.2 bake.
+
+**Stage 4.3 — mobility fit ✅ ACCEPTED +24.1 Elo (2026-06-24).** SPRT `Mobility43`
+vs `Threats42`: **+24.07 ± 7.94 Elo** (nElo +33.97 ± 11.17), LOS 100%, LLR 2.96,
+H1 at 3716 games (53.5%). Smaller than 4.1/4.2, as expected for the later
+incremental stages — and it confirms the clean 250-epoch fit cost no meaningful
+Elo (the rook-ending caution was free). `rarog-phase43-mobility-pext-pgo.exe` is
+the **new head**; canonical bench **5,181,289**. Fit details below.
+
+Tuned the `mobility`
+group (mob_n/b/r/q mg+eg, 132 params) on the 4.2 head. **The bucketed reporter
+earned its keep here:** a full 400-epoch fit improved global holdout to 0.09922
+but **regressed the rook-ending bucket** (+0.00007) — overvaluing active rooks in
+drawish rook endings. L2-to-prior couldn't fix it surgically (all-or-nothing
+revert to prior). So I early-stopped at the **clean boundary (250 epochs)**: every
+bucket holds or improves (rook-ending −0.0000133, pawn-ending flat), global
+**0.10004 → 0.09936 (−0.00068)** — ~83% of the max gain without the drawish-ending
+damage. Fitted curves are monotonic & SF-shaped (e.g. `mob_b_eg` −25 for a trapped
+bishop → +71). `mob_seed` helper removed (now baked). All tests pass. **Bench
+5,144,732 → 5,181,289.** Candidate `rarog-phase43-mobility-pext-pgo.exe`. **SPRT
+to run (user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase43-mobility-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase42-threats-pext-pgo.exe" `
+  -NameA "Mobility43" -NameB "Threats42" -Elo1 3
+```
+(`gainer`, H0 ≤0 / H1 ≥3 nElo, `tc=3+0.03`.) On H1 → new head; on H0 → `git revert`
+the 4.3 bake.
+
+**Stage 4.4 — scalars fit ✅ ACCEPTED +85.2 Elo (2026-06-24).** SPRT `Scalars44`
+vs `Mobility43`: **+85.20 ± 18.75 Elo** (nElo +123.80 ± 26.15), LOS 100%, LLR
+2.95, H1 at just 678 games (62.0%) — the effect was so large the LLR hit the
+bound almost immediately. The biggest stage of the campaign, matching its
+record holdout gain. `rarog-phase44-scalars-pext-pgo.exe` is the **new head**;
+canonical bench **5,121,269**. Fit details below.
+
+Tuned the remaining
+positional scalars (new `scalars44` tuner group = pawn structure, passers, rook
+files/7th, minors, space/tempo, small terms, gauntlet additions — 93 params),
+**excluding** mobility/threats/hanging (done in 4.2–4.3) and **freezing** the
+three feature-support sparse pairs (`pawn_lever`, `trapped_bishop`, `rook_trapped`).
+Full 2.19M set, 700 epochs (K=1.987). **Holdout 0.09933 → 0.09644 (−0.00289) —
+the largest single-stage gain yet, every bucket improved, no regressions**
+(pawn-ending −0.0062, opening −0.0038, passer −0.0034, king-attack −0.0028).
+Expected: this group had the most still-seeded-0 terms (gauntlet additions,
+passer detail, rook/minor positional terms). Values are sane; several terms
+(`rook_7th`, `space_weight`, `king_protector`, `space_piece`) fitted to 0 — the
+data's verdict that they add nothing atop mobility/threats/open-file. Baked; the
+`seeded_zero` gate dropped its now-activated `minor_behind_pawn` example (keeps
+imbalance + `threat_safe_pawn_push_eg`). All tests pass. **Bench 5,181,289 →
+5,121,269.** Candidate `rarog-phase44-scalars-pext-pgo.exe`. **SPRT to run
+(user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase44-scalars-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase43-mobility-pext-pgo.exe" `
+  -NameA "Scalars44" -NameB "Mobility43"
+```
+(`gainer`, gate `[0,5]` → H1 ≥5 nElo, `tc=3+0.03`.) On H1 → new head; on H0 →
+`git revert` the 4.4 bake.
+
+**Stage 4.5 — imbalance fit ✅ ACCEPTED +26.7 Elo (2026-06-24).** SPRT
+`Imbalance45` vs `Scalars44`: **+26.66 ± 8.49 Elo** (nElo +36.77 ± 11.66), LOS
+100%, LLR 2.95, H1 at 3408 games (53.8%). **The user-approved OCB-regression bet
+paid off** — the gain (+26.7, right in the predicted +25–30 band) clearly
+outweighed the small, already-scaled OCB holdout wobble. Confirms the lesson: a
+single small bucket regression on an already-scaled domain can be worth shipping
+when the global gain is meaningful and the SPRT validates it.
+`rarog-phase45-imbalance-pext-pgo.exe` is the **new head**; canonical bench
+**5,448,086**. Fit details below.
+
+Tuned the SF-style
+imbalance quadratic (`imbalance_ours`/`imbalance_theirs`, lower triangle, ~36
+firing coeffs) on the 4.4 head. Full 2.19M set, 700 epochs (K=1.857). **Holdout
+0.09640 → 0.09527 (−0.00113); 9/10 buckets improved strongly (pawn-ending
+−0.0034, endgame −0.0016, no-queens −0.0013) — but the OCB bucket REGRESSED
+(+0.00048).** This was a **deliberate, user-approved exception** to the
+all-buckets-clean rule: no clean fit exists because OCB drawishness is
+positional/scaling (already handled by `opposite_bishop_scale`) while imbalance
+is a material quadratic — the regression appears at every epoch count (even 40)
+and freezing the bishop coeffs only halved it while losing ⅔ the gain. Rationale
+to ship anyway: the ~25–30 Elo (extrapolated) gain is meaningful, OCB is a small
+(7.5k) bucket already scaled toward draw in play, and the SPRT is the arbiter
+with a clean single-commit revert. All tests pass (the `seeded_zero` gate dropped
+its now-activated `imbalance_ours` example, leaving `threat_safe_pawn_push_eg`).
+**Bench 5,121,269 → 5,448,086.** Candidate `rarog-phase45-imbalance-pext-pgo.exe`.
+**SPRT to run (user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase45-imbalance-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase44-scalars-pext-pgo.exe" `
+  -NameA "Imbalance45" -NameB "Scalars44" -Elo1 3
+```
+(`gainer`, gate `[0,3]` → H1 ≥3 nElo, `tc=3+0.03`.) On H1 → new head. On H0 →
+`git revert` the 4.5 bake (and consider the stage genuinely not worth it, per the
+plan's "optional" flag).
 
 #### 4.1b King-safety SPSA polish (optional, decide when reached)
 
@@ -2021,6 +2767,123 @@ enlarged size* to data for the first time is the single largest HCE lever, and
 the Phase-3 build-out is what lifts the ceiling above the old "+60–150"
 (tune-existing-terms-only) estimate. Confirm at LTC and run the external
 gauntlet (§10) before declaring the phase.
+
+**Stage 4.6 — material+PST refit ✅ ACCEPTED +27.6 Elo (2026-06-24).** SPRT
+`Pst46` vs `Imbalance45`: **+27.64 ± 11.23 Elo** (nElo +36.61 ± 14.80), LOS 100%,
+LLR 2.96, H1 at 2116 games (54.0%). The final big block lands.
+`rarog-phase46-pst-pext-pgo.exe` is the **new head**; canonical bench
+**5,794,671**. **Phase-4 staged total so far ≈ +251 Elo (4.1+4.2+4.3+4.4+4.5+4.6),
+above the +120–230 estimate** — the Phase-3 build-out lifted the ceiling as
+intended. Only 4.7 polish + LTC/gauntlet remain. Fit details below.
+
+The final,
+biggest block: material (`MG_VAL`/`EG_VAL`) + all 768 PST entries, ~778 params,
+on the 4.5 head. Full 2.19M set, 400 epochs (K=1.704). **Holdout 0.09507 →
+0.09352 (−0.00156), every bucket improved, no regressions** (pawn-ending −0.0037,
+opening −0.0022, endgame −0.0017; OCB even *recovered* −0.0017 from the 4.5
+wobble). Values sane: structural zeros held (pawn PST ranks 1/8 = 0); the only
+extreme PST entries are pawns on the 7th rank (198–232, correctly huge); and the
+material **ratios-to-pawn are essentially unchanged** (mg N4.1→4.4, Q12.5→11.9) —
+the mg values inflated ~×1.1 only to match the lower fitted K, a benign scale
+shift not a distortion.
+
+**On the plan's "L2 toward PeSTO":** tested it (`--l2 1e-6`) and it **froze the
+fit near the prior** (holdout 0.09502, banking just −0.00005 vs −0.00156) — the
+same all-or-nothing behavior seen on every group. Since the unregularized fit was
+already sane (the exact condition L2 was meant to enforce), shipped **without**
+L2. *Tuner note: L2-to-prior in this Adam setup is a hard "freeze near prior"
+lever, not a gentle regularizer; sparse-square robustness comes instead from the
+zero-gradient-keeps-seed property (structural zeros) + clamps.*
+
+One unit test (`evaluator_rewards_advanced_protected_passers_over_back_rank_pawns`)
+flipped by 3cp — its "advanced" FEN had the enemy king adjacent to the e6 pawn,
+and the new eval correctly discounts passers under enemy-king pressure. Fixed the
+test to park the enemy king away from both pawn pairs (isolating the advancement
+property); all tests pass. **Bench 5,448,086 → 5,794,671.** Candidate
+`rarog-phase46-pst-pext-pgo.exe`. **SPRT to run (user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase46-pst-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase45-imbalance-pext-pgo.exe" `
+  -NameA "Pst46" -NameB "Imbalance45"
+```
+(`gainer`, gate `[0,5]` → H1 ≥5 nElo, `tc=3+0.03`.) On H1 → new head, then Stage
+4.7 global polish. On H0 → `git revert` the 4.6 bake.
+
+**Stage 4.7 — global polish ✅ ACCEPTED +65.0 Elo (2026-06-24).** SPRT `Polish47`
+vs `Pst46`: **+64.97 ± 13.11 Elo** (nElo +91.97 ± 18.12), LOS 100%, LLR 2.95, H1
+at 1412 games (59.2%) — far above the expected +15–25, because every staged fit
+had optimized one group while the others sat at pre-tuned/seeded values, so the
+joint pass corrected all the cross-group interactions at once.
+`rarog-phase47-polish-pext-pgo.exe` is the **new head**; canonical bench
+**4,747,104**. **PHASE 4 COMPLETE.** Staged self-play total ≈ **+316 Elo**
+(4.1 +42.5, 4.2 +45.2, 4.3 +24.1, 4.4 +85.2, 4.5 +26.7, 4.6 +27.6, 4.7 +65.0) —
+far above the +120–230 estimate. *Caveat: these are compounding STC self-play
+SPRT gains; the external gauntlet (§10) will show the smaller real-opponent
+figure — that transfer check is the immediate next step.* Fit details below.
+
+Low-lr joint fit
+(`all47` group = everything linearly tunable, the 3 sparse pairs kept frozen;
+1172 params, lr 0.1, 300 epochs, K=1.674) on the 4.6 head. **Holdout 0.09359 →
+0.09273 (−0.00086), every bucket improved, no regressions** — the joint optimum
+found real cross-group gains the group-by-group staging left behind (material
+drifted slightly, e.g. mg knight 415→396). Sane; 1006/1172 params moved, mostly
+small.
+
+**Baking method (reusable):** 1006 params across 124 fields is too many to
+hand-edit, so added `tools/texel/bake_params.py` — bakes a complete tuner dump
+into the `EvalParams` defaults (PST/material via their named consts, everything
+else as inline macro literals, comments preserved). **Verified by bench-match:**
+a `--features tune` binary loading `all47.txt` benches **4,747,104**; the baked
+normal build benches the *same* 4,747,104 — proving the bake is exact. The
+Phase-3 `seeded_zero_terms_are_inert_but_tunable` gate was removed (its last
+seeded-0 example was activated by this polish; Phase 4 has now activated
+everything it guarded). All tests pass. **Bench 5,794,671 → 4,747,104.** Candidate
+`rarog-phase47-polish-pext-pgo.exe`. **SPRT to run (user):**
+
+```
+./tools/sprt.ps1 `
+  -EngineA "tools\test_engines\rarog-phase47-polish-pext-pgo.exe" `
+  -EngineB "tools\test_engines\rarog-phase46-pst-pext-pgo.exe" `
+  -NameA "Polish47" -NameB "Pst46" -Elo1 3
+```
+(`gainer`, gate `[0,3]` → H1 ≥3 nElo, `tc=3+0.03`.) **This is the last eval
+stage** — on H1 or H0, Phase 4 is done and the next step is the end-of-phase
+**LTC confirm + external gauntlet** (the over-fit transfer check). On H0 →
+`git revert` the 4.7 bake (the 4.6 head stays).
+
+### 4.8 — Eval data-refresh iteration (decide AFTER Phase 5; not a Phase-4 redo)
+
+**The current 2.19M dataset was self-played by the *pre-Phase-4* engine.** Once
+Phase 4 (and Phase 5) make the engine ~+200 Elo stronger, regenerating self-play
+data and re-fitting the eval once is a real, standard lever — the data-fit
+bootstrap ratchet. **Record now so we discuss it at the right time; it is
+optional and evidence-driven, not mandatory.**
+
+- **Why it helps:** a stronger engine gives (1) cleaner WDL labels — a weak
+  engine blunders won positions into draws/losses, mislabeling the Texel target;
+  (2) better-distributed, more on-policy positions. Better labels → a tighter fit
+  on the *same* (now-activated) terms.
+- **It is NOT a re-stage.** The 4.1–4.6 staging existed to *activate* seeded-0
+  terms and isolate per-group Elo — a one-time job. On fresh data, do a **single
+  joint low-lr refit** of the whole activated eval (like 4.7) **plus the
+  king-safety `--tune-kingsafety` re-eval path**, then **one SPRT** vs the head.
+  Cost: datagen < 1 h + a minutes-long fit + one SPRT.
+- **When:** **after Phase 5**, not immediately after 4.6 — Phase 5 makes the
+  engine stronger too, so one refresh then banks the label-quality gains from
+  *both* phases instead of regenerating twice. Gate the decision on the
+  end-of-Phase-4 gauntlet/LTC (how much of the staged Elo transferred vs
+  over-fit) and on whether holdout loss still has headroom.
+- **Exploit the dormant Step-4.0 capabilities on the regen:** turn on **blended
+  labels** (`α·result + (1−α)·score_target`; `parse_target` already accepts the
+  float column — datagen must emit it) and **phase-balanced sampling**
+  (`extract.py --balance-phase`). Both directly attack label noise — exactly what
+  a second iteration should use.
+- **Expected:** **+10–40 Elo** for the first refresh, less for any subsequent one
+  (it is a correction, not a re-discovery). Strong HCE evals do 1–3 such
+  iterations; past that the curve flattens and **NNUE (§13), not more HCE data,
+  is the next lever.**
 
 ---
 
@@ -2070,6 +2933,17 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
      conventional direction (larger margin when improving) and the
      no-modulation variant vs current, each gated `[-3,3]`. Cheap; fold into the
      futility-group work.
+   - **Includes the Phase-3.16 lazy-eval margin re-check** (`LAZY_MARGIN`,
+     currently a hardcoded `600` in `eval.rs`; accepted at the seeded-0 head,
+     **+4.4 Elo**). This is a **safety** re-check first, a speed knob second:
+     Phase 4 grows the positional weights, so the margin that guaranteed "no
+     skipped term can flip the sign" at seeded-0 may become **too tight** (a
+     lazy skip could then mis-evaluate a position whose positional swing now
+     exceeds the gap). Expose it as a UCI option, **widen it first and confirm
+     no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for
+     NPS. Lazy is disabled under `--features texel`, so this never touches the
+     tuner. (The mop-up is already extracted to `apply_mop_up` and runs on both
+     paths, so mating technique is margin-independent.)
    - Clock play is the test/deployment target, so **add the 2.2 TM constants as
      their own SPSA group** (Reckless tuned all of its TM multipliers this way)
      — the TM is exercised at `tc=3+0.03`.
@@ -2217,6 +3091,11 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
 6. End of phase: external gauntlet + release per §10. Extend the gauntlet
    opponent list per finding 9's ladder (add SF capped 2800, then 3000, once
    M2 falls) so the rating signal doesn't saturate.
+7. **Then decide on the §4.8 eval data-refresh** — regenerate self-play with this
+   now-much-stronger head and do one consolidated eval refit (blended labels +
+   balanced sampling). This is the natural moment: doing it after Phase 5 banks
+   both phases' strength into the new data in a single regen. Evidence-driven
+   (see §4.8); not mandatory.
 
 ### Expected
 +30–80 Elo. Cumulatively, Phases 2–4 should clear milestones M1
@@ -2230,7 +3109,7 @@ thousands of donated cores); when this phase completes, revisit §11.
 
 ## 10. Release & regression discipline
 
-- Keep `v2.1.0-codex-work` (or `master`) as the **gauntlet baseline**. After
+- Keep `master` as the **gauntlet baseline**. After
   each phase, run a **multi-opponent gauntlet** to confirm the SPRT self-play
   gains transfer against external opponents — **eval changes (Phases 3–4) over-fit
   self-play more than search changes do, so the gauntlet matters most after
@@ -2288,6 +3167,39 @@ thousands of donated cores); when this phase completes, revisit §11.
   a distribution build) before any gauntlet — tuning changes the hot paths.
 - Bump version + CHANGELOG only when a phase clears both SPRT and the external
   gauntlet.
+
+**Phase 4 gauntlet RESULT (2026-06-24, `tools/gauntlet.ps1`, `tc=10+0.1`,
+2700 games, gauntlet mode = Rarog 2.2.0 vs each of 9 opponents).** The gate is
+**cleared** — the staged self-play gain transferred to the external field:
+
+| Opponent | Rarog 2.2.0 score | H2H Elo | Note |
+|---|---|---|---|
+| Rarog 2.1.0 (prev release) | 80.0% | **+240** | real Phase-4 gain vs the engine 2.2.0 supersedes |
+| Rarog 2.0.2 | 87.7% | +344 | |
+| Basilisk 1.6.0 (sibling) | 70.5% | +152 | beats current sibling |
+| Basilisk 1.5.0 | 78.3% | +222 | |
+| Stockfish cap-2700 | 65.2% | +110 | |
+| Stockfish cap-2800 | 49.3% | −5 | even |
+| Stockfish cap-2900 | 40.5% | −67 | |
+| Critter 1.6a (~3187 CCRL) | 15.7% | −292 | |
+| Fruit 2.1 (2780 CCRL) | 85.2% | +304 | |
+
+- **CCRL placement ≈ 3000.** Two-anchor bracket: Fruit-pinned → 3086,
+  Critter-pinned → ~2890; midpoint ~2980. The single-Fruit pin (`ordo … -a 2780
+  -A "Fruit 2.1"`) overstates because beating an old HCE by a wide margin
+  inflates the gap; Critter (closest in strength) is the more trustworthy
+  anchor. We quote **~3000 CCRL** and do not claim more.
+- **Self-play overstated by ~75 Elo, as predicted.** The staged self-play sum
+  was ≈+316; real cross-engine play vs 2.1.0 is +240 — ~75% transfer, an
+  excellent rate for an eval-only campaign.
+- **Little Blitzer time confound CONFIRMED and worked around.** Critter
+  forfeited ~100% in LB even at 10+0.1 but played 300 clean games in fastchess
+  (`timemargin=1000`, `concurrency=8`). Use fastchess, not LB, for any gauntlet
+  with old/slow-IO engines.
+- **Capped-SF runs hot at fast TC, as warned:** cap-2900 → ~3154, cap-2800 →
+  ~3091. Relative milestones only; not CCRL anchors.
+
+→ **v2.2.0 is cleared to tag and publish.**
 
 ### 10.1 Release checkpoints — when to cut a GitHub release, and what to call it
 
@@ -2358,15 +3270,10 @@ the Phase 5 search-feature menu (§9) — **keep both branches until Phase 5
 is fully resolved** (every remaining idea either ported+accepted or
 explicitly rejected), then archive or delete them.
 
-Branches `claude` and `improvements` are **stale and safe to delete now**:
-`claude` is a single commit identical to the already-merged "Version 2.0.1"
-commit (an orphaned old release-branch pointer, no unique content); 
-`improvements`'s one idea (check-awareness in move ordering) was already
-ported to `v2.1.0-codex-work` and reverted (commit `0465384`) — nothing left
-to harvest. Confirm with the user before deleting (`git branch -d` is local;
-deleting the matching `origin/...` remote branches needs `git push origin
---delete <branch>`, which is the kind of externally-visible action that
-needs explicit go-ahead, not just plan-doc permission).
+Branches `claude` and `improvements` were stale (nothing left to harvest) and
+were **deleted 2026-06-20** along with the long-lived `v2.1.0-codex-work`
+integration branch, which was squash-rebased onto `master` instead of kept
+as a separate branch — `master` is now the single integration branch.
 
 ---
 
@@ -2413,11 +3320,11 @@ git log --oneline 5a8ce52..v2.1.0-codex
 git diff 5a8ce52 v2.1.0-codex -- src/search.rs
 
 # Cherry-pick a single feature step onto an integration branch
-git checkout -b feat/probcut v2.1.0-codex-work
+git checkout -b feat/probcut master
 git cherry-pick <step-commit>      # or re-implement the isolated diff
 
 # Regression-identity check (refactors only) — Windows PowerShell
-echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 5,446,782 on current head
+echo "bench 13`nquit" | .\target\release\rarog.exe   # expect 4,978,006 on current head (3.14+)
 
 # Build a named pext-PGO test binary
 #   → tools\test_engines\rarog-feat-probcut-pext-pgo.exe
@@ -2560,8 +3467,13 @@ not.
 | 3.7 | Per-count mobility tables | Opus 4.8 medium / GPT-5.5 high |
 | 3.8 | Pawn structure + passed-pawn detail | Opus 4.8 medium |
 | 3.9 | Material imbalance hooks | **Opus 4.8 high** |
-| 3.10 | Small positional terms (batch) | Sonnet 4.6 medium |
-| 3.11 | Scale-factor framework + endgames | framework/KBNK **Opus 4.8 high**; per-EG funcs GPT-5.5 high |
+| 3.10 | Small positional terms (batch) | Sonnet 4.6 medium — **done, Sonnet 4.6** |
+| 3.12 | Gauntlet additions (core) | Opus 4.8 medium / Sonnet 4.6 medium — **core done, Opus 4.8** |
+| 3.11 | Scale-factor framework + endgames | framework/KBNK **Opus 4.8 high — done, Opus 4.8**; per-EG funcs GPT-5.5 high (remaining) |
+| 3.13 | Permanent endgame regression suite | Sonnet 4.6 medium (harness done w/ 3.11) |
+| 3.14 | Eval-cache correctness fix (before Phase 4) | **Opus 4.8 high** |
+| 3.15 | Eval inert-block gating (NPS) | **investigated & rejected** (throwaway post-tune) |
+| 3.16 | Lazy eval (NPS, SPRT-gated) | **implemented, Opus 4.8** (+11.8 % NPS; awaiting SPRT) |
 | 4.1–4.7 | Eval data-fit campaign (driving) | Sonnet 4.6 medium (escalate Opus 4.8 high if a fit is pathological) |
 | 5 (most) | Search SPSA + refinements (driving) | Sonnet 4.6 medium |
 | 5 (dense ports) | Multicut/singular, threat-aware history, `tt.rs` | Codex 5.5 medium / GPT-5.5 high |

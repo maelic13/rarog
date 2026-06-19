@@ -37,8 +37,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   continuation history, and a direct-check bonus for quiet checking moves
 - Direct legal validation for raw UCI and TT-shaped moves, including
   canonicalized captures, castling, en passant, and promotions
-- Multi-table and continuation correction history with handcrafted tapered
-  evaluation and fifty-move-rule dampening
+- Multi-table and continuation correction history
+- Tapered, Texel-tuned evaluation fit to a self-play dataset: material and
+  piece-square tables, a non-linear king-danger model, threat and per-count
+  mobility tables, pawn-structure and passed-pawn terms, material imbalance,
+  exact KPK and scale-factor endgame knowledge, a whole-position eval cache,
+  a lazy-eval fast path, and fifty-move-rule dampening
 - Soft/hard time allocation with `movestogo`, increment, and move-overhead
   handling
 - Optional Syzygy tablebase probing through the UCI `SyzygyPath`,

@@ -52,6 +52,8 @@ impl UciProtocol {
                 "ucinewgame" => self.new_game(),
                 "position" => self.position_with_command(args, &command_line),
                 "bench" => self.bench(args),
+                #[cfg(feature = "tune")]
+                "dumpeval" => self.dump_eval(),
                 "ponderhit" => self.ponderhit(),
                 "quit" => {
                     self.quit();
@@ -141,6 +143,13 @@ impl UciProtocol {
             self.search_options.clone(),
             epoch,
         ));
+    }
+
+    #[cfg(feature = "tune")]
+    fn dump_eval(&self) {
+        let params = crate::eval::EvalParams::load_from_env();
+        print!("{}", params.dump());
+        flush_stdout();
     }
 
     fn ponderhit(&mut self) {

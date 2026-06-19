@@ -31,8 +31,8 @@ fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     let mut table = Box::new([[0i32; 64]; 64]);
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
         for (move_index, value) in row.iter_mut().enumerate().skip(1) {
-            *value = (1024.0 * (base_f + (depth as f64).ln() * (move_index as f64).ln() / div_f))
-                as i32;
+            *value =
+                (1024.0 * (base_f + (depth as f64).ln() * (move_index as f64).ln() / div_f)) as i32;
         }
     }
     table
@@ -441,7 +441,14 @@ impl Searcher {
         self.tt_write_mode = TtWriteMode::Main;
         let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, true, true);
+        self.reset_search_state(
+            &limits,
+            &engine_options,
+            root.side_to_move(),
+            game_ply,
+            true,
+            true,
+        );
 
         let board = root;
         let legal_moves = board.generate_legal_movelist();
@@ -509,7 +516,8 @@ impl Searcher {
         self.pondering = limits.ponder;
         self.ponderhit = false;
         self.stop_on_ponderhit = false;
-        self.limits = compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
+        self.limits =
+            compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
         self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
@@ -723,18 +731,14 @@ impl Searcher {
             if !self.limits.movetime_mode {
                 // fallingEval: ↑ when score is falling (want more time); seeds from SF.
                 let falling_eval =
-                    (0.1187 + 0.0221 * (prev_avg_score - best_score as f64))
-                        .clamp(0.572, 1.708);
+                    (0.1187 + 0.0221 * (prev_avg_score - best_score as f64)).clamp(0.572, 1.708);
                 // bestMoveInstab: ↑ when best move changed recently.
                 let best_move_instab = 1.10 + 2.29 * tot_best_move_changes;
                 // effortFactor: linear interp — at effort≤0.79 → 0.924; at effort≥1.0 → 0.71.
-                let t =
-                    ((self.root_best_effort - 0.79) / (1.0 - 0.79)).clamp(0.0, 1.0);
+                let t = ((self.root_best_effort - 0.79) / (1.0 - 0.79)).clamp(0.0, 1.0);
                 let effort_factor = (0.924 + t * (0.71 - 0.924)).clamp(0.71, 0.924);
-                let total_time = self.limits.optimum_ms
-                    * falling_eval
-                    * best_move_instab
-                    * effort_factor;
+                let total_time =
+                    self.limits.optimum_ms * falling_eval * best_move_instab * effort_factor;
                 let soft_target = total_time.min(self.limits.maximum_ms);
                 if self.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
@@ -778,7 +782,14 @@ impl Searcher {
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        self.reset_search_state(&limits, &engine_options, root.side_to_move(), game_ply, false, true);
+        self.reset_search_state(
+            &limits,
+            &engine_options,
+            root.side_to_move(),
+            game_ply,
+            false,
+            true,
+        );
         self.search_root(root, legal_moves, false, poll)
     }
 
@@ -1987,10 +1998,20 @@ impl Searcher {
             self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -bonus);
         }
         for good_cap in good_caps.as_slice() {
-            self.update_capture_history(good_cap.attacker, good_cap.to as usize, good_cap.captured, -bonus);
+            self.update_capture_history(
+                good_cap.attacker,
+                good_cap.to as usize,
+                good_cap.captured,
+                -bonus,
+            );
         }
         for bad_cap in bad_caps.as_slice() {
-            self.update_capture_history(bad_cap.attacker, bad_cap.to as usize, bad_cap.captured, -bonus);
+            self.update_capture_history(
+                bad_cap.attacker,
+                bad_cap.to as usize,
+                bad_cap.captured,
+                -bonus,
+            );
         }
 
         if !previous.is_null() {
@@ -2622,7 +2643,14 @@ mod tests {
             depth: 1.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
+        searcher.reset_search_state(
+            &limits,
+            &engine_options,
+            board.side_to_move(),
+            0,
+            true,
+            true,
+        );
 
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
@@ -2664,7 +2692,14 @@ mod tests {
             depth: 3.0,
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true, true);
+        searcher.reset_search_state(
+            &limits,
+            &engine_options,
+            board.side_to_move(),
+            0,
+            true,
+            true,
+        );
         searcher.tt.store(
             board.hash,
             8,

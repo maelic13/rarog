@@ -636,9 +636,7 @@ impl Board {
             } else {
                 (Square::A8, Square::D8)
             };
-            let occ_after = (self.all_occ
-                ^ Bitboard::from(king_from)
-                ^ Bitboard::from(rook_from))
+            let occ_after = (self.all_occ ^ Bitboard::from(king_from) ^ Bitboard::from(rook_from))
                 | Bitboard::from(king_to)
                 | Bitboard::from(rook_to);
             let their_king_bb = Bitboard::from(self.king_sq(them));

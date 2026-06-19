@@ -5,6 +5,62 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.2.0] - 2026-06-24
+
+The eval release. Phase 3 rebuilt the evaluation as a fully parameterised,
+trace-instrumented function (every term seeded inert so the rewrite was
+bench-fingerprint-identical), and Phase 4 then **fit that enlarged eval to data**
+— a staged offline Texel tune over a 2.19M-position self-play set, with each
+stage SPRT-gated at `tc=3+0.03`. This is the single largest strength jump in the
+project so far: seven accepted stages (king safety, threats, mobility, pawn
+structure / passers / minor & rook terms, material imbalance, material + PSTs,
+and a final global joint polish), each confirmed against the previous head.
+
+### Added
+
+- King-danger evaluation: a single danger accumulator with attacker-unit,
+  safe-check, weak-king-ring, king-flank, pawnless-flank and queen-relief inputs
+  feeding a lengthened non-linear danger→score table (the classic danger² curve).
+- Threat evaluation v2: per-victim threat-by-minor/rook tables, a refined
+  weakly-defended-piece term (which subsumed and retired the old flat hanging
+  penalty), safe-pawn-push threats, weak-piece and restricted-square terms.
+- Per-count mobility tables for knight/bishop/rook/queen (replacing the flat
+  per-move bonus), monotonic in the safe-mobility count.
+- Expanded pawn-structure and passed-pawn evaluation (rank-scaled connected
+  pawns, supported / free-stop / safe-stop / candidate passers, blocked-passer
+  and ideal-blockader terms) and assorted positional terms (outposts, rook
+  files/7th, bishop long-diagonal, space, king-centrality danger, and more).
+- SF-style material-imbalance evaluation (a symmetric per-piece-pair quadratic).
+- Exact endgame knowledge: a KPK bitbase plus scale-factor handling for known
+  drawish and won material configurations (KBNK mating drive, wrong-corner
+  bishop, opposite-coloured bishops, bare-rook and insufficient-material draws).
+- A whole-position evaluation cache and a lazy-evaluation fast path that skips
+  the expensive positional terms when the material+PST margin is already
+  decisive (the mate-drive mop-up runs on both paths).
+- Offline Texel-tuning tooling under `tools/texel-tuner/` and `tools/texel/`:
+  a linear-trace gradient fitter with Adam, feature-support diagnostics, a
+  bucketed-holdout loss reporter, a dedicated re-evaluation fit for the
+  non-linear king-safety inputs, optional L2-to-prior, phase-balanced sampling,
+  and a verifiable parameter-baking script.
+
+### Changed
+
+- Material values and piece-square tables were refit against the now-complete
+  positional term set; the resulting values keep classical piece ratios.
+- The `bench` fingerprint changed as eval behaviour changed (the Phase-3
+  build-out alone stayed fingerprint-identical; Phase 4 activated the terms).
+
+### Verified
+
+- Seven Phase-4 stages each passed self-play SPRT at `tc=3+0.03` against the
+  previous head (king safety +42, threats +45, mobility +24, scalars +85,
+  imbalance +27, material+PST +28, global polish +65 Elo).
+- A 2700-game external gauntlet at `tc=10+0.1` against a mixed field
+  (Stockfish capped, both Basilisk siblings, Critter 1.6a, Fruit 2.1, and
+  prior Rarog releases) confirmed the gain transfers: **+240 Elo head-to-head
+  over Rarog 2.1.0**, beating both siblings and all prior releases. Anchored to
+  published CCRL ratings, this places Rarog 2.2.0 at roughly **3000 CCRL**.
+
 ## [2.1.0] - 2026-06-19
 
 Release focused on a repo-contained SPRT/SPSA testing harness and a long

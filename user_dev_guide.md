@@ -13,13 +13,13 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 
 | Area | Current state |
 |---|---|
-| Branch | `v2.1.0-codex-work` |
+| Branch | `master` (the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **Phase 3.1 `EvalParams` struct, `bench 13 = 5,446,782`** |
-| Last result | Phase 2.9-close batch SPRT **accepted**: +2.0 Elo, nElo +3.0, LOS 86.3%, LLR 2.39 (81.2% of the way to H1, still climbing) over 15,976 games; 0 time losses confirmed cross-harness. Phase 3.0 and 3.1 done bench-identical. |
-| Immediate next work | **Phase 3.2 — tune-time loader/dumper** (`--features tune`, no games until Phase 4) |
-| **Release status** | **v2.1.0 is release-ready now** — `Cargo.toml`/`CHANGELOG.md` updated 2026-06-19, release assets bench-verified, but **not yet tagged/published**. See "Releasing" below — this is a user action, do not tag/push without being asked. |
+| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0.** 4.7 global polish ACCEPTED +65.0 Elo (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Phase 4 staged self-play ≈ **+316**; external gauntlet confirms **+240 real Elo over 2.1.0** (see below). |
+| Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000** (Fruit-pin 3086 / Critter-pin ~2890, midpoint ~2980). ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
+| Immediate next work | **Tag + publish v2.2.0** (gauntlet gate cleared). Then Phase 5 (search), then the §4.8 data-refresh decision. |
+| **Release status** | **v2.2.0 finalized — files committed, gauntlet passed, cleared to tag.** v2.1.0 published 2026-06-19. See "Releasing". |
 
 ### The Program In One Table (overview · model picker · Elo)
 
@@ -31,7 +31,7 @@ eval is final — that compute is wasted when the eval rescales.
 | Phase | What | Gate | Model(s) | Elo |
 |---|---|---|---|---|
 | **2.9** Robustness & free speed (**CLOSED**) | time-safety valve (28 forfeits), native `znver3` build, `BadCapture` struct shrink, remove `gives_check` board.clone, profile-gated bounds-checks (no-op) | `bench 13 == 5,446,782` + `cargo test`; `t=`→0 confirmed cross-harness; close-SPRT accepted (+2.0 Elo, LOS 86%) | **Sonnet 4.6 medium** (valve/build/shrink); **Opus 4.8 medium** (gives_check, bounds-checks) | +2.0 Elo + reliability |
-| **3** Eval infrastructure & build-out | attack maps, `EvalParams`, Texel tuner, then king-safety / threats / mobility / pawn / imbalance / small-terms / endgame **structure**, every new sub-term seeded inert | `bench 13 == 5,446,782` + reconstruction test + unit tests (**no games**) | Sonnet 4.6 medium for refactors/scaffolding; **Opus 4.8 high** for king-safety (3.5), threats (3.6), imbalance (3.9), endgame/KBNK (3.11), tuner core (3.3); Opus 4.8 medium for mobility (3.7) & pawns (3.8) | 0 direct (enabler) |
+| **3** Eval infrastructure & build-out | attack maps, `EvalParams`, Texel tuner, then king-safety / threats / mobility / pawn / imbalance / small-terms / endgame **structure**, every new sub-term seeded inert | `bench 13` stable except two documented re-baselines (`5,446,782` → `5,354,975` at 3.11b KPK; → **`4,978,006`** at 3.14 eval-cache fix) + reconstruction test + `cache==cold` test + unit tests (**no games**) | Sonnet 4.6 medium for refactors/scaffolding; **Opus 4.8 high** for king-safety (3.5), threats (3.6), imbalance (3.9), endgame/KBNK (3.11), tuner core (3.3); Opus 4.8 medium for mobility (3.7) & pawns (3.8) | 0 direct (enabler) |
 | **4** Eval data-fit campaign | staged Texel fit that *activates* the new terms; king-safety first, material + PSTs last | SPRT `[0,5]`/`[0,3]` per stage at `tc=3+0.03`, LTC confirm | Sonnet 4.6 medium (driving); Opus 4.8 high if a fit is pathological | **+120–230** |
 | **5** Search-efficiency wave | the one search-constant SPSA wave + history-formula split, no-aging retry, do-deeper, qsearch quiet checks, codex ports, modern refinements | SPSA → SPRT per group at `tc=3+0.03` | Sonnet 4.6 medium (driving); **Codex 5.5 medium / GPT-5.5 high** for dense ports | **+20–50** |
 
@@ -223,7 +223,7 @@ unchanged after each:
 .\target\release\rarog.exe
 bench 13
 quit
-# expect: Nodes searched  : 5446782   (unchanged through Phase 2.9 and Phase 3 so far)
+# expect: Nodes searched  : 4978006   (current head, 3.14+; was 5354975 at 3.11b-3.12)
 ```
 
 Quantify the **native-build** win (2.9.2) with a 5-minute A/B: build one
@@ -241,12 +241,32 @@ construction logic) left untouched — confirmed via grep that only the mop-up
 term remains an unparameterized literal. `bench 13` unchanged at `5,446,782`;
 50 tests pass; no new clippy warnings. — Sonnet 4.6 medium.
 
-**Next: Phase 3.2 — tune-time loader and dumper.** `--features tune` only:
-`RAROG_EVAL_FILE` env var loads `name index value` lines into `EvalParams`
-(via the `set` accessor just built), rebuilds `Evaluator::tables`, clears both
-caches; `dumpeval` console command writes the round-trip format. Gate:
-dump → load → dump is byte-identical; release builds expose neither. See
-`PLAN.md` §7 (§3.2).
+**3.2 (tune-time loader/dumper) — DONE.** `EvalParams::load_from_env`/
+`load_from_str`/`dump` (`src/eval.rs`, `#[cfg(feature = "tune")]`):
+`RAROG_EVAL_FILE` loads `name index value` lines (unknown name = hard
+`panic!`, omitted fields keep defaults); `Evaluator::default()` calls it under
+`tune` instead of `EvalParams::default()` — fresh construction already gives
+fresh tables/caches, no separate reload path needed. `dumpeval` console
+command (`src/uci_protocol.rs`) prints the round-trip format, gated so plain
+release builds report it as an unknown command (verified). Round-trip
+verified by hand (dump → edit → reload → dump, byte-identical) and by 3 new
+`eval::tune_tests` unit tests (run with `cargo test --release --features
+tune`). `bench 13` unchanged; no new clippy warnings in either build. —
+Sonnet 4.6 medium.
+
+**3.3 (trace + Texel tuner) — DONE.** Under `--features texel` the eval emits
+a per-position `EvalTrace`; `tools/texel-tuner` (binary `rarog-texel`) ports
+the Basilisk tuner (K-fit + Adam + group masks + `--verify` + clamps),
+parallelised with std threads. Reconstruction is exact (unit test over >5 k
+random positions). `bench 13` unchanged in production builds. Run:
+`cargo run --release -p texel-tuner -- --verify <holdout.csv>` and
+`... --tune material <train.csv> <holdout.csv> <out.txt>`. — Opus 4.8.
+
+**Next: Phase 3.4 — self-play dataset (you run the games).** This step
+generates training data; no engine code changes. The exact commands are in the
+"Phase 3.4" tracker entry below and in `tools/texel/README.md`. **I prepare the
+tooling and hand you the commands; I do not run the long datagen/SPRT myself.**
+Then Phase 3.5 (king-safety v2) resumes bench-identical eval work.
 
 Most of Phase 3 is the same shape: implement a behaviour-identical step (new
 eval structure with sub-terms seeded inert) → check `bench 13 == 5,446,782` →
@@ -296,7 +316,7 @@ obviously flawed.
 
 For pure refactors:
 
-> "bench 13 = 5,446,782 nodes."
+> "bench 13 = 4,978,006 nodes."  (current head, 3.14+; was 5,354,975 at 3.11b-3.12)
 
 For tuned candidates:
 
@@ -304,6 +324,22 @@ For tuned candidates:
 
 A changed bench fingerprint is expected after tuning or real search changes.
 It is a behavior fingerprint, not an Elo score.
+
+### Texel / Tuner Result (Phase 4)
+
+Minimal:
+
+> "King-safety fit: train loss 0.0974 → 0.0961, holdout 0.0979 → 0.0969."
+
+Helpful extras (loss is never the verdict — SPRT is — but these tell the model
+whether the fit is trustworthy before games are spent):
+
+> "Bucket losses all held except pawn-endings (0.082 → 0.085); feature-support
+> flagged the new safe-check[Q] weight with only 24 observations; safety-curve
+> stayed monotonic under the shape constraint."
+
+A regressing bucket, a sparse-feature warning, or an implausible sign/shape is a
+stop-and-investigate signal **before** spending SPRT games.
 
 ### Errors
 
@@ -383,10 +419,10 @@ documentation + tagging job, not a manual cross-platform build job.
 
 **Legacy branches** (`PLAN.md` §10.2): `v2.1.0-codex`/`v2.1.0-claude` are
 reference-only source branches for the still-pending Phase 5 feature menu —
-keep until Phase 5 resolves every remaining idea. `claude`/`improvements` are
-stale (fully harvested or duplicate of an already-merged commit) — safe to
-delete, but confirm with the user first since deleting remote branches is
-externally visible.
+keep until Phase 5 resolves every remaining idea. `claude`/`improvements`
+were stale and have already been deleted (2026-06-20), along with
+`v2.1.0-codex-work` itself, which was squash-rebased onto `master` instead of
+kept as a separate integration branch.
 
 ---
 
@@ -498,7 +534,10 @@ Every step keeps `bench 13 == 5,446,782`. See `PLAN.md` "Phase 2.9".
 
 ### Phase 3 - Eval Infrastructure & Behaviour-Identical Build-Out (no games)
 
-Every step is gated on `bench 13 == 5,446,782` + tests. See `PLAN.md` §7.
+Every inert step is gated on `bench 13` stability + tests. Two documented
+re-baselines: `5,446,782` → `5,354,975` at 3.11b (KPK bitbase), then →
+**`4,978,006`** at 3.14 (eval-cache correctness fix — the eval is now pure).
+See `PLAN.md` §7.
 
 - [x] 3.0 Attack-map substrate (refactor) — **DONE.** `attacks_from_sq`/
       `attacked_by`/`attacked`/`attacked2` computed once in `eval_piece_activity`;
@@ -509,33 +548,85 @@ Every step is gated on `bench 13 == 5,446,782` + tests. See `PLAN.md` §7.
       ~50 fields via `macro_rules! eval_params!`; `MG_TABLE`/`EG_TABLE` now
       `Box<EvalTables>` rebuilt by `build_tables(&EvalParams)`. `bench 13`
       unchanged (`5,446,782`), 50 tests pass. — Sonnet 4.6 medium
-- [ ] 3.2 Tune-time loader + `dumpeval` (`--features tune`). — Sonnet 4.6 medium
-- [ ] 3.3 Trace + Texel tuner binary + reconstruction acceptance test. — **Opus 4.8 high** (core) / Sonnet 4.6 medium (scaffolding)
-- [ ] 3.4 Self-play dataset + extraction (**tooling ready** in `tools/texel/`; Beast pool read-only). — Sonnet 4.6 medium
-- [ ] 3.5 King-safety v2 structure (seeded inert). — **Opus 4.8 high**
-- [ ] 3.6 Threats package structure (seeded inert). — **Opus 4.8 high**
-- [ ] 3.7 Per-count mobility tables (seeded linear-equivalent). — Opus 4.8 medium / GPT-5.5 high
-- [ ] 3.8 Pawn structure + passed-pawn detail (seeded inert). — Opus 4.8 medium
-- [ ] 3.9 Material imbalance hooks (seeded 0; optional). — **Opus 4.8 high**
-- [ ] 3.10 Small positional terms (seeded 0; batch). — Sonnet 4.6 medium
-- [ ] 3.11 Scale-factor framework + endgame knowledge incl. KBNK. — **Opus 4.8 high** + GPT-5.5 high
-- [ ] 3.12 Gauntlet-driven additions (unstoppable passer, minor-behind-pawn, pawn islands, space upgrade, queen infiltration, king protector, winnable coupling). — Opus 4.8 medium / Sonnet 4.6 medium
-- [ ] 3.11 Permanent endgame regression suite (`tests/endgames.epd` + `tests/endgames.rs`): KBNK/KPK/KRKP/KQKP/OCB/rook-draws — the gate for the endgame functions. — Sonnet 4.6 medium
-- [ ] Phase 3 gate: bench unchanged, reconstruction exact, tests clean, one NPS SPRT `[-3,0]`.
+- [x] 3.2 Tune-time loader + `dumpeval` (`--features tune`) — **DONE.**
+      `EvalParams::load_from_env`/`dump`, `RAROG_EVAL_FILE` round-trip
+      verified byte-identical; `dumpeval` unrecognized in plain release
+      builds. `bench 13` unchanged (`5,446,782`), 50 tests + 3 new tune-only
+      tests pass. — Sonnet 4.6 medium
+- [x] 3.3 Trace + Texel tuner binary + reconstruction acceptance test — **DONE.**
+      `--features texel` trace machinery in `src/eval.rs`; `tools/texel-tuner`
+      (`rarog-texel`) ports the Basilisk tuner (K-fit/Adam/masks/`--verify`/
+      clamps, std-thread parallel). Reconstruction exact (>5 k random
+      positions); `bench 13` unchanged in production. — Opus 4.8
+- [x] 3.4 Self-play dataset + extraction — **DONE 2026-06-22.** 330,000
+      self-play games (phase3-base PGO binary, node-limited) → `extract.py`
+      produced **2,190,548 train + 116,112 holdout** unique positions (≥1.5M
+      target met), tuner `--verify` PASS (10,000/10,000 reconstruct exactly).
+      Pipeline (`sample_fens.py` → `datagen.ps1` → `extract.py` → `--verify`)
+      all run by the user; outputs in `tools/texel/data/`. — Sonnet 4.6 medium
+- [x] 3.5 King-safety v2 — **DONE.** Single `danger` accumulator; weak ring,
+      safe checks (per type), king-flank pressure, pawnless flank, queen-relief
+      added seeded 0; conversion table lengthened 16→40 with the `.min(15)` cap
+      removed (Texel-tunable tail). Bench `5,446,782` unchanged, reconstruction
+      exact. Blockers/pins deferred to Phase 5 (needs pin masks). Danger-input
+      weights are SPSA (Phase 5), not Texel. — Opus 4.8
+- [x] 3.6 Threats package structure — **DONE.** threat_by_minor/rook (per
+      victim), hanging-refined, safe-pawn-push, weak-piece, restricted-squares
+      — all seeded 0, traced, added to the tuner `threats` group. Overloaded
+      defender deferred. Bench `5,446,782` unchanged, reconstruction exact. — Opus 4.8
+- [x] 3.7 Per-count mobility tables — **DONE.** `mob_{n,b,r,q}_{mg,eg}` one-hot
+      tables seeded `i·old_weight`; eval indexes by safe-mobility count, traces
+      one-hot. Tuner `mobility` group = 8 tables (clamped, non-decreasing).
+      Bench `5,446,782` unchanged, reconstruction exact. — Opus 4.8 medium
+- [x] 3.8 Pawn structure + passed-pawn detail — **DONE.** Rank-scaled connected
+      (per-rank table, seeded constant); pawn levers, doubled-isolated,
+      blocked-passer, ideal-blockader added seeded 0 (latter two in a new
+      `eval_passer_blockade`). Added to tuner pawnstruct/passers groups. Bench
+      `5,446,782` unchanged, reconstruction exact. Candidate-majority and full
+      promotion-path passer-safety deferred to Phase 4.4. — Opus 4.8 medium
+- [x] 3.9 Material imbalance hooks — **DONE.** SF-style quadratic form,
+      `imbalance_ours[36]`/`imbalance_theirs[36]` seeded 0, phase-independent,
+      no `/16` divisor (kept exactly linear → Texel-tunable). New tuner
+      `imbalance` group (72 params). Bench `5,446,782` unchanged, reconstruction
+      exact. — Opus 4.8
+- [x] 3.10 Small positional terms (seeded 0; batch) — **DONE.** Bishop-pair
+      pawn-scaling, bishop outposts, trapped rook, connected rooks, bishop
+      long-diagonal-on-king, bad bishop, initiative/complexity, plus the two
+      optional terms (closedness, central-king/lost-castling danger). New
+      tuner `smallpos` group (16 params). Bench `5,446,782` unchanged,
+      reconstruction exact. — Sonnet 4.6
+- [x] 3.11a Scale-factor framework + KBNK corner-drive + endgame suite — **DONE (Opus 4.8).** `ScaleFactor` framework (`SCALE_NORMAL=64`, `scale_endgame`/`specialized_endgame_scale`), pawnless insufficient-material draws (KK/KNK/KBK/minor-vs-minor → dead draw), and the **KBNK corner-drive** (drives the bare king to the bishop's own-colour corner). Found & fixed an inverted corner-colour mapping (this engine puts a1 in `LIGHT_SQUARES`). Bench `5,446,782` unchanged, reconstruction exact.
+- [x] 3.11b KPK bitbase + KBP wrong-corner draw — **DONE (Opus 4.8).** Exact KPK via a generated bitbase (`src/kpk.rs`): drawn KPK → `0`, won KPK falls through to normal eval. KBP wrong-coloured-bishop rook-pawn draw. **Re-baselined the bench fingerprint `5,446,782 → 5,354,975`** (KPK is reachable in the bench tree; correct draw recognition prunes faster — done with your sign-off).
+- [x] 3.11c Endgame heuristics — **DONE (Opus 4.8), bench-neutral `5,354,975`.** KQKP fortress draw (rook/bishop pawn only — knight/centre pawns stay wins), conservative KRKP partial scale (never a forced draw), and OCB passed-pawn refinement. Four correctness unit tests + a KQKP-fortress EPD line. **Deliberately excluded:** KQ-vs-KR (a win → not scaled) and broad rook-endgame drawishness (a tunable Phase-4 term). *A first GPT-5.5 attempt shipped a broad rook scaler that collapsed bench ~29% and scaled won rook endings toward draw; it was dropped and reimplemented narrowly.*
+- [x] 3.12 Gauntlet-driven additions (core) — **DONE (Opus 4.8).** Unstoppable passer (rule of square, eg), minor-behind-pawn, pawn islands, queen infiltration, king protector, and the SF-style piece-weighted space term — all seeded 0, new tuner `gauntlet` group (10 params). Bench `5,354,975` unchanged, reconstruction exact. *Deferred:* the optional low-yield trio (bishop x-ray, R+Q battery, slider-on-queen) and the winnable/complexity coupling (cross-term design → Phase 4).
+- [x] 3.13a Endgame regression suite harness (`tests/endgames.epd` + `tests/endgames.rs`) — **DONE (Opus 4.8, with 3.11).** KBNK-mate playout + insufficient-material-draw cases + corner-direction test.
+- [x] 3.13b Extend the suite — **DONE (Opus 4.8).** Added a `win` verdict (won endings score clearly, not zeroed) plus more KPK draws/wins and a rook-pawn KQKP fortress to `tests/endgames.epd`. KRKP/OCB partial-scales are covered by the `src/eval.rs` unit tests (noted in the EPD).
+- [x] 3.14 Eval-cache correctness fix — **DONE (Opus 4.8).** Root cause was **not** the `eval_table` key (it's complete) but the **pawn cache**: the passed-pawn free/safe-stop bonuses depend on non-pawn occupancy yet were scored inside `eval_pawns`, cached by a pawn-only key. Moved them to `eval_passed_pawn_advance` (run every eval, outside the cache), keeping the eval value byte-identical (0 diffs on a fresh-evaluator walk) — only the cache is now exact. Bench re-baselined `5,354,975 → 4,978,006`; eval is now pure (`bench` identical cache-on vs cache-off). Permanent guard `tests/eval_cache.rs` (fails pre-fix, passes after); reconstruction stays exact.
+- [x] 3.15 Eval inert-block gating — **INVESTIGATED & REJECTED.** Micro-opt had no headroom (loops already compiler-tight; a hand attempt *regressed* it). Inert-block gating recovered +15 % NPS byte-identically but **only at the seeded-0 head** — it does nothing once Phase 4 tunes the weights nonzero, so it's throwaway scaffolding for a gate we don't care about. Reverted. The durable lever is 3.16.
+- [x] 3.16 Lazy eval — **ACCEPTED (Opus 4.8), +4.4 Elo.** Skip the expensive block (piece activity + imbalance) when the material+PST margin > `LAZY_MARGIN` (600, SPRT-tunable); the mop-up is extracted to `apply_mop_up` and runs on **both** paths so KBNK/KXK mating survives. Disabled under `--features texel` (tuner fits full eval); eval stays pure. Bench re-baselined `4,978,006 → 5,315,678`; per-node NPS ~2.50M→2.80M. **SPRT lazy-on vs lazy-off: +4.4 ± 3.9 Elo, LOS 98.7 %, H1, 15,314 games.**
+- [x] Phase 3 gate — **MET / superseded.** ✅ reconstruction exact; ✅ per-term assertions; ✅ `cache==cold`; ✅ tests clean; ✅ lazy-eval non-regression (3.16, +4.4 Elo). The original vs-`p25` NPS SPRT is superseded (can't pass at seeded-0 — new terms are pure overhead until Phase 4 tunes them); real vs-`p25` check is the Phase-4 boundary. **Phase 3 is closed.**
 
 ### Phase 4 - Eval Data-Fit Campaign (the multiplier, +120–230 Elo)
 
 Staged Texel fit; SPRT per stage at `tc=3+0.03`. Driving: Sonnet 4.6 medium
 (escalate Opus 4.8 high if a fit is pathological). See `PLAN.md` §8.
 
-- [ ] 4.1 King safety group.
+- [x] 4.0 Tuner/data readiness gate — **DONE (autonomous parts).** Nonlinear king-safety support, feature-support diagnostics, bucketed holdout + targeted-data policy, phase-balanced sampling, blended-label support, regularization/shape constraints all built (sub-items below). Regen-dependent items (balanced sampling / blended labels) need a new datagen pass to bite; binary feature cache deprioritized (fast loads). Current 2.19M set suffices for Stage 4.1. (PLAN.md §8 Step 4.0).
+  - [x] **Feature-support diagnostics built & run** (Opus 4.8). New `rarog-texel --feature-support <data.csv> [--max-positions N]` counts, per weight, how many positions can give it gradient signal (with phase breakdown), flagging any active in `< max(200, 0.05%·N)`. Run on the full 2.19M train set → three groups: **(1)** structural always-zeros to freeze forever (king material, pawn PST ranks 1/8, passer ranks 1/8); **(2)** all 11 nonlinear king-safety units (`king_safety_unit_*`, `ks_safe_check_*`, `ks_weak_ring`, `ks_queen_relief`, `ks_flank_attack`, `ks_pawnless_flank`) are **0** in the linear trace — they enter via the danger²→table lookup, so 4.1 must fit them by finite-difference/SPSA, **not** the linear gradient; **(3)** genuinely rare even at 2.19M — `pawn_lever`, `trapped_bishop`, `rook_trapped` (~700–1040 obs) → freeze at hand value. 153 weights under the cut total.
+  - [x] **Bucketed-holdout reporter built** (Opus 4.8). Ten buckets: phase (open/mid/end), material (no-queens, OCB, rook-ending, pawn-ending), and king-attack / passer / threat. `rarog-texel --buckets <data.csv>` snapshots current-eval per-bucket loss (baselines: opening 0.160 noisiest, endgame 0.083 settled, pawn-ending 0.123 thin at 2.9k); **every `--tune` now prints a base→final per-bucket table** flagging any bucket that `<-- REGRESSED`. A stage is clean only if no bucket regresses — investigate *before* spending SPRT games.
+  - [x] **Nonlinear king-safety fit path built** (Opus 4.8). The 11 danger-index inputs are invisible to the linear trace (they move the table *index*, not a coefficient). `rarog-texel --tune-kingsafety <train> <holdout> [out] [--epochs N] [--max-positions N]` **re-evaluates** positions with perturbed weights (texel-gated `Evaluator::set_params`) and co-tunes the 11 inputs + 40-entry safety table by integer coordinate descent (shrinking step; clamps keep the table non-decreasing, inputs ≥0). Smoke fit (6 epochs, 60k): dead inputs activated sensibly, table tail rose into the danger² shape, every bucket improved (holdout −0.00073, no regressions). This is the **engine for Stage 4.1** — the real full-data run + SPRT is 4.1 itself. Production bench unaffected (`set_params` is texel-only; `bench` = 5,315,678).
+  - [x] **Regularization / shape constraints** (Opus 4.8). Shape constraints already in `clamp_weights` (monotonic safety table + passer bonuses, non-negative penalties/danger inputs, pinned king material). Added **L2-to-prior**: `--tune … --l2 <λ>` shrinks each active weight toward its hand-tuned default. It's a *guard* (off by default), not a default win — on well-supported groups it just pulls toward prior; use gentle λ (1e-6…2e-5) on sparse/suspect terms and confirm holdout holds.
+  - [x] **Phase-balanced sampling capability** (Opus 4.8). `extract.py` now computes game phase (faithful to engine `PHASE_W`), prints train/holdout phase mix, and takes `--balance-phase R` to cap over-represented phase buckets. Domain (king-attack/passer/threat) balancing stays post-hoc via the bucketed reporter + targeted `sample_fens.py`. **Regen-dependent** — only bites on a new datagen pass (current set suffices for 4.1).
+  - [x] **Blended labels** — no tuner change needed: `parse_target` already accepts any float in `[0,1]`, so `fen;0.62` works once datagen emits a WDL/score column. **Regen-dependent.**
+  - [ ] Binary feature cache — **deprioritized** (measured load ~1–2 s, not the bottleneck the rationale assumed; revisit only if reruns stall).
+- [x] 4.1 King safety group — **✅ ACCEPTED +42.5 Elo (Opus 4.8).** `--tune-kingsafety` on the full 2.19M set: holdout 0.10189→0.10105 (−0.00084), every bucket improved (opening −0.00175, king-attack −0.00094, passer −0.00093). Dead inputs activated (`ks_safe_check_queen 0→16`, `ks_pawnless_flank 0→12`, etc.), safety-table tail lifted 118→240–366 (monotonic). **SPRT KSafety41 vs Phase3Lazy: +42.47 ± 13.45 Elo, LOS 100%, LLR 2.95, H1 at 1266 games.** New head = `rarog-phase41-ksafety-pext-pgo.exe`; **bench 5,178,378**.
 - [ ] 4.1b King-safety SPSA polish on top knobs (**optional** — you decide when reached). — Sonnet 4.6 medium
-- [ ] 4.2 Threats group (drop the old flat hanging term here).
-- [ ] 4.3 Mobility tables.
-- [ ] 4.4 Remaining scalars (pawn structure, passers, bishop pair, rook, outposts, space, tempo, small terms).
-- [ ] 4.5 Material imbalance (skip if 3.9 skipped).
-- [ ] 4.6 Material + PSTs definitive refit (last, biggest block).
-- [ ] 4.7 Global polish (low lr), then LTC confirm + external gauntlet.
+- [x] 4.2 Threats group — **✅ ACCEPTED +45.2 Elo (Opus 4.8).** Tuned `threats` + the old flat hanging term jointly (`threats42` group) so the fit resolves their overlap. 500 epochs, full set: holdout 0.10104→0.10004 (−0.00100), every bucket improved. The fit **drove the flat hanging term to ~0 data-driven** (minor 45→0, rook 60→2, queen 80→2 — the refined term absorbed it); per-victim threat tables activated. **SPRT Threats42 vs KSafety41: +45.22 ± 11.16 Elo, LOS 100%, H1 at 2032 games.** New head = `rarog-phase42-threats-pext-pgo.exe`; **bench 5,144,732**.
+- [x] 4.3 Mobility tables — **✅ ACCEPTED +24.1 Elo (Opus 4.8).** Tuned `mobility` (132 params) on the 4.2 head. The bucketed reporter caught a **rook-ending regression at the full 400-epoch fit** (overvaluing active rooks in drawish endings); L2 couldn't fix it surgically, so early-stopped at the **clean 250-epoch boundary** — every bucket holds/improves, global 0.10004→0.09936 (−0.00068). Curves monotonic & SF-shaped. **SPRT Mobility43 vs Threats42: +24.07 ± 7.94 Elo, LOS 100%, H1 at 3716 games** (the clean fit cost no Elo). New head = `rarog-phase43-mobility-pext-pgo.exe`; **bench 5,181,289**.
+- [x] 4.4 Remaining scalars — **✅ ACCEPTED +85.2 Elo (Opus 4.8).** New `scalars44` group (93 params: pawn structure, passers, rook files/7th, minors, space/tempo, small terms, gauntlet), excluding mobility/threats/hanging (done) and freezing the 3 sparse pairs. 700 epochs: holdout 0.09933→0.09644 (−0.00289, biggest stage), every bucket improved. A few terms (rook_7th, space, king_protector) fitted to 0 — data verdict. **SPRT Scalars44 vs Mobility43: +85.20 ± 18.75 Elo, LOS 100%, H1 at 678 games** (biggest stage of the campaign). New head = `rarog-phase44-scalars-pext-pgo.exe`; **bench 5,121,269**.
+- [x] 4.5 Material imbalance — **✅ ACCEPTED +26.7 Elo (Opus 4.8).** Tuned the SF-style imbalance quadratic on the 4.4 head, 700 epochs: holdout 0.09640→0.09527 (−0.00113), 9/10 buckets improved (pawn-ending −0.0034) **with a deliberate, user-approved OCB regression +0.00048** (no clean fit exists — OCB drawishness is scaling, not material). **SPRT Imbalance45 vs Scalars44: +26.66 ± 8.49 Elo, LOS 100%, H1 at 3408 games** — the bet paid off. New head = `rarog-phase45-imbalance-pext-pgo.exe`; **bench 5,448,086**.
+- [x] 4.6 Material + PSTs definitive refit — **✅ ACCEPTED +27.6 Elo (Opus 4.8).** Material + 768 PST entries (~778 params) on the 4.5 head, 400 epochs: holdout 0.09507→0.09352 (−0.00156), every bucket improved (pawn-ending −0.0037; OCB recovered −0.0017). Values sane — structural zeros held, material ratios unchanged (mg ~×1.1 scale shift to match K=1.70). **L2-to-PeSTO tested but froze the fit near prior (all-or-nothing), so shipped without it.** One sanity test flipped 3cp (enemy king was adjacent to the advanced pawn — new eval correctly discounts that); fixed the test. **SPRT Pst46 vs Imbalance45: +27.64 ± 11.23 Elo, LOS 100%, H1 at 2116 games.** New head = `rarog-phase46-pst-pext-pgo.exe`; **bench 5,794,671**.
+- [x] 4.7 Global polish — **✅ ACCEPTED +65.0 Elo (Opus 4.8).** Low-lr joint fit (`all47` = everything linearly tunable, 3 sparse pairs frozen; 1172 params, lr 0.1) on the 4.6 head: holdout 0.09359→0.09273 (−0.00086), every bucket improved — the joint optimum captured cross-group gains the staging left behind. **Baked via new `tools/texel/bake_params.py` (1006 params, 124 fields), verified by bench-match** (tune binary on the dump = baked normal build = 4,747,104 exactly). Removed the now-complete `seeded_zero` gate. **SPRT Polish47 vs Pst46: +64.97 ± 13.11 Elo, LOS 100%, H1 at 1412 games** (far above the expected +15–25). New head = `rarog-phase47-polish-pext-pgo.exe`; **bench 4,747,104**. **PHASE 4 COMPLETE (staged ≈+316 self-play).**
 
 ### Phase 5 - Search-Efficiency Wave (+20–50 Elo)
 
@@ -544,12 +635,14 @@ Driving: Sonnet 4.6 medium; dense ports: Codex 5.5 medium / GPT-5.5 high.
 See `PLAN.md` §9.
 
 - [ ] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B.
+- [ ] 5.1b **Lazy-eval margin (`LAZY_MARGIN`, 600) re-check** — a *safety* check first: Phase 4 grows the positional weights, so the margin that guaranteed "no skipped term can flip the sign" at seeded-0 may become too tight. Expose it as a UCI option, **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
 - [ ] 5.2 History bonus/malus split, then retry no-aging history.
 - [ ] 5.3 do-deeper re-implementation (cp-coupled retry).
 - [ ] 5.4 Qsearch quiet checks; razoring depth restriction; LMR TT-move-is-capture; mobility-area refinement.
 - [ ] 5.5 Codex ports: multi-cut/singular, threat-aware history, TT-cutoff/fail-low-parent history, optional TT overhaul. — Codex 5.5 medium
 - [ ] 5.6 Modern refinements (aspiration modernization, correction-magnitude margins, hindsight, cutoff-count LMR, bad-noisy futility, qsearch SEE threshold).
 - [ ] 5.7 Profile-guided speed pass; end-of-phase gauntlet + release.
+- [ ] **4.8 Eval data-refresh (decide AFTER Phase 5; PLAN.md §4.8).** The 2.19M dataset was self-played by the *pre-Phase-4* engine. Once 4.x + Phase 5 add ~+200 Elo, regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. Expected **+10–40 Elo** (a correction, not a re-discovery); 1–3 iterations then NNUE territory. Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
 
 ### NNUE Readiness (terminal option, not scheduled)
 
@@ -640,7 +733,7 @@ quit
 Expected current fingerprint:
 
 ```text
-Nodes searched  : 5446782
+Nodes searched  : 4978006
 ```
 
 PowerShell piping into the UCI loop can be unreliable; type the commands
@@ -675,8 +768,9 @@ option list.
 - **Build all eval structure before tuning search margins.** The one search
   SPSA wave (Phase 5) runs only after the eval is final (Phase 4) — its margins
   are eval centipawns, so tuning them earlier is wasted compute.
-- **Phase 3 steps must keep `bench 13 == 5,446,782`** (behaviour-identical; seed
-  every new eval sub-term inert). Phase 3 spends no games.
+- **Phase 3 inert steps must keep `bench 13 == 4,978,006`** (re-baselined at 3.14
+  by the eval-cache fix, which made the eval pure; seed every
+  new *tunable* eval sub-term inert). Phase 3 spends no games.
 - Keep `Evaluator::eval()` as the only boundary between search and evaluation.
 
 The process is the strength engine: tune, test, keep only what survives.

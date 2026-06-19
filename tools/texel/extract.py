@@ -15,6 +15,9 @@ Options:
     --skip-end   N      Plies to skip at game end    (default: 6)
     --seed N            Random seed (default: 42)
     --min-train N       Warn if fewer than N training positions (default: 1500000)
+    --balance-phase R   If >0, downsample over-represented phase buckets in TRAIN so
+                        none exceeds R x the smallest (e.g. 2.0). Lossy; off by default.
+                        Always prints the train/holdout phase mix regardless.
 
 Output format (FEN;result):
     rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1;0.5
@@ -43,6 +46,26 @@ RESULT_MAP = {
     "0-1":     0.0,
     "1/2-1/2": 0.5,
 }
+
+# Game-phase weights, matching the engine's PHASE_W (knight/bishop 1, rook 2,
+# queen 4; max 24 = full non-pawn material). Buckets match the tuner's
+# bucket_of(): opening >= 16, middlegame 6..16, endgame < 6.
+PHASE_W = {chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4}
+
+
+def game_phase(board: "chess.Board") -> int:
+    return sum(
+        PHASE_W[pt] * len(board.pieces(pt, c))
+        for pt in PHASE_W
+        for c in (chess.WHITE, chess.BLACK)
+    )
+
+
+def phase_bucket(phase: int) -> int:
+    return 0 if phase >= 16 else (1 if phase >= 6 else 2)
+
+
+PHASE_NAMES = ("opening", "middlegame", "endgame")
 
 
 def fen_key(fen: str) -> str:
@@ -85,14 +108,14 @@ def process_game(game, skip_start: int, skip_end: int,
             board.push(move)
             continue
 
-        candidates.append(board.fen())
+        candidates.append((board.fen(), phase_bucket(game_phase(board))))
         board.push(move)
 
     # Sample at most max_per_game positions (decorrelation)
     if len(candidates) > max_per_game:
         candidates = rng.sample(candidates, max_per_game)
 
-    return [(fen, label) for fen in candidates]
+    return [(fen, label, bucket) for fen, bucket in candidates]
 
 
 def main():
@@ -110,6 +133,10 @@ def main():
                         help="Plies to skip at game end (default 6)")
     parser.add_argument("--seed",         default=42,  type=int, metavar="N")
     parser.add_argument("--min-train",    default=1_500_000, type=int, metavar="N")
+    parser.add_argument("--balance-phase", default=0.0, type=float, metavar="R",
+                        help="If >0, downsample over-represented phase buckets in TRAIN so "
+                             "none exceeds R x the smallest bucket (e.g. 2.0). Lossy; off by "
+                             "default. Holdout is never rebalanced.")
     args = parser.parse_args()
 
     if not os.path.isfile(args.pgn):
@@ -167,12 +194,45 @@ def main():
             is_holdout = rng.random() < holdout_threshold
             target = holdout_positions if is_holdout else train_positions
 
-            for fen, label in pairs:
+            for fen, label, bucket in pairs:
                 key = fen_key(fen)
                 if key in seen:
                     continue
                 seen.add(key)
-                target.append((fen, label))
+                target.append((fen, label, bucket))
+
+    def phase_counts(positions):
+        c = [0, 0, 0]
+        for _, _, b in positions:
+            c[b] += 1
+        return c
+
+    def fmt_phase(positions):
+        c = phase_counts(positions)
+        tot = max(sum(c), 1)
+        return ", ".join(f"{PHASE_NAMES[i]} {c[i]:,} ({100*c[i]/tot:.1f}%)" for i in range(3))
+
+    # Optional phase rebalancing of TRAIN (holdout left untouched so it stays a
+    # faithful sample of the played distribution).
+    if args.balance_phase > 0:
+        counts = phase_counts(train_positions)
+        present = [n for n in counts if n > 0]
+        if present:
+            cap = int(args.balance_phase * min(present))
+            by_bucket = ([], [], [])
+            for item in train_positions:
+                by_bucket[item[2]].append(item)
+            balanced = []
+            for b in range(3):
+                bucket_items = by_bucket[b]
+                if len(bucket_items) > cap:
+                    bucket_items = rng.sample(bucket_items, cap)
+                balanced.extend(bucket_items)
+            rng.shuffle(balanced)
+            print(f"\nPhase balance (cap = {args.balance_phase} x smallest = {cap:,}):")
+            print(f"  before: {fmt_phase(train_positions)}")
+            train_positions = balanced
+            print(f"  after : {fmt_phase(train_positions)}")
 
     print(f"\nSummary:")
     print(f"  Games read       : {games_total:,}")
@@ -181,11 +241,13 @@ def main():
     print(f"  Unique positions : {len(seen):,}")
     print(f"  Train positions  : {len(train_positions):,}")
     print(f"  Holdout positions: {len(holdout_positions):,}")
+    print(f"  Train phase mix  : {fmt_phase(train_positions)}")
+    print(f"  Holdout phase mix: {fmt_phase(holdout_positions)}")
 
     # Write train
     print(f"\nWriting {train_path} ...")
     with open(train_path, "w", encoding="utf-8") as f:
-        for fen, label in train_positions:
+        for fen, label, _ in train_positions:
             # Format label: 1.0 → "1", 0.5 → "0.5", 0.0 → "0"
             if label == 1.0:
                 s = "1"
@@ -198,7 +260,7 @@ def main():
     # Write holdout
     print(f"Writing {holdout_path} ...")
     with open(holdout_path, "w", encoding="utf-8") as f:
-        for fen, label in holdout_positions:
+        for fen, label, _ in holdout_positions:
             if label == 1.0:
                 s = "1"
             elif label == 0.0:

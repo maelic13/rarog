@@ -96,10 +96,30 @@ node-limited game is ~1–2 s; ~60 k games on the 5950X is well under an hour at
 
 ---
 
-## Porting the tuner to Rust (Phase 3.3 — not done yet)
+## The Rust tuner (Phase 3.3 — DONE)
 
-`reference/basilisk_tuner.cpp` is the template. The reusable, engine-agnostic
-parts (copy the *structure*, not the C++):
+The tuner is built: `tools/texel-tuner` (binary `rarog-texel`), a workspace
+member depending on the rarog lib with `features = ["texel"]`. Run it from the
+repo root:
+
+```powershell
+# Reconstruction acceptance gate (run before any tuning):
+cargo run --release -p texel-tuner -- --verify tools\texel\data\holdout.csv
+# Stage a group (material first, PSTs/all last). out file is RAROG_EVAL_FILE format:
+cargo run --release -p texel-tuner -- --tune material `
+    tools\texel\data\train.csv tools\texel\data\holdout.csv tools\texel\out\material.txt
+# Options: --epochs N (default 200), --lr X (default 0.3), --max-positions N.
+# Groups: material pawnstruct passers rooks minors mobility threats hanging
+#         misc kingsafety scalars pst all
+```
+
+The output file loads straight into a `--features tune` engine via
+`RAROG_EVAL_FILE`, or is baked into `src/eval.rs` defaults once a stage's SPRT
+passes (Phase 4). Parallelism uses `std::thread` (no external crates), so the
+engine stays dependency-free.
+
+It was ported from `reference/basilisk_tuner.cpp`. The reusable, engine-agnostic
+parts (copied as *structure*, not C++):
 
 - **Objective / Adam / K-fit** (`sigmoid`, `traced_loss`, `cmd_tune`, `fit_K`):
   pure math, transcribe directly.

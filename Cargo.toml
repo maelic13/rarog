@@ -1,7 +1,7 @@
 [package]
 name = "rarog"
 authors = ["Miloslav Macurek"]
-version = "2.1.0"
+version = "2.2.0"
 edition = "2024"
 description = "A UCI-compatible chess engine written in Rust"
 license = "GPL-3.0-or-later"
@@ -9,7 +9,7 @@ repository = "https://github.com/maelic13/rarog"
 readme = "README.md"
 
 [workspace]
-members = [".", "xtask"]
+members = [".", "xtask", "tools/texel-tuner"]
 default-members = ["."]
 resolver = "3"
 
@@ -22,6 +22,12 @@ resolver = "3"
 # Build: cargo xtask build --arch pext --pgo (+ add --features tune to the xtask or
 # pass CARGO_ENCODED_RUSTFLAGS directly if needed).
 tune = []
+
+# Exposes the Texel trace machinery (EvalTrace, reconstruct, flat-param helpers)
+# used by the offline tuner in tools/texel-tuner (Phase 3.3). Never enabled in
+# production or `tune` builds; bypasses the eval/pawn caches and records a
+# per-position feature trace, so it must NOT be used for playing strength.
+texel = []
 
 [dependencies]
 
