@@ -105,19 +105,19 @@ replaced by the Phase 2.5.1 clock-TC candidate above.
 ### config_pruning.json — Pruning / margin constants
 
 Current values are the accepted Phase 1 Group B defaults in
-`SearchParams::default()`. Keep the current ranges for now; Phase 4 will widen
-the `FutilityNotImproving` / `LmpNotImproving` ceilings to `[0,120]` as its own
-post-eval retune.
+`SearchParams::default()`, with `FutilityNotImproving` / `LmpNotImproving`
+widened to `[0,120]` for the Phase 5 post-eval retune (both were pinned near
+their old `[0,60]` ceiling).
 
 | UCI option name        | Default | Range        | Step | Source in search.rs |
 |------------------------|---------|--------------|------|---------------------|
 | `FutilityBase`         | 86      | [30, 150]    | 10   | `:1003`  `(base + not_improving·coeff) · depth` |
-| `FutilityNotImproving` | 49      | [0, 60]      | 8    | `:1003`  not-improving coefficient |
+| `FutilityNotImproving` | 49      | [0, 120]     | 10   | `:1003`  not-improving coefficient |
 | `RazoringCoeff`        | 191     | [60, 300]    | 20   | `:1007`  `coeff · depth` |
 | `NullMoveDepthCoeff`   | 15      | [4, 30]      | 4    | `:1012`  depth-scaled null-move margin |
 | `NullMoveImprovingBonus` | 25    | [0, 60]      | 8    | `:1012`  improving bonus |
 | `LmpBase`              | 115     | [40, 180]    | 14   | `:1182`  LMP margin base |
-| `LmpNotImproving`      | 57      | [0, 60]      | 8    | `:1182`  not-improving coefficient |
+| `LmpNotImproving`      | 57      | [0, 120]     | 10   | `:1182`  not-improving coefficient |
 | `QuietHistPruneCoeff`  | 4419    | [1000, 8000] | 400  | `:1186`  quiet-history pruning coefficient |
 | `SeePruningCoeff`      | 81      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
 | `SeePruningMax`        | 811     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
@@ -140,15 +140,16 @@ the Phase 3 eval refit.
 | `FpBase`        | 184     | [0, 400] | 20 | Per-move quiet futility base margin |
 | `FpCoeff`       | 117     | [0, 300] | 15 | Per-depth quiet futility coefficient |
 
-### config_probcut.json — historical, not active
+### config_probcut.json — ProbCut margin (Phase 5)
 
-The Phase 2 ProbCut port was dropped after SPRT H0 (`-24.5 +/- 8.5 Elo`).
-This file is kept only as historical scaffolding. Do not select
-`-ConfigGroup probcut` unless ProbCut is reimplemented and the matching UCI
-options are restored first.
+Rarog's live ProbCut (the flat-margin form: `probcut_beta = beta + margin`,
+`search.rs:1108`) was hardcoded at `180` until Phase 5 exposed it as a UCI
+option for the post-eval SPSA wave. An earlier, more elaborate improving-aware
+3-parameter port (separate base/depth/improving-bonus margins) was tried in
+Phase 2 and dropped after SPRT H0 (`-24.5 +/- 8.5 Elo`) — that design is not
+revived here; only the simple flat margin that shipped through Phase 4 is
+tunable.
 
 | UCI option name | Default | Range | Step | Source in search.rs |
 |-----------------|---------|-------|------|---------------------|
-| `ProbCutBaseMargin` | 188 | [120, 260] | 12 | `probcut_margin`: base margin added to beta |
-| `ProbCutDepthMargin` | 4 | [0, 16] | 2 | `probcut_margin`: margin per remaining depth |
-| `ProbCutImprovingBonus` | 28 | [0, 80] | 8 | `probcut_margin`: subtracted when improving |
+| `ProbCutMargin` | 180 | [60, 400] | 20 | `:1108`  `probcut_beta = beta + margin` |

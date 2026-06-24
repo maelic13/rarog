@@ -141,12 +141,12 @@ impl SearchOptions {
         opts.extend([
             String::from("option name AspirationDelta type spin default 31 min 5 max 100"),
             String::from("option name FutilityBase type spin default 86 min 20 max 200"),
-            String::from("option name FutilityNotImproving type spin default 49 min 0 max 80"),
+            String::from("option name FutilityNotImproving type spin default 49 min 0 max 120"),
             String::from("option name RazoringCoeff type spin default 191 min 50 max 300"),
             String::from("option name NullMoveDepthCoeff type spin default 15 min 2 max 40"),
             String::from("option name NullMoveImprovingBonus type spin default 25 min 0 max 80"),
             String::from("option name LmpBase type spin default 115 min 30 max 200"),
-            String::from("option name LmpNotImproving type spin default 57 min 0 max 80"),
+            String::from("option name LmpNotImproving type spin default 57 min 0 max 120"),
             String::from(
                 "option name QuietHistPruneCoeff type spin default 4419 min 1000 max 10000",
             ),
@@ -166,6 +166,8 @@ impl SearchOptions {
             // Per-move quiet futility pruning (Phase 2.7).
             String::from("option name FpBase type spin default 184 min 0 max 400"),
             String::from("option name FpCoeff type spin default 117 min 0 max 300"),
+            // ProbCut beta margin (Phase 5).
+            String::from("option name ProbCutMargin type spin default 180 min 60 max 400"),
         ]);
         opts
     }
@@ -413,7 +415,7 @@ impl SearchOptions {
             #[cfg(feature = "tune")]
             "futilitynotimproving" => {
                 if let Ok(v) = value.parse::<i32>() {
-                    self.engine.search_params.futility_not_improving = v.clamp(0, 80);
+                    self.engine.search_params.futility_not_improving = v.clamp(0, 120);
                 }
                 true
             }
@@ -448,7 +450,7 @@ impl SearchOptions {
             #[cfg(feature = "tune")]
             "lmpnotimproving" => {
                 if let Ok(v) = value.parse::<i32>() {
-                    self.engine.search_params.lmp_not_improving = v.clamp(0, 80);
+                    self.engine.search_params.lmp_not_improving = v.clamp(0, 120);
                 }
                 true
             }
@@ -547,6 +549,13 @@ impl SearchOptions {
             "fpcoeff" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.fp_coeff = v.clamp(0, 300);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "probcutmargin" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.probcut_margin = v.clamp(60, 400);
                 }
                 true
             }

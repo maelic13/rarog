@@ -1105,7 +1105,7 @@ impl Searcher {
             }
 
             if depth >= 4 {
-                let probcut_beta = beta + 180;
+                let probcut_beta = beta + self.params.probcut_margin;
                 let captures = board.generate_legal_captures();
                 let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
                 for index in 0..scored.len().min(8) {

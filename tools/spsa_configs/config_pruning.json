@@ -8,8 +8,8 @@
     "FutilityNotImproving": {
         "value": 49,
         "min_value": 0,
-        "max_value": 60,
-        "step": 8
+        "max_value": 120,
+        "step": 10
     },
     "RazoringCoeff": {
         "value": 191,
@@ -38,8 +38,8 @@
     "LmpNotImproving": {
         "value": 57,
         "min_value": 0,
-        "max_value": 60,
-        "step": 8
+        "max_value": 120,
+        "step": 10
     },
     "QuietHistPruneCoeff": {
         "value": 4419,

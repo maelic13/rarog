@@ -16,10 +16,10 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 | Branch | `master` (the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0.** 4.7 global polish ACCEPTED +65.0 Elo (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Phase 4 staged self-play ≈ **+316**; external gauntlet confirms **+240 real Elo over 2.1.0** (see below). |
-| Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000** (Fruit-pin 3086 / Critter-pin ~2890, midpoint ~2980). ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
-| Immediate next work | **Tag + publish v2.2.0** (gauntlet gate cleared). Then Phase 5 (search), then the §4.8 data-refresh decision. |
-| **Release status** | **v2.2.0 finalized — files committed, gauntlet passed, cleared to tag.** v2.1.0 published 2026-06-19. See "Releasing". |
+| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0** (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Now on branch `v2.3.0`, starting **Phase 5 step 1** (the one post-eval search SPSA wave). |
+| Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000.** ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
+| Immediate next work | **Phase 5 step 1 prep (code-only, done so far):** widened `FutilityNotImproving`/`LmpNotImproving` SPSA ceilings to `[0,120]`; exposed ProbCut's margin (was hardcoded `180`) as a new `ProbCutMargin` UCI option `[60,400]`. Bench still `4,747,104` (no-op), 159/159 tests pass. Still to prepare: futility-direction A/B, lazy-margin re-check, a TM SPSA group — then hand you the per-group `setup_spsa.ps1` commands to run. |
+| **Release status** | **v2.2.0 published.** Branch `v2.3.0` targets the next release, **2.3.0**, after Phase 5 closes. See "Releasing". |
 
 ### The Program In One Table (overview · model picker · Elo)
 

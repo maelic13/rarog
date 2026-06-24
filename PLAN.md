@@ -21,11 +21,11 @@ states the sequencing principle that the whole program depends on.
 
 | Area | Current state |
 |---|---|
-| Branch | `master` (the long-lived `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20) |
-| Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9** are closed |
-| Current accepted head | **PHASE 4 COMPLETE** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316** (4.1–4.7); real figure pending the gauntlet. |
+| Branch | `v2.3.0` (off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
+| Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §10). |
+| Current accepted head | **PHASE 4 COMPLETE (v2.2.0)** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316**; external gauntlet confirmed **+240 real Elo** transfer. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
-| Next implementation step | **End-of-Phase-4 validation: LTC confirm + external gauntlet (§10)** — the over-fit transfer check after a +316 STC self-play campaign. Then **Phase 5** (search-efficiency wave), and the §4.8 data-refresh decision after that. |
+| Next implementation step | **Phase 5 step 1, in progress**: the one post-eval search-constant SPSA wave. **Done so far (code, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings `[0,60]→[0,120]`; exposed the previously-hardcoded ProbCut margin (`180`, search.rs:1108) as a new tunable `probcut_margin` field + `ProbCutMargin` UCI option, range `[60,400]`. Bench unchanged at `4,747,104` (no-op at defaults), all 159 tests pass. **Still to prepare:** the futility-direction A/B, the lazy-eval margin (`LAZY_MARGIN`) re-check/widen, and a new TM-constants SPSA group — then hand the user the SPSA run commands per group. |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) |
 
 > **Bench fingerprint re-baseline (2026-06-22, Phase 3.11b).** The canonical

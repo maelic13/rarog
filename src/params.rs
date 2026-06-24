@@ -86,6 +86,13 @@ pub struct SearchParams {
     pub fp_base: i32,
     /// Quiet futility per-depth coefficient (cp).
     pub fp_coeff: i32,
+
+    /// ProbCut beta margin (cp). `probcut_beta = beta + margin`. [search.rs:1108]
+    /// Re-tuned in the Phase 5 SPSA wave after the Phase 4 eval re-fit changed
+    /// what a centipawn means; the flat-margin form is the current accepted
+    /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
+    /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
+    pub probcut_margin: i32,
 }
 
 impl Default for SearchParams {
@@ -117,6 +124,7 @@ impl Default for SearchParams {
             // Quiet futility pruning — Basilisk seeds, SPSA-tuned on entry.
             fp_base: 184,
             fp_coeff: 117,
+            probcut_margin: 180,
         }
     }
 }
@@ -150,5 +158,6 @@ mod tests {
         assert!(p.lmr_hist_div > 0);
         assert!(p.fp_base > 0);
         assert!(p.fp_coeff > 0);
+        assert!(p.probcut_margin > 0);
     }
 }
