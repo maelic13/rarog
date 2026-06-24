@@ -4,7 +4,7 @@
 > to a measurably stronger hand-crafted-eval (HCE) engine, by tuning first,
 > then adding individually gated search/eval features under a proper SPRT +
 > SPSA/Texel discipline. **No NNUE for now** — but keep the door open (see
-> §11).
+> §14).
 >
 > This document is meant to be handed to an implementation model (see
 > "Recommended model" at the bottom). Work **one phase at a time, one feature at
@@ -22,11 +22,11 @@ states the sequencing principle that the whole program depends on.
 | Area | Current state |
 |---|---|
 | Branch | `v2.3.0` (off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
-| Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §10). |
+| Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §11). |
 | Current accepted head | **PHASE 4 COMPLETE (v2.2.0)** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316**; external gauntlet confirmed **+240 real Elo** transfer. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
 | Next implementation step | **Phase 5 step 1, in progress**: the one post-eval search-constant SPSA wave. **Done so far (code, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings `[0,60]→[0,120]`; exposed the previously-hardcoded ProbCut margin (`180`, search.rs:1108) as a new tunable `probcut_margin` field + `ProbCutMargin` UCI option, range `[60,400]`. Bench unchanged at `4,747,104` (no-op at defaults), all 159 tests pass. **Still to prepare:** the futility-direction A/B, the lazy-eval margin (`LAZY_MARGIN`) re-check/widen, and a new TM-constants SPSA group — then hand the user the SPSA run commands per group. |
-| Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) |
+| Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) → **Phase 6 (§10)** *non-NNUE ceiling: eval-refresh cycles + structural refinements* (optional, evidence-driven) |
 
 > **Bench fingerprint re-baseline (2026-06-22, Phase 3.11b).** The canonical
 > `bench 13` fingerprint moved **`5,446,782` → `5,354,975`**. Cause: the new
@@ -71,7 +71,7 @@ games*), fit the whole enlarged eval to data **once** (Phase 4), then run the
 search-constant SPSA wave **once** at the final eval scale (Phase 5). Search
 margins are denominated in eval centipawns, so tuning them before the eval is
 final is wasted compute. Full rationale and the cheap-Texel-vs-expensive-SPSA
-distinction are in **§6**. NNUE stays the terminal option (§13).
+distinction are in **§6**. NNUE stays the terminal option (§14).
 
 ### Phase 2.5 setup sync (closed)
 
@@ -565,7 +565,7 @@ These were verified directly against the engines (not hypotheses):
 9. **Reckless is NNUE-only** — its `evaluation.rs` is a network forward pass;
    there is no HCE to compare against, but its *search* and *time manager*
    are state-of-the-art Rust references and are used heavily below and in
-   Phase 5. Reckless-class strength is not reachable without NNUE (§13).
+   Phase 5. Reckless-class strength is not reachable without NNUE (§14).
    Milestones at the deployment TC, in order: **M1** Stockfish-18-capped-2600
    (+67 on the local list), **M2** Basilisk 1.5.0 (+85), **M3** +150
    cumulative — after M2, add stronger reference opponents (SF capped 2800,
@@ -581,7 +581,7 @@ These were verified directly against the engines (not hypotheses):
     stopping at ~4–5 ms (Rarog's bug — item 2.2 here). Honest ceiling: full
     Stockfish is ~500–700 Elo above Basilisk 1.5; the best HCE engines ever
     built sit ~200 Elo below modern SF; Phases 2–4 realistically buy
-    **+150–350 Elo**; true parity is the NNUE project (§13), and every phase
+    **+150–350 Elo**; true parity is the NNUE project (§14), and every phase
     here makes that switch cheaper and better-tested. The EBF measurement
     protocol is defined in §9 (Phase 5) and is tracked there as the phase
     metric.
@@ -1125,7 +1125,7 @@ tune-once principle.
 ### Steps (cheapest/safest first)
 
 #### 2.9.1 Time-safety valve — **highest priority** — Sonnet 4.6 medium
-Eliminate the forfeits (PLAN §11 risks). On the fixed-movetime path subtract
+Eliminate the forfeits (PLAN §12 risks). On the fixed-movetime path subtract
 `min(MoveOverhead, movetime/10)`; on the clock path add a hard
 remaining-time floor so a single long iteration cannot overrun. Keep the
 full-budget behaviour otherwise. Gate: `bench` unchanged; run a short gauntlet
@@ -1376,7 +1376,7 @@ cheap. The per-feature SPRT gate is unavoidable (it is how Elo is banked) but is
 not *wasted*, because each gate confirms a change we keep. The only avoidable
 waste — premature SPSA and a double Texel campaign — is removed by this order.
 
-### The gap this program closes (summary; full audit in §15)
+### The gap this program closes (summary; full audit in §16)
 
 **The search is mature; the eval is the gap.** Rarog's search is a modern stack
 (PVS + aspiration, NMP with verification, ProbCut, singular extensions,
@@ -1418,7 +1418,7 @@ search *downward* — which is the realistic read behind the "Phases 3/4 give
 < 50" worry: it was right about the search half, wrong about the eval half once
 the eval is given real structure to fit.
 
-**Per-step model recommendations** appear inline below and are collected in §14.
+**Per-step model recommendations** appear inline below and are collected in §15.
 
 ---
 
@@ -1546,7 +1546,7 @@ Rust-specific implementation notes:
   untouched. (Do not try to keep the `const` path alive behind a feature
   flag — one code path, verified by the gates below, is simpler and the
   indirection is free in practice.)
-- Keep `EvalParams` and the tables inside `Evaluator` (§13 guardrail) — the
+- Keep `EvalParams` and the tables inside `Evaluator` (§14 guardrail) — the
   search must see no change.
 
 **Gates:** bench 13 fingerprint identical; `cargo test` clean; release bench
@@ -1909,7 +1909,7 @@ seeded inert:
   piece-activity pass, not `PawnEntry`). Seed 0; tuned with passers in 4.4 and
   folded into the 3.11 endgame scaling where relevant.
 This extends `PawnEntry` (eval.rs:273-280); keep the pawn cache correct and make
-sure the `texel` feature bypasses it (§11 Risks). **Gate:** bench unchanged.
+sure the `texel` feature bypasses it (§12 Risks). **Gate:** bench unchanged.
 **Model: Opus 4.8 medium.**
 
 #### 3.9 Material imbalance hooks (behaviour-identical; optional block) — **DONE 2026-06-22**
@@ -2097,7 +2097,7 @@ are public knowledge.*
 
 #### 3.12 Gauntlet-driven eval additions (added 2026-06-19, after re-surveying SF-classical terms) — **core DONE 2026-06-22 (Opus 4.8)**
 
-A fresh pass over the Stockfish-classical eval surfaced terms the §15 backlog
+A fresh pass over the Stockfish-classical eval surfaced terms the §16 backlog
 missed. Add each as inert-seeded structure (bench `5,354,975` unchanged) in the
 step shown; they are tuned in the matching Phase-4 stage. **Models:** Opus 4.8
 medium for the endgame/passer items, Sonnet 4.6 medium for the small terms.
@@ -2155,7 +2155,7 @@ existing threats package rather than duplicated here.
   slider-on-queen threat — add to the **3.10** batch only if cheap.
 
 **HCE source checklist — avoid SF-monoculture (do this term survey once, here).**
-The §15 backlog and 3.12 were both derived almost entirely from
+The §16 backlog and 3.12 were both derived almost entirely from
 **Stockfish-classical**, which is why the terms this plan was missing (closedness,
 central-king danger, overloaded defender — now folded into 3.6/3.10) are exactly
 the *non-SF* ideas: they live in other strong HCEs, not SF. Before freezing the
@@ -2166,7 +2166,7 @@ pull in anything material that only one of them has:
 - **RubiChess** HCE-era / classical eval — independent term set,
 - **one independent current HCE** of the user's choice (e.g. Igel-HCE, Lambergar)
   as a tiebreak / sanity source.
-This is a *term-selection* checklist (what to build), distinct from the §10
+This is a *term-selection* checklist (what to build), distinct from the §11
 *strength* ladder (who to play). One survey pass — not a recurring gate.
 
 #### 3.13 Permanent endgame regression suite
@@ -2391,7 +2391,7 @@ silently weakens play).
   for surviving checks, `samply`/flamegraph for hotspots) and apply **lazy eval**
   (skip the expensive king-safety / threats / mobility block when the tapered
   material+PST margin already exceeds a safe bound) or hot-loop cleanup. *Rarog
-  already has the whole-eval cache and pawn cache (§15), so "add an eval cache"
+  already has the whole-eval cache and pawn cache (§16), so "add an eval cache"
   is done — the lever here is lazy eval + structural cleanup, not caching.*
   Under-budget → carry on; only pay the lazy-eval complexity if the budget is
   breached.
@@ -2490,7 +2490,7 @@ bucketed-holdout + targeted-data rules above are two rows of this gate; the rest
 | Phase/domain-balanced sampling | `datagen.ps1`/`extract.py` enforce quotas (or sampling probabilities) for opening/mid/endgame, pawn endings, passers, quiet threats, and king attacks. | Waiting for self-play to *naturally* supply rare terms leaves the tuner underdetermined. |
 | Blended labels | Optionally train on `α·result + (1−α)·score_target` (a search-score / WDL teacher target). Engine output stays pure HCE — teacher labels are training data only. | Result-only labels are noisy; blended targets smooth the gradient and shrink the dataset needed. |
 | Binary feature cache | A versioned trace/feature cache (schema + params hash + bucket metadata + labels) so repeated staged fits don't rebuild traces. | Phase 4 reruns many fits; a cache makes them fast and reproducible. |
-| Regularization / shape constraints | L2-to-prior beyond PSTs, monotonic/smooth passed-pawn and safety curves, sign constraints on obvious penalties, optional PST smoothing. | The §15/early scalar experience shows broad fits produce implausible signs; constraints make the fit robust instead of decorative. |
+| Regularization / shape constraints | L2-to-prior beyond PSTs, monotonic/smooth passed-pawn and safety curves, sign constraints on obvious penalties, optional PST smoothing. | The §16/early scalar experience shows broad fits produce implausible signs; constraints make the fit robust instead of decorative. |
 
 **Gate status (2026-06-24).** Nonlinear king-safety support ✅ (`--tune-kingsafety`),
 feature-support ✅, bucketed-holdout ✅, regularization/shape ✅ (see below).
@@ -2766,7 +2766,7 @@ a stage's fit looks pathological and the tuner/trace must be debugged.
 enlarged size* to data for the first time is the single largest HCE lever, and
 the Phase-3 build-out is what lifts the ceiling above the old "+60–150"
 (tune-existing-terms-only) estimate. Confirm at LTC and run the external
-gauntlet (§10) before declaring the phase.
+gauntlet (§11) before declaring the phase.
 
 **Stage 4.6 — material+PST refit ✅ ACCEPTED +27.6 Elo (2026-06-24).** SPRT
 `Pst46` vs `Imbalance45`: **+27.64 ± 11.23 Elo** (nElo +36.61 ± 14.80), LOS 100%,
@@ -2820,7 +2820,7 @@ joint pass corrected all the cross-group interactions at once.
 **4,747,104**. **PHASE 4 COMPLETE.** Staged self-play total ≈ **+316 Elo**
 (4.1 +42.5, 4.2 +45.2, 4.3 +24.1, 4.4 +85.2, 4.5 +26.7, 4.6 +27.6, 4.7 +65.0) —
 far above the +120–230 estimate. *Caveat: these are compounding STC self-play
-SPRT gains; the external gauntlet (§10) will show the smaller real-opponent
+SPRT gains; the external gauntlet (§11) will show the smaller real-opponent
 figure — that transfer check is the immediate next step.* Fit details below.
 
 Low-lr joint fit
@@ -2853,122 +2853,6 @@ stage** — on H1 or H0, Phase 4 is done and the next step is the end-of-phase
 **LTC confirm + external gauntlet** (the over-fit transfer check). On H0 →
 `git revert` the 4.7 bake (the 4.6 head stays).
 
-### 4.8 — Eval data-refresh iteration (decide AFTER Phase 5; not a Phase-4 redo)
-
-**The current 2.19M dataset was self-played by the *pre-Phase-4* engine.** Once
-Phase 4 (and Phase 5) make the engine ~+200 Elo stronger, regenerating self-play
-data and re-fitting the eval once is a real, standard lever — the data-fit
-bootstrap ratchet. **Record now so we discuss it at the right time; it is
-optional and evidence-driven, not mandatory.**
-
-- **Why it helps:** a stronger engine gives (1) cleaner WDL labels — a weak
-  engine blunders won positions into draws/losses, mislabeling the Texel target;
-  (2) better-distributed, more on-policy positions. Better labels → a tighter fit
-  on the *same* (now-activated) terms.
-- **It is NOT a re-stage.** The 4.1–4.6 staging existed to *activate* seeded-0
-  terms and isolate per-group Elo — a one-time job. On fresh data, do a **single
-  joint low-lr refit** of the whole activated eval (like 4.7) **plus the
-  king-safety `--tune-kingsafety` re-eval path**, then **one SPRT** vs the head.
-  Cost: datagen < 1 h + a minutes-long fit + one SPRT.
-- **When:** **after Phase 5**, not immediately after 4.6 — Phase 5 makes the
-  engine stronger too, so one refresh then banks the label-quality gains from
-  *both* phases instead of regenerating twice. Gate the decision on the
-  end-of-Phase-4 gauntlet/LTC (how much of the staged Elo transferred vs
-  over-fit) and on whether holdout loss still has headroom.
-- **Exploit the dormant Step-4.0 capabilities on the regen:** turn on **blended
-  labels** (`α·result + (1−α)·score_target`; `parse_target` already accepts the
-  float column — datagen must emit it) and **phase-balanced sampling**
-  (`extract.py --balance-phase`). Both directly attack label noise — exactly what
-  a second iteration should use.
-- **Ride-along eval-structure refinements (build the structure here so the same
-  refit fits them — do NOT do these as separate pre-Phase-5 mini-fits).** Two
-  concrete, source-verified items, both cheap and well-precedented (see §4.9 for
-  the reasoning and ranking):
-  1. **Fold pawn shelter/storm into the king-danger input** (SF-style). Today
-     they are added *linearly* (eval.rs:1965–2024) and the Phase-4 fit drove
-     `storm_file_weight`/`storm_adjacent_weight`/`shelter_missing_*` to **0** — a
-     linear term cannot capture that a stormed/exposed king is dangerous
-     *in combination* with piece pressure (the `danger²` nonlinearity). Route a
-     shelter/storm contribution into the danger accumulator (eval.rs:1790 already
-     flags this as an option; seed for an identical bench, then let the refit fit
-     it). This is the most likely place to recover real Elo from a term Rarog
-     already computes but currently scores at 0.
-  2. **Activate the deferred low-yield trio** (bishop x-ray on pawns, R+Q
-     battery, slider-on-queen) from §3.12 — seed inert, let the refit decide.
-     Lower expected value; include only if cheap.
-- **Expected:** **+10–40 Elo** for the first refresh (the two ride-along items
-  included), less for any subsequent one (it is a correction, not a
-  re-discovery). Strong HCE evals do 1–3 such iterations; past that the curve
-  flattens and **NNUE (§13), not more HCE data, is the next lever** — see §4.9
-  for the full non-NNUE ceiling analysis.
-
-### 4.9 — The non-NNUE ceiling: how far can we go without a net? (analysis, 2026-06-24)
-
-**Question that prompted this:** can Rarog beat Critter 1.6a (~3187 CCRL) and
-keep climbing *without* NNUE? **Answer: yes, it is possible — but the path is
-search maturity + iterated tuning, NOT exotic new eval features**, because
-Rarog's eval is already a complete SF11-class HCE.
-
-**Reference points (corrected).** The proof that a hand-crafted eval can reach
-the high 3000s is **Stockfish 11 (~3440 CCRL)** — the strongest classical eval
-ever shipped — plus **Ethereal (pre-NNUE), Komodo classical, Xiphos, Texel**.
-*Caution:* Berserk, RubiChess, and Stash are often cited as "strong HCE," but
-their ~3300–3450 numbers are their **NNUE** versions; their *classical* builds
-were ~3000–3150. Do not size HCE expectations off NNUE-era ratings.
-
-**Where Rarog already stands (source-verified, eval.rs).** Rarog has material,
-PSTs, SF-style material imbalance, per-count mobility, nonlinear king-danger,
-threats v2, full pawn structure, passed pawns **with king-proximity weighting**
-(`eval_passed_pawn_king_proximity`), pawn **shelter and storm**, outposts, space,
-an initiative/**complexity** term, KPK + scale factors. This is essentially the
-SF11 feature list. **The gap to Critter is therefore not a missing-feature gap —
-SF11 reached 3440 with this same shopping list. It is a search-depth/selectivity
-and tuning-maturity gap.** That reframes the whole answer.
-
-**The non-NNUE levers, ranked by realistic value (and how they sequence):**
-
-1. **Search-efficiency wave — Phase 5 (already planned, §9).** This is where SF11
-   out-ran a 3000-Elo engine that had the *same* eval: deeper, more selective
-   search. Highest confidence; already next. **Eval-scale-independent, so it does
-   NOT block or get invalidated by any eval work — keep it first.**
-2. **Iterated data-refresh — §4.8, but treat it as repeatable (1–3 cycles).** The
-   most reliable HCE strength source historically (Ethereal/Texel got strong this
-   way). Each cycle: regen with the stronger head, single joint refit, one SPRT.
-   Diminishing, but real. Now also carries the two ride-along structural items
-   (§4.8) so they are fit for free.
-3. **Shelter/storm → king-danger nonlinearity (ride-along in §4.8 item 1).** The
-   one concrete new *eval* idea with evidence behind it: the term exists, is
-   computed every node, and is currently fit to **0** purely because it is linear.
-   Best single eval bet; costs almost nothing because the machinery is already
-   there.
-4. **The deferred low-yield trio (§3.12 / §4.8 item 2).** Bishop x-ray, R+Q
-   battery, slider-on-queen. Cheap, small, include opportunistically.
-5. **King-bucketed PSTs — DEFER; this is the NNUE gateway, not an HCE step.**
-   `PST[piece][square][king_bucket]` is the strongest *structural* expansion
-   available, but it is literally the HalfKA NNUE input shape — SF11 did **not**
-   use it. Committing to king-bucketed inputs + a fitting pipeline is ~80% of the
-   work of a small net for a fraction of the strength. **If we ever reach for
-   this, do NNUE (§13) instead.** Listed here only to mark it as the boundary.
-
-**Sequencing decision (answers "move high-potential work as early as possible").**
-The highest-value non-NNUE work is **search (Phase 5)**, which is already first
-and is invalidated by nothing. The best new *eval* idea (shelter/storm → danger)
-**should NOT jump ahead of Phase 5**: it needs a refit to take effect, and the
-plan's core discipline (§6: *fit the eval once*) means new eval structure must
-ride the §4.8 refit rather than forcing an extra fitting cycle now. So it is
-already placed as early as it correctly can be — built as structure for the §4.8
-refit, which is the first refit after Phase 5. **No reordering is warranted; the
-existing Phase 5 → §4.8 order is also the optimal order for these additions.**
-
-**Honest bottom line.** Phase 5 (+20–50) + one §4.8 cycle with the ride-along
-items (+10–40) realistically lands Rarog around **3040–3110 CCRL** — likely
-*past* a fair share of the field but probably **still short of Critter's ~3187**
-on the first pass. A second §4.8 cycle and continued search refinements can close
-more. Matching Critter on pure HCE is *possible* (SF11 proves the ceiling is far
-higher) but is a **multi-cycle tuning-maturity grind**, not a single feature.
-Decisively *beating* the top of the field is NNUE territory (§13) — which is why
-the door stays open, with king-bucketed inputs (lever 5) as the natural bridge.
-
 ---
 
 ## 9. Phase 5 — Search-efficiency wave (deferred SPSA + refinements)
@@ -2979,7 +2863,7 @@ spent (§6 principle: margins are eval-centipawn-denominated, so this must come
 after Phase 4), plus the centipawn-coupled retries and a menu of modern search
 refinements. Secondary aim: reduce nodes-per-depth toward Stockfish's regime
 (finding 10: EBF ≈ 2.2 vs ≈ 1.8). Honest expected value: **+20–50 Elo total**
-across the whole wave — the search is already mature (§13 audit), so these are
+across the whole wave — the search is already mature (§14 audit), so these are
 many small, individually SPRT-gated steps, not one big lever.
 
 **Primary driver for the whole phase: Sonnet 4.6 medium** (run SPSA, bake, SPRT,
@@ -3172,14 +3056,14 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
    - **Qsearch SEE threshold derived from `(alpha − eval)`** (Reckless
      search.rs:1264) — Rarog has a fixed-form variant
      (search.rs:1674); compare and tune.
-6. End of phase: external gauntlet + release per §10. Extend the gauntlet
+6. End of phase: external gauntlet + release per §11. Extend the gauntlet
    opponent list per finding 9's ladder (add SF capped 2800, then 3000, once
    M2 falls) so the rating signal doesn't saturate.
-7. **Then decide on the §4.8 eval data-refresh** — regenerate self-play with this
+7. **Then proceed to Phase 6 (§10) — the eval data-refresh cycles** — regenerate self-play with this
    now-much-stronger head and do one consolidated eval refit (blended labels +
    balanced sampling). This is the natural moment: doing it after Phase 5 banks
    both phases' strength into the new data in a single regen. Evidence-driven
-   (see §4.8); not mandatory.
+   (see §6.1); not mandatory.
 
 ### Expected
 +30–80 Elo. Cumulatively, Phases 2–4 should clear milestones M1
@@ -3187,11 +3071,150 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
 current 3015) — consistent with finding 10's honest ceiling of +150–350 total
 from HCE work. Beyond that plateau, HCE progress gets exponentially more
 expensive per Elo (the classical-era Stockfish project spent years there with
-thousands of donated cores); when this phase completes, revisit §11.
+thousands of donated cores); when this phase completes, revisit §12.
 
 ---
 
-## 10. Release & regression discipline
+## 10. Phase 6 — Non-NNUE ceiling: eval-refresh cycles + structural refinements
+
+**This is the post-Phase-5 HCE-maturity phase** — the *multi-cycle grind* that
+pushes a complete hand-crafted eval toward its ceiling without a net. It is
+**optional and evidence-driven**: enter it only if the end-of-Phase-5 gauntlet
+shows the eval still has transfer headroom, and stop when a cycle returns little
+(then **NNUE (§14)** is the next lever, not more HCE data). Numbered as its own
+phase because it runs *after* Phase 5 — earlier this lived (mis-numbered) as
+"4.8/4.9" inside the Phase 4 section.
+
+### 6.0 — The non-NNUE ceiling: how far can we go without a net? (analysis, 2026-06-24)
+
+**Question that prompted this:** can Rarog beat Critter 1.6a (~3187 CCRL) and
+keep climbing *without* NNUE? **Answer: yes, it is possible — but the path is
+search maturity + iterated tuning, NOT exotic new eval features**, because
+Rarog's eval is already a complete SF11-class HCE.
+
+**Reference points (corrected).** The proof that a hand-crafted eval can reach
+the high 3000s is **Stockfish 11 (~3440 CCRL)** — the strongest classical eval
+ever shipped — plus **Ethereal (pre-NNUE), Komodo classical, Xiphos, Texel**.
+*Caution:* Berserk, RubiChess, and Stash are often cited as "strong HCE," but
+their ~3300–3450 numbers are their **NNUE** versions; their *classical* builds
+were ~3000–3150. Do not size HCE expectations off NNUE-era ratings.
+
+**Where Rarog already stands (source-verified, eval.rs).** Rarog has material,
+PSTs, SF-style material imbalance, per-count mobility, nonlinear king-danger,
+threats v2, full pawn structure, passed pawns **with king-proximity weighting**
+(`eval_passed_pawn_king_proximity`), pawn **shelter and storm**, outposts, space,
+an initiative/**complexity** term, KPK + scale factors. This is essentially the
+SF11 feature list. **The gap to Critter is therefore not a missing-feature gap —
+SF11 reached 3440 with this same shopping list. It is a search-depth/selectivity
+and tuning-maturity gap.** That reframes the whole answer.
+
+**The non-NNUE levers, ranked by realistic value (and how they sequence):**
+
+1. **Search-efficiency wave — Phase 5 (already planned, §9).** This is where SF11
+   out-ran a 3000-Elo engine that had the *same* eval: deeper, more selective
+   search. Highest confidence; already next. **Eval-scale-independent, so it does
+   NOT block or get invalidated by any eval work — keep it first.**
+2. **Iterated data-refresh — §6.1, but treat it as repeatable (1–3 cycles).** The
+   most reliable HCE strength source historically (Ethereal/Texel got strong this
+   way). Each cycle: regen with the stronger head, single joint refit, one SPRT.
+   Diminishing, but real. Now also carries the two ride-along structural items
+   (§6.1) so they are fit for free.
+3. **Shelter/storm → king-danger nonlinearity (ride-along in §6.1 item 1).** The
+   one concrete new *eval* idea with evidence behind it: the term exists, is
+   computed every node, and is currently fit to **0** purely because it is linear.
+   Best single eval bet; costs almost nothing because the machinery is already
+   there.
+4. **The deferred low-yield trio (§3.12 / §6.1 item 2).** Bishop x-ray, R+Q
+   battery, slider-on-queen. Cheap, small, include opportunistically.
+5. **King-bucketed PSTs — DEFER; this is the NNUE gateway, not an HCE step.**
+   `PST[piece][square][king_bucket]` is the strongest *structural* expansion
+   available, but it is literally the HalfKA NNUE input shape — SF11 did **not**
+   use it. Committing to king-bucketed inputs + a fitting pipeline is ~80% of the
+   work of a small net for a fraction of the strength. **If we ever reach for
+   this, do NNUE (§14) instead.** Listed here only to mark it as the boundary.
+
+**Sequencing decision (answers "move high-potential work as early as possible").**
+The highest-value non-NNUE work is **search (Phase 5)**, which is already first
+and is invalidated by nothing. The best new *eval* idea (shelter/storm → danger)
+**should NOT jump ahead of Phase 5**: it needs a refit to take effect, and the
+plan's core discipline (§6: *fit the eval once*) means new eval structure must
+ride the §6.1 refit rather than forcing an extra fitting cycle now. So it is
+already placed as early as it correctly can be — built as structure for the §6.1
+refit, which is the first refit after Phase 5. **No reordering is warranted; the
+existing Phase 5 → §6.1 order is also the optimal order for these additions.**
+
+**Honest bottom line.** Phase 5 (+20–50) + one §6.1 cycle with the ride-along
+items (+10–40) realistically lands Rarog around **3040–3110 CCRL** — likely
+*past* a fair share of the field but probably **still short of Critter's ~3187**
+on the first pass. A second §6.1 cycle and continued search refinements can close
+more. Matching Critter on pure HCE is *possible* (SF11 proves the ceiling is far
+higher) but is a **multi-cycle tuning-maturity grind**, not a single feature.
+Decisively *beating* the top of the field is NNUE territory (§14) — which is why
+the door stays open, with king-bucketed inputs (lever 5) as the natural bridge.
+
+### 6.1 — Eval data-refresh, cycle 1 (the first refit on fresh data)
+
+**The current 2.19M dataset was self-played by the *pre-Phase-4* engine.** Once
+Phase 4 (and Phase 5) make the engine ~+200 Elo stronger, regenerating self-play
+data and re-fitting the eval once is a real, standard lever — the data-fit
+bootstrap ratchet. **Record now so we discuss it at the right time; it is
+optional and evidence-driven, not mandatory.**
+
+- **Why it helps:** a stronger engine gives (1) cleaner WDL labels — a weak
+  engine blunders won positions into draws/losses, mislabeling the Texel target;
+  (2) better-distributed, more on-policy positions. Better labels → a tighter fit
+  on the *same* (now-activated) terms.
+- **It is NOT a re-stage.** The 4.1–4.6 staging existed to *activate* seeded-0
+  terms and isolate per-group Elo — a one-time job. On fresh data, do a **single
+  joint low-lr refit** of the whole activated eval (like 4.7) **plus the
+  king-safety `--tune-kingsafety` re-eval path**, then **one SPRT** vs the head.
+  Cost: datagen < 1 h + a minutes-long fit + one SPRT.
+- **When:** **after Phase 5**, not immediately after 4.6 — Phase 5 makes the
+  engine stronger too, so one refresh then banks the label-quality gains from
+  *both* phases instead of regenerating twice. Gate the decision on the
+  end-of-Phase-4 gauntlet/LTC (how much of the staged Elo transferred vs
+  over-fit) and on whether holdout loss still has headroom.
+- **Exploit the dormant Step-4.0 capabilities on the regen:** turn on **blended
+  labels** (`α·result + (1−α)·score_target`; `parse_target` already accepts the
+  float column — datagen must emit it) and **phase-balanced sampling**
+  (`extract.py --balance-phase`). Both directly attack label noise — exactly what
+  a second iteration should use.
+- **Ride-along eval-structure refinements (build the structure here so the same
+  refit fits them — do NOT do these as separate pre-Phase-5 mini-fits).** Two
+  concrete, source-verified items, both cheap and well-precedented (see §6.0 for
+  the reasoning and ranking):
+  1. **Fold pawn shelter/storm into the king-danger input** (SF-style). Today
+     they are added *linearly* (eval.rs:1965–2024) and the Phase-4 fit drove
+     `storm_file_weight`/`storm_adjacent_weight`/`shelter_missing_*` to **0** — a
+     linear term cannot capture that a stormed/exposed king is dangerous
+     *in combination* with piece pressure (the `danger²` nonlinearity). Route a
+     shelter/storm contribution into the danger accumulator (eval.rs:1790 already
+     flags this as an option; seed for an identical bench, then let the refit fit
+     it). This is the most likely place to recover real Elo from a term Rarog
+     already computes but currently scores at 0.
+  2. **Activate the deferred low-yield trio** (bishop x-ray on pawns, R+Q
+     battery, slider-on-queen) from §3.12 — seed inert, let the refit decide.
+     Lower expected value; include only if cheap.
+- **Expected:** **+10–40 Elo** for the first refresh (the two ride-along items
+  included), less for any subsequent one (it is a correction, not a
+  re-discovery). Strong HCE evals do 1–3 such iterations; past that the curve
+  flattens and **NNUE (§14), not more HCE data, is the next lever** — see §6.0
+  for the full non-NNUE ceiling analysis.
+
+### 6.2 — Iterate (cycles 2–3) and the stop condition
+
+The data-fit bootstrap ratchet repeats: each cycle is *exactly* §6.1 again — a
+fresh self-play regen with the now-stronger head, one joint low-lr refit (+ the
+king-safety re-eval path), one SPRT. **Strong HCE evals do 1–3 such cycles;**
+the curve flattens fast. **Stop conditions (any one):** a cycle yields
+< ~+8 Elo by SPRT, holdout loss stops dropping between regens, or the gauntlet
+shows no movement vs the field. Past that point the remaining classical lever is
+king-bucketed PSTs (§6.0 lever 5) — which is the NNUE input shape, so the
+honest move there is **NNUE (§14)**, not more hand-crafted tables.
+
+---
+
+## 11. Release & regression discipline
 
 - Keep `master` as the **gauntlet baseline**. After
   each phase, run a **multi-opponent gauntlet** to confirm the SPRT self-play
@@ -3285,7 +3308,7 @@ thousands of donated cores); when this phase completes, revisit §11.
 
 → **v2.2.0 is cleared to tag and publish.**
 
-### 10.1 Release checkpoints — when to cut a GitHub release, and what to call it
+### 11.1 Release checkpoints — when to cut a GitHub release, and what to call it
 
 The CI workflow (`.github/workflows/build.yml`) builds and attaches binaries
 for every platform/arch automatically `on: release: published` — cutting a
@@ -3304,7 +3327,7 @@ before releasing the work already accepted before it. Concretely:
 | **Phase 4 closed** (staged Texel data-fit activates the new eval terms) | **2.2.0** | The plan's own estimate is **+120–230 Elo** — the single biggest jump in the whole program. Clearly its own minor release. |
 | **Phase 5 closed** (search-efficiency wave: deferred SPSA + refinements) | **2.3.0** | Another distinct, measurable strength jump (~+20–50 Elo estimate), and the last phase on the current roadmap. |
 | Any bug fix or robustness fix outside the above (no eval/search behavior change intended) | **2.x.1, 2.x.2, ...** | Patch bump, following the existing `2.0.0→2.0.1→2.0.2` convention. |
-| NNUE (§13, not scheduled) | **3.0.0** | A new evaluation paradigm, not an incremental tune — major bump if/when it ever happens. |
+| NNUE (§14, not scheduled) | **3.0.0** | A new evaluation paradigm, not an incremental tune — major bump if/when it ever happens. |
 
 **Release checklist** (do this in order; nothing here should be skipped):
 
@@ -3338,11 +3361,11 @@ before releasing the work already accepted before it. Concretely:
    release triggers CI to build and attach all platform binaries
    automatically. Tagging/publishing is externally visible and is the user's
    call, not something to do unprompted.
-8. After publishing, run the post-release external gauntlet (§10 above) to
+8. After publishing, run the post-release external gauntlet (§11 above) to
    confirm the self-play SPRT gains transferred, and update the gauntlet
    baseline reference if appropriate.
 
-### 10.2 Legacy feature branches — what to keep, what to drop
+### 11.2 Legacy feature branches — what to keep, what to drop
 
 Branches `v2.1.0-codex` (search-efficiency rewrite source) and
 `v2.1.0-claude` (eval expansion + `tune.rs` source) are **reference-only,
@@ -3361,7 +3384,7 @@ as a separate branch — `master` is now the single integration branch.
 
 ---
 
-## 11. Risks & gotchas
+## 12. Risks & gotchas
 
 - **Untuned constants are the #1 failure mode** (proven by both prior branches).
   Never SPRT-judge a new heuristic before tuning its constants.
@@ -3396,7 +3419,7 @@ as a separate branch — `master` is now the single integration branch.
 
 ---
 
-## 12. Quick command reference
+## 13. Quick command reference
 
 ```powershell
 # Inspect what a branch added, step by step
@@ -3437,7 +3460,7 @@ cd tools\weather-factory; python main.py
 
 ---
 
-## 13. NNUE readiness — keep the door open (NOT a scheduled phase)
+## 14. NNUE readiness — keep the door open (NOT a scheduled phase)
 
 **This plan is HCE-only. NNUE is explicitly out of scope for every phase above
 and is not scheduled.** This section exists for one reason: so the HCE work in
@@ -3513,7 +3536,7 @@ that is a boundary violation — fix it then, not later.
 
 ---
 
-## 14. Recommended models per phase
+## 15. Recommended models per phase
 
 The plan is incremental and test-gated, so *driving* each loop (build, run
 harness, read the SPRT verdict, bake, document) is reliable, cost-effective
@@ -3568,14 +3591,14 @@ process, not the model, guarantees the result.
 
 ---
 
-## 15. Appendix — component maturity audit (reference)
+## 16. Appendix — component maturity audit (reference)
 
 The audit behind §6's "search is mature, eval is the gap" conclusion. Reference
 material — the work itself is sequenced in Phases 3–5. Verdict key: **Mature**
 (leave it; only re-tune) · **Expand** (right shape, missing cases) · **Upgrade**
 (structurally too simple) · **Rewrite** (replace the approach).
 
-### 15.1 Evaluation (`src/eval.rs`)
+### 16.1 Evaluation (`src/eval.rs`)
 
 | Component | Lines | State | Verdict → where |
 |---|---|---|---|
@@ -3598,7 +3621,7 @@ material — the work itself is sequenced in Phases 3–5. Verdict key: **Mature
 | Attack-map reuse | (none) | Attacks recomputed per term/per square | **Rewrite** → 3.0 (shared maps) |
 | EvalParams / data-fit | (none) | Every weight hand-set, untuned | **Build** → 3.1–3.3, fit in Phase 4 |
 
-### 15.2 Search (`src/search.rs`, `move_ordering.rs`, `tt.rs`, `time_manager.rs`)
+### 16.2 Search (`src/search.rs`, `move_ordering.rs`, `tt.rs`, `time_manager.rs`)
 
 | Component | State | Verdict → where |
 |---|---|---|

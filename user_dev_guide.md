@@ -34,9 +34,10 @@ eval is final — that compute is wasted when the eval rescales.
 | **3** Eval infrastructure & build-out | attack maps, `EvalParams`, Texel tuner, then king-safety / threats / mobility / pawn / imbalance / small-terms / endgame **structure**, every new sub-term seeded inert | `bench 13` stable except two documented re-baselines (`5,446,782` → `5,354,975` at 3.11b KPK; → **`4,978,006`** at 3.14 eval-cache fix) + reconstruction test + `cache==cold` test + unit tests (**no games**) | Sonnet 4.6 medium for refactors/scaffolding; **Opus 4.8 high** for king-safety (3.5), threats (3.6), imbalance (3.9), endgame/KBNK (3.11), tuner core (3.3); Opus 4.8 medium for mobility (3.7) & pawns (3.8) | 0 direct (enabler) |
 | **4** Eval data-fit campaign | staged Texel fit that *activates* the new terms; king-safety first, material + PSTs last | SPRT `[0,5]`/`[0,3]` per stage at `tc=3+0.03`, LTC confirm | Sonnet 4.6 medium (driving); Opus 4.8 high if a fit is pathological | **+120–230** |
 | **5** Search-efficiency wave | the one search-constant SPSA wave + history-formula split, no-aging retry, do-deeper, qsearch quiet checks, codex ports, modern refinements | SPSA → SPRT per group at `tc=3+0.03` | Sonnet 4.6 medium (driving); **Codex 5.5 medium / GPT-5.5 high** for dense ports | **+20–50** |
+| **6** Non-NNUE ceiling (optional) | eval-refresh cycles on data from the stronger head + ride-along structural eval items (shelter/storm→danger); the multi-cycle grind | one joint refit + SPRT per cycle at `tc=3+0.03`; gauntlet between cycles | Sonnet 4.6 medium (driving); Opus 4.8 high for the structural eval change | **+10–40/cycle** |
 
-Per-step model assignments are in `PLAN.md` §14. Elo figures are estimates;
-**SPRT is the only verdict.** NNUE is the terminal option (`PLAN.md` §13).
+Per-step model assignments are in `PLAN.md` §15. Elo figures are estimates;
+**SPRT is the only verdict.** NNUE is the terminal option (`PLAN.md` §14).
 
 > **Gauntlet read (2026-06-19, 35k games @ `tc=3+0.03`):** Rarog 2.1.0 (dev) =
 > +66 over 2.0.2 (search work), but still **−19 vs Basilisk 1.5.0 and −73 vs
@@ -46,7 +47,7 @@ Per-step model assignments are in `PLAN.md` §14. Elo figures are estimates;
 > 2.76M) — the Phase 5 search/speed work is real but secondary. **Two cautions:**
 > SF `UCI_Elo` is not a true anchor at this TC (run a slower-TC gauntlet with
 > **Critter 1.6a** for a real number); and **Rarog 2.1.0 lost 28 games on time**
-> (2.0.2: 0) — enable the documented time-safety valve **now** (`PLAN.md` §11),
+> (2.0.2: 0) — enable the documented time-safety valve **now** (`PLAN.md` §12),
 > it is pure lost Elo and contaminates gauntlets.
 
 ### Tune Setup Status (Phase 2.5 closed)
@@ -380,7 +381,7 @@ is statistical fishing.
 Phase 3 (eval infrastructure) is bench-identical the whole way through by
 design, so there's no reason to wait for it to finish before shipping work
 already accepted before it. Full rationale and the version-number table are
-in `PLAN.md` §10.1; the short version:
+in `PLAN.md` §11.1; the short version:
 
 | Milestone | Version |
 |---|---|
@@ -414,10 +415,10 @@ documentation + tagging job, not a manual cross-platform build job.
 7. **You tag and publish:** `git tag vX.Y.Z && git push origin vX.Y.Z`, then
    create the GitHub release from that tag with the prepared release notes.
    Publishing triggers CI to build and attach binaries. After publishing,
-   run the external gauntlet (`PLAN.md` §10) to confirm the SPRT gains
+   run the external gauntlet (`PLAN.md` §11) to confirm the SPRT gains
    transfer.
 
-**Legacy branches** (`PLAN.md` §10.2): `v2.1.0-codex`/`v2.1.0-claude` are
+**Legacy branches** (`PLAN.md` §11.2): `v2.1.0-codex`/`v2.1.0-claude` are
 reference-only source branches for the still-pending Phase 5 feature menu —
 keep until Phase 5 resolves every remaining idea. `claude`/`improvements`
 were stale and have already been deleted (2026-06-20), along with
@@ -530,7 +531,7 @@ Every step keeps `bench 13 == 5,446,782`. See `PLAN.md` "Phase 2.9".
 - [x] 2.9 close: batch non-regression SPRT `[-3,3]` — **ACCEPTED.** 15,976
       games, Elo +2.02 ± 3.62, LOS 86.3%, LLR 2.39 (81.2%→H1). Cross-harness
       time-loss check: 0 forfeits in the fastchess PGN. Phase 2.9 closed.
-- [ ] (calibration, anytime) Slower-TC gauntlet with a CCRL-rated anchor (Critter 1.6a / Fruit 2.1), pin with `ordo -A "<name>" -a <ccrl>` (`PLAN.md` §10).
+- [ ] (calibration, anytime) Slower-TC gauntlet with a CCRL-rated anchor (Critter 1.6a / Fruit 2.1), pin with `ordo -A "<name>" -a <ccrl>` (`PLAN.md` §11).
 
 ### Phase 3 - Eval Infrastructure & Behaviour-Identical Build-Out (no games)
 
@@ -642,26 +643,36 @@ See `PLAN.md` §9.
 - [ ] 5.5 Codex ports: multi-cut/singular, threat-aware history, TT-cutoff/fail-low-parent history, optional TT overhaul. — Codex 5.5 medium
 - [ ] 5.6 Modern refinements (aspiration modernization, correction-magnitude margins, hindsight, cutoff-count LMR, bad-noisy futility, qsearch SEE threshold).
 - [ ] 5.7 Profile-guided speed pass; end-of-phase gauntlet + release.
-- [ ] **4.8 Eval data-refresh (decide AFTER Phase 5; PLAN.md §4.8).** The 2.19M dataset was self-played by the *pre-Phase-4* engine. Once 4.x + Phase 5 add ~+200 Elo, regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. **Build two ride-along structural items into this refit** (PLAN.md §4.8): (1) **fold pawn shelter/storm into the king-danger input** — they exist but the Phase-4 fit zeroed `storm_*`/`shelter_missing_*` because a *linear* term can't capture the `danger²` interaction (best single new eval bet); (2) activate the §3.12 deferred trio. Expected **+10–40 Elo** (a correction, not a re-discovery); 1–3 iterations then NNUE territory. Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
 
-> **Can we beat Critter (~3187) without NNUE? (PLAN.md §4.9, 2026-06-24.)** Yes,
+### Phase 6 - Non-NNUE ceiling: eval-refresh cycles (optional, +10–40/cycle)
+
+The post-Phase-5 HCE-maturity grind — iterate the data-fit on data from the
+now-stronger head. **Optional, evidence-driven** (enter only if the
+end-of-Phase-5 gauntlet shows eval headroom). Full rationale: `PLAN.md` §10
+(§6.0 analysis, §6.1 cycle 1, §6.2 iterate). *Was mis-numbered "4.8/4.9" under
+Phase 4 / Phase 5 — now its own phase because it runs after Phase 5.*
+
+- [ ] **6.1 Eval data-refresh, cycle 1 (PLAN.md §6.1).** Regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. **Build two ride-along structural items into this refit** (PLAN.md §6.1): (1) **fold pawn shelter/storm into the king-danger input** — they exist but the Phase-4 fit zeroed `storm_*`/`shelter_missing_*` because a *linear* term can't capture the `danger²` interaction (best single new eval bet); (2) activate the §3.12 deferred trio. Expected **+10–40 Elo** (a correction, not a re-discovery). Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
+- [ ] **6.2 Iterate (cycles 2–3) + stop condition (PLAN.md §6.2).** Repeat 6.1 on fresh data; stop when a cycle yields < ~+8 Elo, holdout stops dropping, or the gauntlet shows no field movement. Past that, the only classical lever left is king-bucketed PSTs — which is the NNUE input shape, so the honest move is **NNUE (§14)**, not more HCE tables.
+
+> **Can we beat Critter (~3187) without NNUE? (PLAN.md §6.0, 2026-06-24.)** Yes,
 > *possible* but it's a tuning-maturity grind, not a missing-feature gap: Rarog
 > already has the full **Stockfish-11-class** HCE feature set (shelter+storm,
 > passed-pawn king proximity, complexity, SF imbalance — all source-verified).
 > SF11 reached ~3440 with this same shopping list, so the gap is **search depth +
 > iterated tuning**, not exotic terms. Ranked non-NNUE levers: **(1) Phase 5
-> search** (already first, invalidated by nothing) → **(2) iterated §4.8
-> refresh** (1–3 cycles) → **(3) shelter/storm→danger** (rides §4.8) → (4) the
+> search** (already first, invalidated by nothing) → **(2) iterated §6.1
+> refresh** (1–3 cycles) → **(3) shelter/storm→danger** (rides §6.1) → (4) the
 > deferred trio → (5) **king-bucketed PSTs = the NNUE gateway, NOT an HCE step**
 > (it's the HalfKA input shape; if we reach for it, do NNUE instead). No
-> reordering needed — Phase 5 → §4.8 is already optimal. *Note: the common claim
+> reordering needed — Phase 5 → §6.1 is already optimal. *Note: the common claim
 > that Berserk/RubiChess/Stash are 3300+ "HCE" is wrong — those are their NNUE
 > ratings; their classical builds were ~3000–3150.*
 
 ### NNUE Readiness (terminal option, not scheduled)
 
 - [ ] Not scheduled. Keep `Evaluator::eval()` the only search↔eval boundary so a
-      future HCE→NNUE switch stays localized. See `PLAN.md` §13.
+      future HCE→NNUE switch stays localized. See `PLAN.md` §14.
 
 ---
 
