@@ -2880,10 +2880,94 @@ optional and evidence-driven, not mandatory.**
   float column — datagen must emit it) and **phase-balanced sampling**
   (`extract.py --balance-phase`). Both directly attack label noise — exactly what
   a second iteration should use.
-- **Expected:** **+10–40 Elo** for the first refresh, less for any subsequent one
-  (it is a correction, not a re-discovery). Strong HCE evals do 1–3 such
-  iterations; past that the curve flattens and **NNUE (§13), not more HCE data,
-  is the next lever.**
+- **Ride-along eval-structure refinements (build the structure here so the same
+  refit fits them — do NOT do these as separate pre-Phase-5 mini-fits).** Two
+  concrete, source-verified items, both cheap and well-precedented (see §4.9 for
+  the reasoning and ranking):
+  1. **Fold pawn shelter/storm into the king-danger input** (SF-style). Today
+     they are added *linearly* (eval.rs:1965–2024) and the Phase-4 fit drove
+     `storm_file_weight`/`storm_adjacent_weight`/`shelter_missing_*` to **0** — a
+     linear term cannot capture that a stormed/exposed king is dangerous
+     *in combination* with piece pressure (the `danger²` nonlinearity). Route a
+     shelter/storm contribution into the danger accumulator (eval.rs:1790 already
+     flags this as an option; seed for an identical bench, then let the refit fit
+     it). This is the most likely place to recover real Elo from a term Rarog
+     already computes but currently scores at 0.
+  2. **Activate the deferred low-yield trio** (bishop x-ray on pawns, R+Q
+     battery, slider-on-queen) from §3.12 — seed inert, let the refit decide.
+     Lower expected value; include only if cheap.
+- **Expected:** **+10–40 Elo** for the first refresh (the two ride-along items
+  included), less for any subsequent one (it is a correction, not a
+  re-discovery). Strong HCE evals do 1–3 such iterations; past that the curve
+  flattens and **NNUE (§13), not more HCE data, is the next lever** — see §4.9
+  for the full non-NNUE ceiling analysis.
+
+### 4.9 — The non-NNUE ceiling: how far can we go without a net? (analysis, 2026-06-24)
+
+**Question that prompted this:** can Rarog beat Critter 1.6a (~3187 CCRL) and
+keep climbing *without* NNUE? **Answer: yes, it is possible — but the path is
+search maturity + iterated tuning, NOT exotic new eval features**, because
+Rarog's eval is already a complete SF11-class HCE.
+
+**Reference points (corrected).** The proof that a hand-crafted eval can reach
+the high 3000s is **Stockfish 11 (~3440 CCRL)** — the strongest classical eval
+ever shipped — plus **Ethereal (pre-NNUE), Komodo classical, Xiphos, Texel**.
+*Caution:* Berserk, RubiChess, and Stash are often cited as "strong HCE," but
+their ~3300–3450 numbers are their **NNUE** versions; their *classical* builds
+were ~3000–3150. Do not size HCE expectations off NNUE-era ratings.
+
+**Where Rarog already stands (source-verified, eval.rs).** Rarog has material,
+PSTs, SF-style material imbalance, per-count mobility, nonlinear king-danger,
+threats v2, full pawn structure, passed pawns **with king-proximity weighting**
+(`eval_passed_pawn_king_proximity`), pawn **shelter and storm**, outposts, space,
+an initiative/**complexity** term, KPK + scale factors. This is essentially the
+SF11 feature list. **The gap to Critter is therefore not a missing-feature gap —
+SF11 reached 3440 with this same shopping list. It is a search-depth/selectivity
+and tuning-maturity gap.** That reframes the whole answer.
+
+**The non-NNUE levers, ranked by realistic value (and how they sequence):**
+
+1. **Search-efficiency wave — Phase 5 (already planned, §9).** This is where SF11
+   out-ran a 3000-Elo engine that had the *same* eval: deeper, more selective
+   search. Highest confidence; already next. **Eval-scale-independent, so it does
+   NOT block or get invalidated by any eval work — keep it first.**
+2. **Iterated data-refresh — §4.8, but treat it as repeatable (1–3 cycles).** The
+   most reliable HCE strength source historically (Ethereal/Texel got strong this
+   way). Each cycle: regen with the stronger head, single joint refit, one SPRT.
+   Diminishing, but real. Now also carries the two ride-along structural items
+   (§4.8) so they are fit for free.
+3. **Shelter/storm → king-danger nonlinearity (ride-along in §4.8 item 1).** The
+   one concrete new *eval* idea with evidence behind it: the term exists, is
+   computed every node, and is currently fit to **0** purely because it is linear.
+   Best single eval bet; costs almost nothing because the machinery is already
+   there.
+4. **The deferred low-yield trio (§3.12 / §4.8 item 2).** Bishop x-ray, R+Q
+   battery, slider-on-queen. Cheap, small, include opportunistically.
+5. **King-bucketed PSTs — DEFER; this is the NNUE gateway, not an HCE step.**
+   `PST[piece][square][king_bucket]` is the strongest *structural* expansion
+   available, but it is literally the HalfKA NNUE input shape — SF11 did **not**
+   use it. Committing to king-bucketed inputs + a fitting pipeline is ~80% of the
+   work of a small net for a fraction of the strength. **If we ever reach for
+   this, do NNUE (§13) instead.** Listed here only to mark it as the boundary.
+
+**Sequencing decision (answers "move high-potential work as early as possible").**
+The highest-value non-NNUE work is **search (Phase 5)**, which is already first
+and is invalidated by nothing. The best new *eval* idea (shelter/storm → danger)
+**should NOT jump ahead of Phase 5**: it needs a refit to take effect, and the
+plan's core discipline (§6: *fit the eval once*) means new eval structure must
+ride the §4.8 refit rather than forcing an extra fitting cycle now. So it is
+already placed as early as it correctly can be — built as structure for the §4.8
+refit, which is the first refit after Phase 5. **No reordering is warranted; the
+existing Phase 5 → §4.8 order is also the optimal order for these additions.**
+
+**Honest bottom line.** Phase 5 (+20–50) + one §4.8 cycle with the ride-along
+items (+10–40) realistically lands Rarog around **3040–3110 CCRL** — likely
+*past* a fair share of the field but probably **still short of Critter's ~3187**
+on the first pass. A second §4.8 cycle and continued search refinements can close
+more. Matching Critter on pure HCE is *possible* (SF11 proves the ceiling is far
+higher) but is a **multi-cycle tuning-maturity grind**, not a single feature.
+Decisively *beating* the top of the field is NNUE territory (§13) — which is why
+the door stays open, with king-bucketed inputs (lever 5) as the natural bridge.
 
 ---
 

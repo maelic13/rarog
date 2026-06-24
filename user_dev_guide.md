@@ -642,7 +642,21 @@ See `PLAN.md` §9.
 - [ ] 5.5 Codex ports: multi-cut/singular, threat-aware history, TT-cutoff/fail-low-parent history, optional TT overhaul. — Codex 5.5 medium
 - [ ] 5.6 Modern refinements (aspiration modernization, correction-magnitude margins, hindsight, cutoff-count LMR, bad-noisy futility, qsearch SEE threshold).
 - [ ] 5.7 Profile-guided speed pass; end-of-phase gauntlet + release.
-- [ ] **4.8 Eval data-refresh (decide AFTER Phase 5; PLAN.md §4.8).** The 2.19M dataset was self-played by the *pre-Phase-4* engine. Once 4.x + Phase 5 add ~+200 Elo, regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. Expected **+10–40 Elo** (a correction, not a re-discovery); 1–3 iterations then NNUE territory. Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
+- [ ] **4.8 Eval data-refresh (decide AFTER Phase 5; PLAN.md §4.8).** The 2.19M dataset was self-played by the *pre-Phase-4* engine. Once 4.x + Phase 5 add ~+200 Elo, regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. **Build two ride-along structural items into this refit** (PLAN.md §4.8): (1) **fold pawn shelter/storm into the king-danger input** — they exist but the Phase-4 fit zeroed `storm_*`/`shelter_missing_*` because a *linear* term can't capture the `danger²` interaction (best single new eval bet); (2) activate the §3.12 deferred trio. Expected **+10–40 Elo** (a correction, not a re-discovery); 1–3 iterations then NNUE territory. Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
+
+> **Can we beat Critter (~3187) without NNUE? (PLAN.md §4.9, 2026-06-24.)** Yes,
+> *possible* but it's a tuning-maturity grind, not a missing-feature gap: Rarog
+> already has the full **Stockfish-11-class** HCE feature set (shelter+storm,
+> passed-pawn king proximity, complexity, SF imbalance — all source-verified).
+> SF11 reached ~3440 with this same shopping list, so the gap is **search depth +
+> iterated tuning**, not exotic terms. Ranked non-NNUE levers: **(1) Phase 5
+> search** (already first, invalidated by nothing) → **(2) iterated §4.8
+> refresh** (1–3 cycles) → **(3) shelter/storm→danger** (rides §4.8) → (4) the
+> deferred trio → (5) **king-bucketed PSTs = the NNUE gateway, NOT an HCE step**
+> (it's the HalfKA input shape; if we reach for it, do NNUE instead). No
+> reordering needed — Phase 5 → §4.8 is already optimal. *Note: the common claim
+> that Berserk/RubiChess/Stash are 3300+ "HCE" is wrong — those are their NNUE
+> ratings; their classical builds were ~3000–3150.*
 
 ### NNUE Readiness (terminal option, not scheduled)
 
