@@ -21,11 +21,11 @@ states the sequencing principle that the whole program depends on.
 
 | Area | Current state |
 |---|---|
-| Branch | `v2.3.0` (off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
+| Branch | `development` (targets the 2.3.0 release; off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
 | Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §11). |
 | Current accepted head | **PHASE 4 COMPLETE (v2.2.0)** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316**; external gauntlet confirmed **+240 real Elo** transfer. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
-| Next implementation step | **Phase 5 step 1, in progress**: the one post-eval search-constant SPSA wave. **Done so far (code, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings `[0,60]→[0,120]`; exposed the previously-hardcoded ProbCut margin (`180`, search.rs:1108) as a new tunable `probcut_margin` field + `ProbCutMargin` UCI option, range `[60,400]`. Bench unchanged at `4,747,104` (no-op at defaults), all 159 tests pass. **Still to prepare:** the futility-direction A/B, the lazy-eval margin (`LAZY_MARGIN`) re-check/widen, and a new TM-constants SPSA group — then hand the user the SPSA run commands per group. |
+| Next implementation step | **Phase 5 step 1, prep COMPLETE (code, no games yet)**: the one post-eval search-constant SPSA wave is fully wired. **Done:** widened `FutilityNotImproving`/`LmpNotImproving` ceilings `[0,60]→[0,120]`; exposed the ProbCut margin (`180`) as `ProbCutMargin` `[60,400]`; added the **futility-direction A/B** (`FutilityImprovingDir` 0/1, search.rs:1041); exposed the **lazy-eval margin** as `LazyMargin` `[200,2000]` (threaded into the evaluator each search start); added the **TM-constants SPSA group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled, search.rs soft-stop block). New configs `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench unchanged at `4,747,104` (no-op at defaults), all 159 tests pass, fmt clean, no new clippy, tune-only options hidden in release. **Next action:** hand the user the per-group SPSA run commands (start with `pruning`, then `lmr`/`futility`/`tm`); run the `LazyMargin` widen+`[-3,3]` safety check and the `FutilityImprovingDir` A/B as their own gates. |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) → **Phase 6 (§10)** *non-NNUE ceiling: eval-refresh cycles + structural refinements* (optional, evidence-driven) |
 
 > **Bench fingerprint re-baseline (2026-06-22, Phase 3.11b).** The canonical
@@ -2886,11 +2886,17 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
 1. **The one search-constant SPSA wave** at the **post-Phase-4 head (eval is
    final)**, all at the unified **`tc=3+0.03`** (SPSA and the confirming SPRT
    share this TC — see the Test-TC note in §2). Groups: pruning group, the
-   Phase-2 LMR group, the futility group, and the ProbCut margin (currently a
-   hardcoded `180`, search.rs:1097 — expose it as a UCI option and add it to the
-   wave). Same Phase 1 workflow: SPSA → bake → SPRT per group. This is the
-   compute we conserved by deferring it: margins like futility/razoring are
-   denominated in eval centipawns, and Phase 4 changed what a centipawn means.
+   Phase-2 LMR group, the futility group, and the ProbCut margin (now exposed as
+   the `ProbCutMargin` UCI option + `config_probcut.json`). Same Phase 1
+   workflow: SPSA → bake → SPRT per group. This is the compute we conserved by
+   deferring it: margins like futility/razoring are denominated in eval
+   centipawns, and Phase 4 changed what a centipawn means.
+   > **Prep status (2026-06-29): all step-1 wiring DONE (code, no games yet).**
+   > Ceilings widened, `ProbCutMargin`/`FutilityImprovingDir`/`LazyMargin` and
+   > the 7-param TM group exposed (all tune-gated), configs `config_tm.json` +
+   > `config_lazymargin.json` written, `setup_spsa.ps1` groups wired, SPSA README
+   > documents each. Bench `4,747,104` unchanged, 159 tests pass. Remaining work
+   > is running the SPSA/A-B/SPRT gates (the user-run part).
    - **Includes relocated 2.11**: re-tune the Group-B `FutilityNotImproving`
      (49/60) and `LmpNotImproving` (57/60) coefficients with the `[0,60]`
      ceilings **widened to `[0,120]`** in `config_pruning.json` — both were
@@ -2902,7 +2908,8 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
      no-modulation variant vs current, each gated `[-3,3]`. Cheap; fold into the
      futility-group work.
    - **Includes the Phase-3.16 lazy-eval margin re-check** (`LAZY_MARGIN`,
-     currently a hardcoded `600` in `eval.rs`; accepted at the seeded-0 head,
+     seed `600` in `eval.rs`, **now exposed as the `LazyMargin` UCI option** and
+     pushed to the evaluator each search start; accepted at the seeded-0 head,
      **+4.4 Elo**). This is a **safety** re-check first, a speed knob second:
      Phase 4 grows the positional weights, so the margin that guaranteed "no
      skipped term can flip the sign" at seeded-0 may become **too tight** (a

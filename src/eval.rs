@@ -920,6 +920,11 @@ pub struct Evaluator {
     eval_table: Vec<EvalEntry>,
     params: EvalParams,
     tables: Box<EvalTables>,
+    /// Lazy-eval threshold (Phase 5.1b). Seeded from `LAZY_MARGIN` and overridden
+    /// by the `LazyMargin` UCI option (pushed in at every search start). Read only
+    /// on the non-texel lazy path, so it is unused under `--features texel`.
+    #[cfg_attr(feature = "texel", allow(dead_code))]
+    lazy_margin: i32,
     /// Per-call feature trace, recorded only under `--features texel`. Held in
     /// a `RefCell` so the `&self` eval helpers can append to it; the field does
     /// not exist in production builds.
@@ -939,6 +944,7 @@ impl Default for Evaluator {
             eval_table: vec![EvalEntry::default(); EVAL_TABLE_SIZE],
             params,
             tables,
+            lazy_margin: LAZY_MARGIN,
             #[cfg(feature = "texel")]
             trace: RefCell::new(EvalTrace::default()),
         }
@@ -971,6 +977,12 @@ impl Evaluator {
 }
 
 impl Evaluator {
+    /// Override the lazy-eval margin (Phase 5.1b `LazyMargin` UCI option). Pushed
+    /// in at every search start; at the default 600 the eval is unchanged.
+    pub fn set_lazy_margin(&mut self, margin: i32) {
+        self.lazy_margin = margin;
+    }
+
     pub fn clear_pawn_table(&mut self) {
         self.pawn_table.fill(PawnEntry::default());
         self.eval_table.fill(EvalEntry::default());
@@ -1064,7 +1076,8 @@ impl Evaluator {
         // the eval stays a pure function of the position, so the eval cache and
         // `tests/eval_cache.rs` remain exact. `LAZY_MARGIN` is SPRT-tunable.
         #[cfg(not(feature = "texel"))]
-        let lazy = ((mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE).abs() > LAZY_MARGIN;
+        let lazy =
+            ((mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE).abs() > self.lazy_margin;
         #[cfg(feature = "texel")]
         let lazy = false;
 

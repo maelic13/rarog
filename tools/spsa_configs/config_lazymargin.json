@@ -1,0 +1,8 @@
+{
+    "LazyMargin": {
+        "value": 600,
+        "min_value": 200,
+        "max_value": 2000,
+        "step": 80
+    }
+}

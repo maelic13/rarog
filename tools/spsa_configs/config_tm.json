@@ -1,0 +1,44 @@
+{
+    "TmOptScale": {
+        "value": 10000,
+        "min_value": 5000,
+        "max_value": 20000,
+        "step": 500
+    },
+    "TmFallBase": {
+        "value": 1187,
+        "min_value": 0,
+        "max_value": 5000,
+        "step": 150
+    },
+    "TmFallSlope": {
+        "value": 221,
+        "min_value": 0,
+        "max_value": 1000,
+        "step": 40
+    },
+    "TmInstabBase": {
+        "value": 11000,
+        "min_value": 8000,
+        "max_value": 16000,
+        "step": 400
+    },
+    "TmInstabSlope": {
+        "value": 22900,
+        "min_value": 0,
+        "max_value": 50000,
+        "step": 2000
+    },
+    "TmEffortHigh": {
+        "value": 9240,
+        "min_value": 6000,
+        "max_value": 12000,
+        "step": 300
+    },
+    "TmEffortLow": {
+        "value": 7100,
+        "min_value": 4000,
+        "max_value": 10000,
+        "step": 300
+    }
+}

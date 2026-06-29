@@ -168,6 +168,19 @@ impl SearchOptions {
             String::from("option name FpCoeff type spin default 117 min 0 max 300"),
             // ProbCut beta margin (Phase 5).
             String::from("option name ProbCutMargin type spin default 180 min 60 max 400"),
+            // Futility-direction A/B (Phase 5.1, relocated 2.5.2): 0 = current
+            // (margin shrinks when improving), 1 = conventional (larger when improving).
+            String::from("option name FutilityImprovingDir type spin default 0 min 0 max 1"),
+            // Lazy-eval margin (Phase 5.1b): widen + confirm [-3,3] first, then SPSA.
+            String::from("option name LazyMargin type spin default 600 min 200 max 2000"),
+            // Time-management dynamic multipliers (Phase 5.1 TM group, ×10000).
+            String::from("option name TmOptScale type spin default 10000 min 5000 max 20000"),
+            String::from("option name TmFallBase type spin default 1187 min 0 max 5000"),
+            String::from("option name TmFallSlope type spin default 221 min 0 max 1000"),
+            String::from("option name TmInstabBase type spin default 11000 min 8000 max 16000"),
+            String::from("option name TmInstabSlope type spin default 22900 min 0 max 50000"),
+            String::from("option name TmEffortHigh type spin default 9240 min 6000 max 12000"),
+            String::from("option name TmEffortLow type spin default 7100 min 4000 max 10000"),
         ]);
         opts
     }
@@ -556,6 +569,69 @@ impl SearchOptions {
             "probcutmargin" => {
                 if let Ok(v) = value.parse::<i32>() {
                     self.engine.search_params.probcut_margin = v.clamp(60, 400);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "futilityimprovingdir" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.futility_improving_dir = v.clamp(0, 1);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "lazymargin" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.lazy_margin = v.clamp(200, 2_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tmoptscale" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_opt_scale = v.clamp(5_000, 20_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tmfallbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_fall_base = v.clamp(0, 5_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tmfallslope" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_fall_slope = v.clamp(0, 1_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tminstabbase" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_instab_base = v.clamp(8_000, 16_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tminstabslope" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_instab_slope = v.clamp(0, 50_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tmefforthigh" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_effort_high = v.clamp(6_000, 12_000);
+                }
+                true
+            }
+            #[cfg(feature = "tune")]
+            "tmeffortlow" => {
+                if let Ok(v) = value.parse::<i32>() {
+                    self.engine.search_params.tm_effort_low = v.clamp(4_000, 10_000);
                 }
                 true
             }

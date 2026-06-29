@@ -13,12 +13,12 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 
 | Area | Current state |
 |---|---|
-| Branch | `master` (the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
+| Branch | `development` (targets the 2.3.0 release; the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0** (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Now on branch `v2.3.0`, starting **Phase 5 step 1** (the one post-eval search SPSA wave). |
+| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0** (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Now on branch `development`, **Phase 5 step 1 prep complete** (the one post-eval search SPSA wave is wired; games next). |
 | Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000.** ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
-| Immediate next work | **Phase 5 step 1 prep (code-only, done so far):** widened `FutilityNotImproving`/`LmpNotImproving` SPSA ceilings to `[0,120]`; exposed ProbCut's margin (was hardcoded `180`) as a new `ProbCutMargin` UCI option `[60,400]`. Bench still `4,747,104` (no-op), 159/159 tests pass. Still to prepare: futility-direction A/B, lazy-margin re-check, a TM SPSA group — then hand you the per-group `setup_spsa.ps1` commands to run. |
+| Immediate next work | **Phase 5 step 1 prep COMPLETE (code-only, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings to `[0,120]`; exposed `ProbCutMargin` `[60,400]`, the **futility-direction A/B** (`FutilityImprovingDir` 0/1), the **`LazyMargin`** option `[200,2000]`, and the **7-param TM group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled). New `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench still `4,747,104` (no-op), 159/159 tests pass, fmt clean, tune-only options hidden in release. **Next: you run the SPSA/A-B/SPRT gates** — see "Next Commands" below. |
 | **Release status** | **v2.2.0 published.** Branch `v2.3.0` targets the next release, **2.3.0**, after Phase 5 closes. See "Releasing". |
 
 ### The Program In One Table (overview · model picker · Elo)
@@ -118,6 +118,38 @@ input.
 ---
 
 ## Next Commands
+
+> **CURRENT (2026-06-29) — Phase 5 step 1 prep is complete; the next runs are yours.**
+> Everything below this box is the historical Phase 2.9/3 log, kept for record.
+>
+> The whole step-1 wave is wired behind `--features tune`. Build the tune binary once:
+>
+> ```powershell
+> ./tools/build_test.ps1 -Suffix phase5-tune -Tune
+> ```
+>
+> Then run the groups **one at a time**, each: SPSA → bake the values into
+> `SearchParams::default()` → build a `pext --pgo` binary → SPRT vs the current
+> head (`rarog-phase47-polish-pext-pgo.exe`) at `tc=3+0.03`, keep only on H1.
+>
+> ```powershell
+> # SPSA groups (run, then report the final values back):
+> ./tools/setup_spsa.ps1 -ConfigGroup pruning  -EngineSuffix phase5-tune
+> ./tools/setup_spsa.ps1 -ConfigGroup lmr      -EngineSuffix phase5-tune
+> ./tools/setup_spsa.ps1 -ConfigGroup futility -EngineSuffix phase5-tune
+> ./tools/setup_spsa.ps1 -ConfigGroup probcut  -EngineSuffix phase5-tune
+> ./tools/setup_spsa.ps1 -ConfigGroup tm       -EngineSuffix phase5-tune   # clock-only; LTC-confirm
+> cd tools\weather-factory; python main.py    # stop with Ctrl-C when stable
+> ```
+>
+> Two **non-SPSA** gates, do whenever convenient in this step:
+> - **`FutilityImprovingDir` A/B** (`[-3,3]`): two fastchess engine configs, one
+>   with `option.FutilityImprovingDir=1`, one `=0`; keep the winner (default 0 if
+>   neither wins). See `tools/spsa_configs/README.md`.
+> - **`LazyMargin` safety check** (`[-3,3]`): widen 600 → ~900/1200, confirm no
+>   regression at the post-Phase-4 eval scale, *then* run the `lazymargin` SPSA.
+>
+> Report SPSA final values / SPRT verdicts back and I'll bake, gate, and move on.
 
 **2.9.1 (time-safety valve) — DONE and CONFIRMED.** The clock-mode hard limit
 now reserves an absolute `2*MoveOverhead` (binds only in real time scrambles,
@@ -635,8 +667,8 @@ The one search-constant SPSA wave + refinements, at the final eval scale.
 Driving: Sonnet 4.6 medium; dense ports: Codex 5.5 medium / GPT-5.5 high.
 See `PLAN.md` §9.
 
-- [ ] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B.
-- [ ] 5.1b **Lazy-eval margin (`LAZY_MARGIN`, 600) re-check** — a *safety* check first: Phase 4 grows the positional weights, so the margin that guaranteed "no skipped term can flip the sign" at seeded-0 may become too tight. Expose it as a UCI option, **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
+- [~] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B. **Prep DONE (2026-06-29, code only, no games):** ceilings widened; `ProbCutMargin`, `FutilityImprovingDir` (0/1 A/B), `LazyMargin`, and the 7-param TM group all exposed (tune-gated, ×10000 where float); `config_tm.json` + `config_lazymargin.json` written; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents each. Bench `4,747,104` unchanged, 159/159 tests, fmt clean, options hidden in release. **Remaining = the user-run gates** (SPSA → bake → SPRT per group; the `FutilityImprovingDir` A/B `[-3,3]`).
+- [~] 5.1b **Lazy-eval margin re-check** — **`LazyMargin` UCI option now exposed** (`[200,2000]`, seed 600, pushed to the evaluator each search start) + `config_lazymargin.json`. Still to run: **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
 - [ ] 5.2 History bonus/malus split, then retry no-aging history.
 - [ ] 5.3 do-deeper re-implementation (cp-coupled retry).
 - [ ] 5.4 Qsearch quiet checks; razoring depth restriction; LMR TT-move-is-capture; mobility-area refinement.

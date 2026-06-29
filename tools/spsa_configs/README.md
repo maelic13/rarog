@@ -153,3 +153,65 @@ tunable.
 | UCI option name | Default | Range | Step | Source in search.rs |
 |-----------------|---------|-------|------|---------------------|
 | `ProbCutMargin` | 180 | [60, 400] | 20 | `:1108`  `probcut_beta = beta + margin` |
+
+### config_tm.json — Time-management dynamic multipliers (Phase 5.1 TM group)
+
+The clock-mode between-iteration soft-stop scales `optimum_ms` by
+`falling_eval × best_move_instab × effort_factor` (the SF-style block in
+`search.rs::search_root`). These are the 2.2 SF-seeded constants, now exposed as
+their own SPSA group — clock play is the test/deployment target, so they are
+exercised directly at `tc=3+0.03`. **Values are stored ×10000** (so `9240`
+means `0.924`); the engine divides by 10000, which reconstructs the float seeds
+bit-exactly, so the defaults are behaviour-identical. **TM affects only clock
+play — it never moves the depth-limited `bench` fingerprint**, so there is no
+bench gate for this group; SPRT at `tc=3+0.03` (plus an LTC `10+0.1` confirm,
+since TM is depth/clock-sensitive) is the authority.
+
+| UCI option name | Default | Range | Step | Meaning |
+|-----------------|---------|-------|------|---------|
+| `TmOptScale`     | 10000 | [5000, 20000]  | 500  | Overall ×multiplier on `optimum_ms` (10000 = ×1.0) — the highest-leverage knob |
+| `TmFallBase`     | 1187  | [0, 5000]      | 150  | falling-eval base (0.1187) |
+| `TmFallSlope`    | 221   | [0, 1000]      | 40   | falling-eval slope on `(prev_avg − score)` (0.0221) |
+| `TmInstabBase`   | 11000 | [8000, 16000]  | 400  | best-move-instability base (1.10) |
+| `TmInstabSlope`  | 22900 | [0, 50000]     | 2000 | best-move-instability slope on `tot_best_move_changes` (2.29) |
+| `TmEffortHigh`   | 9240  | [6000, 12000]  | 300  | effort factor at low effort, interp t=0 (0.924) |
+| `TmEffortLow`    | 7100  | [4000, 10000]  | 300  | effort factor at high effort, interp t=1 (0.71) |
+
+### config_lazymargin.json — Lazy-eval margin (Phase 5.1b)
+
+The lazy-eval cutoff (`eval.rs`; skip the expensive positional block when the
+material + PST + pawn score already exceeds the margin). Accepted at `600` at
+the seeded-0 head (+4.4 Elo, Phase 3.16). **Do the safety check first:** Phase 4
+grew the positional weights, so the margin that guaranteed "no skipped term can
+flip the sign" may now be too tight. **Widen it (e.g. 600 → 900/1200) and
+confirm a non-regression SPRT `[-3,3]` at the post-Phase-4 eval scale** before
+tuning for NPS. Only then run this SPSA. (Lazy is disabled under `--features
+texel`; the mop-up runs on both eval paths, so mating is margin-independent.)
+
+| UCI option name | Default | Range | Step | Source |
+|-----------------|---------|-------|------|--------|
+| `LazyMargin` | 600 | [200, 2000] | 80 | `eval.rs` lazy cutoff; pushed to the evaluator each search start |
+
+### Futility-direction A/B (`FutilityImprovingDir` — Phase 5.1, relocated 2.5.2)
+
+Not an SPSA config — a **discrete A/B**, folded into the futility-group work.
+Rarog's reverse-futility margin (`search.rs:1041`) shrinks when `improving`
+(prunes *more*); `FutilityImprovingDir` flips which side of the flag the
+`FutilityNotImproving` coefficient is added to:
+
+- `0` (default) — coefficient added when **not** improving (current / SF-RFP).
+- `1` — coefficient added when **improving** (the conventional "larger margin
+  when improving" direction).
+- no-modulation — set `FutilityNotImproving 0` (works at either setting).
+
+Run the A/B by setting the option per engine in fastchess (no separate binary
+needed), each gated `[-3,3]` vs the current head, e.g.:
+
+```
+-engine cmd=rarog-tune.exe name=dir1 option.FutilityImprovingDir=1
+-engine cmd=rarog-tune.exe name=dir0 option.FutilityImprovingDir=0
+```
+
+Keep whichever direction wins; if neither beats `0`, keep the default. The
+coefficient *magnitude* (`FutilityNotImproving`) is still tuned in
+`config_pruning.json`.

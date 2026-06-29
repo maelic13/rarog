@@ -93,6 +93,50 @@ pub struct SearchParams {
     /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
     /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
     pub probcut_margin: i32,
+
+    /// Futility-margin improving-direction selector (Phase 5.1, relocated 2.5.2).
+    /// Controls which side of the `improving` flag the `futility_not_improving`
+    /// coefficient is added to in the reverse-futility margin [search.rs:1041]:
+    /// `0` (default) → added when *not* improving (margin shrinks when improving,
+    /// i.e. prunes more — the current/SF-RFP direction); `1` → added when
+    /// improving (larger margin when improving — the conventional forward-futility
+    /// direction). The no-modulation variant is `futility_not_improving = 0`
+    /// (reachable at either setting). A discrete A/B knob, not a continuous SPSA
+    /// target — gate each direction `[-3,3]`. Default reproduces current behaviour
+    /// exactly (bench-identical).
+    pub futility_improving_dir: i32,
+
+    /// Lazy-eval margin (Phase 5.1b; mirrors `eval::LAZY_MARGIN` = 600). If the
+    /// tapered material + PST + pawn score already exceeds this, the expensive
+    /// positional block is skipped [eval.rs lazy path]. Pushed into the evaluator
+    /// at every search start. A *safety* knob first (Phase 4 grew the positional
+    /// weights, so the seeded-0 margin may now be too tight — widen + confirm
+    /// `[-3,3]` no-regression before tuning for NPS), then an SPSA speed knob.
+    /// Disabled under `--features texel` (the tuner fits the full eval).
+    pub lazy_margin: i32,
+
+    // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
+    // The clock-mode between-iteration soft-stop scales `optimum_ms` by
+    // falling-eval × best-move-instability × effort (search.rs soft-stop block);
+    // these are the 2.2 SF-seeded constants, exposed for the TM SPSA group.
+    // Stored in ten-thousandths so the float defaults reconstruct bit-exactly
+    // (`x / 10000.0` is correctly-rounded, identical to the original literal).
+    // TM affects only clock play, never the depth-limited `bench` fingerprint.
+    /// Overall multiplier on `optimum_ms` (10000 = ×1.0). The single
+    /// highest-leverage TM knob; lets SPSA scale base time allocation.
+    pub tm_opt_scale: i32,
+    /// Falling-eval base term. Seed 1187 (0.1187).
+    pub tm_fall_base: i32,
+    /// Falling-eval slope on `(prev_avg_score - score)`. Seed 221 (0.0221).
+    pub tm_fall_slope: i32,
+    /// Best-move-instability base. Seed 11000 (1.10).
+    pub tm_instab_base: i32,
+    /// Best-move-instability slope on `tot_best_move_changes`. Seed 22900 (2.29).
+    pub tm_instab_slope: i32,
+    /// Effort factor at low effort (interp endpoint at t=0). Seed 9240 (0.924).
+    pub tm_effort_high: i32,
+    /// Effort factor at high effort (interp endpoint at t=1). Seed 7100 (0.71).
+    pub tm_effort_low: i32,
 }
 
 impl Default for SearchParams {
@@ -125,6 +169,18 @@ impl Default for SearchParams {
             fp_base: 184,
             fp_coeff: 117,
             probcut_margin: 180,
+            // Futility-direction A/B (relocated 2.5.2): default = current behaviour.
+            futility_improving_dir: 0,
+            // Lazy-eval margin (mirrors eval::LAZY_MARGIN).
+            lazy_margin: 600,
+            // Time-management dynamic multipliers (×10000), 2.2 SF seeds.
+            tm_opt_scale: 10_000,    // ×1.0
+            tm_fall_base: 1_187,     // 0.1187
+            tm_fall_slope: 221,      // 0.0221
+            tm_instab_base: 11_000,  // 1.10
+            tm_instab_slope: 22_900, // 2.29
+            tm_effort_high: 9_240,   // 0.924
+            tm_effort_low: 7_100,    // 0.71
         }
     }
 }
@@ -159,5 +215,14 @@ mod tests {
         assert!(p.fp_base > 0);
         assert!(p.fp_coeff > 0);
         assert!(p.probcut_margin > 0);
+        assert!(p.futility_improving_dir == 0 || p.futility_improving_dir == 1);
+        assert!(p.lazy_margin > 0);
+        assert!(p.tm_opt_scale > 0);
+        assert!(p.tm_fall_base > 0);
+        assert!(p.tm_fall_slope > 0);
+        assert!(p.tm_instab_base > 0);
+        assert!(p.tm_instab_slope > 0);
+        assert!(p.tm_effort_high > 0);
+        assert!(p.tm_effort_low > 0);
     }
 }

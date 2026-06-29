@@ -522,6 +522,9 @@ impl Searcher {
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
         self.params = engine_options.search_params.clone();
+        // Push the (UCI-settable) lazy-eval margin into the evaluator. At the
+        // default 600 this is a no-op and the eval — hence `bench` — is unchanged.
+        self.evaluator.set_lazy_margin(self.params.lazy_margin);
         let table_key = (self.params.lmr_table_base, self.params.lmr_table_div);
         if table_key != self.lmr_table_key {
             self.lmr_table = build_lmr_table(table_key.0, table_key.1);
@@ -729,16 +732,31 @@ impl Searcher {
                 break;
             }
             if !self.limits.movetime_mode {
+                // TM dynamic multipliers (Phase 5.1 TM group). Stored ×10000 in
+                // SearchParams; `/ 10000.0` reconstructs the 2.2 SF seeds bit-exactly.
+                let opt_scale = self.params.tm_opt_scale as f64 / 10_000.0;
+                let fall_base = self.params.tm_fall_base as f64 / 10_000.0;
+                let fall_slope = self.params.tm_fall_slope as f64 / 10_000.0;
+                let instab_base = self.params.tm_instab_base as f64 / 10_000.0;
+                let instab_slope = self.params.tm_instab_slope as f64 / 10_000.0;
+                let effort_high = self.params.tm_effort_high as f64 / 10_000.0;
+                let effort_low = self.params.tm_effort_low as f64 / 10_000.0;
                 // fallingEval: ↑ when score is falling (want more time); seeds from SF.
-                let falling_eval =
-                    (0.1187 + 0.0221 * (prev_avg_score - best_score as f64)).clamp(0.572, 1.708);
+                let falling_eval = (fall_base + fall_slope * (prev_avg_score - best_score as f64))
+                    .clamp(0.572, 1.708);
                 // bestMoveInstab: ↑ when best move changed recently.
-                let best_move_instab = 1.10 + 2.29 * tot_best_move_changes;
-                // effortFactor: linear interp — at effort≤0.79 → 0.924; at effort≥1.0 → 0.71.
+                let best_move_instab = instab_base + instab_slope * tot_best_move_changes;
+                // effortFactor: linear interp — at effort≤0.79 → effort_high; at effort≥1.0 → effort_low.
                 let t = ((self.root_best_effort - 0.79) / (1.0 - 0.79)).clamp(0.0, 1.0);
-                let effort_factor = (0.924 + t * (0.71 - 0.924)).clamp(0.71, 0.924);
-                let total_time =
-                    self.limits.optimum_ms * falling_eval * best_move_instab * effort_factor;
+                // Clamp to the ordered pair so an SPSA-crossed (low > high) setting
+                // can't panic f64::clamp; at defaults this is clamp(0.71, 0.924).
+                let effort_factor = (effort_high + t * (effort_low - effort_high))
+                    .clamp(effort_low.min(effort_high), effort_low.max(effort_high));
+                let total_time = self.limits.optimum_ms
+                    * opt_scale
+                    * falling_eval
+                    * best_move_instab
+                    * effort_factor;
                 let soft_target = total_time.min(self.limits.maximum_ms);
                 if self.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
@@ -1038,8 +1056,18 @@ impl Searcher {
             static_eval
         };
         if !tt_pv && !in_check && excluded.is_null() {
+            // Futility-direction A/B (relocated 2.5.2): dir 0 adds the
+            // not-improving coefficient when *not* improving (margin shrinks when
+            // improving → prunes more, the current/SF-RFP direction); dir 1 adds
+            // it when improving (larger margin when improving). Default dir 0 is
+            // byte-identical to the prior `* not_improving_i` form.
+            let futility_improving_term = if self.params.futility_improving_dir == 0 {
+                not_improving_i
+            } else {
+                improving_i
+            };
             let futility_margin = (self.params.futility_base
-                + self.params.futility_not_improving * not_improving_i)
+                + self.params.futility_not_improving * futility_improving_term)
                 * depth;
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 return eval_for_pruning;

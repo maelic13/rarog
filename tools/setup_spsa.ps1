@@ -20,11 +20,13 @@
 
 .PARAMETER ConfigGroup
     Which parameter group to tune.
-    "pruning"  - pruning / margin constants.
-    "lmr"      - LMR weighted adjustments + table coefficients.
-    "futility" - per-move quiet futility constants.
-    "probcut"  - historical only; Phase 2 ProbCut was dropped and its UCI
-                 options are not active unless ProbCut is reimplemented.
+    "pruning"    - pruning / margin constants.
+    "lmr"        - LMR weighted adjustments + table coefficients.
+    "futility"   - per-move quiet futility constants.
+    "probcut"    - ProbCut beta margin (Phase 5 flat-margin form).
+    "tm"         - time-management dynamic multipliers (Phase 5.1 TM group).
+    "lazymargin" - lazy-eval margin (Phase 5.1b; run the [-3,3] safety check
+                   first, then tune for NPS — see spsa_configs/README.md).
 
 .PARAMETER Iterations
     Planned total iterations (used to set A = Iterations / 10 in spsa.json).
@@ -49,7 +51,7 @@
     ./tools/setup_spsa.ps1 -ConfigGroup lmr -EngineSuffix p25-lmr
 #>
 param(
-    [ValidateSet("pruning","lmr","probcut","futility")][string]$ConfigGroup = "lmr",
+    [ValidateSet("pruning","lmr","probcut","futility","tm","lazymargin")][string]$ConfigGroup = "lmr",
     [int]$Iterations = 5000,
     [string]$EngineSuffix = "",
     [switch]$Resume
@@ -69,6 +71,8 @@ if ($EngineSuffix -eq "") {
         "pruning" { "phase1-pruning" }
         "probcut" { "phase2-probcut" }
         "futility" { "phase2-futility" }
+        "tm" { "phase5-tm" }
+        "lazymargin" { "phase5-lazymargin" }
     }
 }
 
