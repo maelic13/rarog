@@ -122,10 +122,12 @@ input.
 > **CURRENT (2026-06-29) — Phase 5 step 1 prep is complete; the next runs are yours.**
 > Everything below this box is the historical Phase 2.9/3 log, kept for record.
 >
-> The whole step-1 wave is wired behind `--features tune`. Build the tune binary once:
+> The whole step-1 wave is wired behind `--features tune`. Build the tune binary
+> once (Suffix `phase5` → `rarog-phase5-tune.exe`; do **not** add `-tune` to the
+> suffix, the script appends it):
 >
 > ```powershell
-> ./tools/build_test.ps1 -Suffix phase5-tune -Tune
+> ./tools/build_test.ps1 -Suffix phase5 -Tune
 > ```
 >
 > Then run the groups **one at a time**, each: SPSA → bake the values into
@@ -134,11 +136,11 @@ input.
 >
 > ```powershell
 > # SPSA groups (run, then report the final values back):
-> ./tools/setup_spsa.ps1 -ConfigGroup pruning  -EngineSuffix phase5-tune
-> ./tools/setup_spsa.ps1 -ConfigGroup lmr      -EngineSuffix phase5-tune
-> ./tools/setup_spsa.ps1 -ConfigGroup futility -EngineSuffix phase5-tune
-> ./tools/setup_spsa.ps1 -ConfigGroup probcut  -EngineSuffix phase5-tune
-> ./tools/setup_spsa.ps1 -ConfigGroup tm       -EngineSuffix phase5-tune   # clock-only; LTC-confirm
+> ./tools/setup_spsa.ps1 -ConfigGroup pruning  -EngineSuffix phase5
+> ./tools/setup_spsa.ps1 -ConfigGroup lmr      -EngineSuffix phase5
+> ./tools/setup_spsa.ps1 -ConfigGroup futility -EngineSuffix phase5
+> ./tools/setup_spsa.ps1 -ConfigGroup probcut  -EngineSuffix phase5
+> ./tools/setup_spsa.ps1 -ConfigGroup tm       -EngineSuffix phase5   # clock-only; LTC-confirm
 > cd tools\weather-factory; python main.py    # stop with Ctrl-C when stable
 > ```
 >
