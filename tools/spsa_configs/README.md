@@ -122,7 +122,7 @@ their old `[0,60]` ceiling).
 | `SeePruningCoeff`      | 81      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
 | `SeePruningMax`        | 811     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
 | `AspirationDelta`      | 31      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
-| `SingularBetaMult`     | 4       | [1, 6]       | 1    | `:1215`  `tt_score - mult·depth` |
+| `SingularBetaMult`     | 4       | [1, 8]       | 1    | `:1215`  `tt_score - mult·depth` (widened 6→8 after the first pruning SPSA pinned it at 6) |
 | `LmpCountBase`         | 2       | [1, 10]      | 1    | `:2394`  base in `base + 2·d²/3` |
 
 Each parameter name **must** match a UCI `spin` option exposed in

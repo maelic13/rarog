@@ -33,8 +33,8 @@ eval is final — that compute is wasted when the eval rescales.
 | **2.9** Robustness & free speed (**CLOSED**) | time-safety valve (28 forfeits), native `znver3` build, `BadCapture` struct shrink, remove `gives_check` board.clone, profile-gated bounds-checks (no-op) | `bench 13 == 5,446,782` + `cargo test`; `t=`→0 confirmed cross-harness; close-SPRT accepted (+2.0 Elo, LOS 86%) | **Sonnet 4.6 medium** (valve/build/shrink); **Opus 4.8 medium** (gives_check, bounds-checks) | +2.0 Elo + reliability |
 | **3** Eval infrastructure & build-out | attack maps, `EvalParams`, Texel tuner, then king-safety / threats / mobility / pawn / imbalance / small-terms / endgame **structure**, every new sub-term seeded inert | `bench 13` stable except two documented re-baselines (`5,446,782` → `5,354,975` at 3.11b KPK; → **`4,978,006`** at 3.14 eval-cache fix) + reconstruction test + `cache==cold` test + unit tests (**no games**) | Sonnet 4.6 medium for refactors/scaffolding; **Opus 4.8 high** for king-safety (3.5), threats (3.6), imbalance (3.9), endgame/KBNK (3.11), tuner core (3.3); Opus 4.8 medium for mobility (3.7) & pawns (3.8) | 0 direct (enabler) |
 | **4** Eval data-fit campaign | staged Texel fit that *activates* the new terms; king-safety first, material + PSTs last | SPRT `[0,5]`/`[0,3]` per stage at `tc=3+0.03`, LTC confirm | Sonnet 4.6 medium (driving); Opus 4.8 high if a fit is pathological | **+120–230** |
-| **5** Search-efficiency wave | the one search-constant SPSA wave + history-formula split, no-aging retry, do-deeper, qsearch quiet checks, codex ports, modern refinements | SPSA → SPRT per group at `tc=3+0.03` | Sonnet 4.6 medium (driving); **Codex 5.5 medium / GPT-5.5 high** for dense ports | **+20–50** |
-| **6** Non-NNUE ceiling (optional) | eval-refresh cycles on data from the stronger head + ride-along structural eval items (shelter/storm→danger); the multi-cycle grind | one joint refit + SPRT per cycle at `tc=3+0.03`; gauntlet between cycles | Sonnet 4.6 medium (driving); Opus 4.8 high for the structural eval change | **+10–40/cycle** |
+| **5** Search-efficiency wave | the one search-constant SPSA wave + **contempt** (gauntlet-validated), history-formula split, no-aging retry, do-deeper, qsearch quiet checks, codex ports, modern refinements | SPSA → SPRT per group at `tc=3+0.03` (contempt by gauntlet) | Sonnet 4.6 medium (driving); **Codex 5.5 medium / GPT-5.5 high** for dense ports | **+20–50** |
+| **6** Non-NNUE ceiling (optional) | data-pipeline fix (rebalance/quiet-filter/blended/deeper) → ride-along eval structure (shelter/storm→danger, **reshape dead Space term**, **passer whole-path**, trio) → one joint refit; the multi-cycle grind | one joint refit + SPRT per cycle at `tc=3+0.03`; gauntlet between cycles | Sonnet 4.6 medium (driving); Opus 4.8 high for the structural eval change | **+10–40/cycle** |
 
 Per-step model assignments are in `PLAN.md` §15. Elo figures are estimates;
 **SPRT is the only verdict.** NNUE is the terminal option (`PLAN.md` §14).
@@ -74,6 +74,17 @@ Two label sources (SPRT decides which transfers): **Path A self-play** (primary,
 works today) and **Path B Stockfish-WDL** (optional, higher ceiling, needs an SF
 binary). You can start generating data on the 5950X now so it is ready for
 Phase 4.
+
+> **Dataset-quality audit (2026-06-30 — drives the Phase-6.1.0 upgrades).** The
+> Phase-4 2.19M set is methodologically sound (dedup, holdout split by game,
+> healthy result balance) but **endgame-heavy** — measured train mix is
+> **opening 10.1% / middlegame 41.8% / endgame 48.1%** (avg 12.4 pieces;
+> true-opening 25–32-piece positions only **2.0%**). The next regen should:
+> rebalance the phase mix (`extract.py --balance-phase` **+** an opening-rich
+> book), add a **true-quiet filter** (skip positions with a capture *available*,
+> not just capture *played*), use **blended labels**, run **deeper datagen with
+> the stronger head**, and **grow to ~4–6M**. Full detail: `PLAN.md` §6.1.0 /
+> §16.3.
 
 ### External Gauntlet (set up your opponents)
 
@@ -671,12 +682,13 @@ See `PLAN.md` §9.
 
 - [~] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B. **Prep DONE (2026-06-29, code only, no games):** ceilings widened; `ProbCutMargin`, `FutilityImprovingDir` (0/1 A/B), `LazyMargin`, and the 7-param TM group all exposed (tune-gated, ×10000 where float); `config_tm.json` + `config_lazymargin.json` written; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents each. Bench `4,747,104` unchanged, 159/159 tests, fmt clean, options hidden in release. **Remaining = the user-run gates** (SPSA → bake → SPRT per group; the `FutilityImprovingDir` A/B `[-3,3]`).
 - [~] 5.1b **Lazy-eval margin re-check** — **`LazyMargin` UCI option now exposed** (`[200,2000]`, seed 600, pushed to the evaluator each search start) + `config_lazymargin.json`. Still to run: **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
-- [ ] 5.2 History bonus/malus split, then retry no-aging history.
-- [ ] 5.3 do-deeper re-implementation (cp-coupled retry).
-- [ ] 5.4 Qsearch quiet checks; razoring depth restriction; LMR TT-move-is-capture; mobility-area refinement.
-- [ ] 5.5 Codex ports: multi-cut/singular, threat-aware history, TT-cutoff/fail-low-parent history, optional TT overhaul. — Codex 5.5 medium
-- [ ] 5.6 Modern refinements (aspiration modernization, correction-magnitude margins, hindsight, cutoff-count LMR, bad-noisy futility, qsearch SEE threshold).
-- [ ] 5.7 Profile-guided speed pass; end-of-phase gauntlet + release.
+- [ ] 5.2 **Contempt / draw value** (cheap, dependency-free, no Texel/SPSA). Add a side-to-move contempt offset on draw/repetition/qsearch-draw scores; expose a `Contempt` UCI option (seed ~+10..20 cp). **Validate by gauntlet, NOT self-play SPRT** — contempt cancels when both sides share it, so an SPRT reads ≈0; A/B 2–3 values vs the §11 ladder (esp. weaker/drawish foes). Keep conservative (too much loses to clearly stronger foes).
+- [ ] 5.3 History bonus/malus split, then retry no-aging history.
+- [ ] 5.4 do-deeper re-implementation (cp-coupled retry).
+- [ ] 5.5 Qsearch quiet checks; razoring depth restriction; LMR TT-move-is-capture; mobility-area refinement.
+- [ ] 5.6 Codex ports: multi-cut/singular, threat-aware history, TT-cutoff/fail-low-parent history, optional TT overhaul. — Codex 5.5 medium
+- [ ] 5.7 Modern refinements (aspiration modernization, correction-magnitude margins, hindsight, cutoff-count LMR, bad-noisy futility, qsearch SEE threshold).
+- [ ] 5.8 Profile-guided speed pass; end-of-phase gauntlet + release.
 
 ### Phase 6 - Non-NNUE ceiling: eval-refresh cycles (optional, +10–40/cycle)
 
@@ -686,7 +698,10 @@ end-of-Phase-5 gauntlet shows eval headroom). Full rationale: `PLAN.md` §10
 (§6.0 analysis, §6.1 cycle 1, §6.2 iterate). *Was mis-numbered "4.8/4.9" under
 Phase 4 / Phase 5 — now its own phase because it runs after Phase 5.*
 
-- [ ] **6.1 Eval data-refresh, cycle 1 (PLAN.md §6.1).** Regenerate self-play with the new head and do **one consolidated eval refit** (not a re-stage: a single low-lr joint fit + the king-safety re-eval path + one SPRT). Stronger engine → cleaner WDL labels → tighter fit. Turn on **blended labels** + **`--balance-phase`** (the dormant Step-4.0 capabilities) on the regen. **Build two ride-along structural items into this refit** (PLAN.md §6.1): (1) **fold pawn shelter/storm into the king-danger input** — they exist but the Phase-4 fit zeroed `storm_*`/`shelter_missing_*` because a *linear* term can't capture the `danger²` interaction (best single new eval bet); (2) activate the §3.12 deferred trio. Expected **+10–40 Elo** (a correction, not a re-discovery). Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
+- **6.1 Eval data-refresh, cycle 1 (PLAN.md §6.1).** One cycle, three ordered sub-steps — no duplicate datagen/Texel/SPSA. Expected **+10–40 Elo** (a correction, not a re-discovery). Evidence-driven, gated on the end-of-phase gauntlet — **not mandatory.**
+  - [ ] **6.1.0 Data-pipeline upgrades (infra; before the regen).** From the 2.19M-set audit (PLAN.md §16.3): (a) **rebalance the phase mix** — it is endgame-heavy (opening 10.1% / mid 41.8% / endgame 48.1%; true-opening only 2.0%): use `extract.py --balance-phase` **and** an opening-rich book (startpos + shallow openings); (b) **add a true-quiet filter** to `extract.py` (skip positions with a SEE>0 capture available, not just capture *played*); (c) **blended labels** (`α·result + (1−α)·score`); (d) **deeper/stronger datagen** (post-Phase-5 head, ≈25k nodes); (e) **grow to ~4–6M** for the enlarged feature set; (f) optional **Stockfish-WDL A/B** (Path B).
+  - [ ] **6.1.1 Ride-along eval-structure (seed inert, bench-identical).** (1) **fold shelter/storm into the king-danger input** (linear today, fit to 0 — best single eval bet); (2) **reshape the dead Space term** (`space_weight`/`space_piece_mg` fit to 0 → SF safe-squares×piece-count); (3) **passed-pawn whole-path weighting** (free/safe-stop currently scores only the immediate stop square); (4) activate the §3.12 deferred trio. All seeded 0 so the structure lands without games.
+  - [ ] **6.1.2 One joint refit + one SPRT.** Single low-lr `all47` fit + the `--tune-kingsafety` re-eval path (fits the new shelter/storm danger input) on the new data; bake; one SPRT vs head + §11 gauntlet. The only fitting in the cycle — every 6.1.1 item rides it.
 - [ ] **6.2 Iterate (cycles 2–3) + stop condition (PLAN.md §6.2).** Repeat 6.1 on fresh data; stop when a cycle yields < ~+8 Elo, holdout stops dropping, or the gauntlet shows no field movement. Past that, the only classical lever left is king-bucketed PSTs — which is the NNUE input shape, so the honest move is **NNUE (§14)**, not more HCE tables.
 
 > **Can we beat Critter (~3187) without NNUE? (PLAN.md §6.0, 2026-06-24.)** Yes,

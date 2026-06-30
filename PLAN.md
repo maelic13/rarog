@@ -61,8 +61,9 @@ Closed-phase checklist:
 - [x] Phase 2.5 — harness-corrected retries (2.5.1 LMR redo **accepted, H1 +4 Elo**; 2.5.2 relocated to Phase 5)
 - [x] Phase 2.9 — robustness & free speed (2.9.1 time-safety, 2.9.2 native build, 2.9.3 BadCapture shrink, 2.9.4 gives_check clone removal, 2.9.5 get_unchecked investigated/no-op; close-SPRT accepted: +2.0 Elo, LOS 86%, LLR 81%→H1, 0 time losses cross-harness)
 - [x] **Phase 3 — eval infrastructure & build-out CLOSED** (3.0–3.14 structure; 3.15 inert-gating rejected; 3.16 lazy eval **accepted, +4.4 Elo**, bench 5,315,678, eval pure). The seeded-0 vs-`p25` NPS gate is superseded (terms are pure overhead until tuned); real vs-`p25` check is the Phase-4 boundary.
-- [ ] Phase 4 — eval data-fit campaign (staged Texel)
+- [x] **Phase 4 — eval data-fit campaign CLOSED** (staged Texel 4.1–4.7 all accepted; v2.2.0, staged ≈+316 self-play / +240 real, ~3000 CCRL — see §8/§11)
 - [ ] Phase 5 — search-efficiency wave (deferred SPSA + refinements)
+- [ ] Phase 6 — non-NNUE ceiling: eval-refresh cycles + structural refinements (§10; optional, evidence-driven)
 
 ### Why this ordering (one-line version)
 
@@ -2936,6 +2937,19 @@ authority (a change can lower EBF and lose Elo by pruning good moves).
 
 2. **Search-wave items with concrete specs** (one at a time, SPRT `[0,3]`
    unless noted):
+   - **Contempt / dynamic draw value** *(scoring, not search-shape; placed here
+     because it is eval-scale-independent and needs no Texel/SPSA)*. Today every
+     draw scores a hard `0` (the in-search draw returns + `evaluate_result`), so
+     Rarog has no incentive to avoid early simplification against weaker or
+     drawish opponents — cheap Elo the whole top-HCE field collects. Add a small
+     side-to-move contempt offset to draw/repetition/stalemate-adjudicable scores
+     (and the qsearch draw), expose a `Contempt` UCI option (cp), seed ~`+10..20`
+     cp from the moving side's perspective. **Validation caveat — do NOT gate on
+     symmetric self-play SPRT:** contempt cancels when both sides share it, so an
+     SPRT reads ≈0. Validate by **gauntlet** (§11 ladder, especially the
+     weaker/drawish opponents) over 2–3 discrete values and keep the best; do not
+     spin a separate SPSA campaign. Risk: too much contempt loses to clearly
+     stronger opponents — keep it conservative.
    - **History formula upgrade**: replace the symmetric
      `history_bonus(depth)` (move_ordering.rs:127) — currently used for both
      the cutoff bonus and the penalty on tried-and-failed moves — with
@@ -3124,14 +3138,22 @@ and tuning-maturity gap.** That reframes the whole answer.
 2. **Iterated data-refresh — §6.1, but treat it as repeatable (1–3 cycles).** The
    most reliable HCE strength source historically (Ethereal/Texel got strong this
    way). Each cycle: regen with the stronger head, single joint refit, one SPRT.
-   Diminishing, but real. Now also carries the two ride-along structural items
-   (§6.1) so they are fit for free.
-3. **Shelter/storm → king-danger nonlinearity (ride-along in §6.1 item 1).** The
-   one concrete new *eval* idea with evidence behind it: the term exists, is
-   computed every node, and is currently fit to **0** purely because it is linear.
-   Best single eval bet; costs almost nothing because the machinery is already
-   there.
-4. **The deferred low-yield trio (§3.12 / §6.1 item 2).** Bishop x-ray, R+Q
+   Diminishing, but real. Now also carries the ride-along structural items
+   (§6.1.1: shelter/storm→danger, Space reshape, passer whole-path, the trio) and
+   the §6.1.0 data-pipeline upgrades so they are all fit for free in the one refit.
+3. **Under-fit / dead eval terms folded correctly (ride-along in §6.1.1).** Three
+   concrete eval ideas with evidence, all already computed (or nearly so) and each
+   currently scoring ~0 because of a *shape* problem, not a missing feature:
+   (a) **shelter/storm → the nonlinear king-danger input** — added linearly today
+   and fit to 0, because a linear term cannot express "exposed king × piece
+   pressure" (the `danger²` interaction); the best single eval bet. (b) **the
+   Space term is dead** — `space_weight`/`space_piece_mg` both fit to 0; the
+   centre-file-ranks-2–4 shape carries no signal, reshape to the SF "safe squares
+   behind own pawns × piece count" form. (c) **passed-pawn whole-path weighting**
+   — free/safe-stop only scores the one square ahead, not the full path to
+   promotion. All cost almost nothing because the machinery is already there, and
+   all ride the *single* §6.1.2 refit — no extra fitting cycle.
+4. **The deferred low-yield trio (§3.12 / §6.1.1 item 4).** Bishop x-ray, R+Q
    battery, slider-on-queen. Cheap, small, include opportunistically.
 5. **King-bucketed PSTs — DEFER; this is the NNUE gateway, not an HCE step.**
    `PST[piece][square][king_bucket]` is the strongest *structural* expansion
@@ -3181,28 +3203,96 @@ optional and evidence-driven, not mandatory.**
   *both* phases instead of regenerating twice. Gate the decision on the
   end-of-Phase-4 gauntlet/LTC (how much of the staged Elo transferred vs
   over-fit) and on whether holdout loss still has headroom.
-- **Exploit the dormant Step-4.0 capabilities on the regen:** turn on **blended
-  labels** (`α·result + (1−α)·score_target`; `parse_target` already accepts the
-  float column — datagen must emit it) and **phase-balanced sampling**
-  (`extract.py --balance-phase`). Both directly attack label noise — exactly what
-  a second iteration should use.
-- **Ride-along eval-structure refinements (build the structure here so the same
-  refit fits them — do NOT do these as separate pre-Phase-5 mini-fits).** Two
-  concrete, source-verified items, both cheap and well-precedented (see §6.0 for
-  the reasoning and ranking):
-  1. **Fold pawn shelter/storm into the king-danger input** (SF-style). Today
-     they are added *linearly* (eval.rs:1965–2024) and the Phase-4 fit drove
-     `storm_file_weight`/`storm_adjacent_weight`/`shelter_missing_*` to **0** — a
-     linear term cannot capture that a stormed/exposed king is dangerous
-     *in combination* with piece pressure (the `danger²` nonlinearity). Route a
-     shelter/storm contribution into the danger accumulator (eval.rs:1790 already
-     flags this as an option; seed for an identical bench, then let the refit fit
-     it). This is the most likely place to recover real Elo from a term Rarog
-     already computes but currently scores at 0.
-  2. **Activate the deferred low-yield trio** (bishop x-ray on pawns, R+Q
-     battery, slider-on-queen) from §3.12 — seed inert, let the refit decide.
-     Lower expected value; include only if cheap.
-- **Expected:** **+10–40 Elo** for the first refresh (the two ride-along items
+
+The cycle is three ordered sub-steps: **6.1.0** fixes the data pipeline (infra,
+before the regen), **6.1.1** builds the new eval structure seeded-inert, and
+**6.1.2** is the *single* joint refit that fits all of it at once. Ordering is
+infra → structure → one fit, so there is **no duplicate datagen, Texel, or SPSA**
+in the cycle.
+
+#### 6.1.0 — Data-pipeline upgrades (infra; do before the regen)
+
+The Phase-4 dataset analysis (the 2.19M self-play set) found concrete, fixable
+quality gaps. Apply **all** of these to the *one* regen so the single 6.1.2 refit
+banks them together:
+
+- **Rebalance the phase mix — the set is endgame-heavy.** Measured train mix is
+  **opening 10.1% / middlegame 41.8% / endgame 48.1%** (avg 12.4 pieces; 27.7%
+  with ≤8 pieces; true-opening 25–32-piece positions are only **2.0%**). The seed
+  book itself is fine (avg 21 pieces, 53.8% opening-phase) — the skew comes from
+  `extract.py` skipping the first 16 plies **plus** uniform per-game sampling
+  over-weighting long quiet endgame tails. Fix **both** levers: (a) turn on
+  `extract.py --balance-phase` (capability built in Step 4.0, never used) to cap
+  over-represented buckets; (b) seed the regen from an **opening-rich book**
+  (startpos + shallow/random openings, e.g. a real UHO/Pohl book), because
+  rebalancing alone cannot create opening positions that barely exist in the
+  pool. Target ≈ **opening ≥25% / middlegame ~45% / endgame ~30%**, and watch the
+  tuner's per-phase holdout bucket so opening is not starved.
+- **Add a true-quiet position filter to `extract.py`.** It currently only rejects
+  positions where the *played* move is a capture/promo or the side is in check —
+  it still admits positions with a winning capture *available*. Strong HCE sets
+  (Ethereal/Zurichess "quiet-labeled") require the position itself be quiet. Add
+  a filter that skips unless the position has no SEE>0 capture (cheap) or, better,
+  qsearch stand-pat ≈ static eval. Directly cuts tactical label noise.
+- **Use blended labels** (`α·result + (1−α)·score_target`; `parse_target` already
+  accepts the float column — datagen must emit it). Lower-variance target than
+  bare WDL. (Was the dormant Step-4.0 capability; adopt it now.)
+- **Deeper, stronger datagen.** The Phase-3 set was generated at 8000/5000 nodes
+  by the *pre-Phase-4* engine. Regenerate with the **post-Phase-5 head** (the
+  point of the refresh) **and** a higher node budget (≈25k nodes or fixed depth
+  8–9) — both cut blundered-WDL label noise. Keep a faster pass for variety if
+  wanted.
+- **Grow the set with the feature count.** 2.19M suffices for the current ~1000
+  weights; the 6.1.1 structural additions enlarge the active set, so target
+  **~4–6M** train positions this cycle and re-check per-bucket loss on the
+  newly-activated terms.
+- **(Optional) A/B a Stockfish-WDL labelled set (Path B).** The strongest
+  classical evals (Ethereal, classical Berserk) distilled a strong engine's
+  judgment. `import_beast.py` supports it; needs an SF binary. One SPRT/gauntlet
+  comparison vs the self-play-labelled refit — keep whichever transfers.
+
+#### 6.1.1 — Ride-along eval-structure (build seeded-inert, bench-identical)
+
+Build the structure here so the same 6.1.2 refit fits it — **do NOT do any of
+these as separate pre-Phase-5 mini-fits.** All are source-verified, cheap, and
+well-precedented; each seeds to a bench-identical no-op so the structure lands
+*without games*, then the joint refit fits it (see §6.0 for ranking):
+
+1. **Fold pawn shelter/storm into the king-danger input** (SF-style). Today added
+   *linearly* (`eval_king_safety`) and the Phase-4 fit drove
+   `storm_file_weight`/`storm_adjacent_weight`/`shelter_missing_*` to **0** — a
+   linear term cannot capture that a stormed/exposed king is dangerous *in
+   combination* with piece pressure (the `danger²` nonlinearity). Route a
+   shelter/storm contribution into the `danger` accumulator (the eval already
+   reserves an input slot for it); seed for an identical bench, let the refit fit
+   it. **The most likely place to recover real Elo from a term Rarog already
+   computes but currently scores at 0.**
+2. **Reshape the Space term — it is currently dead.** `space_weight` and
+   `space_piece_mg` both fit to **0** in Phase 4; the present shape (empty
+   centre-file squares on ranks 2–4) carries no signal. Replace with the SF shape
+   — *safe* squares behind own pawns over the centre files, weighted by piece
+   count, with an extra for a blocked/closed centre — seed 0 (bench-identical),
+   fit in 6.1.2. A working space term is standard in every top HCE and is missing
+   in practice here.
+3. **Passed-pawn whole-path weighting.** `eval_passed_pawn_advance` scores only
+   the *immediate* stop square (free/safe). Extend to the **full path to
+   promotion**: all path squares empty (free path), all defended (safe path), any
+   attacked/blocked (hindered) — SF/Ethereal weight passers this way. New
+   per-rank weights seeded 0, fit in 6.1.2.
+4. **Activate the §3.12 deferred trio** (bishop x-ray on pawns, R+Q/B+Q battery,
+   slider-on-queen) — seed inert, let the refit decide. Lowest expected value;
+   include only if cheap.
+
+#### 6.1.2 — One joint refit + one SPRT (no duplicate fitting)
+
+On the new data, run a **single low-lr joint fit** of the whole activated eval
+(the `all47` group, the three sparse pairs still frozen) **plus** the king-safety
+`--tune-kingsafety` re-eval path (which also fits the new shelter/storm danger
+input from 6.1.1 item 1), bake, then **one SPRT** vs the head and the §11
+gauntlet. This is the only fitting in the cycle — every 6.1.1 item rides it.
+Cost: datagen < 1–2 h + a minutes-long fit + one SPRT.
+
+- **Expected:** **+10–40 Elo** for the first refresh (the 6.1.1 structural items
   included), less for any subsequent one (it is a correction, not a
   re-discovery). Strong HCE evals do 1–3 such iterations; past that the curve
   flattens and **NNUE (§14), not more HCE data, is the next lever** — see §6.0
@@ -3612,15 +3702,16 @@ material — the work itself is sequenced in Phases 3–5. Verdict key: **Mature
 | Material values + tapered phase | 12-14, 367 | PeSTO, standard 24-phase taper | **Mature** → tune 4.6 |
 | PSTs (mg/eg, 6×64) | 17-78 | PeSTO, never refit | **Mature shape** → tune 4.6 |
 | Pawn cache + whole-eval cache | 273-330, 385-399 | Two-level cache, correct | **Mature** |
-| Passed pawns (rank table + supported/free/safe-path) | 417-455 | Good coverage | **Expand** → 3.8 (blocked-passer, attacked-path) |
+| Passed pawns (rank table + supported/free/safe-path) | 417-455 | Good coverage; free/safe-stop scores only the *immediate* stop square | **Expand** → 3.8 (blocked-passer); **whole-path weighting** → 6.1.1 item 3 |
 | Pawn structure (doubled/isolated/backward/connected) | 457-482 | Connected is flat `(7,5)` | **Upgrade** → 3.8 (rank-scaled, levers) |
 | Bishop pair | 520-523 | Flat `(30,50)` | **Expand** → 3.10 (scale by pawns) |
 | Rook files / 7th / behind passer | 525-542, 732-783 | Solid | **Mature** → tune 4.4 |
 | Knight outpost | 544-554 | Knights only | **Expand** → 3.10 (bishop outposts) |
 | Mobility | 557-566, 878-898 | Linear, tiny weights, loose area | **Upgrade** → 3.7 / 4.3 |
 | Pawn threats + hanging | 568-586, 785-812 | Pawn-only threats; flat hanging | **Rewrite** → 3.6 / 4.2 |
-| King safety (units→SAFETY[16]) + shelter + storm | 634-730 | Capped 118 cp; no safe-checks/weak-ring/relief | **Rewrite** → 3.5 / 4.1 |
-| Space | 619-632 | Minimal centre-files term | **Expand** → 3.10 / 4.4 |
+| King safety (units→SAFETY[16]) + shelter + storm | 634-730 | Capped 118 cp; no safe-checks/weak-ring/relief | **Rewrite** → 3.5 / 4.1 (done); shelter/storm still *linear*, fit to 0 → fold into danger 6.1.1 item 1 |
+| Space | 619-632 | Minimal centre-files term; **fit to 0 in Phase 4 (dead in practice)** | **Reshape** (SF safe-squares×piece-count) → 6.1.1 item 2 |
+| Contempt / draw value | (none) | Draws score a hard 0; no contempt → no incentive to avoid early draws vs weaker/drawish foes | **Build** → Phase 5 (UCI option, gauntlet-validated) |
 | Passed-pawn king proximity | 814-829 | Present | **Mature** → tune 4.4 |
 | Trapped bishop | 831-843 | Bishop only | **Expand** → 3.10 (trapped rook) |
 | Mop-up / drive-to-corner | 599-616 | Generic `|eval|>200` term | **Upgrade** → 3.11 (KBNK correct corner) |
@@ -3650,6 +3741,22 @@ material — the work itself is sequenced in Phases 3–5. Verdict key: **Mature
 history-aging removal (Phase 5). The eval column has **four Rewrites** and several
 Upgrades. That asymmetry is the whole story — it is why Phase 4 (eval fit) is the
 multiplier and Phase 5 (search) is the +20–50 tail.
+
+### 16.3 Tuning-data quality (Phase-4 2.19M set audit, 2026-06-30)
+
+Audit of `tools/texel/data/` that drives the §6.1.0 pipeline upgrades. The
+*methodology* is sound — dedup by first-4 FEN fields, holdout split by game (no
+leakage), result balance healthy (≈35% win / 35% draw / 30% loss, the win>loss
+gap is just first-move advantage). The gaps are in *distribution* and *label
+noise*, not correctness:
+
+| Property | Measured | Verdict → where |
+|---|---|---|
+| Size | 2,190,548 train / 116,112 holdout | OK now; **grow to ~4–6M** when 6.1.1 enlarges the feature set → 6.1.0 |
+| Phase mix | opening **10.1%** / middlegame 41.8% / endgame **48.1%** (avg 12.4 pieces; ≤8 pieces = 27.7%; 25–32 pieces = **2.0%**) | **Rebalance** (endgame-heavy, opening near-absent) → 6.1.0 |
+| Quiet filter | only rejects capture/promo *played move* + in-check; admits positions with a capture *available* | **Add true-quiet filter** → 6.1.0 |
+| Labels | pure self-play WDL, single type, pre-Phase-4 head, 8000/5000 nodes | **Blended labels + deeper/stronger datagen** → 6.1.0 |
+| Opening source | Beast pool seed book (diverse, avg 21 pieces) but first 16 plies skipped | **Opening-rich book** (startpos + shallow openings) → 6.1.0 |
 
 Sources for the reference ladder and term-value calibration:
 [Stockfish (Wikipedia)](https://en.wikipedia.org/wiki/Stockfish_(chess)),

@@ -68,7 +68,7 @@
     "SingularBetaMult": {
         "value": 4,
         "min_value": 1,
-        "max_value": 6,
+        "max_value": 8,
         "step": 1
     },
     "LmpCountBase": {
