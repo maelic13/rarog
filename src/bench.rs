@@ -15,7 +15,7 @@ pub const BENCH_FENS: [&str; 40] = [
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
     "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/p1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
     "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",
     "8/pp2k3/8/2p5/2P5/1P2K3/P7/8 w - - 0 1",
     "r1bq1r2/pp2n3/4N2k/3pPppP/1b1n2Q1/2N5/PP3PP1/R1B1K2R w KQ g6 0 20",
@@ -54,3 +54,23 @@ pub const BENCH_FENS: [&str; 40] = [
     "1Q4R1/5k2/4rpp1/3K4/8/7p/8/8 b - - 2 9",
     "1R6/8/4r3/6P1/1pk1b2P/8/3K4/8 b - - 0 11",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::BENCH_FENS;
+    use crate::board::Board;
+
+    // Guards against corrupt bench FENs (a copy-paste typo once put 9 black
+    // pawns on position 4, silently searched until Basilisk's stricter parser
+    // flagged it). `from_fen` now rejects illegal material, so this catches it.
+    #[test]
+    fn all_bench_positions_are_legal() {
+        for (i, fen) in BENCH_FENS.iter().enumerate() {
+            assert!(
+                Board::from_fen(fen).is_ok(),
+                "bench position {} is illegal: {fen}",
+                i + 1
+            );
+        }
+    }
+}

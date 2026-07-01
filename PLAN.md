@@ -23,7 +23,7 @@ states the sequencing principle that the whole program depends on.
 |---|---|
 | Branch | `development` (targets the 2.3.0 release; off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
 | Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §11). |
-| Current accepted head | **PHASE 5.1 pruning group ACCEPTED** — p5-pruning vs Pst47/phase47 head **+12.07 ± 5.33 Elo (nElo +18.35), LOS 100%, H1, 7,058 games** (`[0,3]`, tc=3+0.03; 1 timeout/7058, negligible). Head = `rarog-phase5-pruning-pext-pgo.exe`, **new 40-pos harness `bench = 13,408,849, geomean EBF 2.526`** (old 16-pos harness read `4,553,939`). Prior head was `rarog-phase47-polish-pext-pgo.exe` (v2.2.0; Phase 4 staged ≈+316 self-play, external gauntlet +240 real Elo). Subsequent Phase 5 group SPRTs gate against this p5-pruning head. |
+| Current accepted head | **PHASE 5.1 pruning group ACCEPTED** — p5-pruning vs Pst47/phase47 head **+12.07 ± 5.33 Elo (nElo +18.35), LOS 100%, H1, 7,058 games** (`[0,3]`, tc=3+0.03; 1 timeout/7058, negligible). Head = `rarog-phase5-pruning-pext-pgo.exe`, **new 40-pos harness `bench = 13,541,282, geomean EBF 2.548`** (current source, after the position-4 illegal-FEN fix; the head binary predates it and reports `13,408,849`; old 16-pos harness read `4,553,939`). Prior head was `rarog-phase47-polish-pext-pgo.exe` (v2.2.0; Phase 4 staged ≈+316 self-play, external gauntlet +240 real Elo). Subsequent Phase 5 group SPRTs gate against this p5-pruning head. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
 | Next implementation step | **Phase 5 step 1, IN PROGRESS — pruning group SPSA done, awaiting its SPRT.** Prep (all wiring) complete: ceilings widened `[0,60]→[0,120]`; `ProbCutMargin` `[60,400]`, `FutilityImprovingDir` 0/1 A/B, `LazyMargin` `[200,2000]`, and the 7-param ×10000 TM group all exposed (tune-gated); configs + `setup_spsa.ps1` groups + SPSA README done. **Pruning SPSA (2026-06-29): tc=3+0.03, 2,482 iters / 79,424 games**, candidate baked into `SearchParams::default()` (`FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff 191→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff 81→83`, `SeePruningMax 811→804`, `AspirationDelta 31→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`). **`SingularBetaMult` stayed pinned at its `[1,6]` ceiling — the `[1,8]` widen never loaded on the resume, so `6` was not tested against `7–8`; baked at `6` (conservative) and flagged as an open micro-item to re-poke.** **Pruning SPRT ACCEPTED (+12.07 ± 5.33 Elo, H1, 7,058 games)** — kept, head = `rarog-phase5-pruning-pext-pgo.exe`, bench `4,553,939`. (Bench proved a chaotic fingerprint, not strength: the sub-1-Elo `2,461↔2,482` param delta swings it `3,956,393↔4,553,939`, driven by ±1 changes to `FutilityBase`/`SeePruningCoeff` reshaping the bushiest bench positions — see §9 and the guide's bench caveat.) **Next action:** run the remaining SPSA groups against the p5-pruning head, one at a time — `lmr`, then `futility`, `probcut`, `tm` — plus the `LazyMargin` widen+`[-3,3]` safety check and the `FutilityImprovingDir` A/B. **Backlog (user-requested):** a bench-harness deep-dive to make the fingerprint more stable/informative (§9 step 1 note). |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) → **Phase 6 (§10)** *non-NNUE ceiling: eval-refresh cycles + structural refinements* (optional, evidence-driven) |
@@ -2893,16 +2893,32 @@ and the report now prints, from the same run, a per-position **EBF**
 (`nodes^(1/depth)`) plus a summary **geomean EBF**, **median nodes**, and
 **top-position share %**.
 
-**Key finding — more positions did *not* stabilise the total; the metric did.**
-On the 40-position suite the *total* still swings hugely with tiny params
-(2482 → `13,408,849`; 2461 → `20,286,875`, +51 %, because one position explodes
-to 38.5 % of nodes), but the **geomean EBF is robust: `2.526` vs `2.553` (~1 %)**
-— a geometric mean over 40 positions is immune to one outlier blowing up.
-Conclusion, now codified in the harness and the guide: **treat the node total
-strictly as a change-detector fingerprint (never a magnitude to compare); track
-the geomean EBF for the selectivity trend.** New-harness fingerprint of the
-current head (p5-pruning) = **`13,408,849`, geomean EBF `2.526`** (old-harness
-`4,553,939`; pre-2026-07-01 fingerprints are 16-position and not comparable).
+**Illegal-position fix (2026-07-01) — corrected the numbers above.** Curated
+position 4 was a copy-paste typo — `p1NP1N2` put a **black** pawn on a3, giving
+Black **9 pawns** (a corruption of Basilisk's legal `P1NP1N2`, a white pawn).
+Rarog's `from_fen` validated kings/back-rank-pawns/adjacency/checks but **never
+counted pawns**, so it silently searched the nonsense board; Basilisk's stricter
+`set_fen` rejected it (which is how it surfaced, porting the suite). Fixed the
+FEN in `src/bench.rs` and `tests/eval_invariants.rs` (`board_correctness.rs`
+already had the legal one), and **added pawn-count + promoted-piece validation to
+`Board::validate_position`, mirroring Basilisk** — future corrupt FENs are now
+rejected, not searched. **Play is unaffected** (the FEN only ever lived in the
+bench/test suites, never in games), so no accepted result changes; only the
+fingerprint re-baselines.
+
+**Key finding — the metric is what's robust; the total is a fingerprint.** On
+the corrected 40-position suite the *total* swings ~4 % across the
+SPSA-indistinguishable pruning sets (2482 → `13,541,282`; 2461 → `13,021,387`)
+and the **geomean EBF is tighter still: `2.548` vs `2.531` (~0.7 %)**. (The far
+larger ~51 % swing I first measured was itself an artifact of the illegal
+position 4 — under some params the 9-pawn board exploded to 38.5 % of nodes;
+removing it both fixed the bench and calmed the total.) Conclusion, codified in
+the harness and guide: **treat the node total strictly as a change-detector
+fingerprint (never a magnitude to compare); track the geomean EBF for the
+selectivity trend.** Current-source fingerprint of the head (p5-pruning) =
+**`13,541,282`, geomean EBF `2.548`** (the p5-pruning *binary*, built before this
+fix, still reports the pre-fix `13,408,849`; old 16-pos harness read `4,553,939`;
+pre-2026-07-01 fingerprints are not comparable).
 
 **Speed / NPS — best-of-N (`bench <depth> <repeats>`, DONE 2026-07-01).** A
 single bench run's NPS carries pure machine noise (measured **43 % run-to-run

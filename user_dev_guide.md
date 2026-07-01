@@ -16,7 +16,7 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 | Branch | `development` (targets the 2.3.0 release; the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **PHASE 5.1 pruning group ACCEPTED** (`rarog-phase5-pruning-pext-pgo.exe`, **+12.07 Elo H1** vs the phase47 head). Bench (new 40-pos harness): **Nodes 13,408,849, Geomean EBF 2.526** (old 16-pos harness read 4,553,939). Released head is still v2.2.0 `rarog-phase47-polish-pext-pgo.exe`. On branch `development`; remaining Phase 5 groups gate against the p5-pruning head. |
+| Current head | **PHASE 5.1 pruning group ACCEPTED** (`rarog-phase5-pruning-pext-pgo.exe`, **+12.07 Elo H1** vs the phase47 head). Bench (40-pos harness, current source): **Nodes 13,541,282, Geomean EBF 2.548** (after the position-4 illegal-FEN fix; head binary predates it → reports 13,408,849; old 16-pos harness read 4,553,939). Released head is still v2.2.0 `rarog-phase47-polish-pext-pgo.exe`. On branch `development`; remaining Phase 5 groups gate against the p5-pruning head. |
 | Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000.** ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
 | Immediate next work | **Phase 5.1 pruning group ACCEPTED (+12.07 Elo).** Next: run the remaining SPSA groups vs the p5-pruning head, one at a time (start `lmr`). Prep for the whole wave is done: **Phase 5 step 1 prep COMPLETE (code-only, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings to `[0,120]`; exposed `ProbCutMargin` `[60,400]`, the **futility-direction A/B** (`FutilityImprovingDir` 0/1), the **`LazyMargin`** option `[200,2000]`, and the **7-param TM group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled). New `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench still `4,747,104` (no-op), 159/159 tests pass, fmt clean, tune-only options hidden in release. **Next: you run the SPSA/A-B/SPRT gates** — see "Next Commands" below. |
 | **Release status** | **v2.2.0 published.** Branch `v2.3.0` targets the next release, **2.3.0**, after Phase 5 closes. See "Releasing". |
@@ -362,11 +362,11 @@ obviously flawed.
 
 For pure refactors (the number must be **identical** to prove behaviour-preserving):
 
-> "bench 13 = 13,408,849 nodes, geomean EBF 2.526."  (p5-pruning head, 40-pos harness)
+> "bench 13 = 13,541,282 nodes, geomean EBF 2.548."  (p5-pruning source, 40-pos harness)
 
 For tuned candidates (both numbers move; report both, but see the caveat below):
 
-> "bench 13 = 20,286,875 nodes, geomean EBF 2.553."
+> "bench 13 = 13,021,387 nodes, geomean EBF 2.531."
 
 A changed bench fingerprint is expected after tuning or real search changes.
 It is a behavior fingerprint, not an Elo score.
@@ -375,17 +375,17 @@ It is a behavior fingerprint, not an Elo score.
 > **40 positions** and prints, besides the node total, a **Geomean EBF**, median
 > nodes, and top-position share. Read them like this:
 > - **`Nodes searched` = a change-detector fingerprint ONLY.** It is
->   hypersensitive and non-monotonic to ±1 threshold changes — the sub-1-Elo
->   Phase-5.1 `2,461↔2,482` param delta swings it **13,408,849 ↔ 20,286,875
->   (+51%)** because one position can explode to ~38% of all nodes. **Never
+>   non-monotonic w.r.t. tiny threshold changes — the sub-1-Elo Phase-5.1
+>   `2,461↔2,482` param delta swings it **13,541,282 ↔ 13,021,387 (~4%)**. **Never
 >   compare its magnitude across parameter changes; never read speed or strength
 >   from it.** Use it only to confirm a "behaviour-preserving" refactor left the
->   number *identical*, or to notice that a change *did* alter search.
+>   number *identical*, or to notice that a change *did* alter search. (An
+>   earlier ~51% swing was an artifact of an illegal 9-pawn position, now fixed.)
 > - **`Geomean EBF` = the robust metric to actually track** (selectivity /
->   search efficiency). It barely moved across that same delta (**2.526 ↔
->   2.553, ~1%**) because a geometric mean over 40 positions is immune to one
->   outlier. Lower is more selective (SF ≈ 1.8–2.0; Rarog head ≈ 2.526). This
->   replaces the old manual 3-position EBF protocol.
+>   search efficiency). It moves even less across that delta (**2.548 ↔ 2.531,
+>   ~0.7%**) because a geometric mean over 40 positions is immune to one outlier.
+>   Lower is more selective (SF ≈ 1.8–2.0; Rarog head ≈ 2.548). This replaces the
+>   old manual 3-position EBF protocol.
 > - **Only the SPRT decides strength.** The pruning group that swung the old
 >   bench 15% was +12.07 Elo — the games, not the fingerprint, told the truth.
 > - **Speed / NPS — always best-of-N.** A single run's NPS is dominated by
@@ -396,9 +396,11 @@ It is a behavior fingerprint, not an Elo score.
 >   OS/thermal interference = the repeatable number. Compare binary A vs B by
 >   their **best-of-N** NPS, never single runs.
 >
-> New-harness baseline for the current head (p5-pruning): **Nodes 13,408,849,
-> Geomean EBF 2.526**. Pre-2026-07-01 fingerprints (e.g. 4,747,104, 4,553,939)
-> are the old 16-position harness and are **not comparable** to new-harness runs.
+> New-harness baseline for the head (p5-pruning, current source after the
+> position-4 fix): **Nodes 13,541,282, Geomean EBF 2.548**. (The p5-pruning
+> *binary* predates the fix and reports 13,408,849.) Pre-2026-07-01 fingerprints
+> (e.g. 4,747,104, 4,553,939) are the old 16-position harness and are **not
+> comparable** to new-harness runs.
 
 ### Texel / Tuner Result (Phase 4)
 

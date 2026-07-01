@@ -1472,6 +1472,29 @@ impl Board {
             return Err("FEN must contain exactly one king for each side".to_string());
         }
 
+        // Pawn count and promoted-piece consistency (mirrors Basilisk's
+        // try_set_fen). Rarog's parser already rejects back-rank pawns, bad king
+        // counts, adjacency, and side-not-to-move-in-check, but did not count
+        // pawns — a corrupt bench FEN with 9 pawns was silently searched until
+        // Basilisk's stricter set_fen flagged it (2026-07-01).
+        for color in [Color::White, Color::Black] {
+            let pawns = self.pieces(color, Piece::Pawn).count() as i32;
+            if pawns > 8 {
+                return Err(format!("{color:?} has more than 8 pawns"));
+            }
+            // A side can have at most (8 - pawns) promoted pieces: each promotion
+            // consumes one of its pawns.
+            let promoted = (self.pieces(color, Piece::Knight).count() as i32 - 2).max(0)
+                + (self.pieces(color, Piece::Bishop).count() as i32 - 2).max(0)
+                + (self.pieces(color, Piece::Rook).count() as i32 - 2).max(0)
+                + (self.pieces(color, Piece::Queen).count() as i32 - 1).max(0);
+            if promoted > 8 - pawns {
+                return Err(format!(
+                    "{color:?} has more promoted pieces than missing pawns allow"
+                ));
+            }
+        }
+
         let white_king_sq = white_king.lsb();
         let black_king_sq = black_king.lsb();
         if white_king_sq.chebyshev_distance(black_king_sq) <= 1 {
