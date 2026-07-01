@@ -376,6 +376,22 @@ fn run_training_bench(binary: &Path, raw_dir: &Path, depth: u16) -> Result<()> {
         match line_rx.recv_timeout(remaining.min(Duration::from_millis(250))) {
             Ok(Ok(line)) => {
                 println_flush(format_args!("{line}"));
+                // Mirror Basilisk's PGO guard: a corrupt/illegal bench position
+                // must never silently train the profile. `bench` emits
+                // "failed to parse" for any position `from_fen` rejects (bad pawn
+                // count, back-rank pawns, etc.) and then aborts without a summary
+                // — fail fast here rather than hanging until the timeout.
+                const ILLEGAL_MARKERS: [&str; 3] = [
+                    "failed to parse",
+                    "more than 8 pawns",
+                    "not legal on the first or eighth rank",
+                ];
+                if ILLEGAL_MARKERS.iter().any(|marker| line.contains(marker)) {
+                    kill_child(&mut child);
+                    return Err(format!(
+                        "PGO training hit an illegal bench position: {line}"
+                    ));
+                }
                 if line.starts_with("Nodes/second") {
                     saw_summary = true;
                     break;
