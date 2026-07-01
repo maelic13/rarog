@@ -135,11 +135,20 @@ impl UciProtocol {
             .first()
             .and_then(|depth| depth.parse::<u16>().ok())
             .unwrap_or(DEFAULT_BENCH_DEPTH);
+        // Optional second arg: repeat the whole suite N times for a best-of-N
+        // NPS read (`bench <depth> <repeats>`). The fingerprint is identical
+        // every repeat; only NPS varies (machine noise). Default 1.
+        let repeats = args
+            .get(1)
+            .and_then(|r| r.parse::<u16>().ok())
+            .unwrap_or(1)
+            .max(1);
 
         let epoch = self.control.start_replacing_search();
         self.commands.push(EngineCommand::stop(epoch));
         self.commands.push(EngineCommand::bench(
             depth,
+            repeats,
             self.search_options.clone(),
             epoch,
         ));

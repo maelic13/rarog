@@ -2904,6 +2904,25 @@ the geomean EBF for the selectivity trend.** New-harness fingerprint of the
 current head (p5-pruning) = **`13,408,849`, geomean EBF `2.526`** (old-harness
 `4,553,939`; pre-2026-07-01 fingerprints are 16-position and not comparable).
 
+**Speed / NPS — best-of-N (`bench <depth> <repeats>`, DONE 2026-07-01).** A
+single bench run's NPS carries pure machine noise (measured **43 % run-to-run
+spread** on the identical deterministic workload). `bench <depth> <repeats>`
+(e.g. `bench 13 5`) reruns the suite N times with a clean TT each run (node
+count identical every run) and reports **best NPS** (+ median/min). Use best-of-N
+for every speed comparison in the §9 speed pass — never a single run. PGO uses
+`repeats=1` (one profiling pass is enough; the summary keeps a `Nodes/second`
+line as xtask's completion marker).
+
+**Bench depth — kept fixed at 13, no auto-determination (decided 2026-07-01).**
+Considered making the default/PGO depth adaptive to machine speed; **rejected** —
+no top engine does this (SF/Ethereal/Berserk hardcode the bench depth), and an
+adaptive depth would make the PGO *profile machine-dependent → non-reproducible
+builds*. The fixed depth is safe: 40 positions × depth 13 ≈ 13.4 M nodes ≈ 5 s
+here and ≤ ~45 s even at 0.3 M nps — far under the 20-min `PGO_TRAINING_TIMEOUT`
+and negligible beside a PGO build's two multi-minute LTO compiles. `xtask
+--bench-depth <n>` already overrides it for anyone who wants a lighter/heavier
+profiling run.
+
 ### Steps
 
 1. **The one search-constant SPSA wave** at the **post-Phase-4 head (eval is
@@ -3069,9 +3088,10 @@ current head (p5-pruning) = **`13,408,849`, geomean EBF `2.526`** (old-harness
      expensive draw checks; scan the move picker with pointers, skip self-swaps.
    - The Phase 3 **attack-map substrate** already removes the per-square attack
      recompute in eval (the largest eval-side cost) — its nps gain lands earlier.
-   Each change: bench fingerprint unchanged → ≥5 bench runs → keep if ≥1%
-   faster; one simplify-bounds SPRT (`[-3,0]`) over the batch. Target: close the
-   gap to Basilisk (≥2.7 M nps native).
+   Each change: bench fingerprint unchanged → compare **best-of-N NPS**
+   (`bench 13 5` on each binary, take the best-NPS line) → keep if ≥1% faster;
+   one simplify-bounds SPRT (`[-3,0]`) over the batch. Target: close the gap to
+   Basilisk (≥2.7 M nps native).
 5. **Modern refinements menu (Reckless-derived)**, one at a time, SPRT each
    (`[0,3]`). Reference implementations are in the local checkouts — read
    the source; adapt the *idea*, do not transplant NNUE-scaled constants.

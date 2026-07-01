@@ -326,8 +326,9 @@ fn engine_command_constructors_set_expected_flags() {
     assert!(quit.stop);
     assert_eq!(quit.epoch, 13);
 
-    let bench = EngineCommand::bench(7, SearchOptions::default(), 14);
+    let bench = EngineCommand::bench(7, 3, SearchOptions::default(), 14);
     assert_eq!(bench.bench_depth, Some(7));
+    assert_eq!(bench.bench_repeats, 3);
     assert_eq!(bench.epoch, 14);
 
     let configure = EngineCommand::configure(SearchOptions::default());

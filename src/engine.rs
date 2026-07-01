@@ -42,7 +42,12 @@ impl Engine {
                 continue;
             }
             if let Some(depth) = command.bench_depth {
-                if self.run_bench(depth, &command.search_options, command.epoch) == SearchExit::Quit
+                if self.run_bench(
+                    depth,
+                    command.bench_repeats,
+                    &command.search_options,
+                    command.epoch,
+                ) == SearchExit::Quit
                 {
                     break;
                 }
@@ -131,125 +136,181 @@ impl Engine {
         }
     }
 
-    fn run_bench(&mut self, depth: u16, base_options: &SearchOptions, epoch: u64) -> SearchExit {
+    fn run_bench(
+        &mut self,
+        depth: u16,
+        repeats: u16,
+        base_options: &SearchOptions,
+        epoch: u64,
+    ) -> SearchExit {
         if epoch != 0 && self.control.current_epoch() != epoch {
             return SearchExit::Stop;
         }
         if !self.control.prepare_search(epoch) {
             return SearchExit::Stop;
         }
-        let mut total_nodes = 0u64;
-        let mut total_ms = 0u128;
-        let mut per_position_nodes: Vec<u64> = Vec::with_capacity(BENCH_FENS.len());
-        // Geometric-mean EBF accumulator: sum of ln(nodes)/depth over positions
-        // that reached depth >= 1. Geometric (not arithmetic) so one bushy
-        // position cannot dominate the selectivity read the way it dominates the
-        // node total.
-        let mut ln_ebf_sum = 0f64;
-        let mut ebf_count = 0usize;
+        let repeats = repeats.max(1);
+        // Per-position detail is only printed for a single run; multi-run mode
+        // (best-of-N NPS) prints one compact line per repeat instead.
+        let detailed = repeats == 1;
+        // Fingerprint / EBF / concentration are deterministic across repeats, so
+        // they are captured from the first run; one NPS sample is kept per run.
+        let mut fingerprint_nodes = 0u64;
+        let mut geomean_ebf = 0f64;
+        let mut median_nodes = 0u64;
+        let mut max_nodes = 0u64;
+        let mut total_ms_first = 0u128;
+        let mut nps_samples: Vec<u128> = Vec::with_capacity(repeats as usize);
 
         println!();
-        for (index, fen) in BENCH_FENS.iter().enumerate() {
-            if epoch != 0 && self.control.current_epoch() != epoch {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Stop;
-            }
-            let board = match Board::from_fen(fen) {
-                Ok(board) => board,
-                Err(err) => {
-                    println!(
-                        "info string bench position {} failed to parse: {}",
-                        index + 1,
-                        err
-                    );
+        for repeat in 0..repeats {
+            // Clean, identical starting state each repeat (TT + histories + eval
+            // caches) so every run is the same deterministic workload — the only
+            // NPS variation is machine noise — and the fingerprint is independent
+            // of any prior engine state.
+            self.searcher.new_game();
+            let mut total_nodes = 0u64;
+            let mut total_ms = 0u128;
+            let mut per_position_nodes: Vec<u64> = Vec::with_capacity(BENCH_FENS.len());
+            let mut ln_ebf_sum = 0f64;
+            let mut ebf_count = 0usize;
+
+            for (index, fen) in BENCH_FENS.iter().enumerate() {
+                if epoch != 0 && self.control.current_epoch() != epoch {
                     self.control.finish_search_if_current(epoch);
                     return SearchExit::Stop;
                 }
-            };
-            let mut options = SearchOptions::default();
-            options.position.board = board;
-            options.limits.depth = depth as f64;
-            options.engine = base_options.engine.clone();
+                let board = match Board::from_fen(fen) {
+                    Ok(board) => board,
+                    Err(err) => {
+                        println!(
+                            "info string bench position {} failed to parse: {}",
+                            index + 1,
+                            err
+                        );
+                        self.control.finish_search_if_current(epoch);
+                        return SearchExit::Stop;
+                    }
+                };
+                let mut options = SearchOptions::default();
+                options.position.board = board;
+                options.limits.depth = depth as f64;
+                options.engine = base_options.engine.clone();
 
-            let result = self.search(options, false, epoch);
-            total_nodes += result.nodes;
-            total_ms += result.elapsed_ms;
-            per_position_nodes.push(result.nodes);
-            let nps = if result.elapsed_ms > 0 {
-                result.nodes as u128 * 1000 / result.elapsed_ms
-            } else {
-                result.nodes as u128
-            };
-            // Per-position effective branching factor: nodes^(1/depth). Skip
-            // positions solved before depth 1 (mates / trivial draws) so they
-            // don't distort the geometric mean.
-            let ebf = if result.depth >= 1 && result.nodes >= 1 {
-                let ebf = (result.nodes as f64).powf(1.0 / result.depth as f64);
-                ln_ebf_sum += ebf.ln();
-                ebf_count += 1;
-                ebf
-            } else {
-                0.0
-            };
+                let result = self.search(options, false, epoch);
+                total_nodes += result.nodes;
+                total_ms += result.elapsed_ms;
+                per_position_nodes.push(result.nodes);
+                // Per-position effective branching factor: nodes^(1/depth). Skip
+                // positions solved before depth 1 (mates / trivial draws) so they
+                // don't distort the geometric mean.
+                let ebf = if result.depth >= 1 && result.nodes >= 1 {
+                    let ebf = (result.nodes as f64).powf(1.0 / result.depth as f64);
+                    ln_ebf_sum += ebf.ln();
+                    ebf_count += 1;
+                    ebf
+                } else {
+                    0.0
+                };
 
-            println!(
-                "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
-                index + 1,
-                BENCH_FENS.len(),
-                result.depth,
-                result.score,
-                result.nodes,
-                ebf,
-                result.elapsed_ms,
-                nps
-            );
-            flush_stdout();
+                if detailed {
+                    let nps = if result.elapsed_ms > 0 {
+                        result.nodes as u128 * 1000 / result.elapsed_ms
+                    } else {
+                        result.nodes as u128
+                    };
+                    println!(
+                        "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
+                        index + 1,
+                        BENCH_FENS.len(),
+                        result.depth,
+                        result.score,
+                        result.nodes,
+                        ebf,
+                        result.elapsed_ms,
+                        nps
+                    );
+                    flush_stdout();
+                }
 
-            if result.exit == SearchExit::Quit {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Quit;
+                if result.exit == SearchExit::Quit {
+                    self.control.finish_search_if_current(epoch);
+                    return SearchExit::Quit;
+                }
+                if epoch != 0 && self.control.current_epoch() != epoch {
+                    self.control.finish_search_if_current(epoch);
+                    return SearchExit::Stop;
+                }
             }
-            if epoch != 0 && self.control.current_epoch() != epoch {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Stop;
+
+            let run_nps = if total_ms > 0 {
+                total_nodes as u128 * 1000 / total_ms
+            } else {
+                total_nodes as u128
+            };
+            nps_samples.push(run_nps);
+
+            if repeat == 0 {
+                fingerprint_nodes = total_nodes;
+                total_ms_first = total_ms;
+                geomean_ebf = if ebf_count > 0 {
+                    (ln_ebf_sum / ebf_count as f64).exp()
+                } else {
+                    0.0
+                };
+                let mut sorted = per_position_nodes.clone();
+                sorted.sort_unstable();
+                median_nodes = sorted.get(sorted.len() / 2).copied().unwrap_or(0);
+                max_nodes = per_position_nodes.iter().copied().max().unwrap_or(0);
+            }
+            if !detailed {
+                println!(
+                    "run {}/{}  nodes {}  time {}ms  nps {}",
+                    repeat + 1,
+                    repeats,
+                    total_nodes,
+                    total_ms,
+                    run_nps
+                );
+                flush_stdout();
             }
         }
 
-        let total_nps = if total_ms > 0 {
-            total_nodes as u128 * 1000 / total_ms
-        } else {
-            total_nodes as u128
-        };
         // Robust diagnostics so the node total is read as a fingerprint, not a
         // strength/speed proxy (it is hypersensitive and non-monotonic to tiny
         // threshold changes — see PLAN.md §9). Geomean EBF is the selectivity
         // trend; median + top-share expose how concentrated the total is.
-        let geomean_ebf = if ebf_count > 0 {
-            (ln_ebf_sum / ebf_count as f64).exp()
+        let top_share = if fingerprint_nodes > 0 {
+            max_nodes as f64 * 100.0 / fingerprint_nodes as f64
         } else {
             0.0
         };
-        let median_nodes = {
-            let mut sorted = per_position_nodes.clone();
-            sorted.sort_unstable();
-            sorted.get(sorted.len() / 2).copied().unwrap_or(0)
-        };
-        let max_nodes = per_position_nodes.iter().copied().max().unwrap_or(0);
-        let top_share = if total_nodes > 0 {
-            max_nodes as f64 * 100.0 / total_nodes as f64
-        } else {
-            0.0
-        };
+        nps_samples.sort_unstable();
+        let best_nps = nps_samples.last().copied().unwrap_or(0);
+        let min_nps = nps_samples.first().copied().unwrap_or(0);
+        let median_nps = nps_samples.get(nps_samples.len() / 2).copied().unwrap_or(0);
+
         println!(
             "\n=========================\n\
-             Total time (ms) : {}\n\
              Nodes searched  : {}\n\
-             Nodes/second    : {}\n\
              Geomean EBF     : {:.3}\n\
              Median nodes    : {}\n\
              Top-pos share   : {:.1}%  ({} nodes)",
-            total_ms, total_nodes, total_nps, geomean_ebf, median_nodes, top_share, max_nodes
+            fingerprint_nodes, geomean_ebf, median_nodes, top_share, max_nodes
         );
+        // Keep a line beginning "Nodes/second" for the single-run case — the PGO
+        // training harness (xtask) waits for it as the completion marker.
+        if repeats == 1 {
+            println!(
+                "Total time (ms) : {}\nNodes/second    : {}",
+                total_ms_first, best_nps
+            );
+        } else {
+            println!(
+                "Nodes/second    : {}   (best of {}; median {}, min {})",
+                best_nps, repeats, median_nps, min_nps
+            );
+        }
         flush_stdout();
 
         self.control.finish_search_if_current(epoch);

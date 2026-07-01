@@ -388,6 +388,13 @@ It is a behavior fingerprint, not an Elo score.
 >   replaces the old manual 3-position EBF protocol.
 > - **Only the SPRT decides strength.** The pruning group that swung the old
 >   bench 15% was +12.07 Elo — the games, not the fingerprint, told the truth.
+> - **Speed / NPS — always best-of-N.** A single run's NPS is dominated by
+>   machine noise (measured **43% run-to-run spread** on the same deterministic
+>   workload). Use **`bench <depth> <repeats>`** — e.g. `bench 13 5` — which
+>   runs the identical suite N times (clean TT each run, so node count is
+>   identical every time) and reports **best NPS** (+ median/min). Best = least
+>   OS/thermal interference = the repeatable number. Compare binary A vs B by
+>   their **best-of-N** NPS, never single runs.
 >
 > New-harness baseline for the current head (p5-pruning): **Nodes 13,408,849,
 > Geomean EBF 2.526**. Pre-2026-07-01 fingerprints (e.g. 4,747,104, 4,553,939)
