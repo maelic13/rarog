@@ -142,21 +142,23 @@ pub struct SearchParams {
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
-            // Phase 5.1 pruning SPSA candidate (tc=3+0.03, 2,461 iters / 78,752
+            // Phase 5.1 pruning SPSA candidate (tc=3+0.03, 2,482 iters / 79,424
             // games, post-Phase-4 eval scale). Pending the [0,3] confirming SPRT.
             aspiration_delta: 30,          // was 25 → 29 → 31 → 30
-            futility_base: 61,             // was 70 → 82 → 86 → 61
+            futility_base: 60,             // was 70 → 82 → 86 → 60
             futility_not_improving: 42,    // was 20 → 51 → 49 → 42
             razoring_coeff: 193,           // was 150 → 194 → 191 → 193
             nm_depth_coeff: 10,            // was 12 → 14 → 15 → 10
-            nm_improving_bonus: 33,        // was 24 → 25 → 33
+            nm_improving_bonus: 32,        // was 24 → 25 → 32
             lmp_base: 88,                  // was 90 → 115 → 88
             lmp_not_improving: 63,         // was 25 → 53 → 57 → 63
-            quiet_hist_prune_coeff: 5_072, // was 4000 → 4372 → 4419 → 5072
-            see_pruning_coeff: 84,         // was 80 → 75 → 81 → 84
-            see_pruning_max: 808,          // was 800 → 801 → 811 → 808
-            singular_beta_mult: 6,         // was 2 → 4 → 6 (interior; ceiling widened 6→8)
-            lmp_count_base: 2,             // was 4 → 2 (unchanged this wave)
+            quiet_hist_prune_coeff: 5_069, // was 4000 → 4372 → 4419 → 5069
+            see_pruning_coeff: 83,         // was 80 → 75 → 81 → 83
+            see_pruning_max: 804,          // was 800 → 801 → 811 → 804
+            // singular_beta_mult PINNED at the [1,6] ceiling; cfg widened to [1,8]
+            // but that range did not load on the resume — re-poke later.
+            singular_beta_mult: 6, // was 2 → 4 → 6
+            lmp_count_base: 2,     // was 4 → 2 (unchanged this wave)
             // LMR adjustments — Phase 2.5.1 clock-TC SPSA candidate
             // (weather-factory tc=3+0.03, 85,792 games / 2,681 iterations).
             lmr_tt_pv_adj: 887,   // was 1024; Phase 2.4 candidate was 1110

@@ -140,18 +140,18 @@ impl SearchOptions {
         #[cfg(feature = "tune")]
         opts.extend([
             String::from("option name AspirationDelta type spin default 30 min 5 max 100"),
-            String::from("option name FutilityBase type spin default 61 min 20 max 200"),
+            String::from("option name FutilityBase type spin default 60 min 20 max 200"),
             String::from("option name FutilityNotImproving type spin default 42 min 0 max 120"),
             String::from("option name RazoringCoeff type spin default 193 min 50 max 300"),
             String::from("option name NullMoveDepthCoeff type spin default 10 min 2 max 40"),
-            String::from("option name NullMoveImprovingBonus type spin default 33 min 0 max 80"),
+            String::from("option name NullMoveImprovingBonus type spin default 32 min 0 max 80"),
             String::from("option name LmpBase type spin default 88 min 30 max 200"),
             String::from("option name LmpNotImproving type spin default 63 min 0 max 120"),
             String::from(
-                "option name QuietHistPruneCoeff type spin default 5072 min 1000 max 10000",
+                "option name QuietHistPruneCoeff type spin default 5069 min 1000 max 10000",
             ),
-            String::from("option name SeePruningCoeff type spin default 84 min 20 max 200"),
-            String::from("option name SeePruningMax type spin default 808 min 200 max 1600"),
+            String::from("option name SeePruningCoeff type spin default 83 min 20 max 200"),
+            String::from("option name SeePruningMax type spin default 804 min 200 max 1600"),
             String::from("option name SingularBetaMult type spin default 6 min 1 max 8"),
             String::from("option name LmpCountBase type spin default 2 min 1 max 12"),
             // LMR weighted adjustments (1024ths of a ply).

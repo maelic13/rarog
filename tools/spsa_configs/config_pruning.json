@@ -1,6 +1,6 @@
 {
     "FutilityBase": {
-        "value": 61,
+        "value": 60,
         "min_value": 30,
         "max_value": 150,
         "step": 10
@@ -24,7 +24,7 @@
         "step": 4
     },
     "NullMoveImprovingBonus": {
-        "value": 33,
+        "value": 32,
         "min_value": 0,
         "max_value": 60,
         "step": 8
@@ -42,19 +42,19 @@
         "step": 10
     },
     "QuietHistPruneCoeff": {
-        "value": 5072,
+        "value": 5069,
         "min_value": 1000,
         "max_value": 8000,
         "step": 400
     },
     "SeePruningCoeff": {
-        "value": 84,
+        "value": 83,
         "min_value": 30,
         "max_value": 160,
         "step": 12
     },
     "SeePruningMax": {
-        "value": 808,
+        "value": 804,
         "min_value": 200,
         "max_value": 1600,
         "step": 80

@@ -104,27 +104,31 @@ replaced by the Phase 2.5.1 clock-TC candidate above.
 
 ### config_pruning.json — Pruning / margin constants
 
-Defaults are the **Phase 5.1 pruning SPSA candidate** (tc=3+0.03, 2,461 iters /
-78,752 games at the post-Phase-4 eval scale), baked into `SearchParams::default()`
+Defaults are the **Phase 5.1 pruning SPSA candidate** (tc=3+0.03, 2,482 iters /
+79,424 games at the post-Phase-4 eval scale), baked into `SearchParams::default()`
 pending the confirming `[0,3]` SPRT. `FutilityNotImproving` / `LmpNotImproving`
-ceilings were widened `[0,60]→[0,120]` for this retune, and `SingularBetaMult`
-`6→8` after the first wave pinned it at 6 (it then held at 6 with the ceiling
-open — a genuine interior optimum).
+ceilings were widened `[0,60]→[0,120]` for this retune. `SingularBetaMult`
+**pinned at its `[1,6]` ceiling** and stayed there: the config was widened `6→8`
+in the repo, but weather-factory resumed from its own state and kept the `[1,6]`
+range, so `6` was **never actually tested against `7–8`**. It is baked at `6`
+(the tuner's best estimate, conservative) and flagged as an **open micro-item** —
+re-poke it with the `[1,8]` range loaded fresh (run `setup_spsa.ps1` without
+`-Resume`, or delete `tuner/state.json` first).
 
 | UCI option name        | Default | Range        | Step | Source in search.rs |
 |------------------------|---------|--------------|------|---------------------|
-| `FutilityBase`         | 61      | [30, 150]    | 10   | `:1003`  `(base + not_improving·coeff) · depth` |
+| `FutilityBase`         | 60      | [30, 150]    | 10   | `:1003`  `(base + not_improving·coeff) · depth` |
 | `FutilityNotImproving` | 42      | [0, 120]     | 10   | `:1003`  not-improving coefficient |
 | `RazoringCoeff`        | 193     | [60, 300]    | 20   | `:1007`  `coeff · depth` |
 | `NullMoveDepthCoeff`   | 10      | [4, 30]      | 4    | `:1012`  depth-scaled null-move margin |
-| `NullMoveImprovingBonus` | 33    | [0, 60]      | 8    | `:1012`  improving bonus |
+| `NullMoveImprovingBonus` | 32    | [0, 60]      | 8    | `:1012`  improving bonus |
 | `LmpBase`              | 88      | [40, 180]    | 14   | `:1182`  LMP margin base |
 | `LmpNotImproving`      | 63      | [0, 120]     | 10   | `:1182`  not-improving coefficient |
-| `QuietHistPruneCoeff`  | 5072    | [1000, 8000] | 400  | `:1186`  quiet-history pruning coefficient |
-| `SeePruningCoeff`      | 84      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
-| `SeePruningMax`        | 808     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
+| `QuietHistPruneCoeff`  | 5069    | [1000, 8000] | 400  | `:1186`  quiet-history pruning coefficient |
+| `SeePruningCoeff`      | 83      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
+| `SeePruningMax`        | 804     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
 | `AspirationDelta`      | 30      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
-| `SingularBetaMult`     | 6       | [1, 8]       | 1    | `:1215`  `tt_score - mult·depth` (widened 6→8; held at 6 interior) |
+| `SingularBetaMult`     | 6       | [1, 8]       | 1    | `:1215`  `tt_score - mult·depth` (pinned at old [1,6] ceiling; [1,8] not yet tested — re-poke) |
 | `LmpCountBase`         | 2       | [1, 10]      | 1    | `:2394`  base in `base + 2·d²/3` |
 
 Each parameter name **must** match a UCI `spin` option exposed in
