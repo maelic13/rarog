@@ -16,9 +16,9 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 | Branch | `development` (targets the 2.3.0 release; the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **PHASE 4 COMPLETE + GAUNTLET PASSED — v2.2.0** (`rarog-phase47-polish-pext-pgo.exe`, `bench = 4,747,104`). Now on branch `development`, **Phase 5 step 1 prep complete** (the one post-eval search SPSA wave is wired; games next). |
+| Current head | **PHASE 5.1 pruning group ACCEPTED** (`rarog-phase5-pruning-pext-pgo.exe`, `bench = 4,553,939`, **+12.07 Elo H1** vs the phase47 head). Released head is still v2.2.0 `rarog-phase47-polish-pext-pgo.exe` (4,747,104). On branch `development`; remaining Phase 5 groups gate against the p5-pruning head. |
 | Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000.** ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
-| Immediate next work | **Phase 5 step 1 prep COMPLETE (code-only, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings to `[0,120]`; exposed `ProbCutMargin` `[60,400]`, the **futility-direction A/B** (`FutilityImprovingDir` 0/1), the **`LazyMargin`** option `[200,2000]`, and the **7-param TM group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled). New `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench still `4,747,104` (no-op), 159/159 tests pass, fmt clean, tune-only options hidden in release. **Next: you run the SPSA/A-B/SPRT gates** — see "Next Commands" below. |
+| Immediate next work | **Phase 5.1 pruning group ACCEPTED (+12.07 Elo).** Next: run the remaining SPSA groups vs the p5-pruning head, one at a time (start `lmr`). Prep for the whole wave is done: **Phase 5 step 1 prep COMPLETE (code-only, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings to `[0,120]`; exposed `ProbCutMargin` `[60,400]`, the **futility-direction A/B** (`FutilityImprovingDir` 0/1), the **`LazyMargin`** option `[200,2000]`, and the **7-param TM group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled). New `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench still `4,747,104` (no-op), 159/159 tests pass, fmt clean, tune-only options hidden in release. **Next: you run the SPSA/A-B/SPRT gates** — see "Next Commands" below. |
 | **Release status** | **v2.2.0 published.** Branch `v2.3.0` targets the next release, **2.3.0**, after Phase 5 closes. See "Releasing". |
 
 ### The Program In One Table (overview · model picker · Elo)
@@ -371,6 +371,19 @@ For tuned candidates:
 A changed bench fingerprint is expected after tuning or real search changes.
 It is a behavior fingerprint, not an Elo score.
 
+> **⚠ Caveat — never read strength into the bench node count (2026-07-01).** The
+> `bench 13` suite is only **16 positions**, single-threaded, fixed depth, with a
+> persisting TT. It is **hypersensitive** to ±1 changes in search thresholds and
+> **non-monotonic**: during the Phase 5.1 pruning tune, two parameter sets that
+> SPSA could not tell apart (2,461 vs 2,482 iters, sub-1-Elo) fingerprinted
+> **3,956,393 vs 4,553,939** — a ~15% swing. Isolated to **±1** on `FutilityBase`
+> (−798k) and `SeePruningCoeff` (−971k), each *increasing* nodes when the margin
+> should prune *more*, and driven largely by the bushiest bench positions (pos 10
+> alone is ~35% of all nodes and swung ±900k). The SPRT then measured the true
+> effect (+12.07 Elo for the whole group). **Node count at fixed depth ≠ speed ≠
+> strength on this tiny sample; only the SPRT decides.** A bench-harness deep-dive
+> to make the fingerprint more stable is a tracked backlog item (`PLAN.md` §9).
+
 ### Texel / Tuner Result (Phase 4)
 
 Minimal:
@@ -681,8 +694,8 @@ Driving: Sonnet 4.6 medium; dense ports: Codex 5.5 medium / GPT-5.5 high.
 See `PLAN.md` §9.
 
 - [~] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B. **Prep DONE (2026-06-29):** ceilings widened; `ProbCutMargin`, `FutilityImprovingDir` (0/1 A/B), `LazyMargin`, and the 7-param TM group all exposed (tune-gated, ×10000 where float); configs + `setup_spsa.ps1` groups + SPSA README done. Bench prep no-op; 159/159 tests, fmt clean, options hidden in release.
-  - **Pruning group SPSA DONE (2,482 iters / 79,424 games, tc=3+0.03), candidate baked, SPRT pending.** Tuned: `FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff→83`, `SeePruningMax→804`, `AspirationDelta→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`. **`SingularBetaMult` stayed pinned at its `[1,6]` ceiling** (the `[1,8]` widen didn't load on the resume — `6` was never tested vs `7–8`; baked at `6`, open micro-item to re-poke). Candidate **bench `4,553,939`** (baseline `4,747,104`; bench is a chaotic fingerprint, not strength — the tiny 2,461↔2,482 param delta alone swings it 3.96M↔4.55M). Next: user runs the `[0,3]` SPRT vs the `phase47` head — keep on H1.
-  - Remaining groups: `lmr`, `futility`, `probcut`, `tm`; plus the `FutilityImprovingDir` A/B `[-3,3]`.
+  - **Pruning group ✅ ACCEPTED +12.07 ± 5.33 Elo** (nElo +18.35, LOS 100%, H1, 7,058 games, `[0,3]`, tc=3+0.03; 1 timeout/7058). New head = `rarog-phase5-pruning-pext-pgo.exe`, **bench `4,553,939`**. SPSA (2,482 iters / 79,424 games) tuned: `FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff→83`, `SeePruningMax→804`, `AspirationDelta→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`. **`SingularBetaMult` stayed pinned at `[1,6]`** (the `[1,8]` widen didn't load on resume; baked at `6`, open micro-item to re-poke).
+  - Remaining groups (gate each against the p5-pruning head): `lmr`, `futility`, `probcut`, `tm`; plus the `FutilityImprovingDir` A/B `[-3,3]` and the `LazyMargin` widen+`[-3,3]` safety check.
 - [~] 5.1b **Lazy-eval margin re-check** — **`LazyMargin` UCI option now exposed** (`[200,2000]`, seed 600, pushed to the evaluator each search start) + `config_lazymargin.json`. Still to run: **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
 - [ ] 5.2 **Contempt / draw value** (cheap, dependency-free, no Texel/SPSA). Add a side-to-move contempt offset on draw/repetition/qsearch-draw scores; expose a `Contempt` UCI option (seed ~+10..20 cp). **Validate by gauntlet, NOT self-play SPRT** — contempt cancels when both sides share it, so an SPRT reads ≈0; A/B 2–3 values vs the §11 ladder (esp. weaker/drawish foes). Keep conservative (too much loses to clearly stronger foes).
 - [ ] 5.3 History bonus/malus split, then retry no-aging history.

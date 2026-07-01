@@ -23,9 +23,9 @@ states the sequencing principle that the whole program depends on.
 |---|---|
 | Branch | `development` (targets the 2.3.0 release; off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
 | Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §11). |
-| Current accepted head | **PHASE 4 COMPLETE (v2.2.0)** — 4.7 global polish ACCEPTED (vs Pst46 **+64.97 ± 13.11 Elo, LOS 100%, H1**, 1412 games). Head = `rarog-phase47-polish-pext-pgo.exe`, **`bench = 4,747,104`**. Staged self-play total ≈ **+316**; external gauntlet confirmed **+240 real Elo** transfer. |
+| Current accepted head | **PHASE 5.1 pruning group ACCEPTED** — p5-pruning vs Pst47/phase47 head **+12.07 ± 5.33 Elo (nElo +18.35), LOS 100%, H1, 7,058 games** (`[0,3]`, tc=3+0.03; 1 timeout/7058, negligible). Head = `rarog-phase5-pruning-pext-pgo.exe`, **`bench = 4,553,939`**. Prior head was `rarog-phase47-polish-pext-pgo.exe` (v2.2.0, bench 4,747,104; Phase 4 staged ≈+316 self-play, external gauntlet +240 real Elo). Subsequent Phase 5 group SPRTs gate against this p5-pruning head. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
-| Next implementation step | **Phase 5 step 1, IN PROGRESS — pruning group SPSA done, awaiting its SPRT.** Prep (all wiring) complete: ceilings widened `[0,60]→[0,120]`; `ProbCutMargin` `[60,400]`, `FutilityImprovingDir` 0/1 A/B, `LazyMargin` `[200,2000]`, and the 7-param ×10000 TM group all exposed (tune-gated); configs + `setup_spsa.ps1` groups + SPSA README done. **Pruning SPSA (2026-06-29): tc=3+0.03, 2,482 iters / 79,424 games**, candidate baked into `SearchParams::default()` (`FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff 191→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff 81→83`, `SeePruningMax 811→804`, `AspirationDelta 31→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`). **`SingularBetaMult` stayed pinned at its `[1,6]` ceiling — the `[1,8]` widen never loaded on the resume, so `6` was not tested against `7–8`; baked at `6` (conservative) and flagged as an open micro-item to re-poke.** Candidate **bench `4,553,939`** (baseline `4,747,104`). Bench is a chaotic fingerprint, not a strength proxy: the sub-1-Elo `2,461↔2,482`-iter param delta alone swings it `3,956,393↔4,553,939` (verified on one binary via setoption) — only the SPRT decides. Tests 159/159, fmt clean. **Next action:** user runs the `[0,3]` SPRT of the pruning candidate vs the `phase47` head; keep on H1, revert on H0. Then the `lmr`/`futility`/`probcut`/`tm` groups, plus the `LazyMargin` widen+`[-3,3]` safety check and the `FutilityImprovingDir` A/B. |
+| Next implementation step | **Phase 5 step 1, IN PROGRESS — pruning group SPSA done, awaiting its SPRT.** Prep (all wiring) complete: ceilings widened `[0,60]→[0,120]`; `ProbCutMargin` `[60,400]`, `FutilityImprovingDir` 0/1 A/B, `LazyMargin` `[200,2000]`, and the 7-param ×10000 TM group all exposed (tune-gated); configs + `setup_spsa.ps1` groups + SPSA README done. **Pruning SPSA (2026-06-29): tc=3+0.03, 2,482 iters / 79,424 games**, candidate baked into `SearchParams::default()` (`FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff 191→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff 81→83`, `SeePruningMax 811→804`, `AspirationDelta 31→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`). **`SingularBetaMult` stayed pinned at its `[1,6]` ceiling — the `[1,8]` widen never loaded on the resume, so `6` was not tested against `7–8`; baked at `6` (conservative) and flagged as an open micro-item to re-poke.** **Pruning SPRT ACCEPTED (+12.07 ± 5.33 Elo, H1, 7,058 games)** — kept, head = `rarog-phase5-pruning-pext-pgo.exe`, bench `4,553,939`. (Bench proved a chaotic fingerprint, not strength: the sub-1-Elo `2,461↔2,482` param delta swings it `3,956,393↔4,553,939`, driven by ±1 changes to `FutilityBase`/`SeePruningCoeff` reshaping the bushiest bench positions — see §9 and the guide's bench caveat.) **Next action:** run the remaining SPSA groups against the p5-pruning head, one at a time — `lmr`, then `futility`, `probcut`, `tm` — plus the `LazyMargin` widen+`[-3,3]` safety check and the `FutilityImprovingDir` A/B. **Backlog (user-requested):** a bench-harness deep-dive to make the fingerprint more stable/informative (§9 step 1 note). |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) → **Phase 6 (§10)** *non-NNUE ceiling: eval-refresh cycles + structural refinements* (optional, evidence-driven) |
 
 > **Bench fingerprint re-baseline (2026-06-22, Phase 3.11b).** The canonical
@@ -2881,6 +2881,19 @@ before this phase starts (baseline; expect ≈ 2.1–2.3) and after each accepte
 item; record the values in the tracker. The target is movement toward ≈ 1.9.
 This is a *trend* metric, not a gate — SPRT remains the only accept/reject
 authority (a change can lower EBF and lose Elo by pruning good moves).
+
+**Backlog — bench-harness stability deep-dive (user-requested 2026-07-01).** The
+`bench 13` fingerprint (16 positions, 1 thread, fixed depth, persisting TT) is
+hypersensitive and non-monotonic to ±1 threshold changes: in the Phase 5.1
+pruning tune, two SPSA-indistinguishable sets fingerprinted `3,956,393` vs
+`4,553,939` (~15%), driven by ±1 on `FutilityBase`/`SeePruningCoeff` reshaping
+the bushiest positions (pos 10 ≈ 35% of all nodes). This is fine for a
+*regression fingerprint* but useless as a strength/speed proxy. Investigate
+making it more stable/informative — e.g. many more positions, per-position
+cold TT, report a robust central statistic (median per-position, or
+nodes-to-depth aggregated so one bushy position can't dominate), and/or a
+separate "nodes-to-depth EBF" report. **Do this as its own step (no engine
+behaviour change);** it does not gate the Phase 5 tuning groups.
 
 ### Steps
 
