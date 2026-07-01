@@ -16,7 +16,7 @@ engine is at the start of the eval-rewrite program (Phases 3–5).
 | Branch | `development` (targets the 2.3.0 release; the `v2.1.0-codex-work` integration branch was squash-rebased onto `master` and retired 2026-06-20; `claude`/`improvements` were deleted, fully stale) |
 | Harness | Phase 0 complete: repo-local `fastchess`, weather-factory, SPRT, SPSA, PGO scripts |
 | Test TC | SPSA and SPRT use `tc=3+0.03`; LTC confirmation `-TC "10+0.1"`; `-MoveTime 0.1` only as an optional legacy sanity check |
-| Current head | **PHASE 5.1 pruning group ACCEPTED** (`rarog-phase5-pruning-pext-pgo.exe`, `bench = 4,553,939`, **+12.07 Elo H1** vs the phase47 head). Released head is still v2.2.0 `rarog-phase47-polish-pext-pgo.exe` (4,747,104). On branch `development`; remaining Phase 5 groups gate against the p5-pruning head. |
+| Current head | **PHASE 5.1 pruning group ACCEPTED** (`rarog-phase5-pruning-pext-pgo.exe`, **+12.07 Elo H1** vs the phase47 head). Bench (new 40-pos harness): **Nodes 13,408,849, Geomean EBF 2.526** (old 16-pos harness read 4,553,939). Released head is still v2.2.0 `rarog-phase47-polish-pext-pgo.exe`. On branch `development`; remaining Phase 5 groups gate against the p5-pruning head. |
 | Last result | **External gauntlet (2026-06-24, 2700 games @ `tc=10+0.1`):** Rarog 2.2.0 = **+240 H2H over 2.1.0**, beats both Basilisk siblings and all prior Rarogs; even with SF-cap-2800, loses only to Critter 1.6a / SF-cap-2900. **CCRL ≈ 3000.** ~75% of the staged self-play gain transferred. Critter's LB time-forfeit was an LB artifact — clean in fastchess (`timemargin=1000`). |
 | Immediate next work | **Phase 5.1 pruning group ACCEPTED (+12.07 Elo).** Next: run the remaining SPSA groups vs the p5-pruning head, one at a time (start `lmr`). Prep for the whole wave is done: **Phase 5 step 1 prep COMPLETE (code-only, no games yet):** widened `FutilityNotImproving`/`LmpNotImproving` ceilings to `[0,120]`; exposed `ProbCutMargin` `[60,400]`, the **futility-direction A/B** (`FutilityImprovingDir` 0/1), the **`LazyMargin`** option `[200,2000]`, and the **7-param TM group** (`TmOptScale`/`TmFallBase`/`TmFallSlope`/`TmInstabBase`/`TmInstabSlope`/`TmEffortHigh`/`TmEffortLow`, ×10000-scaled). New `config_tm.json` + `config_lazymargin.json`; `setup_spsa.ps1` groups `tm`/`lazymargin` wired; SPSA README documents all three. Bench still `4,747,104` (no-op), 159/159 tests pass, fmt clean, tune-only options hidden in release. **Next: you run the SPSA/A-B/SPRT gates** — see "Next Commands" below. |
 | **Release status** | **v2.2.0 published.** Branch `v2.3.0` targets the next release, **2.3.0**, after Phase 5 closes. See "Releasing". |
@@ -360,29 +360,38 @@ obviously flawed.
 
 ### Bench Result
 
-For pure refactors:
+For pure refactors (the number must be **identical** to prove behaviour-preserving):
 
-> "bench 13 = 4,978,006 nodes."  (current head, 3.14+; was 5,354,975 at 3.11b-3.12)
+> "bench 13 = 13,408,849 nodes, geomean EBF 2.526."  (p5-pruning head, 40-pos harness)
 
-For tuned candidates:
+For tuned candidates (both numbers move; report both, but see the caveat below):
 
-> "bench 13 = 5,612,008 nodes."
+> "bench 13 = 20,286,875 nodes, geomean EBF 2.553."
 
 A changed bench fingerprint is expected after tuning or real search changes.
 It is a behavior fingerprint, not an Elo score.
 
-> **⚠ Caveat — never read strength into the bench node count (2026-07-01).** The
-> `bench 13` suite is only **16 positions**, single-threaded, fixed depth, with a
-> persisting TT. It is **hypersensitive** to ±1 changes in search thresholds and
-> **non-monotonic**: during the Phase 5.1 pruning tune, two parameter sets that
-> SPSA could not tell apart (2,461 vs 2,482 iters, sub-1-Elo) fingerprinted
-> **3,956,393 vs 4,553,939** — a ~15% swing. Isolated to **±1** on `FutilityBase`
-> (−798k) and `SeePruningCoeff` (−971k), each *increasing* nodes when the margin
-> should prune *more*, and driven largely by the bushiest bench positions (pos 10
-> alone is ~35% of all nodes and swung ±900k). The SPRT then measured the true
-> effect (+12.07 Elo for the whole group). **Node count at fixed depth ≠ speed ≠
-> strength on this tiny sample; only the SPRT decides.** A bench-harness deep-dive
-> to make the fingerprint more stable is a tracked backlog item (`PLAN.md` §9).
+> **⚠ How to read `bench` (harness redesigned 2026-07-01).** `bench 13` now runs
+> **40 positions** and prints, besides the node total, a **Geomean EBF**, median
+> nodes, and top-position share. Read them like this:
+> - **`Nodes searched` = a change-detector fingerprint ONLY.** It is
+>   hypersensitive and non-monotonic to ±1 threshold changes — the sub-1-Elo
+>   Phase-5.1 `2,461↔2,482` param delta swings it **13,408,849 ↔ 20,286,875
+>   (+51%)** because one position can explode to ~38% of all nodes. **Never
+>   compare its magnitude across parameter changes; never read speed or strength
+>   from it.** Use it only to confirm a "behaviour-preserving" refactor left the
+>   number *identical*, or to notice that a change *did* alter search.
+> - **`Geomean EBF` = the robust metric to actually track** (selectivity /
+>   search efficiency). It barely moved across that same delta (**2.526 ↔
+>   2.553, ~1%**) because a geometric mean over 40 positions is immune to one
+>   outlier. Lower is more selective (SF ≈ 1.8–2.0; Rarog head ≈ 2.526). This
+>   replaces the old manual 3-position EBF protocol.
+> - **Only the SPRT decides strength.** The pruning group that swung the old
+>   bench 15% was +12.07 Elo — the games, not the fingerprint, told the truth.
+>
+> New-harness baseline for the current head (p5-pruning): **Nodes 13,408,849,
+> Geomean EBF 2.526**. Pre-2026-07-01 fingerprints (e.g. 4,747,104, 4,553,939)
+> are the old 16-position harness and are **not comparable** to new-harness runs.
 
 ### Texel / Tuner Result (Phase 4)
 

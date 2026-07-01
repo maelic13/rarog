@@ -140,6 +140,13 @@ impl Engine {
         }
         let mut total_nodes = 0u64;
         let mut total_ms = 0u128;
+        let mut per_position_nodes: Vec<u64> = Vec::with_capacity(BENCH_FENS.len());
+        // Geometric-mean EBF accumulator: sum of ln(nodes)/depth over positions
+        // that reached depth >= 1. Geometric (not arithmetic) so one bushy
+        // position cannot dominate the selectivity read the way it dominates the
+        // node total.
+        let mut ln_ebf_sum = 0f64;
+        let mut ebf_count = 0usize;
 
         println!();
         for (index, fen) in BENCH_FENS.iter().enumerate() {
@@ -167,19 +174,32 @@ impl Engine {
             let result = self.search(options, false, epoch);
             total_nodes += result.nodes;
             total_ms += result.elapsed_ms;
+            per_position_nodes.push(result.nodes);
             let nps = if result.elapsed_ms > 0 {
                 result.nodes as u128 * 1000 / result.elapsed_ms
             } else {
                 result.nodes as u128
             };
+            // Per-position effective branching factor: nodes^(1/depth). Skip
+            // positions solved before depth 1 (mates / trivial draws) so they
+            // don't distort the geometric mean.
+            let ebf = if result.depth >= 1 && result.nodes >= 1 {
+                let ebf = (result.nodes as f64).powf(1.0 / result.depth as f64);
+                ln_ebf_sum += ebf.ln();
+                ebf_count += 1;
+                ebf
+            } else {
+                0.0
+            };
 
             println!(
-                "bench {}/{}  depth {}  score {}  nodes {}  time {}ms  nps {}",
+                "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
                 index + 1,
                 BENCH_FENS.len(),
                 result.depth,
                 result.score,
                 result.nodes,
+                ebf,
                 result.elapsed_ms,
                 nps
             );
@@ -200,9 +220,35 @@ impl Engine {
         } else {
             total_nodes as u128
         };
+        // Robust diagnostics so the node total is read as a fingerprint, not a
+        // strength/speed proxy (it is hypersensitive and non-monotonic to tiny
+        // threshold changes — see PLAN.md §9). Geomean EBF is the selectivity
+        // trend; median + top-share expose how concentrated the total is.
+        let geomean_ebf = if ebf_count > 0 {
+            (ln_ebf_sum / ebf_count as f64).exp()
+        } else {
+            0.0
+        };
+        let median_nodes = {
+            let mut sorted = per_position_nodes.clone();
+            sorted.sort_unstable();
+            sorted.get(sorted.len() / 2).copied().unwrap_or(0)
+        };
+        let max_nodes = per_position_nodes.iter().copied().max().unwrap_or(0);
+        let top_share = if total_nodes > 0 {
+            max_nodes as f64 * 100.0 / total_nodes as f64
+        } else {
+            0.0
+        };
         println!(
-            "\n=========================\nTotal time (ms) : {}\nNodes searched  : {}\nNodes/second    : {}",
-            total_ms, total_nodes, total_nps
+            "\n=========================\n\
+             Total time (ms) : {}\n\
+             Nodes searched  : {}\n\
+             Nodes/second    : {}\n\
+             Geomean EBF     : {:.3}\n\
+             Median nodes    : {}\n\
+             Top-pos share   : {:.1}%  ({} nodes)",
+            total_ms, total_nodes, total_nps, geomean_ebf, median_nodes, top_share, max_nodes
         );
         flush_stdout();
 

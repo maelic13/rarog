@@ -23,7 +23,7 @@ states the sequencing principle that the whole program depends on.
 |---|---|
 | Branch | `development` (targets the 2.3.0 release; off `master` at the v2.2.0 release point; `master` is at `Version 2.2.0`) |
 | Completed | **Phase 0**, **Phase 1**, **Phase 2**, **Phase 2.5**, **Phase 2.9**, **Phase 4** are closed. v2.2.0 released and the external gauntlet passed (+240 Elo over 2.1.0, ~3000 CCRL — see §11). |
-| Current accepted head | **PHASE 5.1 pruning group ACCEPTED** — p5-pruning vs Pst47/phase47 head **+12.07 ± 5.33 Elo (nElo +18.35), LOS 100%, H1, 7,058 games** (`[0,3]`, tc=3+0.03; 1 timeout/7058, negligible). Head = `rarog-phase5-pruning-pext-pgo.exe`, **`bench = 4,553,939`**. Prior head was `rarog-phase47-polish-pext-pgo.exe` (v2.2.0, bench 4,747,104; Phase 4 staged ≈+316 self-play, external gauntlet +240 real Elo). Subsequent Phase 5 group SPRTs gate against this p5-pruning head. |
+| Current accepted head | **PHASE 5.1 pruning group ACCEPTED** — p5-pruning vs Pst47/phase47 head **+12.07 ± 5.33 Elo (nElo +18.35), LOS 100%, H1, 7,058 games** (`[0,3]`, tc=3+0.03; 1 timeout/7058, negligible). Head = `rarog-phase5-pruning-pext-pgo.exe`, **new 40-pos harness `bench = 13,408,849, geomean EBF 2.526`** (old 16-pos harness read `4,553,939`). Prior head was `rarog-phase47-polish-pext-pgo.exe` (v2.2.0; Phase 4 staged ≈+316 self-play, external gauntlet +240 real Elo). Subsequent Phase 5 group SPRTs gate against this p5-pruning head. |
 | Harness TC | SPSA and primary SPRT both use `tc=3+0.03`; LTC confirmation uses `tc=10+0.1` |
 | Next implementation step | **Phase 5 step 1, IN PROGRESS — pruning group SPSA done, awaiting its SPRT.** Prep (all wiring) complete: ceilings widened `[0,60]→[0,120]`; `ProbCutMargin` `[60,400]`, `FutilityImprovingDir` 0/1 A/B, `LazyMargin` `[200,2000]`, and the 7-param ×10000 TM group all exposed (tune-gated); configs + `setup_spsa.ps1` groups + SPSA README done. **Pruning SPSA (2026-06-29): tc=3+0.03, 2,482 iters / 79,424 games**, candidate baked into `SearchParams::default()` (`FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff 191→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff 81→83`, `SeePruningMax 811→804`, `AspirationDelta 31→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`). **`SingularBetaMult` stayed pinned at its `[1,6]` ceiling — the `[1,8]` widen never loaded on the resume, so `6` was not tested against `7–8`; baked at `6` (conservative) and flagged as an open micro-item to re-poke.** **Pruning SPRT ACCEPTED (+12.07 ± 5.33 Elo, H1, 7,058 games)** — kept, head = `rarog-phase5-pruning-pext-pgo.exe`, bench `4,553,939`. (Bench proved a chaotic fingerprint, not strength: the sub-1-Elo `2,461↔2,482` param delta swings it `3,956,393↔4,553,939`, driven by ±1 changes to `FutilityBase`/`SeePruningCoeff` reshaping the bushiest bench positions — see §9 and the guide's bench caveat.) **Next action:** run the remaining SPSA groups against the p5-pruning head, one at a time — `lmr`, then `futility`, `probcut`, `tm` — plus the `LazyMargin` widen+`[-3,3]` safety check and the `FutilityImprovingDir` A/B. **Backlog (user-requested):** a bench-harness deep-dive to make the fingerprint more stable/informative (§9 step 1 note). |
 | Program shape | **Phase 2.9** *robustness + free speed* (no games) → Phase 3 *build eval structure* (no games) → Phase 4 *fit eval once* → Phase 5 *search wave* (SPSA once) → **Phase 6 (§10)** *non-NNUE ceiling: eval-refresh cycles + structural refinements* (optional, evidence-driven) |
@@ -2872,28 +2872,37 @@ read verdict, decide). **Escalate the dense algorithmic ports** (multi-cut /
 singular interaction, threat-aware history indexing, the codex `tt.rs` diff) to
 **Codex 5.5 medium** or **GPT-5.5 high**.
 
-**EBF measurement protocol (the phase metric).** Pick three fixed positions
-— startpos plus two middlegame FENs from the bench suite (`src/bench.rs`) —
-and always use the same three. For each: `go movetime 1000`, single thread,
-64 MB hash, fresh engine start; record the last *completed* depth `d` and
-total nodes `n`; estimate `EBF ≈ n^(1/d)`. Average the three. Run it once
-before this phase starts (baseline; expect ≈ 2.1–2.3) and after each accepted
-item; record the values in the tracker. The target is movement toward ≈ 1.9.
-This is a *trend* metric, not a gate — SPRT remains the only accept/reject
-authority (a change can lower EBF and lose Elo by pruning good moves).
+**EBF measurement protocol (the phase metric).** **Now automated** — `bench 13`
+prints a **Geomean EBF** over all 40 positions (geometric mean of
+`nodes^(1/depth)`), which is the robust selectivity trend (baseline for the
+p5-pruning head = **2.526**; target is movement toward ≈ 1.9). Use that number;
+the old manual "three fixed positions, `go movetime 1000`, average `n^(1/d)`"
+recipe is superseded (it's the same estimator on a 3-position sample). Record
+the geomean EBF after each accepted item. This is a *trend* metric, not a gate
+— SPRT remains the only accept/reject authority (a change can lower EBF and lose
+Elo by pruning good moves), and the raw node **total** is only a change-detector
+fingerprint, not a magnitude (it swings ±50 % on sub-1-Elo param changes — see
+the bench-harness deep-dive note below).
 
-**Backlog — bench-harness stability deep-dive (user-requested 2026-07-01).** The
-`bench 13` fingerprint (16 positions, 1 thread, fixed depth, persisting TT) is
-hypersensitive and non-monotonic to ±1 threshold changes: in the Phase 5.1
-pruning tune, two SPSA-indistinguishable sets fingerprinted `3,956,393` vs
-`4,553,939` (~15%), driven by ±1 on `FutilityBase`/`SeePruningCoeff` reshaping
-the bushiest positions (pos 10 ≈ 35% of all nodes). This is fine for a
-*regression fingerprint* but useless as a strength/speed proxy. Investigate
-making it more stable/informative — e.g. many more positions, per-position
-cold TT, report a robust central statistic (median per-position, or
-nodes-to-depth aggregated so one bushy position can't dominate), and/or a
-separate "nodes-to-depth EBF" report. **Do this as its own step (no engine
-behaviour change);** it does not gate the Phase 5 tuning groups.
+**Bench-harness deep-dive — DONE (2026-07-01).** The old `bench 13` (16
+positions, persisting TT) had one position at ~35 % of all nodes, so the total
+was hypersensitive/non-monotonic: two SPSA-indistinguishable pruning sets
+fingerprinted `3,956,393` vs `4,553,939` (~15 %). **Redesign:** expanded to
+**40 positions** (16 curated + 24 legal self-play spanning openings→endgames),
+and the report now prints, from the same run, a per-position **EBF**
+(`nodes^(1/depth)`) plus a summary **geomean EBF**, **median nodes**, and
+**top-position share %**.
+
+**Key finding — more positions did *not* stabilise the total; the metric did.**
+On the 40-position suite the *total* still swings hugely with tiny params
+(2482 → `13,408,849`; 2461 → `20,286,875`, +51 %, because one position explodes
+to 38.5 % of nodes), but the **geomean EBF is robust: `2.526` vs `2.553` (~1 %)**
+— a geometric mean over 40 positions is immune to one outlier blowing up.
+Conclusion, now codified in the harness and the guide: **treat the node total
+strictly as a change-detector fingerprint (never a magnitude to compare); track
+the geomean EBF for the selectivity trend.** New-harness fingerprint of the
+current head (p5-pruning) = **`13,408,849`, geomean EBF `2.526`** (old-harness
+`4,553,939`; pre-2026-07-01 fingerprints are 16-position and not comparable).
 
 ### Steps
 
