@@ -521,7 +521,7 @@ Update this when work completes.
 - [x] `SearchParams` and tune-gated UCI options exist.
 - [x] Pruning/margin SPSA group B accepted:
       `+6.17 +/- 4.88 nElo`, 19,458 games.
-- [x] LMR group A first tune rejected/inconclusive and not kept as a Phase 1
+- [x] **[REJECTED]** LMR group A first tune rejected/inconclusive and not kept as a Phase 1
       gain.
 - [x] Release builds do not expose tune-only search options.
 - [x] Accepted Phase 1 result: Group B pruning/margin tune only.
@@ -534,21 +534,21 @@ Update this when work completes.
 - [x] Kept gains: 2.2 time management, 2.5 qsearch TT-bound stand-pat,
       2.7 per-move quiet futility.
 - [x] Failed or relocated search items are documented below and in `PLAN.md`.
-- [x] `improvements` check-aware ordering — dropped: H0 after about 11k games.
-- [x] 2.1 ProbCut port — dropped: H0, `-24.5 +/- 8.5 Elo`; baseline flat
+- [x] **[REJECTED]** `improvements` check-aware ordering — dropped: H0 after about 11k games.
+- [x] **[REJECTED]** 2.1 ProbCut port — dropped: H0, `-24.5 +/- 8.5 Elo`; baseline flat
       ProbCut was better.
 - [x] 2.2 Stockfish-style time management — kept: H1, about `+81 Elo` at old
       fixed 100 ms; no clock regression.
-- [x] 2.3 No-aging history — dropped for now: H0, `-12.4 +/- 6.2 Elo`; retry
+- [x] **[REJECTED]** 2.3 No-aging history — dropped for now: H0, `-12.4 +/- 6.2 Elo`; retry
       only after the Phase 5 history formula fix.
 - [x] 2.4 LMR coefficients — retained but suspect: SPSA values baked, old
       fixed-movetime SPRT H0 `-1.31 +/- 3.09`; retry in Phase 2.5.
 - [x] 2.5 Qsearch TT-bound stand-pat — kept: H1, `+6.51 +/- 3.93 Elo`.
-- [x] 2.6 Singular double-extension cap — dropped: H0 around `-1.7 Elo`; do
+- [x] **[REJECTED]** 2.6 Singular double-extension cap — dropped: H0 around `-1.7 Elo`; do
       not retry unless real time forfeits appear.
 - [x] 2.7 Per-move quiet futility — kept: H1, `+7.98 +/- 4.42 Elo`; current
       bench `5,401,662`.
-- [x] 2.8 Do-deeper re-search — dropped for now: H0 at old harness; retry
+- [x] **[REJECTED]** 2.8 Do-deeper re-search — dropped for now: H0 at old harness; retry
       after the Phase 4 eval refit (Phase 5) because the margin is cp-coupled.
 - [x] 2.9 Debug-build stack overflow — fixed: `cargo test` was made viable in
       debug.
@@ -597,7 +597,7 @@ Every step keeps `bench 13 == 5,446,782`. See `PLAN.md` "Phase 2.9".
       Removes the one allocator touch on a search-reachable path. Validated by
       the differential oracle test + 2 new castle-checks-king FENs; 44
       board-correctness tests pass. `bench 13` unchanged. — Opus 4.8 medium
-- [x] 2.9.5 (profile-gated) `get_unchecked` — **INVESTIGATED, SKIPPED.**
+- [x] **[REJECTED]** 2.9.5 (profile-gated) `get_unchecked` — **INVESTIGATED, SKIPPED.**
       `cargo-show-asm` confirmed `sq.index()` checks survive in plain
       `--release`, but a PGO `bench` nps A/B (20 interleaved pairs) showed the
       `get_unchecked` prototype winning 11/20 (noise, Δbest +0.34%) — PGO
@@ -677,7 +677,7 @@ See `PLAN.md` §7.
 - [x] 3.13a Endgame regression suite harness (`tests/endgames.epd` + `tests/endgames.rs`) — **DONE (Opus 4.8, with 3.11).** KBNK-mate playout + insufficient-material-draw cases + corner-direction test.
 - [x] 3.13b Extend the suite — **DONE (Opus 4.8).** Added a `win` verdict (won endings score clearly, not zeroed) plus more KPK draws/wins and a rook-pawn KQKP fortress to `tests/endgames.epd`. KRKP/OCB partial-scales are covered by the `src/eval.rs` unit tests (noted in the EPD).
 - [x] 3.14 Eval-cache correctness fix — **DONE (Opus 4.8).** Root cause was **not** the `eval_table` key (it's complete) but the **pawn cache**: the passed-pawn free/safe-stop bonuses depend on non-pawn occupancy yet were scored inside `eval_pawns`, cached by a pawn-only key. Moved them to `eval_passed_pawn_advance` (run every eval, outside the cache), keeping the eval value byte-identical (0 diffs on a fresh-evaluator walk) — only the cache is now exact. Bench re-baselined `5,354,975 → 4,978,006`; eval is now pure (`bench` identical cache-on vs cache-off). Permanent guard `tests/eval_cache.rs` (fails pre-fix, passes after); reconstruction stays exact.
-- [x] 3.15 Eval inert-block gating — **INVESTIGATED & REJECTED.** Micro-opt had no headroom (loops already compiler-tight; a hand attempt *regressed* it). Inert-block gating recovered +15 % NPS byte-identically but **only at the seeded-0 head** — it does nothing once Phase 4 tunes the weights nonzero, so it's throwaway scaffolding for a gate we don't care about. Reverted. The durable lever is 3.16.
+- [x] **[REJECTED]** 3.15 Eval inert-block gating — **INVESTIGATED & REJECTED.** Micro-opt had no headroom (loops already compiler-tight; a hand attempt *regressed* it). Inert-block gating recovered +15 % NPS byte-identically but **only at the seeded-0 head** — it does nothing once Phase 4 tunes the weights nonzero, so it's throwaway scaffolding for a gate we don't care about. Reverted. The durable lever is 3.16.
 - [x] 3.16 Lazy eval — **ACCEPTED (Opus 4.8), +4.4 Elo.** Skip the expensive block (piece activity + imbalance) when the material+PST margin > `LAZY_MARGIN` (600, SPRT-tunable); the mop-up is extracted to `apply_mop_up` and runs on **both** paths so KBNK/KXK mating survives. Disabled under `--features texel` (tuner fits full eval); eval stays pure. Bench re-baselined `4,978,006 → 5,315,678`; per-node NPS ~2.50M→2.80M. **SPRT lazy-on vs lazy-off: +4.4 ± 3.9 Elo, LOS 98.7 %, H1, 15,314 games.**
 - [x] Phase 3 gate — **MET / superseded.** ✅ reconstruction exact; ✅ per-term assertions; ✅ `cache==cold`; ✅ tests clean; ✅ lazy-eval non-regression (3.16, +4.4 Elo). The original vs-`p25` NPS SPRT is superseded (can't pass at seeded-0 — new terms are pure overhead until Phase 4 tunes them); real vs-`p25` check is the Phase-4 boundary. **Phase 3 is closed.**
 
@@ -709,10 +709,14 @@ The one search-constant SPSA wave + refinements, at the final eval scale.
 Driving: Sonnet 4.6 medium; dense ports: Codex 5.5 medium / GPT-5.5 high.
 See `PLAN.md` §9.
 
-- [~] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B. **Prep DONE (2026-06-29):** ceilings widened; `ProbCutMargin`, `FutilityImprovingDir` (0/1 A/B), `LazyMargin`, and the 7-param TM group all exposed (tune-gated, ×10000 where float); configs + `setup_spsa.ps1` groups + SPSA README done. Bench prep no-op; 159/159 tests, fmt clean, options hidden in release.
-  - **Pruning group ✅ ACCEPTED +12.07 ± 5.33 Elo** (nElo +18.35, LOS 100%, H1, 7,058 games, `[0,3]`, tc=3+0.03; 1 timeout/7058). New head = `rarog-phase5-pruning-pext-pgo.exe`, **bench `4,553,939`**. SPSA (2,482 iters / 79,424 games) tuned: `FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff→83`, `SeePruningMax→804`, `AspirationDelta→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`. **`SingularBetaMult` stayed pinned at `[1,6]`** (the `[1,8]` widen didn't load on resume; baked at `6`, open micro-item to re-poke).
-  - Remaining groups (gate each against the p5-pruning head): `lmr`, `futility`, `probcut`, `tm`; plus the `FutilityImprovingDir` A/B `[-3,3]` and the `LazyMargin` widen+`[-3,3]` safety check.
-- [~] 5.1b **Lazy-eval margin re-check** — **`LazyMargin` UCI option now exposed** (`[200,2000]`, seed 600, pushed to the evaluator each search start) + `config_lazymargin.json`. Still to run: **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
+- [ ] 5.1 Search-constant SPSA wave (pruning, LMR, futility, ProbCut margin, TM); incl. relocated 2.11 Group-B widen `[0,120]` and 2.5.2 futility-direction A/B. **IN PROGRESS.** Prep DONE (2026-06-29): ceilings widened; `ProbCutMargin`, `FutilityImprovingDir` (0/1 A/B), `LazyMargin`, and the 7-param TM group all exposed (tune-gated, ×10000 where float); configs + `setup_spsa.ps1` groups + SPSA README done. Bench prep no-op; 159/159 tests, fmt clean, options hidden in release. Per-group progress:
+  - [x] **Pruning group — ✅ ACCEPTED +12.07 ± 5.33 Elo** (nElo +18.35, LOS 100%, H1, 7,058 games, `[0,3]`, tc=3+0.03; 1 timeout/7058). New head = `rarog-phase5-pruning-pext-pgo.exe`. SPSA (2,482 iters / 79,424 games) tuned: `FutilityBase 86→60`, `FutilityNotImproving 49→42`, `RazoringCoeff→193`, `NullMoveDepthCoeff 15→10`, `NullMoveImprovingBonus 25→32`, `LmpBase 115→88`, `LmpNotImproving 57→63`, `QuietHistPruneCoeff 4419→5069`, `SeePruningCoeff→83`, `SeePruningMax→804`, `AspirationDelta→30`, `SingularBetaMult 4→6`, `LmpCountBase 2`. **`SingularBetaMult` stayed pinned at `[1,6]`** (the `[1,8]` widen didn't load on resume; baked at `6`, open micro-item to re-poke).
+  - [ ] **LMR group** (gate vs the p5-pruning head).
+  - [ ] **Futility group.**
+  - [ ] **ProbCut-margin group.**
+  - [ ] **TM group** (clock-only; add an LTC `10+0.1` confirm).
+  - [ ] **FutilityImprovingDir direction A/B** `[-3,3]` (relocated 2.5.2).
+- [ ] 5.1b **Lazy-eval margin re-check** — **IN PROGRESS.** `LazyMargin` UCI option exposed (`[200,2000]`, seed 600, pushed to the evaluator each search start) + `config_lazymargin.json`. Still to run: **widen first + confirm no regression `[-3,3]` at the post-Phase-4 eval scale**, then SPSA-tune for NPS. (Lazy is off under `--features texel`; the mop-up runs on both paths, so mating is margin-independent.)
 - [ ] 5.2 **Contempt / draw value** (cheap, dependency-free, no Texel/SPSA). Add a side-to-move contempt offset on draw/repetition/qsearch-draw scores; expose a `Contempt` UCI option (seed ~+10..20 cp). **Validate by gauntlet, NOT self-play SPRT** — contempt cancels when both sides share it, so an SPRT reads ≈0; A/B 2–3 values vs the §11 ladder (esp. weaker/drawish foes). Keep conservative (too much loses to clearly stronger foes).
 - [ ] 5.3 History bonus/malus split, then retry no-aging history.
 - [ ] 5.4 do-deeper re-implementation (cp-coupled retry).
