@@ -142,19 +142,21 @@ pub struct SearchParams {
 impl Default for SearchParams {
     fn default() -> Self {
         Self {
-            aspiration_delta: 31,          // was 25 → 29 → 31
-            futility_base: 86,             // was 70 → 82 → 86
-            futility_not_improving: 49,    // was 20 → 51 → 49
-            razoring_coeff: 191,           // was 150 → 194 → 191
-            nm_depth_coeff: 15,            // was 12 → 14 → 15
-            nm_improving_bonus: 25,        // was 24 (unchanged)
-            lmp_base: 115,                 // was 90 (unchanged)
-            lmp_not_improving: 57,         // was 25 → 53 → 57
-            quiet_hist_prune_coeff: 4_419, // was 4000 → 4372 → 4419
-            see_pruning_coeff: 81,         // was 80 → 75 → 81
-            see_pruning_max: 811,          // was 800 → 801 → 811
-            singular_beta_mult: 4,         // was 2 (unchanged)
-            lmp_count_base: 2,             // was 4 (unchanged)
+            // Phase 5.1 pruning SPSA candidate (tc=3+0.03, 2,461 iters / 78,752
+            // games, post-Phase-4 eval scale). Pending the [0,3] confirming SPRT.
+            aspiration_delta: 30,          // was 25 → 29 → 31 → 30
+            futility_base: 61,             // was 70 → 82 → 86 → 61
+            futility_not_improving: 42,    // was 20 → 51 → 49 → 42
+            razoring_coeff: 193,           // was 150 → 194 → 191 → 193
+            nm_depth_coeff: 10,            // was 12 → 14 → 15 → 10
+            nm_improving_bonus: 33,        // was 24 → 25 → 33
+            lmp_base: 88,                  // was 90 → 115 → 88
+            lmp_not_improving: 63,         // was 25 → 53 → 57 → 63
+            quiet_hist_prune_coeff: 5_072, // was 4000 → 4372 → 4419 → 5072
+            see_pruning_coeff: 84,         // was 80 → 75 → 81 → 84
+            see_pruning_max: 808,          // was 800 → 801 → 811 → 808
+            singular_beta_mult: 6,         // was 2 → 4 → 6 (interior; ceiling widened 6→8)
+            lmp_count_base: 2,             // was 4 → 2 (unchanged this wave)
             // LMR adjustments — Phase 2.5.1 clock-TC SPSA candidate
             // (weather-factory tc=3+0.03, 85,792 games / 2,681 iterations).
             lmr_tt_pv_adj: 887,   // was 1024; Phase 2.4 candidate was 1110

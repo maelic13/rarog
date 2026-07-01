@@ -1,72 +1,72 @@
 {
     "FutilityBase": {
-        "value": 86,
+        "value": 61,
         "min_value": 30,
         "max_value": 150,
         "step": 10
     },
     "FutilityNotImproving": {
-        "value": 49,
+        "value": 42,
         "min_value": 0,
         "max_value": 120,
         "step": 10
     },
     "RazoringCoeff": {
-        "value": 191,
+        "value": 193,
         "min_value": 60,
         "max_value": 300,
         "step": 20
     },
     "NullMoveDepthCoeff": {
-        "value": 15,
+        "value": 10,
         "min_value": 4,
         "max_value": 30,
         "step": 4
     },
     "NullMoveImprovingBonus": {
-        "value": 25,
+        "value": 33,
         "min_value": 0,
         "max_value": 60,
         "step": 8
     },
     "LmpBase": {
-        "value": 115,
+        "value": 88,
         "min_value": 40,
         "max_value": 180,
         "step": 14
     },
     "LmpNotImproving": {
-        "value": 57,
+        "value": 63,
         "min_value": 0,
         "max_value": 120,
         "step": 10
     },
     "QuietHistPruneCoeff": {
-        "value": 4419,
+        "value": 5072,
         "min_value": 1000,
         "max_value": 8000,
         "step": 400
     },
     "SeePruningCoeff": {
-        "value": 81,
+        "value": 84,
         "min_value": 30,
         "max_value": 160,
         "step": 12
     },
     "SeePruningMax": {
-        "value": 811,
+        "value": 808,
         "min_value": 200,
         "max_value": 1600,
         "step": 80
     },
     "AspirationDelta": {
-        "value": 31,
+        "value": 30,
         "min_value": 10,
         "max_value": 60,
         "step": 6
     },
     "SingularBetaMult": {
-        "value": 4,
+        "value": 6,
         "min_value": 1,
         "max_value": 8,
         "step": 1
