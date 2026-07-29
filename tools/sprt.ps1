@@ -27,6 +27,9 @@
         per-feature gate any more.
       - LTC confirmation runs at tc=10+0.1 (pass -TC "10+0.1") at phase
         boundaries and for TC-suspect features.
+      - Pass -Nodes N for a fixed-NODES diagnostic (10.0b) — it removes speed
+        AND time management, so it answers "is the remaining gap pure search
+        quality?" and nothing else. Never a strength gate.
       - Hash 64 MB, Threads 1, UHO_Lichess_4852_v1.epd opening book (random
         order). Adopted 2026-07-17: the Stockfish/OpenBench-standard
         "Unbalanced Human Openings" set — 2,632,036 positions, 3–4 moves deep,
@@ -117,6 +120,22 @@
     optional fixed 100 ms/move Little Blitzer sanity gauntlet; this disables
     the clock and time-management is not exercised.
 
+.PARAMETER Nodes
+    Fixed NODES-per-move (fastchess `nodes=N`). Default 0 (use clock TC).
+    Mutually exclusive with -MoveTime.
+
+    Added for 10.0(b): it removes BOTH speed and time management from the
+    comparison, which is the only way to ask "is the gap pure search quality?"
+    of an engine that matches us on NPS. Use it for that diagnostic and for
+    cross-engine search-accuracy questions — never as a strength gate, because
+    a node-limited match cannot see time management at all, and TM is the one
+    thing 9.7.5 identified as a live ~16 Elo lever.
+
+    ⚠ Equal nodes is NOT equal work across different engines: a node means
+    whatever each engine counts, and Rarog counts interior + qsearch nodes.
+    Treat the absolute Elo as a comparison against the CLOCK result for the
+    same pair, not as a rating.
+
 .PARAMETER TimeMargin
     fastchess timeout margin in milliseconds. Default 20. This prevents small
     Windows scheduler / process IO jitter from being counted as a time
@@ -165,6 +184,7 @@ param(
     [string[]]$OptionsB = @(),
     [string]$TC = "3+0.03",
     [double]$MoveTime = 0,
+    [int]$Nodes = 0,
     [int]$TimeMargin = 20,
     [string]$Book = "$PSScriptRoot\books\UHO_Lichess_4852_v1.epd",
     [string]$FastchessPath = "$PSScriptRoot\bin\fastchess.exe"
@@ -212,8 +232,18 @@ if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
 if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 0 } }
 if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 5 } }
 
-# Resolve the time control: clock (default) unless a fixed movetime is given.
-if ($MoveTime -gt 0) {
+# Resolve the search limit: clock (default) unless a fixed movetime or a fixed
+# node count is given. All three are mutually exclusive; fastchess would accept
+# two limits at once and silently apply whichever it parses last, so refuse.
+if ($MoveTime -gt 0 -and $Nodes -gt 0) {
+    throw "-MoveTime and -Nodes are mutually exclusive: pick one search limit."
+}
+if ($Nodes -gt 0) {
+    $tcArg   = "nodes=$Nodes"
+    $tcLabel = "nodes=$Nodes (fixed nodes/move; NO time management)"
+    Write-Host "NOTE: fixed-nodes match - speed and time management are both removed." -ForegroundColor Yellow
+    Write-Host "      Diagnostic only (10.0b). Not a strength gate: TM is invisible here." -ForegroundColor Yellow
+} elseif ($MoveTime -gt 0) {
     $tcArg   = "st=$MoveTime"
     $tcLabel = "st=$MoveTime (fixed ${MoveTime}s/move)"
 } else {
