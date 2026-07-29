@@ -160,9 +160,28 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           equal NPS, `reduction` clamped ≥1 ply, LMP discarding more moves than
           there are interior nodes), but a counter cannot choose — **(c)
           decides**, and (a) did not change (c)'s design.
-    - [ ] (b) Fixed-nodes match vs Basilisk 1.9.1 to strip out speed and TM.
-    - [ ] (c) **Over-pruning probe** — scale reductions/margins DOWN, one
-          binary, one `[0,3]`.
+    - [~] (b) **[READY — YOU RUN IT]** Fixed-nodes match vs Basilisk 1.9.1 to
+          strip out speed and TM. **TWO arms, same seed** — one `tc=3+0.03`,
+          one `-Nodes 250000` — because the 2×2 table is a POOL rating while
+          this is a head-to-head, and this pair's head-to-head runs ~35–45 Elo
+          worse for Rarog; comparing a nodes h2h against a clock pool rating
+          would charge that whole matchup effect to TM. The arm DIFFERENCE is
+          the measurement, and the clock arm is also the 1T STC head-to-head
+          baseline we never recorded. Equal nodes verified neutral first: 1T
+          NPS on game positions is 2.81/2.58/4.47 M for Rarog vs
+          2.87/2.45/4.55 M for Basilisk. Needs `-Nodes`, added to `sprt.ps1`.
+    - [~] (c) **[READY — YOU RUN IT]** Over-pruning probe, the decisive test.
+          Twelve constants shifted 15% toward less selectivity on throwaway
+          branch `probe/10.0c-less-pruning` (`7693010`, DO NOT MERGE): LMR
+          reduction surface ×0.85, and ×1.15 on the RFP / razoring / LMP-margin
+          / quiet-futility / SEE-prune / quiet-history constants. 15% mirrors
+          8.6's rejected candidate, which searched 16% MORE aggressively and
+          lost −7.78. bench 6,373,363 vs 5,173,540 (+23.2% nodes), EBF 2.449,
+          WAC 179/300 vs 173/300. Both PGO binaries built, same rustc.
+          ⚠ Pre-registered reading: POSITIVE is strong (it beat a jointly
+          SPSA-fitted point despite leaving it); NEGATIVE is weak — it means "a
+          uniform 15% shift is not free", NOT "the surface is fine". Only
+          10.4.6's joint re-fit can say that.
 - [ ] 10.1 Persistent `RootMove` records (bench-identical enabler; no games)
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
@@ -506,15 +525,38 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 until this closes, because its answer re-aims both of the cycle's big items
 (10.2.5 and 10.4.6).
 
-Every gate binary in `tools/test_engines/` predates 9.7.5, so the first thing
-the cycle needs is a baseline built from the 2.3.1 head:
+**(a) is done** (ordering is not the defect — see the tracker). **(b) and (c)
+are built, verified and waiting on you.** Both binaries exist with clean
+manifests and the same rustc, so the compiler-equality guard will pass:
+
+| binary | bench | what it is |
+|---|--:|---|
+| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | the 2.3.1 head — the new baseline |
+| `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective |
+
+**Run (c) FIRST** — it is the decisive test and it re-aims both of the cycle's
+big items:
 
 ```powershell
-./tools/build_test.ps1 -Suffix p100-base
+./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100c-lesspruning-pext-pgo.exe" -EngineB "tools\test_engines\rarog-p100-base-pext-pgo.exe" -NameA "p100c-lesspruning" -NameB "p100-base" -Elo1 3
 ```
 
-The exact match commands for 10.0(b) and 10.0(c) land here once the model has
-implemented 10.0(a) and prepared the probe.
+**Then (b), which is TWO arms sharing one seed** — the clock arm first, because
+it is also the 1T STC head-to-head baseline we have never recorded:
+
+```powershell
+./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100-base-pext-pgo.exe" -EngineB "D:\chess\engines\basilisk-v1.9.1-windows-x86_64-pext-pgo.exe" -NameA "rarog-231" -NameB "basilisk-191" -Mode fixed -Games 3000 -Seed 100
+```
+
+```powershell
+./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100-base-pext-pgo.exe" -EngineB "D:\chess\engines\basilisk-v1.9.1-windows-x86_64-pext-pgo.exe" -NameA "rarog-231-nodes" -NameB "basilisk-191-nodes" -Mode fixed -Games 3000 -Seed 100 -Nodes 250000
+```
+
+Report for each: Elo ± error, LOS, games, and any time losses. For (b) the
+number that matters is the **difference between the two arms**, not either
+absolute figure — a nodes-limited match cannot see time management at all.
+Expect a "no manifest for basilisk-191" warning; that is normal for an external
+engine and only disables the compiler-equality check.
 
 Afterwards the cycle continues per the revised execution order: 10.1
 (bookkeeping, no games) → 10.4.6 re-fit → 10.2.5 capstone, re-scoped by 10.0's

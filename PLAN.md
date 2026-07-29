@@ -939,17 +939,81 @@ explanation is needed.
     (its tree is read-only), so this can never be a head-to-head. Re-read it
     with the same script after 10.2.5 to see whether the capstone moves either
     ratio (`-Csv` appends a comparable row).
-  - **(b) Fixed-nodes match vs Basilisk 1.9.1.** Removes speed and time
+  - **(b) Fixed-nodes match vs Basilisk 1.9.1 — READY, and it is a PAIR of
+    matches, not one (design corrected 2026-07-29).** Removes speed and time
     management entirely. If Rarog still reads ≈−43 at equal nodes, the gap is
     *pure search quality*; if it shrinks materially, TM is implicated and 10.2
     rises in priority. Note the weak prior against TM: Colosseum time/move is
     80 ms for Rarog vs 78/79 ms for the Basilisks, so gross allocation already
     matches.
-  - **(c) Over-pruning probe — the decisive cheap test.** Scale reductions and
-    futility margins down by a fixed factor; one binary, one `[0,3]` gate, no
-    tuning. **If Rarog gains from pruning LESS, the diagnosis is confirmed** and
-    10.2.5/10.4.6 must be re-aimed before either is built. If it loses, the
-    over-aggression hypothesis dies for the price of one match.
+
+    ⚠ **A single fixed-nodes match cannot be read against the 2×2 table above,
+    and this nearly went out as one match.** The 2×2 figures are *pool ratings*
+    with an anchor; (b) is a *two-engine* match, and this pair's head-to-head
+    runs ~35–45 Elo worse for Rarog than its pool rating (§ the matchup caveat
+    below). Comparing a nodes head-to-head against a clock POOL rating would
+    charge the whole matchup effect to time management. So (b) runs **two arms,
+    same engines, same book, SAME `-Seed`** — one at `tc=3+0.03`, one at
+    `-Nodes 250000` — and the *difference between the arms* is the measurement.
+    The clock arm is also the 1T STC head-to-head baseline the project has never
+    recorded (only the 10+0.1 one, −73 ± 52).
+
+    ✅ **Equal nodes is neutral for this pair — verified 2026-07-29 before
+    committing the design.** 1T NPS on three game positions at `movetime 1000`:
+    Rarog 2.81 / 2.58 / 4.47 M, Basilisk 1.9.1 2.87 / 2.45 / 4.55 M — within
+    ~2–5 % with the sign alternating. That matters: if one engine were faster,
+    equalizing nodes would silently hand the slower one a speed subsidy and the
+    arm difference would measure that instead of TM. (It also confirms 10.0's
+    "speed is equal" premise on game positions, not just on bench.)
+    `-Nodes 250000` is chosen to sit in the STC regime: ~100 ms/move at
+    ~2.7 M nps ≈ 270 k nodes.
+  - **(c) Over-pruning probe — the decisive cheap test. READY: both binaries
+    built, gate command in the guide.** Scale reductions and futility margins
+    down by a fixed factor; one `[0,3]` gate, no tuning. **If Rarog gains from
+    pruning LESS, the diagnosis is confirmed** and 10.2.5/10.4.6 must be
+    re-aimed before either is built. If it loses, the over-aggression hypothesis
+    dies for the price of one match.
+
+    **Built as `probe/10.0c-less-pruning` (commit `7693010`), a throwaway branch
+    that must never merge.** Twelve constants shifted 15 % toward less
+    selectivity: the whole LMR reduction surface ×0.85 (`lmr_table_base`
+    646→549 with `lmr_table_div` 2335→2747 — the table is
+    `base + 1024²·ln(d)·ln(i)/div`, so both terms scale together, verified
+    exact at d=13/i=10: 3298→2803, ratio 0.850), and ×1.15 on
+    `futility_base`/`futility_not_improving`/`razoring_coeff`/`lmp_base`/
+    `lmp_not_improving`/`quiet_hist_prune_coeff`/`see_pruning_coeff`/
+    `see_pruning_max`/`fp_base`/`fp_coeff`. Every sign was checked against the
+    live comparison in `search.rs`, not the doc comments — for RFP, razoring,
+    the LMP margin, quiet futility and SEE pruning a LARGER constant prunes
+    LESS, which is why those go up while the reductions go down.
+    **15 % because 8.6's rejected candidate searched 16 % MORE aggressively and
+    lost −7.78** — this is that step mirrored, comfortably clear of the ±3 gate
+    resolution and inside every declared range.
+
+    Measured locally: bench **6,373,363 vs 5,173,540 = +23.2 % nodes**, geomean
+    EBF 2.406 → 2.449, WAC **179/300 vs the head's 173/300** at fixed depth 10.
+    The WAC delta is a *diagnostic only* — at fixed depth the probe also spends
+    more nodes, so solving 6 more is not free, and gating on a search-shape
+    trajectory is exactly what the canary policy forbids.
+
+    **Deliberately NOT shifted, so a rejection stays diagnosable:**
+    `lmp_count_base` (the LMP move count is `base + 2d²/3` and only `base` is
+    exposed — 2 of 44 at depth 8, so no 15 % step is representable; **LMP's
+    count branch is the one pruning family this probe cannot move**, though its
+    margin and quiet-history branches do move), null move (a depth reduction
+    with its own verification search and zugzwang failure modes), ProbCut
+    (separate mechanism; the raw port already lost 24.5), `singular_beta_mult`
+    (an EXTENSION — scaling it moves selectivity the other way), qsearch SEE,
+    the `corr_*` scales (all 0 at head), and the three discrete A/B knobs.
+
+    ⚠ **Registered limitation — the probe cannot separate "wrong direction"
+    from "off the joint optimum".** These constants were SPSA-fitted *jointly*,
+    so a correlated 15 % shift also moves them off a fitted point; that is the
+    same coupling that explained 8.11's −5.96. Consequence for reading the
+    result, pre-registered: a POSITIVE gate is strong evidence (it beat the
+    fitted point *despite* leaving it), while a NEGATIVE gate is weak — it
+    licenses "a uniform 15 % shift is not free", **not** "the selectivity
+    surface is fine". Only 10.4.6's joint re-fit can say the latter.
 
 
   **✅ THE 2×2 IS MEASURED (2026-07-28/29) — and it sharpens the target.**
