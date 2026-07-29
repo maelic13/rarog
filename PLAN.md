@@ -896,13 +896,49 @@ explanation is needed.
   selective — possibly the wrong way. This step exists so we find out for ~one
   match instead of a cycle.
 
-  - **(a) Internal search-quality readout — no games.** `lmr_applied` /
-    `lmr_research` already gives a direct over-reduction ratio. Add the one
-    missing standard metric: **first-move cutoff rate** (one counter at the
-    beta-cutoff site). Healthy engines sit ~90%+; materially below implicates
-    move ORDERING rather than pruning depth. ⚠ Absolute measurement only —
-    Basilisk's internal counters are off-limits (its tree is read-only), so this
-    cannot be a head-to-head.
+  - **(a) ✅ MEASURED 2026-07-29 — no games. Ordering is NOT the primary
+    defect; the reading points at pruning depth.** One counter added at the
+    beta-cutoff site (`cutoff_first_move`, diag-only, bench-identical at
+    5,173,540 with and without the feature) and read over the 40-position
+    `bench 13` suite by `tools/diag_search_quality.ps1`:
+
+    | metric | reading | over |
+    |---|--:|--:|
+    | first-move cutoff rate | **87.65 %** | 372,605 of 425,098 cutoffs |
+    | LMR over-reduction (`lmr_research/lmr_applied`) | **1.80 %** | 17,900 of 996,204 |
+    | cutoff nodes / interior nodes | 13.75 % | 425,098 of 3,092,622 |
+
+    **Ordering: 87.65 % is marginally under the ~90 % band, and that is a
+    NEGATIVE result in the useful sense** — it is not the kind of deficit that
+    explains 40 Elo, so the "the deficit is move ordering" branch of the
+    pre-registered consequence table below is disfavoured. It is not clean
+    enough to dismiss ordering outright either. Captures deliver 1.86× more
+    cutoffs than quiets (276,329 vs 148,769), so the first-move rate is mostly
+    carrying the TT/SEE-sorted head of the list; the ordering money, if any, is
+    in the quiet tail — which is 10.4's threat-aware history, not a 10.0 item.
+
+    **Over-reduction 1.80 % is the striking figure, and it is genuinely
+    two-sided.** A full re-search fires only when the reduced null-window
+    search returns above alpha, so a rate this low means the reduced searches
+    almost never contradict the reduction. Either (i) the reductions are
+    accurate, or (ii) they are deep enough that a late move cannot climb back
+    over alpha even when it deserves to — i.e. the verification mechanism has
+    been rendered nearly inert, and the search has no way to notice.
+    **Reading (ii) is the one consistent with everything else 10.0 knows:**
+    14.6 nominal depth against Basilisk's 12.7 at equal NPS and equal eval
+    quality (a bigger depth number on a thinner tree), `reduction` clamped to
+    ≥ 1 ply so no late move can ever escape reduction at all (exactly the clamp
+    10.2.5 proposes to relax), LMP discarding 3.71 M moves against 3.09 M
+    interior nodes, and RFP cutting 21.9 % of interior nodes outright.
+    ⚠ **A counter cannot choose between (i) and (ii)** — both produce the same
+    number, and inferring (ii) from it alone would be exactly the
+    "diagnostic-as-verdict" error of lesson 1. **That is what (c) is for**, and
+    (a) leaves (c)'s design unchanged; what (a) buys is eliminating ordering as
+    the headline suspect before a cycle is spent on it.
+    ⚠ Absolute measurement only — Basilisk's internal counters are off-limits
+    (its tree is read-only), so this can never be a head-to-head. Re-read it
+    with the same script after 10.2.5 to see whether the capstone moves either
+    ratio (`-Csv` appends a comparable row).
   - **(b) Fixed-nodes match vs Basilisk 1.9.1.** Removes speed and time
     management entirely. If Rarog still reads ≈−43 at equal nodes, the gap is
     *pure search quality*; if it shrinks materially, TM is implicated and 10.2
@@ -1700,6 +1736,7 @@ and 2/4/8-thread gauntlet infrastructure; needs 10.1 `RootMove` records):
 | `tools/texel/bake_params.py <dump>` | bake a full dump into `src/eval.rs`; verify by bench-match (tune-binary-on-dump == baked build) |
 | `tools/texel/data/beast_seed.epd` | diverse 100k-opening EPD book for datagen |
 | `tools/books/UHO_Lichess_4852_v1.epd` | SPRT/SPSA/gauntlet opening book (adopted 2026-07-17, same day as Basilisk) — the SF/OpenBench-standard Unbalanced Human Openings: 2,632,036 positions, 3–4 moves deep, curated to the +0.48–0.52 White-edge band, played from both colours per pair (symmetric ⇒ unbiased but decisive). Replaces the balanced 4-move PGNs, which cost twice over: SuperGM's 2,668 lines were exhausted by any run > 5,336 games (7.2b recycled 23% of pairs → optimistic error bars), and balanced openings kept the draw rate at 56% (43% dead pairs). UHO cuts draws to ~35–45% ⇒ SPRTs resolve in substantially fewer games. **Two earlier same-day judgments corrected within hours:** (i) "book size is the issue, draw rate is healthy" — reuse was the *acute* flaw, but decisiveness was the larger standing tax; (ii) "UHO only at a phase boundary" — wrong, since every SPRT/SPSA is a self-contained A-vs-B, only *cross-run* draw-rate/Elo magnitudes lose comparability, verdicts don't. weather-factory takes the EPD natively (format from extension), so tune→confirm stays unified (principle #7). Caveats: absolute draw rates / logistic Elo not comparable to pre-UHO runs; gauntlets for CCRL-comparable estimates should use `-Book tools/books/IM_4mvs.pgn` (balanced, 11,172 unique lines, the audited fallback) |
+| `tools/diag_search_quality.ps1 [-Csv <path>]` | 10.0(a) search-quality readout: first-move cutoff rate + LMR over-reduction over `bench 13`, aggregated from the per-position diag dumps. Needs a `cargo build --release --features diag` binary. ⚠ `bench` is queued asynchronously, so a piped `bench …; quit` tears the engine down before the suite runs and prints only the banner — the script drives a live process |
 | `wac [depth]` (engine command, like `bench`) | WAC-300 tactical suite; deterministic solved count at fixed depth (default 10). Regression telltale for Phase-8 selectivity work; floor test in `tests/wac.rs` |
 | `D:/code/net_trainer` | Phase-12 NNUE training stack (bullet, CUDA GPU): `tools/datagen.py` / `extract_nnue.py` → `net-trainer convert/shuffle/train` → `quantised.bin` |
 | `D:/code/net_trainer/docs/nnue_format.md` + `models/test/` | the net consumer contract + integer-exact conformance vectors (12.1's acceptance gate); reference impls in `examples/` |

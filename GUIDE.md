@@ -146,8 +146,20 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       ⚠ The direct head-to-head is ~40 Elo worse for Rarog than the pool rating
       at both TCs — Basilisk has a matchup-specific edge; judge general strength
       by the pool rating, which is the actual goal.
-    - [ ] (a) First-move-cutoff-rate counter + the existing
-          `lmr_research`/`lmr_applied` over-reduction ratio. No games.
+    - [x] (a) **[DONE, no games]** First-move cutoff rate **87.65%** (372,605
+          of 425,098 cutoffs) and LMR over-reduction **1.80%** (17,900 of
+          996,204 reductions), read over `bench 13` by
+          `tools/diag_search_quality.ps1`. Counter is diag-only and
+          bench-identical (5,173,540 both ways).
+          **Ordering is not the headline suspect** — 87.65% is only marginally
+          under the ~90% band, nowhere near a 40-Elo deficit, so the "deficit
+          is move ordering" branch is disfavoured. The 1.80% re-search rate is
+          the striking number and is two-sided: reductions are either accurate
+          or deep enough that the verification re-search can no longer fire.
+          Everything else points at the second reading (14.6 depth vs 12.7 at
+          equal NPS, `reduction` clamped ≥1 ply, LMP discarding more moves than
+          there are interior nodes), but a counter cannot choose — **(c)
+          decides**, and (a) did not change (c)'s design.
     - [ ] (b) Fixed-nodes match vs Basilisk 1.9.1 to strip out speed and TM.
     - [ ] (c) **Over-pruning probe** — scale reductions/margins DOWN, one
           binary, one `[0,3]`.
