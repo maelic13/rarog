@@ -12,11 +12,11 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 
 | | |
 |---|---|
-| Branch / version | `master`; **2.3.1 PREPARED** — Windows ARM64 PGO restored, awaiting push + CI + tag |
-| Accepted baseline | **p103-gate** (the whole 10.3 speed pass, ACCEPTED 2026-07-22); `bench 13` = **5,480,624**, EBF **2.420** — unchanged from p82a-nocheckext, since every 10.3 item was bench-identical. Future SPRTs gate vs `rarog-p103-gate-pext-pgo.exe`. |
-| Working head | = accepted baseline (p103-gate) |
-| Last strength results | **8.12(g2) index hoist: +3.76% NPS (CI 3.35…3.98) ≈ +7.5 Elo**, pooled PGO, bench-identical, accepted on NPS evidence. **8.13 SMP rework: +102.78 ± 16.38 (nElo +168.85, LOS 100%) at Threads=4** (720 games; 1-thread byte-identical, deployment unaffected). Before them, **8.4 history bundle +6.01 ± 3.57, LOS 99.95%** (15,214 games; carries 8.12's +0.98%), **10.3 speed pass +20.31 ± 7.13** (3,460 games), **8.2(a) +30.75 ± 8.83**, **8.1 +22.13**. 8.1b ❌ −6.6, 8.6 ❌ −7.78, 8.7 ❌ −7.29. |
-| Current work | ▶ **2.3.1 patch release prepared.** After publishing it, the next cycle starts at **10.0 — search-accuracy decomposition**, which runs before any Phase 10 code (see below; the four-condition gauntlet reshaped its targeting). |
+| Branch / version | `development` (= `master` = `a5fd288`); **2.3.1 RELEASED**, tagged and pushed. Tree clean. |
+| Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406** (unchanged since 2.3.0 — the search did not move). ⚠ Every binary in `tools/test_engines/` predates 9.7.5, so `rarog-p103-gate-pext-pgo.exe` is NO LONGER the head. The first Phase-10 gate builds its own baseline: `./tools/build_test.ps1 -Suffix p100-base`. |
+| Working head | = accepted baseline (2.3.1) |
+| Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
+| Current work | ▶ **2.4.0 cycle is OPEN at 10.0 — search-accuracy decomposition.** Its 2×2 gauntlet half is measured; sub-items (a)/(b)/(c) are what remain, and their result re-aims 10.2.5 and 10.4.6 before either is built. |
 | Next release | **2.4.0 at 10.5.** Order: 10.0 decomposition → 10.1 → 10.4.6 re-fit → 10.2.5 capstone → 10.2 → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12 |
 
 ## Forward tracker
@@ -79,7 +79,7 @@ Each candidate gates against the then-current accepted head.
 one gate per bundle. Macro-order: **A** correctness bundles (Phase 7) → **B**
 strength (8 → 9 release → 10) → **C** NNUE (11 infra prep → 12 training) →
 **D** contingent HCE deepening (13, last, may never run). Queue:
-**Phase 7 ✅ → 8.1 ✅ (+22.13) → 8.1b ❌ → 8.2 ✅ (+30.75) → 8.6 ❌ (−7.78) → 8.7 ❌ (−7.29) → 8.10 ❌ (≈−5.4) → [10.3 ✅ +20.31, out of band] → 8.4 ✅ (+6.01, w/ 8.12) → 8.13 ✅ (+102.78 @4T) → 8.11 ❌ (−5.96) → 8.5 (SPSA running) = THE LAST OPEN ITEM** (8.9 capstone ⏭ moved to 10.2.5 / 2.4.0) (8.3 folded into 8.9; order ≠ numbers, which stay frozen; 8.10/8.11 added 2026-07-20 Basilisk cross-review; 8.12 speed II / 8.13 SMP added 2026-07-22 after 10.3's result)
+**Phase 7 ✅ → 8.1 ✅ (+22.13) → 8.1b ❌ → 8.2 ✅ (+30.75) → 8.6 ❌ (−7.78) → 8.7 ❌ (−7.29) → 8.10 ❌ (≈−5.4) → [10.3 ✅ +20.31, out of band] → 8.4 ✅ (+6.01, w/ 8.12) → 8.13 ✅ (+102.78 @4T) → 8.11 ❌ (−5.96) → 8.5 ⬛ (wash) → 9.7.5 ✅ → 9.8 ✅ RELEASE 2.3.0/2.3.1 → 10.0 = THE CURRENT ITEM** (8.9 capstone ⏭ moved to 10.2.5 / 2.4.0) (8.3 folded into 8.9; order ≠ numbers, which stay frozen; 8.10/8.11 added 2026-07-20 Basilisk cross-review; 8.12 speed II / 8.13 SMP added 2026-07-22 after 10.3's result)
 Full rationale per item: `PLAN.md` §S6.
 
 ### Phase 7 — Correctness repairs — ✅ COMPLETE
@@ -490,26 +490,24 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
-**8.4 SPSA (10.3 is done and accepted).** The tune binary is already built at
-the accepted head `p103-gate` (sha `3240837`, clean tree, bench 5,480,624), so
-this is a launch, not a build:
+**10.0 — the search-accuracy decomposition.** Nothing else in Phase 10 starts
+until this closes, because its answer re-aims both of the cycle's big items
+(10.2.5 and 10.4.6).
+
+Every gate binary in `tools/test_engines/` predates 9.7.5, so the first thing
+the cycle needs is a baseline built from the 2.3.1 head:
 
 ```powershell
-./tools/spsa.ps1 -ConfigGroup histcov -EngineSuffix p84-histcov -Iterations 6000
+./tools/build_test.ps1 -Suffix p100-base
 ```
 
-1. Launch it (long job — give it the full core budget, nothing else running).
-2. **Paste the final values of all 10 dims and any bound-pinned params** when
-   it converges — the model never reads `state.json` itself.
-3. Model then bakes the values, verifies, and hands you the 8.4 `[0,3]` gate
-   command **vs `rarog-p103-gate-pext-pgo.exe`** (the new head, NOT p82a).
+The exact match commands for 10.0(b) and 10.0(c) land here once the model has
+implemented 10.0(a) and prepared the probe.
 
-Afterwards the wave continues per the queue: 8.5 → 8.9, with 8.11 (fail-soft
-qsearch), 8.12 (speed pass II — currently the best-paying lever at ≈2 Elo/1%
-STC) and 8.13 (SMP compare-and-choose; needs the sprt.ps1 Threads
-passthrough first) slotting in wherever convenient — all three are
-independent of the LMR family. Then 10.4 (all-skippable menu) and the 2.4.0
-boundary gauntlet at 10.5.
+Afterwards the cycle continues per the revised execution order: 10.1
+(bookkeeping, no games) → 10.4.6 re-fit → 10.2.5 capstone, re-scoped by 10.0's
+result → 10.2 aspiration/TM → 10.4 menu picks → 10.4.3 Texel re-fit → the
+2.4.0 boundary gauntlet at 10.5.
 
 ## Working rhythm
 
@@ -608,11 +606,11 @@ one thing NNUE subsumes, so it waits in the contingent Phase 13.
 
 | Phase | Outcome | Release / cutoff |
 |---:|---|---|
-| **7** | Correctness bugs (7.6 ✅, 7.4 ✅; **7.2 in gate**; 7.5 next) | — |
-| **8** | Search-mechanism wave — **must COMPLETE before 2.3.0** (8.6 ❌ → 8.7 ❌ → 8.10 ❌ → 8.4 → 8.5 → 8.9 + 8.11/8.12/8.13) | — |
-| **9** | Reproducible builds, CI, shipped PGO + clean-code P1/P2 | — |
-| 9.8 | Boundary gauntlet (you) — after Phase 8 completes | **▶ RELEASE 2.3.0** |
-| **10** | Root model, aspiration/TM modernization, **10.2.5 the search capstone (moved from 8.9)**, speed pass ✅, ⏭ menu | — |
+| **7** | Correctness bugs (7.6 ✅, 7.4 ✅, 7.2 ✅, 7.5 ✅) — **COMPLETE** | — |
+| **8** | Search-mechanism wave — **COMPLETE** (8.1 ✅ 8.2 ✅ 8.4 ✅ 8.12 ✅ 8.13 ✅; 8.1b/8.6/8.7/8.10/8.11 ❌; 8.5 ⬛; 8.9 → 10.2.5) | — |
+| **9** | Reproducible builds, CI, shipped PGO + clean-code P1/P2, 9.7.5 SMP II — **COMPLETE** | — |
+| 9.8 | Boundary gauntlet ✅ — +76 / +78 / +194 over 2.2.0 | ✅ **RELEASED 2.3.0** (+2.3.1) |
+| **10** | ▶ **CURRENT** — 10.0 decomposition, root model, aspiration/TM, **10.2.5 the search capstone (moved from 8.9)**, speed pass ✅, ⏭ menu | — |
 | 10.5 | Boundary gauntlet (you) | **▶ RELEASE 2.4.0** |
 | **━ NNUE CUTOFF ━** | no standalone HCE-eval strength before here | |
 | **11** | NNUE infra prep (StateInfo, accumulator scaffolding, frozen corpus) | — |
@@ -620,9 +618,10 @@ one thing NNUE subsumes, so it waits in the contingent Phase 13.
 | **13** | HCE deepening — **only if NNUE fails/stalls** (all NNUE-subsumed eval) | — |
 | **14** | Parked: SMP, platform, distributed testing | — |
 
-**Two releases before NNUE** (2.3.0 after the search wave, 2.4.0 after
+**Two releases before NNUE** (2.3.0 ✅ after the search wave, 2.4.0 after
 root/speed), then the **NNUE line opens at Phase 11**. Revived rejected work is
-numbered: 7.2 SEE (in gate), 10.2a aspiration, 7.5 TM. 7.4c OCB moved to 13.8
+numbered: 7.2 SEE ✅ (+1.47), 10.2a aspiration, 7.5 TM ✅ (+2.85 LTC), 8.11
+fail-soft qsearch (retry rides 10.4.6(a)). 7.4c OCB moved to 13.8
 (NNUE-subsumed). Nothing else from the reject pile is revived — 6.1/6.2, the
 7.1 draw rework and 7.3 stay dead (lessons 1/14).
 

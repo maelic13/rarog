@@ -12,15 +12,24 @@ record, the lessons that must not be re-learned, and the forward plan.
 
 ## S1. Current state
 
-**2.3.1 patch release is PREPARED.** It restores PGO for the Windows ARM64
-release asset by selecting the toolchain's LLD linker for that target. Version,
-CHANGELOG and README are updated; the engine search is unchanged, so bench 13
-remains 5,173,540. The remaining release steps are pushing `master`, waiting
-for its CI gate, tagging `v2.3.1`, and publishing the GitHub release.
+**2.3.1 is RELEASED and the 2.4.0 cycle is OPEN.** `master` and `development`
+both sit at `a5fd288` (`Version 2.3.1`), the tree is clean, and `v2.3.1` is
+tagged and pushed. Phases 7, 8 and 9 are complete — the 9.8 boundary gauntlet
+validated the cycle (+76 / +78 Elo at 1T, +194 at 4T over 2.2.0) and 2.3.1
+restored PGO for the Windows ARM64 asset. Bench 13 = **5,173,540**, geomean
+EBF **2.406**. The search is unchanged since 2.3.0, so that fingerprint covers
+both releases.
 
-Everything after 9.8 belongs to the 2.4.0 cycle (Phase 10: root model,
+**The accepted baseline is the 2.3.1 head itself.** Every earlier gate binary
+in `tools/test_engines/` predates 9.7.5, so the first Phase-10 gate must build
+its own baseline (`tools/build_test.ps1 -Suffix p100-base`) rather than reuse
+`rarog-p103-gate-pext-pgo.exe`.
+
+The whole of Phase 10 belongs to the 2.4.0 cycle and it starts at **10.0, the
+search-accuracy decomposition** — whose 2×2 gauntlet half is already measured.
+Its remaining three sub-items redirect everything behind them: root model,
 aspiration/TM, the 10.2.5 search capstone, and the 10.4.6 SPSA re-fit under the
-corrected schedule).
+corrected schedule.
 
 ## S2. The development process
 
@@ -648,11 +657,11 @@ never run). Linear order and the exact release / cutoff points:
 | Step | What | Release / cutoff |
 |---|---|---|
 | **Phase 7** | Correctness bugs — 7.6 ✅, 7.4 ✅, 7.2 SEE ✅, 7.5 TM ✅ — **COMPLETE** | — |
-| **Phase 8** | Search wave — 8.1 ✅ (+22.13); 8.1b ❌; 8.2 ✅ (+30.75); 8.6 ❌ (−7.78); 8.7 ❌ (−7.29); 8.10 ❌ (≈−5.4); 8.4 ✅ (+6.01, bundles 8.12); 8.11 ❌ (−5.96); 8.12 ✅ (+0.98% NPS); 8.13 ✅ (+102.78 @4T, 1T-neutral) → **8.5 (SPSA running) is the LAST open item; 8.9 capstone MOVED to 10.2.5 for the 2.4.0 cycle (user decision 2026-07-25)** | — |
-| **Phase 9** | Reproducible builds + CI + shipped PGO; clean-code P1 (9.0a) + P2 (9.0b) | — |
-| **9.7.5** | SMP quality wave II — threading follow-ups from 8.13 (added 2026-07-25; deployment is now 1T **and** 4T) | — |
-| **9.8** | External boundary gauntlet (you) | **▶ RELEASE 2.3.0** — correctness + search wave |
-| **Phase 10** | Root model, aspiration+TM modernization, **10.2.5 search capstone (moved from 8.9 — schedule EARLY)**, profile-guided speed (**10.3 ✅ +20.31**), ⏭ menu | — |
+| **Phase 8** | Search wave — 8.1 ✅ (+22.13); 8.1b ❌; 8.2 ✅ (+30.75); 8.6 ❌ (−7.78); 8.7 ❌ (−7.29); 8.10 ❌ (≈−5.4); 8.4 ✅ (+6.01, bundles 8.12); 8.11 ❌ (−5.96); 8.12 ✅ (+0.98% NPS); 8.13 ✅ (+102.78 @4T, 1T-neutral); 8.5 ⬛ (wash, reverted) — **COMPLETE**; 8.9 capstone MOVED to 10.2.5 for the 2.4.0 cycle (user decision 2026-07-25) | — |
+| **Phase 9** | Reproducible builds + CI + shipped PGO; clean-code P1 (9.0a) + P2 (9.0b) — **COMPLETE** | — |
+| **9.7.5** | SMP quality wave II — threading follow-ups from 8.13 (added 2026-07-25; deployment is now 1T **and** 4T) — ✅ **net zero Elo, +1.0…+1.6% 1T NPS** | — |
+| **9.8** | External boundary gauntlet ✅ — +76 / +78 at 1T, +194 at 4T over 2.2.0 | ✅ **RELEASED 2.3.0** (+ 2.3.1 ARM64 PGO patch) |
+| **Phase 10** | Root model, aspiration+TM modernization, **10.2.5 search capstone (moved from 8.9 — schedule EARLY)**, profile-guided speed (**10.3 ✅ +20.31**), ⏭ menu — **▶ CURRENT, opens at 10.0** | — |
 | **10.5** | External boundary gauntlet (you) | **▶ RELEASE 2.4.0** — root / speed |
 | **━━ NNUE CUTOFF ━━** | Everything above survives NNUE; **no standalone HCE-eval strength before here** | |
 | **Phase 11** | NNUE infra prep — per-ply StateInfo, dirty-piece, accumulator scaffolding, frozen corpus + clean-code P3 (11.0 structure era) | — |
