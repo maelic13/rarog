@@ -1920,6 +1920,17 @@ impl Searcher {
 
                 if score >= beta {
                     if excluded.is_null() {
+                        // 10.0(a): `searched` was incremented for this move
+                        // above, so `== 1` means the node's FIRST move failed
+                        // high. Denominator is cutoff_quiet + cutoff_capture,
+                        // both counted in this same block. `cfg`-gated rather
+                        // than relying on `diag_count!` expanding to nothing,
+                        // because the condition would leave an empty `if` in
+                        // the default build.
+                        #[cfg(feature = "diag")]
+                        if searched == 1 {
+                            crate::diag_count!(cutoff_first_move);
+                        }
                         // 8.4(e): the cutoff REWARD is scaled when the node
                         // static eval sat below beta - the search found a good
                         // move the eval did not credit. 100 = neutral; maluses

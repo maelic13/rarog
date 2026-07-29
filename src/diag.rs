@@ -58,9 +58,31 @@ pub mod counters {
         // LMR reduction and its verification re-search.
         lmr_applied,
         lmr_research,
-        // History / correction learning events.
+        // History / correction learning events. `cutoff_quiet + cutoff_capture`
+        // is also the count of every beta cutoff at a real (non-excluded)
+        // interior node, i.e. the DENOMINATOR of the ordering metric below.
         cutoff_quiet,
         cutoff_capture,
+        // 10.0(a) — FIRST-MOVE CUTOFF RATE, the standard move-ordering readout:
+        // `cutoff_first_move / (cutoff_quiet + cutoff_capture)`. Counted where
+        // the move that failed high was the FIRST move the node searched.
+        //
+        // Why it is the missing metric: 10.0 established that Rarog's eval and
+        // NPS match Basilisk 1.9.1 while it plays ~38-55 Elo weaker at 1T, at
+        // any time control, so the deficit is in how the search converts nodes
+        // into decisions. Two sub-causes remain, and they imply opposite fixes.
+        // The over-reduction ratio (`lmr_research / lmr_applied`) reads the
+        // PRUNING-DEPTH side; this counter reads the ORDERING side. Healthy
+        // engines sit ~90%+; materially below implicates ordering, in which
+        // case re-tuning the selectivity surface (10.4.6) is aimed at the wrong
+        // half of the problem.
+        //
+        // Excluded-move (singular-verification) searches do NOT count: their
+        // best move is deliberately withheld, so a first-move cutoff there
+        // measures the exclusion, not the ordering. That is automatic — this
+        // sits inside the same `excluded.is_null()` guard as the two above, so
+        // numerator and denominator always cover the same node set.
+        cutoff_first_move,
         correction_updates,
         correction_on_capture,
         // 9.7.5(b) — SMP quality. The question these answer: 16 threads give
