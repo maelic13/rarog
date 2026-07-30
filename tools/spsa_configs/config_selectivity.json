@@ -1,0 +1,170 @@
+{
+  "FutilityBase": {
+    "value": 60,
+    "min_value": 20,
+    "max_value": 200,
+    "step": 10
+  },
+  "FutilityNotImproving": {
+    "value": 48,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 10
+  },
+  "RazoringCoeff": {
+    "value": 222,
+    "min_value": 50,
+    "max_value": 300,
+    "step": 20
+  },
+  "LmpBase": {
+    "value": 88,
+    "min_value": 30,
+    "max_value": 200,
+    "step": 14
+  },
+  "LmpNotImproving": {
+    "value": 72,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 10
+  },
+  "QuietHistPruneCoeff": {
+    "value": 5829,
+    "min_value": 1000,
+    "max_value": 10000,
+    "step": 400
+  },
+  "SeePruningCoeff": {
+    "value": 59,
+    "min_value": 20,
+    "max_value": 200,
+    "step": 12
+  },
+  "SeePruningMax": {
+    "value": 999,
+    "min_value": 200,
+    "max_value": 1600,
+    "step": 80
+  },
+  "FpBase": {
+    "value": 212,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 20
+  },
+  "FpCoeff": {
+    "value": 135,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 15
+  },
+  "NullMoveDepthCoeff": {
+    "value": 10,
+    "min_value": 2,
+    "max_value": 40,
+    "step": 4
+  },
+  "NullMoveImprovingBonus": {
+    "value": 32,
+    "min_value": 0,
+    "max_value": 80,
+    "step": 8
+  },
+  "AspirationDelta": {
+    "value": 30,
+    "min_value": 10,
+    "max_value": 60,
+    "step": 6
+  },
+  "SingularBetaMult": {
+    "value": 6,
+    "min_value": 1,
+    "max_value": 8,
+    "step": 2
+  },
+  "LmpCountBase": {
+    "value": 2,
+    "min_value": 1,
+    "max_value": 12,
+    "step": 2
+  },
+  "EvalPruneTtMinDepth": {
+    "value": 0,
+    "min_value": 0,
+    "max_value": 8,
+    "step": 2
+  },
+  "QsSeeMargin": {
+    "value": 251,
+    "min_value": 0,
+    "max_value": 600,
+    "step": 40
+  },
+  "QsSeeClampLo": {
+    "value": -661,
+    "min_value": -1600,
+    "max_value": -100,
+    "step": 120
+  },
+  "QsSeeClampHi": {
+    "value": 218,
+    "min_value": 0,
+    "max_value": 600,
+    "step": 40
+  },
+  "QsSeeBadFloor": {
+    "value": -119,
+    "min_value": -400,
+    "max_value": 0,
+    "step": 40
+  },
+  "CorrRfpScale": {
+    "value": 0,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 50
+  },
+  "CorrFutScale": {
+    "value": 0,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 50
+  },
+  "CorrLmrScale": {
+    "value": 0,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 50
+  },
+  "CorrWeightPawn": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 30
+  },
+  "CorrWeightMinor": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 30
+  },
+  "CorrWeightOwnNp": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 30
+  },
+  "CorrWeightTheirNp": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 30
+  },
+  "CorrWeightCont": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 30
+  }
+}

@@ -103,10 +103,84 @@ drifted seeds** — `config_history.json` still held pre-8.4 `Hist*` values,
 trust the audit script, not the tables. Ranges and steps are only defined here,
 so those columns are authoritative.
 
-## Parameter groups (tune one group at a time)
+## Parameter groups
 
-Tune **one config file per run**. Do not combine groups into one run —
-the gradient becomes too noisy with many parameters at once.
+Tune **one config file per run** — but note that a config file may itself be a
+MERGE of several groups.
+
+⛔ **The old rule here — "do not combine groups into one run, the gradient
+becomes too noisy with many parameters at once" — was WRONG and is retracted
+(2026-07-30).** It was never measured, and
+`tools/spsa_convergence_model.py` refuted it against our own shipped schedule:
+**p=6 and p=26 converge at nearly identical rates.** That is Spall's result —
+SPSA costs 2 evaluations per iteration *regardless of dimension*, so dimension
+is close to free. What actually dominates is ITERATION COUNT (see below), and
+splitting one 26-knob problem into three 8-knob runs triples the nights while
+throwing away every cross-knob interaction. Where knobs interact by
+construction — the `Corr*Scale` values multiply the very margins the pruning
+knobs set — tuning them together is not merely cheaper but *more correct*.
+
+Two rules that DO hold, and that the retracted one was standing in for:
+
+- **5,000 iterations is the floor for any tune.** At 1,000–2,500 a run barely
+  beats its own seed, and every Rarog tune before 10.4.6 sat in that range
+  (8.5's 3,673 was the longest). A 1,000-iteration SPSA is not a cheap tune, it
+  is a null result with a bake attached.
+- **Run the coverage audit first** (above). Class 5 and 6 are hard errors: a
+  pinned knob or one whose perturbation rounds to zero stops being *measured*
+  while still being *updated*, i.e. it random-walks and drags the fit with it.
+
+### config_selectivity.json — 10.4.6(a) THE selectivity re-fit (28 knobs)
+
+The merged group: `config_pruning` (14) + the four non-overlapping
+`config_see` knobs + `config_corr` (8) + `config_futility` (2). One tune
+replaces four. `CorrGuardCapture` is deliberately EXCLUDED — it is a discrete
+A/B knob, and pinning it inside a tune is precisely what cost 8.5 its gate
+(the guard silently discarded 59.7% of correction training, and 117k games
+fitted eight knobs to a crippled signal).
+
+**Why it exists: 10.0(c) measured this exact surface as mis-tuned.** A blind,
+untuned, uniform 15% shift of these constants toward *less* selectivity beat the
+fitted values by **+4.06 ± 3.71 Elo (LOS 98.42%, 14,196 games)**. Values sitting
+inside the SPSA noise floor cannot be beaten by a blind shift, so this group is
+demonstrably outside it — which is what converts 10.4.6 from a speculative
+re-tune into the cycle's headline item.
+
+⚠ **The seeds are DELIBERATELY not the baked defaults, and the coverage audit
+will report 8 "drifted seeds" for this file. That is intended, not drift.**
+Eight knobs are seeded at 10.0(c)'s probe values (a measured +4.06 better than
+the defaults) so the run starts from the best point we know rather than from one
+we have just measured as worse: `FutilityNotImproving` 48, `RazoringCoeff` 222,
+`LmpNotImproving` 72, `QuietHistPruneCoeff` 5829, `SeePruningCoeff` 59,
+`SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. If the tune ends up going
+nowhere, the tail means bake back to ≈the probe values and the gate reads ≈+4 —
+i.e. the floor is a known gain rather than a known zero.
+
+📌 **`FutilityBase` (60) and `LmpBase` (88) are the KILL-CHECKPOINT and are
+held at the accepted-head values on purpose** — one full `step` below the
+probe direction the other eight start from. They are the two highest-traffic
+margins in the group (RFP cuts 21.9% of interior nodes; LMP discards more moves
+than there are interior nodes). By ~1,500 iterations the fixed schedule must
+visibly walk them UP toward ~69 and ~101. **If they wander instead, STOP and
+debug before spending night two** — the rest of the run cannot help either, and
+this is the one direction in the whole group whose sign is backed by four
+independent measurements (8.6 −7.78, 8.7 −7.29, 8.11 −5.96 and 10.0(c) +4.06),
+so a tuner that cannot find it lacks resolving power at this noise level.
+
+⚠ `EvalPruneTtMinDepth` seeds at 0, on its MIN rail (one-sided gradient — the
+audit warns about this). Accepted here because 0 *is* today's behaviour and the
+only interesting direction is up: it decides whether a depth-0 qsearch bound may
+override the static eval for an RFP decision at depth 8. It is the knob that
+carries 8.11's honest-bounds question, since the re-applied fail-soft covers the
+prune exits only and leaves the tail's stored bound alone. The three
+`Corr*Scale` knobs seed on their min rail for the same reason (8.5 closed them
+neutral; any activation is upward).
+
+⚠ Expect low resolving power on the `Corr*` block: 8.5 measured that bundle at
++1.4 ± 4.9 *in total* across 8 knobs, which is inside the "curvature below
+~0.5 Elo per full step is unfittable at 32 games/iteration" class. They are
+included because dimension is free and they multiply the margins, not because
+they are expected to move.
 
 ### config_corr.json — Phase 8.5 correction semantics + margins + blend
 
