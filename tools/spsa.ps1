@@ -75,7 +75,7 @@ is 0.002, the same order. Larger = hotter = more late wander.
     ./tools/spsa.ps1 -ConfigGroup history -LaunchOnly
 #>
 param(
-    [ValidateSet("pruning","lmr","histcov","corr","probcut","futility","tm","lazymargin","history","see")]
+    [ValidateSet("selectivity","pruning","lmr","histcov","corr","probcut","futility","tm","lazymargin","history","see")]
     [string]$ConfigGroup = "lmr",
     [int]$Iterations = 5000,
     [double]$REnd = 0.0031,
@@ -135,6 +135,7 @@ if ($LogFile -eq "") { $LogFile = Join-Path $PSScriptRoot "results\spsa_$ConfigG
 if (-not $LaunchOnly) {
     if ($EngineSuffix -eq "") {
         $EngineSuffix = switch ($ConfigGroup) {
+            "selectivity" { "p1046a" }
             "lmr" { "p86-lmr" }
             "histcov" { "p84-histcov" }
             "corr" { "p85-corr" }
@@ -261,13 +262,43 @@ if (-not $LaunchOnly) {
     # agreeing that a=1.0 was far too hot.
     $alpha = 0.601
     $gamma = 0.102
-    $A = [int]([Math]::Floor($Iterations / 10))
-    $a = $REnd * [Math]::Pow($A + $Iterations, $alpha) / [Math]::Pow($Iterations, 2 * $gamma)
-    $aFmt = [Math]::Round($a, 5)
-    $spsaJson = "{`n    ""a"": $aFmt,`n    ""c"": 1.0,`n    ""A"": $A,`n    ""alpha"": $alpha,`n    ""gamma"": $gamma`n}"
-    $spsaJson | Out-File (Join-Path $wfRoot "spsa.json") -Encoding utf8 -NoNewline
-    Write-Host "Wrote spsa.json (r_end=$REnd over $Iterations iterations -> a=$aFmt, A=$A)"
+    # ⚠⚠ DO NOT name these `$A` and `$a`. PowerShell variable names are
+    # CASE-INSENSITIVE, so `$A` and `$a` are ONE variable: the gain assignment
+    # silently overwrote the damping term, and spsa.json shipped
+    # `"A": 0.0965` where it needed `"A": 500`. That is A ≈ 0, i.e. NO damping
+    # over the first 10% of the run — the exact defect the 2026-07-27 schedule
+    # fix existed to remove, reintroduced by a language footgun.
+    # Found 2026-07-30 by a -SetupOnly dry run before 10.4.6(a), which is the
+    # FIRST tune this parameterization would ever have driven, so no fit was
+    # contaminated. The assertion below is what makes it un-shippable again.
+    $dampingA = [int]([Math]::Floor($Iterations / 10))
+    $gainA = $REnd * [Math]::Pow($dampingA + $Iterations, $alpha) / [Math]::Pow($Iterations, 2 * $gamma)
+    $gainFmt = [Math]::Round($gainA, 5)
+    $spsaPath = Join-Path $wfRoot "spsa.json"
+    $spsaJson = "{`n    ""a"": $gainFmt,`n    ""c"": 1.0,`n    ""A"": $dampingA,`n    ""alpha"": $alpha,`n    ""gamma"": $gamma`n}"
+    $spsaJson | Out-File $spsaPath -Encoding utf8 -NoNewline
+
+    # Read back and verify. The schedule is invisible at runtime — a wrong A
+    # produces a plausible-looking run that anneals wrongly for 40 hours — so it
+    # is checked here, where it is still cheap.
+    # ⚠ -AsHashtable is MANDATORY: `a` and `A` differ only in case, and the
+    # default ConvertFrom-Json throws on that ("keys with different casing").
+    # Same footgun as the variable naming above, one layer down. Index with
+    # brackets — property access on the hashtable would be case-insensitive and
+    # silently return the wrong one of the two.
+    $written = Get-Content $spsaPath -Raw | ConvertFrom-Json -AsHashtable
+    if ([int]$written['A'] -ne $dampingA) {
+        throw "spsa.json A is $($written['A']), expected $dampingA (damping = 10% of the horizon)."
+    }
+    if ([int]$written['A'] -le 0) {
+        throw "spsa.json A must be positive; got $($written['A']). A=0 means NO damping."
+    }
+    if ([Math]::Abs([double]$written['a'] - $gainFmt) -gt 1e-9) {
+        throw "spsa.json a is $($written['a']), expected $gainFmt."
+    }
+    Write-Host "Wrote spsa.json (r_end=$REnd over $Iterations iterations -> a=$gainFmt, A=$dampingA)"
     Write-Host "  (a is DERIVED from r_end and the horizon — change -Iterations and it re-solves.)"
+    Write-Host "  Verified: A = $($written['A']) (10% of horizon), a = $($written['a'])." -ForegroundColor Green
 
     $srcConfig = Join-Path $configs "config_$ConfigGroup.json"
     if (-not (Test-Path $srcConfig)) { throw "Config not found: $srcConfig" }
