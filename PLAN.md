@@ -194,6 +194,33 @@ after 8.4/8.5 close, and re-fit nothing retroactively without a gate. Not
 worth re-running 8.4 for: the values are still fitted, just fitted under a
 faster anneal.
 
+**🔴 AND THE FIX ITSELF SHIPPED BROKEN — found 2026-07-30, before its first
+use.** `spsa.ps1` wrote `"A": 0.0965450005455993` where it needed `"A": 500`,
+because **PowerShell variable names are CASE-INSENSITIVE and `$A`/`$a` are one
+variable**: `$A = Iterations/10` (500) was silently clobbered by
+`$a = REnd · (A+N)^α / N^(2γ)` (0.0965) on the very next line, three lines below
+the comment block explaining why the damping matters. `a` itself was right (it
+read `$A` before the assignment landed); only the emitted `A` was wrong — and
+`a_t = a/(t+A)^0.601` with A ≈ 0 is **no damping at all**, i.e. exactly the
+defect this whole section exists to remove.
+It was caught by a `-SetupOnly` dry run before 10.4.6(a), which is the FIRST
+tune the end-state parameterization would ever have driven, **so no fit is
+contaminated** — the fix was authored 2026-07-27 with no tune running and
+nothing has tuned since. A 40-hour run would have annealed wrongly and looked
+entirely normal doing it, because the schedule leaves no trace in the output.
+Renamed to `$dampingA`/`$gainA`, and — the part that matters — `spsa.json` is now
+**read back and asserted** (A equals 10 % of the horizon, A > 0, a matches), with
+the launch printing `Verified: A = 500 (10% of horizon), a = 0.09655`. The
+read-back hit the same footgun one layer down: `ConvertFrom-Json` refuses keys
+differing only in case, so it uses `-AsHashtable` with **bracket** indexing —
+property access on a hashtable is case-insensitive and would silently return the
+wrong one of the two.
+**Lesson, and it is the general one: a derived constant that leaves no runtime
+trace must be asserted at the point it is written.** Two independent
+correctness passes over this schedule (the units fix, then the fishtest
+re-parameterization) both reviewed the *reasoning* and neither looked at the
+*written file*.
+
 **✅ FIXED 2026-07-27 (8.5's SPSA complete; no tune running).** The landed
 fix converts `t` to iteration units inside `spsa.py::step` (`it = t /
 games`), keeping `t`/`state.json` in games so old states resume correctly,
@@ -1454,7 +1481,61 @@ explanation is needed.
      8 knobs, so those knobs are probably in this class.
   5. Games-per-iteration is ~neutral at fixed game budget (16…128 all land
      within noise), so 32 stays.
-  - (a) **THE tune — one combined "selectivity" run, 26 knobs:**
+  - (a) **✅ PREPARED 2026-07-30 — ready to launch. 28 knobs, not 26.**
+        `tools/spsa_configs/config_selectivity.json` merges `config_pruning`
+        (14) + the four non-overlapping `config_see` knobs + `config_corr` (8) +
+        **`config_futility` (2, added)**. `FpBase`/`FpCoeff` are in because they
+        are part of the same surface, 10.0(c)'s winning package moved both, and
+        finding 1 says dimension is free — excluding them would have left two of
+        the ten probe-moved constants untuned for no saving.
+        `CorrGuardCapture` stays OUT (discrete; pinning it inside a tune is what
+        cost 8.5 its gate). Tune binary `rarog-p1046a-tune.exe`, clean manifest,
+        bench 5,320,596. Verified against the binary's own UCI surface: all 28
+        knobs present, every config range inside the engine clamp, every seed
+        reachable, zero problems. Coverage audit clean on both hard-error
+        classes (no pinned/discrete knob, no perturbation rounding to zero
+        before iteration 5,000).
+
+        **⚠ SEEDS ARE DELIBERATELY NOT THE BAKED DEFAULTS — the audit reports
+        8 "drifted seeds" for this file BY DESIGN.** Eight knobs start at
+        10.0(c)'s probe values, a measured +4.06 ± 3.71 better than the
+        defaults, so the run begins from the best point we know instead of one
+        just measured as worse: `FutilityNotImproving` 48, `RazoringCoeff` 222,
+        `LmpNotImproving` 72, `QuietHistPruneCoeff` 5829, `SeePruningCoeff` 59,
+        `SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. If the tune goes
+        nowhere the tail means bake back to ≈the probe values and the gate reads
+        ≈+4 — **the floor is a known gain rather than a known zero.**
+
+        **📌 KILL-CHECKPOINT REDESIGNED, because the version written below was
+        backwards.** It said "seed two knobs a full step off their baked values;
+        the fixed schedule must visibly walk them back". But 10.0(c) has since
+        measured that the baked values of the high-traffic margins are WORSE
+        than a step up — so a tuner *correctly* walking such a knob up would
+        have been misread as a failure to converge, and night two killed for the
+        right behaviour. Instead **`FutilityBase` (60) and `LmpBase` (88) are
+        HELD at the accepted-head values**, one full `step` below the probe
+        direction the other eight start from, and by ~1,500 iterations the
+        schedule must visibly walk them **UP** toward ~69 and ~101. They are the
+        two highest-traffic margins in the group (RFP cuts 21.9 % of interior
+        nodes; LMP discards more moves than there are interior nodes), and this
+        is the one direction in the group whose sign is backed by four
+        independent measurements (8.6 −7.78, 8.7 −7.29, 8.11 −5.96, 10.0(c)
+        +4.06). A tuner that cannot find it lacks resolving power at this noise
+        level, and the rest of the run cannot help either.
+
+        **8.11's fail-soft qsearch is re-applied** (`7c084dc`), as the item
+        requires — bench 5,320,596, *exactly* the figure the gated candidate
+        measured, which confirms behavioural identity with the rejected
+        candidate rather than a fresh approximation of it. ⚠ That is 8.11 as
+        gated (prune exits only, +2.8 % nodes); the full form that also makes
+        the tail store fail-soft measured +17.2 % and the record rules it out.
+        So the depth-0 Upper bound `eval_for_pruning` consumes is UNCHANGED, and
+        that coupling is `EvalPruneTtMinDepth`'s job — in the group, seeded 0,
+        for the tuner to decide.
+
+        Original scope note follows.
+
+        **THE tune — one combined "selectivity" run, 26 knobs:**
         `config_pruning` (14, already including `EvalPruneTtMinDepth`) +
         `config_see` (6, overlapping on `SeePruningCoeff`/`Max`) +
         `config_corr` (8; the guard stays OUT — separately-gated discrete,

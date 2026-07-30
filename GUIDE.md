@@ -223,6 +223,21 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           15% off a jointly SPSA-fitted point, so a correct re-fit should do
           better. Branch and both binaries kept — re-runnable any time,
           including as a cheap +4 bake if 10.4.6 underdelivers.
+- [~] **10.4.6(a) THE SELECTIVITY RE-FIT — the cycle headline, PREPARED, ready
+      to launch.** 28-knob combined SPSA (`config_selectivity`: pruning 14 + see
+      4 + corr 8 + futility 2; `CorrGuardCapture` excluded as a discrete),
+      5,000 iterations ≈ 160,000 games ≈ 40 h ≈ 2 nights, tune binary
+      `rarog-p1046a-tune.exe`. 8.11's fail-soft qsearch re-applied and bundled
+      (`7c084dc`, bench 5,320,596 = the gated candidate's exact figure).
+      Eight knobs seeded at 10.0(c)'s probe values (measured +4.06 better than
+      the defaults), so the floor is a known gain, not a known zero.
+      📌 Kill-checkpoint at ~1,500 iterations: `FutilityBase` (60) and `LmpBase`
+      (88) are held one step BELOW the probe direction and must visibly walk UP
+      toward ~69/~101. If they wander, stop before night two.
+      🔴 Prep found and fixed a real `spsa.ps1` bug — `A` was written as 0.0965
+      instead of 500 (PowerShell `$A`/`$a` are one variable), i.e. no damping.
+      Caught before its first use, so no past fit is contaminated; `spsa.json`
+      is now asserted after writing.
 - [ ] 10.1 Persistent `RootMove` records (bench-identical enabler; no games)
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
@@ -566,24 +581,55 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 until this closes, because its answer re-aims both of the cycle's big items
 (10.2.5 and 10.4.6).
 
-**Nothing — 10.0 is complete and the machine is free.** The next item is
-**10.4.6(a), the selectivity re-fit**, now the cycle headline on 10.0(c)'s
-evidence. It needs model work before you can launch anything:
+**10.4.6(a) is PREPARED. Setup has already run — launch it:**
 
-1. Re-apply 8.11's fail-soft qsearch (its −5.96 was mechanically traced to this
-   exact group having been fitted against fail-hard's inflated bounds, so the
-   re-fit must happen *with* fail-soft in place — that closes 8.11 either way).
-2. Build the tune binary and set the 26-knob combined group
-   (`config_pruning` + `config_see` + `config_corr`, guard excluded).
-3. Then you launch one 5,000-iteration SPSA (~160,000 games, ~40 h, 2 nights),
-   with the free kill-checkpoint at ~1,500 iterations — two knobs seeded a full
-   step off their baked values, which the fixed schedule must visibly walk back.
+```powershell
+./tools/spsa.ps1 -ConfigGroup selectivity -LaunchOnly -Iterations 5000
+```
 
-⚠ Set the iteration target on the FIRST launch: `A` is frozen from `state.json`,
-so re-passing `-Iterations` on a resume is ignored. Resume with
-`-LaunchOnly -Iterations 5000`, never the plain setup+launch form.
+That is a ~40 h run (5,000 iterations × 32 games ≈ 160,000 games at 28.57 s/iter),
+so expect two nights. It stops itself at 5,000. Ctrl-C is safe — state saves
+every 10 iterations and the log appends on resume — and you resume with the
+**same command**.
 
-Ask for step 1–2 whenever you want it; nothing is running now.
+⚠ Never resume with the plain setup+launch form: without `-LaunchOnly` it
+archives `state.json` and silently restarts from the seeds. `A` is already
+frozen at 500 (correct: 10% of the 5,000 horizon), so re-passing `-Iterations`
+on a resume is a no-op for the schedule and only sets the stop target.
+
+⚠ **The machine is fully occupied while this runs** (concurrency 14 of 16
+physical cores). No NPS work, no SPRT, no bench measurement until it stops.
+
+**📌 CHECK THE KILL-CHECKPOINT AT ~1,500 ITERATIONS AND TELL ME.**
+`FutilityBase` (seeded 60) and `LmpBase` (seeded 88) are deliberately held one
+step below the direction the other eight margins start from. By ~1,500 the
+schedule must visibly walk them **UP** toward ~69 and ~101. If they wander
+instead, **stop — do not spend night two**; the tuner lacks resolving power at
+this noise level and the rest of the run cannot help. Use the thirds test
+(see *Running an SPSA*), not eyeballed single-iteration values.
+
+Then: **paste the final values of all 28 knobs and any bound-pinned ones** — I
+never read `state.json` myself. I bake the whole vector (no per-knob filter —
+the tail mean *is* the filter), build a PGO binary, and hand you one `[0,3]`
+gate vs `rarog-p100-base-pext-pgo.exe`.
+
+What is already prepared and verified:
+
+| piece | state |
+|---|---|
+| 8.11 fail-soft qsearch re-applied | `7c084dc`, bench **5,320,596** = the gated candidate's exact figure |
+| `config_selectivity.json` | **28 knobs**; all present in the binary, ranges inside the engine clamp, audit clean on both error classes |
+| `rarog-p1046a-tune.exe` | clean manifest, bench 5,320,596 |
+| schedule | `a=0.09655, A=500`, verified by assertion (see below) |
+
+🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
+`A=0.0965` instead of `A=500`, because PowerShell variable names are
+case-insensitive and `$A`/`$a` are the same variable — i.e. **no damping at
+all**, the exact defect the 2026-07-27 schedule fix existed to remove. Caught by
+a `-SetupOnly` dry run before this, the first tune that parameterization would
+ever have driven, so **no past fit is contaminated**. `spsa.json` is now
+asserted after writing, and the launch prints
+`Verified: A = 500 (10% of horizon)`.
 
 Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 
