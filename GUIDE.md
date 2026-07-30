@@ -16,7 +16,7 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406** (unchanged since 2.3.0 — the search did not move). ⚠ Every binary in `tools/test_engines/` predates 9.7.5, so `rarog-p103-gate-pext-pgo.exe` is NO LONGER the head. The first Phase-10 gate builds its own baseline: `./tools/build_test.ps1 -Suffix p100-base`. |
 | Working head | = accepted baseline (2.3.1) |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.0 has ANSWERED: Rarog OVER-PRUNES.** (a) ✅ ordering is not the defect (87.65% first-move cutoffs, 1.80% LMR re-search). (c) ✅ **+4.06 ± 3.71, LOS 98.42%** for a blind 15% less-selective shift — diagnosis confirmed, and +4 is a FLOOR. (b) clock arm ✅ −62.15 ± 9.78 (and it retracts the "matchup edge" caveat); nodes arm running. |
+| Current work | ▶ **10.0 COMPLETE — Rarog OVER-PRUNES.** (a) ordering healthy (87.65%), LMR verification inert (1.80%). (b) gap survives at equal nodes (+3.11 ± 13.51 arm difference) and **Rarog is 2.5 plies DEEPER than Basilisk at equal nodes while 65 Elo weaker**. (c) blind 15% widening gains **+4.06 ± 3.71, LOS 98.42%**. Next: **10.4.6(a) selectivity re-fit** — needs 8.11's fail-soft re-applied + a tune binary (model work) before the SPSA. |
 | Next release | **2.4.0 at 10.5.** Order (revised 2026-07-30 by 10.0c): 10.0 ✅ → 10.1 → **10.4.6(a) selectivity re-fit = THE HEADLINE** → 10.2.5 capstone re-scoped toward *accuracy*, built on the re-fitted surface → 10.2 (priced by 10.0b) → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Forward tracker
@@ -129,7 +129,19 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
 
 ### Phase 10 — Root model, aspiration/TM, speed, menu (→ 2.4.0)
 
-- [ ] 10.0 **Search-accuracy decomposition — RUNS FIRST.** Eval measured at
+- [x] 10.0 **[COMPLETE 2026-07-30 — VERDICT: Rarog OVER-PRUNES]** Search-accuracy
+      decomposition. **Rarog spends its nodes on depth it cannot use; the fix is
+      a less selective, better-fitted search — not more selectivity, not
+      ordering, not time management.** Four independent measurements agree and
+      none is self-play: ordering healthy (87.65% first-move cutoffs), LMR
+      verification nearly inert (1.80% re-search), 2.5 plies deeper than
+      Basilisk at equal nodes while 65 Elo weaker, and a blind 15% widening
+      gains +4.06 ± 3.71. Cost: three matches and one counter.
+      Consequences: **10.4.6(a) is the cycle headline**, 10.2.5 is re-scoped
+      toward accuracy and moved behind it, 10.2 does not lead, and ⛔ nothing
+      may be built to prune or reduce HARDER without an explicit argument
+      against this. Detail below and in PLAN 10.0.
+      Search-accuracy decomposition — RAN FIRST. Eval measured at
       parity with Basilisk (paired Texel loss −0.0003 ± 0.0012 over 8,000 quiet
       positions, sign flipped between samples) and NPS is equal, yet Rarog is
       ~43 Elo weaker — so the deficit is search accuracy, which **survives the
@@ -160,12 +172,26 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           equal NPS, `reduction` clamped ≥1 ply, LMP discarding more moves than
           there are interior nodes), but a counter cannot choose — **(c)
           decides**, and (a) did not change (c)'s design.
-    - [~] (b) **[CLOCK ARM DONE −62.15 ± 9.78; NODES ARM RUNNING]** Fixed-nodes
-          match vs Basilisk 1.9.1 to strip out speed and TM. **TWO arms, same
-          seed** — `tc=3+0.03` ✅ and `-Nodes 250000` ⏳ — and the arm
-          DIFFERENCE is the measurement. Clock arm: −62.15 ± 9.78 (nElo
-          −80.72 ± 12.43, LOS 0%, 3,000 games, zero time losses), the 1T STC
-          head-to-head baseline we never had.
+    - [x] (b) **[DONE — the gap SURVIVES at equal nodes; TM priced at ≈0]**
+          clock −62.15 ± 9.78, fixed-250k-nodes −65.26 ± 9.88, **paired arm
+          difference +3.11 ± 13.51** (3,000 games each, zero time losses). At
+          most ~14 Elo of the −62 is speed+TM and the estimate is ≈0, so **10.2
+          does NOT rise in priority.**
+          🔴 **The decisive reading — depth at EXACTLY equal nodes** (~158k moves
+          each, `tools/pgn_depth_at_nodes.py`): Rarog **16.47** mean depth at
+          3.22 M nps vs Basilisk **13.96** at 3.05 M nps. **Rarog goes 2.5 plies
+          DEEPER on the same nodes at the same speed and loses by 65 Elo** — it
+          buys depth it cannot use by discarding width it needs. Supersedes the
+          old "14.6 vs 12.7" figure, which came from mismatched conditions; the
+          real gap is bigger. Also confirms speed parity directly in games, which
+          is why the clock arm reads slightly better for Rarog.
+          📌 **Registered progress metric:** after 10.4.6, re-run that script —
+          mean depth at 250k nodes should FALL toward ~14 while Elo RISES. A
+          re-fit that keeps the +2.5-ply lead has not fixed the over-pruning.
+          ⚠ The same-seed pairing bought only 2.9% (r = +0.056): `-games 2
+          -repeat` already plays both colours per opening, so the pair score has
+          absorbed the opening effect and cross-match pairing has nothing left
+          to remove. Don't budget resolution on it.
           ⛔ **It RETRACTS the "~35–45 Elo matchup edge" caveat**: −62.15 ± 9.78
           h2h against −55 ± 21 in the pool agree to within ~7 Elo, so there is
           no resolvable matchup edge at STC. The old figure came from h2h
@@ -540,25 +566,24 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 until this closes, because its answer re-aims both of the cycle's big items
 (10.2.5 and 10.4.6).
 
-**10.0(a) and 10.0(c) are DONE. 10.0(b)'s nodes arm is the only thing left in
-10.0** — the clock arm read −62.15 ± 9.78:
+**Nothing — 10.0 is complete and the machine is free.** The next item is
+**10.4.6(a), the selectivity re-fit**, now the cycle headline on 10.0(c)'s
+evidence. It needs model work before you can launch anything:
 
-```powershell
-./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100-base-pext-pgo.exe" -EngineB "D:\chess\engines\basilisk-v1.9.1-windows-x86_64-pext-pgo.exe" -NameA "rarog-231-nodes" -NameB "basilisk-191-nodes" -Mode fixed -Games 3000 -Seed 100 -Nodes 250000
-```
+1. Re-apply 8.11's fail-soft qsearch (its −5.96 was mechanically traced to this
+   exact group having been fitted against fail-hard's inflated bounds, so the
+   re-fit must happen *with* fail-soft in place — that closes 8.11 either way).
+2. Build the tune binary and set the 26-knob combined group
+   (`config_pruning` + `config_see` + `config_corr`, guard excluded).
+3. Then you launch one 5,000-iteration SPSA (~160,000 games, ~40 h, 2 nights),
+   with the free kill-checkpoint at ~1,500 iterations — two knobs seeded a full
+   step off their baked values, which the fixed schedule must visibly walk back.
 
-Report Elo ± error, LOS, games and any time losses. **The number that matters
-is the DIFFERENCE from −62.15**, not the absolute figure — a nodes-limited
-match cannot see time management at all. The "no manifest for basilisk-191"
-warning is normal for an external engine and only disables the
-compiler-equality check.
+⚠ Set the iteration target on the FIRST launch: `A` is frozen from `state.json`,
+so re-passing `-Iterations` on a resume is ignored. Resume with
+`-LaunchOnly -Iterations 5000`, never the plain setup+launch form.
 
-It can no longer change the cycle's headline; it only prices 10.2. So after it
-lands, the machine goes to **10.4.6(a) — the selectivity re-fit**, now the
-headline item on 10.0(c)'s evidence. That is a 5,000-iteration SPSA over 26
-knobs, ~2 nights, with the 1,500-iteration walk-back kill-checkpoint. It needs
-8.11's fail-soft qsearch re-applied first and a tune binary built, both of
-which are model work — ask for it when the machine is free.
+Ask for step 1–2 whenever you want it; nothing is running now.
 
 Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 

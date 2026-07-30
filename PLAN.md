@@ -997,6 +997,75 @@ explanation is needed.
     nothing"; it would license only "no TM contribution larger than ~14 Elo".
     Sharpening that needs more games in both arms, which is a decision to take
     after seeing the second arm, not before.
+
+    **✅ NODES ARM MEASURED 2026-07-30 — `−65.26 ± 9.88` (nElo −84.07 ± 12.43,
+    LOS 0 %, 3,000 games at 250 k nodes/move, DrawRatio 37.07 %, PairsRatio
+    0.42). 10.0(b) IS COMPLETE.**
+
+    | arm | Elo vs Basilisk 1.9.1 |
+    |---|--:|
+    | clock `3+0.03` | −62.15 ± 9.78 |
+    | fixed `250 000` nodes | −65.26 ± 9.88 |
+    | **paired difference (clock − nodes)** | **+3.11 ± 13.51** |
+
+    **The deficit survives at equal nodes: it is search quality, and TM is not
+    the lever.** Removing speed and time management entirely moved the result by
+    +3.11 ± 13.51 — a null, and if anything in the direction of Rarog doing
+    marginally *better* on the clock, which is what its small speed edge (below)
+    predicts. So of the −62, **at most ~14 Elo is speed + TM combined** and the
+    point estimate for their contribution is ≈0. **10.2 therefore does NOT rise
+    in priority** — the (b)-shrinks-the-gap branch of the consequence table is
+    not taken.
+
+    **🔴 THE DECISIVE READING — depth at EXACTLY equal nodes**
+    (`tools/pgn_depth_at_nodes.py`, ~158 k moves per engine):
+
+    | engine | mean depth | median | s/move | implied nps |
+    |---|--:|--:|--:|--:|
+    | Basilisk 1.9.1 | **13.96** | 13.0 | 0.0819 | 3,051,641 |
+    | Rarog 2.3.1 | **16.47** | 15.0 | 0.0775 | 3,223,853 |
+
+    **Rarog reaches 2.5 MORE plies on the same node budget at near-identical
+    speed — and loses by 65 Elo.** This supersedes 10.0's original "14.6 vs
+    12.7 at identical NPS" figure, which was assembled from two measurements
+    taken under different conditions; at fixed nodes the comparison needs no
+    modelling at all, and the true gap is *larger* than first thought (+2.5
+    plies, not +1.9). It also confirms the speed-parity premise directly in
+    games: 3.22 M vs 3.05 M nps, Rarog ~5.6 % faster — which is exactly why the
+    clock arm reads slightly better for Rarog than the nodes arm, so the two
+    arms are internally consistent.
+
+    **This is the strongest single piece of evidence in the whole of 10.0.**
+    Equal nodes, equal speed, evals measured at parity — and the engine that
+    searches *deeper* loses. A search that reaches 16.5 plies and loses to one
+    at 14.0 on the same nodes is by definition spending its nodes worse: it is
+    buying depth it cannot use by discarding width it needs. (c) then paid for
+    that width and gained Elo. The two results are the same finding from
+    opposite directions.
+
+    ⚠ Reported depth is each engine's own nominal `info depth` and is not
+    absolutely comparable across engines (extension/reduction conventions
+    differ). It is comparable as a *change within* one engine, and as the
+    qualitative "who reports more plies on the same nodes".
+
+    **📌 REGISTERED PROGRESS METRIC for 10.4.6.** Re-run
+    `tools/pgn_depth_at_nodes.py` on a post-re-fit fixed-nodes match. If the
+    re-fit does what (c) predicts, **Rarog's mean depth at 250 k nodes should
+    FALL toward ~14 while its Elo RISES.** A re-fit that keeps the +2.5-ply
+    advantage has not fixed the over-pruning, whatever its gate says. This is
+    free (one 30-minute match, no tuning) and it is falsifiable, which is the
+    point.
+
+    ⚠ **Methodological correction — the same-seed pairing bought almost
+    nothing, and I predicted it would.** All 1,500 openings were shared and
+    complete in both arms, yet the between-arm correlation was only
+    **r = +0.056**, so pairing cut the difference CI from ±13.90 to ±13.51
+    (2.9 %). The reason is structural and worth remembering: `-games 2 -repeat`
+    already plays each opening from **both colours**, so the pair score has
+    absorbed the opening's imbalance by construction and there is nothing left
+    for cross-match seed pairing to remove. **Do not budget resolution on the
+    expectation that fixing `-Seed` across two matches will tighten a
+    cross-engine comparison** — it is free insurance, not a variance reduction.
   - **(c) ✅ POSITIVE 2026-07-30 — THE OVER-PRUNING DIAGNOSIS IS CONFIRMED.
     `+4.06 ± 3.71` Elo, nElo `+6.27 ± 5.72`, **LOS 98.42 %**, 14,196 games at
     3+0.03, DrawRatio 41.97 %, PairsRatio 1.07, Ptnml
@@ -1123,10 +1192,17 @@ explanation is needed.
   instead. (c) negative and (b) flat → the deficit is move ordering or
   implementation, and (a) says which.
   **(c) came back +4.06 ± 3.71 (LOS 98.42 %), so the FIRST branch is taken**,
-  and (a) had already disfavoured the ordering branch independently. (b)'s nodes
-  arm still runs, but it can no longer change the headline — it now only sizes
-  how much of the residual gap is time management, i.e. it prices 10.2 rather
-  than choosing it.
+  and (a) had already disfavoured the ordering branch independently. **(b)
+  closed it out: the gap survives at equal nodes (+3.11 ± 13.51 arm
+  difference), so TM is priced at ≈0 and 10.2 does not lead.**
+
+  **✅ 10.0 IS COMPLETE. The verdict, in one line: Rarog spends its nodes on
+  depth it cannot use, and the fix is a less selective, better-fitted search —
+  not more selectivity, not ordering, not time management.** Four independent
+  measurements agree and none of them is self-play: ordering is healthy
+  (87.65 %), the LMR verification re-search has gone nearly inert (1.80 %), at
+  equal nodes Rarog is 2.5 plies deeper and 65 Elo weaker, and a blind 15 %
+  widening of the surface gains +4.06. Cost: three matches and one counter.
 
 - **10.1 Persistent `RootMove` records** (search §6): per root move —
   `score, previous_score, average_score, mean_squared_score, pv, nodes,
@@ -1172,7 +1248,10 @@ explanation is needed.
   (i) the capstone's purpose is **accuracy — spending the confidence estimate
   to prune the right moves — NOT extra selectivity.** Any variant whose net
   effect is a thinner tree is now contraindicated by a direct measurement, not
-  merely by the reject pile. The `allow zero reduction for strong late moves`
+  merely by the reject pile. ⛔ **And it must not add DEPTH:** 10.0(b) measured
+  Rarog already 2.5 plies ahead of Basilisk at equal nodes while losing 65 Elo,
+  so nominal depth is a cost here, not an achievement. Judge the capstone by
+  Elo and by whether the equal-nodes depth gap SHRINKS, never by depth reached. The `allow zero reduction for strong late moves`
   half (today clamped ≥ 1) is the part 10.0(c) most directly supports, since
   the clamp is exactly why a late move can never escape reduction and is a
   prime suspect for the inert 1.80 % re-search rate; the LMP/futility/SEE
