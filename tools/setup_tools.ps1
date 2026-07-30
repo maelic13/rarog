@@ -133,6 +133,61 @@ if (Test-Path $wfCute) {
     Write-Host "  weather-factory affinity patch and Python syntax verified."
 }
 
+# ADJUDICATION ALIGNMENT (2026-07-30). weather-factory ships
+# `-resign movecount=3 score=400` with no `twosided`, while sprt.ps1 uses
+# `movecount=3 score=600 twosided=true` — so the tuner was optimising under
+# game-termination rules the gate did not use, violating the unified-conditions
+# principle that puts SPSA and SPRT on the same TC and the same book.
+#
+# Two independent problems, and the one-sided flag is the worse of them:
+#   * score=400 vs 600 — the tune resigned games the gate would have played on.
+#   * NO `twosided` — fastchess then adjudicates on the LOSING side's own
+#     evaluation alone. Both SPSA arms are the SAME binary with perturbed
+#     parameters, so an arm whose parameters produce more extreme scores
+#     resigns more readily than its sibling. That is an asymmetry between the
+#     two arms of every mini-match, i.e. it lands directly in the gradient the
+#     tuner is estimating. `twosided=true` requires both engines to agree the
+#     game is decided, which removes the asymmetry by construction.
+#
+# Verified against fishtest's worker (official-stockfish/fishtest,
+# worker/games.py) 2026-07-30: Stockfish uses `-resign movecount=3 score=600`
+# and the string "twosided" does not appear in that file at all. So we match
+# its THRESHOLD exactly and deliberately go one step stricter on the flag.
+# That deviation is defensible: fishtest runs on donated heterogeneous workers
+# where one-sided resignation ends games sooner and throughput dominates; we
+# run one machine where the correctness of a gradient matters more than a few
+# percent of games-per-hour.
+#
+# NOT aligned to fishtest, deliberately: the draw rule. Ours is
+# `movenumber=40 movecount=8 score=10` against fishtest's
+# `movenumber=34 movecount=8 score=20` — later AND with a tighter score
+# window, i.e. strictly more conservative on both axes, and it already agrees
+# between sprt.ps1 and the tuner. Changing it would move the verdict
+# instrument and break comparability with the whole existing ledger for no
+# correctness gain.
+$wfCuteAdj = Join-Path $wfDir "cutechess.py"
+if (Test-Path $wfCuteAdj) {
+    $a = Get-Content $wfCuteAdj -Raw
+    if ($a -match 'RAROG_ADJUDICATION_PATCH_V1') {
+        Write-Host "  weather-factory adjudication patch already present."
+    } else {
+        $anchorResign = '"-resign movecount=3 score=400 "'
+        if (-not $a.Contains($anchorResign)) {
+            throw ("weather-factory/cutechess.py adjudication anchor not found; upstream changed. " +
+                "Expected $anchorResign — check the resign line before assuming it is already aligned.")
+        }
+        $a = $a.Replace($anchorResign,
+            '"-resign movecount=3 score=600 twosided=true "  # RAROG_ADJUDICATION_PATCH_V1: match sprt.ps1')
+        Set-Content -Path $wfCuteAdj -Value $a -Encoding utf8
+
+        python -m py_compile $wfCuteAdj
+        if ($LASTEXITCODE -ne 0) {
+            throw "weather-factory adjudication patch failed Python syntax validation: $wfCuteAdj"
+        }
+        Write-Host "  weather-factory adjudication patch and Python syntax verified."
+    }
+}
+
 # weather-factory's SPSA schedule feeds t (GAMES, 32/iteration) into Spall's
 # decay, which is designed per-iteration — the gain annealed 32^0.601 ~= 8x
 # too fast and every tune froze after a few hundred iterations (PLAN: "SPSA

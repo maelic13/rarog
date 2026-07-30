@@ -172,6 +172,49 @@ Relocated here 2026-07-28 from Phase 8, because it governs EVERY
 future tune rather than the wave it was found during.
 
 
+**ADJUDICATION ALIGNMENT (fixed 2026-07-30).** The tuner was optimising under
+different game-termination rules than the gate measured — a violation of the
+unified-conditions principle that already puts SPSA and SPRT on the same TC and
+the same book. weather-factory ships `-resign movecount=3 score=400` with no
+`twosided`; `sprt.ps1` uses `movecount=3 score=600 twosided=true`.
+
+Two problems, and **the missing flag is the worse one**. Without `twosided`,
+fastchess adjudicates a resignation on the *losing side's own evaluation
+alone*. Both SPSA arms are the SAME binary with perturbed parameters, so an arm
+whose parameters produce more extreme scores resigns more readily than its
+sibling — an asymmetry between the two arms of every mini-match, landing
+directly in the gradient the tuner estimates. `twosided=true` requires both
+engines to agree the game is decided, removing the asymmetry by construction.
+The threshold gap (400 vs 600) is the lesser issue: the tune was resigning
+games the gate would have played on.
+
+**Verified against fishtest** (`official-stockfish/fishtest`,
+`worker/games.py`, read 2026-07-30): Stockfish uses `-resign movecount=3
+score=600`, and the string `twosided` **does not appear in that file at all**.
+So we match its threshold exactly and go one step stricter on the flag. That
+deviation is deliberate: fishtest runs donated heterogeneous workers where
+one-sided resignation ends games sooner and throughput dominates; we run one
+machine, where the correctness of a gradient is worth more than a few percent
+of games per hour.
+
+**NOT aligned to fishtest, deliberately — the draw rule.** Ours is
+`movenumber=40 movecount=8 score=10` against fishtest's `movenumber=34
+movecount=8 score=20`: later, and with a tighter score window, i.e. strictly
+more conservative on both axes. It already agrees between `sprt.ps1` and the
+tuner, so the discrepancy the fix targets does not exist there, and moving it
+would shift the verdict instrument and break comparability with the entire
+existing ledger for no correctness gain.
+
+Landed as a `setup_tools.ps1` patch (`RAROG_ADJUDICATION_PATCH_V1`) with the
+usual marker check, because `tools/weather-factory/` is vendored and gitignored.
+⚠ **It therefore takes effect at the NEXT setup, not on the tune running now**
+— which is intended: 10.4.6(a) finishes under the rules it started with.
+`spsa.ps1` enforces the marker when STARTING a tune but explicitly **never
+blocks a resume**, keyed on the presence of `state.json` rather than on
+`-LaunchOnly`. Changing game-termination rules mid-tune would make the early
+iterations incomparable with the late ones, which is strictly worse than
+finishing under the old rule.
+
 **HARNESS DEBT — SPSA `A` is in the wrong units (found 2026-07-23, during
 8.4's first night).** `spsa.ps1` writes `A = Iterations / 10`, i.e. in
 ITERATIONS, but weather-factory's `t` counts GAMES (`spsa.py`:

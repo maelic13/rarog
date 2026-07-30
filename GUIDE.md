@@ -600,6 +600,15 @@ on a resume is a no-op for the schedule and only sets the stop target.
 ⚠ **The machine is fully occupied while this runs** (concurrency 14 of 16
 physical cores). No NPS work, no SPRT, no bench measurement until it stops.
 
+⚠ **An adjudication fix landed 2026-07-30 that deliberately does NOT apply to
+this run.** The tuner resigned at `score=400` one-sided while `sprt.ps1` uses
+`score=600 twosided=true`, so it was optimising under different
+game-termination rules than the gate measures. Fixed in `setup_tools.ps1`, so
+it takes effect at the **next** setup — this tune finishes under the rules it
+started with, because switching mid-run would make its early iterations
+incomparable with its late ones. Resuming with `-LaunchOnly` is unaffected; the
+new marker check only fires when starting a fresh tune.
+
 **📌 CHECK THE KILL-CHECKPOINT AT ~1,500 ITERATIONS AND TELL ME.**
 `FutilityBase` (seeded 60) and `LmpBase` (seeded 88) are deliberately held one
 step below the direction the other eight margins start from. By ~1,500 the

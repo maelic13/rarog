@@ -181,6 +181,10 @@ if (-not $LaunchOnly) {
     if ((Get-Content $wfSpsaPy -Raw) -notmatch 'RAROG_SCHEDULE_FIX_V1') {
         throw "weather-factory is not carrying the SPSA schedule fix (decay per-iteration); run tools/setup_tools.ps1."
     }
+    if ($wfCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V1') {
+        throw ("weather-factory is not carrying the adjudication alignment (resign 600 twosided, " +
+            "matching sprt.ps1); run tools/setup_tools.ps1.")
+    }
 
     Write-Host "Installing matplotlib (weather-factory dependency)..."
     pip install matplotlib --quiet
@@ -337,6 +341,16 @@ if ($LASTEXITCODE -ne 0) { throw "weather-factory Python syntax validation faile
 $launchSpsaPy = Join-Path $wfRoot "spsa.py"
 if ((Get-Content $launchSpsaPy -Raw) -notmatch 'RAROG_SCHEDULE_FIX_V1') {
     throw "weather-factory is not carrying the SPSA schedule fix (decay per-iteration); run tools/setup_tools.ps1."
+}
+# Adjudication alignment is required to START a tune, but NEVER blocks a RESUME.
+# A run that began under the old resign rule must finish under it: switching
+# game-termination rules mid-tune makes the early iterations incomparable with
+# the late ones, which is strictly worse than completing under the old rule.
+# So the check keys on whether this is a fresh run, not on -LaunchOnly.
+if (-not (Test-Path (Join-Path $wfRoot "tuner\state.json")) -and
+    $launchCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V1') {
+    throw ("weather-factory is not carrying the adjudication alignment (resign 600 twosided, " +
+        "matching sprt.ps1); run tools/setup_tools.ps1 before starting a new tune.")
 }
 
 $launchConfigPath = Join-Path $wfRoot "cutechess.json"
