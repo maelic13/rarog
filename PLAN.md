@@ -967,12 +967,76 @@ explanation is needed.
     "speed is equal" premise on game positions, not just on bench.)
     `-Nodes 250000` is chosen to sit in the STC regime: ~100 ms/move at
     ~2.7 M nps ≈ 270 k nodes.
-  - **(c) Over-pruning probe — the decisive cheap test. READY: both binaries
-    built, gate command in the guide.** Scale reductions and futility margins
-    down by a fixed factor; one `[0,3]` gate, no tuning. **If Rarog gains from
-    pruning LESS, the diagnosis is confirmed** and 10.2.5/10.4.6 must be
-    re-aimed before either is built. If it loses, the over-aggression hypothesis
-    dies for the price of one match.
+
+    **✅ CLOCK ARM MEASURED 2026-07-30 — `−62.15 ± 9.78` Elo (nElo
+    −80.72 ± 12.43, LOS 0 %, 3,000 games at 3+0.03, DrawRatio 38.2 %,
+    PairsRatio 0.44, Ptnml [253, 390, 573, 203, 81], zero time losses).** This
+    is the 1T STC head-to-head baseline the project had never recorded. Nodes
+    arm pending.
+
+    ⚠ **This CORRECTS the matchup caveat below, and the correction matters more
+    than the number.** That caveat asserted "Basilisk has a ~35–45 Elo
+    matchup-specific edge on top of its general strength", inferred from
+    head-to-head figures carrying **±52 and ±46** error bars (1T 10+0.1: −73 h2h
+    vs −38 pool; 4T 10+0.1: −13 vs +34). A 35-Elo difference read against a
+    ±52 CI was never statistically established. The first *tight* measurement
+    of it — **−62.15 ± 9.78 head-to-head against −55 ± 21 in the pool at the
+    same condition** — shows the two agreeing to within ~7 Elo, i.e. **no
+    resolvable matchup edge at STC.** The parsimonious reading is that the
+    earlier ~35–45 figure was noise, not a TC-dependent effect.
+    Two practical consequences: the pool ratings can be read as general
+    strength without a matchup discount, and a cheap two-engine head-to-head is
+    a valid proxy for a pool rating at STC — which makes future cross-engine
+    diagnostics much cheaper than a gauntlet.
+
+    ⚠ **Resolution limit, stated before the second arm lands.** At 3,000 games
+    per arm each reads ±9.8, so the ARM DIFFERENCE carries ±13.8. 9.7.5 sized
+    time allocation as a ~16 Elo lever — i.e. right at this design's detection
+    threshold. So a *large* arm difference is trustworthy, but **a null on the
+    difference is weak evidence** and must not be reported as "TM contributes
+    nothing"; it would license only "no TM contribution larger than ~14 Elo".
+    Sharpening that needs more games in both arms, which is a decision to take
+    after seeing the second arm, not before.
+  - **(c) ✅ POSITIVE 2026-07-30 — THE OVER-PRUNING DIAGNOSIS IS CONFIRMED.
+    `+4.06 ± 3.71` Elo, nElo `+6.27 ± 5.72`, **LOS 98.42 %**, 14,196 games at
+    3+0.03, DrawRatio 41.97 %, PairsRatio 1.07, Ptnml
+    [297, 1691, 2979, 1811, 320].** Rarog gains from pruning and reducing LESS.
+
+    **Stopped deliberately before the SPRT bound (LLR 1.68 of 2.94, 57 %), and
+    that is recorded as a stop, not an H1.** The pre-registered consequence
+    triggers on the SIGN, not on a threshold, and these values were registered
+    as *not a bake candidate* before the run — so ~8,900 further games
+    (≈1.5 h at the observed +0.145 LLR/1,000) would have bought a magnitude
+    certificate for a point we will never ship. Principle #2 (EV-gate the
+    compute) says stop. This is NOT the principle-#6 failure mode: one
+    pre-registered run, stopped once, reported with its real uncertainty, no
+    re-rolling. The estimate had been stable in the +2.0…+4.2 band for the
+    final 7,000 games. In the SPRT's own units the point estimate (nElo 6.27)
+    sits at roughly **twice** elo1; it is the width, not the centre, that kept
+    the bound uncrossed.
+
+    **Why a modest +4 is strong evidence rather than weak.** The twelve
+    constants were SPSA-fitted *jointly*, so the probe had to win while
+    simultaneously being knocked 15 % off a fitted point in a correlated
+    direction — the very coupling that explained 8.11's −5.96. It won anyway.
+    The pre-registered asymmetry therefore resolves in the strong direction:
+    **a correctly re-fitted less-selective surface should be worth MORE than
+    +4**, and +4 is a floor on the available gain, not an estimate of it.
+
+    **Zero time losses, timeouts, crashes or illegal moves across 14,196
+    games** despite +23.2 % nodes. That was the live risk — a width-for-depth
+    trade at a clock TC is exactly where forfeits surface — and it did not
+    materialise.
+
+    **Consequences, as pre-registered:** 10.4.6's selectivity re-fit becomes
+    the cycle's HEADLINE (its "honest EV note" is now resolved in its favour —
+    the current values are demonstrably *outside* the noise floor, since a
+    blind uniform shift beat them), and **10.2.5 is re-scoped toward accuracy
+    rather than extra selectivity**. Nothing in Phase 10 may now be built to
+    prune harder without an explicit argument against this result.
+    The probe branch (`probe/10.0c-less-pruning`, `7693010`) and both binaries
+    are kept, so the gate can be resumed or re-run at any time — including as a
+    cheap +4 bake if 10.4.6 ever fails to deliver more.
 
     **Built as `probe/10.0c-less-pruning` (commit `7693010`), a throwaway branch
     that must never merge.** Twelve constants shifted 15 % toward less
@@ -1036,20 +1100,33 @@ explanation is needed.
   depth.** Operationally that is good news — it means 10.4.6's re-fit, run at
   3+0.03, should transfer to long TC, and (c)'s probe reads cleanly at either.
 
-  ⚠ **Matchup caveat.** At both time controls the DIRECT head-to-head is worse
-  for Rarog than the pool rating: 1T 10+0.1 reads −73 ± 52 head-to-head vs −38
-  in the pool; 4T 10+0.1 reads −13 ± 46 vs +34. Basilisk has a ~35–45 Elo
-  matchup-specific edge on top of its general strength — unsurprising for two
-  ports of the same engine whose evals measured equally good, since similar
-  evals produce similar plans and the better-tuned search wins the specific
-  battles. Judge general strength by the pool rating (that is the goal); expect
-  a direct match to read worse.
+  ⚠ **Matchup caveat — ⛔ RETRACTED 2026-07-30, it was noise.** The claim was:
+  "at both time controls the DIRECT head-to-head is worse for Rarog than the
+  pool rating (1T 10+0.1 −73 ± 52 h2h vs −38 pool; 4T 10+0.1 −13 ± 46 vs +34),
+  so Basilisk has a ~35–45 Elo matchup-specific edge on top of its general
+  strength — expect a direct match to read worse." **The ±52 and ±46 error bars
+  are the tell: a 35-Elo difference was never established against them.**
+  (b)'s clock arm is the first tight head-to-head — **−62.15 ± 9.78 against
+  −55 ± 21 in the pool at the same condition, agreeing to within ~7 Elo** — so
+  there is no resolvable matchup edge at STC, and nothing to discount.
+  What survives: judge general strength by the pool rating, because that is the
+  goal. What is new and useful: **a two-engine head-to-head is a valid STC
+  proxy for a pool rating**, which makes cross-engine diagnostics far cheaper
+  than a gauntlet. (This is lesson 12's shape again — an inference that read as
+  a stable property of the pair was an artifact of the revision, and the width,
+  of the measurement it came from.)
 
-  **Pre-registered consequence.** (c) positive → 10.4.6's selectivity re-fit
-  becomes the cycle's headline and 10.2.5 is re-scoped toward *accuracy* rather
-  than extra selectivity. (c) negative and (b) shrinks the gap → 10.2's TM work
-  leads instead. (c) negative and (b) flat → the deficit is move ordering or
+  **Pre-registered consequence — ✅ RESOLVED: (c) POSITIVE.** The registered
+  branches were: (c) positive → 10.4.6's selectivity re-fit becomes the cycle's
+  headline and 10.2.5 is re-scoped toward *accuracy* rather than extra
+  selectivity. (c) negative and (b) shrinks the gap → 10.2's TM work leads
+  instead. (c) negative and (b) flat → the deficit is move ordering or
   implementation, and (a) says which.
+  **(c) came back +4.06 ± 3.71 (LOS 98.42 %), so the FIRST branch is taken**,
+  and (a) had already disfavoured the ordering branch independently. (b)'s nodes
+  arm still runs, but it can no longer change the headline — it now only sizes
+  how much of the residual gap is time management, i.e. it prices 10.2 rather
+  than choosing it.
 
 - **10.1 Persistent `RootMove` records** (search §6): per root move —
   `score, previous_score, average_score, mean_squared_score, pv, nodes,
@@ -1090,6 +1167,20 @@ explanation is needed.
   EARLY in the 2.4.0 cycle** — numbers are frozen and do not imply order
   (§S6), and a weeks-long item with a real chance of rejection needs runway,
   not the slot before a release boundary.
+  ⚠ **RE-SCOPED 2026-07-30 by 10.0(c), and it now runs AFTER 10.4.6(a), not
+  before.** Two changes, both forced by "Rarog gains from pruning less":
+  (i) the capstone's purpose is **accuracy — spending the confidence estimate
+  to prune the right moves — NOT extra selectivity.** Any variant whose net
+  effect is a thinner tree is now contraindicated by a direct measurement, not
+  merely by the reject pile. The `allow zero reduction for strong late moves`
+  half (today clamped ≥ 1) is the part 10.0(c) most directly supports, since
+  the clamp is exactly why a late move can never escape reduction and is a
+  prime suspect for the inert 1.80 % re-search rate; the LMP/futility/SEE
+  consumers must be driven from `lmr_depth` without tightening in aggregate.
+  (ii) it must be **fitted against 10.4.6's re-fitted surface**, not today's.
+  Fitting a new mechanism around constants that a blind 15 % shift already
+  beats would bake the over-aggression into the mechanism itself — the same
+  trap in reverse that cost 8.11 its gate.
   Compute one confidence-adjusted `lmr_depth` per move (base table + cut-node
   pressure + weak/absent TT evidence + bad-capture SEE + correction magnitude
   − PV/TT-PV − history strength − forcing evidence) and drive LMP, futility,
@@ -1394,24 +1485,42 @@ explanation is needed.
     kill-checkpoint, and the queue ahead of it — 10.2.5's mechanism,
     10.2's aspiration/TM, 10.4's menu, and any speed work — should be
     preferred whenever machine time is contested.
-  - **⚠ Honest EV note.** Finding 3 means 10.4.6's value is genuinely
+  - **⚠ Honest EV note — ✅ RESOLVED IN 10.4.6's FAVOUR by 10.0(c),
+    2026-07-30.** The note read: "Finding 3 means 10.4.6's value is genuinely
     uncertain, not merely unmeasured: if the current values already sit
     inside the noise floor, the best possible outcome is a wash and the
     likely one is a small regression the gate then rejects — 2 nights spent
-    to learn "we were already there". The schedule bug makes it *plausible*
-    they are outside the floor (tunes froze near their seeds rather than
-    converging), but that is an argument, not evidence. The 1,500-iteration
-    walk-back checkpoint is what converts it into evidence for ~13 h of
-    machine time, and it is the reason this item is scheduled LAST, after
-    every higher-EV 2.4.0 item has had the machine.
-- **⚙ PHASE 10 EXECUTION ORDER — REVISED 2026-07-28 after the eval-parity
-  measurement (numbers are frozen and do NOT imply order, §S6):** **10.0
-  decomposition FIRST** (cheap, and it redirects the two biggest items) → 10.1
-  (bookkeeping, no games) → **10.4.6 re-fit PROMOTED** (where a mis-tuned
-  selectivity surface would live) → **10.2.5 capstone**, re-scoped by 10.0's
-  result → **10.2** aspiration/TM, priority conditional on 10.0(b) → 10.4 menu
-  picks → **10.4.3 Texel re-fit DEMOTED** (eval measured at parity, so it is
-  cheap insurance rather than the lever) → 10.5 gauntlet + release.
+    to learn 'we were already there'. The schedule bug makes it *plausible*
+    they are outside the floor, but that is an argument, not evidence."
+    **10.0(c) is that evidence, and it cost one match instead of two
+    nights.** A blind, untuned, uniform 15 % shift of this exact group beat
+    the fitted values by **+4.06 ± 3.71 (LOS 98.42 %)**. Values sitting inside
+    the noise floor cannot be beaten by a blind shift — so **`config_pruning`
+    + `config_see` are demonstrably OUTSIDE the floor**, the "we were already
+    there" failure mode is excluded, and +4.06 is a measured FLOOR on what a
+    proper joint re-fit can recover (the probe won while *also* being knocked
+    off the joint optimum, so a correct fit should do better).
+    The 1,500-iteration walk-back kill-checkpoint STAYS — it guards against a
+    tuner that cannot resolve, which is a different failure from a group that
+    is already optimal. But this item is no longer the speculative one, and
+    that is why the execution order below now runs it FIRST.
+- **⚙ PHASE 10 EXECUTION ORDER — REVISED 2026-07-30 after 10.0(c) came back
+  positive (numbers are frozen and do NOT imply order, §S6).** Previous
+  revision (2026-07-28, after the eval-parity measurement) already promoted
+  10.4.6; (c) turns that from a bet into a measured call, and demotes 10.2.5
+  behind it because the capstone must now be *designed* against a re-fitted
+  surface rather than fitted around today's over-aggressive one:
+  **10.0 ✅ → 10.1** (bookkeeping, no games) **→ 10.4.6(a) THE HEADLINE — the
+  selectivity re-fit, first claim on the machine** (10.0(c) proved the group is
+  outside the noise floor and put a +4.06 floor under it) **→ 10.2.5 capstone,
+  RE-SCOPED toward accuracy, built on the re-fitted surface → 10.2**
+  aspiration/TM, priced by 10.0(b)'s arm difference → 10.4 menu picks →
+  **10.4.3 Texel re-fit DEMOTED** (eval measured at parity, so it is cheap
+  insurance rather than the lever) → 10.5 gauntlet + release.
+  ⛔ **Standing constraint from 10.0(c): no Phase-10 item may be built to prune
+  or reduce HARDER without an explicit argument against this result.** That
+  closes off the direction 8.6 / 8.7 / 8.10 / 8.11 all died in, and it is now a
+  measured constraint rather than a pattern in the reject pile.
 - **10.6 Guarantee at least one `info` line before every `bestmove` (added
   2026-07-29; deferred out of the 2.3.0 fix deliberately — it is an engine
   behaviour change and the release was mid-flight).**

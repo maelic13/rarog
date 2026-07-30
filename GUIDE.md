@@ -16,8 +16,8 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406** (unchanged since 2.3.0 — the search did not move). ⚠ Every binary in `tools/test_engines/` predates 9.7.5, so `rarog-p103-gate-pext-pgo.exe` is NO LONGER the head. The first Phase-10 gate builds its own baseline: `./tools/build_test.ps1 -Suffix p100-base`. |
 | Working head | = accepted baseline (2.3.1) |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **2.4.0 cycle is OPEN at 10.0 — search-accuracy decomposition.** Its 2×2 gauntlet half is measured; sub-items (a)/(b)/(c) are what remain, and their result re-aims 10.2.5 and 10.4.6 before either is built. |
-| Next release | **2.4.0 at 10.5.** Order: 10.0 decomposition → 10.1 → 10.4.6 re-fit → 10.2.5 capstone → 10.2 → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12 |
+| Current work | ▶ **10.0 has ANSWERED: Rarog OVER-PRUNES.** (a) ✅ ordering is not the defect (87.65% first-move cutoffs, 1.80% LMR re-search). (c) ✅ **+4.06 ± 3.71, LOS 98.42%** for a blind 15% less-selective shift — diagnosis confirmed, and +4 is a FLOOR. (b) clock arm ✅ −62.15 ± 9.78 (and it retracts the "matchup edge" caveat); nodes arm running. |
+| Next release | **2.4.0 at 10.5.** Order (revised 2026-07-30 by 10.0c): 10.0 ✅ → 10.1 → **10.4.6(a) selectivity re-fit = THE HEADLINE** → 10.2.5 capstone re-scoped toward *accuracy*, built on the re-fitted surface → 10.2 (priced by 10.0b) → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Forward tracker
 
@@ -160,28 +160,43 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           equal NPS, `reduction` clamped ≥1 ply, LMP discarding more moves than
           there are interior nodes), but a counter cannot choose — **(c)
           decides**, and (a) did not change (c)'s design.
-    - [~] (b) **[READY — YOU RUN IT]** Fixed-nodes match vs Basilisk 1.9.1 to
-          strip out speed and TM. **TWO arms, same seed** — one `tc=3+0.03`,
-          one `-Nodes 250000` — because the 2×2 table is a POOL rating while
-          this is a head-to-head, and this pair's head-to-head runs ~35–45 Elo
-          worse for Rarog; comparing a nodes h2h against a clock pool rating
-          would charge that whole matchup effect to TM. The arm DIFFERENCE is
-          the measurement, and the clock arm is also the 1T STC head-to-head
-          baseline we never recorded. Equal nodes verified neutral first: 1T
-          NPS on game positions is 2.81/2.58/4.47 M for Rarog vs
-          2.87/2.45/4.55 M for Basilisk. Needs `-Nodes`, added to `sprt.ps1`.
-    - [~] (c) **[READY — YOU RUN IT]** Over-pruning probe, the decisive test.
-          Twelve constants shifted 15% toward less selectivity on throwaway
-          branch `probe/10.0c-less-pruning` (`7693010`, DO NOT MERGE): LMR
-          reduction surface ×0.85, and ×1.15 on the RFP / razoring / LMP-margin
+    - [~] (b) **[CLOCK ARM DONE −62.15 ± 9.78; NODES ARM RUNNING]** Fixed-nodes
+          match vs Basilisk 1.9.1 to strip out speed and TM. **TWO arms, same
+          seed** — `tc=3+0.03` ✅ and `-Nodes 250000` ⏳ — and the arm
+          DIFFERENCE is the measurement. Clock arm: −62.15 ± 9.78 (nElo
+          −80.72 ± 12.43, LOS 0%, 3,000 games, zero time losses), the 1T STC
+          head-to-head baseline we never had.
+          ⛔ **It RETRACTS the "~35–45 Elo matchup edge" caveat**: −62.15 ± 9.78
+          h2h against −55 ± 21 in the pool agree to within ~7 Elo, so there is
+          no resolvable matchup edge at STC. The old figure came from h2h
+          readings with ±52/±46 error bars and was noise. Bonus: a two-engine
+          h2h is a valid STC proxy for a pool rating, so cross-engine
+          diagnostics are far cheaper than a gauntlet from here on.
+          ⚠ At 3,000 games/arm the arm difference carries ±13.8, and 9.7.5
+          sized TM at ~16 Elo — right at the threshold. A big difference is
+          trustworthy; a null is NOT "TM contributes nothing", only "no TM
+          contribution above ~14 Elo".
+    - [x] (c) **[POSITIVE +4.06 ± 3.71, LOS 98.42%]** Over-pruning probe — **the
+          over-pruning diagnosis is CONFIRMED: Rarog gains from pruning and
+          reducing LESS.** 14,196 games at 3+0.03, nElo +6.27 ± 5.72,
+          DrawRatio 41.97%, PairsRatio 1.07, **zero time losses despite +23.2%
+          nodes**. Twelve constants shifted 15% toward less selectivity on
+          throwaway branch `probe/10.0c-less-pruning` (`7693010`, DO NOT MERGE):
+          LMR reduction surface ×0.85, ×1.15 on the RFP / razoring / LMP-margin
           / quiet-futility / SEE-prune / quiet-history constants. 15% mirrors
           8.6's rejected candidate, which searched 16% MORE aggressively and
-          lost −7.78. bench 6,373,363 vs 5,173,540 (+23.2% nodes), EBF 2.449,
-          WAC 179/300 vs 173/300. Both PGO binaries built, same rustc.
-          ⚠ Pre-registered reading: POSITIVE is strong (it beat a jointly
-          SPSA-fitted point despite leaving it); NEGATIVE is weak — it means "a
-          uniform 15% shift is not free", NOT "the surface is fine". Only
-          10.4.6's joint re-fit can say that.
+          lost −7.78.
+          **Stopped deliberately at LLR 1.68 of 2.94 — recorded as a stop, not
+          an H1.** The consequence triggers on the SIGN, and these values were
+          pre-registered as not a bake candidate, so ~1.5 h more for a
+          magnitude certificate on a point we will never ship failed the EV
+          gate. Estimate was stable in +2.0…+4.2 over the final 7,000 games;
+          nElo 6.27 is ~2× elo1, so it was the width, not the centre, that kept
+          the bound uncrossed.
+          **+4 is a FLOOR, not an estimate:** the probe won while ALSO sitting
+          15% off a jointly SPSA-fitted point, so a correct re-fit should do
+          better. Branch and both binaries kept — re-runnable any time,
+          including as a cheap +4 bake if 10.4.6 underdelivers.
 - [ ] 10.1 Persistent `RootMove` records (bench-identical enabler; no games)
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
@@ -525,38 +540,32 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 until this closes, because its answer re-aims both of the cycle's big items
 (10.2.5 and 10.4.6).
 
-**(a) is done** (ordering is not the defect — see the tracker). **(b) and (c)
-are built, verified and waiting on you.** Both binaries exist with clean
-manifests and the same rustc, so the compiler-equality guard will pass:
-
-| binary | bench | what it is |
-|---|--:|---|
-| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | the 2.3.1 head — the new baseline |
-| `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective |
-
-**Run (c) FIRST** — it is the decisive test and it re-aims both of the cycle's
-big items:
-
-```powershell
-./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100c-lesspruning-pext-pgo.exe" -EngineB "tools\test_engines\rarog-p100-base-pext-pgo.exe" -NameA "p100c-lesspruning" -NameB "p100-base" -Elo1 3
-```
-
-**Then (b), which is TWO arms sharing one seed** — the clock arm first, because
-it is also the 1T STC head-to-head baseline we have never recorded:
-
-```powershell
-./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100-base-pext-pgo.exe" -EngineB "D:\chess\engines\basilisk-v1.9.1-windows-x86_64-pext-pgo.exe" -NameA "rarog-231" -NameB "basilisk-191" -Mode fixed -Games 3000 -Seed 100
-```
+**10.0(a) and 10.0(c) are DONE. 10.0(b)'s nodes arm is the only thing left in
+10.0** — the clock arm read −62.15 ± 9.78:
 
 ```powershell
 ./tools/sprt.ps1 -EngineA "tools\test_engines\rarog-p100-base-pext-pgo.exe" -EngineB "D:\chess\engines\basilisk-v1.9.1-windows-x86_64-pext-pgo.exe" -NameA "rarog-231-nodes" -NameB "basilisk-191-nodes" -Mode fixed -Games 3000 -Seed 100 -Nodes 250000
 ```
 
-Report for each: Elo ± error, LOS, games, and any time losses. For (b) the
-number that matters is the **difference between the two arms**, not either
-absolute figure — a nodes-limited match cannot see time management at all.
-Expect a "no manifest for basilisk-191" warning; that is normal for an external
-engine and only disables the compiler-equality check.
+Report Elo ± error, LOS, games and any time losses. **The number that matters
+is the DIFFERENCE from −62.15**, not the absolute figure — a nodes-limited
+match cannot see time management at all. The "no manifest for basilisk-191"
+warning is normal for an external engine and only disables the
+compiler-equality check.
+
+It can no longer change the cycle's headline; it only prices 10.2. So after it
+lands, the machine goes to **10.4.6(a) — the selectivity re-fit**, now the
+headline item on 10.0(c)'s evidence. That is a 5,000-iteration SPSA over 26
+knobs, ~2 nights, with the 1,500-iteration walk-back kill-checkpoint. It needs
+8.11's fail-soft qsearch re-applied first and a tune binary built, both of
+which are model work — ask for it when the machine is free.
+
+Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
+
+| binary | bench | what it is |
+|---|--:|---|
+| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | the 2.3.1 head — the accepted baseline |
+| `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
 Afterwards the cycle continues per the revised execution order: 10.1
 (bookkeeping, no games) → 10.4.6 re-fit → 10.2.5 capstone, re-scoped by 10.0's
