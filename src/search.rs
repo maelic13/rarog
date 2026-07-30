@@ -2162,9 +2162,33 @@ impl Searcher {
 
         let mut q_raw_static_eval = VALUE_NONE;
         let mut stand_pat_for_pruning = VALUE_NONE;
-        // 8.11 REJECTED (−5.96 ± 7.33, LOS 5.56%, 3,558 games): making these
-        // exits fail-soft cost +2.8% nodes and the accuracy did not repay it.
-        // Deliberately left fail-hard — see PLAN 8.11 before retrying.
+        // 8.11 RE-APPLIED for 10.4.6(a) (was rejected standalone at −5.96 ±
+        // 7.33, LOS 5.56%, 3,558 games). The two prune exits below are
+        // fail-soft: they report the stand pat, which is genuinely BELOW the
+        // window, instead of a bare `alpha` that overstates what this node
+        // proved. `negamax` has always been fail-soft; this makes qsearch agree.
+        //
+        // Why it is back, and why only bundled: its −5.96 was mechanically
+        // traced to the pruning group having been SPSA-fitted against
+        // fail-hard's inflated bounds, so a standalone gate against the tuned
+        // head is rigged to fail (lesson 15, same shape as 7.2's SEE bundle).
+        // 10.4.6(a) re-tunes that exact group, so this rides its gate and 8.11
+        // closes either way: if the bundle loses, the registered fallback is one
+        // re-gate at the fitted values WITHOUT this change, no new tune.
+        //
+        // ⚠ This is 8.11 as GATED (the commit's "variant B", prune exits only,
+        // +2.8% nodes). The full form that also made the tail store/return
+        // fail-soft measured +17.2% nodes and was explicitly ruled out — do not
+        // widen to it here. The tail deliberately still stores `alpha`, so the
+        // depth-0 Upper bound that `eval_for_pruning` consumes is UNCHANGED by
+        // this edit; that separate coupling is the `EvalPruneTtMinDepth` knob's
+        // job and it is in 10.4.6(a)'s parameter set for the tuner to decide.
+        //
+        // Written without the original's `best_score` accumulator: both exits
+        // return `stand_pat`, so the variable and its in-loop update were dead
+        // weight (nothing after the move loop reads it in this variant). The
+        // node behaviour is identical — bench must land on 5,320,596, the figure
+        // the gated candidate measured.
         if !in_check {
             let (stand_pat, raw_stand_pat) = if let Some(entry) = tt_entry {
                 if entry.static_eval as i32 != VALUE_NONE {
@@ -2211,13 +2235,15 @@ impl Searcher {
                 return stand_pat;
             }
             if qply >= MAX_QPLY {
-                return stand_pat.max(alpha);
+                return stand_pat;
             }
             if stand_pat > alpha {
                 alpha = stand_pat;
             }
             if board.occupied_count() > 8 && stand_pat + piece_value(Piece::Queen) + 200 < alpha {
-                return alpha;
+                // Reached only when `stand_pat < alpha`, so `alpha` here is still
+                // the caller's bound and `stand_pat` is the honest lower figure.
+                return stand_pat;
             }
         }
 
