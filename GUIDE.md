@@ -12,12 +12,12 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 
 | | |
 |---|---|
-| Branch / version | `development` (= `master` = `a5fd288`); **2.3.1 RELEASED**, tagged and pushed. Tree clean. |
-| Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406** (unchanged since 2.3.0 — the search did not move). ⚠ Every binary in `tools/test_engines/` predates 9.7.5, so `rarog-p103-gate-pext-pgo.exe` is NO LONGER the head. The first Phase-10 gate builds its own baseline: `./tools/build_test.ps1 -Suffix p100-base`. |
-| Working head | = accepted baseline (2.3.1) |
+| Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
+| Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406**. Gate binary: `rarog-p100-base-pext-pgo.exe` (clean manifest). `rarog-p103-gate-pext-pgo.exe` is obsolete. |
+| Working source | 10.4.6(a) candidate substrate: 8.11 fail-soft re-applied, bench **5,320,596**; not accepted unless the fitted-vector gate passes. |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.0 COMPLETE — Rarog OVER-PRUNES.** (a) ordering healthy (87.65%), LMR verification inert (1.80%). (b) gap survives at equal nodes (+3.11 ± 13.51 arm difference) and **Rarog is 2.5 plies DEEPER than Basilisk at equal nodes while 65 Elo weaker**. (c) blind 15% widening gains **+4.06 ± 3.71, LOS 98.42%**. Next: **10.4.6(a) selectivity re-fit** — needs 8.11's fail-soft re-applied + a tune binary (model work) before the SPSA. |
-| Next release | **2.4.0 at 10.5.** Order (revised 2026-07-30 by 10.0c): 10.0 ✅ → 10.1 → **10.4.6(a) selectivity re-fit = THE HEADLINE** → 10.2.5 capstone re-scoped toward *accuracy*, built on the re-fitted surface → 10.2 (priced by 10.0b) → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Current work | ▶ **10.4.6(a) SPSA IS RUNNING** (started 2026-07-31). This is the 28-knob selectivity re-fit with 8.11 fail-soft included, target 5,000 iterations. Rarog over-prunes; the fitted direction must spend nodes on accuracy, not add nominal depth. |
+| Next release | **2.4.0 at 10.5.** Actual next order: finish + gate 10.4.6(a) → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Forward tracker
 
@@ -223,8 +223,8 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           15% off a jointly SPSA-fitted point, so a correct re-fit should do
           better. Branch and both binaries kept — re-runnable any time,
           including as a cheap +4 bake if 10.4.6 underdelivers.
-- [~] **10.4.6(a) THE SELECTIVITY RE-FIT — the cycle headline, PREPARED, ready
-      to launch.** 28-knob combined SPSA (`config_selectivity`: pruning 14 + see
+- [~] **10.4.6(a) THE SELECTIVITY RE-FIT — the cycle headline, RUNNING since
+      2026-07-31.** 28-knob combined SPSA (`config_selectivity`: pruning 14 + see
       4 + corr 8 + futility 2; `CorrGuardCapture` excluded as a discrete),
       5,000 iterations ≈ 160,000 games ≈ 40 h ≈ 2 nights, tune binary
       `rarog-p1046a-tune.exe`. 8.11's fail-soft qsearch re-applied and bundled
@@ -530,21 +530,17 @@ and its candidate.
 Mechanics verified from the source 2026-07-23. Read this before judging any
 tune "converged" — two of these were got wrong on 8.4's first night.
 
-- [ ] **`t` counts GAMES, not iterations.** `spsa.py` does
-      `self.t += cutechess.games` (32 per iteration), and both schedule terms
-      read it: `a_t = a/(t+A)^0.601`, `c_t = c/t^0.102`. The console prints
-      BOTH (`iterations: N` and `games: 32N`) — quote iterations to humans,
-      but do the schedule arithmetic in games or the answer is ~32× off.
-- [ ] **⚠ `A` is set in the WRONG UNITS by `spsa.ps1`** (`A = Iterations/10`,
-      i.e. iterations, while `t` is games). At 6000 planned iterations we set
-      A=600 where the design intends ~19,200. Consequence: the gain decays far
-      faster than the "A = 10% of run" rule implies — measured on 8.4 at
-      iteration 1244, `a_t` was already down to **8.2%** of initial, where the
-      intended damping would have left it at 51%. Not fatal (SPSA still
-      converges, values are still fitted) but it means **late iterations buy
-      much less than the planned budget suggests**: 1244→6000 only moves the
-      gain 8.2% → 3.2%. Judge stopping on the gain curve, not on
-      "% of planned iterations".
+- [ ] **`state.t` is stored in games, but the patched schedule runs in
+      ITERATIONS.** `setup_tools.ps1` changes the schedule input to
+      `it = self.t / self.cutechess.games`; `a_t` and `c_t` consume `it`.
+      `-ShowValues` performs the same conversion. Quote and reason in
+      iterations; the stored game counter exists only for compatibility with
+      old state files.
+- [ ] **`A` is correctly 10% of the first-launch horizon.** For this 5,000-run,
+      `A=500`, and `spsa.ps1` reads the JSON back and asserts it before launch.
+      A PowerShell case-insensitivity bug briefly wrote the gain `a` into `A`,
+      but the setup-only dry run caught it before this parameterization's first
+      tune. The old “A is in the wrong units” warning no longer applies.
 - [ ] **Convergence test that works:** parse the per-iteration parameter
       blocks out of the log, split the run in thirds, and compare each
       parameter's MEAN over the 2nd vs 3rd third, normalised to its
@@ -577,20 +573,16 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
-**10.0 — the search-accuracy decomposition.** Nothing else in Phase 10 starts
-until this closes, because its answer re-aims both of the cycle's big items
-(10.2.5 and 10.4.6).
-
-**10.4.6(a) is PREPARED. Setup has already run — launch it:**
+**10.4.6(a) is running now.** Do not start any other game, NPS, bench, or
+CPU-heavy test while it owns the machine. If it is interrupted, resume it with:
 
 ```powershell
 ./tools/spsa.ps1 -ConfigGroup selectivity -LaunchOnly -Iterations 5000
 ```
 
-That is a ~40 h run (5,000 iterations × 32 games ≈ 160,000 games at 28.57 s/iter),
-so expect two nights. It stops itself at 5,000. Ctrl-C is safe — state saves
-every 10 iterations and the log appends on resume — and you resume with the
-**same command**.
+The full run is ~40 h (5,000 iterations × 32 games ≈ 160,000 games). It stops
+itself at 5,000. Ctrl-C is safe: state saves every 10 iterations and the log
+appends on resume.
 
 ⚠ Never resume with the plain setup+launch form: without `-LaunchOnly` it
 archives `state.json` and silently restarts from the seeds. `A` is already
@@ -617,10 +609,26 @@ instead, **stop — do not spend night two**; the tuner lacks resolving power at
 this noise level and the rest of the run cannot help. Use the thirds test
 (see *Running an SPSA*), not eyeballed single-iteration values.
 
-Then: **paste the final values of all 28 knobs and any bound-pinned ones** — I
-never read `state.json` myself. I bake the whole vector (no per-knob filter —
-the tail mean *is* the filter), build a PGO binary, and hand you one `[0,3]`
-gate vs `rarog-p100-base-pext-pgo.exe`.
+At 5,000 iterations, run this small read-only command and paste its complete
+output:
+
+```powershell
+./tools/spsa.ps1 -ShowValues
+```
+
+I will compare all 28 values with their configured rails, bake the **whole
+vector** (no per-knob filter), verify it, build the PGO candidate, and give you
+one `[0,3]` gate against `rarog-p100-base-pext-pgo.exe`.
+
+Post-result decision, in plain form:
+
+| Result | Next action |
+|---|---|
+| SPSA not yet at 5,000 | Resume; do not bake an endpoint |
+| Any value on a bound | Inspect the coupled surface before widening anything; report it explicitly |
+| Primary `[0,3]` gate passes | Accept the full fitted vector with fail-soft; update head/docs |
+| Primary gate loses with fail-soft | Re-gate the same fitted vector once without fail-soft; no new SPSA |
+| Both forms fail | Reject the fit; retain the measured +4.06 probe as the fallback evidence, then continue the plan |
 
 What is already prepared and verified:
 
@@ -647,10 +655,9 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | the 2.3.1 head — the accepted baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-Afterwards the cycle continues per the revised execution order: 10.1
-(bookkeeping, no games) → 10.4.6 re-fit → 10.2.5 capstone, re-scoped by 10.0's
-result → 10.2 aspiration/TM → 10.4 menu picks → 10.4.3 Texel re-fit → the
-2.4.0 boundary gauntlet at 10.5.
+After its gate: 10.1 bookkeeping (no games) → 10.2.5 capstone, re-scoped toward
+accuracy → 10.2 aspiration/TM → 10.4 menu picks → 10.4.3 one Texel re-fit →
+the 2.4.0 boundary gauntlet at 10.5.
 
 ## Working rhythm
 

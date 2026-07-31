@@ -6,8 +6,10 @@
     Runs fastchess self-play between two copies of the given engine at a fixed
     node limit, collecting a large PGN file suitable for tools\texel\extract.py.
 
-    The output PGN is written to tools\texel\data\selfplay.pgn (or -OutputPgn).
-    Subsequent runs APPEND to the existing file; delete it first if starting fresh.
+    The output PGN is written to tools\texel\data\selfplay-n<NODES>.pgn (or
+    -OutputPgn). The default refuses to overwrite an existing archive; pass
+    -Append explicitly when continuation is intentional. extract.py accepts
+    multiple PGNs, so keeping node-count runs separate is preferred.
 
     Adjudication: draw after movenumber 40 with 8 move window at score < 10 cp,
     resign after 3 moves at score > 600 cp (both sides). These defaults match the
@@ -19,8 +21,9 @@
     Build with:  .\tools\build_test.ps1 -Suffix <Suffix>
 
 .PARAMETER Rounds
-    Number of opening pairs (each pair = 2 games, colors swapped). Default 30000
-    gives ~60k games, enough for ~1.5M training positions.
+    Number of games. Default 0 consumes every EPD/PGN book entry once. Datagen
+    no longer plays a color-swapped pair: two deterministic copies of the same
+    engine produce duplicate trajectories, which extraction then discards.
 
 .PARAMETER Nodes
     Node limit per move. Default 8000 (fast, diverse). Values 5000-12000 add
@@ -34,8 +37,12 @@
     Parallel games. Default: logical CPU count minus 1 (leave one core free).
 
 .PARAMETER OutputPgn
-    Path for the output PGN file (appended to if it exists).
-    Default: tools\texel\data\selfplay.pgn
+    Path for the output PGN file. Existing files require -Append.
+    Default: tools\texel\data\selfplay-n<NODES>.pgn
+
+.PARAMETER Append
+    Allow fastchess to append to an existing -OutputPgn. Off by default so a
+    stale archive cannot silently contaminate a fresh corpus.
 
 .PARAMETER Book
     Opening book PGN/EPD. Default: tools\texel\data\beast_seed.epd (diverse,
@@ -51,15 +58,15 @@
 .EXAMPLE
     # Build the base binary first, then generate data
     .\tools\build_test.ps1 -Suffix phase2-base
-    .\tools\datagen.ps1 -Suffix phase2-base -Rounds 30000
+    .\tools\datagen.ps1 -Suffix phase2-base
 
 .EXAMPLE
     # Second pass with a different node count (more variety)
-    .\tools\datagen.ps1 -Suffix phase2-base -Rounds 15000 -Nodes 5000
+    .\tools\datagen.ps1 -Suffix phase2-base -Nodes 5000
 #>
 param(
     [Parameter(Mandatory)][string]$Suffix,
-    [int]   $Rounds      = 30000,
+    [int]   $Rounds      = 0,         # 0 = use every book entry once
     [int]   $Nodes       = 8000,
     [int]   $Hash        = 16,
     [int]   $Concurrency = 0,        # 0 = auto (logical CPUs - 1)
@@ -67,10 +74,22 @@ param(
     [string]$Book        = "",
     [ValidateSet("pgn", "epd")]
     [string]$BookFormat  = "pgn",
-    [string]$FastchessPath = ""
+    [string]$FastchessPath = "",
+    [switch]$Append
 )
 
 $ErrorActionPreference = "Stop"
+
+function Get-TextLineCount([string]$Path) {
+    $reader = [System.IO.File]::OpenText($Path)
+    try {
+        $count = 0
+        while ($null -ne $reader.ReadLine()) { $count++ }
+        return $count
+    } finally {
+        $reader.Dispose()
+    }
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
@@ -88,7 +107,7 @@ try {
         if (-not $PSBoundParameters.ContainsKey('BookFormat')) { $BookFormat = "epd" }
     }
     if (-not $FastchessPath) { $FastchessPath = "$PSScriptRoot\bin\fastchess.exe" }
-    if (-not $OutputPgn)     { $OutputPgn     = "$PSScriptRoot\texel\data\selfplay.pgn" }
+    if (-not $OutputPgn)     { $OutputPgn     = "$PSScriptRoot\texel\data\selfplay-n$Nodes.pgn" }
 
     $enginePath = "$PSScriptRoot\test_engines\rarog-$Suffix-pext-pgo.exe"
 
@@ -111,15 +130,25 @@ try {
     # positions from 200k games off SuperGM_4mvs vs 1.73M off beast_seed.epd.
     try {
         if ($BookFormat -eq "epd") {
-            $openings = (Get-Content $Book -ReadCount 1000 | Measure-Object -Line).Lines
+            $openings = Get-TextLineCount $Book
         } else {
             $openings = (Select-String -Path $Book -Pattern '^\[Event ' -SimpleMatch:$false).Count
+        }
+        if ($Rounds -le 0) {
+            if ($openings -le 0) { throw "Could not count openings in $Book; pass -Rounds explicitly." }
+            $Rounds = $openings
         }
         if ($openings -gt 0 -and $openings -lt $Rounds) {
             Write-Warning ("Book has only {0:N0} openings for {1:N0} rounds — games will repeat " -f $openings, $Rounds)
             Write-Warning "and unique-position yield collapses. Use tools\texel\data\beast_seed.epd (-BookFormat epd)."
         }
-    } catch { }
+    } catch {
+        if ($Rounds -le 0) { throw }
+    }
+
+    if ((Test-Path $OutputPgn) -and -not $Append) {
+        throw "Output already exists: $OutputPgn. Choose a new -OutputPgn or pass -Append intentionally."
+    }
 
     # Ensure output directory exists
     $outDir = Split-Path -Parent $OutputPgn
@@ -127,12 +156,12 @@ try {
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     }
 
-    $games = $Rounds * 2
+    $games = $Rounds
     Write-Host ""
     Write-Host "============================================================"
     Write-Host "  Rarog Texel datagen — self-play"
     Write-Host "  Engine  : $enginePath"
-    Write-Host "  Rounds  : $Rounds  ($games games)"
+    Write-Host "  Games   : $games (one independent opening each)"
     Write-Host "  Nodes   : $Nodes per move"
     Write-Host "  Hash    : $Hash MB"
     Write-Host "  Conc.   : $Concurrency"
@@ -152,7 +181,7 @@ try {
         # all that matters. Do not "fix" this.
         -each "tc=inf" "nodes=$Nodes" `
         -openings "file=$Book" "format=$BookFormat" order=random `
-        -rounds $Rounds -games 2 -repeat `
+        -rounds $Rounds -games 1 `
         -concurrency $Concurrency `
         -draw movenumber=40 movecount=8 score=10 `
         -resign movecount=3 score=600 twosided=true `
@@ -166,14 +195,10 @@ try {
     Write-Host ""
     Write-Host "Done. PGN: $OutputPgn"
 
-    # Print rough position estimate
-    try {
-        $lineCount = (Get-Content $OutputPgn -Encoding utf8 | Measure-Object -Line).Lines
-        # Very rough: ~35-40 qualifying positions per game after filtering
-        $estimatedPositions = [int]($games * 35)
-        Write-Host ("Lines in PGN : {0:N0}" -f $lineCount)
-        Write-Host ("Estimated qualifying positions after extract.py : ~{0:N0}" -f $estimatedPositions)
-    } catch { }
+    # Do not re-read a multi-GB PGN merely to count lines. The bounded preflight
+    # below measures the quantity that matters: unique quiet yield per phase.
+    Write-Host "Run extract.py --preflight-games 20000 on this archive before the full extraction."
+    Write-Host "The preflight sizes from measured per-phase unique yield; no rough global estimate is used."
 
 } finally {
     Pop-Location

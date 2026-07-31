@@ -12,9 +12,9 @@ record, the lessons that must not be re-learned, and the forward plan.
 
 ## S1. Current state
 
-**2.3.1 is RELEASED and the 2.4.0 cycle is OPEN.** `master` and `development`
-both sit at `a5fd288` (`Version 2.3.1`), the tree is clean, and `v2.3.1` is
-tagged and pushed. Phases 7, 8 and 9 are complete — the 9.8 boundary gauntlet
+**2.3.1 is RELEASED and the 2.4.0 cycle is OPEN.** `master`/`v2.3.1` sit at
+`a5fd288`; `development` carries the Phase-10 work. Phases 7, 8 and 9 are
+complete — the 9.8 boundary gauntlet
 validated the cycle (+76 / +78 Elo at 1T, +194 at 4T over 2.2.0) and 2.3.1
 restored PGO for the Windows ARM64 asset. Bench 13 = **5,173,540**, geomean
 EBF **2.406**. The search is unchanged since 2.3.0, so that fingerprint covers
@@ -25,11 +25,10 @@ in `tools/test_engines/` predates 9.7.5, so the first Phase-10 gate must build
 its own baseline (`tools/build_test.ps1 -Suffix p100-base`) rather than reuse
 `rarog-p103-gate-pext-pgo.exe`.
 
-The whole of Phase 10 belongs to the 2.4.0 cycle and it starts at **10.0, the
-search-accuracy decomposition** — whose 2×2 gauntlet half is already measured.
-Its remaining three sub-items redirect everything behind them: root model,
-aspiration/TM, the 10.2.5 search capstone, and the 10.4.6 SPSA re-fit under the
-corrected schedule.
+The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
+over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, is running now** under
+the corrected schedule; its gate determines the surface on which 10.2.5 is
+designed.
 
 ## S2. The development process
 
@@ -1470,6 +1469,20 @@ explanation is needed.
         quiet positions, drop book plies, dedupe by key), re-fit K, run the
         full-scalar fit with L2-to-prior, bake via `tools/texel/bake_params.py`,
         verify with `--verify`, one `[0,3]` gate.
+        **Datagen/extraction hardened 2026-07-31 from Hydra's useful part (the
+        sampling design, NOT its rejected SF labels):** `sample_fens.py` builds
+        a 750k-start book with equal reservoirs over five phase bands (the
+        evaluated pool's target only rejects nearly-decided seeds; it never
+        becomes a training label);
+        `datagen.ps1` consumes each independent opening once rather than
+        generating a deterministic colour-swapped duplicate; and `extract.py`
+        accepts all PGN archives in one pass, samples per phase inside each
+        game, and fills an exact 3M train contract (600k×5) plus balanced
+        holdout. A 20k-game preflight identifies the limiting phase and sizes
+        the required run before the full extraction. Outputs replace
+        atomically only after every quota is full. This removes both old guess
+        points: the false positions/game estimate and the uniform 12-ply cap
+        that discarded scarce opening/deep-endgame rows.
   - (b) **Exactly ONE unconditional run — a second run is pre-registered as
         CONDITIONAL on 10.2.5 landing.** Rationale (user asked to be
         challenged on "more runs"): iterating Texel on the *same* engine
@@ -1713,9 +1726,12 @@ explanation is needed.
   10.4.6; (c) turns that from a bet into a measured call, and demotes 10.2.5
   behind it because the capstone must now be *designed* against a re-fitted
   surface rather than fitted around today's over-aggressive one:
-  **10.0 ✅ → 10.1** (bookkeeping, no games) **→ 10.4.6(a) THE HEADLINE — the
-  selectivity re-fit, first claim on the machine** (10.0(c) proved the group is
-  outside the noise floor and put a +4.06 floor under it) **→ 10.2.5 capstone,
+  **Actual execution as of 2026-07-31:** 10.4.6(a) is already running and has
+  first claim on the machine; 10.1's bench-identical bookkeeping moves directly
+  after its gate. Thus: **10.0 ✅ → 10.4.6(a) THE HEADLINE — the selectivity
+  re-fit** (10.0(c) proved the group is
+  outside the noise floor and put a +4.06 floor under it) **→ 10.1 bookkeeping
+  → 10.2.5 capstone,
   RE-SCOPED toward accuracy, built on the re-fitted surface → 10.2**
   aspiration/TM, priced by 10.0(b)'s arm difference → 10.4 menu picks →
   **10.4.3 Texel re-fit DEMOTED** (eval measured at parity, so it is cheap
@@ -2110,7 +2126,7 @@ and 2/4/8-thread gauntlet infrastructure; needs 10.1 `RootMove` records):
 | `tools/texel/sample_fens.py` | Beast `positions.txt` (read-only!) → EPD book |
 | `rarog-texel --tune <group> <train> <holdout> [out] [--epochs N --lr X --l2 X --max-positions N --from-cp --fix-k K]` | Texel fit; `--verify` reconstruction; `--buckets` per-bucket loss; `--tune-kingsafety` nonlinear KS |
 | `tools/texel/bake_params.py <dump>` | bake a full dump into `src/eval.rs`; verify by bench-match (tune-binary-on-dump == baked build) |
-| `tools/texel/data/beast_seed.epd` | diverse 100k-opening EPD book for datagen |
+| `tools/texel/data/beast_seed.epd` | phase-balanced 750k-start EPD book for datagen (regenerate with `sample_fens.py`; the old checked-out artifact is 100k until 10.4.3) |
 | `tools/books/UHO_Lichess_4852_v1.epd` | SPRT/SPSA/gauntlet opening book (adopted 2026-07-17, same day as Basilisk) — the SF/OpenBench-standard Unbalanced Human Openings: 2,632,036 positions, 3–4 moves deep, curated to the +0.48–0.52 White-edge band, played from both colours per pair (symmetric ⇒ unbiased but decisive). Replaces the balanced 4-move PGNs, which cost twice over: SuperGM's 2,668 lines were exhausted by any run > 5,336 games (7.2b recycled 23% of pairs → optimistic error bars), and balanced openings kept the draw rate at 56% (43% dead pairs). UHO cuts draws to ~35–45% ⇒ SPRTs resolve in substantially fewer games. **Two earlier same-day judgments corrected within hours:** (i) "book size is the issue, draw rate is healthy" — reuse was the *acute* flaw, but decisiveness was the larger standing tax; (ii) "UHO only at a phase boundary" — wrong, since every SPRT/SPSA is a self-contained A-vs-B, only *cross-run* draw-rate/Elo magnitudes lose comparability, verdicts don't. weather-factory takes the EPD natively (format from extension), so tune→confirm stays unified (principle #7). Caveats: absolute draw rates / logistic Elo not comparable to pre-UHO runs; gauntlets for CCRL-comparable estimates should use `-Book tools/books/IM_4mvs.pgn` (balanced, 11,172 unique lines, the audited fallback) |
 | `tools/diag_search_quality.ps1 [-Csv <path>]` | 10.0(a) search-quality readout: first-move cutoff rate + LMR over-reduction over `bench 13`, aggregated from the per-position diag dumps. Needs a `cargo build --release --features diag` binary. ⚠ `bench` is queued asynchronously, so a piped `bench …; quit` tears the engine down before the suite runs and prints only the banner — the script drives a live process |
 | `wac [depth]` (engine command, like `bench`) | WAC-300 tactical suite; deterministic solved count at fixed depth (default 10). Regression telltale for Phase-8 selectivity work; floor test in `tests/wac.rs` |

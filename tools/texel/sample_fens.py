@@ -10,12 +10,19 @@ Accepted input line shapes:
   FEN<TAB>target
   FEN;target
 
+By default the output is split evenly across five material-phase buckets
+(opening, early middlegame, middlegame, endgame, deep endgame), using one
+reservoir per bucket.  This mirrors Hydra's reliable corpus builder and gives
+the downstream self-play extractor enough independent starts in every phase.
+Use ``--natural-phase-mix`` only for an intentional distribution experiment.
+
 Output line shape:
   <piece-placement> <side> <castling> <ep>
 
 Example:
-  python tools/texel/sample_fens.py A:\\Chess\\Beast\\data\\txt\\positions.txt \
-    --out tools\\texel\\data\\beast_seed.epd --count 100000
+  python tools/texel/sample_fens.py A:\\Chess\\Beast\\data\\evaluated \
+    --out tools\\texel\\data\\beast_seed.epd --count 750000 \
+    --target-min 0.05 --target-max 0.95 --max-read 40000000
 """
 
 from __future__ import annotations
@@ -26,6 +33,30 @@ import os
 import random
 import sys
 from typing import Iterable
+
+
+PHASE_W = {"n": 1, "b": 1, "r": 2, "q": 4,
+           "N": 1, "B": 1, "R": 2, "Q": 4}
+PHASE_BUCKETS = (
+    ("opening", 20, 24),
+    ("early_mid", 14, 19),
+    ("middlegame", 8, 13),
+    ("endgame", 3, 7),
+    ("deep_endgame", 0, 2),
+)
+
+
+def phase_bucket(epd: str) -> int:
+    phase = min(sum(PHASE_W.get(ch, 0) for ch in epd.split()[0]), 24)
+    for index, (_, lo, hi) in enumerate(PHASE_BUCKETS):
+        if lo <= phase <= hi:
+            return index
+    raise ValueError(f"phase outside 0..24: {phase}")
+
+
+def bucket_targets(total: int) -> list[int]:
+    base, extra = divmod(total, len(PHASE_BUCKETS))
+    return [base + (1 if index < extra else 0) for index in range(len(PHASE_BUCKETS))]
 
 
 def iter_files(sources: list[str]) -> Iterable[str]:
@@ -139,7 +170,7 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("sources", nargs="+", help="FEN/txt/csv source files or directories")
     parser.add_argument("--out", default="tools/texel/data/beast_seed.epd")
-    parser.add_argument("--count", type=int, default=100_000)
+    parser.add_argument("--count", type=int, default=750_000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-read", type=int, default=0,
                         help="stop after reading this many lines; 0 = no cap")
@@ -149,6 +180,8 @@ def main() -> int:
                         help="optional filter when input has target column")
     parser.add_argument("--oversample", type=int, default=3,
                         help="sample this many times --count before validation")
+    parser.add_argument("--natural-phase-mix", action="store_true",
+                        help="use one global reservoir instead of five equal phase reservoirs")
     parser.add_argument("--min-pieces", type=int, default=6)
     parser.add_argument("--max-pieces", type=int, default=32)
     parser.add_argument("--allow-check", action="store_true")
@@ -167,11 +200,22 @@ def main() -> int:
         raise SystemExit("--target-min cannot exceed --target-max")
 
     rng = random.Random(args.seed)
-    reservoir_size = args.count if args.no_validate else args.count * args.oversample
-    reservoir: list[str] = []
+    multiplier = 1 if args.no_validate else args.oversample
+    targets = bucket_targets(args.count)
+    if args.natural_phase_mix:
+        reservoirs: list[list[str]] = [[]]
+        capacities = [args.count * multiplier]
+        phase_seen = [0]
+    else:
+        reservoirs = [[] for _ in PHASE_BUCKETS]
+        capacities = [target * multiplier for target in targets]
+        phase_seen = [0 for _ in PHASE_BUCKETS]
 
     read = candidates = 0
     files = list(iter_files(args.sources))
+    # A capped scan should cover the whole sharded pool, not always its first
+    # lexicographic shards. Seeded shuffle keeps the sample reproducible.
+    rng.shuffle(files)
     print(f"Sampling from {len(files)} file(s)")
     print(f"Target output: {args.count:,} EPD positions -> {args.out}")
 
@@ -187,11 +231,15 @@ def main() -> int:
                     continue
 
                 candidates += 1
-                if len(reservoir) < reservoir_size:
+                bucket = 0 if args.natural_phase_mix else phase_bucket(epd)
+                phase_seen[bucket] += 1
+                reservoir = reservoirs[bucket]
+                capacity = capacities[bucket]
+                if len(reservoir) < capacity:
                     reservoir.append(epd)
                 else:
-                    j = rng.randrange(candidates)
-                    if j < reservoir_size:
+                    j = rng.randrange(phase_seen[bucket])
+                    if j < capacity:
                         reservoir[j] = epd
 
                 if args.progress_every > 0 and read % args.progress_every == 0:
@@ -201,25 +249,45 @@ def main() -> int:
         if args.max_read > 0 and read >= args.max_read:
             break
 
-    rng.shuffle(reservoir)
-    selected = validate_epds(reservoir, args)
-
-    out_dir = os.path.dirname(os.path.abspath(args.out))
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8", newline="\n") as out:
-        for epd in selected:
-            out.write(epd + "\n")
+    selected: list[str] = []
+    if args.natural_phase_mix:
+        rng.shuffle(reservoirs[0])
+        selected = validate_epds(reservoirs[0], args)
+    else:
+        print("\nPhase reservoirs:")
+        for index, (name, _, _) in enumerate(PHASE_BUCKETS):
+            rng.shuffle(reservoirs[index])
+            # validate_epds reads args.count, so temporarily apply this bucket's quota.
+            original_count = args.count
+            args.count = targets[index]
+            bucket_selected = validate_epds(reservoirs[index], args)
+            args.count = original_count
+            selected.extend(bucket_selected)
+            print(f"  {name:13}: saw={phase_seen[index]:,} "
+                  f"reservoir={len(reservoirs[index]):,} selected={len(bucket_selected):,}/"
+                  f"{targets[index]:,}")
+        rng.shuffle(selected)
 
     print()
     print("Summary:")
     print(f"  Lines read : {read:,}")
     print(f"  Candidates : {candidates:,}")
-    print(f"  Reservoir : {len(reservoir):,}")
-    print(f"  Written   : {len(selected):,}")
+    print(f"  Reservoir : {sum(len(reservoir) for reservoir in reservoirs):,}")
+    print(f"  Selected  : {len(selected):,}")
     if len(selected) < args.count:
-        print(f"WARNING: requested {args.count:,}, wrote only {len(selected):,}.")
+        print(f"ERROR: requested {args.count:,}, selected only {len(selected):,}; "
+              "existing output left untouched.", file=sys.stderr)
         return 2
+
+    out_dir = os.path.dirname(os.path.abspath(args.out))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    tmp = args.out + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as out:
+        for epd in selected:
+            out.write(epd + "\n")
+    os.replace(tmp, args.out)
+    print(f"  Written   : {len(selected):,} -> {args.out}")
     return 0
 
 
