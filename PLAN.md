@@ -86,6 +86,21 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
 
 ### Guiding principles (hard-won)
 
+**Strength-first escalation rule (project mandate, 2026-08-01).** The objective
+is the strongest chess engine we can build, not preserving today's constraints
+or finding increasingly elaborate ways around them. Whenever the model finds
+something sub-optimal, wrong, weak, badly implemented, or limited by a
+constraint that may be removable, it MUST surface it to the user promptly. Do
+not silently accommodate it, freeze it into the plan, reduce scope around it,
+or build a workaround first. State: (1) the evidence and whether this is a
+demonstrated defect or a hypothesis, (2) the likely strength/quality upside,
+(3) implementation and validation cost/risk, and (4) the best direct fix plus
+credible alternatives. Then stop for a joint keep/fix/defer decision before
+expanding the work. Existing EV gates and SPRT discipline still decide what we
+spend and ship; they must never be used as a reason not to disclose a real
+improvement opportunity. Treat mutable constraints as engineering targets,
+not laws.
+
 1. **SPRT is the only verdict.** Holdout MSE, bench nodes, EBF, NPS — all are
    diagnostics. A −4.9 % holdout fit lost 17 Elo (§S4, SF-distillation).
 2. **EV-gate the compute** (principle #10, after the 30 h LMR null). Before any

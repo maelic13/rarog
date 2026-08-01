@@ -19,6 +19,20 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Current work | ▶ **10.4.6(a) SPSA IS RUNNING** (started 2026-07-31). This is the 28-knob selectivity re-fit with 8.11 fail-soft included, target 5,000 iterations. Rarog over-prunes; the fitted direction must spend nodes on accuracy, not add nominal depth. |
 | Next release | **2.4.0 at 10.5.** Actual next order: finish + gate 10.4.6(a) → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
+## Project mandate — surface weaknesses, do not work around them silently
+
+The goal is the **strongest possible chess engine**, not compliance with
+current limitations. Any model working on Rarog must explicitly tell the user
+when it sees something sub-optimal, wrong, weak, badly implemented, or blocked
+by a constraint we could plausibly remove.
+
+Before accepting the constraint, cutting scope around it, parking the issue, or
+building a workaround, report four things: evidence (and whether proven or
+hypothetical), expected strength/quality upside, cost/risk, and the best direct
+fix with alternatives. Then the user and model decide together: fix now, test
+first, defer deliberately, or reject. EV gates and SPRT still control compute
+and shipping; they do **not** excuse withholding an improvement opportunity.
+
 ## Forward tracker
 
 <!-- FORMATTING RULES for this tracker — follow them, they get broken often:
@@ -674,6 +688,7 @@ You are the only one who runs games.
 
 | Situation | Action |
 |---|---|
+| A weakness or plausibly removable constraint is discovered | Surface evidence/upside/cost/direct fix immediately; decide together before working around or accepting it |
 | SPRT passes its registered hypothesis | Keep, record, use as the new head |
 | Strength candidate is flat/fails | Revert its values/code; retain useful infrastructure |
 | Correctness bundle is Elo-flat but non-regressing | Keep the semantic fix |
