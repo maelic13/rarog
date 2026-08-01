@@ -27,7 +27,8 @@ its own baseline (`tools/build_test.ps1 -Suffix p100-base`) rather than reuse
 
 The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
 over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, is running now** under
-the corrected schedule; its gate determines the surface on which 10.2.5 is
+the corrected schedule. On completion, resignation calibration is mandatory
+before its gate; that gate then determines the surface on which 10.2.5 is
 designed.
 
 ## S2. The development process
@@ -61,7 +62,7 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
 | **SPRT** `[-3,0]` | non-inferiority / simplification | `-Elo0 -3 -Elo1 0`; H1 supports non-regression, H0 supports a meaningful loss. A single `[-3,+3]` SPRT is not an equivalence test. |
 | **Fixed null calibration** | after harness/runner changes | byte-identical engines, 30k games; the complete 95% nElo CI must fit inside `[-5,+5]` (`-Mode calibrate`) |
 | **LTC confirm** | TC-sensitive features (TM), phase boundaries | `-TC "10+0.1"` |
-| **SPSA** | tuning constant groups | weather-factory via `tools/spsa.ps1 -ConfigGroup <g> -EngineSuffix <s>`; **SPSA finds candidates, SPRT decides**; bake → PGO build → SPRT |
+| **SPSA** | tuning constant groups | weather-factory via `tools/spsa.ps1 -ConfigGroup <g> -EngineSuffix <s>`; **SPSA finds candidates, SPRT decides**; final values → required adjudication calibration when the profile is under review → bake → PGO build → SPRT |
 | **External gauntlet** | phase boundaries | §11-ladder at `tc=10+0.1`; self-play over-states (Phase 4: +316 staged → +240 real) |
 | **CPU affinity** | EVERY clock match (SPRT/SPSA/gauntlet) | Explicit one-logical-CPU-per-physical-core affinity is mandatory. fastchess must be >=1.7.0 on Windows; never rely on its alternating-CPU auto-topology. |
 
@@ -77,8 +78,9 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
   IDs, leaves two cores free by default, fails affinity warnings, and validates
   with a fixed 30k-game `-Mode calibrate` equivalence CI. Historical borderline
   decisions remain borderline on their reported uncertainty; large verdicts are
-  unaffected. Run `setup_tools.ps1` before the next SPSA so weather-factory gets
-  the verified machine-specific affinity patch.
+  unaffected. The affinity patch remains required, but do **not** prepare a
+  fresh SPSA with `setup_tools.ps1` until the pending adjudication-profile
+  calibration has replaced its forced `600/3 twosided` patch.
 - **Test binaries:** `tools/build_test.ps1 -Suffix <s>` → `rarog-<s>-pext-pgo.exe`
   (SPRT/gauntlet), `-Tune` → `rarog-<s>-tune.exe` (SPSA only, exposes UCI knobs),
   `-Native` (local-only znver3). PGO trains on the internal `bench` (SF-style).
@@ -186,30 +188,36 @@ Relocated here 2026-07-28 from Phase 8, because it governs EVERY
 future tune rather than the wave it was found during.
 
 
-**ADJUDICATION ALIGNMENT (fixed 2026-07-30).** The tuner was optimising under
-different game-termination rules than the gate measured — a violation of the
-unified-conditions principle that already puts SPSA and SPRT on the same TC and
-the same book. weather-factory ships `-resign movecount=3 score=400` with no
-`twosided`; `sprt.ps1` uses `movecount=3 score=600 twosided=true`.
+**ADJUDICATION CALIBRATION (corrected 2026-08-01; mandatory before the
+10.4.6(a) gate).** weather-factory ships `-resign movecount=3 score=400`
+one-sided, exactly the setting used by Reckless OpenBench for both SPSA and
+ordinary strength tests. Stockfish fishtest also uses one-sided `movecount=3`,
+at `score=600`. Stockfish raised 400→600 in 2022 specifically because its new
+NNUE architecture inflated reported evaluations by about 50%; the threshold is
+therefore engine-scale calibration, not a universal constant. Both projects
+kept one-sided resignation.
 
-Two problems, and **the missing flag is the worse one**. Without `twosided`,
-fastchess adjudicates a resignation on the *losing side's own evaluation
-alone*. Both SPSA arms are the SAME binary with perturbed parameters, so an arm
-whose parameters produce more extreme scores resigns more readily than its
-sibling — an asymmetry between the two arms of every mini-match, landing
-directly in the gradient the tuner estimates. `twosided=true` requires both
-engines to agree the game is decided, removing the asymmetry by construction.
-The threshold gap (400 vs 600) is the lesser issue: the tune was resigning
-games the gate would have played on.
+One-sided is meaningful evidence: the side about to lose must itself report
+at most -400 for three consecutive searches. Two-sided adds the winner's
+correlated opinion; it protects against transient disagreement, but cannot
+protect against a shared fortress/endgame blind spot. In the current SPSA PGN,
+only 69.3% of the existing one-sided-400 adjudications also satisfied
+two-sided-400 at the same ply. The remainder are games that would continue,
+not demonstrated result errors. The previous claim that the missing
+`twosided` flag was the worse problem, and the unsupported donated-worker
+rationale, are **retracted**.
 
-**Verified against fishtest** (`official-stockfish/fishtest`,
-`worker/games.py`, read 2026-07-30): Stockfish uses `-resign movecount=3
-score=600`, and the string `twosided` **does not appear in that file at all**.
-So we match its threshold exactly and go one step stricter on the flag. That
-deviation is deliberate: fishtest runs donated heterogeneous workers where
-one-sided resignation ends games sooner and throughput dominates; we run one
-machine, where the correctness of a gradient is worth more than a few percent
-of games per hour.
+**Required order: finish SPSA unchanged → calibrate → choose the profile →
+SPRT.** Before 10.4.6(a)'s `[0,3]` gate, retro-adjudicate completed Rarog PGNs
+that were played under the stricter `600/3 twosided` rule. For candidate
+thresholds 400/500/600 one-sided, report: trigger count, winner mismatches
+against the final recorded result, mismatch 95% upper bound, and plies saved.
+Inspect every mismatch rather than hiding it in an aggregate. If 400/3 is
+clean enough, make it the shared **strength-test profile** for SPSA, SPRT, and
+gauntlets. Datagen remains a separate **training-label profile** until it gets
+its own calibration because one incorrect game result labels many positions.
+Centralise these named profiles so the PowerShell runners and weather-factory
+setup cannot drift again.
 
 **NOT aligned to fishtest, deliberately — the draw rule.** Ours is
 `movenumber=40 movecount=8 score=10` against fishtest's `movenumber=34
@@ -219,15 +227,11 @@ tuner, so the discrepancy the fix targets does not exist there, and moving it
 would shift the verdict instrument and break comparability with the entire
 existing ledger for no correctness gain.
 
-Landed as a `setup_tools.ps1` patch (`RAROG_ADJUDICATION_PATCH_V1`) with the
-usual marker check, because `tools/weather-factory/` is vendored and gitignored.
-⚠ **It therefore takes effect at the NEXT setup, not on the tune running now**
-— which is intended: 10.4.6(a) finishes under the rules it started with.
-`spsa.ps1` enforces the marker when STARTING a tune but explicitly **never
-blocks a resume**, keyed on the presence of `state.json` rather than on
-`-LaunchOnly`. Changing game-termination rules mid-tune would make the early
-iterations incomparable with the late ones, which is strictly worse than
-finishing under the old rule.
+The 2026-07-30 `RAROG_ADJUDICATION_PATCH_V1` currently prepares and enforces
+`600/3 twosided` for a fresh SPSA. It is now **pending replacement after the
+calibration**; do not run a fresh tune through it. It does not affect the
+already-running 10.4.6(a), and resumes remain permitted. Never change
+termination rules inside a running SPSA.
 
 **HARNESS DEBT — SPSA `A` is in the wrong units (found 2026-07-23, during
 8.4's first night).** `spsa.ps1` writes `A = Iterations / 10`, i.e. in

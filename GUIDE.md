@@ -17,7 +17,7 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Working source | 10.4.6(a) candidate substrate: 8.11 fail-soft re-applied, bench **5,320,596**; not accepted unless the fitted-vector gate passes. |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
 | Current work | ▶ **10.4.6(a) SPSA IS RUNNING** (started 2026-07-31). This is the 28-knob selectivity re-fit with 8.11 fail-soft included, target 5,000 iterations. Rarog over-prunes; the fitted direction must spend nodes on accuracy, not add nominal depth. |
-| Next release | **2.4.0 at 10.5.** Actual next order: finish + gate 10.4.6(a) → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Next release | **2.4.0 at 10.5.** Actual next order: finish 10.4.6(a) → calibrate resignation and set the shared strength-test profile → gate 10.4.6(a) → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -606,22 +606,17 @@ on a resume is a no-op for the schedule and only sets the stop target.
 ⚠ **The machine is fully occupied while this runs** (concurrency 14 of 16
 physical cores). No NPS work, no SPRT, no bench measurement until it stops.
 
-⚠ **An adjudication fix landed 2026-07-30 that deliberately does NOT apply to
-this run.** The tuner resigned at `score=400` one-sided while `sprt.ps1` uses
-`score=600 twosided=true`, so it was optimising under different
-game-termination rules than the gate measures. Fixed in `setup_tools.ps1`, so
-it takes effect at the **next** setup — this tune finishes under the rules it
-started with, because switching mid-run would make its early iterations
-incomparable with its late ones. Resuming with `-LaunchOnly` is unaffected; the
-new marker check only fires when starting a fresh tune.
+⚠ **Finish this tune under its existing `score=400` one-sided resignation
+rule.** That exactly matches Reckless's published OpenBench SPSA practice;
+Stockfish also uses one-sided resignation, at 600 after calibrating for its own
+evaluation-scale inflation. The 2026-07-30 claim that two-sided was inherently
+safer is retracted. Do not change rules or run `setup_tools.ps1` mid-tune.
 
-**📌 CHECK THE KILL-CHECKPOINT AT ~1,500 ITERATIONS AND TELL ME.**
-`FutilityBase` (seeded 60) and `LmpBase` (seeded 88) are deliberately held one
-step below the direction the other eight margins start from. By ~1,500 the
-schedule must visibly walk them **UP** toward ~69 and ~101. If they wander
-instead, **stop — do not spend night two**; the tuner lacks resolving power at
-this noise level and the rest of the run cannot help. Use the thirds test
-(see *Running an SPSA*), not eyeballed single-iteration values.
+The old ~1,500-iteration kill checkpoint is also **retracted**. Parameter
+movement is not strength evidence, and the earlier +4.06 probe moved ten knobs
+jointly rather than proving target values for `FutilityBase` or `LmpBase`.
+Complete the chosen 5,000-iteration experiment; its gate, not the direction of
+individual knobs, determines whether it worked.
 
 At 5,000 iterations, run this small read-only command and paste its complete
 output:
@@ -630,9 +625,16 @@ output:
 ./tools/spsa.ps1 -ShowValues
 ```
 
-I will compare all 28 values with their configured rails, bake the **whole
-vector** (no per-knob filter), verify it, build the PGO candidate, and give you
-one `[0,3]` gate against `rarog-p100-base-pext-pgo.exe`.
+I will compare all 28 values with their configured rails and run the mandatory
+adjudication checkpoint **before the gate**. First, retro-adjudicate completed
+Rarog PGNs under 400/500/600 one-sided and report trigger coverage, winner
+mismatches against the final recorded result, the mismatch 95% upper bound,
+plies saved, and every mismatching position. Then we choose and centralise a
+shared strength-test profile for SPSA/SPRT/gauntlets; datagen keeps a separate
+training-label profile pending its own safety calibration. Only after that do
+I bake the **whole vector** (no per-knob filter), verify it, build the PGO
+candidate, and give you the `[0,3]` gate against
+`rarog-p100-base-pext-pgo.exe`.
 
 Post-result decision, in plain form:
 
@@ -640,9 +642,12 @@ Post-result decision, in plain form:
 |---|---|
 | SPSA not yet at 5,000 | Resume; do not bake an endpoint |
 | Any value on a bound | Inspect the coupled surface before widening anything; report it explicitly |
+| SPSA complete | Calibrate 400/500/600 one-sided from stricter completed PGNs; no candidate SPRT yet |
+| 400/3 one-sided is accepted | Apply it to the shared SPSA/SPRT/gauntlet profile and remove the forced two-sided SPSA patch |
+| 400/3 shows mismatches | Inspect every position and choose 500/3 or 600/3 one-sided from evidence; do not default silently |
 | Primary `[0,3]` gate passes | Accept the full fitted vector with fail-soft; update head/docs |
 | Primary gate loses with fail-soft | Re-gate the same fitted vector once without fail-soft; no new SPSA |
-| Both forms fail | Reject the fit; retain the measured +4.06 probe as the fallback evidence, then continue the plan |
+| Both forms fail | Reject the fit and retain the accepted baseline; the joint +4.06 probe remains context, not a guaranteed fallback gain |
 
 What is already prepared and verified:
 
