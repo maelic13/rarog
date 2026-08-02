@@ -303,10 +303,9 @@ search_params! {
     hist_no_aging = 0, "HistNoAging", 0..=1;  // 8.1b REJECTED (-6.6 Elo): between-search halving is required even with 8.1's malus decay. Do not retry.
 
     // ── Phase 8.5: correction-history semantics + magnitude margins + blend ──
-    // Three linked changes gated together (one SPSA + one `[0,3]`);
-    // pre-registered: on H0 retry (b) margins-only, guard dropped. Everything
-    // is seeded NEUTRAL, so the binary is bench-identical to the 8.4 head until
-    // SPSA moves a knob or the guard is enabled.
+    // The continuous margins/weights were included in the accepted 10.4.6(a)
+    // joint selectivity fit. Preserve even off-valued mechanisms through the
+    // NNUE transition: the post-NNUE retune may reactivate them.
     //
     /// 8.5(a) — guard: skip a correction UPDATE whose causing/best move is a
     /// CAPTURE. Today a capture beta-cutoff trains correction, teaching the
@@ -314,8 +313,8 @@ search_params! {
     /// wrong-bound-direction half of the guard is ALREADY enforced at both
     /// update sites (Lower needs `score > static_eval`; Upper needs `diff < 0`),
     /// verified in code — so 8.5(a) adds only the capture guard. Seed 0 = today;
-    /// the SPSA pins it to 1, and it bakes to 1 iff the gate passes.
-    corr_guard_capture = 0, "CorrGuardCapture", 0..=1;  // 8.5 closed neutral 2026-07-27; first VALID tune = 10.4.6
+    /// it remains a discrete A/B knob and was excluded from 10.4.6(a).
+    corr_guard_capture = 0, "CorrGuardCapture", 0..=1;  // 8.5 closed neutral 2026-07-27; retain through post-NNUE retune
     /// 8.5(b) — magnitude margins: scale forward pruning / LMR by |correction|.
     /// A large correction means the raw static eval is being heavily adjusted
     /// and is less trustworthy, so prune/reduce LESS (conservative-when-

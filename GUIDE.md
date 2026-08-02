@@ -13,11 +13,11 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | | |
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
-| Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406**. Gate binary: `rarog-p100-base-pext-pgo.exe` (clean manifest). `rarog-p103-gate-pext-pgo.exe` is obsolete. |
-| Working source | 10.4.6(a) complete final-theta vector baked over 8.11 fail-soft; bench **6,477,102**, exactly matching the tune binary with all 28 theta options. This is +21.7% nodes over the SPSA substrate and remains unaccepted until its `[0,3]` gate passes. |
-| Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.4.6(a) FINAL-THETA GATE READY:** clean PGO candidate `rarog-p1046a-theta-pext-pgo.exe`, bench **6,477,102**, vs clean pre-SPSA `rarog-p100-base-pext-pgo.exe`, bench **5,173,540**. Run the `[0,3]` command below. |
-| Next release | **2.4.0 at 10.5.** Actual next order: gate the final-theta 10.4.6(a) vector → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, bench **6,477,102**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
+| Working source | Accepted 10.4.6(a) baseline; all 28 SPSA defaults baked and reusable configs reset to those values for the future post-NNUE retune. |
+| Last strength results | **10.4.6(a): +15.33 ± 7.34 nElo, H1** (8,600 games, zero anomalies) vs pre-SPSA 2.3.1. Earlier boundary: **9.8 external gauntlet vs 2.2.0: +76 ± 21** at 1T 3+0.03, +78 ± 28 at 1T 10+0.1, +194 ± 24 at 4T 10+0.1. |
+| Current work | ✅ **10.4.6(a) ACCEPTED.** User is running an independently seeded repeat for reassurance; it is replication, not a re-roll of the registered H1. No no-fail-soft retry is needed. |
+| Next release | **2.4.0 at 10.5.** Actual next order: 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -32,6 +32,11 @@ hypothetical), expected strength/quality upside, cost/risk, and the best direct
 fix with alternatives. Then the user and model decide together: fix now, test
 first, defer deliberately, or reject. EV gates and SPRT still control compute
 and shipping; they do **not** excuse withholding an improvement opportunity.
+
+Tuned-off features are preserved through NNUE. A zero/off value describes the
+current HCE optimum; it does not authorize deleting the implementation, UCI
+option, or SPSA seat. The post-NNUE retune may reactivate it, and only then may
+removal be discussed explicitly.
 
 ## Forward tracker
 
@@ -594,21 +599,12 @@ console. Final theta is SPSA's accumulated estimator, not its last perturbed
 mini-match. A tail window is a different estimator and must not be invented
 after a run; specify and validate it before tuning if we ever adopt one.
 
-Run the actual acceptance gate from the repository root:
-
-```powershell
-./tools/sprt.ps1 `
-    -EngineA "tools\test_engines\rarog-p1046a-theta-pext-pgo.exe" `
-    -EngineB "tools\test_engines\rarog-p100-base-pext-pgo.exe" `
-    -NameA "p1046a-theta" `
-    -NameB "p100-base" `
-    -Elo0 0 `
-    -Elo1 3
-```
-
-This is the real gate: H1 accepts the complete fitted vector; H0 rejects it and
-triggers the one predeclared retry at the same theta values without 8.11
-fail-soft. Do not reinterpret a partial point estimate as a verdict.
+The real gate **passed H1** at 8,600 games: +15.33 ± 7.34 nElo, W/L/D
+2325/2083/4192, LLR 2.95, zero anomalies. The full final-theta vector and 8.11
+fail-soft are accepted; cancel the no-fail-soft retry. The independently seeded
+repeat is running now for reassurance only: do not use it to re-roll the
+registered verdict. Paste its final report when it ends; no other CPU-heavy
+work should run alongside it.
 
 The tune finished under its original `score=400` one-sided rule. The mandatory
 post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter
@@ -618,49 +614,9 @@ forfeits and 71 were draws. Therefore the shared strength-test profile is
 **`strength-v1` = 600/3 one-sided** for SPSA, SPRT, and gauntlets. Datagen stays
 on its separate stricter two-sided label-safety profile.
 
-The old ~1,500-iteration kill checkpoint is also **retracted**. Parameter
-movement is not strength evidence, and the earlier +4.06 probe moved ten knobs
-jointly rather than proving target values for `FutilityBase` or `LmpBase`.
-Complete the chosen 5,000-iteration experiment; its gate, not the direction of
-individual knobs, determines whether it worked.
-
-At 5,000 iterations, run this small read-only command and paste its complete
-output:
-
-```powershell
-./tools/spsa.ps1 -ShowValues
-```
-
-The 28 values and rails have been analysed. First run a same-binary `[0,3]`
-selection SPRT with the final-15%-mean vector as A and final theta as B. H1
-selects the tail mean. If H0 lands with a wholly negative 95% interval, select
-theta; otherwise call it a wash and explicitly decide between variance
-reduction and established final-theta convention. Then bake the selected
-**whole vector** (no per-knob filter), verify it, build the PGO candidate, and
-run the actual `[0,3]` acceptance gate against
-`rarog-p100-base-pext-pgo.exe`.
-
-Post-result decision, in plain form:
-
-| Result | Next action |
-|---|---|
-| SPSA not yet at 5,000 | Resume; do not bake an endpoint |
-| Any value on a bound | Inspect the coupled surface before widening anything; report it explicitly |
-| SPSA complete | ✅ 5,000 iterations / 160,000 games; analyse rails and compare tail mean with final theta |
-| Resignation calibration | ✅ `strength-v1` = 600/3 one-sided for SPSA/SPRT/gauntlet; 400 rejected from measured result changes |
-| Tail-vs-theta comparison | ✅ Wash at 1,800 games; use the complete console final theta |
-| Primary `[0,3]` gate passes | Accept the full fitted vector with fail-soft; update head/docs |
-| Primary gate loses with fail-soft | Re-gate the same fitted vector once without fail-soft; no new SPSA |
-| Both forms fail | Reject the fit and retain the accepted baseline; the joint +4.06 probe remains context, not a guaranteed fallback gain |
-
-What is already prepared and verified:
-
-| piece | state |
-|---|---|
-| 8.11 fail-soft qsearch re-applied | `7c084dc`, bench **5,320,596** = the gated candidate's exact figure |
-| `config_selectivity.json` | **28 knobs**; all present in the binary, ranges inside the engine clamp, audit clean on both error classes |
-| `rarog-p1046a-tune.exe` | clean manifest, bench 5,320,596 |
-| schedule | `a=0.09655, A=500`, verified by assertion (see below) |
+Completion record: 5,000 iterations / 160,000 games; final theta selected after
+the tail comparison washed; all 28 values baked as one vector; ordinary and
+tune-at-theta bench matched at 6,477,102; primary strength gate passed H1.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
 `A=0.0965` instead of `A=500`, because PowerShell variable names are
@@ -675,10 +631,11 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 
 | binary | bench | what it is |
 |---|--:|---|
-| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | the 2.3.1 head — the accepted baseline |
+| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | accepted 10.4.6(a) development baseline |
+| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-After its gate: 10.1 bookkeeping (no games) → 10.2.5 capstone, re-scoped toward
+Next: 10.1 bookkeeping (no games) → 10.2.5 capstone, re-scoped toward
 accuracy → 10.2 aspiration/TM → 10.4 menu picks → 10.4.3 one Texel re-fit →
 the 2.4.0 boundary gauntlet at 10.5.
 

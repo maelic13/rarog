@@ -1,36 +1,36 @@
 {
     "SeePruningCoeff": {
-        "value": 51,
+        "value": 66,
         "min_value": 20,
         "max_value": 200,
         "step": 12
     },
     "SeePruningMax": {
-        "value": 869,
+        "value": 955,
         "min_value": 200,
         "max_value": 1600,
         "step": 120
     },
     "QsSeeMargin": {
-        "value": 251,
+        "value": 265,
         "min_value": 0,
         "max_value": 600,
         "step": 40
     },
     "QsSeeClampLo": {
-        "value": -661,
+        "value": -722,
         "min_value": -1600,
         "max_value": -100,
         "step": 120
     },
     "QsSeeClampHi": {
-        "value": 218,
+        "value": 212,
         "min_value": 0,
         "max_value": 600,
         "step": 40
     },
     "QsSeeBadFloor": {
-        "value": -119,
+        "value": -55,
         "min_value": -400,
         "max_value": 0,
         "step": 40

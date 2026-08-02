@@ -20,17 +20,19 @@ restored PGO for the Windows ARM64 asset. Bench 13 = **5,173,540**, geomean
 EBF **2.406**. The search is unchanged since 2.3.0, so that fingerprint covers
 both releases.
 
-**The accepted baseline is the 2.3.1 head itself.** Every earlier gate binary
-in `tools/test_engines/` predates 9.7.5, so the first Phase-10 gate must build
-its own baseline (`tools/build_test.ps1 -Suffix p100-base`) rather than reuse
-`rarog-p103-gate-pext-pgo.exe`.
+**The accepted development baseline is now 10.4.6(a) final theta** on top of
+8.11 fail-soft: source commit `c810318`, bench **6,477,102**, gate binary
+`rarog-p1046a-theta-pext-pgo.exe`. The released 2.3.1 head remains the release
+baseline until 2.4.0; its clean comparison binary is
+`rarog-p100-base-pext-pgo.exe`, bench 5,173,540.
 
 The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
 over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, completed all 5,000
-iterations / 160,000 games.** Resignation calibration is complete and selected
-the shared `strength-v1` profile: 600/3 one-sided. The next job is the
-predeclared tail-mean-vs-final-theta selection SPRT; its winner then faces the
-pre-SPSA executable in the actual acceptance gate.
+iterations / 160,000 games and **PASSED its primary `[0,3]` gate at +15.33 ±
+7.34 nElo, H1, 8,600 games, zero anomalies.** Resignation calibration selected
+the shared `strength-v1` profile: 600/3 one-sided. The user is running one
+independent replication for reassurance; the registered H1 already fixes the
+acceptance decision. Next implementation item is 10.1 bookkeeping.
 
 ## S2. The development process
 
@@ -90,6 +92,11 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
   (SPRT/gauntlet), `-Tune` → `rarog-<s>-tune.exe` (SPSA only, exposes UCI knobs),
   `-Native` (local-only znver3). PGO trains on the internal `bench` (SF-style).
 - **Texel fits are minutes** — the model runs them freely; games are the user's.
+- **Preserve tuned-off features across the NNUE transition.** A parameter at
+  its off rail is evidence about this HCE surface, not proof that the mechanism
+  is useless. Keep the implementation, UCI option, and SPSA configuration until
+  NNUE is integrated and the post-NNUE tune has had a chance to reactivate it.
+  Removal requires a separate explicit decision after that re-tune.
 
 ### Guiding principles (hard-won)
 
@@ -1559,8 +1566,8 @@ explanation is needed.
      floor strictly HURTS — it scatters them.** Whether our current values
      are inside it is genuinely unknown, which is what (a)'s kill-checkpoint
      and the `[0,3]` gate exist to handle. (The per-knob "bake filter" once
-     named here is RETRACTED — see (a): it breaks the joint fit, and the tail
-     mean already suppresses per-knob wander.) This floor is a property of
+     named here is RETRACTED — see (a): it breaks the joint fit. The accepted
+     convention is to bake the complete final theta.) This floor is a property of
      the NOISE, so the recalibrated `a=0.1` lowers it — the sweep reads RMSE
      0.32 at a=0.1 vs 0.78 at a=1.0 — but cannot remove it.
   4. **Curvature below ~0.5 Elo per full step is unfittable** at 32
@@ -1569,7 +1576,7 @@ explanation is needed.
      8 knobs, so those knobs are probably in this class.
   5. Games-per-iteration is ~neutral at fixed game budget (16…128 all land
      within noise), so 32 stays.
-  - (a) **✅ PREPARED 2026-07-30 — ready to launch. 28 knobs, not 26.**
+  - (a) **✅ ACCEPTED 2026-08-02 — 28 knobs, final theta +15.33 ± 7.34 nElo.**
         `tools/spsa_configs/config_selectivity.json` merges `config_pruning`
         (14) + the four non-overlapping `config_see` knobs + `config_corr` (8) +
         **`config_futility` (2, added)**. `FpBase`/`FpCoeff` are in because they
@@ -1625,8 +1632,9 @@ explanation is needed.
 
         `EvalPruneTtMinDepth=0` is the only exact feature-off result: it
         disables the experimental minimum-depth guard, not ordinary TT eval
-        refinement. Keep it at zero through selection/gating; if the vector is
-        accepted, remove that dead guard/UCI knob under bench equivalence.
+        refinement. Keep the implementation, UCI knob, and SPSA seat: this is
+        an HCE-surface result, and the mandatory post-NNUE retune may reactivate
+        it. Do not remove any tuned-off mechanism before that retune.
         `LmpCountBase=1` is rail-pinned but active (aggressive LMP), so do not
         delete it or widen to zero before the joint gate. The three correction
         scales are small but nonzero and were seeded at zero, so SPSA activated
@@ -1659,32 +1667,40 @@ explanation is needed.
         whole fitted vector; H0 triggers the one predeclared same-theta retry
         without 8.11 fail-soft.
 
-        **⚠ SEEDS ARE DELIBERATELY NOT THE BAKED DEFAULTS — the audit reports
-        8 "drifted seeds" for this file BY DESIGN.** Eight knobs start at
+        **✅ PRIMARY GATE PASSED 2026-08-02:** H1 at 8,600 games, **+15.33 ±
+        7.34 nElo** (+9.78 ± 4.69 logistic Elo), W/L/D 2325/2083/4192,
+        pentanomial `[143,1004,1822,1130,201]`, LLR 2.95, zero anomalies. This
+        accepts the whole final-theta vector together with 8.11 fail-soft; the
+        no-fail-soft retry is cancelled. An independently seeded repeat is
+        being run only as replication. It cannot re-roll the registered H1: a
+        wash leaves acceptance unchanged, another H1 strengthens replication,
+        and a sharp contradiction requires pooled analysis and harness audit.
+
+        **Historical launch record — the original seeds deliberately differed
+        from the then-baked defaults.** The audit reported eight intentional
+        "drifted seeds". Eight knobs started at
         10.0(c)'s probe values, a measured +4.06 ± 3.71 better than the
-        defaults, so the run begins from the best point we know instead of one
+        defaults, so the run began from the best point known instead of one
         just measured as worse: `FutilityNotImproving` 48, `RazoringCoeff` 222,
         `LmpNotImproving` 72, `QuietHistPruneCoeff` 5829, `SeePruningCoeff` 59,
-        `SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. If the tune goes
-        nowhere the tail means bake back to ≈the probe values and the gate reads
-        ≈+4 — **the floor is a known gain rather than a known zero.**
+        `SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. After acceptance the
+        reusable configs were reset to final theta for the post-NNUE retune.
 
-        **📌 KILL-CHECKPOINT REDESIGNED, because the version written below was
-        backwards.** It said "seed two knobs a full step off their baked values;
+        **📌 Historical kill-checkpoint design.** The earlier version was
+        backwards: it said "seed two knobs a full step off their baked values;
         the fixed schedule must visibly walk them back". But 10.0(c) has since
         measured that the baked values of the high-traffic margins are WORSE
         than a step up — so a tuner *correctly* walking such a knob up would
         have been misread as a failure to converge, and night two killed for the
-        right behaviour. Instead **`FutilityBase` (60) and `LmpBase` (88) are
-        HELD at the accepted-head values**, one full `step` below the probe
-        direction the other eight start from, and by ~1,500 iterations the
-        schedule must visibly walk them **UP** toward ~69 and ~101. They are the
+        right behaviour. Instead **`FutilityBase` (60) and `LmpBase` (88) were
+        held at the accepted-head values**, one full `step` below the probe
+        direction the other eight started from, and were monitored around
+        iteration 1,500. They are the
         two highest-traffic margins in the group (RFP cuts 21.9 % of interior
         nodes; LMP discards more moves than there are interior nodes), and this
         is the one direction in the group whose sign is backed by four
         independent measurements (8.6 −7.78, 8.7 −7.29, 8.11 −5.96, 10.0(c)
-        +4.06). A tuner that cannot find it lacks resolving power at this noise
-        level, and the rest of the run cannot help either.
+        +4.06). This supplied a resolving-power diagnostic, not a bake rule.
 
         **8.11's fail-soft qsearch is re-applied** (`7c084dc`), as the item
         requires — bench 5,320,596, *exactly* the figure the gated candidate
@@ -1716,8 +1732,8 @@ explanation is needed.
         **Multi-session operation (hardened 2026-07-27 — a 40 h tune always
         spans sessions, and all three of these were broken):** the log now
         APPENDS on resume (it truncated; 8.5 lost 1,086 of its 3,670
-        iterations, and the trajectory is precisely what the tail-mean bake
-        and the per-knob filter read); `main.py` now STOPS ITSELF at
+        iterations, and the trajectory is precisely what convergence analysis
+        needs); `main.py` now STOPS ITSELF at
         `$env:RAROG_MAX_ITERS` (it was `while True:`, so the target lived
         only in the operator's head); and `spsa.ps1` prints
         iteration/percent/ETA on every resume. Both patches are re-applied

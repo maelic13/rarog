@@ -146,10 +146,10 @@ inside the SPSA noise floor cannot be beaten by a blind shift, so this group is
 demonstrably outside it — which is what converts 10.4.6 from a speculative
 re-tune into the cycle's headline item.
 
-⚠ **The seeds are DELIBERATELY not the baked defaults, and the coverage audit
-will report 8 "drifted seeds" for this file. That is intended, not drift.**
-Eight knobs are seeded at 10.0(c)'s probe values (a measured +4.06 better than
-the defaults) so the run starts from the best point we know rather than from one
+⚠ **Historical completed-run seeds:** the original coverage audit reported
+eight intentional "drifted seeds". Eight knobs were seeded at 10.0(c)'s probe
+values (a measured +4.06 better than the defaults) so the run started from the
+best point known rather than from one
 we have just measured as worse: `FutilityNotImproving` 48, `RazoringCoeff` 222,
 `LmpNotImproving` 72, `QuietHistPruneCoeff` 5829, `SeePruningCoeff` 59,
 `SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. If the tune ends up going
@@ -164,18 +164,16 @@ by the tuner. Do not create an averaging window after seeing a trajectory; if
 iterate averaging is ever wanted, define and validate that estimator before
 the run. The exact 28-value vector and rail analysis are recorded in `PLAN.md`.
 The baked source and tune binary at theta bench-match exactly at **6,477,102**
-nodes (+21.7% over the fail-soft tuning substrate), pending the strength gate.
+nodes (+21.7% over the fail-soft tuning substrate). The primary gate passed H1
+at **+15.33 ± 7.34 nElo over 8,600 games**, zero anomalies. The reusable
+`config_selectivity`, `config_pruning`, `config_see`, `config_futility`, and
+`config_corr` seeds are now reset to the accepted theta for the post-NNUE
+retune; the completed run's original probe seeds remain recorded above.
 
-📌 **`FutilityBase` (60) and `LmpBase` (88) are the KILL-CHECKPOINT and are
-held at the accepted-head values on purpose** — one full `step` below the
-probe direction the other eight start from. They are the two highest-traffic
-margins in the group (RFP cuts 21.9% of interior nodes; LMP discards more moves
-than there are interior nodes). By ~1,500 iterations the fixed schedule must
-visibly walk them UP toward ~69 and ~101. **If they wander instead, STOP and
-debug before spending night two** — the rest of the run cannot help either, and
-this is the one direction in the whole group whose sign is backed by four
-independent measurements (8.6 −7.78, 8.7 −7.29, 8.11 −5.96 and 10.0(c) +4.06),
-so a tuner that cannot find it lacks resolving power at this noise level.
+📌 **Historical kill-checkpoint:** `FutilityBase` (60) and `LmpBase` (88) were
+held one full step below the probe direction and monitored around iteration
+1,500. This was a resolving-power diagnostic for the completed run, not a
+current seed or a future bake rule.
 
 ⚠ `EvalPruneTtMinDepth` seeds at 0, on its MIN rail (one-sided gradient — the
 audit warns about this). Accepted here because 0 *is* today's behaviour and the
@@ -194,32 +192,23 @@ they are expected to move.
 
 ### config_corr.json — Phase 8.5 correction semantics + margins + blend
 
-The 8.5 bundle: (a) a capture guard on correction updates, (b) three
-|correction|-scaled margin/reduction knobs, (c) five correction-blend source
-weights. All are exposed in `src/params.rs` seeded NEUTRAL, so the tune binary
-is bench-identical to the 8.4 head at defaults (verified 5,173,540).
-
-**`CorrGuardCapture` is PINNED ON in this config** (`value/min/max = 1`): the
-guard is a semantic hypothesis that must be *active* while SPSA fits (b)/(c) —
-"the guard is what makes (b)'s signal honest" (PLAN 8.5). weather-factory
-perturbs it, but both arms clamp back to 1, so it stays on and contributes no
-gradient. The SPSA therefore tunes the 8 continuous knobs below.
-
-The (b) scales start at an interior `128` (not their `0` code default) so SPSA
-explores both directions; if the true optimum is 0 they drift back down and bake
-to off. The (c) weights start at their neutral `128`.
+This reusable config contains the eight continuous knobs: (b) three
+|correction|-scaled margin/reduction knobs and (c) five correction-blend source
+weights. Its seeds now match the accepted 10.4.6(a) final theta.
+`CorrGuardCapture` is deliberately absent: it remains implemented and exposed
+at default 0 as a discrete A/B knob, and no tuned-off mechanism is removed
+before the post-NNUE retune.
 
 | UCI option name | Start | Code default | Range | Step | Source in search.rs |
 |---|---|---|---|---|---|
-| `CorrGuardCapture` | 1 (pinned) | 0 | [1,1] | 1 | skip correction update on a capture cutoff / best move |
-| `CorrRfpScale`   | 128 | 0 | [0,512] | 50 | `+ |corr|·s/128` on the reverse-futility margin |
-| `CorrFutScale`   | 128 | 0 | [0,512] | 50 | `+ |corr|·s/128` on the quiet-futility margin |
-| `CorrLmrScale`   | 128 | 0 | [0,512] | 50 | `− |corr|·s/128` on the LMR reduction (1024ths) |
-| `CorrWeightPawn` | 128 | 128 | [0,384] | 30 | pawn-key correction weight (128 = old ×1) |
-| `CorrWeightMinor`| 128 | 128 | [0,384] | 30 | minor-key correction weight |
-| `CorrWeightOwnNp`| 128 | 128 | [0,384] | 30 | own non-pawn correction weight |
-| `CorrWeightTheirNp`| 128 | 128 | [0,384] | 30 | opponent non-pawn correction weight |
-| `CorrWeightCont` | 128 | 128 | [0,384] | 30 | continuation correction weight (applied after its inherent `/2`) |
+| `CorrRfpScale`   | 3 | 3 | [0,512] | 50 | `+ |corr|·s/128` on the reverse-futility margin |
+| `CorrFutScale`   | 3 | 3 | [0,512] | 50 | `+ |corr|·s/128` on the quiet-futility margin |
+| `CorrLmrScale`   | 27 | 27 | [0,512] | 50 | `− |corr|·s/128` on the LMR reduction (1024ths) |
+| `CorrWeightPawn` | 135 | 135 | [0,384] | 30 | pawn-key correction weight (128 = old ×1) |
+| `CorrWeightMinor`| 80 | 80 | [0,384] | 30 | minor-key correction weight |
+| `CorrWeightOwnNp`| 104 | 104 | [0,384] | 30 | own non-pawn correction weight |
+| `CorrWeightTheirNp`| 160 | 160 | [0,384] | 30 | opponent non-pawn correction weight |
+| `CorrWeightCont` | 152 | 152 | [0,384] | 30 | continuation correction weight (applied after its inherent `/2`) |
 
 **Pre-registered decomposition (PLAN 8.5):** gate the full bundle `[0,3]` vs the
 8.4 head; on H0, retry **(b) margins-only, guard dropped** once before
@@ -259,33 +248,26 @@ replaced by the Phase 2.5.1 clock-TC candidate above.
 
 ### config_pruning.json — Pruning / margin constants
 
-Defaults are the **Phase 5.1 pruning SPSA candidate** (tc=3+0.03, 2,482 iters /
-79,424 games at the post-Phase-4 eval scale), baked into `SearchParams::default()`
-pending the confirming `[0,3]` SPRT. `FutilityNotImproving` / `LmpNotImproving`
-ceilings were widened `[0,60]→[0,120]` for this retune. `SingularBetaMult`
-**pinned at its `[1,6]` ceiling** and stayed there: the config was widened `6→8`
-in the repo, but weather-factory resumed from its own state and kept the `[1,6]`
-range, so `6` was **never actually tested against `7–8`**. It is baked at `6`
-(the tuner's best estimate, conservative) and flagged as an **open micro-item** —
-re-poke it with the `[1,8]` range loaded fresh (run `spsa.ps1` without
-`-Resume`, or delete `tuner/state.json` first).
+Defaults are the accepted **10.4.6(a) final theta** from the 5,000-iteration
+joint selectivity fit. The earlier Phase-5.1 `SingularBetaMult=6` ceiling issue
+is resolved: 10.4.6 loaded `[1,8]` fresh and finished at 4.
 
 | UCI option name        | Default | Range        | Step | Source in search.rs |
 |------------------------|---------|--------------|------|---------------------|
-| `FutilityBase`         | 60      | [30, 150]    | 10   | `:1003`  `(base + not_improving·coeff) · depth` |
-| `FutilityNotImproving` | 42      | [0, 120]     | 10   | `:1003`  not-improving coefficient |
-| `RazoringCoeff`        | 193     | [60, 300]    | 20   | `:1007`  `coeff · depth` |
-| `NullMoveDepthCoeff`   | 10      | [4, 30]      | 4    | `:1012`  depth-scaled null-move margin |
-| `NullMoveImprovingBonus` | 32    | [0, 60]      | 8    | `:1012`  improving bonus |
-| `LmpBase`              | 88      | [40, 180]    | 14   | `:1182`  LMP margin base |
-| `LmpNotImproving`      | 63      | [0, 120]     | 10   | `:1182`  not-improving coefficient |
-| `QuietHistPruneCoeff`  | 5069    | [1000, 8000] | 400  | `:1186`  quiet-history pruning coefficient |
-| `SeePruningCoeff`      | 83      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
-| `SeePruningMax`        | 804     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
-| `AspirationDelta`      | 30      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
-| `SingularBetaMult`     | 6       | [1, 8]       | 1    | `:1215`  `tt_score - mult·depth` (pinned at old [1,6] ceiling; [1,8] not yet tested — re-poke) |
-| `LmpCountBase`         | 2       | [1, 10]      | 1    | `:2394`  base in `base + 2·d²/3` |
-| `EvalPruneTtMinDepth`  | 0       | [0, 8]       | 1    | minimum TT entry depth before the TT score may replace the static eval in `eval_for_pruning` (added 2026-07-25) |
+| `FutilityBase`         | 52      | [30, 150]    | 10   | `:1003`  `(base + not_improving·coeff) · depth` |
+| `FutilityNotImproving` | 51      | [0, 120]     | 10   | `:1003`  not-improving coefficient |
+| `RazoringCoeff`        | 274     | [60, 300]    | 20   | `:1007`  `coeff · depth` |
+| `NullMoveDepthCoeff`   | 12      | [4, 30]      | 4    | `:1012`  depth-scaled null-move margin |
+| `NullMoveImprovingBonus` | 35    | [0, 60]      | 8    | `:1012`  improving bonus |
+| `LmpBase`              | 80      | [40, 180]    | 14   | `:1182`  LMP margin base |
+| `LmpNotImproving`      | 64      | [0, 120]     | 10   | `:1182`  not-improving coefficient |
+| `QuietHistPruneCoeff`  | 5617    | [1000, 8000] | 400  | `:1186`  quiet-history pruning coefficient |
+| `SeePruningCoeff`      | 66      | [30, 160]    | 12   | `:1195`  SEE pruning coefficient |
+| `SeePruningMax`        | 955     | [200, 1600]  | 80   | `:1195`  SEE pruning floor magnitude |
+| `AspirationDelta`      | 21      | [10, 60]     | 6    | `:615`   initial aspiration half-window (cp) |
+| `SingularBetaMult`     | 4       | [1, 8]       | 2    | `:1215`  `tt_score - mult·depth` |
+| `LmpCountBase`         | 1       | [1, 10]      | 2    | `:2394`  base in `base + 2·d²/3` |
+| `EvalPruneTtMinDepth`  | 0       | [0, 8]       | 2    | minimum TT entry depth before the TT score may replace the static eval in `eval_for_pruning` (added 2026-07-25) |
 
 **On `EvalPruneTtMinDepth`** — it belongs in THIS group rather than in a
 standalone A/B, and the reason is the 8.6 lesson. negamax hands off to qsearch
@@ -308,16 +290,14 @@ has nothing to set — wire up the UCI options first.
 
 ### config_futility.json — Per-move quiet futility
 
-Current values are the **Phase 2.7** values in `SearchParams::default()`. The
-**Phase 5.1 re-tune was a wash** (candidate `157 / 126`; SPRT +0.37 ± 4.33 over
-10,216 games — no change) and was reverted: the pruning group already re-tuned
-the neighbouring cp-margins (RFP `FutilityBase/NotImproving` + LMP
-`LmpBase/NotImproving`), leaving this narrower per-move lever with little to add.
+Current values are the accepted 10.4.6(a) joint-fit values. The older Phase-5.1
+standalone re-tune washed; their later movement is valid because 10.4.6 fitted
+them jointly with the neighbouring pruning margins.
 
 | UCI option name | Default | Range | Step | Source in search.rs |
 |-----------------|---------|-------|------|---------------------|
-| `FpBase`        | 184     | [0, 400] | 20 | Per-move quiet futility base margin (`:1247`) |
-| `FpCoeff`       | 117     | [0, 300] | 15 | Per-depth quiet futility coefficient (`:1247`) |
+| `FpBase`        | 211     | [0, 400] | 20 | Per-move quiet futility base margin (`:1247`) |
+| `FpCoeff`       | 135     | [0, 300] | 15 | Per-depth quiet futility coefficient (`:1247`) |
 
 ### config_probcut.json — ProbCut margin (Phase 5)
 

@@ -1,48 +1,48 @@
 {
   "CorrRfpScale": {
-    "value": 0,
+    "value": 3,
     "min_value": 0,
     "max_value": 512,
     "step": 50
   },
   "CorrFutScale": {
-    "value": 0,
+    "value": 3,
     "min_value": 0,
     "max_value": 512,
     "step": 50
   },
   "CorrLmrScale": {
-    "value": 0,
+    "value": 27,
     "min_value": 0,
     "max_value": 512,
     "step": 50
   },
   "CorrWeightPawn": {
-    "value": 128,
+    "value": 135,
     "min_value": 0,
     "max_value": 384,
     "step": 30
   },
   "CorrWeightMinor": {
-    "value": 128,
+    "value": 80,
     "min_value": 0,
     "max_value": 384,
     "step": 30
   },
   "CorrWeightOwnNp": {
-    "value": 128,
+    "value": 104,
     "min_value": 0,
     "max_value": 384,
     "step": 30
   },
   "CorrWeightTheirNp": {
-    "value": 128,
+    "value": 160,
     "min_value": 0,
     "max_value": 384,
     "step": 30
   },
   "CorrWeightCont": {
-    "value": 128,
+    "value": 152,
     "min_value": 0,
     "max_value": 384,
     "step": 30
