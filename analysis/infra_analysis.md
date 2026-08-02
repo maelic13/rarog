@@ -81,7 +81,7 @@ subtracting Rarog's approximate rating from one headline number.
 | Move encoding is wider than 16 bits | **Already handled** | `Move(pub u16)` |
 | Missing per-ply derived state | **Applies** | Only `checkers` is persisted; pins/threats/check squares are reconstructed |
 | Rule-50-aware TT key missing | **Applies** | TT is probed with raw `board.hash` |
-| Child TT prefetch missing | **Already handled** | Rarog prefetches after real and null moves |
+| Child TT prefetch missing | **Fixed on `arm_fix`** | Sites existed, but were x86-only; AArch64 now emits `PRFM PLDL1KEEP` |
 | Upcoming repetition missing | **Applies** | Only backward hash scanning exists |
 | Chess960 castling support missing | **Applies, low standard-Elo priority** | Castling squares are hard-coded for standard chess |
 | PGO exists but release workflow does not use it | **Applies** | Local `xtask --pgo` exists; release workflow omits `--pgo` |
@@ -452,11 +452,13 @@ Prefer universally useful state:
 - king bucket/change flags;
 - optionally threat maps if they feed both move ordering and NNUE inputs.
 
-### 6.5 TT child prefetch is already implemented
+### 6.5 TT child prefetch is implemented on both primary architectures
 
-The Basilisk recommendation to add child prefetch does not transfer. Rarog
-prefetches `board.hash` after real moves, ProbCut moves, qsearch moves, and null
-moves (`src/search.rs:1088`, `1147`, `1348`, `1757`).
+Rarog prefetches `board.hash` after real moves, ProbCut moves, qsearch moves,
+and null moves (`src/search.rs:1088`, `1147`, `1348`, `1757`). The original
+implementation emitted `PREFETCHT0` on x86-64 but compiled to a no-op on every
+other architecture. The `arm_fix` follow-up repairs that asymmetry: AArch64 now
+emits `PRFM PLDL1KEEP`, the closest match for the intended L1-temporal hint.
 
 After adding a rule-50-adjusted TT key, these sites must prefetch the adjusted
 key rather than the raw hash. That is a migration requirement, not a new

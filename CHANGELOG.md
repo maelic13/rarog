@@ -5,6 +5,21 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.3.2] - 2026-08-02
+
+### Fixed
+
+- **ARM64 transposition-table prefetching now reaches the processor.** The four
+  child-search prefetch sites previously compiled to no-ops outside x86-64.
+  AArch64 builds now issue `PRFM PLDL1KEEP`, matching the cache intent of the
+  x86 `PREFETCHT0` path without changing search behaviour.
+
+### Performance
+
+- Resolve the lazily initialized attack-table object once per x-ray and king-
+  safety evaluation instead of repeatedly spelling the global access in their
+  hot loops. Search output remains unchanged (`bench 13` = 5,173,540 nodes).
+
 ## [2.3.1] - 2026-07-29
 
 Patch release restoring full release-build optimisation on Windows ARM64.

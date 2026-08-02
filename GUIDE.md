@@ -12,11 +12,11 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 
 | | |
 |---|---|
-| Branch / version | `master`; **2.3.1 PREPARED** — Windows ARM64 PGO restored, awaiting push + CI + tag |
+| Branch / version | `arm_fix`; **2.3.2 ARM64 performance patch** |
 | Accepted baseline | **p103-gate** (the whole 10.3 speed pass, ACCEPTED 2026-07-22); `bench 13` = **5,480,624**, EBF **2.420** — unchanged from p82a-nocheckext, since every 10.3 item was bench-identical. Future SPRTs gate vs `rarog-p103-gate-pext-pgo.exe`. |
-| Working head | = accepted baseline (p103-gate) |
+| Working head | behavior-identical ARM64 TT-prefetch repair plus attack-table access hoists; locally validated, native PGO candidate ready |
 | Last strength results | **8.12(g2) index hoist: +3.76% NPS (CI 3.35…3.98) ≈ +7.5 Elo**, pooled PGO, bench-identical, accepted on NPS evidence. **8.13 SMP rework: +102.78 ± 16.38 (nElo +168.85, LOS 100%) at Threads=4** (720 games; 1-thread byte-identical, deployment unaffected). Before them, **8.4 history bundle +6.01 ± 3.57, LOS 99.95%** (15,214 games; carries 8.12's +0.98%), **10.3 speed pass +20.31 ± 7.13** (3,460 games), **8.2(a) +30.75 ± 8.83**, **8.1 +22.13**. 8.1b ❌ −6.6, 8.6 ❌ −7.78, 8.7 ❌ −7.29. |
-| Current work | ▶ **2.3.1 patch release prepared.** After publishing it, the next cycle starts at **10.0 — search-accuracy decomposition**, which runs before any Phase 10 code (see below; the four-condition gauntlet reshaped its targeting). |
+| Current work | ▶ `arm_fix` is ready for the external tournament check. Local gates passed: normal suites, unchanged fingerprint, emitted-code inspection and eight-cycle interleaved NPS (**+2.51% median of run medians**). No SPRT/SPSA was run. Afterward, resume **10.0 — search-accuracy decomposition**. |
 | Next release | **2.4.0 at 10.5.** Order: 10.0 decomposition → 10.1 → 10.4.6 re-fit → 10.2.5 capstone → 10.2 → menu → 10.4.3 → release. NNUE 2.5.0 at Phase 12 |
 
 ## Forward tracker
@@ -125,6 +125,14 @@ Full per-item detail for all three phases is in git history and PLAN §S5.
 validated at +0.10% first, 2 pooled PGO builds per arm, every base build below
 every candidate build in both passes. Both trees bench 5,173,540, so this is
 pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
+
+**2.3.2 ARM64 performance patch (`arm_fix`):** the four TT child-prefetch sites
+now emit AArch64 `PRFM PLDL1KEEP` instead of compiling to no-ops, and two hot
+evaluation groups resolve `ATTACKS` once per call. Both changes are search-
+behaviour preserving and therefore use the normal tests, bench fingerprint,
+static instruction check and interleaved NPS gate rather than games.
+The completed eight-cycle native-PGO comparison measured **+2.51%** using the
+median of each arm's run medians; all eight paired cycles favored `arm_fix`.
 
 
 ### Phase 10 — Root model, aspiration/TM, speed, menu (→ 2.4.0)
@@ -625,9 +633,6 @@ root/speed), then the **NNUE line opens at Phase 11**. Revived rejected work is
 numbered: 7.2 SEE (in gate), 10.2a aspiration, 7.5 TM. 7.4c OCB moved to 13.8
 (NNUE-subsumed). Nothing else from the reject pile is revived — 6.1/6.2, the
 7.1 draw rework and 7.3 stay dead (lessons 1/14).
-
-
-
 
 
 

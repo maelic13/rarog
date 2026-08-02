@@ -468,9 +468,28 @@ fn prefetch_ptr<T>(ptr: *const T) {
         core::arch::x86_64::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86_64::_MM_HINT_T0);
     }
 
-    // Non-x86_64 64-bit targets (e.g. aarch64): prefetch is just a hint —
-    // skipping it is always correct.
-    #[cfg(not(target_arch = "x86_64"))]
+    // Match the x86 T0 hint on ARM64. Rarog deliberately issues this after
+    // making a child move, leaving useful work between the hint and the child
+    // TT probe. This used to compile to a no-op on every ARM64 release while
+    // the x86 builds emitted `_mm_prefetch`, creating an avoidable ISA-specific
+    // search-speed difference.
+    //
+    // SAFETY: `prfm` is an architectural cache hint and does not dereference
+    // `ptr` as a Rust memory access. The pointer is nevertheless derived from
+    // the live TT allocation above. The instruction does not modify memory or
+    // flags and uses no stack storage.
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        core::arch::asm!(
+            "prfm pldl1keep, [{address}]",
+            address = in(reg) ptr,
+            options(readonly, nostack, preserves_flags)
+        );
+    }
+
+    // Rarog is 64-bit-only; this is retained as a correctness-first fallback
+    // for any future non-x86_64/non-aarch64 target.
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
         let _ = ptr;
     }

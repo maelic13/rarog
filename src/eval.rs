@@ -2026,6 +2026,11 @@ impl Evaluator {
         mg: &mut i32,
         eg: &mut i32,
     ) {
+        // Resolve the LazyLock once for the whole feature group. Each slider
+        // accessor is hot and inlined; spelling `ATTACKS.*` inside the loops
+        // otherwise asks the compiler to rediscover that initialization state
+        // repeatedly.
+        let atk = &*ATTACKS;
         let them = !color;
         let pawns_only = pawns[0] | pawns[1];
         let enemy_pawns = pawns[them as usize];
@@ -2038,7 +2043,7 @@ impl Evaluator {
         let mut xray = 0i32;
         while bishops.any() {
             let sq = bishops.pop_lsb();
-            xray += infra::to_i32((ATTACKS.bishop(sq, pawns_only) & enemy_pawns).count());
+            xray += infra::to_i32((atk.bishop(sq, pawns_only) & enemy_pawns).count());
         }
         if xray != 0 {
             *mg += sign * xray * self.params.bishop_xray_pawns_mg[0];
@@ -2053,8 +2058,8 @@ impl Evaluator {
         let mut battery = 0i32;
         while queens.any() {
             let q = queens.pop_lsb();
-            battery += infra::to_i32((ATTACKS.rook(q, occupied) & own_rooks).count());
-            battery += infra::to_i32((ATTACKS.bishop(q, occupied) & own_bishops).count());
+            battery += infra::to_i32((atk.rook(q, occupied) & own_rooks).count());
+            battery += infra::to_i32((atk.bishop(q, occupied) & own_bishops).count());
         }
         if battery != 0 {
             *mg += sign * battery * self.params.queen_battery_mg[0];
@@ -2069,8 +2074,8 @@ impl Evaluator {
         let mut enemy_queens = board.pieces(them, Piece::Queen);
         while enemy_queens.any() {
             let q = enemy_queens.pop_lsb();
-            on_queen += infra::to_i32((ATTACKS.rook(q, pawns_only) & own_rooks).count());
-            on_queen += infra::to_i32((ATTACKS.bishop(q, pawns_only) & own_bishops).count());
+            on_queen += infra::to_i32((atk.rook(q, pawns_only) & own_rooks).count());
+            on_queen += infra::to_i32((atk.bishop(q, pawns_only) & own_bishops).count());
         }
         if on_queen != 0 {
             *mg += sign * on_queen * self.params.slider_on_queen_mg[0];
@@ -2287,10 +2292,12 @@ impl Evaluator {
         pawns: &[Bitboard; 2],
         maps: &KsMaps,
     ) {
+        // One LazyLock resolution covers every king-zone attack lookup below.
+        let atk = &*ATTACKS;
         let them = !color;
         let king = board.king_sq(color);
         let king_bb = Bitboard::from(king);
-        let king_attacks = ATTACKS.king(king);
+        let king_attacks = atk.king(king);
         let mut zone = king_attacks | king_bb;
         zone |= if color == Color::White {
             king_attacks.north()
@@ -2335,9 +2342,9 @@ impl Evaluator {
         // defend (and are not occupied by an enemy piece).
         let occ = maps.occupied;
         let safe = !maps.attacked[color as usize] & !maps.their_occ;
-        let knight_from = ATTACKS.knight(king);
-        let bishop_from = ATTACKS.bishop(king, occ);
-        let rook_from = ATTACKS.rook(king, occ);
+        let knight_from = atk.knight(king);
+        let bishop_from = atk.bishop(king, occ);
+        let rook_from = atk.rook(king, occ);
         let knight_checks = knight_from & maps.attacked_by_them[Piece::Knight as usize] & safe;
         let bishop_checks = bishop_from & maps.attacked_by_them[Piece::Bishop as usize] & safe;
         let rook_checks = rook_from & maps.attacked_by_them[Piece::Rook as usize] & safe;

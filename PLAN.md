@@ -853,6 +853,16 @@ plus a little more that is most likely codegen from the (e) field removal and
 the (f) `votes_needed` extraction — both behaviour-identical, so no other
 explanation is needed.
 
+**2.3.2 ARM64 performance patch (`arm_fix`).** The four TT child-prefetch sites
+were wired in search but silently compiled to no-ops on AArch64; they now emit
+`PRFM PLDL1KEEP`, matching x86's L1-temporal cache intent. Two hot evaluation
+groups also resolve the `ATTACKS` `LazyLock` once per call. Both changes are
+search-behaviour preserving and gate on the normal suite, unchanged
+`bench 13` fingerprint, emitted-instruction inspection and interleaved NPS —
+not SPRT/SPSA.
+The completed eight-cycle native-PGO comparison measured **+2.51%** using the
+median of each arm's run medians; all eight paired cycles favored `arm_fix`.
+
 
 
 ### Phase 10 — Root model, speed pass + ⏭ opportunity menu (EV +5–15) — Opus 4.8 medium (speed); Sonnet 5 medium (root/menu)
@@ -1702,9 +1712,6 @@ M3 ≈ 3150+ (Critter 1.6a) — the multi-cycle grind target.
 
 **NNUE boundary rule:** never let the search know how the eval works; if a
 pruning condition needs eval internals explained, it's a boundary violation.
-
-
-
 
 
 
