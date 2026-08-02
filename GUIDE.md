@@ -242,21 +242,19 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           15% off a jointly SPSA-fitted point, so a correct re-fit should do
           better. Branch and both binaries kept — re-runnable any time,
           including as a cheap +4 bake if 10.4.6 underdelivers.
-- [~] **10.4.6(a) THE SELECTIVITY RE-FIT — the cycle headline, RUNNING since
-      2026-07-31.** 28-knob combined SPSA (`config_selectivity`: pruning 14 + see
-      4 + corr 8 + futility 2; `CorrGuardCapture` excluded as a discrete),
-      5,000 iterations ≈ 160,000 games ≈ 40 h ≈ 2 nights, tune binary
-      `rarog-p1046a-tune.exe`. 8.11's fail-soft qsearch re-applied and bundled
-      (`7c084dc`, bench 5,320,596 = the gated candidate's exact figure).
-      Eight knobs seeded at 10.0(c)'s probe values (measured +4.06 better than
-      the defaults), so the floor is a known gain, not a known zero.
-      📌 Kill-checkpoint at ~1,500 iterations: `FutilityBase` (60) and `LmpBase`
-      (88) are held one step BELOW the probe direction and must visibly walk UP
-      toward ~69/~101. If they wander, stop before night two.
-      🔴 Prep found and fixed a real `spsa.ps1` bug — `A` was written as 0.0965
-      instead of 500 (PowerShell `$A`/`$a` are one variable), i.e. no damping.
-      Caught before its first use, so no past fit is contaminated; `spsa.json`
-      is now asserted after writing.
+- [x] **10.4.6(a) THE SELECTIVITY RE-FIT — ACCEPTED 2026-08-02.** The
+      28-knob combined SPSA (`config_selectivity`: pruning 14 + SEE 4 +
+      correction 8 + futility 2; discrete `CorrGuardCapture` excluded)
+      completed its full **5,000 iterations / 160,000 games**. Use the complete
+      console final theta; the post-hoc tail estimator washed twice (1,800 and
+      14,876 games). All 28 values plus bundled 8.11 fail-soft passed the real
+      pre-SPSA gate at **+15.33 ± 7.34 nElo, H1, 8,600 games**, zero anomalies.
+      Bench moved 5,173,540 → 6,477,102 (+25.20% nodes): deliberately less
+      selective, and proven stronger at clock time. `EvalPruneTtMinDepth=0`
+      keeps its experimental guard off; retain it and every other mechanism
+      for the mandatory post-NNUE retune. The setup bug that briefly wrote
+      `A=0.0965` instead of 500 was caught before this tune's first launch;
+      this completed run used the asserted `A=500` schedule.
 - [ ] 10.1 Persistent `RootMove` records (bench-identical enabler; no games)
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
@@ -623,9 +621,19 @@ passing identical-binary null): pre-SPSA 3,295,249 median NPS versus final theta
 3,182,102, **−3.43%** (95% bootstrap CI −5.86…−1.68%); best-of −3.79%.
 Fingerprint moved **5,173,540 / EBF 2.406 → 6,477,102 / EBF 2.446**: +25.20%
 nodes at fixed depth, +41.48% median nodes per position, and more nodes in
-28/40 positions. Rarog is materially less selective now. The node mix is also
-somewhat slower, but the +15.33 nElo gate proves the wider tree pays at clock
-time.
+28/40 positions. Rarog is materially less selective now.
+
+Attribution with one `rarog-p1046a-tune.exe` (same code/build/PGO, UCI values
+only) still measured **−2.62% median NPS** (95% CI −3.22…−2.32%), so the effect
+is search-work mix rather than binary variance. Theta increases full negamax
+nodes 3.193M → 4.007M (+25.52%) while qsearch grows only about 2.128M → 2.470M
+(+16.06%); main-search share rises 60.0% → 61.9%. First-move cutoff quality
+improves 87.48% → 88.54%, and the LMR re-search rate is flat (1.74% → 1.76%).
+There is no isolated implementation hotspot to fix without changing the
+accepted search behaviour. Keep theta: the +15.33 nElo gate proves the wider,
+more expensive tree pays at clock time. Continue with 10.1; do not “recover”
+NPS by making pruning more aggressive without a separately justified strength
+change.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
 `A=0.0965` instead of `A=500`, because PowerShell variable names are

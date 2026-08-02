@@ -30,9 +30,12 @@ The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
 over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, completed all 5,000
 iterations / 160,000 games and **PASSED its primary `[0,3]` gate at +15.33 ±
 7.34 nElo, H1, 8,600 games, zero anomalies.** Resignation calibration selected
-the shared `strength-v1` profile: 600/3 one-sided. The user is running one
-independent replication for reassurance; the registered H1 already fixes the
-acceptance decision. Next implementation item is 10.1 bookkeeping.
+the shared `strength-v1` profile: 600/3 one-sided. The independent
+tail-vs-theta replication was stopped after 14,876 games as a wash (+0.84 ±
+5.58 nElo), confirming no measured reason to replace conventional final
+theta. Post-acceptance attribution found no isolated code-speed regression;
+the lower NPS comes from a larger share of expensive main-search nodes. Next
+implementation item is 10.1 bookkeeping.
 
 ## S2. The development process
 
@@ -1706,6 +1709,35 @@ explanation is needed.
         proves the wider, somewhat costlier tree is nevertheless a winning
         clock-time trade.
 
+        **NPS attribution 2026-08-02 — no code fix indicated.** A second A/B
+        used the SAME `rarog-p1046a-tune.exe` in both arms, switching only the
+        28 UCI values. This removes compiler, PGO-profile, layout, and binary
+        variance. Over 18 alternating pairs × `bench 13 3`, final theta was
+        **−2.62% median NPS** (old 3,335,798; theta 3,248,295; 95% bootstrap CI
+        −3.22…−2.32%), best-of −2.64%, and slower in all 18 pairs. Therefore
+        most of the production −3.43% is a real value-dependent work-mix
+        effect, not a bad build.
+
+        Existing `diag+tune` counters explain that mix. Full negamax nodes rise
+        3,192,501 → 4,007,146 (**+25.52%**), while inferred qsearch nodes rise
+        only about 2,128,095 → 2,469,956 (**+16.06%**); full-search share grows
+        60.0% → 61.9%. These are more expensive reported nodes: they execute
+        move ordering, forward pruning, history/correction, and LMR. This is
+        not degraded search quality: first-move cutoffs improve 87.48% →
+        88.54%, while `lmr_research/lmr_applied` stays essentially flat at
+        1.74% → 1.76%.
+
+        Leave-one-group-out fingerprints confirm strong interactions rather
+        than one removable cost: restoring old main-pruning values cuts theta
+        nodes 17.27%, old per-move futility cuts 12.49%, and old qsearch SEE
+        cuts 2.68%, whereas restoring old correction settings adds 11.68%.
+        Individual reversions move the tree by up to 20%, so they are not
+        additive or safe performance patches; the SPSA optimized the joint
+        vector and its clock gate accepted that vector. **Decision: keep final
+        theta unchanged and proceed to 10.1.** Do not claw NPS back by narrowing
+        the tree unless a new mechanism has its own strength rationale and
+        gate.
+
         **Historical launch record — the original seeds deliberately differed
         from the then-baked defaults.** The audit reported eight intentional
         "drifted seeds". Eight knobs started at
@@ -1876,11 +1908,11 @@ explanation is needed.
   10.4.6; (c) turns that from a bet into a measured call, and demotes 10.2.5
   behind it because the capstone must now be *designed* against a re-fitted
   surface rather than fitted around today's over-aggressive one:
-  **Actual execution as of 2026-07-31:** 10.4.6(a) is already running and has
-  first claim on the machine; 10.1's bench-identical bookkeeping moves directly
-  after its gate. Thus: **10.0 ✅ → 10.4.6(a) THE HEADLINE — the selectivity
-  re-fit** (10.0(c) proved the group is
-  outside the noise floor and put a +4.06 floor under it) **→ 10.1 bookkeeping
+  **Actual execution as of 2026-08-02:** 10.4.6(a) completed all 5,000
+  iterations / 160,000 games and passed H1 at +15.33 ± 7.34 nElo. Final theta
+  is baked; both tail comparisons washed; post-acceptance NPS attribution is
+  complete and found no isolated implementation regression. Thus: **10.0 ✅ →
+  10.4.6(a) ✅ — the accepted selectivity re-fit → 10.1 bookkeeping
   → 10.2.5 capstone,
   RE-SCOPED toward accuracy, built on the re-fitted surface → 10.2**
   aspiration/TM, priced by 10.0(b)'s arm difference → 10.4 menu picks →
