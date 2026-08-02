@@ -16,8 +16,8 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406**. Gate binary: `rarog-p100-base-pext-pgo.exe` (clean manifest). `rarog-p103-gate-pext-pgo.exe` is obsolete. |
 | Working source | 10.4.6(a) candidate substrate: 8.11 fail-soft re-applied, bench **5,320,596**; not accepted unless the fitted-vector gate passes. |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.4.6(a) SPSA IS RUNNING** (started 2026-07-31). This is the 28-knob selectivity re-fit with 8.11 fail-soft included, target 5,000 iterations. Rarog over-prunes; the fitted direction must spend nodes on accuracy, not add nominal depth. |
-| Next release | **2.4.0 at 10.5.** Actual next order: finish 10.4.6(a) → calibrate resignation and set the shared strength-test profile → gate 10.4.6(a) → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Current work | ▶ **10.4.6(a) SPSA COMPLETE:** 5,000 iterations / 160,000 games. Resignation calibration selected shared `strength-v1` = 600/3 one-sided. Next run the tail-mean-vs-final-theta selection SPRT; its winner then faces the pre-SPSA executable in the acceptance gate. |
+| Next release | **2.4.0 at 10.5.** Actual next order: select tail mean vs final theta → gate the selected 10.4.6(a) vector → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -587,30 +587,20 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
-**10.4.6(a) is running now.** Do not start any other game, NPS, bench, or
-CPU-heavy test while it owns the machine. If it is interrupted, resume it with:
+**Run the tail-mean-vs-final-theta selection SPRT provided with the completed
+SPSA analysis.** It deliberately uses the same byte-identical tuning binary
+on both sides and differs only by the 28 UCI values, eliminating compiler,
+PGO, and build-to-build noise. Tail is A under `[0,3]`: H1 selects tail; H0
+with a wholly negative 95% interval selects theta; otherwise stop and discuss
+the wash before baking anything.
 
-```powershell
-./tools/spsa.ps1 -ConfigGroup selectivity -LaunchOnly -Iterations 5000
-```
-
-The full run is ~40 h (5,000 iterations × 32 games ≈ 160,000 games). It stops
-itself at 5,000. Ctrl-C is safe: state saves every 10 iterations and the log
-appends on resume.
-
-⚠ Never resume with the plain setup+launch form: without `-LaunchOnly` it
-archives `state.json` and silently restarts from the seeds. `A` is already
-frozen at 500 (correct: 10% of the 5,000 horizon), so re-passing `-Iterations`
-on a resume is a no-op for the schedule and only sets the stop target.
-
-⚠ **The machine is fully occupied while this runs** (concurrency 14 of 16
-physical cores). No NPS work, no SPRT, no bench measurement until it stops.
-
-⚠ **Finish this tune under its existing `score=400` one-sided resignation
-rule.** That exactly matches Reckless's published OpenBench SPSA practice;
-Stockfish also uses one-sided resignation, at 600 after calibrating for its own
-evaluation-scale inflation. The 2026-07-30 claim that two-sided was inherently
-safer is retracted. Do not change rules or run `setup_tools.ps1` mid-tune.
+The tune finished under its original `score=400` one-sided rule. The mandatory
+post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter
+Rarog games. 400 changed 1,533 results (including 80 eventual opposite wins);
+600 changed only 74, of which all three apparent reversals were later time
+forfeits and 71 were draws. Therefore the shared strength-test profile is
+**`strength-v1` = 600/3 one-sided** for SPSA, SPRT, and gauntlets. Datagen stays
+on its separate stricter two-sided label-safety profile.
 
 The old ~1,500-iteration kill checkpoint is also **retracted**. Parameter
 movement is not strength evidence, and the earlier +4.06 probe moved ten knobs
@@ -625,15 +615,13 @@ output:
 ./tools/spsa.ps1 -ShowValues
 ```
 
-I will compare all 28 values with their configured rails and run the mandatory
-adjudication checkpoint **before the gate**. First, retro-adjudicate completed
-Rarog PGNs under 400/500/600 one-sided and report trigger coverage, winner
-mismatches against the final recorded result, the mismatch 95% upper bound,
-plies saved, and every mismatching position. Then we choose and centralise a
-shared strength-test profile for SPSA/SPRT/gauntlets; datagen keeps a separate
-training-label profile pending its own safety calibration. Only after that do
-I bake the **whole vector** (no per-knob filter), verify it, build the PGO
-candidate, and give you the `[0,3]` gate against
+The 28 values and rails have been analysed. First run a same-binary `[0,3]`
+selection SPRT with the final-15%-mean vector as A and final theta as B. H1
+selects the tail mean. If H0 lands with a wholly negative 95% interval, select
+theta; otherwise call it a wash and explicitly decide between variance
+reduction and established final-theta convention. Then bake the selected
+**whole vector** (no per-knob filter), verify it, build the PGO candidate, and
+run the actual `[0,3]` acceptance gate against
 `rarog-p100-base-pext-pgo.exe`.
 
 Post-result decision, in plain form:
@@ -642,9 +630,11 @@ Post-result decision, in plain form:
 |---|---|
 | SPSA not yet at 5,000 | Resume; do not bake an endpoint |
 | Any value on a bound | Inspect the coupled surface before widening anything; report it explicitly |
-| SPSA complete | Calibrate 400/500/600 one-sided from stricter completed PGNs; no candidate SPRT yet |
-| 400/3 one-sided is accepted | Apply it to the shared SPSA/SPRT/gauntlet profile and remove the forced two-sided SPSA patch |
-| 400/3 shows mismatches | Inspect every position and choose 500/3 or 600/3 one-sided from evidence; do not default silently |
+| SPSA complete | ✅ 5,000 iterations / 160,000 games; analyse rails and compare tail mean with final theta |
+| Resignation calibration | ✅ `strength-v1` = 600/3 one-sided for SPSA/SPRT/gauntlet; 400 rejected from measured result changes |
+| Tail-vs-theta H1 | Use the final-15%-mean whole vector |
+| Tail-vs-theta H0 with 95% interval wholly below zero | Use final theta |
+| Tail-vs-theta H0 with interval crossing zero | Wash: discuss variance reduction versus established final-theta convention before baking |
 | Primary `[0,3]` gate passes | Accept the full fitted vector with fail-soft; update head/docs |
 | Primary gate loses with fail-soft | Re-gate the same fitted vector once without fail-soft; no new SPSA |
 | Both forms fail | Reject the fit and retain the accepted baseline; the joint +4.06 probe remains context, not a guaranteed fallback gain |

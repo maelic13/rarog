@@ -133,30 +133,14 @@ if (Test-Path $wfCute) {
     Write-Host "  weather-factory affinity patch and Python syntax verified."
 }
 
-# ADJUDICATION ALIGNMENT (2026-07-30). weather-factory ships
-# `-resign movecount=3 score=400` with no `twosided`, while sprt.ps1 uses
-# `movecount=3 score=600 twosided=true` — so the tuner was optimising under
-# game-termination rules the gate did not use, violating the unified-conditions
-# principle that puts SPSA and SPRT on the same TC and the same book.
-#
-# Two independent problems, and the one-sided flag is the worse of them:
-#   * score=400 vs 600 — the tune resigned games the gate would have played on.
-#   * NO `twosided` — fastchess then adjudicates on the LOSING side's own
-#     evaluation alone. Both SPSA arms are the SAME binary with perturbed
-#     parameters, so an arm whose parameters produce more extreme scores
-#     resigns more readily than its sibling. That is an asymmetry between the
-#     two arms of every mini-match, i.e. it lands directly in the gradient the
-#     tuner is estimating. `twosided=true` requires both engines to agree the
-#     game is decided, which removes the asymmetry by construction.
-#
-# Verified against fishtest's worker (official-stockfish/fishtest,
-# worker/games.py) 2026-07-30: Stockfish uses `-resign movecount=3 score=600`
-# and the string "twosided" does not appear in that file at all. So we match
-# its THRESHOLD exactly and deliberately go one step stricter on the flag.
-# That deviation is defensible: fishtest runs on donated heterogeneous workers
-# where one-sided resignation ends games sooner and throughput dominates; we
-# run one machine where the correctness of a gradient matters more than a few
-# percent of games-per-hour.
+# STRENGTH ADJUDICATION ALIGNMENT (calibrated 2026-08-02). weather-factory
+# ships 400/3 one-sided. Rarog's shared strength-v1 profile is 600/3 one-sided,
+# matching Stockfish's convention and our measured evaluation scale. The
+# retrospective 69,350-game calibration found no chess-result reversals at
+# 600/3 (three apparent reversals were later time forfeits), while 400/3 changed
+# 1,533 outcomes and included 80 eventual opposite winners. SPSA, SPRT, and
+# gauntlets therefore use 600/3 one-sided. Datagen is a separate label-safety
+# profile and remains stricter.
 #
 # NOT aligned to fishtest, deliberately: the draw rule. Ours is
 # `movenumber=40 movecount=8 score=10` against fishtest's
@@ -167,17 +151,22 @@ if (Test-Path $wfCute) {
 # correctness gain.
 $wfCuteAdj = Join-Path $wfDir "cutechess.py"
 if (Test-Path $wfCuteAdj) {
+    $strengthProfile = Get-StrengthTestProfile
+    $targetResign = '"-resign movecount={0} score={1} "  # RAROG_ADJUDICATION_PATCH_V2: strength-v1 one-sided' -f $strengthProfile.ResignMoveCount, $strengthProfile.ResignScore
     $a = Get-Content $wfCuteAdj -Raw
-    if ($a -match 'RAROG_ADJUDICATION_PATCH_V1') {
+    if ($a -match 'RAROG_ADJUDICATION_PATCH_V2') {
         Write-Host "  weather-factory adjudication patch already present."
     } else {
         $anchorResign = '"-resign movecount=3 score=400 "'
-        if (-not $a.Contains($anchorResign)) {
+        $oldPatchedResign = '"-resign movecount=3 score=600 twosided=true "  # RAROG_ADJUDICATION_PATCH_V1: match sprt.ps1'
+        if ($a.Contains($anchorResign)) {
+            $a = $a.Replace($anchorResign, $targetResign)
+        } elseif ($a.Contains($oldPatchedResign)) {
+            $a = $a.Replace($oldPatchedResign, $targetResign)
+        } else {
             throw ("weather-factory/cutechess.py adjudication anchor not found; upstream changed. " +
-                "Expected $anchorResign — check the resign line before assuming it is already aligned.")
+                "Expected the upstream 400/3 line or the old V1 patch — inspect it before assuming alignment.")
         }
-        $a = $a.Replace($anchorResign,
-            '"-resign movecount=3 score=600 twosided=true "  # RAROG_ADJUDICATION_PATCH_V1: match sprt.ps1')
         Set-Content -Path $wfCuteAdj -Value $a -Encoding utf8
 
         python -m py_compile $wfCuteAdj

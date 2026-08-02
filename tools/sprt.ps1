@@ -193,6 +193,9 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
+$strengthProfile = Get-StrengthTestProfile
+$resignArgs = @(Get-StrengthTestResignArgs)
+
 # Per-engine Threads resolve to $Threads unless overridden. The game slot must
 # hold the larger of the two, so the core arithmetic uses max(ThreadsA,ThreadsB).
 if ($null -eq $ThreadsA) { $ThreadsA = $Threads }
@@ -358,6 +361,7 @@ if (-not $repoSha) { $repoSha = "n/a" } else { $repoSha = $repoSha.Trim() }
     "repo_revision:   $repoSha"
     "test_design:     $(if ($Mode -eq 'calibrate') { "fixed ${Games}-game null; tolerance +/-${CalibrationTolerance} nElo" } else { "SPRT elo0=$Elo0 elo1=$Elo1 alpha=$Alpha beta=$Beta model=normalized" })"
     "time_control:    $tcLabel; timemargin=${TimeMargin}ms"
+    "adjudication:    $($strengthProfile.Name); resign=$($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; draw=$($strengthProfile.DrawScore)/$($strengthProfile.DrawMoveCount) from move $($strengthProfile.DrawMoveNumber)"
     "hash_mb:         $Hash"
     "threads:         $(if ($ThreadsA -eq $ThreadsB) { $ThreadsA } else { "$NameA=$ThreadsA $NameB=$ThreadsB" })"
     "concurrency:     $Concurrency"
@@ -383,6 +387,7 @@ if ($Mode -eq "calibrate") {
     Write-Host "  H0: elo<=$Elo0   H1: elo>=$Elo1   alpha=$Alpha  beta=$Beta  (nElo)"
 }
 Write-Host "  TC: $tcLabel   Margin: ${TimeMargin} ms   Hash: ${Hash} MB   Conc: $Concurrency"
+Write-Host "  Adjudication: resign $($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; profile $($strengthProfile.Name)"
 Write-Host "  CPUs: $AffinityCpus"
 Write-Host "  Book: $(Split-Path $Book -Leaf)"
 Write-Host "  Runner: $($fcInfo.Text)"
@@ -439,8 +444,8 @@ $dropNoise = {
     -srand $Seed `
     -ratinginterval 20 `
     @sprtArgs `
-    -draw movenumber=40 movecount=8 score=10 `
-    -resign movecount=3 score=600 twosided=true `
+    -draw "movenumber=$($strengthProfile.DrawMoveNumber)" "movecount=$($strengthProfile.DrawMoveCount)" "score=$($strengthProfile.DrawScore)" `
+    @resignArgs `
     -pgnout "file=$pgnOut" `
     -output format=fastchess 2>&1 |    # console ticker format (not the PGN path)
     Tee-Object -FilePath $logOut |

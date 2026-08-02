@@ -181,8 +181,8 @@ if (-not $LaunchOnly) {
     if ((Get-Content $wfSpsaPy -Raw) -notmatch 'RAROG_SCHEDULE_FIX_V1') {
         throw "weather-factory is not carrying the SPSA schedule fix (decay per-iteration); run tools/setup_tools.ps1."
     }
-    if ($wfCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V1') {
-        throw ("weather-factory is not carrying the adjudication alignment (resign 600 twosided, " +
+    if ($wfCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V2') {
+        throw ("weather-factory is not carrying the strength-v1 adjudication alignment (resign 600/3 one-sided, " +
             "matching sprt.ps1); run tools/setup_tools.ps1.")
     }
 
@@ -348,8 +348,8 @@ if ((Get-Content $launchSpsaPy -Raw) -notmatch 'RAROG_SCHEDULE_FIX_V1') {
 # the late ones, which is strictly worse than completing under the old rule.
 # So the check keys on whether this is a fresh run, not on -LaunchOnly.
 if (-not (Test-Path (Join-Path $wfRoot "tuner\state.json")) -and
-    $launchCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V1') {
-    throw ("weather-factory is not carrying the adjudication alignment (resign 600 twosided, " +
+    $launchCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V2') {
+    throw ("weather-factory is not carrying the strength-v1 adjudication alignment (resign 600/3 one-sided, " +
         "matching sprt.ps1); run tools/setup_tools.ps1 before starting a new tune.")
 }
 

@@ -74,6 +74,9 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
+$strengthProfile = Get-StrengthTestProfile
+$resignArgs = @(Get-StrengthTestResignArgs)
+
 $concurrencyInfo = Resolve-HarnessConcurrency -Requested $Concurrency
 $Concurrency = $concurrencyInfo.Concurrency
 $AffinityCpus = Get-HarnessAffinityCpuList -Concurrency $Concurrency
@@ -148,8 +151,8 @@ Write-Host ""
     -concurrency $Concurrency `
     -use-affinity $AffinityCpus `
     -srand $Seed `
-    -draw movenumber=40 movecount=8 score=10 `
-    -resign movecount=3 score=600 twosided=true `
+    -draw "movenumber=$($strengthProfile.DrawMoveNumber)" "movecount=$($strengthProfile.DrawMoveCount)" "score=$($strengthProfile.DrawScore)" `
+    @resignArgs `
     -pgnout "file=$pgnOut" `
     -output format=fastchess 2>&1 |
     Tee-Object -FilePath $logOut

@@ -3,6 +3,36 @@
 $script:MinimumAffinityFastchessVersion = [version]"1.7.0"
 $script:HarnessIsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
+# One named source of truth for result adjudication in strength measurements.
+# Calibrated 2026-08-02 on 69,350 Rarog games completed under the stricter
+# 600/3 two-sided rule: one-sided 600/3 produced no chess-result reversals
+# (three apparent reversals were later time forfeits) and changed 71 results
+# to wins that later drew, 0.20% of its 35,486 triggers. Datagen intentionally
+# keeps a separate, stricter training-label profile because one wrong result
+# labels many positions.
+function Get-StrengthTestProfile {
+    [pscustomobject]@{
+        Name               = "strength-v1"
+        ResignMoveCount    = 3
+        ResignScore        = 600
+        ResignTwoSided     = $false
+        DrawMoveNumber     = 40
+        DrawMoveCount      = 8
+        DrawScore          = 10
+    }
+}
+
+function Get-StrengthTestResignArgs {
+    $profile = Get-StrengthTestProfile
+    $args = @(
+        '-resign'
+        "movecount=$($profile.ResignMoveCount)"
+        "score=$($profile.ResignScore)"
+    )
+    if ($profile.ResignTwoSided) { $args += 'twosided=true' }
+    $args
+}
+
 function Get-HarnessPhysicalCpus {
     if ($script:HarnessIsWindows) {
         if (-not ('RarogHarness.CpuTopology' -as [type])) {

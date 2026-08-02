@@ -26,10 +26,11 @@ its own baseline (`tools/build_test.ps1 -Suffix p100-base`) rather than reuse
 `rarog-p103-gate-pext-pgo.exe`.
 
 The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
-over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, is running now** under
-the corrected schedule. On completion, resignation calibration is mandatory
-before its gate; that gate then determines the surface on which 10.2.5 is
-designed.
+over-prunes. 10.4.6(a), the 28-knob selectivity re-fit, completed all 5,000
+iterations / 160,000 games.** Resignation calibration is complete and selected
+the shared `strength-v1` profile: 600/3 one-sided. The next job is the
+predeclared tail-mean-vs-final-theta selection SPRT; its winner then faces the
+pre-SPSA executable in the actual acceptance gate.
 
 ## S2. The development process
 
@@ -79,8 +80,8 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
   with a fixed 30k-game `-Mode calibrate` equivalence CI. Historical borderline
   decisions remain borderline on their reported uncertainty; large verdicts are
   unaffected. The affinity patch remains required, but do **not** prepare a
-  fresh SPSA with `setup_tools.ps1` until the pending adjudication-profile
-  calibration has replaced its forced `600/3 twosided` patch.
+  fresh SPSA with an old checkout of `setup_tools.ps1`: `strength-v1` has now
+  replaced its forced `600/3 twosided` patch with calibrated 600/3 one-sided.
 - **Test binaries:** `tools/build_test.ps1 -Suffix <s>` → `rarog-<s>-pext-pgo.exe`
   (SPRT/gauntlet), `-Tune` → `rarog-<s>-tune.exe` (SPSA only, exposes UCI knobs),
   `-Native` (local-only znver3). PGO trains on the internal `bench` (SF-style).
@@ -207,17 +208,25 @@ not demonstrated result errors. The previous claim that the missing
 `twosided` flag was the worse problem, and the unsupported donated-worker
 rationale, are **retracted**.
 
-**Required order: finish SPSA unchanged → calibrate → choose the profile →
-SPRT.** Before 10.4.6(a)'s `[0,3]` gate, retro-adjudicate completed Rarog PGNs
-that were played under the stricter `600/3 twosided` rule. For candidate
-thresholds 400/500/600 one-sided, report: trigger count, winner mismatches
-against the final recorded result, mismatch 95% upper bound, and plies saved.
-Inspect every mismatch rather than hiding it in an aggregate. If 400/3 is
-clean enough, make it the shared **strength-test profile** for SPSA, SPRT, and
-gauntlets. Datagen remains a separate **training-label profile** until it gets
-its own calibration because one incorrect game result labels many positions.
-Centralise these named profiles so the PowerShell runners and weather-factory
-setup cannot drift again.
+**Calibration completed 2026-08-02.** We replayed the score stream of 69,350
+Rarog games completed under the stricter `600/3 twosided` rule. Fastchess PGN
+scores are from the moving engine's perspective; the losing-side test is
+therefore `score <= -threshold` for three consecutive searches by that side.
+
+| candidate | triggers | changed final result | decisive reversal | mean plies saved |
+|---|---:|---:|---:|---:|
+| 400/3 one-sided | 36,946 | 1,533 (4.15%) | 80 | 24.5 |
+| 500/3 one-sided | 35,860 | 435 (1.21%) | 17 | 10.9 |
+| 600/3 one-sided | 35,486 | 74 (0.21%) | 3 | 1.6 |
+
+All three apparent 600 reversals were later **time forfeits**, not chess-result
+reversals; the other 71 games eventually drew. Thus 400 is demonstrably too
+aggressive for Rarog's evaluation scale, while 600/3 one-sided is accepted as
+the shared **`strength-v1` profile** for SPSA, SPRT, and gauntlets. It is
+centralised in `tools/harness_common.ps1`; setup patches weather-factory from
+either its upstream 400 rule or the obsolete V1 two-sided patch. Datagen keeps
+its separate stricter **training-label profile** because one incorrect game
+result labels many positions.
 
 **NOT aligned to fishtest, deliberately — the draw rule.** Ours is
 `movenumber=40 movecount=8 score=10` against fishtest's `movenumber=34
@@ -227,11 +236,11 @@ tuner, so the discrepancy the fix targets does not exist there, and moving it
 would shift the verdict instrument and break comparability with the entire
 existing ledger for no correctness gain.
 
-The 2026-07-30 `RAROG_ADJUDICATION_PATCH_V1` currently prepares and enforces
-`600/3 twosided` for a fresh SPSA. It is now **pending replacement after the
-calibration**; do not run a fresh tune through it. It does not affect the
-already-running 10.4.6(a), and resumes remain permitted. Never change
-termination rules inside a running SPSA.
+The obsolete 2026-07-30 `RAROG_ADJUDICATION_PATCH_V1` prepared `600/3
+twosided`. `setup_tools.ps1` now replaces it with
+`RAROG_ADJUDICATION_PATCH_V2`, 600/3 one-sided. This does not retroactively
+change the completed 10.4.6(a), which correctly stayed under its original
+400/3 one-sided rule. Never change termination rules inside a running SPSA.
 
 **HARNESS DEBT — SPSA `A` is in the wrong units (found 2026-07-23, during
 8.4's first night).** `spsa.ps1` writes `A = Iterations / 10`, i.e. in
@@ -1570,6 +1579,61 @@ explanation is needed.
         reachable, zero problems. Coverage audit clean on both hard-error
         classes (no pinned/discrete knob, no perturbation rounding to zero
         before iteration 5,000).
+
+        **✅ COMPLETED 2026-08-01: 5,000 iterations / 160,000 counter games.**
+        The log has 4,999 complete update snapshots (iteration 1,560 is absent,
+        0.02% of the run and before the selected tail); all 750 snapshots in
+        iterations 4,251–5,000 are present. No parameter moved by half a
+        configured step between the two tail halves. The whole-vector
+        final-15%-mean candidate and conventional final theta are:
+
+        ```text
+        parameter                 tail   theta
+        FutilityBase                53      52
+        FutilityNotImproving        51      51
+        RazoringCoeff              269     274
+        LmpBase                     79      80
+        LmpNotImproving             65      64
+        QuietHistPruneCoeff       5637    5617
+        SeePruningCoeff             66      66
+        SeePruningMax              955     955
+        FpBase                     209     211
+        FpCoeff                    135     135
+        NullMoveDepthCoeff          12      12
+        NullMoveImprovingBonus      35      35
+        AspirationDelta             21      21
+        SingularBetaMult             4       4
+        LmpCountBase                 1       1
+        EvalPruneTtMinDepth          0       0
+        QsSeeMargin                263     265
+        QsSeeClampLo              -712    -722
+        QsSeeClampHi               217     212
+        QsSeeBadFloor              -59     -55
+        CorrRfpScale                 6       3
+        CorrFutScale                 5       3
+        CorrLmrScale                31      27
+        CorrWeightPawn             135     135
+        CorrWeightMinor             85      80
+        CorrWeightOwnNp            108     104
+        CorrWeightTheirNp          162     160
+        CorrWeightCont             151     152
+        ```
+
+        `EvalPruneTtMinDepth=0` is the only exact feature-off result: it
+        disables the experimental minimum-depth guard, not ordinary TT eval
+        refinement. Keep it at zero through selection/gating; if the vector is
+        accepted, remove that dead guard/UCI knob under bench equivalence.
+        `LmpCountBase=1` is rail-pinned but active (aggressive LMP), so do not
+        delete it or widen to zero before the joint gate. The three correction
+        scales are small but nonzero and were seeded at zero, so SPSA activated
+        rather than disabled them.
+
+        **Selection design:** same byte-identical tune binary, tail as A and
+        theta as B, `[0,3]`. H1 selects tail. H0 plus a wholly negative 95%
+        interval selects theta; H0 with an interval crossing zero is a wash and
+        triggers the predeclared discussion of noisy-gradient variance
+        reduction versus established final-theta convention. Only the selected
+        vector is baked and sent to the actual pre-SPSA `[0,3]` acceptance gate.
 
         **⚠ SEEDS ARE DELIBERATELY NOT THE BAKED DEFAULTS — the audit reports
         8 "drifted seeds" for this file BY DESIGN.** Eight knobs start at
