@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::mem::{align_of, size_of};
 use std::sync::{
     Arc,
     atomic::{AtomicU8, AtomicU16, AtomicU64, Ordering},
@@ -61,14 +61,30 @@ impl TtEntry {
     }
 }
 
-/// Entries per cluster in the single-threaded table: 3 × 10 B + 2 B padding
-/// fills one 32 B line.
+/// Entries per logical cluster in the single-threaded table: 3 × 10 B + 2 B
+/// padding fills one 32 B bucket.
 const LOCAL_CLUSTER_ENTRIES: usize = 3;
 /// Entries per cluster in the shared table. A slot costs 8 B of payload + 2 B
-/// of verification tag, so six of them fill a 64 B cache line — the same 10 B
+/// of verification tag, so six of them fill a 64 B bucket — the same 10 B
 /// per position the single-threaded table has always used, i.e. going
 /// multi-threaded no longer costs capacity at all.
 const SHARED_CLUSTER_ENTRIES: usize = 6;
+
+// Apple Silicon has 128-byte data-cache lines. Keep the logical clusters and
+// their associativity unchanged, but group them in one cache-line-aligned
+// allocation unit so the allocator cannot leave the TT base only 32/64-byte
+// aligned. Other targets retain their existing storage layout.
+const LOCAL_CLUSTERS_PER_BLOCK: usize = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+    4
+} else {
+    1
+};
+const SHARED_CLUSTERS_PER_BLOCK: usize = if cfg!(all(target_os = "macos", target_arch = "aarch64"))
+{
+    2
+} else {
+    1
+};
 
 #[repr(align(32))]
 #[derive(Copy, Clone, Default)]
@@ -77,11 +93,39 @@ struct LocalCluster {
     _padding: [u8; 2],
 }
 
+#[cfg_attr(all(target_os = "macos", target_arch = "aarch64"), repr(align(128)))]
+#[cfg_attr(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    repr(align(32))
+)]
+#[derive(Copy, Clone, Default)]
+struct LocalBlock {
+    clusters: [LocalCluster; LOCAL_CLUSTERS_PER_BLOCK],
+}
+
 #[derive(Clone)]
 struct LocalTable {
-    clusters: Vec<LocalCluster>,
+    blocks: Vec<LocalBlock>,
     mask: usize,
     age: u8,
+}
+
+impl LocalTable {
+    #[inline(always)]
+    fn cluster_count(&self) -> usize {
+        self.blocks.len() * LOCAL_CLUSTERS_PER_BLOCK
+    }
+
+    #[inline(always)]
+    fn cluster(&self, index: usize) -> &LocalCluster {
+        &self.blocks[index / LOCAL_CLUSTERS_PER_BLOCK].clusters[index % LOCAL_CLUSTERS_PER_BLOCK]
+    }
+
+    #[inline(always)]
+    fn cluster_mut(&mut self, index: usize) -> &mut LocalCluster {
+        &mut self.blocks[index / LOCAL_CLUSTERS_PER_BLOCK].clusters
+            [index % LOCAL_CLUSTERS_PER_BLOCK]
+    }
 }
 
 /// Bit-exact deserialization of the packed 64-bit entry word. Every cast here
@@ -129,7 +173,7 @@ fn fold16(data: u64) -> u16 {
     folded as u16
 }
 
-/// One cache line of the shared table: six slots, stored as parallel arrays.
+/// One logical bucket of the shared table: six slots, stored as parallel arrays.
 ///
 /// STRUCT-OF-ARRAYS IS LOAD-BEARING. The payload already uses all 64 bits, so
 /// a slot needs a separate 16-bit key tag — and a `struct { AtomicU64,
@@ -151,6 +195,23 @@ fn fold16(data: u64) -> u16 {
 struct SharedCluster {
     data: [AtomicU64; SHARED_CLUSTER_ENTRIES],
     tags: [AtomicU16; SHARED_CLUSTER_ENTRIES],
+}
+
+#[cfg_attr(all(target_os = "macos", target_arch = "aarch64"), repr(align(128)))]
+#[cfg_attr(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    repr(align(64))
+)]
+struct SharedBlock {
+    clusters: [SharedCluster; SHARED_CLUSTERS_PER_BLOCK],
+}
+
+impl Default for SharedBlock {
+    fn default() -> Self {
+        Self {
+            clusters: std::array::from_fn(|_| SharedCluster::default()),
+        }
+    }
 }
 
 impl Default for SharedCluster {
@@ -199,19 +260,35 @@ impl SharedCluster {
     }
 }
 
-// The shared cluster must be exactly one cache line, and must store positions
-// at the same density as the local one. Both were violated silently before —
-// asserting them at compile time is free.
+// Pin both the logical-cluster density and the physical allocation units.
 const _: () = assert!(size_of::<SharedCluster>() == 64);
 const _: () = assert!(
     SHARED_CLUSTER_ENTRIES * size_of::<LocalCluster>()
         == LOCAL_CLUSTER_ENTRIES * size_of::<SharedCluster>()
 );
+const _: () =
+    assert!(size_of::<LocalBlock>() == LOCAL_CLUSTERS_PER_BLOCK * size_of::<LocalCluster>());
+const _: () =
+    assert!(size_of::<SharedBlock>() == SHARED_CLUSTERS_PER_BLOCK * size_of::<SharedCluster>());
+const _: () = assert!(align_of::<LocalBlock>() == size_of::<LocalBlock>());
+const _: () = assert!(align_of::<SharedBlock>() == size_of::<SharedBlock>());
 
 struct SharedTable {
-    clusters: Box<[SharedCluster]>,
+    blocks: Box<[SharedBlock]>,
     mask: usize,
     age: AtomicU8,
+}
+
+impl SharedTable {
+    #[inline(always)]
+    fn cluster_count(&self) -> usize {
+        self.blocks.len() * SHARED_CLUSTERS_PER_BLOCK
+    }
+
+    #[inline(always)]
+    fn cluster(&self, index: usize) -> &SharedCluster {
+        &self.blocks[index / SHARED_CLUSTERS_PER_BLOCK].clusters[index % SHARED_CLUSTERS_PER_BLOCK]
+    }
 }
 
 #[derive(Clone)]
@@ -302,7 +379,7 @@ impl TranspositionTable {
             TtStorage::Shared(_) => unreachable!("returned above"),
         };
         self.storage = TtStorage::Local(LocalTable {
-            clusters: Vec::new(),
+            blocks: Vec::new(),
             mask: 0,
             age,
         });
@@ -313,8 +390,8 @@ impl TranspositionTable {
     /// The 9.4 regression tests assert this against the `Hash` budget.
     pub fn allocated_bytes(&self) -> usize {
         match &self.storage {
-            TtStorage::Local(table) => table.clusters.len() * size_of::<LocalCluster>(),
-            TtStorage::Shared(table) => table.clusters.len() * size_of::<SharedCluster>(),
+            TtStorage::Local(table) => table.blocks.len() * size_of::<LocalBlock>(),
+            TtStorage::Shared(table) => table.blocks.len() * size_of::<SharedBlock>(),
         }
     }
 
@@ -325,36 +402,38 @@ impl TranspositionTable {
     /// when a search goes multi-threaded.
     pub fn capacity_entries(&self) -> usize {
         match &self.storage {
-            TtStorage::Local(table) => table.clusters.len() * LOCAL_CLUSTER_ENTRIES,
-            TtStorage::Shared(table) => table.clusters.len() * SHARED_CLUSTER_ENTRIES,
+            TtStorage::Local(table) => table.cluster_count() * LOCAL_CLUSTER_ENTRIES,
+            TtStorage::Shared(table) => table.cluster_count() * SHARED_CLUSTER_ENTRIES,
         }
     }
 
     pub fn clear(&mut self) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                let clusters = table.clusters.as_mut_slice();
+                let blocks = table.blocks.as_mut_slice();
                 let num_threads =
                     std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-                let chunk_size = (clusters.len() / num_threads).max(1);
+                let chunk_size = (blocks.len() / num_threads).max(1);
                 std::thread::scope(|s| {
-                    for chunk in clusters.chunks_mut(chunk_size) {
-                        s.spawn(|| chunk.fill(LocalCluster::default()));
+                    for chunk in blocks.chunks_mut(chunk_size) {
+                        s.spawn(|| chunk.fill(LocalBlock::default()));
                     }
                 });
                 table.age = 0;
             }
             TtStorage::Shared(table) => {
-                let clusters = table.clusters.as_ref();
+                let blocks = table.blocks.as_ref();
                 let num_threads =
                     std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-                let chunk_size = (clusters.len() / num_threads).max(1);
+                let chunk_size = (blocks.len() / num_threads).max(1);
                 std::thread::scope(|s| {
-                    for chunk in clusters.chunks(chunk_size) {
+                    for chunk in blocks.chunks(chunk_size) {
                         s.spawn(move || {
-                            for cluster in chunk {
-                                for index in 0..SHARED_CLUSTER_ENTRIES {
-                                    cluster.clear_slot(index);
+                            for block in chunk {
+                                for cluster in &block.clusters {
+                                    for index in 0..SHARED_CLUSTER_ENTRIES {
+                                        cluster.clear_slot(index);
+                                    }
                                 }
                             }
                         });
@@ -391,17 +470,11 @@ impl TranspositionTable {
     pub fn prefetch(&self, key: u64) {
         match &self.storage {
             TtStorage::Local(table) => {
-                let ptr = table
-                    .clusters
-                    .as_ptr()
-                    .wrapping_add(infra::index(key) & table.mask);
+                let ptr = table.cluster(infra::index(key) & table.mask);
                 prefetch_ptr(ptr);
             }
             TtStorage::Shared(table) => {
-                let ptr = table
-                    .clusters
-                    .as_ptr()
-                    .wrapping_add(infra::index(key) & table.mask);
+                let ptr = table.cluster(infra::index(key) & table.mask);
                 prefetch_ptr(ptr);
             }
         }
@@ -422,31 +495,26 @@ impl TranspositionTable {
     pub fn hashfull(&self) -> usize {
         match &self.storage {
             TtStorage::Local(table) => {
-                let sample = table.clusters.len().min(334);
+                let sample = table.cluster_count().min(334);
                 if sample == 0 {
                     return 0;
                 }
                 let age = table.age;
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| cluster.entries)
+                let used = (0..sample)
+                    .flat_map(|index| table.cluster(index).entries)
                     .filter(|entry| current_entry(*entry, age))
                     .count();
                 used * 1000 / (sample * LOCAL_CLUSTER_ENTRIES)
             }
             TtStorage::Shared(table) => {
-                let sample = table.clusters.len().min(334);
+                let sample = table.cluster_count().min(334);
                 if sample == 0 {
                     return 0;
                 }
                 let age = table.age.load(Ordering::Relaxed);
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| {
+                let used = (0..sample)
+                    .flat_map(|index| {
+                        let cluster = table.cluster(index);
                         (0..SHARED_CLUSTER_ENTRIES).filter_map(|index| cluster.load_any(index))
                     })
                     .filter(|(_, entry)| current_entry(*entry, age))
@@ -536,11 +604,13 @@ pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
 
 fn new_local_table(mb: usize) -> Option<LocalTable> {
     let power = cluster_count::<LocalCluster>(mb);
-    let mut clusters = Vec::new();
-    clusters.try_reserve_exact(power).ok()?;
-    clusters.resize(power, LocalCluster::default());
+    debug_assert_eq!(power % LOCAL_CLUSTERS_PER_BLOCK, 0);
+    let block_count = power / LOCAL_CLUSTERS_PER_BLOCK;
+    let mut blocks = Vec::new();
+    blocks.try_reserve_exact(block_count).ok()?;
+    blocks.resize(block_count, LocalBlock::default());
     LocalTable {
-        clusters,
+        blocks,
         mask: power - 1,
         age: 0,
     }
@@ -551,12 +621,13 @@ fn new_shared_table(mb: usize, age: u8) -> SharedTable {
     // Sized from the byte budget with SharedCluster's own size — see
     // `make_shared` for why inheriting the local cluster count was wrong.
     let power = cluster_count::<SharedCluster>(mb);
-    let clusters = (0..power)
-        .map(|_| SharedCluster::default())
+    debug_assert_eq!(power % SHARED_CLUSTERS_PER_BLOCK, 0);
+    let blocks = (0..power / SHARED_CLUSTERS_PER_BLOCK)
+        .map(|_| SharedBlock::default())
         .collect::<Vec<_>>()
         .into_boxed_slice();
     SharedTable {
-        clusters,
+        blocks,
         mask: power - 1,
         age: AtomicU8::new(age),
     }
@@ -575,7 +646,7 @@ fn cluster_count<T>(mb: usize) -> usize {
 #[inline(always)]
 fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let entries = &table.clusters[crate::infra::index(key) & table.mask].entries;
+    let entries = &table.cluster(crate::infra::index(key) & table.mask).entries;
     let entry = entries[0];
     if entry.key16 == key16 && entry.is_occupied() {
         return Some(entry);
@@ -594,14 +665,15 @@ fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
 #[inline(always)]
 fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let cluster = &table.clusters[crate::infra::index(key) & table.mask];
+    let cluster = table.cluster(crate::infra::index(key) & table.mask);
     (0..SHARED_CLUSTER_ENTRIES).find_map(|index| cluster.load(index, key16))
 }
 
 #[inline(always)]
 fn store_local(table: &mut LocalTable, e: TtStore) {
     let key16 = key16_of(e.key);
-    let cluster = &mut table.clusters[crate::infra::index(e.key) & table.mask];
+    let age = table.age;
+    let cluster = table.cluster_mut(crate::infra::index(e.key) & table.mask);
 
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
@@ -611,7 +683,7 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
             replace_index = index;
             break;
         }
-        let quality = entry_quality(entry, table.age);
+        let quality = entry_quality(entry, age);
         if quality < replace_quality {
             replace_quality = quality;
             replace_index = index;
@@ -631,7 +703,7 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
     if replace.key16 == key16
         && e.bound != Bound::Exact
         && e.depth < replace.depth as i32 - 3
-        && (replace.flag_age & 0xF8) == table.age
+        && (replace.flag_age & 0xF8) == age
     {
         return;
     }
@@ -642,14 +714,14 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
         e.mv.0
     };
 
-    *replace = make_entry(key16, stored_move, table.age, e);
+    *replace = make_entry(key16, stored_move, age, e);
 }
 
 #[inline(always)]
 fn store_shared(table: &SharedTable, e: TtStore) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
-    let cluster = &table.clusters[crate::infra::index(e.key) & table.mask];
+    let cluster = table.cluster(crate::infra::index(e.key) & table.mask);
 
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;

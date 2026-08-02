@@ -16,6 +16,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Performance
 
+- Apple Silicon TT storage now groups the existing logical buckets into
+  128-byte-aligned blocks, matching the platform's data-cache line without
+  changing table capacity, associativity, indexing, or search behaviour.
 - Resolve the lazily initialized attack-table object once per x-ray and king-
   safety evaluation instead of repeatedly spelling the global access in their
   hot loops. Search output remains unchanged (`bench 13` = 5,173,540 nodes).
