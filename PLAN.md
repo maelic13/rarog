@@ -1676,6 +1676,36 @@ explanation is needed.
         wash leaves acceptance unchanged, another H1 strengthens replication,
         and a sharp contradiction requires pooled analysis and harness audit.
 
+        **Tail-vs-theta replication stopped 2026-08-02:** at 14,876 reported
+        games, tail was +0.84 ± 5.58 nElo, W/L/D 3810/3787/7279, LLR −0.24,
+        zero anomalies. This does not establish theta as stronger; it confirms
+        that even ~15k games found no benefit from replacing conventional final
+        theta with the post-hoc tail estimator. The final-theta choice stands.
+
+        **Post-acceptance fingerprint / NPS diagnostic:** `nps_ab.ps1`, 18
+        alternating pairs × `bench 13 3`, idle machine. The mandatory
+        candidate self-pair passed (median +0.23%, best 0.00%, CI
+        −1.33…+0.65%, 9/18 faster). Final theta versus pre-SPSA:
+
+        | metric | pre-SPSA | final theta | delta |
+        |---|---:|---:|---:|
+        | bench nodes | 5,173,540 | 6,477,102 | **+25.20%** |
+        | geomean EBF | 2.406 | 2.446 | **+1.66%** |
+        | median nodes/position | 111,417 | 157,630 | **+41.48%** |
+        | robust median NPS | 3,295,249 | 3,182,102 | **−3.43%** |
+        | best-of NPS | 3,388,041 | 3,259,739 | **−3.79%** |
+
+        Median-NPS delta CI is −5.86…−1.68%; candidate faster in only 2/18
+        pairs. Because the search trees differ, this is observed throughput,
+        not a pure code-speed attribution: the changed node mix itself affects
+        cost per reported node. The fixed-depth fingerprint is deterministic
+        and answers selectivity directly: final theta searches more nodes in
+        28/40 positions (median position delta +19.63%), so Rarog now prunes
+        materially less. Combining +25.20% work with −3.43% NPS implies about
+        +29.65% wall time to reach the same nominal depth. The +15.33 nElo gate
+        proves the wider, somewhat costlier tree is nevertheless a winning
+        clock-time trade.
+
         **Historical launch record — the original seeds deliberately differed
         from the then-baked defaults.** The audit reported eight intentional
         "drifted seeds". Eight knobs started at

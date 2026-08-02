@@ -13,10 +13,10 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | | |
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
-| Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, bench **6,477,102**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
+| Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, fingerprint **6,477,102 / EBF 2.446**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
 | Working source | Accepted 10.4.6(a) baseline; all 28 SPSA defaults baked and reusable configs reset to those values for the future post-NNUE retune. |
 | Last strength results | **10.4.6(a): +15.33 ± 7.34 nElo, H1** (8,600 games, zero anomalies) vs pre-SPSA 2.3.1. Earlier boundary: **9.8 external gauntlet vs 2.2.0: +76 ± 21** at 1T 3+0.03, +78 ± 28 at 1T 10+0.1, +194 ± 24 at 4T 10+0.1. |
-| Current work | ✅ **10.4.6(a) ACCEPTED.** User is running an independently seeded repeat for reassurance; it is replication, not a re-roll of the registered H1. No no-fail-soft retry is needed. |
+| Current work | ✅ **10.4.6(a) ACCEPTED.** Tail-vs-theta replication also washed after 14,876 games (tail +0.84 ± 5.58 nElo), confirming no measured reason to depart from final theta. Next is 10.1 bookkeeping. |
 | Next release | **2.4.0 at 10.5.** Actual next order: 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
@@ -602,9 +602,9 @@ after a run; specify and validate it before tuning if we ever adopt one.
 The real gate **passed H1** at 8,600 games: +15.33 ± 7.34 nElo, W/L/D
 2325/2083/4192, LLR 2.95, zero anomalies. The full final-theta vector and 8.11
 fail-soft are accepted; cancel the no-fail-soft retry. The independently seeded
-repeat is running now for reassurance only: do not use it to re-roll the
-registered verdict. Paste its final report when it ends; no other CPU-heavy
-work should run alongside it.
+repeat was stopped after 14,876 reported games at tail +0.84 ± 5.58 nElo,
+LLR −0.24, zero anomalies. It does not prove theta is intrinsically stronger;
+it confirms there is no measured benefit from the post-hoc tail estimator.
 
 The tune finished under its original `score=400` one-sided rule. The mandatory
 post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter
@@ -617,6 +617,15 @@ on its separate stricter two-sided label-safety profile.
 Completion record: 5,000 iterations / 160,000 games; final theta selected after
 the tail comparison washed; all 28 values baked as one vector; ordinary and
 tune-at-theta bench matched at 6,477,102; primary strength gate passed H1.
+
+Post-acceptance speed/selectivity diagnostic (18 alternating NPS pairs after a
+passing identical-binary null): pre-SPSA 3,295,249 median NPS versus final theta
+3,182,102, **−3.43%** (95% bootstrap CI −5.86…−1.68%); best-of −3.79%.
+Fingerprint moved **5,173,540 / EBF 2.406 → 6,477,102 / EBF 2.446**: +25.20%
+nodes at fixed depth, +41.48% median nodes per position, and more nodes in
+28/40 positions. Rarog is materially less selective now. The node mix is also
+somewhat slower, but the +15.33 nElo gate proves the wider tree pays at clock
+time.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
 `A=0.0965` instead of `A=500`, because PowerShell variable names are
