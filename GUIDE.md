@@ -16,7 +16,7 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406**. Gate binary: `rarog-p100-base-pext-pgo.exe` (clean manifest). `rarog-p103-gate-pext-pgo.exe` is obsolete. |
 | Working source | 10.4.6(a) complete final-theta vector baked over 8.11 fail-soft; bench **6,477,102**, exactly matching the tune binary with all 28 theta options. This is +21.7% nodes over the SPSA substrate and remains unaccepted until its `[0,3]` gate passes. |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.4.6(a) FINAL THETA SELECTED:** the 1,800-game tail-vs-theta comparison was a wash (+1.19 ± 16.05 nElo, LLR −0.01). The complete console final-theta vector is being baked and prepared for its real `[0,3]` gate against the pre-SPSA executable. |
+| Current work | ▶ **10.4.6(a) FINAL-THETA GATE READY:** clean PGO candidate `rarog-p1046a-theta-pext-pgo.exe`, bench **6,477,102**, vs clean pre-SPSA `rarog-p100-base-pext-pgo.exe`, bench **5,173,540**. Run the `[0,3]` command below. |
 | Next release | **2.4.0 at 10.5.** Actual next order: gate the final-theta 10.4.6(a) vector → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
@@ -593,6 +593,22 @@ Use **final theta**, meaning the values under `Final parameters` in the tuner
 console. Final theta is SPSA's accumulated estimator, not its last perturbed
 mini-match. A tail window is a different estimator and must not be invented
 after a run; specify and validate it before tuning if we ever adopt one.
+
+Run the actual acceptance gate from the repository root:
+
+```powershell
+./tools/sprt.ps1 `
+    -EngineA "tools\test_engines\rarog-p1046a-theta-pext-pgo.exe" `
+    -EngineB "tools\test_engines\rarog-p100-base-pext-pgo.exe" `
+    -NameA "p1046a-theta" `
+    -NameB "p100-base" `
+    -Elo0 0 `
+    -Elo1 3
+```
+
+This is the real gate: H1 accepts the complete fitted vector; H0 rejects it and
+triggers the one predeclared retry at the same theta values without 8.11
+fail-soft. Do not reinterpret a partial point estimate as a verdict.
 
 The tune finished under its original `score=400` one-sided rule. The mandatory
 post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter

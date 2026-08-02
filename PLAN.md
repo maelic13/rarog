@@ -1651,6 +1651,14 @@ explanation is needed.
         accuracy/over-pruning diagnosis, but it is large enough to impose a
         real clock-depth cost; only the `[0,3]` gate may decide whether it pays.
 
+        **Gate artifact ready 2026-08-02:** clean PGO candidate
+        `rarog-p1046a-theta-pext-pgo.exe` (commit `c810318`, bench 6,477,102,
+        rustc 1.97.1) versus clean pre-SPSA
+        `rarog-p100-base-pext-pgo.exe` (commit `c907c2e`, bench 5,173,540,
+        same compiler). Primary test is `[0,3]`, candidate as A. H1 accepts the
+        whole fitted vector; H0 triggers the one predeclared same-theta retry
+        without 8.11 fail-soft.
+
         **⚠ SEEDS ARE DELIBERATELY NOT THE BAKED DEFAULTS — the audit reports
         8 "drifted seeds" for this file BY DESIGN.** Eight knobs start at
         10.0(c)'s probe values, a measured +4.06 ± 3.71 better than the
