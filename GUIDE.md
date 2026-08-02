@@ -14,10 +14,10 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
 | Accepted baseline | **the 2.3.1 head itself**; `bench 13` = **5,173,540**, EBF **2.406**. Gate binary: `rarog-p100-base-pext-pgo.exe` (clean manifest). `rarog-p103-gate-pext-pgo.exe` is obsolete. |
-| Working source | 10.4.6(a) candidate substrate: 8.11 fail-soft re-applied, bench **5,320,596**; not accepted unless the fitted-vector gate passes. |
+| Working source | 10.4.6(a) complete final-theta vector baked over 8.11 fail-soft; bench **6,477,102**, exactly matching the tune binary with all 28 theta options. This is +21.7% nodes over the SPSA substrate and remains unaccepted until its `[0,3]` gate passes. |
 | Last strength results | **9.8 external gauntlet vs 2.2.0: +76 ± 21** (1T 3+0.03, 10,402 games), **+78 ± 28** (1T 10+0.1), **+194 ± 24** (4T 10+0.1, 4,468 games) — zero time forfeits in all four conditions. Self-play predicted ~+60 at 1T, so the gains transfer. Contributing items: **8.13 SMP rework +102.78 @4T**, **8.2(a) +30.75**, **8.1 +22.13**, **10.3 speed pass +20.31**, **8.4 history bundle +6.01**, **9.7.5 net zero Elo / +1.0…+1.6% NPS**. Rejected: 8.1b −6.6, 8.6 −7.78, 8.7 −7.29, 8.10 ≈−5.4, 8.11 −5.96, 8.5 wash. |
-| Current work | ▶ **10.4.6(a) SPSA COMPLETE:** 5,000 iterations / 160,000 games. Resignation calibration selected shared `strength-v1` = 600/3 one-sided. Next run the tail-mean-vs-final-theta selection SPRT; its winner then faces the pre-SPSA executable in the acceptance gate. |
-| Next release | **2.4.0 at 10.5.** Actual next order: select tail mean vs final theta → gate the selected 10.4.6(a) vector → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Current work | ▶ **10.4.6(a) FINAL THETA SELECTED:** the 1,800-game tail-vs-theta comparison was a wash (+1.19 ± 16.05 nElo, LLR −0.01). The complete console final-theta vector is being baked and prepared for its real `[0,3]` gate against the pre-SPSA executable. |
+| Next release | **2.4.0 at 10.5.** Actual next order: gate the final-theta 10.4.6(a) vector → 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -587,12 +587,12 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
-**Run the tail-mean-vs-final-theta selection SPRT provided with the completed
-SPSA analysis.** It deliberately uses the same byte-identical tuning binary
-on both sides and differs only by the 28 UCI values, eliminating compiler,
-PGO, and build-to-build noise. Tail is A under `[0,3]`: H1 selects tail; H0
-with a wholly negative 95% interval selects theta; otherwise stop and discuss
-the wash before baking anything.
+The tail-mean-vs-final-theta selection was stopped as a clear wash after 1,800
+games: tail +1.19 ± 16.05 nElo, LLR −0.01, W/L/D 463/459/878, zero anomalies.
+Use **final theta**, meaning the values under `Final parameters` in the tuner
+console. Final theta is SPSA's accumulated estimator, not its last perturbed
+mini-match. A tail window is a different estimator and must not be invented
+after a run; specify and validate it before tuning if we ever adopt one.
 
 The tune finished under its original `score=400` one-sided rule. The mandatory
 post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter
@@ -632,9 +632,7 @@ Post-result decision, in plain form:
 | Any value on a bound | Inspect the coupled surface before widening anything; report it explicitly |
 | SPSA complete | ✅ 5,000 iterations / 160,000 games; analyse rails and compare tail mean with final theta |
 | Resignation calibration | ✅ `strength-v1` = 600/3 one-sided for SPSA/SPRT/gauntlet; 400 rejected from measured result changes |
-| Tail-vs-theta H1 | Use the final-15%-mean whole vector |
-| Tail-vs-theta H0 with 95% interval wholly below zero | Use final theta |
-| Tail-vs-theta H0 with interval crossing zero | Wash: discuss variance reduction versus established final-theta convention before baking |
+| Tail-vs-theta comparison | ✅ Wash at 1,800 games; use the complete console final theta |
 | Primary `[0,3]` gate passes | Accept the full fitted vector with fail-soft; update head/docs |
 | Primary gate loses with fail-soft | Re-gate the same fitted vector once without fail-soft; no new SPSA |
 | Both forms fail | Reject the fit and retain the accepted baseline; the joint +4.06 probe remains context, not a guaranteed fallback gain |

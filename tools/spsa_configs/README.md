@@ -153,8 +153,18 @@ the defaults) so the run starts from the best point we know rather than from one
 we have just measured as worse: `FutilityNotImproving` 48, `RazoringCoeff` 222,
 `LmpNotImproving` 72, `QuietHistPruneCoeff` 5829, `SeePruningCoeff` 59,
 `SeePruningMax` 999, `FpBase` 212, `FpCoeff` 135. If the tune ends up going
-nowhere, the tail means bake back to ≈the probe values and the gate reads ≈+4 —
-i.e. the floor is a known gain rather than a known zero.
+nowhere, its final theta should remain near the seeded probe values and the
+gate should read ≈+4 — i.e. the floor is a known gain rather than a known zero.
+
+**Completed 2026-08-01:** 5,000 iterations / 160,000 games. A same-binary
+tail-15%-mean-vs-final-theta comparison was stopped as a wash after 1,800 games
+(tail +1.19 ± 16.05 nElo, LLR −0.01, zero anomalies). Rarog therefore follows
+the conventional SPSA rule: bake the complete `Final parameters` theta printed
+by the tuner. Do not create an averaging window after seeing a trajectory; if
+iterate averaging is ever wanted, define and validate that estimator before
+the run. The exact 28-value vector and rail analysis are recorded in `PLAN.md`.
+The baked source and tune binary at theta bench-match exactly at **6,477,102**
+nodes (+21.7% over the fail-soft tuning substrate), pending the strength gate.
 
 📌 **`FutilityBase` (60) and `LmpBase` (88) are the KILL-CHECKPOINT and are
 held at the accepted-head values on purpose** — one full `step` below the

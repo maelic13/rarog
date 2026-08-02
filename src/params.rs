@@ -98,7 +98,7 @@ macro_rules! search_params {
 // are all generated from these lines — see the `search_params!` docs above.
 search_params! {
     /// Initial aspiration window half-width (centipawns). [search.rs:615]
-    aspiration_delta = 30, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30
+    aspiration_delta = 21, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30 → 21
 
     /// 9.7.5 lead (found while decomposing 8.11): minimum TT entry depth for
     /// the `eval_for_pruning` refinement, which lets a TT score stand in for
@@ -112,44 +112,45 @@ search_params! {
     /// bounds were literally `alpha`, the group was SPSA-fitted against them,
     /// and 8.11's honest bounds cost +14.4% nodes purely through this path.
     ///
-    /// 0 = today (no guard, since qsearch stores depth 0), so the default is
-    /// bench-identical. 1 excludes qsearch entries; higher demands
-    /// progressively deeper evidence before the TT may override the eval.
+    /// 0 = no guard (since qsearch stores depth 0). The 10.4.6(a) SPSA final
+    /// theta retained 0, so the experimental guard remains disabled. 1
+    /// excludes qsearch entries; higher demands progressively deeper evidence
+    /// before the TT may override the eval.
     eval_prune_tt_min_depth = 0, "EvalPruneTtMinDepth", 0..=8;
 
     /// Futility pruning base margin.
     /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`. [search.rs:1003]
-    futility_base = 60, "FutilityBase", 20..=200;  // was 70 → 82 → 86 → 60
+    futility_base = 52, "FutilityBase", 20..=200;  // was 70 → 82 → 86 → 60 → 52
     /// Extra futility margin added when *not* improving (multiplied by
     /// `not_improving_i`). Larger value → prune less when not improving.
-    futility_not_improving = 42, "FutilityNotImproving", 0..=120;  // was 20 → 51 → 49 → 42
+    futility_not_improving = 51, "FutilityNotImproving", 0..=120;  // was 20 → 51 → 49 → 42 → 51
 
     /// Razoring coefficient. Prune if `eval + coeff * depth < alpha`. [search.rs:1007]
-    razoring_coeff = 193, "RazoringCoeff", 50..=300;  // was 150 → 194 → 191 → 193
+    razoring_coeff = 274, "RazoringCoeff", 50..=300;  // was 150 → 194 → 191 → 193 → 274
 
     /// Null-move pruning depth coefficient. [search.rs:1012]
     /// Allow NMP when `eval >= beta - coeff * depth - improving_bonus * improving`.
-    nm_depth_coeff = 10, "NullMoveDepthCoeff", 2..=40;  // was 12 → 14 → 15 → 10
+    nm_depth_coeff = 12, "NullMoveDepthCoeff", 2..=40;  // was 12 → 14 → 15 → 10 → 12
     /// Null-move pruning improving bonus. [search.rs:1012]
-    nm_improving_bonus = 32, "NullMoveImprovingBonus", 0..=80;  // was 24 → 25 → 32
+    nm_improving_bonus = 35, "NullMoveImprovingBonus", 0..=80;  // was 24 → 25 → 32 → 35
 
     /// LMP prune-margin base.
     /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`. [search.rs:1182]
-    lmp_base = 88, "LmpBase", 30..=200;  // was 90 → 115 → 88
+    lmp_base = 80, "LmpBase", 30..=200;  // was 90 → 115 → 88 → 80
     /// Extra LMP prune-margin added when *not* improving (multiplied by
     /// `not_improving_i`). Larger value → prune less when not improving.
-    lmp_not_improving = 63, "LmpNotImproving", 0..=120;  // was 25 → 53 → 57 → 63
+    lmp_not_improving = 64, "LmpNotImproving", 0..=120;  // was 25 → 53 → 57 → 63 → 64
 
     /// Quiet-history pruning coefficient (stored positive; applied as `-(coeff * depth)`).
     /// [search.rs:1186]
-    quiet_hist_prune_coeff = 5_069, "QuietHistPruneCoeff", 1000..=10000;  // was 4000 → 4372 → 4419 → 5069
+    quiet_hist_prune_coeff = 5_617, "QuietHistPruneCoeff", 1000..=10000;  // was 4000 → 4372 → 4419 → 5069 → 5617
 
 
     /// SEE bad-capture threshold coefficient (stored positive; applied as `-(coeff * depth)`).
     /// [search.rs:1195]
-    see_pruning_coeff = 51, "SeePruningCoeff", 20..=200;  // was 83 → 51 (interior SEE-prune eased ~40%)
+    see_pruning_coeff = 66, "SeePruningCoeff", 20..=200;  // was 83 → 51 → 66
     /// SEE bad-capture threshold maximum magnitude (floor of `-(coeff * depth)`). [search.rs:1195]
-    see_pruning_max = 869, "SeePruningMax", 200..=1600;  // was 804 → 869
+    see_pruning_max = 955, "SeePruningMax", 200..=1600;  // was 804 → 869 → 955
 
     // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
     // Exposed so the `config_see` SPSA can re-tune SEE's consumers alongside
@@ -158,20 +159,20 @@ search_params! {
     // hardcoded literals exactly → bench-identical until re-tuned.
     /// Qsearch capture SEE-prune margin: search a capture only if
     /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
-    qs_see_margin = 251, "QsSeeMargin", 0..=600;  // was 200 → 251
+    qs_see_margin = 265, "QsSeeMargin", 0..=600;  // was 200 → 251 → 265
     /// Lower clamp on the qsearch SEE-prune threshold. Seed −800.
-    qs_see_clamp_lo = -661, "QsSeeClampLo", -1600..=-100;  // was -800 → -661
+    qs_see_clamp_lo = -722, "QsSeeClampLo", -1600..=-100;  // was -800 → -661 → -722
     /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
-    qs_see_clamp_hi = 218, "QsSeeClampHi", 0..=600;  // was 200 → 218
+    qs_see_clamp_hi = 212, "QsSeeClampHi", 0..=600;  // was 200 → 218 → 212
     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
-    qs_see_bad_floor = -119, "QsSeeBadFloor", -400..=0;  // was -50 → -119 (deeper qsearch capture inclusion)
+    qs_see_bad_floor = -55, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
 
     /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`. [search.rs:1215]
-    singular_beta_mult = 6, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6
+    singular_beta_mult = 4, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6 → 4
 
     /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
-    lmp_count_base = 2, "LmpCountBase", 1..=12;  // was 4 → 2 (unchanged this wave)
+    lmp_count_base = 1, "LmpCountBase", 1..=12;  // was 4 → 2 → 1 (10.4.6 lower rail; active)
 
     // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
     // Applied to the 1024x-scaled LMR table base; `>> 10` gives integer ply.
@@ -208,9 +209,9 @@ search_params! {
     // (depth <= 8, not in check, move doesn't give check). Centipawn-scaled —
     // re-tuned in the Phase 4 SPSA wave after the eval re-fit.
     /// Quiet futility base margin (cp).
-    fp_base = 184, "FpBase", 0..=400;
+    fp_base = 211, "FpBase", 0..=400;
     /// Quiet futility per-depth coefficient (cp).
-    fp_coeff = 117, "FpCoeff", 0..=300;
+    fp_coeff = 135, "FpCoeff", 0..=300;
 
     /// ProbCut beta margin (cp). `probcut_beta = beta + margin`. [search.rs:1108]
     /// Re-tuned in the Phase 5 SPSA wave after the Phase 4 eval re-fit changed
@@ -321,19 +322,19 @@ search_params! {
     /// uncertain, the Reckless form). `|corr| = |static_eval − raw_static_eval|`,
     /// already computed per node. Each knob adds `|corr| · knob / 128` to a
     /// margin (or subtracts it from the LMR reduction in 1024ths). Seed 0 = off.
-    corr_rfp_scale = 0, "CorrRfpScale", 0..=512;
-    corr_fut_scale = 0, "CorrFutScale", 0..=512;
-    corr_lmr_scale = 0, "CorrLmrScale", 0..=512;
+    corr_rfp_scale = 3, "CorrRfpScale", 0..=512;
+    corr_fut_scale = 3, "CorrFutScale", 0..=512;
+    corr_lmr_scale = 27, "CorrLmrScale", 0..=512;
     /// 8.5(c) — blend weights for the five correction sources, previously the
     /// fixed `(pawn+minor+own_np+their_np+cont/2)/128`. Now `Σ src·W / 16384`
     /// with the continuation term keeping its inherent `/2`. Seed 128 on every
     /// source reproduces the old blend bit-for-bit (`Σsrc·128/16384 = Σsrc/128`).
     /// SPSA re-weights the sources.
-    corr_w_pawn = 128, "CorrWeightPawn", 0..=384;
-    corr_w_minor = 128, "CorrWeightMinor", 0..=384;
-    corr_w_own_np = 128, "CorrWeightOwnNp", 0..=384;
-    corr_w_their_np = 128, "CorrWeightTheirNp", 0..=384;
-    corr_w_cont = 128, "CorrWeightCont", 0..=384;
+    corr_w_pawn = 135, "CorrWeightPawn", 0..=384;
+    corr_w_minor = 80, "CorrWeightMinor", 0..=384;
+    corr_w_own_np = 104, "CorrWeightOwnNp", 0..=384;
+    corr_w_their_np = 160, "CorrWeightTheirNp", 0..=384;
+    corr_w_cont = 152, "CorrWeightCont", 0..=384;
 
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by

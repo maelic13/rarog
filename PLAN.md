@@ -52,7 +52,11 @@ Model -> Acts on the verdict: bake or revert, record in both documents, commit.
 - **Both documents stay in sync** after every step: PLAN carries the record and
   rationale; the guide carries only the user's forward view.
 - **SPSA results:** wait for the user to paste final values; never read
-  weather-factory `state.json` mid-run.
+  weather-factory `state.json` mid-run. Bake the **final theta**, i.e. the
+  `Final parameters` values printed by the tuner, as one whole vector. Do not
+  substitute an ad-hoc tail average: final theta is SPSA's actual accumulated
+  estimator, while an averaging window is a different estimator that must be
+  designed and validated before the run if we ever want to use it.
 
 ### Testing methodology (the gates)
 
@@ -1628,12 +1632,24 @@ explanation is needed.
         scales are small but nonzero and were seeded at zero, so SPSA activated
         rather than disabled them.
 
-        **Selection design:** same byte-identical tune binary, tail as A and
-        theta as B, `[0,3]`. H1 selects tail. H0 plus a wholly negative 95%
-        interval selects theta; H0 with an interval crossing zero is a wash and
-        triggers the predeclared discussion of noisy-gradient variance
-        reduction versus established final-theta convention. Only the selected
-        vector is baked and sent to the actual pre-SPSA `[0,3]` acceptance gate.
+        **Selection result 2026-08-02: WASH; use final theta.** The same-binary
+        comparison was stopped after 1,800 games at tail **+1.19 ± 16.05 nElo**,
+        LLR −0.01, W/L/D 463/459/878, with zero anomalies. This is no evidence
+        for the post-hoc final-15% estimator. Final theta is SPSA's conventional
+        accumulated output, not the last mini-match's perturbation; the late
+        trajectory was already stable, so endpoint-noise risk is small. The
+        arbitrary 15% window can also introduce lag bias and was never validated
+        against this schedule. Therefore bake the complete console `Final
+        parameters` vector. Future SPSAs use final theta by default; an averaging
+        estimator is admissible only if specified and validated before tuning.
+
+        **Bake verification:** the ordinary source build and
+        `rarog-p1046a-tune.exe` with all 28 final-theta UCI values both report
+        bench **6,477,102** exactly. That is +21.7% nodes over the 5,320,596
+        fail-soft SPSA substrate and +25.2% over the 5,173,540 pre-SPSA
+        baseline. The increase is directionally consistent with 10.0's
+        accuracy/over-pruning diagnosis, but it is large enough to impose a
+        real clock-depth cost; only the `[0,3]` gate may decide whether it pays.
 
         **⚠ SEEDS ARE DELIBERATELY NOT THE BAKED DEFAULTS — the audit reports
         8 "drifted seeds" for this file BY DESIGN.** Eight knobs start at
@@ -1710,9 +1726,8 @@ explanation is needed.
         resolving power at this noise level — **stop and debug before
         spending night two**, because finding 3 says the rest of the run
         cannot then help either.
-        **Bake ALL tail means — no per-knob filter. ⚠ RETRACTED 2026-07-27
-        (user challenge, and they were right).** An earlier draft of this
-        step said to bake a knob only if it "moved meaningfully and showed a
+        **Bake ALL final-theta values — no per-knob filter.** An earlier draft
+        said to bake a knob only if it "moved meaningfully and showed a
         consistent direction", keeping the seed otherwise. That is unsound:
         SPSA estimates a **joint** optimum, and the knobs in this group
         interact by construction (the corr scales multiply the very margins
@@ -1720,12 +1735,10 @@ explanation is needed.
         merged). Reverting a subset yields a point the tuner never
         evaluated, and if a kept knob's fitted value was conditional on a
         reverted one, the survivors are no longer justified by the run.
-        **The tail mean already IS the filter**, which is what makes the
-        extra rule not just wrong but redundant: a knob wandering on noise
-        around its seed has a tail mean ≈ its seed automatically, so the
-        filter can only ever act on knobs that genuinely moved — exactly the
-        ones it must not touch. Bake the whole vector; let the gate judge
-        the whole vector. If it fails, decompose *then* — that is what
+        The final-theta convention was confirmed after the 2026-08-02
+        tail-vs-theta wash: a post-hoc tail window is a different estimator,
+        not a justified noise filter. Bake the whole final vector; let the gate
+        judge the whole vector. If it fails, decompose *then* — that is what
         8.5's guard-off arm did, and it is a diagnostic on a rejection, not
         a bake-time heuristic. Then one `[0,3]` gate vs the pre-wave head.
         If the gate loses WITH fail-soft, re-gate once at the fitted values
