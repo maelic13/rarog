@@ -57,6 +57,9 @@ pub mod counters {
         see_prune,
         // LMR reduction and its verification re-search.
         lmr_applied,
+        // 10.2.5 — late moves whose confidence estimate removes the old
+        // mandatory one-ply reduction.
+        lmr_zero_reduction,
         lmr_research,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)

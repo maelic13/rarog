@@ -35,8 +35,9 @@ tail-vs-theta replication was stopped after 14,876 games as a wash (+0.84 ±
 5.58 nElo), confirming no measured reason to replace conventional final
 theta. Post-acceptance attribution found no isolated code-speed regression;
 the lower NPS comes from a larger share of expensive main-search nodes.
-**10.1 persistent RootMove bookkeeping is now implemented and provisionally
-retained; next is 10.2.5.**
+**10.1 persistent RootMove bookkeeping is implemented and retained while any
+consumer remains. 10.2.5(a), zero-reduction LMR, is implemented and awaiting
+its strength gate.**
 
 ## S2. The development process
 
@@ -1316,8 +1317,8 @@ explanation is needed.
   equal nodes Rarog is 2.5 plies deeper and 65 Elo weaker, and a blind 15 %
   widening of the surface gains +4.06. Cost: three matches and one counter.
 
-- **✅ 10.1 Persistent `RootMove` records — IMPLEMENTED 2026-08-03,
-  provisionally retained** (search §6): per root move —
+- **✅ 10.1 Persistent `RootMove` records — IMPLEMENTED AND RETAINED
+  2026-08-03** (search §6): per root move —
   `score, previous_score, average_score, mean_squared_score, pv, nodes,
   seldepth, fail_highs, fail_lows, last_best_depth`. The compact `Vec<Move>`
   remains the ordering/SMP index backbone and the larger records are a sidecar,
@@ -1328,17 +1329,18 @@ explanation is needed.
   non-inlined root-only call. Full suite and Clippy pass; **bench-identical at
   6,477,102**, no games required.
 
-  **Measured cost and contingency:** the first large-record/hot-layout form
-  measured −1.02% median NPS; outlining, compact sidecar storage, fixed PVs,
-  and completed-iteration sampling reduced it. The retained compiler-matched
-  non-PGO screen reads roughly **−0.48% mean / −0.64% median / −0.40%
-  best-of**; a temporary no-producer build was neutral by mean/median (−0.06% /
-  −0.12%), attributing the residual to actually producing the data rather than
-  storage or build noise. Keep 10.1 while EITHER 10.2(a) aspiration or 10.2(b)
-  root-informed TM remains live. If the entire near-term 10.2 package yields
-  no accepted consumer, revert 10.1 and recover the cost; keep this commit as
-  the ready substrate for later MultiPV and Phase-14 SMP work. EV 0 direct;
-  its consumer must earn the cost.
+  **Idle-machine cost remeasurement and retention rule (2026-08-03):** the
+  earlier claim that record production itself cost 0.4–0.5% is withdrawn. In
+  three compiler-matched, behavior-identical comparisons (20 interleaved
+  pairs × three benches), full 10.1 vs pre-10.1 read **−0.28% median / −0.38%
+  mean / +0.05% best-of, 95% CI −0.79…+0.33**; producer-only read **−0.05%
+  median / −0.01% mean, CI −0.47…+0.51**; storage/bookkeeping read **+0.09%
+  median / −0.17% mean, CI −0.37…+0.47**. The total probably costs about
+  0.3%, but zero is plausible and the producer is unmeasurable. **Keep 10.1
+  while ANY consumer remains; remove it only if ALL consumers are removed or
+  rejected** (10.2 aspiration/TM first, later MultiPV/Phase-14 SMP if adopted).
+  EV 0 direct; preserve commit `1259013` as a ready substrate if it is ever
+  removed from the active line.
 - **10.2 Aspiration + time-management consumers** (absorbs old 8.6; needs
   10.1): (a) **aspiration modernization** — running-average centre,
   magnitude-scaled asymmetric delta growth, fail-high depth-reduced
@@ -1365,9 +1367,11 @@ explanation is needed.
   +2.95 and the forfeit fix — both of which Rarog already has: `move_overhead`
   covers the `go`→clock-start and bestmove→GUI latency, and the Phase-2.9.1
   `2·overhead` reserve restored zero forfeits.)
-- **10.2.5 Unified prospective LMR depth — the search capstone. ⏭ MOVED HERE
+- **▶ 10.2.5(a) Zero-reduction LMR — IMPLEMENTED, AWAITING `[0,3]` SPRT.
+  10.2.5 prospective-depth capstone, narrowed by measurement. ⏭ MOVED HERE
   FROM 8.9 (user decision 2026-07-25) so 2.3.0 can ship on 8.5 alone.**
-  High risk / high reward, EV +3–10. **⚠ Despite the number, schedule this
+  Narrow candidate EV +1–4; the original full coupling was high risk / high
+  reward, EV +3–10. **⚠ Despite the number, schedule this
   EARLY in the 2.4.0 cycle** — numbers are frozen and do not imply order
   (§S6), and a weeks-long item with a real chance of rejection needs runway,
   not the slot before a release boundary.
@@ -1388,14 +1392,34 @@ explanation is needed.
   Fitting a new mechanism around constants that a blind 15 % shift already
   beats would bake the over-aggression into the mechanism itself — the same
   trap in reverse that cost 8.11 its gate.
-  Compute one confidence-adjusted `lmr_depth` per move (base table + cut-node
+  The **original proposal, superseded by the decomposition below**, was to
+  compute one confidence-adjusted `lmr_depth` per move (base table + cut-node
   pressure + weak/absent TT evidence + bad-capture SEE + correction magnitude
   − PV/TT-PV − history strength − forcing evidence) and drive LMP, futility,
-  SEE pruning *and* the actual reduction from it; allow zero reduction for
-  strong late moves (today clamped ≥ 1).
-  **Absorbs 8.3:** the stored-PV-bit graded adjustments are the "weak/absent
-  TT evidence − PV/TT-PV" inputs here; re-measure `tt_pv_veto` on the
-  pre-capstone head to weight them.
+  SEE pruning *and* the actual reduction from it, including zero reduction for
+  strong late moves.
+
+  **2026-08-03 deterministic decomposition changed the implementation before
+  games:** the literal coupled design failed its prerequisite. Zero reduction
+  alone produced **6,718,158 nodes (+3.72%)** versus accepted 6,477,102. The
+  pruning-depth coupling alone, with mandatory reduction retained, produced
+  **5,973,106 (−7.78%)**; combined conversions produced 5.83–6.10 M
+  (**−5.9%…−9.9%**). Even directly more conservative per-move margins changed
+  TT/order/cutoff cascades and remained net thinner. Per 10.0(c), do not spend
+  games or SPSA fitting a mechanism whose measured operating points all move
+  in the contraindicated direction. **Selected candidate 10.2.5(a): keep the
+  accepted LMP/futility/SEE surface unchanged and only remove the mandatory
+  LMR floor.** The existing confidence sum now selects zero on **104,919 of
+  1,394,221 eligible late moves (7.53%)** in bench; zero uses a normal
+  full-depth PVS search and skips a redundant same-depth verification. Positive
+  reductions retain the existing re-search path. No new parameter and no SPSA
+  are required. Gate this minimal candidate against the accepted 10.1 head;
+  if it fails, revert it and record the full coupled capstone as rejected.
+  **8.3 scope correction:** the rejected coupled form would have absorbed its
+  stored-PV-bit graded adjustments. The selected 10.2.5(a) does not add that
+  route; it leaves the already-fitted live `tt_pv` reduction term untouched.
+  Do not silently fold persistent TT-PV into this minimal gate. Revisit it only
+  as a separately justified experiment or during post-NNUE recalibration.
   **Entry condition was MET in Phase 8** (≥2 of 8.2–8.7 passed: 8.2 +30.75
   and 8.4 +6.01), so nothing gates it but machine time and 8.5's tuner.
   ⚠ **Basilisk design input (2026-07-20):** its persistent-TT-PV prototype
@@ -1847,9 +1871,13 @@ explanation is needed.
         If the gate loses WITH fail-soft, re-gate once at the fitted values
         without fail-soft (two binaries, no new tune) — that closes 8.11
         permanently either way.
-  - (b) **`config_lmr` family — ONLY if the 10.2.5 capstone is REJECTED**
-        (if it lands, its own SPSA has just fitted the LMR surface and
-        this night does not exist). Optional zero-tune rider either way:
+  - (b) **`config_lmr` family — ONLY if 10.2.5(a) zero-reduction LMR is
+        REJECTED.** The old rationale (“the capstone's own SPSA fitted this
+        surface”) no longer applies because the selected minimal candidate has
+        no new parameter and deliberately avoids another weekend-scale tune.
+        If 10.2.5(a) lands, accept the structural gain and defer broad LMR
+        fitting to the mandatory post-NNUE recalibration; if it rejects, this
+        remains the one pre-NNUE fallback. Optional zero-tune rider either way:
         `cutoffCnt` at hand-picked SF-shaped values, one flag-style gate,
         no family re-tune around it (8.6's trap was self-play aggression
         drift, which the schedule fix does not address).
@@ -1925,15 +1953,17 @@ explanation is needed.
   10.4.6; (c) turns that from a bet into a measured call, and demotes 10.2.5
   behind it because the capstone must now be *designed* against a re-fitted
   surface rather than fitted around today's over-aggressive one:
-  **Actual execution as of 2026-08-02:** 10.4.6(a) completed all 5,000
+  **Actual execution as of 2026-08-03:** 10.4.6(a) completed all 5,000
   iterations / 160,000 games and passed H1 at +15.33 ± 7.34 nElo. Final theta
   is baked; both tail comparisons washed; post-acceptance NPS attribution is
-  complete and found no isolated implementation regression. **10.1 is now
-  implemented and provisionally retained.** Thus: **10.0 ✅ → 10.4.6(a) ✅ →
-  10.1 ✅ → 10.2.5 capstone, RE-SCOPED toward accuracy, built on the re-fitted
-  surface → resolve 10.4.3's final/conditional Texel path → 10.2**
+  complete and found no isolated implementation regression. **10.1 is retained
+  while any consumer remains; its producer cost is unmeasurable on the
+  confirmed-idle rerun. 10.2.5's coupled pruning-depth form failed the
+  deterministic screen, and 10.2.5(a) zero-reduction LMR is implemented.**
+  Thus: **10.0 ✅ → 10.4.6(a) ✅ → 10.1 ✅ → gate 10.2.5(a), built on the
+  re-fitted surface → resolve 10.4.3's final/conditional Texel path → 10.2**
   aspiration/TM on the final search/eval distribution, priced by 10.0(b)'s arm
-  difference and required to earn 10.1's measured producer cost → selected
+  difference and acting as 10.1's first direct consumers → selected
   10.4 menu picks → 10.5 gauntlet + release.
   ⛔ **Standing constraint from 10.0(c): no Phase-10 item may be built to prune
   or reduce HARDER without an explicit argument against this result.** That

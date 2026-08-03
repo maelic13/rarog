@@ -14,9 +14,9 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
 | Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, fingerprint **6,477,102 / EBF 2.446**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
-| Working source | Accepted 10.4.6(a) baseline; all 28 SPSA defaults baked and reusable configs reset to those values for the future post-NNUE retune. |
+| Working source | 10.1 retained; **10.2.5(a) zero-reduction LMR implemented, awaiting SPRT.** All 28 SPSA defaults remain baked and unchanged. |
 | Last strength results | **10.4.6(a): +15.33 ± 7.34 nElo, H1** (8,600 games, zero anomalies) vs pre-SPSA 2.3.1. Earlier boundary: **9.8 external gauntlet vs 2.2.0: +76 ± 21** at 1T 3+0.03, +78 ± 28 at 1T 10+0.1, +194 ± 24 at 4T 10+0.1. |
-| Current work | ✅ **10.1 persistent RootMove records implemented, provisionally retained.** Bench remains 6,477,102; the enabled producer costs about 0.4–0.5% non-PGO NPS and must earn that cost through an accepted 10.2 consumer. Next is 10.2.5. |
+| Current work | ▶ **10.2.5(a) zero-reduction LMR implemented; `[0,3]` gate next.** 10.1 is retained while any consumer remains; its idle-PC total cost is unresolved (~−0.3%, CI crosses zero) and producer-only cost is neutral. |
 | Next release | **2.4.0 at 10.5.** Actual next order: 10.2.5 accuracy capstone → resolve the final/conditional Texel path → 10.2 aspiration/TM with the retained 10.1 producer → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
@@ -255,18 +255,19 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       for the mandatory post-NNUE retune. The setup bug that briefly wrote
       `A=0.0965` instead of 500 was caught before this tune's first launch;
       this completed run used the asserted `A=500` schedule.
-- [x] **10.1 Persistent `RootMove` records — IMPLEMENTED 2026-08-03,
-      provisionally retained.** Every legal root move now keeps current/prior
+- [x] **10.1 Persistent `RootMove` records — IMPLEMENTED AND RETAINED
+      2026-08-03.** Every legal root move now keeps current/prior
       score, completed-iteration mean and mean-square, fixed-capacity full PV,
       cumulative nodes, conservative seldepth, fail-high/low counts, and
       last-best depth. Existing compact `Vec<Move>` ordering/SMP indexing stays
       separate; recording is a cold root-only path. Full tests and Clippy pass;
-      bench is identical at 6,477,102. A compiler-matched non-PGO screen found
-      a small real producer cost (~−0.48% mean, −0.64% median; allocation and
-      hot-layout variants were worse). Keep it while either 10.2 aspiration or
-      root-informed TM remains a live consumer. If the entire 10.2 package
-      yields no accepted consumer, revert 10.1 to recover the cost; preserve
-      the commit for later MultiPV/Phase-14 SMP work.
+      bench is identical at 6,477,102. The confirmed-idle remeasurement (three
+      20-pair × three-bench comparisons) found full 10.1 at −0.28% median /
+      −0.38% mean, CI −0.79…+0.33; producer-only at −0.05% median / −0.01%
+      mean, CI −0.47…+0.51. The old “producer costs 0.4–0.5%” statement is
+      withdrawn. **Keep 10.1 while any consumer remains; remove it only if all
+      consumers are removed/rejected.** Preserve `1259013` for later
+      MultiPV/Phase-14 SMP even if it leaves the active line.
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
       One `[0,3]` (+ LTC for TM)
@@ -434,11 +435,18 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           375–429 ms generic figure is the one that was real.
     - [x] 10.3(gate) **[ACCEPTED]** — `[-3,0]` vs `p82a-rebuilt`,
           one run for the whole stack, 2026-07-22. Result in the parent item.
-- [ ] **10.2.5 Unified prospective LMR depth — THE SEARCH CAPSTONE** (⏭ moved
-      here from 8.9, 2026-07-25). One confidence-adjusted `lmr_depth` per move
-      driving LMP, futility, SEE pruning *and* the reduction together; allows
-      zero reduction for strong late moves. Absorbs 8.3 and the deferred
-      8.2(b)/(c). EV +3–10, high risk.
+- [ ] **▶ 10.2.5(a) Zero-reduction LMR — IMPLEMENTED, AWAITING `[0,3]`
+      SPRT.** The original unified prospective-depth capstone was decomposed
+      before games. Removing only the mandatory reduction floor widens bench
+      6,477,102 → **6,718,158 (+3.72%)** and selects zero on 104,919 / 1,394,221
+      eligible late moves (7.53%). Zero uses normal full-depth PVS and skips a
+      redundant same-depth LMR verification; no constants change and no SPSA
+      is needed. The proposed LMP/futility/SEE coupling was **REJECTED by the
+      deterministic prerequisite**: coupling alone was −7.78% nodes and
+      combined seeds were −5.9%…−9.9%, contrary to 10.0(c). Keep the accepted
+      pruning surface and gate only 10.2.5(a) against the accepted 10.1 head.
+      The rejected coupling would have absorbed 8.3; this minimal candidate
+      deliberately does not add persistent TT-PV behavior.
       ⚠ **Schedule this EARLY in the 2.4.0 cycle despite the number** — item
       numbers are frozen and do not imply order; a weeks-long item with a real
       chance of rejection needs runway, not the slot before a release.
@@ -642,9 +650,10 @@ nodes 3.193M → 4.007M (+25.52%) while qsearch grows only about 2.128M → 2.47
 improves 87.48% → 88.54%, and the LMR re-search rate is flat (1.74% → 1.76%).
 There is no isolated implementation hotspot to fix without changing the
 accepted search behaviour. Keep theta: the +15.33 nElo gate proves the wider,
-more expensive tree pays at clock time. 10.1 is now complete; continue with
-10.2.5. Do not “recover” NPS by making pruning more aggressive without a
-separately justified strength change.
+more expensive tree pays at clock time. 10.1 is complete and retained while
+any consumer remains. 10.2.5(a) zero-reduction LMR is now implemented and
+awaits its gate. Do not “recover” NPS by making pruning more aggressive without
+a separately justified strength change.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
 `A=0.0965` instead of `A=500`, because PowerShell variable names are
@@ -663,10 +672,9 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-Next: 10.2.5 capstone, re-scoped toward accuracy → resolve its conditional
-Texel/final-eval path → 10.2 aspiration/TM (which must earn 10.1's measured
-producer cost) → selected 10.4 menu picks → the 2.4.0 boundary gauntlet at
-10.5.
+Next: gate 10.2.5(a) zero-reduction LMR → resolve its conditional
+Texel/final-eval path → 10.2 aspiration/TM (the first direct consumers of
+10.1) → selected 10.4 menu picks → the 2.4.0 boundary gauntlet at 10.5.
 
 ## Working rhythm
 

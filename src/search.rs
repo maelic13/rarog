@@ -81,6 +81,11 @@ fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     }
     table
 }
+
+#[inline]
+fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
+    (r >> 10).clamp(0, new_depth.max(0))
+}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
     None,
@@ -1867,7 +1872,7 @@ impl Searcher {
                 if reducible {
                     // Accumulate in 1024ths; `>> 10` gives integer ply reduction.
                     // Defaults for lmr_* params = 1024, reproducing the original ±1 ply
-                    // behavior exactly.  SPSA tunes from this baseline.
+                    // behavior exactly. SPSA tunes from this baseline.
                     // `reducible` already guarantees depth >= 3 && searched >= 2, so the
                     // table lookup is always in the populated region.
                     let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
@@ -1920,8 +1925,16 @@ impl Searcher {
                     if self.shared_state.is_some() {
                         r += self.next_jitter();
                     }
-                    let reduction = (r >> 10).clamp(1, new_depth.max(1));
-                    crate::diag_count!(lmr_applied);
+                    // 10.2.5 candidate: strong late moves may escape the old
+                    // mandatory one-ply reduction. A zero reduction is a normal
+                    // full-depth PVS search and must not trigger a redundant
+                    // verification search at the same depth.
+                    let reduction = lmr_reduction(r, new_depth);
+                    if reduction == 0 {
+                        crate::diag_count!(lmr_zero_reduction);
+                    } else {
+                        crate::diag_count!(lmr_applied);
+                    }
                     score = -self.negamax(
                         board,
                         new_depth - reduction,
@@ -1934,7 +1947,7 @@ impl Searcher {
                         true,
                         poll,
                     );
-                    if score > alpha {
+                    if reduction > 0 && score > alpha {
                         crate::diag_count!(lmr_research);
                         // Full-depth verification re-search. (A do-deeper / do-shallower
                         // LMR re-search adjustment was tried as Phase 2.8 and dropped:
@@ -3361,6 +3374,15 @@ mod tests {
     use super::*;
     use crate::board::Square;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn lmr_reduction_allows_strong_late_moves_to_reach_zero() {
+        assert_eq!(lmr_reduction(1023, 8), 0);
+        assert_eq!(lmr_reduction(1024, 8), 1);
+        assert_eq!(lmr_reduction(4096, 3), 3);
+        assert_eq!(lmr_reduction(-1, 8), 0);
+        assert_eq!(lmr_reduction(1024, 0), 0);
+    }
 
     #[test]
     fn quiescence_detects_mate_after_first_qply_check() {
