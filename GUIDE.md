@@ -255,6 +255,20 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       for the mandatory post-NNUE retune. The setup bug that briefly wrote
       `A=0.0965` instead of 500 was caught before this tune's first launch;
       this completed run used the asserted `A=500` schedule.
+- [ ] 10.4.6(d) **Range follow-ups from (a)** — the joint gate has passed, so
+      (a)'s deferral is discharged. Both apply the project's own "a rail means
+      the RANGE was wrong" rule to its own result; neither is urgent.
+    - [ ] **`LmpCountBase` = 1 is ON its floor** (`1..=12`). The tuner pushed
+          down for 5,000 iterations and was clamped, so the optimum is at or
+          below the floor and was never observed. `base = 0` is representable in
+          `base + 2d²/3`. Widen to `0..=12` and re-tune this knob alone, or
+          record why 0 is inadmissible and pin it deliberately. ⚠ It is the ONLY
+          knob that railed toward MORE pruning — and the exact branch 10.0(c)'s
+          probe could not move, which is part of why the fit doubled the probe
+    - [ ] **`RazoringCoeff` = 274 against a 300 ceiling** — 193 → 274 (+42%),
+          still climbing at iteration 1,351 (237.8), finished at 91% of range.
+          Widen the config max before the next tune including this knob, and
+          check the `params.rs` clamp at the same time
 - [x] **10.1 Persistent `RootMove` records — IMPLEMENTED AND RETAINED
       2026-08-03.** Every legal root move now keeps current/prior
       score, completed-iteration mean and mean-square, fixed-capacity full PV,
@@ -472,6 +486,19 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       two-sided for safer game-result labels; it is not SPRT's one-sided
       `strength-v1`. After exact 3M extraction: one full-scalar/L2 fit, bake,
       reconstruction verification, then one `[0,3]` gate.
+    - [ ] 10.4.3(a2) **Measure the per-seed-phase yield matrix — free, uses
+          the pilot PGN already on disk.** A phase-balanced seed book does NOT
+          produce a phase-balanced harvest: traversal is one-directional, so an
+          opening-seeded game feeds every later phase while an endgame-seeded
+          game can never feed the opening. Measured surpluses at the
+          recommended total: opening 1.25×, early-mid 2.11×, middlegame 3.36×,
+          endgame 4.51×, deep-endgame 3.10× — the opening quota alone sets the
+          run length. Tag each pilot game by seed phase and report the 5×5
+          matrix (no new games, no engine time). ⚠ Expect "more opening seeds"
+          and do not adopt it blindly: positions from one game are correlated,
+          so the objective is fewest games **subject to a floor of
+          independently seeded games per phase**. Feeds 12.1a; not worth
+          acting on for this ~4 h run
 - [ ] 10.4 ⏭ all-skippable menu (each its own `[0,3]`, strict EV gate; incl.
       demoted 8.8 qsearch quiet checks)
 - [ ] 10.6 Guarantee at least one `info` line before every `bestmove`.
@@ -513,6 +540,14 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
 
 - [ ] 12.1 Contract bring-up (chess768→H×2→8 buckets); conformance vectors
       integer-exact; hard NPS gate before games
+- [ ] 12.1a Seed-book design from 10.4.3(a2)'s measured yield matrix, BEFORE
+      generating the 30–60M corpus. Solve the seed allocation instead of
+      assuming a balanced book gives a balanced harvest; include an explicit
+      floor of independently seeded games per phase, since positions from one
+      game are correlated. At Texel scale the mismatch costs ~3.6× the games
+      the smallest quota needs; at NNUE scale that is a 2–3× multiplier on the
+      most expensive data step in the project. Bucket count (3 vs 5) is not the
+      lever — it changes reporting, not the traversal asymmetry
 - [ ] 12.2 Data through net_trainer's pipeline (datagen/extract/convert; λ on
       validation)
 - [ ] 12.3 King-conditioned net (v2 king buckets) — `[0,3]` vs stage A

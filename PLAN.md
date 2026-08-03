@@ -1591,6 +1591,43 @@ explanation is needed.
         Current handoff: user runs only segment 1..20,000; `extract.py
         --preflight-games 20000` then supplies the total used to calculate the
         exact disjoint continuation from start 20,001.
+  - (a2) **⚠ MEASURE THE PER-SEED-PHASE YIELD MATRIX — free, uses the pilot
+        PGN already on disk, and it is the input to every future corpus.**
+        The current design assumes a phase-balanced *seed book* produces a
+        phase-balanced *harvest*. It does not, because traversal is
+        one-directional: a game seeded in the opening contributes to every
+        later phase, while a game seeded in the endgame can never contribute an
+        opening position. The 20k pilot shows the consequence — at the
+        recommended total the surpluses are opening **1.25×**, early-mid
+        **2.11×**, middlegame **3.36×**, endgame **4.51×**, deep-endgame
+        **3.10×**. The opening quota alone sets the run length, and ~3.6× more
+        games are played than the endgame quota needs.
+
+        What is missing is the **yield matrix**: unique positions harvested in
+        phase *j* per game seeded in phase *i*. The pilot conflates all five
+        seed phases into one aggregate rate, so the aggregate cannot be
+        inverted — e.g. "2.49 deep-endgame positions per game" mixes games
+        seeded *in* the deep endgame (which trivially produce them) with
+        opening-seeded games (which may rarely reach it). Tag each game in the
+        existing pilot PGN by its seed phase and report the 5×5 matrix. No new
+        games, no engine time.
+
+        With the matrix, seed counts become a small allocation problem instead
+        of an assumption. ⚠ **Expect a counter-intuitive answer and do not
+        adopt it blindly:** maximising efficiency probably means *more* opening
+        seeds and *fewer* endgame seeds, because one opening-seeded game
+        harvests across the whole traversal. But positions taken from a single
+        game are **correlated** — a corpus of 3M positions from 240k games
+        carries less independent information than the same count from 600k
+        games, even though `extract.py`'s by-game train/holdout split already
+        prevents leakage. So the objective is not "fewest games": it is fewest
+        games **subject to a floor of independently seeded games per phase**.
+        Choose that floor deliberately and record it.
+
+        **Not worth acting on for 10.4.3** — the current run is ~4 hours, and a
+        redesign costs analysis plus a new seed book plus a re-pilot. The
+        payoff is Phase 12 (see 12.2), where the corpus is 10–20× larger and
+        this is a 2–3× cost multiplier rather than an afternoon.
   - (b) **Exactly ONE unconditional run — a second run is pre-registered as
         CONDITIONAL on 10.2.5 landing.** Rationale (user asked to be
         challenged on "more runs"): iterating Texel on the *same* engine
@@ -1916,6 +1953,31 @@ explanation is needed.
         as one night: (a)'s fit moved ≥3 knobs by >20% of range AND gated
         ≥ +5 — i.e., only if the frozen schedule demonstrably left big
         money in a *recently-fitted* group's neighbours.
+  - (d) **⚠ RANGE FOLLOW-UPS from (a)'s accepted fit — the joint gate has
+        passed, so the deferral condition recorded in (a) is discharged and
+        these are now open.** Neither is urgent; both are cheap, and both are
+        the project's own "a rail means the RANGE was wrong, not that the
+        value converged" rule applied to its own result.
+    - **`LmpCountBase` = 1 sits ON its floor** (declared range `1..=12`, config
+          min 1). The tuner pushed it down for 5,000 iterations and was clamped,
+          so the optimum is at or below the floor and has never been observed.
+          `late_move_prune_count = base + 2d²/3`, so `base = 0` is
+          representable in the formula — it means LMP may prune from the first
+          quiet at depth 1. Either widen the declared range to `0..=12` and
+          re-tune this knob alone against the accepted head, or record why 0 is
+          inadmissible and pin it deliberately. **Note the direction:** this is
+          the *only* knob that railed toward MORE pruning, and it is exactly the
+          branch 10.0(c)'s probe structurally could not move (only `base` is
+          exposed, so no 15 % step was representable). The tuner explored the
+          one dimension the probe could not and found the opposite sign there —
+          which is part of why the fit (+9.78 logistic) roughly doubled the
+          probe (+4.06).
+    - **`RazoringCoeff` = 274 against a ceiling of 300.** Not pinned, but it
+          moved 193 → 274 (+42 %), was still climbing at iteration 1,351
+          (237.8), and finished at 91 % of range. If the optimum is at or past
+          300 the run never saw it. Widen the config maximum before the next
+          tune that includes this knob, and check the declared clamp in
+          `params.rs` at the same time.
   - **Explicitly NOT retried:** 8.10 mop-up gating (eval-semantics failure,
     no SPSA in the loop) and any 8.6-style LMR-family SPSA bundle (the
     trap is self-play reward hacking, not the anneal). **Not re-tuned:**
@@ -2178,6 +2240,20 @@ net_trainer (trainer + format doc + new conformance net together).
    refresh exists in v1), malformed/truncated-net rejection, and clean HCE
    fallback. Hard best-of-N NPS gate before games; optimize update paths
    before adding capacity if the baseline is too slow.
+1a. **12.1a Seed-book design from the measured yield matrix (input: 10.4.3(a2)).**
+   Before generating a 30–60M-position corpus, solve the seed allocation
+   instead of assuming a phase-balanced book yields a phase-balanced harvest —
+   10.4.3(a2) measured that it does not, and at Texel scale the mismatch already
+   costs ~3.6× more games than the smallest quota requires. At NNUE scale that
+   is a 2–3× multiplier on the single most expensive data step in the project.
+   Inputs: the 5×5 yield matrix from the pilot; the target per-phase counts; and
+   an explicit **floor of independently seeded games per phase**, because
+   positions harvested from one game are correlated and "fewest games" is the
+   wrong objective on its own. Re-measure the matrix if the label generator
+   changes materially — a stronger engine plays longer games and traverses
+   differently. Note the bucket *count* (3 vs 5 phases) is not the lever: it
+   changes reporting granularity, not the traversal asymmetry that makes
+   opening positions scarce.
 2. **12.2 Data through net_trainer's pipeline.** Use `tools/datagen.py` +
    `extract_nnue.py` + `convert`/`shuffle` — do **not** grow `tools/texel`
    into a second trainer (Rarog's fastchess datagen may substitute for
