@@ -33,6 +33,34 @@ function Get-StrengthTestResignArgs {
     $args
 }
 
+# Training labels need a stricter result contract than strength tests.  A
+# false resignation assigns the wrong target to every sampled position in that
+# game, so datagen keeps the historical two-sided 600/3 rule deliberately.
+# Keep this separate from strength-v1: SPRT uses one-sided resignation because
+# its only job is to decide a game result quickly and safely.
+function Get-DatagenProfile {
+    [pscustomobject]@{
+        Name               = "datagen-v1"
+        ResignMoveCount    = 3
+        ResignScore        = 600
+        ResignTwoSided     = $true
+        DrawMoveNumber     = 40
+        DrawMoveCount      = 8
+        DrawScore          = 10
+    }
+}
+
+function Get-DatagenResignArgs {
+    $profile = Get-DatagenProfile
+    $args = @(
+        '-resign'
+        "movecount=$($profile.ResignMoveCount)"
+        "score=$($profile.ResignScore)"
+    )
+    if ($profile.ResignTwoSided) { $args += 'twosided=true' }
+    $args
+}
+
 function Get-HarnessPhysicalCpus {
     if ($script:HarnessIsWindows) {
         if (-not ('RarogHarness.CpuTopology' -as [type])) {

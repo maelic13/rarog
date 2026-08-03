@@ -16,7 +16,7 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **10.2.5(a) zero-reduction LMR + 10.1 + 10.4.6(a)**, source `74d4426`, fingerprint **6,718,158 / EBF 2.460**. Clean gate binary: `rarog-p1025a-zero-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
 | Working source | Accepted 10.2.5(a); 10.1 retained. All 28 SPSA defaults remain baked and unchanged. |
 | Last strength results | **10.2.5(a): +9.13 ±5.45 nElo, H1** (15,594 games, zero anomalies) vs accepted 10.1 head. Before it, **10.4.6(a): +15.33 ±7.34 nElo, H1** vs pre-SPSA 2.3.1. |
-| Current work | ▶ **10.4.3: generate one post-capstone Texel dataset from `74d4426`, refit once, then gate.** Because no pre-capstone fit occurred, do not run two fits from the same generator. 10.1 remains retained while any consumer remains. |
+| Current work | ▶ **10.4.3 pilot ready.** The accepted `74d4426` PGO label generator and new 750k phase-balanced seed are verified. User runs only games 1..20,000; preflight calculates the exact disjoint continuation. Then refit once and gate once. |
 | Next release | **2.4.0 at 10.5.** Actual next order: one post-capstone 10.4.3 Texel fit/gate → 10.2 aspiration/TM with retained 10.1 → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
@@ -460,6 +460,18 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       ⚠ Guard against 8.6's failure mode: a self-play-tuned candidate that
       searched 16% more aggressively won its SPSA then lost the gate. Gate
       against the accepted head, never a sibling of the tuning run.
+- [ ] **▶ 10.4.3 Post-capstone Texel refit — PILOT READY 2026-08-03.**
+      Generate labels only with accepted clean binary `p1025a-zero` (source
+      `74d4426`). The replacement `beast_seed.epd` has 750,000 validated
+      unique starts, exactly 150,000 per phase; SHA-256 `B91C756A…B2C7F`.
+      Run deterministic segment 1..20,000 at 8,000 nodes with shuffle seed
+      10403, then run `extract.py --preflight-games 20000`. Use its measured
+      recommended total to generate exactly the disjoint tail from start
+      20,001. Do not guess the total, generate the full book first, change the
+      seed, append, or reuse a range. `datagen-v1` is intentionally 600/3
+      two-sided for safer game-result labels; it is not SPRT's one-sided
+      `strength-v1`. After exact 3M extraction: one full-scalar/L2 fit, bake,
+      reconstruction verification, then one `[0,3]` gate.
 - [ ] 10.4 ⏭ all-skippable menu (each its own `[0,3]`, strict EV gate; incl.
       demoted 8.8 qsearch quiet checks)
 - [ ] 10.6 Guarantee at least one `info` line before every `bestmove`.
@@ -676,7 +688,7 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-Next: one post-capstone 10.4.3 Texel dataset/refit/gate from `74d4426` → 10.2
+Next: 10.4.3 20k pilot → measured disjoint continuation → one refit/gate → 10.2
 aspiration/TM (the first direct consumers of 10.1) → selected 10.4 menu picks
 → the 2.4.0 boundary gauntlet at 10.5.
 

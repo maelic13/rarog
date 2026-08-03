@@ -37,7 +37,8 @@ theta. Post-acceptance attribution found no isolated code-speed regression;
 the lower NPS comes from a larger share of expensive main-search nodes.
 **10.1 persistent RootMove bookkeeping is implemented and retained while any
 consumer remains. 10.2.5(a) zero-reduction LMR PASSED its `[0,3]` gate at
-+9.13 ±5.45 nElo; next is one post-capstone 10.4.3 Texel run.**
++9.13 ±5.45 nElo. 10.4.3 preparation is complete; next is its 20k fixed-node
+pilot, then the measured continuation, one fit, and one gate.**
 
 ## S2. The development process
 
@@ -1571,6 +1572,25 @@ explanation is needed.
         atomically only after every quota is full. This removes both old guess
         points: the false positions/game estimate and the uniform 12-ply cap
         that discarded scarce opening/deep-endgame rows.
+        **Preparation completed 2026-08-03.** The previous README still ran
+        the entire guessed corpus before calling its so-called preflight; that
+        defeated the sizing design and risked another expensive redo. The
+        actual workflow now runs a 20k pilot first. `datagen.ps1` fixes the
+        opening shuffle with `-srand 10403`, partitions it with one-based,
+        non-wrapping `-Start`/`-Rounds` ranges, rejects append/overwrite, and
+        names each archive by engine/nodes/start/games. `-SetupOnly` validates
+        the exact command, clean engine manifest, book size, and range without
+        launching games; each completed archive records engine/book hashes,
+        source commit, fastchess version, range, and adjudication provenance.
+        Training labels deliberately use named profile `datagen-v1` (600/3
+        two-sided, draw 40/8/10), stricter than SPRT's `strength-v1`, because
+        one false result would mislabel many positions. The replacement seed
+        was generated atomically from 40M evaluated Beast rows: **750,000
+        unique validated starts, exactly 150,000 per phase**, SHA-256
+        `B91C756ADCC7A4B96CEA502A7775B128DDE6C425F6A2B4FC6381E603610B2C7F`.
+        Current handoff: user runs only segment 1..20,000; `extract.py
+        --preflight-games 20000` then supplies the total used to calculate the
+        exact disjoint continuation from start 20,001.
   - (b) **Exactly ONE unconditional run — a second run is pre-registered as
         CONDITIONAL on 10.2.5 landing.** Rationale (user asked to be
         challenged on "more runs"): iterating Texel on the *same* engine
@@ -2359,12 +2379,12 @@ and 2/4/8-thread gauntlet infrastructure; needs 10.1 `RootMove` records):
 | `tools/spsa.ps1 -ConfigGroup <g> -EngineSuffix <s> [-Iterations N] [-Resume] [-SetupOnly] [-LaunchOnly]` | weather-factory SPSA (setup + launch, one command; groups in `tools/spsa_configs/`, +README) |
 | `tools/build_test.ps1 -Suffix <s> [-Tune|-Native]` | test binaries → `tools/test_engines/` |
 | `cargo xtask build --arch pext\|avx2\|native --pgo` | release/deploy builds (PGO trains on `bench`) |
-| `tools/texel/datagen.ps1` | self-play datagen (node-limited; concurrency 24 OK) |
-| `tools/texel/extract.py` | PGN → `FEN;target`; `--balance-phase`; 6.2.0 adds quiet-filter + blend |
+| `tools/datagen.ps1 -Suffix <s> -Rounds <N> -Start <I> -Seed <S> [-SetupOnly]` | deterministic fixed-node self-play segment; auto-concurrency leaves two physical cores, explicit oversubscription such as 24 remains deterministic |
+| `tools/texel/extract.py <PGNs...> [--preflight-games 20000]` | PGN → exact phase-balanced `FEN;target`; quiet filter and optional `--blend` |
 | `tools/texel/sample_fens.py` | Beast `positions.txt` (read-only!) → EPD book |
 | `rarog-texel --tune <group> <train> <holdout> [out] [--epochs N --lr X --l2 X --max-positions N --from-cp --fix-k K]` | Texel fit; `--verify` reconstruction; `--buckets` per-bucket loss; `--tune-kingsafety` nonlinear KS |
 | `tools/texel/bake_params.py <dump>` | bake a full dump into `src/eval.rs`; verify by bench-match (tune-binary-on-dump == baked build) |
-| `tools/texel/data/beast_seed.epd` | phase-balanced 750k-start EPD book for datagen (regenerate with `sample_fens.py`; the old checked-out artifact is 100k until 10.4.3) |
+| `tools/texel/data/beast_seed.epd` | phase-balanced 750k-start EPD book for datagen; generated 2026-08-03, 150k per phase, SHA-256 `B91C756A…B2C7F` (gitignored; regenerate with `sample_fens.py`) |
 | `tools/books/UHO_Lichess_4852_v1.epd` | SPRT/SPSA/gauntlet opening book (adopted 2026-07-17, same day as Basilisk) — the SF/OpenBench-standard Unbalanced Human Openings: 2,632,036 positions, 3–4 moves deep, curated to the +0.48–0.52 White-edge band, played from both colours per pair (symmetric ⇒ unbiased but decisive). Replaces the balanced 4-move PGNs, which cost twice over: SuperGM's 2,668 lines were exhausted by any run > 5,336 games (7.2b recycled 23% of pairs → optimistic error bars), and balanced openings kept the draw rate at 56% (43% dead pairs). UHO cuts draws to ~35–45% ⇒ SPRTs resolve in substantially fewer games. **Two earlier same-day judgments corrected within hours:** (i) "book size is the issue, draw rate is healthy" — reuse was the *acute* flaw, but decisiveness was the larger standing tax; (ii) "UHO only at a phase boundary" — wrong, since every SPRT/SPSA is a self-contained A-vs-B, only *cross-run* draw-rate/Elo magnitudes lose comparability, verdicts don't. weather-factory takes the EPD natively (format from extension), so tune→confirm stays unified (principle #7). Caveats: absolute draw rates / logistic Elo not comparable to pre-UHO runs; gauntlets for CCRL-comparable estimates should use `-Book tools/books/IM_4mvs.pgn` (balanced, 11,172 unique lines, the audited fallback) |
 | `tools/diag_search_quality.ps1 [-Csv <path>]` | 10.0(a) search-quality readout: first-move cutoff rate + LMR over-reduction over `bench 13`, aggregated from the per-position diag dumps. Needs a `cargo build --release --features diag` binary. ⚠ `bench` is queued asynchronously, so a piped `bench …; quit` tears the engine down before the suite runs and prints only the banner — the script drives a live process |
 | `wac [depth]` (engine command, like `bench`) | WAC-300 tactical suite; deterministic solved count at fixed depth (default 10). Regression telltale for Phase-8 selectivity work; floor test in `tests/wac.rs` |
