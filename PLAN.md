@@ -20,10 +20,10 @@ restored PGO for the Windows ARM64 asset. Bench 13 = **5,173,540**, geomean
 EBF **2.406**. The search is unchanged since 2.3.0, so that fingerprint covers
 both releases.
 
-**The accepted development baseline is now 10.4.6(a) final theta** on top of
-8.11 fail-soft: source commit `c810318`, bench **6,477,102**, gate binary
-`rarog-p1046a-theta-pext-pgo.exe`. The released 2.3.1 head remains the release
-baseline until 2.4.0; its clean comparison binary is
+**The accepted development baseline is now 10.2.5(a) zero-reduction LMR** on
+top of 10.1 and 10.4.6(a) final theta: source commit `74d4426`, bench
+**6,718,158**, gate binary `rarog-p1025a-zero-pext-pgo.exe`. The released 2.3.1
+head remains the release baseline until 2.4.0; its clean comparison binary is
 `rarog-p100-base-pext-pgo.exe`, bench 5,173,540.
 
 The whole of Phase 10 belongs to the 2.4.0 cycle. **10.0 is complete: Rarog
@@ -36,8 +36,8 @@ tail-vs-theta replication was stopped after 14,876 games as a wash (+0.84 ±
 theta. Post-acceptance attribution found no isolated code-speed regression;
 the lower NPS comes from a larger share of expensive main-search nodes.
 **10.1 persistent RootMove bookkeeping is implemented and retained while any
-consumer remains. 10.2.5(a), zero-reduction LMR, is implemented and awaiting
-its strength gate.**
+consumer remains. 10.2.5(a) zero-reduction LMR PASSED its `[0,3]` gate at
++9.13 ±5.45 nElo; next is one post-capstone 10.4.3 Texel run.**
 
 ## S2. The development process
 
@@ -1367,7 +1367,7 @@ explanation is needed.
   +2.95 and the forfeit fix — both of which Rarog already has: `move_overhead`
   covers the `go`→clock-start and bestmove→GUI latency, and the Phase-2.9.1
   `2·overhead` reserve restored zero forfeits.)
-- **▶ 10.2.5(a) Zero-reduction LMR — IMPLEMENTED, AWAITING `[0,3]` SPRT.
+- **✅ 10.2.5(a) Zero-reduction LMR — ACCEPTED 2026-08-03.
   10.2.5 prospective-depth capstone, narrowed by measurement. ⏭ MOVED HERE
   FROM 8.9 (user decision 2026-07-25) so 2.3.0 can ship on 8.5 alone.**
   Narrow candidate EV +1–4; the original full coupling was high risk / high
@@ -1413,8 +1413,13 @@ explanation is needed.
   1,394,221 eligible late moves (7.53%)** in bench; zero uses a normal
   full-depth PVS search and skips a redundant same-depth verification. Positive
   reductions retain the existing re-search path. No new parameter and no SPSA
-  are required. Gate this minimal candidate against the accepted 10.1 head;
-  if it fails, revert it and record the full coupled capstone as rejected.
+  are required. **Gate result:** `p1025a-zero` vs `p101-base`, 3+0.03, 1T,
+  64 MB, UHO: **+9.13 ±5.45 nElo**, +5.90 ±3.53 logistic Elo, LOS 99.95%,
+  15,594 games, H1 on `[0,3]`; W/L/D 4,152/3,887/7,555, draw ratio 42.12%,
+  Ptnml [295,1871,3284,1968,379], zero anomalies. Commit `74d4426` and
+  fingerprint 6,718,158 are the new accepted development baseline. The
+  coupled prospective-pruning design remains rejected by its deterministic
+  prerequisite; do not add it back on top of this win.
   **8.3 scope correction:** the rejected coupled form would have absorbed its
   stored-PV-bit graded adjustments. The selected 10.2.5(a) does not add that
   route; it leaves the already-fitted live `tt_pv` reduction term untouched.
@@ -1577,6 +1582,11 @@ explanation is needed.
         and re-fit once (this is also why the wave's search re-fits sit
         AFTER the conditional re-fit — they must tune against the final
         eval); if 10.2.5 is rejected, one run was the right number.
+        **Condition resolved 2026-08-03:** 10.2.5(a) was accepted before the
+        unconditional Texel run occurred. Therefore there is no obsolete
+        pre-capstone fit to repeat: generate from accepted commit `74d4426`
+        and perform **exactly one post-capstone fit and gate**, not two fits
+        from the same label generator.
 - **10.4.6 SPSA re-fit under the fixed schedule (added 2026-07-27, user
   request; REVISED same day to minimize tune count — SPSAs are the
   most expensive thing this project runs).** Every existing fit was
@@ -1871,13 +1881,12 @@ explanation is needed.
         If the gate loses WITH fail-soft, re-gate once at the fitted values
         without fail-soft (two binaries, no new tune) — that closes 8.11
         permanently either way.
-  - (b) **`config_lmr` family — ONLY if 10.2.5(a) zero-reduction LMR is
-        REJECTED.** The old rationale (“the capstone's own SPSA fitted this
+  - (b) **`config_lmr` family — DEFERRED TO POST-NNUE: 10.2.5(a) was
+        ACCEPTED.** The old rationale (“the capstone's own SPSA fitted this
         surface”) no longer applies because the selected minimal candidate has
         no new parameter and deliberately avoids another weekend-scale tune.
-        If 10.2.5(a) lands, accept the structural gain and defer broad LMR
-        fitting to the mandatory post-NNUE recalibration; if it rejects, this
-        remains the one pre-NNUE fallback. Optional zero-tune rider either way:
+        10.2.5(a) landed, so accept the structural gain and defer broad LMR
+        fitting to the mandatory post-NNUE recalibration. Optional zero-tune rider:
         `cutoffCnt` at hand-picked SF-shaped values, one flag-style gate,
         no family re-tune around it (8.6's trap was self-play aggression
         drift, which the schedule fix does not address).
@@ -1959,9 +1968,9 @@ explanation is needed.
   complete and found no isolated implementation regression. **10.1 is retained
   while any consumer remains; its producer cost is unmeasurable on the
   confirmed-idle rerun. 10.2.5's coupled pruning-depth form failed the
-  deterministic screen, and 10.2.5(a) zero-reduction LMR is implemented.**
-  Thus: **10.0 ✅ → 10.4.6(a) ✅ → 10.1 ✅ → gate 10.2.5(a), built on the
-  re-fitted surface → resolve 10.4.3's final/conditional Texel path → 10.2**
+  deterministic screen, while 10.2.5(a) zero-reduction LMR passed H1 at
+  +9.13 ±5.45 nElo.** Thus: **10.0 ✅ → 10.4.6(a) ✅ → 10.1 ✅ →
+  10.2.5(a) ✅ → one post-capstone 10.4.3 Texel fit/gate → 10.2**
   aspiration/TM on the final search/eval distribution, priced by 10.0(b)'s arm
   difference and acting as 10.1's first direct consumers → selected
   10.4 menu picks → 10.5 gauntlet + release.

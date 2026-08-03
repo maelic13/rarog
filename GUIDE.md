@@ -13,11 +13,11 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | | |
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
-| Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, fingerprint **6,477,102 / EBF 2.446**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
-| Working source | 10.1 retained; **10.2.5(a) zero-reduction LMR implemented, awaiting SPRT.** All 28 SPSA defaults remain baked and unchanged. |
-| Last strength results | **10.4.6(a): +15.33 ± 7.34 nElo, H1** (8,600 games, zero anomalies) vs pre-SPSA 2.3.1. Earlier boundary: **9.8 external gauntlet vs 2.2.0: +76 ± 21** at 1T 3+0.03, +78 ± 28 at 1T 10+0.1, +194 ± 24 at 4T 10+0.1. |
-| Current work | ▶ **10.2.5(a) zero-reduction LMR implemented; `[0,3]` gate next.** 10.1 is retained while any consumer remains; its idle-PC total cost is unresolved (~−0.3%, CI crosses zero) and producer-only cost is neutral. |
-| Next release | **2.4.0 at 10.5.** Actual next order: 10.2.5 accuracy capstone → resolve the final/conditional Texel path → 10.2 aspiration/TM with the retained 10.1 producer → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Accepted baseline | **10.2.5(a) zero-reduction LMR + 10.1 + 10.4.6(a)**, source `74d4426`, fingerprint **6,718,158 / EBF 2.460**. Clean gate binary: `rarog-p1025a-zero-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
+| Working source | Accepted 10.2.5(a); 10.1 retained. All 28 SPSA defaults remain baked and unchanged. |
+| Last strength results | **10.2.5(a): +9.13 ±5.45 nElo, H1** (15,594 games, zero anomalies) vs accepted 10.1 head. Before it, **10.4.6(a): +15.33 ±7.34 nElo, H1** vs pre-SPSA 2.3.1. |
+| Current work | ▶ **10.4.3: generate one post-capstone Texel dataset from `74d4426`, refit once, then gate.** Because no pre-capstone fit occurred, do not run two fits from the same generator. 10.1 remains retained while any consumer remains. |
+| Next release | **2.4.0 at 10.5.** Actual next order: one post-capstone 10.4.3 Texel fit/gate → 10.2 aspiration/TM with retained 10.1 → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -435,8 +435,8 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           375–429 ms generic figure is the one that was real.
     - [x] 10.3(gate) **[ACCEPTED]** — `[-3,0]` vs `p82a-rebuilt`,
           one run for the whole stack, 2026-07-22. Result in the parent item.
-- [ ] **▶ 10.2.5(a) Zero-reduction LMR — IMPLEMENTED, AWAITING `[0,3]`
-      SPRT.** The original unified prospective-depth capstone was decomposed
+- [x] **✅ 10.2.5(a) Zero-reduction LMR — ACCEPTED 2026-08-03.** The
+      original unified prospective-depth capstone was decomposed
       before games. Removing only the mandatory reduction floor widens bench
       6,477,102 → **6,718,158 (+3.72%)** and selects zero on 104,919 / 1,394,221
       eligible late moves (7.53%). Zero uses normal full-depth PVS and skips a
@@ -447,6 +447,9 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       pruning surface and gate only 10.2.5(a) against the accepted 10.1 head.
       The rejected coupling would have absorbed 8.3; this minimal candidate
       deliberately does not add persistent TT-PV behavior.
+      **Gate:** `p1025a-zero` vs `p101-base`, 3+0.03, 1T, 64 MB, UHO:
+      **+9.13 ±5.45 nElo**, LOS 99.95%, 15,594 games, H1 `[0,3]`, zero
+      anomalies. Commit `74d4426`, fingerprint 6,718,158, is accepted.
       ⚠ **Schedule this EARLY in the 2.4.0 cycle despite the number** — item
       numbers are frozen and do not imply order; a weeks-long item with a real
       chance of rejection needs runway, not the slot before a release.
@@ -651,8 +654,8 @@ improves 87.48% → 88.54%, and the LMR re-search rate is flat (1.74% → 1.76%)
 There is no isolated implementation hotspot to fix without changing the
 accepted search behaviour. Keep theta: the +15.33 nElo gate proves the wider,
 more expensive tree pays at clock time. 10.1 is complete and retained while
-any consumer remains. 10.2.5(a) zero-reduction LMR is now implemented and
-awaits its gate. Do not “recover” NPS by making pruning more aggressive without
+any consumer remains. 10.2.5(a) zero-reduction LMR is accepted at +9.13 ±5.45
+nElo. Do not “recover” NPS by making pruning more aggressive without
 a separately justified strength change.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
@@ -668,13 +671,14 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 
 | binary | bench | what it is |
 |---|--:|---|
-| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | accepted 10.4.6(a) development baseline |
+| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | previous 10.4.6(a) accepted baseline |
+| `rarog-p1025a-zero-pext-pgo.exe` | 6,718,158 | **current accepted development baseline**, 10.2.5(a) +9.13 nElo |
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-Next: gate 10.2.5(a) zero-reduction LMR → resolve its conditional
-Texel/final-eval path → 10.2 aspiration/TM (the first direct consumers of
-10.1) → selected 10.4 menu picks → the 2.4.0 boundary gauntlet at 10.5.
+Next: one post-capstone 10.4.3 Texel dataset/refit/gate from `74d4426` → 10.2
+aspiration/TM (the first direct consumers of 10.1) → selected 10.4 menu picks
+→ the 2.4.0 boundary gauntlet at 10.5.
 
 ## Working rhythm
 
