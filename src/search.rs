@@ -108,6 +108,98 @@ pub struct SearchResult {
     pub ponderhit: bool,
 }
 
+/// Persistent state for one legal root move across iterative-deepening passes.
+///
+/// Phase 10.1 deliberately only PRODUCES this information. Aspiration, time
+/// management, interrupted-iteration fallback, MultiPV, and SMP consumers land
+/// later, after the bookkeeping substrate is proven bench-identical.
+#[derive(Debug, Clone)]
+struct RootMove {
+    mv: Move,
+    score: i32,
+    previous_score: i32,
+    average_score: f64,
+    mean_squared_score: f64,
+    samples: u32,
+    last_search_depth: usize,
+    pv: [Move; MAX_PLY],
+    pv_len: usize,
+    nodes: u64,
+    seldepth: usize,
+    fail_highs: u32,
+    fail_lows: u32,
+    last_best_depth: usize,
+}
+
+impl RootMove {
+    fn new(mv: Move) -> Self {
+        let mut pv = [Move::NULL; MAX_PLY];
+        pv[0] = mv;
+        Self {
+            mv,
+            score: -INF_SCORE,
+            previous_score: -INF_SCORE,
+            average_score: 0.0,
+            mean_squared_score: 0.0,
+            samples: 0,
+            last_search_depth: 0,
+            pv,
+            pv_len: 1,
+            nodes: 0,
+            seldepth: 0,
+            fail_highs: 0,
+            fail_lows: 0,
+            last_best_depth: 0,
+        }
+    }
+
+    /// Freeze the last iteration's score before this iteration starts.
+    ///
+    /// If the new iteration is interrupted, `previous_score` remains the last
+    /// completed-iteration fallback while `score` may contain newer partial
+    /// information, matching the distinction later consumers need.
+    fn begin_iteration(&mut self) {
+        self.previous_score = self.score;
+    }
+
+    /// Root-only bookkeeping must not be inlined into the node kernel. Besides
+    /// executing only a few hundred times per search, keeping the floating
+    /// point/statistics block cold prevents it from perturbing `negamax`'s hot
+    /// code layout (the first 10.1 implementation measured a real NPS loss).
+    #[cold]
+    #[inline(never)]
+    fn record_search(
+        &mut self,
+        depth: usize,
+        score: i32,
+        nodes: u64,
+        seldepth: usize,
+        bound: RootBound,
+    ) {
+        self.score = score;
+        self.last_search_depth = depth;
+        self.nodes = self.nodes.saturating_add(nodes);
+        self.seldepth = self.seldepth.max(seldepth);
+        match bound {
+            RootBound::Lower => self.fail_highs = self.fail_highs.saturating_add(1),
+            RootBound::Upper => self.fail_lows = self.fail_lows.saturating_add(1),
+            RootBound::Exact => {}
+        }
+    }
+
+    /// Add exactly one distribution sample for a COMPLETED iteration. Failed
+    /// aspiration visits still update score/bounds/effort above, but must not
+    /// overweight volatile iterations in the statistics consumed by 10.2.
+    fn complete_iteration(&mut self) {
+        self.samples = self.samples.saturating_add(1);
+        let weight = 1.0 / f64::from(self.samples);
+        let score = f64::from(self.score);
+        self.average_score += (score - self.average_score) * weight;
+        let squared_score = score * score;
+        self.mean_squared_score += (squared_score - self.mean_squared_score) * weight;
+    }
+}
+
 // 9.0: `clippy::large_enum_variant` is deliberately allowed here. The `Full`
 // variant embeds a ScoredMoveList (~3 KB) inline, which is the point: a
 // MovePicker is constructed at EVERY interior node, and boxing the large
@@ -174,7 +266,11 @@ pub struct Searcher {
     stack_pieces: [Piece; MAX_PLY],
     stack_static_eval: [i32; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
+    /// Compact root-order/index backbone. Keep this separate from the larger
+    /// records below so existing move-membership and SMP hot reads retain
+    /// their pre-10.1 cache layout.
     root_moves: Vec<Move>,
+    root_move_records: Vec<RootMove>,
     lmr_table: Box<[[i32; 64]; 64]>,
     lmr_table_key: (i32, i32),
     main_history: Box<[[[i16; 64]; 64]; 2]>,
@@ -248,6 +344,7 @@ impl Default for Searcher {
             stack_static_eval: [VALUE_NONE; MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
+            root_move_records: Vec::new(),
             lmr_table: build_lmr_table(768, 2304),
             lmr_table_key: (768, 2304),
             main_history: Box::new([[[0; 64]; 64]; 2]),
@@ -760,6 +857,9 @@ impl Searcher {
         }
         self.root_moves.clear();
         self.root_moves.extend_from_slice(legal_moves);
+        self.root_move_records.clear();
+        self.root_move_records
+            .extend(legal_moves.iter().copied().map(RootMove::new));
         let mut bestmove = legal_moves[0];
         let mut pondermove = Move::NULL;
         let mut best_score = -INF_SCORE;
@@ -774,6 +874,9 @@ impl Searcher {
         let mut cast_stop_vote = false;
 
         for depth in 1..=max_depth {
+            for root_move in &mut self.root_move_records {
+                root_move.begin_iteration();
+            }
             let previous_bestmove = bestmove;
             self.root_iteration_nodes = self.nodes;
             self.root_best_nodes = 0;
@@ -872,6 +975,18 @@ impl Searcher {
                     } else {
                         Move::NULL
                     };
+                }
+                if let Some(root_move) = self
+                    .root_move_records
+                    .iter_mut()
+                    .find(|rm| rm.mv == bestmove)
+                {
+                    root_move.last_best_depth = depth;
+                }
+                for root_move in &mut self.root_move_records {
+                    if root_move.last_search_depth == depth {
+                        root_move.complete_iteration();
+                    }
                 }
                 break;
             }
@@ -1596,7 +1711,6 @@ impl Searcher {
         } else {
             Move::NULL
         };
-
         while let Some(picked) = move_picker.next(self, board) {
             let mv = picked.mv;
             if mv == excluded {
@@ -1889,18 +2003,8 @@ impl Searcher {
             // best-move-only summary would lose. `alpha` is still pre-update
             // here, so the classification reads: cutoff = Lower, raised
             // alpha = Exact, else Upper. Serial searches have no shared state.
-            if ply == 0
-                && let Some(shared) = &self.shared_state
-                && let Some(index) = self.root_moves.iter().position(|m| *m == mv)
-            {
-                let bound = if score >= beta {
-                    RootBound::Lower
-                } else if score > alpha {
-                    RootBound::Exact
-                } else {
-                    RootBound::Upper
-                };
-                shared.publish_root_score(index, depth, score, bound);
+            if ply == 0 {
+                self.record_root_move_search(mv, depth, score, alpha, beta, move_nodes);
             }
             if score > best_score {
                 best_score = score;
@@ -2800,6 +2904,57 @@ impl Searcher {
         }
     }
 
+    /// Publish and retain one completed root-move visit outside the hot node
+    /// kernel. The single cold call replaces several root-only branches that
+    /// the first 10.1 implementation placed directly in `negamax` and that
+    /// measured about -0.8% best-of NPS despite running only at the root.
+    #[cold]
+    #[inline(never)]
+    fn record_root_move_search(
+        &mut self,
+        mv: Move,
+        depth: i32,
+        score: i32,
+        alpha: i32,
+        beta: i32,
+        nodes: u64,
+    ) {
+        let Some(index) = self
+            .root_moves
+            .iter()
+            .position(|root_move| *root_move == mv)
+        else {
+            // Direct diagnostic/unit calls may enter root negamax without the
+            // normal `search_root` initialization. Search remains valid; there
+            // is simply no persistent table to update on that path.
+            return;
+        };
+        let bound = if score >= beta {
+            RootBound::Lower
+        } else if score > alpha {
+            RootBound::Exact
+        } else {
+            RootBound::Upper
+        };
+        if let Some(shared) = &self.shared_state {
+            shared.publish_root_score(index, depth, score, bound);
+        }
+
+        let root_move = &mut self.root_move_records[index];
+        // This is the cumulative search-wide seldepth at the time the move
+        // completes (the same low-cost shape used by Basilisk), so a later move
+        // may inherit a deeper earlier move's maximum. Exact per-move tracking
+        // required extra branches in every recursive move loop and measured a
+        // real speed loss; 10.2 should treat this field as a conservative max.
+        root_move.record_search(infra::to_usize(depth), score, nodes, self.seldepth, bound);
+        if score > alpha {
+            let child_len = self.pv_len[1].clamp(1, MAX_PLY);
+            root_move.pv[0] = mv;
+            root_move.pv[1..child_len].copy_from_slice(&self.pv_table[1][1..child_len]);
+            root_move.pv_len = child_len;
+        }
+    }
+
     fn corrected_eval(&mut self, board: &Board, ply: usize) -> i32 {
         let raw = self.raw_eval(board);
         self.corrected_eval_from_raw(board, raw, ply)
@@ -3262,6 +3417,79 @@ mod tests {
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
         assert_eq!(result.bestmove, forced);
+    }
+
+    #[test]
+    fn root_move_record_keeps_iteration_and_distribution_state() {
+        let mv = Move::from_uci("e2e4").expect("valid move");
+        let mut root_move = RootMove::new(mv);
+
+        root_move.record_search(1, 20, 100, 7, RootBound::Exact);
+        root_move.complete_iteration();
+        root_move.begin_iteration();
+        root_move.record_search(2, 40, 250, 9, RootBound::Upper);
+        root_move.record_search(2, -30, 50, 8, RootBound::Lower);
+        root_move.complete_iteration();
+
+        assert_eq!(root_move.mv, mv);
+        assert_eq!(root_move.previous_score, 20);
+        assert_eq!(root_move.score, -30);
+        assert_eq!(root_move.samples, 2);
+        assert!((root_move.average_score + 5.0).abs() < f64::EPSILON);
+        assert!((root_move.mean_squared_score - 650.0).abs() < f64::EPSILON);
+        assert_eq!(root_move.nodes, 400);
+        assert_eq!(root_move.seldepth, 9);
+        assert_eq!(root_move.fail_highs, 1);
+        assert_eq!(root_move.fail_lows, 1);
+        assert_eq!(root_move.pv_len, 1);
+        assert_eq!(root_move.pv[0], mv);
+    }
+
+    #[test]
+    fn search_populates_persistent_root_move_records() {
+        let mut searcher = Searcher::default();
+        let board = Board::default();
+        let legal = board.generate_legal_moves();
+        let limits = SearchLimits {
+            depth: Some(3),
+            ..SearchLimits::default()
+        };
+        searcher.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+            true,
+        );
+
+        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+
+        assert_eq!(searcher.root_move_records.len(), legal.len());
+        assert!(searcher.root_move_records.iter().all(|rm| {
+            rm.samples >= 3
+                && rm.previous_score > -INF_SCORE
+                && rm.score > -INF_SCORE
+                && rm.nodes > 0
+                && rm.seldepth > 0
+                && rm.pv[0] == rm.mv
+                && rm.mean_squared_score + 1e-9 >= rm.average_score * rm.average_score
+        }));
+        let best = searcher
+            .root_move_records
+            .iter()
+            .find(|rm| rm.mv == result.bestmove)
+            .expect("best move has a persistent record");
+        assert_eq!(best.last_best_depth, result.depth);
+        assert!(best.pv_len > 1);
+        assert!(
+            searcher
+                .root_move_records
+                .iter()
+                .map(|rm| rm.nodes)
+                .sum::<u64>()
+                <= result.nodes
+        );
     }
 
     /// The single-legal-move shortcut must save clock time WITHOUT truncating

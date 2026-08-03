@@ -16,8 +16,8 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **10.4.6(a) final theta + 8.11 fail-soft**, source `c810318`, fingerprint **6,477,102 / EBF 2.446**. Clean gate binary: `rarog-p1046a-theta-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
 | Working source | Accepted 10.4.6(a) baseline; all 28 SPSA defaults baked and reusable configs reset to those values for the future post-NNUE retune. |
 | Last strength results | **10.4.6(a): +15.33 ± 7.34 nElo, H1** (8,600 games, zero anomalies) vs pre-SPSA 2.3.1. Earlier boundary: **9.8 external gauntlet vs 2.2.0: +76 ± 21** at 1T 3+0.03, +78 ± 28 at 1T 10+0.1, +194 ± 24 at 4T 10+0.1. |
-| Current work | ✅ **10.4.6(a) ACCEPTED.** Tail-vs-theta replication also washed after 14,876 games (tail +0.84 ± 5.58 nElo), confirming no measured reason to depart from final theta. Next is 10.1 bookkeeping. |
-| Next release | **2.4.0 at 10.5.** Actual next order: 10.1 bookkeeping → 10.2.5 accuracy capstone → 10.2 aspiration/TM → menu → 10.4.3 one Texel re-fit → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Current work | ✅ **10.1 persistent RootMove records implemented, provisionally retained.** Bench remains 6,477,102; the enabled producer costs about 0.4–0.5% non-PGO NPS and must earn that cost through an accepted 10.2 consumer. Next is 10.2.5. |
+| Next release | **2.4.0 at 10.5.** Actual next order: 10.2.5 accuracy capstone → resolve the final/conditional Texel path → 10.2 aspiration/TM with the retained 10.1 producer → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -255,7 +255,18 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       for the mandatory post-NNUE retune. The setup bug that briefly wrote
       `A=0.0965` instead of 500 was caught before this tune's first launch;
       this completed run used the asserted `A=500` schedule.
-- [ ] 10.1 Persistent `RootMove` records (bench-identical enabler; no games)
+- [x] **10.1 Persistent `RootMove` records — IMPLEMENTED 2026-08-03,
+      provisionally retained.** Every legal root move now keeps current/prior
+      score, completed-iteration mean and mean-square, fixed-capacity full PV,
+      cumulative nodes, conservative seldepth, fail-high/low counts, and
+      last-best depth. Existing compact `Vec<Move>` ordering/SMP indexing stays
+      separate; recording is a cold root-only path. Full tests and Clippy pass;
+      bench is identical at 6,477,102. A compiler-matched non-PGO screen found
+      a small real producer cost (~−0.48% mean, −0.64% median; allocation and
+      hot-layout variants were worse). Keep it while either 10.2 aspiration or
+      root-informed TM remains a live consumer. If the entire 10.2 package
+      yields no accepted consumer, revert 10.1 to recover the cost; preserve
+      the commit for later MultiPV/Phase-14 SMP work.
 - [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
       **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
       One `[0,3]` (+ LTC for TM)
@@ -631,9 +642,9 @@ nodes 3.193M → 4.007M (+25.52%) while qsearch grows only about 2.128M → 2.47
 improves 87.48% → 88.54%, and the LMR re-search rate is flat (1.74% → 1.76%).
 There is no isolated implementation hotspot to fix without changing the
 accepted search behaviour. Keep theta: the +15.33 nElo gate proves the wider,
-more expensive tree pays at clock time. Continue with 10.1; do not “recover”
-NPS by making pruning more aggressive without a separately justified strength
-change.
+more expensive tree pays at clock time. 10.1 is now complete; continue with
+10.2.5. Do not “recover” NPS by making pruning more aggressive without a
+separately justified strength change.
 
 🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
 `A=0.0965` instead of `A=500`, because PowerShell variable names are
@@ -652,9 +663,10 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
 
-Next: 10.1 bookkeeping (no games) → 10.2.5 capstone, re-scoped toward
-accuracy → 10.2 aspiration/TM → 10.4 menu picks → 10.4.3 one Texel re-fit →
-the 2.4.0 boundary gauntlet at 10.5.
+Next: 10.2.5 capstone, re-scoped toward accuracy → resolve its conditional
+Texel/final-eval path → 10.2 aspiration/TM (which must earn 10.1's measured
+producer cost) → selected 10.4 menu picks → the 2.4.0 boundary gauntlet at
+10.5.
 
 ## Working rhythm
 

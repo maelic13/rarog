@@ -34,8 +34,9 @@ the shared `strength-v1` profile: 600/3 one-sided. The independent
 tail-vs-theta replication was stopped after 14,876 games as a wash (+0.84 ±
 5.58 nElo), confirming no measured reason to replace conventional final
 theta. Post-acceptance attribution found no isolated code-speed regression;
-the lower NPS comes from a larger share of expensive main-search nodes. Next
-implementation item is 10.1 bookkeeping.
+the lower NPS comes from a larger share of expensive main-search nodes.
+**10.1 persistent RootMove bookkeeping is now implemented and provisionally
+retained; next is 10.2.5.**
 
 ## S2. The development process
 
@@ -1315,13 +1316,29 @@ explanation is needed.
   equal nodes Rarog is 2.5 plies deeper and 65 Elo weaker, and a blind 15 %
   widening of the surface gains +4.06. Cost: three matches and one counter.
 
-- **10.1 Persistent `RootMove` records** (search §6): per root move —
+- **✅ 10.1 Persistent `RootMove` records — IMPLEMENTED 2026-08-03,
+  provisionally retained** (search §6): per root move —
   `score, previous_score, average_score, mean_squared_score, pv, nodes,
-  seldepth, fail_highs, fail_lows, last_best_depth`. Pure bookkeeping first:
-  **bench-identical, no games** — the substrate for 10.2, the Phase-14 SMP
-  diversity work, better interrupted-iteration fallback, and MultiPV later.
-  Today root state is a bare `Vec<Move>` plus the current best result
-  (`search.rs:172`). EV 0 direct; enabler.
+  seldepth, fail_highs, fail_lows, last_best_depth`. The compact `Vec<Move>`
+  remains the ordering/SMP index backbone and the larger records are a sidecar,
+  so existing root reads keep their old cache layout. PV storage is a bounded
+  `[Move; MAX_PLY]` buffer (no per-move heap allocation); score distribution
+  samples are added once per COMPLETED iteration, while failed aspiration
+  visits still contribute bound counts and effort. The producer is a cold,
+  non-inlined root-only call. Full suite and Clippy pass; **bench-identical at
+  6,477,102**, no games required.
+
+  **Measured cost and contingency:** the first large-record/hot-layout form
+  measured −1.02% median NPS; outlining, compact sidecar storage, fixed PVs,
+  and completed-iteration sampling reduced it. The retained compiler-matched
+  non-PGO screen reads roughly **−0.48% mean / −0.64% median / −0.40%
+  best-of**; a temporary no-producer build was neutral by mean/median (−0.06% /
+  −0.12%), attributing the residual to actually producing the data rather than
+  storage or build noise. Keep 10.1 while EITHER 10.2(a) aspiration or 10.2(b)
+  root-informed TM remains live. If the entire near-term 10.2 package yields
+  no accepted consumer, revert 10.1 and recover the cost; keep this commit as
+  the ready substrate for later MultiPV and Phase-14 SMP work. EV 0 direct;
+  its consumer must earn the cost.
 - **10.2 Aspiration + time-management consumers** (absorbs old 8.6; needs
   10.1): (a) **aspiration modernization** — running-average centre,
   magnitude-scaled asymmetric delta growth, fail-high depth-reduced
@@ -1911,13 +1928,13 @@ explanation is needed.
   **Actual execution as of 2026-08-02:** 10.4.6(a) completed all 5,000
   iterations / 160,000 games and passed H1 at +15.33 ± 7.34 nElo. Final theta
   is baked; both tail comparisons washed; post-acceptance NPS attribution is
-  complete and found no isolated implementation regression. Thus: **10.0 ✅ →
-  10.4.6(a) ✅ — the accepted selectivity re-fit → 10.1 bookkeeping
-  → 10.2.5 capstone,
-  RE-SCOPED toward accuracy, built on the re-fitted surface → 10.2**
-  aspiration/TM, priced by 10.0(b)'s arm difference → 10.4 menu picks →
-  **10.4.3 Texel re-fit DEMOTED** (eval measured at parity, so it is cheap
-  insurance rather than the lever) → 10.5 gauntlet + release.
+  complete and found no isolated implementation regression. **10.1 is now
+  implemented and provisionally retained.** Thus: **10.0 ✅ → 10.4.6(a) ✅ →
+  10.1 ✅ → 10.2.5 capstone, RE-SCOPED toward accuracy, built on the re-fitted
+  surface → resolve 10.4.3's final/conditional Texel path → 10.2**
+  aspiration/TM on the final search/eval distribution, priced by 10.0(b)'s arm
+  difference and required to earn 10.1's measured producer cost → selected
+  10.4 menu picks → 10.5 gauntlet + release.
   ⛔ **Standing constraint from 10.0(c): no Phase-10 item may be built to prune
   or reduce HARDER without an explicit argument against this result.** That
   closes off the direction 8.6 / 8.7 / 8.10 / 8.11 all died in, and it is now a
