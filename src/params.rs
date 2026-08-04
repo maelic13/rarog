@@ -100,6 +100,52 @@ search_params! {
     /// Initial aspiration window half-width (centipawns). [search.rs:615]
     aspiration_delta = 21, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30 → 21
 
+    // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
+    // The widening loop is parameterised so its shape can be SPSA'd rather than
+    // hardcoded. EVERY default below reproduces the pre-10.2 behaviour exactly,
+    // so this lands bench-identical and the tune activates it (principle #5).
+    // That staging is deliberate: lesson 13 records that adopting a modern
+    // aspiration shape WITHOUT re-tuning its constants measured −4.52, because
+    // `AspirationDelta` and the pruning group were fitted around the old
+    // dynamics. Ship the mechanism inert, fit it, then gate it.
+    /// Delta growth per fail-LOW, in percent of the current delta.
+    /// 150 reproduces the old `d + d/2` (both are `floor(3d/2)`).
+    asp_growth_pct = 150, "AspGrowthPct", 100..=400;
+    /// Delta growth per fail-HIGH, in percent. Separate from the fail-low side
+    /// so the growth can become asymmetric — fail-highs and fail-lows carry
+    /// different information, and nothing forced them to share a rate except
+    /// that the old code was written as one expression. 150 = old behaviour.
+    asp_growth_high_pct = 150, "AspGrowthHighPct", 100..=400;
+    /// Additive term applied with the growth, so a small delta still escapes
+    /// its own rounding. 5 = old behaviour.
+    asp_growth_add = 5, "AspGrowthAdd", 0..=50;
+    /// ⛔ TERMINATION BY CONSTRUCTION. After this many consecutive fails on one
+    /// side, that side opens to ±INF unconditionally, so it cannot fail again;
+    /// the loop is bounded at `2 × asp_max_fails` iterations regardless of
+    /// score magnitude. This is what lets 10.2(a) retire the 7.0b hang guard,
+    /// which special-cased mate scores and delta saturation instead.
+    ///
+    /// Seeded at 20 because the delta needs ~18 growth steps to saturate from
+    /// the seed, so the counter never fires first and behaviour is unchanged.
+    /// The interesting direction is DOWN — engines that re-search a bounded
+    /// number of times before opening fully spend far fewer nodes on a
+    /// runaway iteration — which is exactly what the tune explores.
+    asp_max_fails = 20, "AspMaxFails", 1..=32;
+    /// Weight (percent) of the running average of completed root scores in the
+    /// window centre, against this thread's last completed score. 0 = the old
+    /// pure last-score centre. A centre that follows an average is less
+    /// whipsawed by a single noisy iteration.
+    asp_center_avg_pct = 0, "AspCenterAvgPct", 0..=100;
+    /// Magnitude scaling: the initial half-width gains `|centre| / div`, so a
+    /// won position opens a proportionally wider window than an equal one.
+    /// 0 disables it and reproduces the flat initial delta.
+    asp_magnitude_div = 0, "AspMagnitudeDiv", 0..=64;
+    /// Depth reduction per consecutive fail-HIGH on the re-search. A fail-high
+    /// means the move is better than believed; confirming that at slightly
+    /// reduced depth is cheaper and usually sufficient. 0 = old behaviour
+    /// (always re-search at full depth).
+    asp_fail_high_reduction = 0, "AspFailHighReduction", 0..=3;
+
     /// 9.7.5 lead (found while decomposing 8.11): minimum TT entry depth for
     /// the `eval_for_pruning` refinement, which lets a TT score stand in for
     /// the static eval when deciding RFP / razoring / NMP / LMP.

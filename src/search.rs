@@ -899,10 +899,34 @@ impl Searcher {
             {
                 window_center = pool_score;
             }
+            // 10.2(a): blend the last completed score with the running average
+            // of completed scores. `asp_center_avg_pct == 0` skips this
+            // entirely and keeps the pure last-score centre bit-for-bit.
+            if self.params.asp_center_avg_pct > 0 && completed_depth > 1 {
+                let pct = self.params.asp_center_avg_pct;
+                // KEEP-ALLOW: the value is clamped into the score domain
+                // BEFORE the cast, so this conversion is provably exact rather
+                // than merely saturating — `[-INF_SCORE, INF_SCORE]` is far
+                // inside `i32`, and `.round()` is the rounding intended. The
+                // clamp also makes NaN handling explicit instead of relying on
+                // the language's float-cast NaN rule.
+                #[allow(clippy::cast_possible_truncation)]
+                let avg = prev_avg_score
+                    .round()
+                    .clamp(-f64::from(INF_SCORE), f64::from(INF_SCORE))
+                    as i32;
+                window_center = (window_center * (100 - pct) + avg * pct) / 100;
+            }
             let use_aspiration =
                 depth >= 4 && window_center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-            let mut alpha_delta = self.params.aspiration_delta;
-            let mut beta_delta = self.params.aspiration_delta;
+            // 10.2(a): magnitude-scaled initial half-width; div 0 = flat.
+            let base_delta = if self.params.asp_magnitude_div > 0 {
+                self.params.aspiration_delta + window_center.abs() / self.params.asp_magnitude_div
+            } else {
+                self.params.aspiration_delta
+            };
+            let mut alpha_delta = base_delta;
+            let mut beta_delta = base_delta;
             let mut alpha = if use_aspiration {
                 (window_center - alpha_delta).max(-INF_SCORE)
             } else {
@@ -913,11 +937,24 @@ impl Searcher {
             } else {
                 INF_SCORE
             };
+            // 10.2(a) TERMINATION BY CONSTRUCTION: once a side has failed
+            // `asp_max_fails` times it is opened to ±INF and cannot fail again,
+            // so this loop runs at most `2 * asp_max_fails` times whatever the
+            // scores do. That is the property the old 7.0b guard bought with
+            // mate-magnitude and saturation special cases; the counter makes it
+            // structural instead of case-based.
+            let mut fail_low_count = 0i32;
+            let mut fail_high_count = 0i32;
 
             loop {
+                // 10.2(a): confirm a fail-high at slightly reduced depth. The
+                // reduction is 0 by default, which searches at full depth.
+                let search_depth = (infra::to_i32(depth)
+                    - fail_high_count * self.params.asp_fail_high_reduction)
+                    .max(1);
                 let score = self.negamax(
                     &mut board,
-                    infra::to_i32(depth),
+                    search_depth,
                     alpha,
                     beta,
                     0,
@@ -946,8 +983,12 @@ impl Searcher {
                 // were tuned around the old window dynamics (lesson 13).
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
-                    alpha_delta = (alpha_delta + alpha_delta / 2 + 5).min(INF_SCORE);
-                    alpha = if alpha_delta >= INF_SCORE
+                    fail_low_count += 1;
+                    alpha_delta = (alpha_delta * self.params.asp_growth_pct / 100
+                        + self.params.asp_growth_add)
+                        .min(INF_SCORE);
+                    alpha = if fail_low_count >= self.params.asp_max_fails
+                        || alpha_delta >= INF_SCORE
                         || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
                     {
                         -INF_SCORE
@@ -959,8 +1000,12 @@ impl Searcher {
                 }
                 if score >= beta {
                     crate::diag_count!(asp_fail_high);
-                    beta_delta = (beta_delta + beta_delta / 2 + 5).min(INF_SCORE);
-                    beta = if beta_delta >= INF_SCORE
+                    fail_high_count += 1;
+                    beta_delta = (beta_delta * self.params.asp_growth_high_pct / 100
+                        + self.params.asp_growth_add)
+                        .min(INF_SCORE);
+                    beta = if fail_high_count >= self.params.asp_max_fails
+                        || beta_delta >= INF_SCORE
                         || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
                     {
                         INF_SCORE

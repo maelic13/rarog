@@ -75,7 +75,7 @@ is 0.002, the same order. Larger = hotter = more late wander.
     ./tools/spsa.ps1 -ConfigGroup history -LaunchOnly
 #>
 param(
-    [ValidateSet("selectivity","pruning","lmr","histcov","corr","probcut","futility","tm","lazymargin","history","see")]
+    [ValidateSet("aspiration","selectivity","pruning","lmr","histcov","corr","probcut","futility","tm","lazymargin","history","see")]
     [string]$ConfigGroup = "lmr",
     [int]$Iterations = 5000,
     [double]$REnd = 0.0031,
@@ -135,6 +135,7 @@ if ($LogFile -eq "") { $LogFile = Join-Path $PSScriptRoot "results\spsa_$ConfigG
 if (-not $LaunchOnly) {
     if ($EngineSuffix -eq "") {
         $EngineSuffix = switch ($ConfigGroup) {
+            "aspiration" { "p102a" }
             "selectivity" { "p1046a" }
             "lmr" { "p86-lmr" }
             "histcov" { "p84-histcov" }
