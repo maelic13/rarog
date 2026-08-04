@@ -144,6 +144,19 @@ search_params! {
     /// means the move is better than believed; confirming that at slightly
     /// reduced depth is cheaper and usually sufficient. 0 = old behaviour
     /// (always re-search at full depth).
+    ///
+    /// ⛔ **NOT in the `aspiration` SPSA group — it is effectively discrete.**
+    /// With only four reachable values, the perturbation needed to move it is
+    /// a large fraction of its whole range, and the coverage audit rejects it
+    /// outright: at `step = 1` the perturbation rounds to zero from iteration
+    /// 894 of 5,000, so for 82 % of the run both arms would receive the SAME
+    /// integer while the knob kept being updated by the other knobs' gradient —
+    /// a random walk that drags the joint fit. Raising the step to keep it
+    /// alive would make one perturbation span two thirds of the range, which is
+    /// a noisy A/B wearing a tuner's clothes rather than a gradient.
+    /// Handled like the project's other discrete knobs (`CorrGuardCapture`,
+    /// `FutilityImprovingDir`): gate it on its own AFTER the continuous tune
+    /// lands, under the winning vector.
     asp_fail_high_reduction = 0, "AspFailHighReduction", 0..=3;
 
     /// 9.7.5 lead (found while decomposing 8.11): minimum TT entry depth for

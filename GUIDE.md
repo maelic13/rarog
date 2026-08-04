@@ -283,9 +283,39 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       withdrawn. **Keep 10.1 while any consumer remains; remove it only if all
       consumers are removed/rejected.** Preserve `1259013` for later
       MultiPV/Phase-14 SMP even if it leaves the active line.
-- [ ] 10.2 (a) aspiration modernization — retires the 7.0b guard, retuned;
-      **(a′) revives 7.5's TM fix + `tm` re-SPSA** if it H0'd standalone.
-      One `[0,3]` (+ LTC for TM)
+- [~] 10.2(a) **Aspiration shape — MECHANISM LANDED INERT, SPSA READY.**
+      The widening loop is now parameterised instead of hardcoded, and lands
+      **bench-identical at 6,502,902 / EBF 2.449**: every seed reproduces the
+      old arithmetic exactly, so the tune activates it rather than a blind
+      shape change. That staging is lesson 13 applied — the un-retuned modern
+      shape measured −4.52 because the constants were fitted around the old
+      dynamics.
+      ⛔ **7.0b's hang guard is superseded by termination BY CONSTRUCTION**:
+      after `AspMaxFails` consecutive fails a side opens to ±INF and cannot
+      fail again, bounding the loop at `2 × AspMaxFails` iterations whatever
+      the scores do. The old mate/saturation cases are retained (they open
+      earlier where that is correct) but no longer carry the guarantee.
+      `AspMaxFails` seeds at 20 so the delta saturates first and behaviour is
+      unchanged; the interesting direction is DOWN.
+      7 knobs in the tune: `AspirationDelta`, `AspGrowthPct`,
+      `AspGrowthHighPct` (split from the low side so growth can go
+      asymmetric), `AspGrowthAdd`, `AspMaxFails`, `AspCenterAvgPct`,
+      `AspMagnitudeDiv`.
+      ⛔ `AspFailHighReduction` is **excluded and gated separately** — with four
+      reachable values the audit rejects it (perturbation rounds to zero from
+      iteration 894 of 5,000, so 82% of the run would feed both arms the same
+      integer while still updating it). Discrete knobs get their own A/B after
+      the continuous tune, like `CorrGuardCapture`.
+      Verified: audit clean on both hard-error classes; all 7 knobs present in
+      `rarog-p102a-tune.exe` with seeds matching engine defaults and ranges
+      inside the clamps; `aspiration_terminates_on_sudden_mate_scores` passes;
+      19 test blocks green debug and release; schedule asserted `A=500`,
+      `a=0.09655`; runner now on `strength-v1` 600/3 one-sided.
+- [ ] 10.2(a′) **TM escalation slot** — 7.5's `falling_eval` fix re-enters
+      bundled with the `tm`-group re-SPSA if it H0'd standalone; joint verdict
+- [ ] 10.2(b) **Root-informed TM** — root variance / effort distribution /
+      stability age on top of 10.1's `RootMove` records; `[0,3]` **+ LTC
+      confirm** (TC-sensitive)
 - [x] 10.3 **[ACCEPTED +20.31 ± 7.13, nElo +33.06, LOS 100%]** Profile-guided
       speed pass — the whole stack passed its `[-3,0]` batch gate in one run
       (3,460 games, 3+0.03, H1; Ptnml [42,353,779,473,83], PairsRatio 1.41).
@@ -706,6 +736,38 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
+**10.2(a) SPSA — the aspiration shape.** Setup has run and is verified; this is
+the launch:
+
+```powershell
+./tools/spsa.ps1 -ConfigGroup aspiration -LaunchOnly -Iterations 5000
+```
+
+7 knobs, 5,000 iterations ≈ 160,000 games ≈ 40 h — two nights. It stops itself
+at 5,000. Ctrl-C is safe and you resume with the **same command**; never the
+plain setup+launch form, which archives `state.json` and restarts from the
+seeds. The machine is fully occupied while it runs (concurrency 14 of 16): no
+NPS work, no SPRT, no bench.
+
+⚠ **Unlike 10.4.6, every seed reproduces today's behaviour** — the mechanism
+landed inert and bench-identical, so there is no known-better starting point.
+A wash therefore means the old aspiration shape was already right, which is a
+legitimate and useful result rather than a failure. The knobs most likely to
+move are `AspMaxFails` (down, toward a bounded number of re-searches before
+opening fully) and `AspGrowthHighPct` (away from `AspGrowthPct`, if fail-highs
+really do want a different rate from fail-lows).
+
+📌 At ~1,500 iterations, paste the trajectory and I'll run the thirds test.
+Then: bake → **`cargo fmt`** → PGO build → one `[0,3]` against
+`rarog-p1043-base-pext-pgo.exe`.
+
+Afterwards: 10.2(a′) TM escalation and 10.2(b) root-informed TM (the first real
+consumers of 10.1's `RootMove` records), then `AspFailHighReduction` as its own
+discrete A/B, then 10.4 menu picks, the refresh trigger for 10.4.3, and the
+2.4.0 boundary matrix at 10.5.
+
+### Record from the previous steps
+
 The tail-mean-vs-final-theta selection was stopped as a clear wash after 1,800
 games: tail +1.19 ± 16.05 nElo, LLR −0.01, W/L/D 463/459/878, zero anomalies.
 Use **final theta**, meaning the values under `Final parameters` in the tuner
@@ -765,14 +827,13 @@ Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
 
 | binary | bench | what it is |
 |---|--:|---|
-| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | previous 10.4.6(a) accepted baseline |
-| `rarog-p1025a-zero-pext-pgo.exe` | 6,718,158 | **current accepted development baseline**, 10.2.5(a) +9.13 nElo |
+| `rarog-p1043-base-pext-pgo.exe` | 6,502,902 | **current accepted baseline**, clean manifest — gate against this |
+| `rarog-p102a-tune.exe` | 6,502,902 | 10.2(a) tune binary, 7 aspiration knobs |
+| `rarog-p1043-refit-pext-pgo.exe` | 6,502,902 | the 10.4.3 gate candidate (built `git_dirty`; superseded by p1043-base) |
+| `rarog-p1025a-zero-pext-pgo.exe` | 6,718,158 | pre-10.4.3 baseline, 10.2.5(a) +9.13 nElo |
+| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | 10.4.6(a) accepted baseline |
 | `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
 | `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
-
-Next: 10.4.3 20k pilot → measured disjoint continuation → one refit/gate → 10.2
-aspiration/TM (the first direct consumers of 10.1) → selected 10.4 menu picks
-→ the 2.4.0 boundary gauntlet at 10.5.
 
 ## Working rhythm
 
