@@ -16,6 +16,7 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | Accepted baseline | **10.2.5(a) zero-reduction LMR + 10.1 + 10.4.6(a)**, source `74d4426`, fingerprint **6,718,158 / EBF 2.460**. Clean gate binary: `rarog-p1025a-zero-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
 | Working source | Accepted 10.2.5(a); 10.1 retained. All 28 SPSA defaults remain baked and unchanged. |
 | Last strength results | **10.2.5(a): +9.13 ±5.45 nElo, H1** (15,594 games, zero anomalies) vs accepted 10.1 head. Before it, **10.4.6(a): +15.33 ±7.34 nElo, H1** vs pre-SPSA 2.3.1. |
+| Rating position | Anchored ladder (PLAN §S3a, 3+0.03, Rybka-4-anchored): **Rarog 2.3.0 = 2952**, dev head ≈ 2968. Basilisk 1.9.2 **3005** (+53 over 2.3.0) · Rybka 4 **3102** · Critter 1.6a **3176** · Houdini 1.5a **3186** · SF dev 3780. ⛔ The old "~3000 CCRL" estimate is retracted — never measured. ⛔ So is "HCE tops out at 3100–3250": mature HCE (Houdini 4-6, Komodo ≤13/14, SF ≤11) reached **~3400–3450**, so there is **~450–500 Elo of proven HCE headroom** above us. |
 | Current work | ▶ **10.4.3 pilot ready.** The accepted `74d4426` PGO label generator and new 750k phase-balanced seed are verified. User runs only games 1..20,000; preflight calculates the exact disjoint continuation. Then refit once and gate once. |
 | Next release | **2.4.0 at 10.5.** Actual next order: one post-capstone 10.4.3 Texel fit/gate → 10.2 aspiration/TM with retained 10.1 → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
 
@@ -507,8 +508,34 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       unhelpful, and it made a CI test race (fixed by raising its node budget,
       not by changing the engine). Output-only, so bench-identical and needs no
       SPRT. See PLAN 10.6.
-- [ ] **▶ 10.5 RELEASE 2.4.0 — YOU run the boundary gauntlet, tag & publish
-      `v2.4.0`** (root / speed)
+- [ ] **▶ 10.5 RELEASE 2.4.0 — YOU run the boundary MATRIX, tag & publish
+      `v2.4.0`** (root / speed). Not a single gauntlet: repeat 9.8's four
+      conditions — {1T, 4T} × {3+0.03, 10+0.1} — against **Basilisk 1.9.3**
+      (which carries its own SMP work) and re-anchor to the §S3a ladder so the
+      output is an absolute rating, not just a delta. The 4T comparison is
+      genuinely contested: Rarog led at 4T 10+0.1 (+34 ± 24) on 8.13's SMP
+      rework and 1.9.3 targets exactly that. Report the 9.8 decomposition —
+      what more time is worth, what more threads are worth, and whether the 1T
+      deficit is still TC-independent
+- [ ] 10.7 **Search-accuracy decomposition against Critter 1.6a** — the
+      highest-value diagnostic after 2.4.0. 10.0 ran this against Basilisk
+      (37 ahead) and its over-pruning diagnosis has paid **+15.7 logistic Elo**
+      so far. Critter is **224** ahead, so the same cheap measurements should
+      show a far larger, cleaner signal
+    - [ ] (a) Equal-nodes depth and speed (`tools/pgn_depth_at_nodes.py`).
+          Against Basilisk, Rarog was 2.5 plies DEEPER at equal nodes and 65
+          Elo weaker; the equivalent ratio against Critter is the single most
+          informative number available
+    - [ ] (b) Paired clock and fixed-nodes arms, same seed (10.0(b)'s design),
+          separating search quality from speed and time management
+    - [ ] (c) Re-read first-move cutoff rate and LMR over-reduction
+          (`tools/diag_search_quality.ps1`) on the 2.4.0 head against 10.0(a)'s
+          87.65% / 1.80%. Over-reduction especially should have moved —
+          10.2.5(a) removed the reduction floor that was its prime suspect
+          ⚠ Critter's internals are off-limits: (a) and (c) are absolute
+          readings on Rarog, (b) is the head-to-head. Do NOT assume the
+          Basilisk diagnosis transfers — the answer may be ordering, evaluation
+          quality or endgame technique rather than selectivity
 
 ### ━━━ NNUE CUTOFF ━━━ (Phase 11 opens the NNUE line; nothing below survives on HCE)
 

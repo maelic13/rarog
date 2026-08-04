@@ -502,9 +502,56 @@ Model does 1–6; **the user runs the boundary gauntlet and publishes (7–8)**:
    let the release workflow build and smoke-test its assets.
 
 **Opponent ladder** (gauntlets, `tc=10+0.1`): Rarog 2.0.2 + 2.2.0 (own history),
-Basilisk 1.5.x/1.8.0 (sibling), **Critter 1.6a** (~3150–3200, the engine to
-beat), SF `UCI_Elo`-capped 2700→2800→3000 (keep Rarog scoring 30–70 %), one
-independent mid HCE (Lambergar/Peacekeeper/Igel).
+Basilisk (sibling, current release), **Critter 1.6a** (measured 3176 — the
+engine to beat), SF `UCI_Elo`-capped 2700→2800→3000 (keep Rarog scoring
+30–70 %), one independent mid HCE (Lambergar/Peacekeeper/Igel).
+
+### S3a. Rating baseline — the measured ladder (2026-08-04)
+
+⛔ **The old "~3000 CCRL for 2.2.0" figure is RETRACTED. It was never measured**
+— it was a hand estimate that then got chained into later reasoning as though it
+were data, which is exactly the error lesson 12 warns about. Replaced by a real
+anchored measurement: a 3+0.03 tournament over the full engine library, anchored
+on Rybka 4's archived CCRL Blitz rating.
+
+| engine | rating | vs Rarog 2.3.0 |
+|---|--:|--:|
+| Stockfish dev / 18 | 3780 / 3775 | +828 |
+| Shredder 13 | 3271 | +319 |
+| **Houdini 1.5a** | **3186** | **+234** |
+| **Critter 1.6a** | **3176** | **+224** |
+| Rybka 4.1 / 4 | 3108 / 3102 | +150 |
+| **Basilisk 1.9.2** | **3005** | **+53** |
+| Basilisk 1.9.1 / 1.9.0 | 3002 / 3001 | +50 |
+| **Rarog 2.3.0** | **2952** | — |
+| Rybka 3 | 2934 | −18 |
+| Basilisk 1.8.0 | 2904 | −48 |
+| Rarog 2.2.0 | 2882 | −70 |
+| Rarog 2.1.0 | 2700 | −252 |
+| Rarog 2.0.2 | 2625 | −327 |
+
+This is a self-consistent internal list at one TC with one anchor; it is **not**
+CCRL-comparable in absolute terms, and absolute values will shift if the pool or
+anchor changes. It is exactly right for tracking progress and sizing deficits,
+which is what it is used for. The 2.2.0 → 2.3.0 delta (+70) is consistent with
+the 9.8 gauntlet's independently measured +76 ± 21 / +78 ± 28.
+
+⛔ **A second retraction: "an HCE eval tops out around 3100–3250" is WRONG.**
+Houdini 1.5a and Critter 1.6a are *early* HCE engines, not the top of the era.
+Houdini 4/5/6, Komodo through 13/14, and Stockfish through SF11 were all
+hand-crafted evaluations in roughly the **3400–3450** band. **The HCE ceiling is
+about 3450, so there is ~450–500 Elo of demonstrated headroom above Rarog's
+current rating.** NNUE is therefore not the only path forward, and the plan must
+not be read as though it were: Phase 12 remains the largest single lever, but
+search and HCE-representation work have hundreds of Elo of proven room and are
+not a holding action.
+
+**Implication for planning.** Nobody reached 3400 on an insight; SF11 got there
+through thousands of individually gated small patches. This project has landed
+roughly fifty. The 224 to Critter is on the order of 15–25 further accepted
+items of the size recently landed — 10.0's single diagnosis has already produced
++15.7 logistic Elo (10.4.6(a) +9.78, 10.2.5(a) +5.90) with 10.2 and the 10.4
+menu still untouched.
 
 ---
 
@@ -542,8 +589,9 @@ PGO build pipeline.
   boundary), scalars **+85.2**, imbalance **+26.7** (deliberate small OCB bucket
   regression — OCB drawishness is scaling, not material), material+PST **+27.6**,
   global polish **+65.0**. Baked via `tools/texel/bake_params.py`, bench-match
-  verified. External gauntlet: **+240 over 2.1.0, ~3000 CCRL** (~75 % of
-  self-play gain transferred).
+  verified. External gauntlet: **+240 over 2.1.0** (~75 % of self-play gain
+  transferred). ⛔ The "~3000 CCRL" once written here was a hand estimate, never
+  a measurement; 2.2.0 measures **2882** on the anchored ladder (§S3a).
 
 ### 2.3.0 — Phases 7–9 (correctness + search wave + build program)
 
@@ -2081,6 +2129,41 @@ explanation is needed.
   program.** The decision here is architecture/compute sizing, not whether
   to avoid NNUE: the large HCE fallback is considered only after a real
   Phase-12 prototype has failed or stalled.
+  **The boundary measurement is now a MATRIX, not a single gauntlet
+  (2026-08-04).** Repeat the four-condition table from 9.8 — {1T, 4T} ×
+  {3+0.03, 10+0.1} — with the 2.4.0 head against **Basilisk's current release
+  (1.9.3, which carries its own SMP work)** and re-anchored to the §S3a ladder
+  so the result is an absolute rating, not only a delta. Two reasons this is
+  worth more than last time: the ladder now has meaning, and the 4T comparison
+  is genuinely contested — Rarog led at 4T 10+0.1 (+34 ± 24) on 8.13's SMP
+  rework, and 1.9.3 targets exactly that advantage. Report the same
+  decomposition 9.8 used: more-time worth, more-threads worth, and whether the
+  1T deficit is still TC-independent.
+- **10.7 Search-accuracy decomposition against Critter 1.6a — the highest-value
+  diagnostic after 2.4.0 (added 2026-08-04).** 10.0 ran this against Basilisk
+  because it was a same-eval, same-speed reference; the diagnosis it produced
+  (over-pruning) has since paid **+15.7 logistic Elo** and is not exhausted.
+  Critter is **224** ahead rather than 37, so the same three cheap measurements
+  should show a far larger and cleaner signal:
+  - (a) **Equal-nodes depth and speed** via `tools/pgn_depth_at_nodes.py` on a
+        fixed-nodes match. Against Basilisk, Rarog was 2.5 plies *deeper* at
+        equal nodes and 65 Elo weaker. Whatever that ratio is against Critter is
+        the single most informative number available.
+  - (b) **Paired clock and fixed-nodes arms** (10.0(b)'s design, same seed), to
+        separate search quality from speed and time management.
+  - (c) **Internal readout** — first-move cutoff rate and LMR over-reduction
+        (`tools/diag_search_quality.ps1`) re-read on the 2.4.0 head, compared
+        with 10.0(a)'s 87.65 % / 1.80 % baseline. The over-reduction figure in
+        particular should have moved: 10.4.6(a) and 10.2.5(a) both widened the
+        tree, and 10.2.5(a) specifically removed the reduction floor that was
+        the prime suspect for the inert re-search rate.
+  ⚠ Critter's internals are off-limits, so (a) and (c) are absolute
+  measurements on Rarog only; (b) is the head-to-head. Same constraint as 10.0,
+  and it did not prevent that decomposition from working.
+  ⚠ Do not assume the Basilisk diagnosis transfers. Critter is a different
+  engine with a different eval; the point of measuring is that the answer may
+  be somewhere else entirely — move ordering, evaluation quality, or endgame
+  technique rather than selectivity.
 
 ### Phase 11 — NNUE runway: measurement + state rework (EV ~0 direct; unblocks Phase 12) — Fable 5 medium/high; 11.1: Sonnet 5 medium pipeline
 
@@ -2469,8 +2552,12 @@ and 2/4/8-thread gauntlet infrastructure; needs 10.1 `RootMove` records):
 | `D:/code/hydra/tools/texel/data/sf_*.csv` | SF-60k cp labels (2M; rejected for Rarog — lesson 1) |
 | `analysis/{infra,search,hce}_analysis.md` | Codex 5.6 audit (2026-07-13, at `ff21dc1`); basis of Phases 7–14. `search_analysis.md` verified line-by-line at head + fully merged 2026-07-14 (→ 7.5/7.6, 8.2–8.9, 10.1/10.2/10.4, Phase-14 SMP). `hce_analysis.md` merged same day after live re-verification (→ 7.4, 8.5c, 9.6, 11.1, Phase-12 ladder, Phase 13) — its §7/§9 fitted-value tables quote the rejected 6.2.2 refit, and two consequence claims are disproven; see lesson 12 |
 
-**Milestones:** M1 SF-capped-2600 ✅ · M2 Basilisk 1.5.0 ✅ (2.2.0 gauntlet) ·
-M3 ≈ 3150+ (Critter 1.6a) — the multi-cycle grind target.
+**Milestones** (ratings on the anchored ladder, §S3a): M1 SF-capped-2600 ✅ ·
+M2 Basilisk 1.5.0 ✅ (2.2.0 gauntlet) · **M3 = pass Basilisk's current release**
+(1.9.2 = 3005; Rarog 2.3.0 = 2952, dev head ≈ 2968) · **M4 = Rybka 4 (3102)** ·
+**M5 = Critter 1.6a (3176) / Houdini 1.5a (3186)** — the multi-cycle grind
+target · M6 = the mature-HCE band, ~3400–3450, which is where hand-crafted
+evaluation actually tops out.
 
 **NNUE boundary rule:** never let the search know how the eval works; if a
 pruning condition needs eval internals explained, it's a boundary violation.
