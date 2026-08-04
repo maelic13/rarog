@@ -386,6 +386,46 @@ of this morning. `spsa.ps1` now takes `-REnd` (default 0.0031) and derives
 0.0033 across N = 1,000 / 2,500 / 5,000 / 10,000 while `a` moves
 0.051 → 0.127.
 
+⚠ **HOW MUCH OF THAT IS ACTUALLY IMPLEMENTED — corrected 2026-08-04, after the
+description above misled a reader (me) into a wrong conclusion about a knob's
+perturbation.** Only the `a` half is back-solved. **`c` is hardcoded to 1.0 in
+`spsa.json` and no knob declares a `c_end`.** What a config's `step` field
+actually holds is the **INITIAL** perturbation multiplier, not the final one:
+
+```text
+c_t   = c / it^gamma          with c = 1.0, gamma = 0.102
+c_t(1)      = 1.0000          <- `step` is the perturbation HERE
+c_t(5000)   = 1/5000^0.102 = 0.4195
+perturbation(knob, it) = step × c_t(it)
+```
+
+So a knob's perturbation **falls to ~42 % of its `step` by iteration 5,000**.
+The system is still internally consistent — substituting `c_end = N^-γ` into
+`a = r_end · c_end² · (A+N)^α` gives exactly the shipped
+`a = r_end · (A+N)^α / N^(2γ)` — so the maths is right and every completed tune
+is valid. What is wrong is the *name*: `step` is not `c_end`, and reading it as
+`c_end` produces the wrong answer about whether a knob stays measurable.
+
+**The rule that falls out, and it is the practically important one:** the engine
+receives `round(value)`, so a knob stops being measured once its perturbation
+drops below half a unit. For an integer knob:
+
+```text
+step × c_t(N) ≥ 0.5   ⇒   step ≥ 0.5 / 0.4195 ≈ 1.19   ⇒   step ≥ 2
+```
+
+**Any integer knob with `step = 1` dies mid-run** — precisely at
+`it > 2^(1/γ) = 2^9.804 ≈ 894`, i.e. 82 % of a 5,000-iteration run is spent
+feeding both arms the same value while the knob keeps being *updated* by the
+other knobs' gradient. That is audit class 6, and the 894 it reports is this
+formula, not a heuristic. **The audit models the real schedule; this section's
+prose did not. When they disagree, the audit is right.**
+
+*(Adopting the real per-knob `c_end` form — each knob declaring its end
+perturbation and `c` being back-solved per knob — would make `step` mean what
+it says and remove the ≥2 rule. It is a genuine improvement and not urgent:
+the audit already catches every case the current form gets wrong.)*
+
 **Independent corroboration of the recalibration.** Converting our settings
 into fishtest's units, `a=0.1` at N=5000 is r_end ≈ 0.0031 — the same order
 as fishtest's 0.002 default — while the `a=1.0` shipped this morning is

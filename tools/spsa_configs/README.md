@@ -64,8 +64,46 @@ SPSA optimizes a noisy objective and **over-fits**. The tuned values are only a
 | `threads` | auto | concurrency = detected physical cores − 2; explicit physical-core affinity is injected by `setup_tools.ps1` |
 | `games` | 32 | per iteration; multiple of 2 and ≈ 2×threads for a stable gradient |
 | `A` (spsa.json) | iterations / 10 | **must update per run** (see step 4 above) |
-| `a`, `c`, `alpha`, `gamma` | defaults | do not change (weather-factory guidance) |
+| `a`, `c`, `alpha`, `gamma` | `a` derived from `-REnd`; `c` = 1.0 | `a` is back-solved from the horizon; `c` is fixed and NOT back-solved — see the `step` note below |
 | per-param `step` | see tables below | sized to cause a ~2–3 Elo swing per weather-factory guidance |
+
+### ⚠ `step` is the INITIAL perturbation, not the final one
+
+Easy to get wrong, and getting it wrong silently kills knobs. The per-knob
+perturbation is `step × c_t`, and the **global** `c` decays with the iteration:
+
+```text
+c_t = c / it^gamma          c = 1.0, gamma = 0.102
+c_t(1)    = 1.0000          <- `step` is the perturbation HERE
+c_t(5000) = 0.4195          <- and only ~42% of it by the horizon
+```
+
+PLAN describes fishtest's end-state form in which each knob declares `c_end`
+and `c` is back-solved per knob. **Only the `a` half of that is implemented.**
+No knob declares a `c_end`; `c` is hardcoded to 1.0, so the horizon fixes the
+end perturbation implicitly at `N^-gamma`. The maths is self-consistent and
+every completed tune is valid — but the *name* misleads, and it has already
+caused one wrong conclusion about whether a knob stays measurable.
+
+**The rule this implies.** The engine receives `round(value)`, so a knob stops
+being *measured* once its perturbation falls below half a unit — while still
+being *updated* by the other knobs' gradient, i.e. random-walking and dragging
+the joint fit. For an integer knob:
+
+```text
+step × c_t(N) ≥ 0.5   ⇒   step ≥ 0.5 / 0.4195 ≈ 1.19   ⇒   step ≥ 2
+```
+
+**Never give an integer knob `step = 1`.** It goes dead at
+`it > 2^(1/gamma) ≈ 894` — 82% of a 5,000-iteration run. That is audit class 6,
+and the iteration number it prints is this formula rather than a heuristic.
+
+A knob whose whole range is so small that `step ≥ 2` would span most of it is
+not a tuning target at all; gate it as a discrete A/B instead (see
+`AspFailHighReduction`, `CorrGuardCapture`, `FutilityImprovingDir`).
+
+**When the audit and this document disagree, the audit is right** — it models
+the shipped schedule; prose does not.
 
 ## Coverage audit — run this before any tune
 

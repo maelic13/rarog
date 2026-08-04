@@ -254,10 +254,22 @@ if (-not $LaunchOnly) {
     # iteration count can never silently change the END behaviour, and `a`
     # can never be left stale when the schedule shape changes.
     #
-    # weather-factory keeps `a`/`c` global and puts the per-parameter scale in
-    # each config's `step`, so `c_end` is expressed in units of that step.
-    # With c = 1.0 the identity r_end = a_t / c_t^2 at t = N back-solves to
+    # ⚠ ONLY THE `a` HALF IS IMPLEMENTED (clarified 2026-08-04). weather-factory
+    # keeps `a`/`c` global and puts the per-parameter scale in each config's
+    # `step`. `c` stays 1.0 and is NOT back-solved, and no knob declares a
+    # `c_end` — so a config's `step` is the perturbation at iteration 1, NOT at
+    # the horizon:
+    #     c_t = c / it^gamma ;  c_t(1) = 1.0 ;  c_t(5000) = 0.4195
+    #     perturbation(knob, it) = step * c_t(it)
+    # The maths below is still self-consistent: substituting c_end = N^-gamma
+    # into a = r_end * c_end^2 * (A+N)^alpha gives exactly the expression used
+    # here, so every completed tune is valid. Only the NAME misleads — reading
+    # `step` as `c_end` gives the wrong answer about whether a knob survives to
+    # the horizon.
     #     a = r_end * (A + N)^alpha / N^(2*gamma)
+    # Practical consequence, enforced by audit class 6: the engine receives
+    # round(value), so an integer knob needs step * c_t(N) >= 0.5, i.e.
+    # step >= 2. A step-1 integer knob goes dead at it > 2^(1/gamma) ~= 894.
     # Cross-check on the two calibrations agreeing from independent
     # directions: our simulation (validated against 8.5's real trajectory to
     # within 0.02 steps of observed wander) puts the optimum at a ≈ 0.1 for
