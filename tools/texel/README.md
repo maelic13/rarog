@@ -108,6 +108,15 @@ python tools\texel\extract.py `
 # 6. Verify reconstruction, then tune a stage:
 #    rarog-texel --verify  tools\texel\data\holdout.csv
 #    rarog-texel --tune kingsafety tools\texel\data\train.csv tools\texel\data\holdout.csv tools\texel\out\eval_params.txt
+
+# 7. Bake, THEN FORMAT, then verify the fingerprint. cargo fmt is not optional:
+#    bake_params.py writes one long line per PST, so `cargo fmt --check` fails
+#    until it runs. Skipping it once already produced a gate binary built from a
+#    tree that would have failed CI (2026-08-04). Formatting cannot change
+#    behaviour, so the bench must be identical before and after.
+python tools\texel\bake_params.py tools\texel\out\eval_params.txt
+cargo fmt
+cargo fmt --check          # must pass before building anything gated
 ```
 
 The completion contract is **3,000,000 train positions with an equal five-phase
