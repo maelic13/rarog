@@ -677,8 +677,48 @@ Bench 13 = **5,173,540**, geomean EBF **2.406**.
    Both label sources confirm: a well-fit HCE eval has no **unchanged
    representation** refit headroom left. The narrow 7.4b fit is allowed only
    because 7.4a corrects activations and adds an inert phalanx feature; it is
-   not another global cycle. The next large eval lever is NNUE (Phase 12), not
-   more Texel cycles over the existing feature function.
+   not another global cycle.
+
+   ⚠ **SHARPENED 2026-08-04 by 10.4.3, which PASSED at +11.56 ± 5.19 Elo and is
+   the counterexample this lesson needed.** The rule as written above is too
+   broad, and I applied the broad version to predict this gate would fail. What
+   6.1 and 6.2 actually demonstrate is that **wholesale re-derivation** of a
+   well-fitted eval fails — both replaced the fitted vector with a fresh global
+   optimum on new labels and discarded the accumulated correctness of the
+   staged Phase-4 fit. 10.4.3 did something different: anchored by `--l2 1e-6`
+   to the *current* values, it moved **57 of 1,204 parameters, nearly all by a
+   single centipawn**, and left everything else exactly where Phase 4 put it.
+   A narrow, prior-anchored refresh is not the same operation as a refit, and it
+   pays.
+
+   **The corrected rule:** what has no headroom is *re-deriving* the eval on
+   unchanged representation. What does have headroom is *refreshing* it against
+   materially better labels, anchored to the existing values. The condition is
+   the label generator: 10.4.3's data came from a head ~+25 nElo stronger than
+   the previous fit's, and that converted into +11.56 Elo of eval.
+
+   ⚠ **And the diagnostic reasoning that produced the wrong prediction is worth
+   recording, because it will recur.** The forecast rested on two numbers, and
+   both were the wrong statistic:
+   - *"Holdout moved only −0.31%, less than 6.2's −0.71% which lost."* Holdout
+     movement is not comparable **across fits of different kinds**. 6.2's larger
+     movement came from replacing the eval; a small movement from a refinement
+     is a different quantity, not a smaller amount of the same one.
+   - *"Only 57 of 1,204 parameters moved, by ~1 cp."* Counting parameters is not
+     effect size. A 1 cp change to `eg_val` pawn, `tempo`, or the first two
+     king-safety table entries applies to nearly every position evaluated. The
+     right measure is the change in the eval's **output distribution**, which
+     nobody computed.
+   - The signal that *was* there and got under-weighted: the per-bucket table.
+     Rook endings −1.51 % and pawn endings −0.89 % against a −0.31 % global
+     move is not a uniform improvement, it is a **targeted endgame** one — and
+     endgame accuracy converts to Elo efficiently because small errors there
+     decide games outright rather than shifting a middlegame plan.
+
+   The next large eval lever is still NNUE (Phase 12), but "more Texel cycles
+   are pointless" is now false as stated: a refresh is justified **whenever the
+   label generator has materially improved**, which is a testable trigger rather
+   than a blanket prohibition (see 10.4.3(c)).
 2. **The 30 h LMR null → EV-gate.** LMR lives in depth/move-index space —
    eval rescales don't move its optimum. Re-tuning it after Phase 4 was
    negative-EV compute. Futility/TM nulls confirmed: after one joint margin
@@ -1676,6 +1716,51 @@ explanation is needed.
         redesign costs analysis plus a new seed book plus a re-pilot. The
         payoff is Phase 12 (see 12.2), where the corpus is 10–20× larger and
         this is a 2–3× cost multiplier rather than an afternoon.
+  - **✅ ACCEPTED 2026-08-04 — `+11.56 ± 5.19` Elo (nElo `+17.70 ± 7.93`),
+        LOS 100 %, H1 at 7,366 games**, W/L/D 2026/1781/3559, DrawRatio
+        41.33 %, PairsRatio 1.21, Ptnml [146, 832, 1522, 997, 186], LLR 2.95.
+        New accepted baseline; bench **6,502,902**, geomean EBF 2.449 (the eval
+        change shifts pruning decisions, so the tree moves −3.2 % even though no
+        search code did). Formatted source verified to reproduce the gated
+        binary's fingerprint exactly; suites green in debug and release.
+
+        **This gate refuted a prediction made from its own diagnostics**, and
+        the correction is folded into lesson 1 rather than left here. Short
+        version: the fit moved the holdout only −0.31 % and touched 57 of 1,204
+        parameters by about a centipawn each, from which a null was forecast.
+        Both are the wrong statistic — holdout movement is not comparable across
+        fits of different kinds, and parameter *count* is not effect size. The
+        per-bucket table was the real signal and was under-weighted: rook
+        endings −1.51 % and pawn endings −0.89 % against a −0.31 % global move
+        is a targeted endgame improvement, and endgame accuracy converts
+        efficiently because small errors there decide games outright.
+
+        ⚠ **Anomalies: 4 timeouts in 7,366 games** (candidate 1, baseline 3),
+        where recent gates reported zero. It cannot have produced this verdict —
+        the imbalance is 2 net games out of 7,366, worth under 0.15 Elo against
+        a measured +11.56 — but recent gates reported *zero*, so it is a change
+        worth watching. A candidate cause is light file I/O run on the machine
+        during the match; if it recurs on an idle machine, investigate before
+        trusting a close verdict.
+
+        ⚠ **Tooling gap found while verifying: `bake_params.py` output is not
+        rustfmt-clean.** It writes each PST as one long line; `cargo fmt --check`
+        fails until `cargo fmt` is run. Formatting cannot change behaviour (the
+        formatted source reproduces bench 6,502,902 exactly), but the release
+        procedure requires a clean `fmt`, so **`cargo fmt` belongs in the
+        documented bake sequence** immediately after `bake_params.py`.
+  - (c) **Refresh trigger, replacing the old "exactly one run" rule
+        (2026-08-04).** The pre-registration below reasoned that iterating Texel
+        on the same engine re-draws the same sample, which is correct — and its
+        own escape clause (a materially different label generator) is exactly
+        what fired here: labels from a head ~+25 nElo stronger produced +11.56.
+        So the standing rule is no longer a count. **Re-run the refresh whenever
+        the label generator has gained materially since the last fit** — as a
+        working threshold, ~+20 nElo of accepted search work — and gate it
+        normally. The next natural trigger is after 10.2 and the 10.4 menu
+        close, before the 2.4.0 boundary matrix. This is cheap: the corpus
+        pipeline is built, 150,000 seed openings remain unspent, and the fit
+        itself is minutes.
   - (b) **Exactly ONE unconditional run — a second run is pre-registered as
         CONDITIONAL on 10.2.5 landing.** Rationale (user asked to be
         challenged on "more runs"): iterating Texel on the *same* engine

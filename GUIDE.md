@@ -13,9 +13,9 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | | |
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
-| Accepted baseline | **10.2.5(a) zero-reduction LMR + 10.1 + 10.4.6(a)**, source `74d4426`, fingerprint **6,718,158 / EBF 2.460**. Clean gate binary: `rarog-p1025a-zero-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
+| Accepted baseline | **10.4.3 Texel refresh** on 10.2.5(a) + 10.1 + 10.4.6(a); fingerprint **6,502,902 / EBF 2.449**. Gate binary: `rarog-p1043-refit-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
 | Working source | Accepted 10.2.5(a); 10.1 retained. All 28 SPSA defaults remain baked and unchanged. |
-| Last strength results | **10.2.5(a): +9.13 ±5.45 nElo, H1** (15,594 games, zero anomalies) vs accepted 10.1 head. Before it, **10.4.6(a): +15.33 ±7.34 nElo, H1** vs pre-SPSA 2.3.1. |
+| Last strength results | **10.4.3: +11.56 ±5.19 Elo (+17.70 nElo), H1, LOS 100%** (7,366 games). Before it **10.2.5(a): +9.13 ±5.45 nElo** and **10.4.6(a): +15.33 ±7.34 nElo**, both H1. Cycle total so far ≈ **+27 logistic Elo** over released 2.3.1. |
 | Rating position | Anchored ladder (PLAN §S3a, 3+0.03, Rybka-4-anchored): **Rarog 2.3.0 = 2952**, dev head ≈ 2968. Basilisk 1.9.2 **3005** (+53 over 2.3.0) · Rybka 4 **3102** · Critter 1.6a **3176** · Houdini 1.5a **3186** · SF dev 3780. ⛔ The old "~3000 CCRL" estimate is retracted — never measured. ⛔ So is "HCE tops out at 3100–3250": mature HCE (Houdini 4-6, Komodo ≤13/14, SF ≤11) reached **~3400–3450**, so there is **~450–500 Elo of proven HCE headroom** above us. |
 | Current work | ▶ **10.4.3 pilot ready.** The accepted `74d4426` PGO label generator and new 750k phase-balanced seed are verified. User runs only games 1..20,000; preflight calculates the exact disjoint continuation. Then refit once and gate once. |
 | Next release | **2.4.0 at 10.5.** Actual next order: one post-capstone 10.4.3 Texel fit/gate → 10.2 aspiration/TM with retained 10.1 → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
@@ -475,18 +475,38 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       ⚠ Guard against 8.6's failure mode: a self-play-tuned candidate that
       searched 16% more aggressively won its SPSA then lost the gate. Gate
       against the accepted head, never a sibling of the tuning run.
-- [ ] **▶ 10.4.3 Post-capstone Texel refit — PILOT READY 2026-08-03.**
-      Generate labels only with accepted clean binary `p1025a-zero` (source
-      `74d4426`). The replacement `beast_seed.epd` has 750,000 validated
-      unique starts, exactly 150,000 per phase; SHA-256 `B91C756A…B2C7F`.
-      Run deterministic segment 1..20,000 at 8,000 nodes with shuffle seed
-      10403, then run `extract.py --preflight-games 20000`. Use its measured
-      recommended total to generate exactly the disjoint tail from start
-      20,001. Do not guess the total, generate the full book first, change the
-      seed, append, or reuse a range. `datagen-v1` is intentionally 600/3
-      two-sided for safer game-result labels; it is not SPRT's one-sided
-      `strength-v1`. After exact 3M extraction: one full-scalar/L2 fit, bake,
-      reconstruction verification, then one `[0,3]` gate.
+- [x] **10.4.3 Post-capstone Texel refit — ACCEPTED 2026-08-04,
+      `+11.56 ± 5.19` Elo (nElo +17.70 ± 7.93), LOS 100%, H1 at 7,366 games.**
+      3M train / 157,895 holdout rows from 600,000 self-play games at 8,000
+      nodes by accepted head `74d4426`; `--tune all --l2 1e-6`, K = 1.36978,
+      best epoch 40. New baseline: bench **6,502,902**, EBF 2.449. Formatted
+      source reproduces the gated binary's fingerprint exactly; suites green
+      debug and release.
+      ⚠ **This gate refuted a prediction made from its own diagnostics.** A null
+      was forecast because the holdout moved only −0.31% and 57 of 1,204
+      parameters changed by ~1 cp. Both are the wrong statistic: holdout
+      movement is not comparable across fits of *different kinds* (refresh vs
+      re-derivation), and parameter count is not effect size. The per-bucket
+      table was the real signal — rook endings −1.51%, pawn endings −0.89%
+      against a −0.31% global move is a **targeted endgame** gain, and endgame
+      accuracy converts efficiently because small errors there decide games
+      outright. Lesson 1 is sharpened accordingly in PLAN.
+      ⚠ **4 timeouts in 7,366 games** (candidate 1, baseline 3) where recent
+      gates reported zero. Worth ≤0.15 Elo against a measured +11.56 so it
+      cannot have produced the verdict, but it is a change — light file I/O ran
+      on the machine during the match. If it recurs on an idle machine,
+      investigate before trusting a close verdict.
+      ⚠ **`bake_params.py` output is not rustfmt-clean** (one long line per
+      PST), so `cargo fmt --check` fails until `cargo fmt` runs. Behaviour is
+      unaffected — the formatted source reproduces bench 6,502,902 exactly — but
+      the release procedure needs a clean fmt, so **`cargo fmt` belongs in the
+      bake sequence** right after `bake_params.py`.
+      📌 **The "exactly one run" rule is replaced by a trigger:** re-run the
+      refresh whenever the label generator has gained materially since the last
+      fit (working threshold ~+20 nElo of accepted search work). Next natural
+      trigger is after 10.2 and the 10.4 menu, before the 2.4.0 matrix — cheap,
+      since the pipeline exists, 150,000 seed openings are unspent and the fit
+      is minutes.
     - [ ] 10.4.3(a2) **Measure the per-seed-phase yield matrix — free, uses
           the pilot PGN already on disk.** A phase-balanced seed book does NOT
           produce a phase-balanced harvest: traversal is one-directional, so an
