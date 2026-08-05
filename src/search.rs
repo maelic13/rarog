@@ -19,7 +19,13 @@ use crate::search_threads::{
 };
 use crate::syzygy::{self, Wdl};
 use crate::time_manager::{RuntimeLimits, compute_runtime_limits};
-use crate::tt::{Bound, TranspositionTable, TtStore, score_from_tt};
+// `MoveClass` is read only by the diagnostic best-move census; the class itself
+// is always computed (it lives on `MoveEvidence`), but nothing in a production
+// build names the type.
+#[cfg(feature = "diag")]
+use crate::evidence::MoveClass;
+use crate::evidence::{MoveEvidence, NodeEvidence, OutcomeKind};
+use crate::tt::{Bound, TranspositionTable, TtStore};
 
 const MAX_DEPTH: usize = 100;
 
@@ -1525,6 +1531,7 @@ impl Searcher {
                 ply,
                 static_eval: VALUE_NONE,
                 is_pv,
+                kind: OutcomeKind::Tablebase,
             });
             return score;
         }
@@ -1538,27 +1545,25 @@ impl Searcher {
                 crate::diag_count!(main_tt_hits);
             }
         }
-        let tt_raw_move = tt_entry.and_then(|entry| entry.best_move());
-        let tt_score = tt_entry
-            .map(|entry| score_from_tt(entry.score as i32, ply, board.halfmove_clock))
-            .unwrap_or(VALUE_NONE);
-        let tt_depth = tt_entry.map(|entry| entry.depth as i32).unwrap_or(-1);
-        let tt_bound = tt_entry.and_then(|entry| entry.bound());
-        let tt_pv = is_pv || tt_entry.is_some_and(|e| e.is_pv_node());
+        // 4.2: one decode of the probe for the whole node. Mate distance and
+        // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
+        // same entry twice, at `tt_score` and again inside the cutoff block.
+        let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
+        let tt_pv = ev.pv_line(is_pv);
         #[cfg(feature = "diag")]
         if diag_sample {
-            if let Some(entry) = tt_entry {
+            if ev.hit {
                 crate::diag_count!(tt_sample_hit);
                 crate::diag_count!(shadow_4_2_evidence);
-                if !is_pv && excluded.is_null() && entry.depth as i32 >= depth {
-                    match tt_bound {
+                if !is_pv && excluded.is_null() && ev.depth >= depth {
+                    match ev.bound {
                         Some(Bound::Exact) => {
                             crate::diag_count!(tt_cut_exact);
                         }
-                        Some(Bound::Lower) if tt_score >= beta => {
+                        Some(Bound::Lower) if ev.score >= beta => {
                             crate::diag_count!(tt_cut_lower);
                         }
-                        Some(Bound::Upper) if tt_score <= alpha => {
+                        Some(Bound::Upper) if ev.score <= alpha => {
                             crate::diag_count!(tt_cut_upper);
                         }
                         Some(_) => {
@@ -1566,12 +1571,10 @@ impl Searcher {
                         }
                         None => {}
                     }
-                    if matches!(tt_bound, Some(Bound::Lower)) && tt_score <= alpha
-                        || matches!(tt_bound, Some(Bound::Upper)) && tt_score >= beta
-                    {
+                    if ev.contradicts_window(alpha, beta) {
                         crate::diag_count!(tt_bound_contradicts_window);
                     }
-                } else if tt_bound.is_some() {
+                } else if ev.bound.is_some() {
                     crate::diag_count!(tt_bound_not_usable);
                 }
             } else {
@@ -1580,41 +1583,37 @@ impl Searcher {
         }
         if !is_pv
             && excluded.is_null()
-            && let Some(entry) = tt_entry
-            && entry.depth as i32 >= depth
-            && let Some(bound) = entry.bound()
+            && let Some(score) = ev.cutoff_score(depth, alpha, beta)
         {
-            let score = score_from_tt(entry.score as i32, ply, board.halfmove_clock);
-            match bound {
-                Bound::Exact => return score,
-                Bound::Lower if score >= beta => {
-                    // 8.4(a): the TT move just produced a beta cutoff without a
-                    // search - today it gets zero feedback. Reward it (quiet
-                    // moves only, main/low-ply/pawn histories) at a tunable
-                    // fraction of the cutoff bonus. Seed 0 = skip entirely.
-                    if self.params.tt_cutoff_bonus_pct != 0
-                        && let Some(mv) = tt_raw_move.and_then(|m| board.legal_move(m))
-                        && !mv.is_capture()
-                        && !mv.is_promo()
-                    {
-                        let bonus =
-                            self.history_bonus(depth) * self.params.tt_cutoff_bonus_pct / 100;
-                        self.update_quiet_history(
-                            board.side_to_move(),
-                            mv,
-                            board.moving_piece(mv),
-                            board.pawn_key(),
-                            ply,
-                            bonus,
-                        );
-                    }
-                    return score;
-                }
-                Bound::Upper if score <= alpha => return score,
-                _ => {}
+            // 8.4(a): the TT move just produced a beta cutoff without a
+            // search - today it gets zero feedback. Reward it (quiet
+            // moves only, main/low-ply/pawn histories) at a tunable
+            // fraction of the cutoff bonus. Seed 0 = skip entirely.
+            //
+            // 4.2 note: still unconditional on provenance, so a depth-0 stand
+            // pat can train quiet history through this path. 4.5 owns the
+            // attribution guard; changing it here would be an ungated edit.
+            if matches!(ev.bound, Some(Bound::Lower))
+                && score >= beta
+                && self.params.tt_cutoff_bonus_pct != 0
+                && let Some(mv) = ev.mv.and_then(|m| board.legal_move(m))
+                && !mv.is_capture()
+                && !mv.is_promo()
+            {
+                let bonus = self.history_bonus(depth) * self.params.tt_cutoff_bonus_pct / 100;
+                self.update_quiet_history(
+                    board.side_to_move(),
+                    mv,
+                    board.moving_piece(mv),
+                    board.pawn_key(),
+                    ply,
+                    bonus,
+                );
             }
+            return score;
         }
-        let mut tt_move = tt_raw_move
+        let mut tt_move = ev
+            .mv
             .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
         if ply == 0 && !self.root_moves.is_empty() && !self.root_moves.contains(&tt_move) {
@@ -1626,7 +1625,7 @@ impl Searcher {
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
         if excluded.is_null()
             && depth >= 4
-            && (tt_move.is_null() || (!is_pv && tt_depth < depth - 3))
+            && (tt_move.is_null() || (!is_pv && ev.too_shallow_to_order(depth)))
         {
             #[cfg(feature = "diag")]
             if diag_sample {
@@ -1645,18 +1644,18 @@ impl Searcher {
             depth -= 1;
         }
 
+        // 4.2: the pre-4.2 form spelled out three branches whose two `else`
+        // arms were identical, because a probe MISS and a hit carrying no
+        // stored eval both fall back to a fresh raw eval. `NodeEvidence::MISS`
+        // already reports `VALUE_NONE`, so one test covers both.
         let (static_eval, raw_static_eval) = if in_check {
             (VALUE_NONE, VALUE_NONE)
-        } else if let Some(entry) = tt_entry {
-            if entry.static_eval as i32 != VALUE_NONE {
-                let raw = entry.static_eval as i32;
-                (self.corrected_eval_from_raw(board, raw, ply), raw)
-            } else {
-                let raw = self.raw_eval(board);
-                (self.corrected_eval_from_raw(board, raw, ply), raw)
-            }
         } else {
-            let raw = self.raw_eval(board);
+            let raw = if ev.raw_static_eval == VALUE_NONE {
+                self.raw_eval(board)
+            } else {
+                ev.raw_static_eval
+            };
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
         self.stack_static_eval[ply] = static_eval;
@@ -1679,18 +1678,10 @@ impl Searcher {
         // 9.7.5 lead: the TT may only stand in for the static eval here if its
         // entry is deep enough to be worth trusting — see the param doc. At the
         // seeded 0 this admits everything, exactly as before.
-        let eval_for_pruning = if !in_check
-            && tt_score != VALUE_NONE
-            && tt_depth >= self.params.eval_prune_tt_min_depth
-        {
-            match tt_bound {
-                Some(Bound::Exact) => tt_score,
-                Some(Bound::Lower) if tt_score > static_eval => tt_score,
-                Some(Bound::Upper) if tt_score < static_eval => tt_score,
-                _ => static_eval,
-            }
-        } else {
+        let eval_for_pruning = if in_check {
             static_eval
+        } else {
+            ev.refine_eval(static_eval, self.params.eval_prune_tt_min_depth)
         };
         #[cfg(feature = "diag")]
         if diag_sample
@@ -1879,6 +1870,11 @@ impl Searcher {
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: false,
+                            // The score is `score - (probcut_beta - beta)`, i.e.
+                            // shifted off the speculative window rather than a
+                            // negamax value at `depth - 3`. RAR-S22 measured a
+                            // third of singular attempts reading this shape.
+                            kind: OutcomeKind::ProbCut,
                         });
                         #[cfg(feature = "diag")]
                         if diag_sample {
@@ -1946,7 +1942,7 @@ impl Searcher {
         #[cfg(feature = "diag")]
         let mut diag_best_rank = 0usize;
         #[cfg(feature = "diag")]
-        let mut diag_best_stage = 3u8;
+        let mut diag_best_stage = MoveClass::BadCapture;
         #[cfg(feature = "diag")]
         let mut diag_best_reduced = false;
         let mut legal_move_seen = false;
@@ -1974,31 +1970,33 @@ impl Searcher {
             let mut see = if is_capture { picked.see as i32 } else { 0 };
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
-            let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
+            // 4.2: the pre-move evidence snapshot, taken at pick time. It
+            // replaces a bare `0..3` stage integer, and 4.6 extends it with the
+            // check/evasion taxonomy and the shared prospective depth. `see` is
+            // captured here deliberately: the local below is refined for some
+            // moves, and classification must not depend on where it is read.
+            let move_ev = MoveEvidence::new(
+                mv == tt_move,
+                is_capture,
+                is_quiet,
+                see,
+                if is_quiet { picked.quiet_history } else { 0 },
+            );
+            let quiet_hist = move_ev.quiet_history;
             let mut gives_check = None;
             #[cfg(feature = "diag")]
-            let diag_move_stage = if mv == tt_move {
-                0
-            } else if is_capture && see >= 0 {
-                1
-            } else if is_quiet {
-                2
-            } else {
-                3
-            };
-            #[cfg(feature = "diag")]
             if diag_order_sample {
-                match diag_move_stage {
-                    0 => {
+                match move_ev.class {
+                    MoveClass::TtMove => {
                         crate::diag_count!(move_seen_tt);
                     }
-                    1 => {
+                    MoveClass::GoodCapture => {
                         crate::diag_count!(move_seen_good_capture);
                     }
-                    2 => {
+                    MoveClass::Quiet => {
                         crate::diag_count!(move_seen_quiet);
                     }
-                    _ => {
+                    MoveClass::BadCapture => {
                         crate::diag_count!(move_seen_bad_capture);
                     }
                 }
@@ -2121,19 +2119,17 @@ impl Searcher {
                 && mv == tt_move
                 && excluded.is_null()
                 && depth >= 4
-                && tt_depth >= depth - 3
-                && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
-                && tt_score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
+                && ev.allows_singular(depth)
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_attempt);
                     crate::diag_count!(shadow_4_4_selectivity);
-                    if tt_depth == depth - 3 && matches!(tt_bound, Some(Bound::Lower)) {
+                    if ev.depth == depth - 3 && matches!(ev.bound, Some(Bound::Lower)) {
                         crate::diag_count!(singular_probcut_depth_match);
                     }
                 }
-                let singular_beta = tt_score - self.params.singular_beta_mult * depth;
+                let singular_beta = ev.score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
                 let singular_score = self.negamax(
                     board,
@@ -2170,7 +2166,7 @@ impl Searcher {
                         crate::diag_count!(singular_multicut);
                     }
                     return singular_beta;
-                } else if tt_score >= beta {
+                } else if ev.score >= beta {
                     #[cfg(feature = "diag")]
                     if diag_sample {
                         crate::diag_count!(singular_negative_extension);
@@ -2252,7 +2248,7 @@ impl Searcher {
                         r -= 1024;
                     }
                     // Exact TT bound: new term, default 0 (no current behavior displaced).
-                    if matches!(tt_bound, Some(Bound::Exact)) {
+                    if ev.is_exact() {
                         r += self.params.lmr_exact_bound;
                     }
                     // TT move present and late in the list (see the `params.rs`
@@ -2401,7 +2397,7 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     diag_best_rank = searched;
-                    diag_best_stage = diag_move_stage;
+                    diag_best_stage = move_ev.class;
                     diag_best_reduced = diag_move_reduced;
                 }
                 if ply == 0 {
@@ -2510,6 +2506,7 @@ impl Searcher {
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: tt_pv,
+                            kind: OutcomeKind::Full,
                         });
                         #[cfg(feature = "diag")]
                         if diag_sample {
@@ -2623,6 +2620,7 @@ impl Searcher {
                 ply,
                 static_eval: raw_static_eval,
                 is_pv: tt_pv,
+                kind: OutcomeKind::Full,
             });
             #[cfg(feature = "diag")]
             if diag_sample {
@@ -2680,38 +2678,21 @@ impl Searcher {
         }
         let original_alpha = alpha;
         let tt_entry = self.tt.probe(hash);
-        let tt_raw_move = tt_entry.and_then(|entry| entry.best_move());
+        let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
         #[cfg(feature = "diag")]
-        if diag_q_sample && let Some(entry) = tt_entry {
+        if diag_q_sample && ev.hit {
             crate::diag_count!(q_tt_hit);
-            if entry.depth >= 0
-                && match entry.bound() {
-                    Some(Bound::Exact) => true,
-                    Some(Bound::Lower) => {
-                        score_from_tt(entry.score as i32, ply, board.halfmove_clock) >= beta
-                    }
-                    Some(Bound::Upper) => {
-                        score_from_tt(entry.score as i32, ply, board.halfmove_clock) <= alpha
-                    }
-                    None => false,
-                }
-            {
+            if ev.cutoff_score(0, alpha, beta).is_some() {
                 crate::diag_count!(q_tt_cut);
             }
         }
-        if let Some(entry) = tt_entry
-            && entry.depth >= 0
-            && let Some(bound) = entry.bound()
-        {
-            let score = score_from_tt(entry.score as i32, ply, board.halfmove_clock);
-            match bound {
-                Bound::Exact => return score,
-                Bound::Lower if score >= beta => return score,
-                Bound::Upper if score <= alpha => return score,
-                _ => {}
-            }
+        // Depth 0 is the whole admission bar here: any stored entry outranks a
+        // qsearch node. That includes a stand pat stored by an earlier visit.
+        if let Some(score) = ev.cutoff_score(0, alpha, beta) {
+            return score;
         }
-        let tt_move = tt_raw_move
+        let tt_move = ev
+            .mv
             .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
 
@@ -2745,16 +2726,13 @@ impl Searcher {
         // node behaviour is identical — bench must land on 5,320,596, the figure
         // the gated candidate measured.
         if !in_check {
-            let (stand_pat, raw_stand_pat) = if let Some(entry) = tt_entry {
-                if entry.static_eval as i32 != VALUE_NONE {
-                    let raw = entry.static_eval as i32;
-                    (self.corrected_eval_from_raw(board, raw, ply), raw)
+            // Same three-branch collapse as the main search — see there.
+            let (stand_pat, raw_stand_pat) = {
+                let raw = if ev.raw_static_eval == VALUE_NONE {
+                    self.raw_eval(board)
                 } else {
-                    let raw = self.raw_eval(board);
-                    (self.corrected_eval_from_raw(board, raw, ply), raw)
-                }
-            } else {
-                let raw = self.raw_eval(board);
+                    ev.raw_static_eval
+                };
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             };
             q_raw_static_eval = raw_stand_pat;
@@ -2762,19 +2740,10 @@ impl Searcher {
             // If the TT score is bounded (Exact, or a one-sided bound that
             // agrees with the bound direction), use it as the stand_pat instead
             // of the raw static eval — cheap cutoffs we would otherwise miss.
-            let stand_pat = if let Some(entry) = tt_entry
-                && let Some(bound) = entry.bound()
-            {
-                let tt_score = score_from_tt(entry.score as i32, ply, board.halfmove_clock);
-                match bound {
-                    Bound::Exact => tt_score,
-                    Bound::Lower if tt_score > stand_pat => tt_score,
-                    Bound::Upper if tt_score < stand_pat => tt_score,
-                    _ => stand_pat,
-                }
-            } else {
-                stand_pat
-            };
+            // 4.2: `refine_eval_bound_only`, NOT `refine_eval` — this path has
+            // no depth floor and no VALUE_NONE test, which is a real asymmetry
+            // against the main search and is documented on both capabilities.
+            let stand_pat = ev.refine_eval_bound_only(stand_pat);
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
                 #[cfg(feature = "diag")]
@@ -2791,6 +2760,8 @@ impl Searcher {
                     ply,
                     static_eval: q_raw_static_eval,
                     is_pv: false,
+                    // No move was searched. RAR-S22: 37% of sampled stores.
+                    kind: OutcomeKind::StandPat,
                 });
                 return stand_pat;
             }
@@ -2888,6 +2859,7 @@ impl Searcher {
                     ply,
                     static_eval: q_raw_static_eval,
                     is_pv: false,
+                    kind: OutcomeKind::QsearchMove,
                 });
                 return score;
             }
@@ -2928,6 +2900,7 @@ impl Searcher {
             ply,
             static_eval: q_raw_static_eval,
             is_pv: false,
+            kind: OutcomeKind::QsearchTail,
         });
         alpha
     }
@@ -4165,6 +4138,7 @@ mod tests {
             ply: 0,
             static_eval: VALUE_NONE,
             is_pv: false,
+            kind: OutcomeKind::Full,
         });
 
         let _ = searcher.negamax(
@@ -4343,6 +4317,7 @@ mod tests {
             ply: 1,
             static_eval: VALUE_NONE,
             is_pv: false,
+            kind: OutcomeKind::Full,
         });
 
         assert_eq!(searcher.ponder_from_tt(&root, bestmove), ponder);

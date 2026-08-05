@@ -104,6 +104,19 @@ pub mod counters {
         // both backends so 1T (local) and NT (shared) are comparable.
         tt_store_same_key,
         tt_store_fresh,
+        // 4.2 — EXACT producer census, keyed by the `OutcomeKind` the store site
+        // declares. The 4.1 producer counters are sampled and sit at the call
+        // sites; these are unsampled and sit in the store path, so they both
+        // cross-check the sampler's producer mix and catch a store site that
+        // stops being reached at all. `Null`/`Incomplete` have no counter
+        // because no path stores them — `debug_assert_outcome` fires instead.
+        store_kind_full,
+        store_kind_verified_reduced,
+        store_kind_qsearch_move,
+        store_kind_qsearch_tail,
+        store_kind_stand_pat,
+        store_kind_probcut,
+        store_kind_tablebase,
         // Does helper work actually REACH the main thread? Probe/hit counted
         // on thread 0 only. If helpers contribute, main's hit rate should rise
         // with thread count; if it is flat, the helpers are searching in vain.
@@ -306,7 +319,8 @@ pub fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
 }
 
 #[cfg(feature = "diag")]
-pub fn record_best_move(rank: usize, stage: u8, reduced: bool) {
+pub fn record_best_move(rank: usize, stage: crate::evidence::MoveClass, reduced: bool) {
+    use crate::evidence::MoveClass;
     use std::sync::atomic::Ordering;
 
     let rank_counter = match rank {
@@ -316,11 +330,13 @@ pub fn record_best_move(rank: usize, stage: u8, reduced: bool) {
         _ => &counters::best_rank_8_plus,
     };
     rank_counter.fetch_add(1, Ordering::Relaxed);
+    // 4.2: takes `MoveClass` rather than a 0..3 integer, so the picker's stage
+    // taxonomy is defined in exactly one place.
     let stage_counter = match stage {
-        0 => &counters::best_stage_tt,
-        1 => &counters::best_stage_good_capture,
-        2 => &counters::best_stage_quiet,
-        _ => &counters::best_stage_bad_capture,
+        MoveClass::TtMove => &counters::best_stage_tt,
+        MoveClass::GoodCapture => &counters::best_stage_good_capture,
+        MoveClass::Quiet => &counters::best_stage_quiet,
+        MoveClass::BadCapture => &counters::best_stage_bad_capture,
     };
     stage_counter.fetch_add(1, Ordering::Relaxed);
     if reduced {

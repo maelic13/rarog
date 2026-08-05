@@ -28,6 +28,7 @@ pub mod diag;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;
+pub mod evidence;
 pub mod infra;
 mod kpk;
 mod move_ordering;

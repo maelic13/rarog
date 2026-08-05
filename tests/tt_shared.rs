@@ -9,6 +9,7 @@
 //! stored is essentially never returned.
 
 use rarog::board::Move;
+use rarog::evidence::OutcomeKind;
 use rarog::tt::{Bound, TranspositionTable, TtStore};
 
 const ENTRIES: u32 = 5_000;
@@ -62,6 +63,7 @@ fn shared_store_then_probe_round_trips_every_field() {
             ply: 0,
             static_eval: eval_for(i),
             is_pv: i % 2 == 0,
+            kind: OutcomeKind::Full,
         });
     }
 
@@ -97,6 +99,7 @@ fn shared_probe_almost_never_matches_keys_never_stored() {
             ply: 0,
             static_eval: 7,
             is_pv: false,
+            kind: OutcomeKind::Full,
         });
     }
 

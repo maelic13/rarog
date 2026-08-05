@@ -6,6 +6,7 @@ use std::sync::{
 
 use crate::board::Move;
 use crate::eval::MATE_SCORE;
+use crate::evidence::{OutcomeKind, debug_assert_outcome};
 use crate::infra;
 
 const MAX_PLY: i32 = 128;
@@ -249,6 +250,14 @@ pub struct TtStore {
     pub ply: usize,
     pub static_eval: i32,
     pub is_pv: bool,
+    /// 4.2: what produced `score`. Deliberately NOT persisted — `flag_age` has
+    /// no spare bits (see `PLAN.md` §5 4.2). It drives the debug producer
+    /// contract and the exact diagnostic census, which is what makes a
+    /// mislabelled store a test failure instead of a depth coincidence someone
+    /// has to reverse-engineer later. Required, not defaulted: invariant 1 is
+    /// that every result is typed, and an optional field would let the next
+    /// store site skip it.
+    pub kind: OutcomeKind,
 }
 
 impl TranspositionTable {
@@ -409,6 +418,12 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn store(&mut self, e: TtStore) {
+        // 4.2 producer contract and census. Both compile out of a production
+        // build: `debug_assert_outcome` under `debug_assertions`, the counter
+        // under `--features diag`. Placed here rather than at the seven call
+        // sites so a new store path cannot bypass either.
+        debug_assert_outcome(e.kind, e.depth, e.bound, e.mv);
+        count_store_kind(e.kind);
         match &mut self.storage {
             TtStorage::Local(table) => {
                 store_local(table, e);
@@ -454,6 +469,29 @@ impl TranspositionTable {
                 used * 1000 / (sample * SHARED_CLUSTER_ENTRIES)
             }
         }
+    }
+}
+
+/// Exact per-producer store census. Expands to nothing without `--features
+/// diag`; the `match` and the unused binding both disappear.
+#[inline(always)]
+fn count_store_kind(kind: OutcomeKind) {
+    #[cfg(feature = "diag")]
+    match kind {
+        OutcomeKind::Full => crate::diag_count!(store_kind_full),
+        OutcomeKind::VerifiedReduced => crate::diag_count!(store_kind_verified_reduced),
+        OutcomeKind::QsearchMove => crate::diag_count!(store_kind_qsearch_move),
+        OutcomeKind::QsearchTail => crate::diag_count!(store_kind_qsearch_tail),
+        OutcomeKind::StandPat => crate::diag_count!(store_kind_stand_pat),
+        OutcomeKind::ProbCut => crate::diag_count!(store_kind_probcut),
+        OutcomeKind::Tablebase => crate::diag_count!(store_kind_tablebase),
+        // `debug_assert_outcome` already rejects these; a release diag build
+        // must still not miscount them into a neighbouring bucket.
+        OutcomeKind::Null | OutcomeKind::Incomplete => {}
+    }
+    #[cfg(not(feature = "diag"))]
+    {
+        let _ = kind;
     }
 }
 
