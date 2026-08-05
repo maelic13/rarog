@@ -9,8 +9,8 @@ and lessons live in [`PLAN.md`](PLAN.md).
 |---|---|
 | Branch/release | `development` = 2.4.0 cycle; `master`/`v2.3.1` at `a5fd288` |
 | Clean accepted head | Bench **6,502,902**, EBF **2.449**, `rarog-p1043-base-pext-pgo.exe` |
-| Live tournament | At 8,626/36,400: dev 2967 vs 2.3.1 2956 (+11 provisional); Basilisk +39; Rybka 4.1/4/5/6 +121/+135/+189/+211; Critter +223; Houdini 1.5a +250. |
-| Live tuner | Registered 5,000-iteration aspiration SPSA; dev tournament binary contains interim unfinished constants. |
+| Rating observation | Closed at the supplied 8,626/36,400 checkpoint; the mixed interim-constant result is not a gate or baseline. |
+| Aspiration tune | Closed/rejected: stopped 2,510-iteration `p102a-snapshot` lost −4.16 ± 5.97 nElo over 13,000 gate games; retain `p1043-base`. |
 | Evaluation | HCE frozen. No feature/weight/Texel work before NNUE. |
 | Current phase | **Phase 4 — evidence-coherent pre-NNUE search** |
 | Portability branch | `origin/arm_fix` = stale ARM-prefetch/TT-alignment/HCE-hoist experiments; inventory at 4.8, never merge wholesale |
@@ -41,9 +41,8 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 
 ### Phase 4 — Evidence-coherent pre-NNUE search (→ 2.4.0)
 
-- [~] **4.0 Live experiments:** finish/archive the tournament and aspiration
-      SPSA unchanged, gate one clean predeclared final estimator or restore the
-      6,502,902 baseline.
+- [x] **4.0 Live experiments:** incomplete rating observation archived;
+      stopped aspiration snapshot rejected; 6,502,902 baseline retained.
 - [x] **4.1 Diagnostics:** deterministic sampled provenance, pruning recall/
       overlap, NMP/ProbCut/singularity, correction and root/SMP confidence;
       normal/diagnostic search equivalence verified.
@@ -117,22 +116,11 @@ the user explicitly abandons that program.
 
 ## What you run now
 
-Both active jobs remain observational until finished. Do not change opponents,
-book, TC, adjudication, concurrency, SPSA bounds/seeds/horizon or stop rules.
-
-| Job | Action | Archive |
-|---|---|---|
-| Rating Tournament | Finish all **36,400 games** unchanged. | Final standings, full PGN, binaries/manifests, tournament config, book and UCI/TC/thread/hash settings. |
-| Aspiration SPSA | Finish the registered **5,000 iterations**. If interrupted: `./tools/spsa.ps1 -ConfigGroup aspiration -LaunchOnly -Iterations 5000`. | `state.json`, config/seed, trajectory, logs, final theta and predeclared estimator. |
-
-The machine is occupied at concurrency 14/16. Run no bench, NPS, PGO, SPRT,
-gauntlet, datagen or other games. `2.4.0-dev` is not a gate candidate because
-it contains interim aspiration constants.
-
-After both jobs finish, provide their artifacts. The model will bake once,
-reproduce/restore the clean baseline, prepare the registered aspiration gate
-for you, update the external baseline and implement 4.1 before requesting
-another long job.
+No long job is active or requested. Do not resume the old aspiration tuner or
+reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
+the retained baseline. Phases 4.0 and 4.1 are complete, so the next numbered
+implementation step is **4.2 — result evidence and TT contract**. Start another
+SPRT/SPSA/gauntlet only when a later step explicitly prepares and requests it.
 
 ## Decision rules
 
@@ -142,7 +130,7 @@ another long job.
 | Strength candidate | Registered SPRT; H1 accepts, otherwise revert behaviour |
 | Root/TM/SMP | 1T STC/LTC plus 4T LTC, zero forfeits |
 | Mechanism de-tunes consumers | Keep inert/ablatable until 4.10; post-fit ablation required |
-| SPSA | Active aspiration, Phase 4.10 and Phase 7.3 only unless new evidence authorizes another |
+| SPSA | Phase 4.10 and Phase 7.3 only unless new evidence authorizes another; never resume the rejected p102a run |
 | NNUE baseline loses | Diagnose contract/data/training/architecture; do not jump to HCE |
 | Target unavailable | Phase 4 stays open; rating-list inference is insufficient |
 

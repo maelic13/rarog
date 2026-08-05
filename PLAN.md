@@ -13,11 +13,11 @@ notes are user-facing and must not contain experiment bookkeeping.
 | Released baseline | Rarog **2.3.1**, bench-13 **5,173,540**, EBF **2.406**. |
 | Clean accepted development baseline | RootMove + zero-reduction LMR + accepted selectivity fit + frozen Texel refresh; bench **6,502,902**, EBF **2.449**, `rarog-p1043-base-pext-pgo.exe`. |
 | Evaluation | Accepted HCE remains in the baseline, but all new HCE strength work is frozen. Phase 9 is the optional last HCE fallback and runs only if NNUE is abandoned. |
-| Active jobs | 36,400-game Rating Tournament and registered 5,000-iteration aspiration SPSA. The tournament's `2.4.0-dev` includes interim unfinished SPSA constants. |
+| Active jobs | None. Phase 4.0 closed the incomplete rating observation and rejected the stopped `p102a-snapshot`; do not resume either job. |
 | Next release | **2.4.0 at Phase 4.11**, after the complete pre-NNUE search, portability and target gate. |
 | NNUE release | **2.5.0 at Phase 6.7**, followed by the Phase-7 frontier cycle. |
 
-### Live rating evidence — provisional 2026-08-05
+### Closed rating observation — last supplied checkpoint 2026-08-05
 
 At 8,626/36,400 games (~1,232 per engine):
 
@@ -34,8 +34,10 @@ At 8,626/36,400 games (~1,232 per engine):
 | **Rarog 2.3.1** | **2956** | −11 |
 | Rybka 3 | 2928 | −39 |
 
-The +11 pool Elo over 2.3.1 is compatible with the expected small gain and
-with noise; it cannot be attributed while aspiration SPSA is unfinished.
+The +11 pool Elo over 2.3.1 was compatible with a small gain and with noise;
+the mixed interim-constant binary and incomplete tournament provide no
+component attribution and are not a baseline or gate. Phase 4.0 preserves this
+checkpoint only as an observation.
 Houdini 2.0c and Fritz 16 are absent and must be added to Phase 4.11. Closing a
 ~190–250 Elo search-only gap is aggressive and cannot be promised. The phase
 stays open if any direct target gate fails.
@@ -58,8 +60,8 @@ Model  -> accept/revert from the registered verdict, update docs, commit.
   same commit that closes an experiment; keep forward sequencing only here.
 - Preserve unrelated user changes. A dirty binary records its diff hash and
   cannot become a release baseline.
-- While the two active jobs occupy 14 physical cores: no bench, NPS, PGO,
-  SPRT, datagen or competing game workload.
+- No repository job currently reserves this machine. Start long jobs only when
+  a later numbered step explicitly requests one.
 
 ### Required gates
 
@@ -81,8 +83,8 @@ and telemetry explain it.
 
 ### SPSA budget
 
-1. Finish the already-active aspiration SPSA unchanged; it is a sunk in-flight
-   experiment, not permission for more piecemeal tuning.
+1. The stopped half-run aspiration SPSA and its `p102a-snapshot` gate are
+   **closed/rejected** by Phase 4.0; do not resume or tail-select them.
 2. **One additional pre-NNUE search SPSA:** Phase 4.10, after the complete
    search architecture freezes; diagnostics select ≤24 coordinates.
 3. **One post-NNUE search SPSA:** Phase 7.3, after the retained NNUE
@@ -195,14 +197,24 @@ These are individual mechanism gates, not additive proof of the live binary.
 5. Aspiration/TM/fallback/SMP share one completed root snapshot.
 6. Joint-fit mechanisms remain independently ablatable.
 
-### 4.0 — Close and freeze the two live experiments
+### 4.0 — Close and freeze the two live experiments — **COMPLETE (2026-08-05)**
 
-Finish the 36,400-game tournament and registered 5,000-iteration aspiration
-SPSA unchanged. Archive binaries/manifests/config/book/PGN and SPSA state,
-seeds/trajectory/logs/final estimator. Interim constants in `2.4.0-dev` are not
-accepted evidence. Bake the predeclared estimator once, build clean PGO and
-prepare its registered gate against `rarog-p1043-base-pext-pgo.exe`; if it
-fails, restore the clean baseline.
+The rating tournament is archived only at its last supplied 8,626/36,400-game
+checkpoint; its mixed interim-constant binary remains observational. The
+aspiration SPSA was stopped at iteration 2,510/5,000. Its frozen snapshot at
+`ba3170b` changed `21/150/150/5/20/0/0` to
+`15/148/149/9/20/8/0` and widened bench from 6,502,902 to 7,047,226 nodes.
+
+The registered `p102a-snapshot` versus `p1043-base` `[0,+3]` gate at
+`3+0.03`, 1T, 64 MB and `UHO_Lichess_4852_v1.epd` was manually stopped after
+13,000 games at −2.67 ± 3.83 Elo / −4.16 ± 5.97 nElo, W-D-L
+3,261-6,378-3,361, LLR −1.83 of ±2.94. This did not reach the formal H0
+boundary, but it also did not accept H1; under the registered “H1 accepts,
+otherwise revert” rule the snapshot is rejected. `development` already held
+the restored baseline constants and still matches 6,502,902 / EBF 2.449, so no
+source revert was necessary. The disposable local `strength_test` pointer was
+deleted; RAR-S20 retains the exact constants, result and source hash. No p102a
+binary, tuner state or result artifact existed on this machine.
 
 ### 4.1 — Diagnostic substrate and interaction map — **COMPLETE (2026-08-05)**
 

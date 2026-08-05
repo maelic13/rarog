@@ -284,6 +284,16 @@ fixed-movetime SPSA candidate was
 `1110 / 98 / 880 / 1138 / 738 / 2334 / 8268`; it failed the old gate and was
 replaced by the Phase 2.5.1 clock-TC candidate above.
 
+### config_aspiration.json — Aspiration shape
+
+The checked-in values remain the accepted/default-equivalent baseline seeds
+`21/150/150/5/20/0/0`. The `p102a` run was stopped at iteration 2,510/5,000;
+its frozen snapshot `15/148/149/9/20/8/0` widened bench by 8.4% and failed to
+accept H1 against `p1043-base` (13,000 games, −4.16 ± 5.97 nElo, LLR −1.83).
+It is closed/rejected, not resumable tuner state. Future aspiration fitting is
+part of the completed root-confidence architecture and consolidated Phase-4.10
+fit, not a continuation of this run.
+
 ### config_pruning.json — Pruning / margin constants
 
 Defaults are the accepted **10.4.6(a) final theta** from the 5,000-iteration
