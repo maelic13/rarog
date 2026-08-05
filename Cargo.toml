@@ -26,10 +26,10 @@ resolver = "3"
 # Build: cargo xtask build --arch pext --pgo (+ add --features tune to the xtask or
 # pass CARGO_ENCODED_RUSTFLAGS directly if needed).
 tune = []
-# Phase 7.6 search diagnostics: process-global counters dumped as `info string
-# diag ...` at search end (check-node share, tt_pv veto, prune families, LMR
-# re-search rate, learning events). Diagnostic-only — never in a shipped or
-# SPRT binary. bench is identical with this OFF (the gate for the feature).
+# Phase 4.1 search diagnostics: exact legacy events plus deterministic sampled
+# interaction traces, dumped as `info string diag ...` at search end.
+# Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
+# but must not change nodes or best moves; production compiles it out entirely.
 diag = []
 
 # Exposes the Texel trace machinery (EvalTrace, reconstruct, flat-param helpers)

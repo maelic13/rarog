@@ -315,6 +315,10 @@ pub struct Searcher {
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
+    /// Non-zero while a verified null cutoff is being re-searched. Diagnostic
+    /// builds use it to expose descendant null attempts inside that subtree.
+    #[cfg(feature = "diag")]
+    diag_nmp_verify_nesting: usize,
 }
 
 impl Default for Searcher {
@@ -373,6 +377,8 @@ impl Default for Searcher {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
+            #[cfg(feature = "diag")]
+            diag_nmp_verify_nesting: 0,
         }
     }
 }
@@ -727,6 +733,10 @@ impl Searcher {
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
         self.root_best_effort = 0.0;
+        #[cfg(feature = "diag")]
+        {
+            self.diag_nmp_verify_nesting = 0;
+        }
         if age_tt {
             self.tt.new_search();
         }
@@ -1038,6 +1048,29 @@ impl Searcher {
                         root_move.complete_iteration();
                     }
                 }
+                #[cfg(feature = "diag")]
+                {
+                    let second_score = self
+                        .root_move_records
+                        .iter()
+                        .filter(|rm| rm.last_search_depth == depth && rm.mv != bestmove)
+                        .map(|rm| rm.score)
+                        .max()
+                        .unwrap_or(best_score);
+                    let variance = self
+                        .root_move_records
+                        .iter()
+                        .find(|rm| rm.mv == bestmove)
+                        .map_or(0.0, |rm| {
+                            (rm.mean_squared_score - rm.average_score * rm.average_score).max(0.0)
+                        });
+                    crate::diag::record_root_iteration(
+                        best_score - second_score,
+                        variance,
+                        self.root_best_effort,
+                        bestmove != previous_bestmove,
+                    );
+                }
                 break;
             }
 
@@ -1179,7 +1212,17 @@ impl Searcher {
             pondermove = self.ponder_from_tt(&board, bestmove);
         }
 
-        // Phase 7.6: dump per-search counters (no-op without `--features diag`).
+        #[cfg(feature = "diag")]
+        if (self.stopped || self.quit)
+            && self
+                .root_move_records
+                .iter()
+                .any(|rm| rm.last_search_depth > completed_depth)
+        {
+            crate::diag_count!(root_interrupted_fallback);
+        }
+
+        // Phase 4.1: dump per-search counters (no-op without `--features diag`).
         // 9.7.5(b): serial path only — see the reset note above. The parallel
         // dump lives in `search_parallel`, after the helpers are joined.
         crate::diag::record_thread_depth(self.thread_id, completed_depth);
@@ -1327,6 +1370,46 @@ impl Searcher {
         }
         self.root_move_offset = 0;
 
+        #[cfg(feature = "diag")]
+        if let Some(main) = helper_results.first() {
+            let min_depth = helper_results
+                .iter()
+                .map(|result| result.depth)
+                .min()
+                .unwrap_or(0);
+            let max_depth = helper_results
+                .iter()
+                .map(|result| result.depth)
+                .max()
+                .unwrap_or(0);
+            let min_score = helper_results
+                .iter()
+                .map(|result| result.score)
+                .min()
+                .unwrap_or(0);
+            let max_score = helper_results
+                .iter()
+                .map(|result| result.score)
+                .max()
+                .unwrap_or(0);
+            let disagreements = helper_results
+                .iter()
+                .filter(|result| result.bestmove != main.bestmove)
+                .count();
+            crate::diag_add!(
+                worker_best_disagreement,
+                u64::try_from(disagreements).unwrap_or(u64::MAX)
+            );
+            crate::diag_add!(
+                worker_depth_spread_sum,
+                u64::try_from(max_depth.saturating_sub(min_depth)).unwrap_or(u64::MAX)
+            );
+            crate::diag_add!(
+                worker_score_spread_sum,
+                u64::from(max_score.saturating_sub(min_score).unsigned_abs())
+            );
+        }
+
         // 9.7.5(b): every helper has been joined above, so the counters are now
         // complete and this is the one legitimate dump point for a parallel go.
         crate::diag::dump();
@@ -1426,6 +1509,12 @@ impl Searcher {
 
         let original_alpha = alpha;
         let hash = board.hash;
+        #[cfg(feature = "diag")]
+        let diag_sample = crate::diag::sampled(hash, ply, crate::diag::SAMPLE_MAIN);
+        #[cfg(feature = "diag")]
+        if diag_sample {
+            crate::diag_count!(sampled_main_nodes);
+        }
         if let Some(score) = self.syzygy_wdl_score(board, depth, ply, excluded) {
             self.tt.store(TtStore {
                 key: hash,
@@ -1456,6 +1545,39 @@ impl Searcher {
         let tt_depth = tt_entry.map(|entry| entry.depth as i32).unwrap_or(-1);
         let tt_bound = tt_entry.and_then(|entry| entry.bound());
         let tt_pv = is_pv || tt_entry.is_some_and(|e| e.is_pv_node());
+        #[cfg(feature = "diag")]
+        if diag_sample {
+            if let Some(entry) = tt_entry {
+                crate::diag_count!(tt_sample_hit);
+                crate::diag_count!(shadow_4_2_evidence);
+                if !is_pv && excluded.is_null() && entry.depth as i32 >= depth {
+                    match tt_bound {
+                        Some(Bound::Exact) => {
+                            crate::diag_count!(tt_cut_exact);
+                        }
+                        Some(Bound::Lower) if tt_score >= beta => {
+                            crate::diag_count!(tt_cut_lower);
+                        }
+                        Some(Bound::Upper) if tt_score <= alpha => {
+                            crate::diag_count!(tt_cut_upper);
+                        }
+                        Some(_) => {
+                            crate::diag_count!(tt_bound_not_usable);
+                        }
+                        None => {}
+                    }
+                    if matches!(tt_bound, Some(Bound::Lower)) && tt_score <= alpha
+                        || matches!(tt_bound, Some(Bound::Upper)) && tt_score >= beta
+                    {
+                        crate::diag_count!(tt_bound_contradicts_window);
+                    }
+                } else if tt_bound.is_some() {
+                    crate::diag_count!(tt_bound_not_usable);
+                }
+            } else {
+                crate::diag_count!(tt_sample_miss);
+            }
+        }
         if !is_pv
             && excluded.is_null()
             && let Some(entry) = tt_entry
@@ -1499,11 +1621,27 @@ impl Searcher {
             tt_move = Move::NULL;
         }
 
+        #[cfg(feature = "diag")]
+        let mut diag_iir_applied = false;
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
         if excluded.is_null()
             && depth >= 4
             && (tt_move.is_null() || (!is_pv && tt_depth < depth - 3))
         {
+            #[cfg(feature = "diag")]
+            if diag_sample {
+                diag_iir_applied = true;
+                crate::diag_count!(iir_applied);
+                crate::diag_count!(shadow_4_4_selectivity);
+                if is_pv {
+                    crate::diag_count!(iir_pv);
+                }
+                if tt_move.is_null() {
+                    crate::diag_count!(iir_no_tt_move);
+                } else {
+                    crate::diag_count!(iir_shallow_tt);
+                }
+            }
             depth -= 1;
         }
 
@@ -1554,6 +1692,18 @@ impl Searcher {
         } else {
             static_eval
         };
+        #[cfg(feature = "diag")]
+        if diag_sample
+            && eval_for_pruning != VALUE_NONE
+            && static_eval != VALUE_NONE
+            && eval_for_pruning != static_eval
+        {
+            crate::diag_count!(tt_eval_refined);
+            crate::diag_add!(
+                tt_eval_delta_sum,
+                u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs())
+            );
+        }
         // 8.3 diagnostic: a non-PV, non-check node where the *stored* PV bit
         // (tt_pv true while is_pv false) is what keeps the whole forward-pruning
         // block below from running.
@@ -1591,6 +1741,22 @@ impl Searcher {
                         - self.params.nm_improving_bonus * improving_i
                 && board.has_non_pawn_material(board.side_to_move())
             {
+                #[cfg(feature = "diag")]
+                if self.diag_nmp_verify_nesting > 0 {
+                    crate::diag_count!(nmp_nested_attempt);
+                }
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(nmp_attempt);
+                    crate::diag_count!(shadow_4_4_selectivity);
+                    if eval_for_pruning != static_eval {
+                        crate::diag_count!(nmp_eval_tt);
+                    } else if static_eval != raw_static_eval {
+                        crate::diag_count!(nmp_eval_corrected);
+                    } else {
+                        crate::diag_count!(nmp_eval_raw);
+                    }
+                }
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
                 self.tt.prefetch(board.hash);
@@ -1612,8 +1778,17 @@ impl Searcher {
                 }
                 if score >= beta {
                     crate::diag_count!(nmp_cut);
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(nmp_sample_cut);
+                    }
                     if depth >= 10 {
+                        crate::diag_count!(nmp_verify_attempt);
                         let verify_depth = (depth - reduction).max(1);
+                        #[cfg(feature = "diag")]
+                        {
+                            self.diag_nmp_verify_nesting += 1;
+                        }
                         let verified = self.negamax(
                             board,
                             verify_depth,
@@ -1626,13 +1801,19 @@ impl Searcher {
                             false,
                             poll,
                         );
+                        #[cfg(feature = "diag")]
+                        {
+                            self.diag_nmp_verify_nesting -= 1;
+                        }
                         if self.stopped || self.quit {
                             return 0;
                         }
                         if verified < beta {
+                            crate::diag_count!(nmp_verify_fail);
                             // Continue normally when the null cutoff is not stable
                             // under a verification search with null move disabled.
                         } else {
+                            crate::diag_count!(nmp_verify_pass);
                             return score;
                         }
                     } else {
@@ -1642,6 +1823,11 @@ impl Searcher {
             }
 
             if depth >= 4 {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(probcut_attempt);
+                    crate::diag_count!(shadow_4_4_selectivity);
+                }
                 let probcut_beta = beta + self.params.probcut_margin;
                 let captures = board.generate_legal_captures();
                 let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
@@ -1657,6 +1843,10 @@ impl Searcher {
                     let score =
                         -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
                     let score = if score >= probcut_beta {
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(probcut_qpass);
+                        }
                         -self.negamax(
                             board,
                             depth - 4,
@@ -1690,6 +1880,10 @@ impl Searcher {
                             static_eval: raw_static_eval,
                             is_pv: false,
                         });
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(probcut_tt_store);
+                        }
                         return cutoff_score;
                     }
                 }
@@ -1747,6 +1941,14 @@ impl Searcher {
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut searched = 0usize;
+        #[cfg(feature = "diag")]
+        let diag_order_sample = diag_sample && excluded.is_null();
+        #[cfg(feature = "diag")]
+        let mut diag_best_rank = 0usize;
+        #[cfg(feature = "diag")]
+        let mut diag_best_stage = 3u8;
+        #[cfg(feature = "diag")]
+        let mut diag_best_reduced = false;
         let mut legal_move_seen = false;
         // 10.3: per-node check masks, built at most once and reused by every
         // move at this node — for the pruning-side `move_gives_check` calls
@@ -1774,8 +1976,92 @@ impl Searcher {
             let captured_piece = board.captured_piece(mv);
             let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
             let mut gives_check = None;
+            #[cfg(feature = "diag")]
+            let diag_move_stage = if mv == tt_move {
+                0
+            } else if is_capture && see >= 0 {
+                1
+            } else if is_quiet {
+                2
+            } else {
+                3
+            };
+            #[cfg(feature = "diag")]
+            if diag_order_sample {
+                match diag_move_stage {
+                    0 => {
+                        crate::diag_count!(move_seen_tt);
+                    }
+                    1 => {
+                        crate::diag_count!(move_seen_good_capture);
+                    }
+                    2 => {
+                        crate::diag_count!(move_seen_quiet);
+                    }
+                    _ => {
+                        crate::diag_count!(move_seen_bad_capture);
+                    }
+                }
+            }
+            #[cfg(feature = "diag")]
+            let mut diag_move_reduced = false;
 
             if !tt_pv && !in_check && searched > 0 {
+                #[cfg(feature = "diag")]
+                if diag_order_sample {
+                    crate::diag_count!(prune_shadow_moves);
+                    crate::diag_count!(shadow_4_6_prospective_depth);
+                    if is_quiet {
+                        let lmp_margin = (self.params.lmp_base
+                            + self.params.lmp_not_improving * not_improving_i)
+                            * depth;
+                        let lmp = (depth <= 3 && eval_for_pruning + lmp_margin <= alpha)
+                            || (depth <= 8
+                                && searched
+                                    > late_move_prune_count(
+                                        depth,
+                                        improving,
+                                        self.params.lmp_count_base,
+                                    ))
+                            || (depth <= 4 && quiet_hist < -10_000)
+                            || (depth <= 7
+                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
+                        let futility = depth <= 8
+                            && eval_for_pruning
+                                + self.params.fp_base
+                                + self.params.fp_coeff * depth
+                                + corr_abs * self.params.corr_fut_scale / 128
+                                <= alpha;
+                        let checking = (lmp || futility)
+                            && move_gives_check(board, &mut node_ci, mv, &mut gives_check);
+                        if lmp {
+                            crate::diag_count!(prune_shadow_lmp);
+                        }
+                        if futility {
+                            crate::diag_count!(prune_shadow_futility);
+                        }
+                        if lmp && futility {
+                            crate::diag_count!(prune_shadow_overlap_two_plus);
+                        }
+                        if checking {
+                            crate::diag_count!(prune_shadow_check_exempt);
+                        }
+                    } else if is_capture && see < 0 {
+                        let cap_hist = captured_piece.map_or(0, |cap| {
+                            self.cap_history[moving_piece as usize][mv.to_sq().index()]
+                                [cap as usize] as i32
+                        });
+                        let threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
+                            .max(-self.params.see_pruning_max);
+                        let see_shadow = depth <= 8 && !board.see_ge(mv, threshold);
+                        if see_shadow {
+                            crate::diag_count!(prune_shadow_see);
+                            if move_gives_check(board, &mut node_ci, mv, &mut gives_check) {
+                                crate::diag_count!(prune_shadow_check_exempt);
+                            }
+                        }
+                    }
+                }
                 if is_quiet {
                     let prune_margin = (self.params.lmp_base
                         + self.params.lmp_not_improving * not_improving_i)
@@ -1839,6 +2125,14 @@ impl Searcher {
                 && matches!(tt_bound, Some(Bound::Lower | Bound::Exact))
                 && tt_score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
             {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(singular_attempt);
+                    crate::diag_count!(shadow_4_4_selectivity);
+                    if tt_depth == depth - 3 && matches!(tt_bound, Some(Bound::Lower)) {
+                        crate::diag_count!(singular_probcut_depth_match);
+                    }
+                }
                 let singular_beta = tt_score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
                 let singular_score = self.negamax(
@@ -1858,14 +2152,34 @@ impl Searcher {
                 }
                 if singular_score < singular_beta {
                     extension = if !is_pv && singular_score < singular_beta - 20 {
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(singular_extend_two);
+                        }
                         2
                     } else {
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(singular_extend_one);
+                        }
                         1
                     };
                 } else if singular_beta >= beta {
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(singular_multicut);
+                    }
                     return singular_beta;
                 } else if tt_score >= beta {
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(singular_negative_extension);
+                    }
                     extension = -1;
+                }
+                #[cfg(feature = "diag")]
+                if diag_sample && diag_iir_applied && extension != 0 {
+                    crate::diag_count!(iir_extension_debt);
                 }
             }
 
@@ -1886,6 +2200,13 @@ impl Searcher {
             board.make_move_with_check(mv, mv_gives_check);
             self.tt.prefetch(board.hash);
             let new_depth = depth - 1 + extension;
+            #[cfg(feature = "diag")]
+            if diag_sample {
+                crate::diag_add!(
+                    prospective_depth_sum,
+                    u64::try_from(new_depth.max(0)).unwrap_or(0)
+                );
+            }
             let mut score;
 
             if searched == 0 {
@@ -1975,6 +2296,16 @@ impl Searcher {
                     // full-depth PVS search and must not trigger a redundant
                     // verification search at the same depth.
                     let reduction = lmr_reduction(r, new_depth);
+                    #[cfg(feature = "diag")]
+                    {
+                        diag_move_reduced = reduction > 0;
+                        if diag_sample {
+                            crate::diag_add!(
+                                reduction_depth_sum,
+                                u64::try_from(reduction).unwrap_or(0)
+                            );
+                        }
+                    }
                     if reduction == 0 {
                         crate::diag_count!(lmr_zero_reduction);
                     } else {
@@ -2067,6 +2398,12 @@ impl Searcher {
             if score > best_score {
                 best_score = score;
                 best_move = mv;
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    diag_best_rank = searched;
+                    diag_best_stage = diag_move_stage;
+                    diag_best_reduced = diag_move_reduced;
+                }
                 if ply == 0 {
                     self.root_best_nodes = move_nodes;
                 }
@@ -2174,6 +2511,10 @@ impl Searcher {
                             static_eval: raw_static_eval,
                             is_pv: tt_pv,
                         });
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(main_store_lower);
+                        }
                         if static_eval != VALUE_NONE
                             && score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
                             && score > static_eval
@@ -2192,6 +2533,14 @@ impl Searcher {
                                 self.update_correction(board, score - static_eval, depth, ply);
                             }
                         }
+                    }
+                    #[cfg(feature = "diag")]
+                    if diag_order_sample && diag_best_rank > 0 {
+                        crate::diag::record_best_move(
+                            diag_best_rank,
+                            diag_best_stage,
+                            diag_best_reduced,
+                        );
                     }
                     return score;
                 }
@@ -2275,6 +2624,22 @@ impl Searcher {
                 static_eval: raw_static_eval,
                 is_pv: tt_pv,
             });
+            #[cfg(feature = "diag")]
+            if diag_sample {
+                match bound {
+                    Bound::Exact => {
+                        crate::diag_count!(main_store_exact);
+                    }
+                    Bound::Upper => {
+                        crate::diag_count!(main_store_upper);
+                    }
+                    Bound::Lower => {}
+                }
+            }
+        }
+        #[cfg(feature = "diag")]
+        if diag_order_sample && diag_best_rank > 0 {
+            crate::diag::record_best_move(diag_best_rank, diag_best_stage, diag_best_reduced);
         }
         best_score
     }
@@ -2303,9 +2668,37 @@ impl Searcher {
 
         let in_check = board.is_in_check();
         let hash = board.hash;
+        #[cfg(feature = "diag")]
+        let diag_q_sample = crate::diag::sampled(hash, ply + qply, crate::diag::SAMPLE_QSEARCH);
+        #[cfg(feature = "diag")]
+        if diag_q_sample {
+            crate::diag_count!(sampled_qnodes);
+            crate::diag_count!(shadow_4_3_qsearch);
+            if in_check {
+                crate::diag_count!(q_in_check);
+            }
+        }
         let original_alpha = alpha;
         let tt_entry = self.tt.probe(hash);
         let tt_raw_move = tt_entry.and_then(|entry| entry.best_move());
+        #[cfg(feature = "diag")]
+        if diag_q_sample && let Some(entry) = tt_entry {
+            crate::diag_count!(q_tt_hit);
+            if entry.depth >= 0
+                && match entry.bound() {
+                    Some(Bound::Exact) => true,
+                    Some(Bound::Lower) => {
+                        score_from_tt(entry.score as i32, ply, board.halfmove_clock) >= beta
+                    }
+                    Some(Bound::Upper) => {
+                        score_from_tt(entry.score as i32, ply, board.halfmove_clock) <= alpha
+                    }
+                    None => false,
+                }
+            {
+                crate::diag_count!(q_tt_cut);
+            }
+        }
         if let Some(entry) = tt_entry
             && entry.depth >= 0
             && let Some(bound) = entry.bound()
@@ -2384,6 +2777,11 @@ impl Searcher {
             };
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
+                #[cfg(feature = "diag")]
+                if diag_q_sample {
+                    crate::diag_count!(q_stand_pat_cut);
+                    crate::diag_count!(q_stand_pat_store);
+                }
                 self.tt.store(TtStore {
                     key: hash,
                     depth: 0,
@@ -2476,6 +2874,11 @@ impl Searcher {
                 return 0;
             }
             if score >= beta {
+                #[cfg(feature = "diag")]
+                if diag_q_sample {
+                    crate::diag_count!(q_move_cut);
+                    crate::diag_count!(q_move_store);
+                }
                 self.tt.store(TtStore {
                     key: hash,
                     depth: 0,
@@ -2504,6 +2907,18 @@ impl Searcher {
         } else {
             Bound::Upper
         };
+        #[cfg(feature = "diag")]
+        if diag_q_sample {
+            match bound {
+                Bound::Exact => {
+                    crate::diag_count!(q_tail_exact_store);
+                }
+                Bound::Upper => {
+                    crate::diag_count!(q_tail_upper_store);
+                }
+                Bound::Lower => {}
+            }
+        }
         self.tt.store(TtStore {
             key: hash,
             depth: 0,
@@ -3107,6 +3522,44 @@ impl Searcher {
         let us = color as usize;
         let them = (!color) as usize;
         let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
+        #[cfg(feature = "diag")]
+        if crate::diag::sampled(board.hash, ply, crate::diag::SAMPLE_CORRECTION) {
+            crate::diag_count!(correction_sample_updates);
+            crate::diag_count!(shadow_4_5_correction);
+            crate::diag_add!(correction_sample_abs_sum, u64::from(diff.unsigned_abs()));
+            let pawn_key = board.pawn_key();
+            let minor_key = board.minor_key();
+            let own_key = board.non_pawn_key(color);
+            let other_key = board.non_pawn_key(!color);
+            let pawn_index = infra::index(pawn_key) & (CORR_SIZE - 1);
+            let minor_index = infra::index(minor_key) & (CORR_SIZE - 1);
+            let own_index = infra::index(own_key) & (CORR_SIZE - 1);
+            let other_index = infra::index(other_key) & (CORR_SIZE - 1);
+            crate::diag::record_correction_slot(
+                0,
+                us * CORR_SIZE + pawn_index,
+                pawn_key,
+                self.correction_history[us][pawn_index],
+            );
+            crate::diag::record_correction_slot(
+                1,
+                us * CORR_SIZE + minor_index,
+                minor_key,
+                self.minor_correction_history[us][minor_index],
+            );
+            crate::diag::record_correction_slot(
+                2,
+                us * 2 * CORR_SIZE + us * CORR_SIZE + own_index,
+                own_key,
+                self.non_pawn_correction_history[us][us][own_index],
+            );
+            crate::diag::record_correction_slot(
+                3,
+                us * 2 * CORR_SIZE + them * CORR_SIZE + other_index,
+                other_key,
+                self.non_pawn_correction_history[us][them][other_index],
+            );
+        }
         update_hist_entry(
             &mut self.correction_history[us][infra::index(board.pawn_key()) & (CORR_SIZE - 1)],
             scaled,

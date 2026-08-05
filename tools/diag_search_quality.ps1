@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    10.0(a) search-quality readout: first-move cutoff rate and LMR
-    over-reduction ratio over the `bench` suite.
+    Phase 4.1 interaction map plus the legacy first-move-cutoff and LMR
+    readouts over the deterministic `bench` suite.
 
 .DESCRIPTION
     Runs `bench <depth>` on a `--features diag` build and aggregates the
-    per-position `info string diag <name> <value>` dumps into the two standard
-    search-quality ratios.
+    per-position `info string diag <name> <value>` dumps. Exact legacy event
+    counters and deterministic 1/1024 Phase-4 samples are reported separately.
 
     WHY THESE TWO. 10.0 measured Rarog's eval at parity with Basilisk 1.9.1
     (paired Texel loss -0.0003 +/- 0.0012 over 8,000 quiet positions) and its
@@ -95,10 +95,16 @@ if ($dumps -eq 0) {
 
 $fingerprint = ($out | Select-String '^Nodes searched\s*:\s*(\d+)').Matches.Groups[1].Value
 $ebf = ($out | Select-String '^Geomean EBF\s*:\s*([\d.]+)').Matches.Groups[1].Value
+$nps = ($out | Select-String '^Nodes/second\s*:\s*(\d+)').Matches.Groups[1].Value
 
 function Ratio($num, $den) {
     if ($den -le 0) { return [double]::NaN }
     return 100.0 * $num / $den
+}
+
+function Value([string]$name) {
+    if ($totals.ContainsKey($name)) { return [double]$totals[$name] }
+    return 0.0
 }
 
 $cutoffs = $totals['cutoff_quiet'] + $totals['cutoff_capture']
@@ -108,9 +114,9 @@ $cutoffShare = Ratio $cutoffs $totals['nodes']
 
 Write-Host ""
 Write-Host "======================================================="
-Write-Host "  10.0(a) search-quality readout - bench $Depth, 1 thread"
+Write-Host "  Phase 4.1 interaction map - bench $Depth, 1 thread"
 Write-Host "  exe:         $(Split-Path $Exe -Leaf)"
-Write-Host "  positions:   $dumps    fingerprint: $fingerprint    geomean EBF: $ebf"
+Write-Host "  positions:   $dumps    fingerprint: $fingerprint    geomean EBF: $ebf    NPS: $nps"
 Write-Host "======================================================="
 Write-Host ""
 Write-Host ("  FIRST-MOVE CUTOFF RATE : {0,7:N2} %   ({1:N0} of {2:N0} cutoffs)" -f `
@@ -121,6 +127,34 @@ Write-Host ("      cutoff nodes/nodes : {0,7:N2} %" -f $cutoffShare)
 Write-Host ""
 Write-Host ("  LMR OVER-REDUCTION     : {0,7:N2} %   ({1:N0} re-searches of {2:N0} reductions)" -f `
     $overRed, $totals['lmr_research'], $totals['lmr_applied'])
+Write-Host ""
+Write-Host "  SAMPLED INTERACTION MAP (deterministic 1/1024 nodes)"
+$ttSamples = (Value 'tt_sample_hit') + (Value 'tt_sample_miss')
+$ttCuts = (Value 'tt_cut_exact') + (Value 'tt_cut_lower') + (Value 'tt_cut_upper')
+$bestSamples = (Value 'best_rank_1') + (Value 'best_rank_2_3') + `
+    (Value 'best_rank_4_7') + (Value 'best_rank_8_plus')
+$rootIterations = Value 'root_iterations'
+Write-Host ("      TT hit / sampled main nodes : {0,7:N2} %   usable cutoffs {1:N0}; contradictions {2:N0}" -f `
+    (Ratio (Value 'tt_sample_hit') $ttSamples), $ttCuts, (Value 'tt_bound_contradicts_window'))
+Write-Host ("      qsearch producers           : stand-pat {0:N0}; searched qmove {1:N0}; tail exact/upper {2:N0}/{3:N0}" -f `
+    (Value 'q_stand_pat_store'), (Value 'q_move_store'), `
+    (Value 'q_tail_exact_store'), (Value 'q_tail_upper_store'))
+Write-Host ("      NMP sampled cut / attempt   : {0,7:N2} %   verification pass/fail {1:N0}/{2:N0}; nested {3:N0}" -f `
+    (Ratio (Value 'nmp_sample_cut') (Value 'nmp_attempt')), `
+    (Value 'nmp_verify_pass'), (Value 'nmp_verify_fail'), (Value 'nmp_nested_attempt'))
+Write-Host ("      best move first in picker   : {0,7:N2} %   reduced winners {1:N0}" -f `
+    (Ratio (Value 'best_rank_1') $bestSamples), (Value 'best_was_reduced'))
+Write-Host ("      pruning overlap / candidates: {0,7:N2} %   check exemptions {1:N0}" -f `
+    (Ratio (Value 'prune_shadow_overlap_two_plus') (Value 'prune_shadow_moves')), `
+    (Value 'prune_shadow_check_exempt'))
+Write-Host ("      correction slot collisions : {0:N0} of {1:N0} sampled observations; near rail {2:N0}" -f `
+    (Value 'correction_slot_collision'), `
+    ((Value 'correction_slot_first') + (Value 'correction_slot_repeat') + (Value 'correction_slot_collision')), `
+    (Value 'correction_slot_near_saturation'))
+Write-Host ("      root mean gap / effort      : {0:N2} cp / {1:N2} % over {2:N0} iterations" -f `
+    ((Value 'root_gap_sum') / [Math]::Max(1.0, $rootIterations)), `
+    ((Value 'root_effort_ppm_sum') / [Math]::Max(1.0, $rootIterations) / 10000.0), `
+    $rootIterations)
 Write-Host ""
 Write-Host "  Raw counters:"
 foreach ($k in ($totals.Keys | Sort-Object)) {

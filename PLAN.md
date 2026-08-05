@@ -204,15 +204,29 @@ accepted evidence. Bake the predeclared estimator once, build clean PGO and
 prepare its registered gate against `rarog-p1043-base-pext-pgo.exe`; if it
 fails, restore the clean baseline.
 
-### 4.1 — Diagnostic substrate and interaction map
+### 4.1 — Diagnostic substrate and interaction map — **COMPLETE (2026-08-05)**
 
-Extend deterministic sampled traces for TT producer/consumer/contradiction;
-stand-pat/qmove; NMP nesting/raw-corrected-TT eval; ProbCut/singular reuse; IIR
-and extension debt; move stage/prospective depth/pruning overlap/best-move
-recall; correction capture/collision/saturation; and root variance/gap/effort/
-fails/fallback/worker instability. Add shadow predicates for 4.2–4.7.
-Diagnostics off preserves fingerprint; on preserves nodes/best moves with
-bounded overhead.
+`--features diag` now combines the legacy exact event counters with independent,
+deterministic 1/1024 samples for main search, qsearch and correction updates.
+The sampled map covers TT bounds/contradictions and main/qsearch/ProbCut
+producers; stand-pat versus searched qmoves; NMP eval source, verification and
+descendant nesting; ProbCut/singular reuse; PV/no-TT/shallow-TT IIR and extension
+debt; move stage, prospective/reduced depth, pruning overlap/check exemptions
+and winning-move recall; correction residual/capture/collision/saturation; and
+root gap/variance/effort/fails/fallback plus worker disagreement/spreads.
+Coverage counters expose inert observation points for every 4.2–4.7 consumer.
+
+The implementation is isolated in `src/diag.rs`, call sites compile out of the
+production build, and `tools/diag_search_quality.ps1` prints both a grouped
+interaction map and raw counters. Gate on this machine: normal and diagnostic
+release builds both produced 6,502,902 nodes / EBF 2.449 on `bench 13`; four
+independent depth-10 positions matched nodes, score, PV and best/ponder moves.
+A paired best-of-three un-POGO timing check measured 2,585,646 versus
+2,301,097 NPS (11.0% diagnostic cost, including the older exact atomics); this
+bounds use as an offline diagnostic but is not a speed verdict. The sampler unit
+test, normal/diagnostic test suites and feature-enabled lint wall pass. Record
+future readings and conditional lessons in `EXPERIMENTS.md`; never infer Elo
+from counter movement alone.
 
 ### 4.2 — Result evidence and TT contract
 

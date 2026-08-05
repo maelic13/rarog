@@ -1,4 +1,4 @@
-//! Phase 7.6 search diagnostics — compile-time gated counters.
+//! Phase 4.1 search diagnostics — compile-time gated counters and sampled traces.
 //!
 //! Enabled only with `--features diag`. The default build contains **no**
 //! counter code at all (`diag_count!` expands to nothing), so `bench` stays a
@@ -7,10 +7,10 @@
 //! several worker threads), reset at each `go`, and dumped as `info string diag
 //! <name> <value>` lines when the search completes.
 //!
-//! Purpose (search audit §12): size the Phase-8 opportunities before they spend
-//! SPRT slots — the check-node share (8.2), the stale-`tt_pv` prune-veto share
-//! (8.3), the per-family prune rates, the LMR re-search rate, and the
-//! history/correction event coverage.
+//! The legacy event counters remain exact. Phase 4 adds a deterministic 1/1024
+//! position sample for the wider interaction map; this bounds diagnostic cost
+//! while making repeated runs on the same tree directly comparable. Sampled
+//! counters are observational only and may never steer search.
 
 #[cfg(feature = "diag")]
 // Counter statics are deliberately lower_snake_case: the name is emitted
@@ -142,7 +142,214 @@ pub mod counters {
         lazy_cross_phase_q2,
         lazy_cross_phase_q3,
         lazy_cross_phase_q4,
+        // 4.1 sampled node/TT provenance and contradiction map.
+        sampled_main_nodes,
+        sampled_qnodes,
+        tt_sample_hit,
+        tt_sample_miss,
+        tt_cut_exact,
+        tt_cut_lower,
+        tt_cut_upper,
+        tt_bound_not_usable,
+        tt_bound_contradicts_window,
+        tt_eval_refined,
+        tt_eval_delta_sum,
+        main_store_lower,
+        main_store_exact,
+        main_store_upper,
+        // qsearch authority: distinguish unsearched stand pat from searched moves.
+        q_in_check,
+        q_tt_hit,
+        q_tt_cut,
+        q_stand_pat_cut,
+        q_stand_pat_store,
+        q_move_cut,
+        q_move_store,
+        q_tail_exact_store,
+        q_tail_upper_store,
+        // NMP/ProbCut/singular/IIR cooperation.
+        nmp_attempt,
+        nmp_sample_cut,
+        nmp_nested_attempt,
+        nmp_eval_raw,
+        nmp_eval_corrected,
+        nmp_eval_tt,
+        nmp_verify_attempt,
+        nmp_verify_pass,
+        nmp_verify_fail,
+        probcut_attempt,
+        probcut_qpass,
+        probcut_tt_store,
+        singular_attempt,
+        singular_probcut_depth_match,
+        singular_extend_one,
+        singular_extend_two,
+        singular_multicut,
+        singular_negative_extension,
+        iir_applied,
+        iir_pv,
+        iir_no_tt_move,
+        iir_shallow_tt,
+        iir_extension_debt,
+        // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
+        move_seen_tt,
+        move_seen_good_capture,
+        move_seen_quiet,
+        move_seen_bad_capture,
+        best_rank_1,
+        best_rank_2_3,
+        best_rank_4_7,
+        best_rank_8_plus,
+        best_stage_tt,
+        best_stage_good_capture,
+        best_stage_quiet,
+        best_stage_bad_capture,
+        best_was_reduced,
+        prune_shadow_moves,
+        prune_shadow_lmp,
+        prune_shadow_futility,
+        prune_shadow_see,
+        prune_shadow_check_exempt,
+        prune_shadow_overlap_two_plus,
+        prospective_depth_sum,
+        reduction_depth_sum,
+        // Correction attribution and hashed-table quality.
+        correction_sample_updates,
+        correction_sample_abs_sum,
+        correction_slot_first,
+        correction_slot_repeat,
+        correction_slot_collision,
+        correction_slot_near_saturation,
+        // Root confidence/SMP observations use fixed-point sums (ppm/cp²).
+        root_iterations,
+        root_gap_sum,
+        root_variance_sum,
+        root_effort_ppm_sum,
+        root_best_changes,
+        root_interrupted_fallback,
+        worker_best_disagreement,
+        worker_depth_spread_sum,
+        worker_score_spread_sum,
+        // Coverage proof for the shadow consumers planned in 4.2--4.7.
+        shadow_4_2_evidence,
+        shadow_4_3_qsearch,
+        shadow_4_4_selectivity,
+        shadow_4_5_correction,
+        shadow_4_6_prospective_depth,
+        shadow_4_7_root_confidence,
     );
+}
+
+/// Stable domains keep independent samples from accidentally selecting exactly
+/// the same positions. Public constants make call sites self-documenting.
+#[cfg(feature = "diag")]
+pub const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
+#[cfg(feature = "diag")]
+pub const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
+#[cfg(feature = "diag")]
+pub const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
+
+/// Deterministic 1/1024 position sampler. It is deliberately available only in
+/// diagnostic builds: production code must contain neither the mix nor a branch.
+#[cfg(feature = "diag")]
+#[inline]
+pub fn sampled(hash: u64, ply: usize, domain: u64) -> bool {
+    let mut value = hash ^ domain ^ (ply as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    ((value ^ (value >> 31)) & 1023) == 0
+}
+
+/// Diagnostic-only ownership tags for the deliberately lossy correction
+/// tables. A repeated slot/key is normal reuse; a different key in the same
+/// slot is an observed collision. The map is sparse because callers invoke it
+/// only for sampled updates.
+#[cfg(feature = "diag")]
+mod correction_probe {
+    use std::collections::HashMap;
+    use std::sync::atomic::Ordering;
+    use std::sync::{Mutex, OnceLock};
+
+    static OWNERS: OnceLock<Mutex<HashMap<(u8, usize), u64>>> = OnceLock::new();
+
+    fn owners() -> &'static Mutex<HashMap<(u8, usize), u64>> {
+        OWNERS.get_or_init(|| Mutex::new(HashMap::new()))
+    }
+
+    pub fn reset() {
+        owners()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clear();
+    }
+
+    pub fn record(source: u8, index: usize, key: u64, value: i16) {
+        use crate::diag::counters;
+        let mut owners = owners().lock().unwrap_or_else(|error| error.into_inner());
+        match owners.insert((source, index), key) {
+            None => counters::correction_slot_first.fetch_add(1, Ordering::Relaxed),
+            Some(old) if old == key => {
+                counters::correction_slot_repeat.fetch_add(1, Ordering::Relaxed)
+            }
+            Some(_) => counters::correction_slot_collision.fetch_add(1, Ordering::Relaxed),
+        };
+        if value.unsigned_abs() >= 15_000 {
+            counters::correction_slot_near_saturation.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+#[cfg(feature = "diag")]
+#[inline]
+pub fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
+    correction_probe::record(source, index, key, value);
+}
+
+#[cfg(feature = "diag")]
+pub fn record_best_move(rank: usize, stage: u8, reduced: bool) {
+    use std::sync::atomic::Ordering;
+
+    let rank_counter = match rank {
+        1 => &counters::best_rank_1,
+        2 | 3 => &counters::best_rank_2_3,
+        4..=7 => &counters::best_rank_4_7,
+        _ => &counters::best_rank_8_plus,
+    };
+    rank_counter.fetch_add(1, Ordering::Relaxed);
+    let stage_counter = match stage {
+        0 => &counters::best_stage_tt,
+        1 => &counters::best_stage_good_capture,
+        2 => &counters::best_stage_quiet,
+        _ => &counters::best_stage_bad_capture,
+    };
+    stage_counter.fetch_add(1, Ordering::Relaxed);
+    if reduced {
+        counters::best_was_reduced.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+/// Root statistics are cold and diagnostic-only. Floating-point conversion is
+/// intentionally lossy because these are aggregate telemetry units, not search
+/// inputs (effort in ppm and variance in cp²).
+#[cfg(feature = "diag")]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub fn record_root_iteration(gap: i32, variance: f64, effort: f64, changed: bool) {
+    use std::sync::atomic::Ordering;
+
+    counters::root_iterations.fetch_add(1, Ordering::Relaxed);
+    counters::root_gap_sum.fetch_add(u64::from(gap.unsigned_abs()), Ordering::Relaxed);
+    counters::root_variance_sum.fetch_add(
+        variance.max(0.0).min(u64::MAX as f64) as u64,
+        Ordering::Relaxed,
+    );
+    counters::root_effort_ppm_sum.fetch_add(
+        (effort.clamp(0.0, 1.0) * 1_000_000.0) as u64,
+        Ordering::Relaxed,
+    );
+    if changed {
+        counters::root_best_changes.fetch_add(1, Ordering::Relaxed);
+    }
+    counters::shadow_4_7_root_confidence.fetch_add(1, Ordering::Relaxed);
 }
 
 /// 9.7.5(b) per-thread completed depth — the counter that distinguishes "the
@@ -227,9 +434,25 @@ pub mod lazy_probe {
 #[cfg(feature = "diag")]
 #[macro_export]
 macro_rules! diag_count {
-    ($name:ident) => {
+    ($name:ident) => {{
         $crate::diag::counters::$name.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    };
+    }};
+}
+
+/// Add an unsigned value to a diagnostic counter. Like `diag_count!`, both the
+/// expression and atomic disappear entirely from non-diagnostic builds.
+#[cfg(feature = "diag")]
+#[macro_export]
+macro_rules! diag_add {
+    ($name:ident, $value:expr) => {{
+        $crate::diag::counters::$name.fetch_add($value, std::sync::atomic::Ordering::Relaxed);
+    }};
+}
+
+#[cfg(not(feature = "diag"))]
+#[macro_export]
+macro_rules! diag_add {
+    ($name:ident, $value:expr) => {};
 }
 
 #[cfg(not(feature = "diag"))]
@@ -250,6 +473,33 @@ pub fn reset() {
     {
         counters::reset();
         smp::reset();
+        correction_probe::reset();
+    }
+}
+
+#[cfg(all(test, feature = "diag"))]
+mod tests {
+    use super::{SAMPLE_MAIN, SAMPLE_QSEARCH, sampled};
+
+    #[test]
+    fn sampler_is_stable_sparse_and_domain_separated() {
+        let first: Vec<_> = (0..65_536_u64)
+            .filter(|hash| sampled(*hash, 7, SAMPLE_MAIN))
+            .collect();
+        let repeated: Vec<_> = (0..65_536_u64)
+            .filter(|hash| sampled(*hash, 7, SAMPLE_MAIN))
+            .collect();
+        let qsearch: Vec<_> = (0..65_536_u64)
+            .filter(|hash| sampled(*hash, 7, SAMPLE_QSEARCH))
+            .collect();
+
+        assert_eq!(first, repeated);
+        assert!(
+            (40..=88).contains(&first.len()),
+            "sample size {}",
+            first.len()
+        );
+        assert_ne!(first, qsearch);
     }
 }
 

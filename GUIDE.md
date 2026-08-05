@@ -44,8 +44,9 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 - [~] **4.0 Live experiments:** finish/archive the tournament and aspiration
       SPSA unchanged, gate one clean predeclared final estimator or restore the
       6,502,902 baseline.
-- [ ] **4.1 Diagnostics:** trace provenance, pruning recall/overlap,
-      NMP/ProbCut/singularity, correction attribution and root confidence.
+- [x] **4.1 Diagnostics:** deterministic sampled provenance, pruning recall/
+      overlap, NMP/ProbCut/singularity, correction and root/SMP confidence;
+      normal/diagnostic search equivalence verified.
 - [ ] **4.2 Evidence/TT:** add result kinds and explicit consumer contracts
       while preserving the 10-byte TT unless measurements justify growth.
 - [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
