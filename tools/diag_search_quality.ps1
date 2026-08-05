@@ -156,6 +156,44 @@ Write-Host ("      root mean gap / effort      : {0:N2} cp / {1:N2} % over {2:N0
     ((Value 'root_effort_ppm_sum') / [Math]::Max(1.0, $rootIterations) / 10000.0), `
     $rootIterations)
 Write-Host ""
+
+# 4.2 producer census. EXACT, not sampled - this block is the reason the
+# sampled producer lines above must not be read as shares. Sampled counters at
+# different node classes do not share a denominator, which understated ProbCut
+# by 2.4x in the first 4.2 reading (RAR-S22).
+$kinds = [ordered]@{
+    'full'             = 'store_kind_full'
+    'verified reduced' = 'store_kind_verified_reduced'
+    'qsearch move'     = 'store_kind_qsearch_move'
+    'qsearch tail'     = 'store_kind_qsearch_tail'
+    'stand pat'        = 'store_kind_stand_pat'
+    'ProbCut'          = 'store_kind_probcut'
+    'tablebase'        = 'store_kind_tablebase'
+}
+$kindTotal = 0.0
+foreach ($counter in $kinds.Values) { $kindTotal += Value $counter }
+if ($kindTotal -gt 0) {
+    Write-Host "  TT PRODUCER CENSUS (exact, by declared OutcomeKind)"
+    foreach ($label in $kinds.Keys) {
+        $count = Value $kinds[$label]
+        Write-Host ("      {0,-16} {1,14:N0}   {2,6:N2} %" -f $label, $count, (Ratio $count $kindTotal))
+    }
+    $horizon = (Value 'store_kind_qsearch_move') + (Value 'store_kind_qsearch_tail') +
+               (Value 'store_kind_stand_pat')
+    Write-Host ("      {0,-16} {1,14:N0}   {2,6:N2} %" -f '-> depth-0 total', $horizon,
+        (Ratio $horizon $kindTotal))
+    # The census must account for every store. `fresh + same_key` is counted on
+    # a different code path, so a mismatch means a store site bypassed the
+    # census or a kind is being miscounted into a neighbouring bucket.
+    $storeTotal = (Value 'tt_store_fresh') + (Value 'tt_store_same_key')
+    if ([Math]::Abs($kindTotal - $storeTotal) -lt 0.5) {
+        Write-Host ("      reconciles with tt_store_fresh + same_key: {0:N0} OK" -f $storeTotal)
+    } else {
+        Write-Host ("      *** CENSUS MISMATCH: kinds {0:N0} vs stores {1:N0} ***" -f `
+            $kindTotal, $storeTotal) -ForegroundColor Red
+    }
+    Write-Host ""
+}
 Write-Host "  Raw counters:"
 foreach ($k in ($totals.Keys | Sort-Object)) {
     Write-Host ("      {0,-28} {1,14:N0}" -f $k, $totals[$k])
