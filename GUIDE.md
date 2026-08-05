@@ -13,12 +13,12 @@ of method, history and internal naming — see PLAN §"Documentation audiences".
 | | |
 |---|---|
 | Branch / version | `development` carries Phase 10; `master`/`v2.3.1` = `a5fd288`. **2.3.1 RELEASED**, tagged and pushed. |
-| Accepted baseline | **10.4.3 Texel refresh** on 10.2.5(a) + 10.1 + 10.4.6(a); fingerprint **6,502,902 / EBF 2.449**. Gate binary: `rarog-p1043-refit-pext-pgo.exe`. Released 2.3.1 remains the release baseline until 2.4.0. |
-| Working source | Accepted 10.2.5(a); 10.1 retained. All 28 SPSA defaults remain baked and unchanged. |
-| Last strength results | **10.4.3: +11.56 ±5.19 Elo (+17.70 nElo), H1, LOS 100%** (7,366 games). Before it **10.2.5(a): +9.13 ±5.45 nElo** and **10.4.6(a): +15.33 ±7.34 nElo**, both H1. Cycle total so far ≈ **+27 logistic Elo** over released 2.3.1. |
-| Rating position | Anchored ladder (PLAN §S3a, 3+0.03, Rybka-4-anchored): **Rarog 2.3.0 = 2952**, dev head ≈ 2968. Basilisk 1.9.2 **3005** (+53 over 2.3.0) · Rybka 4 **3102** · Critter 1.6a **3176** · Houdini 1.5a **3186** · SF dev 3780. ⛔ The old "~3000 CCRL" estimate is retracted — never measured. ⛔ So is "HCE tops out at 3100–3250": mature HCE (Houdini 4-6, Komodo ≤13/14, SF ≤11) reached **~3400–3450**, so there is **~450–500 Elo of proven HCE headroom** above us. |
-| Current work | ▶ **10.4.3 pilot ready.** The accepted `74d4426` PGO label generator and new 750k phase-balanced seed are verified. User runs only games 1..20,000; preflight calculates the exact disjoint continuation. Then refit once and gate once. |
-| Next release | **2.4.0 at 10.5.** Actual next order: one post-capstone 10.4.3 Texel fit/gate → 10.2 aspiration/TM with retained 10.1 → selected menu items → release. NNUE 2.5.0 at Phase 12. ⛔ Nothing may be built to prune HARDER without an explicit argument against 10.0(c). |
+| Accepted baseline | Post-refit search + zero-reduction LMR + frozen Texel refresh; fingerprint **6,502,902 / EBF 2.449**. Clean gate binary: `rarog-p1043-base-pext-pgo.exe`. |
+| Working source | Evaluator frozen. Accepted search remains in place; Phase 10 now repairs evidence flow and cross-feature cooperation before any final search refit. |
+| Last accepted strength results | Texel refresh **+11.56 ±5.19 Elo**, zero-reduction LMR **+9.13 ±5.45 nElo**, larger search refit **+15.33 ±7.34 nElo**. These are mechanism gates, not proof that their Elo adds in the current dev binary. |
+| Live rating snapshot | At **5,643/36,400** games: `2.4.0-dev` 2955 vs 2.3.1 2946. Gaps from dev: Basilisk 1.9.3 +54; Rybka 4.1/4/5/6 +127/+147/+183/+207; Critter 1.6a +226; Houdini 1.5a +252. This is provisional and the dev binary includes interim unfinished aspiration constants. Houdini 2.0c and Fritz 16 still require direct tests. |
+| Current work | ▶ The Rating Tournament and 5,000-iteration aspiration SPSA are both active. Let both finish unchanged; run no bench, NPS, PGO, SPRT or other games while they occupy the machine. |
+| Next release | **2.4.0 at 10.12.** It requires a clean cumulative candidate whose lower confidence bound beats all Rybkas, Critter 1.6a, Houdini 2.0c and Fritz 16, plus 1T-LTC/4T transfer and release gates. NNUE remains Phase 12; Phase 10 does no further HCE work. |
 
 ## Project mandate — surface weaknesses, do not work around them silently
 
@@ -62,9 +62,9 @@ removal be discussed explicitly.
         Tags: ACCEPTED <elo> · REJECTED <elo> · DEFERRED → <item> ·
         PARKED → <phase> · DONE · FIXED. Put the Elo in the tag, detail after.
      5. Bullet order: step number, outcome tag, short title, then detail.
-     6. NEVER renumber existing items — PLAN.md §S6 freezes item numbers
-        because commits and history reference them. To insert before the
-        first item use a .0 (e.g. 9.0), as 7.0 already does.
+     6. Never renumber historical items because commits reference them. Phase
+        10 is the explicit exception: the user authorized its complete rewrite
+        and 10.0–10.12 supersede its old forward numbering as of 2026-08-05.
      7. Mirror any status/number change into PLAN.md in the same commit.
      8. Blank line AFTER the `###` phase heading, then NO BLANK LINES between
         bullets at all. The tracker is ONE continuous list per
@@ -98,8 +98,13 @@ Each candidate gates against the then-current accepted head.
 (bench-identical) or *bundled with the re-tune of the constants it feeds* —
 one gate per bundle. Macro-order: **A** correctness bundles (Phase 7) → **B**
 strength (8 → 9 release → 10) → **C** NNUE (11 infra prep → 12 training) →
-**D** contingent HCE deepening (13, last, may never run). Queue:
-**Phase 7 ✅ → 8.1 ✅ (+22.13) → 8.1b ❌ → 8.2 ✅ (+30.75) → 8.6 ❌ (−7.78) → 8.7 ❌ (−7.29) → 8.10 ❌ (≈−5.4) → [10.3 ✅ +20.31, out of band] → 8.4 ✅ (+6.01, w/ 8.12) → 8.13 ✅ (+102.78 @4T) → 8.11 ❌ (−5.96) → 8.5 ⬛ (wash) → 9.7.5 ✅ → 9.8 ✅ RELEASE 2.3.0/2.3.1 → 10.0 = THE CURRENT ITEM** (8.9 capstone ⏭ moved to 10.2.5 / 2.4.0) (8.3 folded into 8.9; order ≠ numbers, which stay frozen; 8.10/8.11 added 2026-07-20 Basilisk cross-review; 8.12 speed II / 8.13 SMP added 2026-07-22 after 10.3's result)
+**D** contingent HCE fallback (13, only if NNUE fails). Current queue:
+**Phase 7 ✅ → Phase 8 ✅ → Phase 9 / 2.3.1 ✅ → accepted Phase-10 search
+baseline ✅ → 10.0 live tournament + aspiration SPSA ▶ → 10.1 evidence
+diagnostics → 10.2–10.7 search cooperation → 10.8 root confidence → 10.9
+throughput → 10.10 final search refit → 10.11 cumulative matrix → 10.12
+target ladder / 2.4.0.** Phase-10 forward numbering was explicitly rewritten
+on 2026-08-05; older numbers remain only in the historical result record.
 Full rationale per item: `PLAN.md` §S6.
 
 ### Phase 7 — Correctness repairs — ✅ COMPLETE
@@ -147,447 +152,70 @@ every candidate build in both passes. Both trees bench 5,173,540, so this is
 pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
 
 
-### Phase 10 — Root model, aspiration/TM, speed, menu (→ 2.4.0)
+### Phase 10 — Evidence-coherent search and target ladder (→ 2.4.0)
 
-- [x] 10.0 **[COMPLETE 2026-07-30 — VERDICT: Rarog OVER-PRUNES]** Search-accuracy
-      decomposition. **Rarog spends its nodes on depth it cannot use; the fix is
-      a less selective, better-fitted search — not more selectivity, not
-      ordering, not time management.** Four independent measurements agree and
-      none is self-play: ordering healthy (87.65% first-move cutoffs), LMR
-      verification nearly inert (1.80% re-search), 2.5 plies deeper than
-      Basilisk at equal nodes while 65 Elo weaker, and a blind 15% widening
-      gains +4.06 ± 3.71. Cost: three matches and one counter.
-      Consequences: **10.4.6(a) is the cycle headline**, 10.2.5 is re-scoped
-      toward accuracy and moved behind it, 10.2 does not lead, and ⛔ nothing
-      may be built to prune or reduce HARDER without an explicit argument
-      against this. Detail below and in PLAN 10.0.
-      Search-accuracy decomposition — RAN FIRST. Eval measured at
-      parity with Basilisk (paired Texel loss −0.0003 ± 0.0012 over 8,000 quiet
-      positions, sign flipped between samples) and NPS is equal, yet Rarog is
-      ~43 Elo weaker — so the deficit is search accuracy, which **survives the
-      NNUE transition**. Basilisk is the measuring instrument here, not the
-      target. Rarog reports 14.6 depth vs Basilisk's 12.7 at equal NPS and
-      equal eval, and every Phase 8 attempt to prune harder lost (8.6, 8.7,
-      8.11) — nothing in Phase 10 yet tests the opposite direction. Result
-      re-aims 10.2.5 and 10.4.6.
-      **2×2 MEASURED (gauntlet):** gap vs Basilisk is −55 (1T STC), −38 (1T
-      LTC), −32 (4T STC), **+34 (4T LTC)**. Threads dominate (+72 at LTC) over
-      time (+17 at 1T), so the **1T deficit is TC-INDEPENDENT** — which kills
-      the "needs depth to pay off" story and leaves a plainly mis-tuned
-      selectivity surface. Good news: a re-fit at 3+0.03 should transfer to LTC.
-      ⚠ The direct head-to-head is ~40 Elo worse for Rarog than the pool rating
-      at both TCs — Basilisk has a matchup-specific edge; judge general strength
-      by the pool rating, which is the actual goal.
-    - [x] (a) **[DONE, no games]** First-move cutoff rate **87.65%** (372,605
-          of 425,098 cutoffs) and LMR over-reduction **1.80%** (17,900 of
-          996,204 reductions), read over `bench 13` by
-          `tools/diag_search_quality.ps1`. Counter is diag-only and
-          bench-identical (5,173,540 both ways).
-          **Ordering is not the headline suspect** — 87.65% is only marginally
-          under the ~90% band, nowhere near a 40-Elo deficit, so the "deficit
-          is move ordering" branch is disfavoured. The 1.80% re-search rate is
-          the striking number and is two-sided: reductions are either accurate
-          or deep enough that the verification re-search can no longer fire.
-          Everything else points at the second reading (14.6 depth vs 12.7 at
-          equal NPS, `reduction` clamped ≥1 ply, LMP discarding more moves than
-          there are interior nodes), but a counter cannot choose — **(c)
-          decides**, and (a) did not change (c)'s design.
-    - [x] (b) **[DONE — the gap SURVIVES at equal nodes; TM priced at ≈0]**
-          clock −62.15 ± 9.78, fixed-250k-nodes −65.26 ± 9.88, **paired arm
-          difference +3.11 ± 13.51** (3,000 games each, zero time losses). At
-          most ~14 Elo of the −62 is speed+TM and the estimate is ≈0, so **10.2
-          does NOT rise in priority.**
-          🔴 **The decisive reading — depth at EXACTLY equal nodes** (~158k moves
-          each, `tools/pgn_depth_at_nodes.py`): Rarog **16.47** mean depth at
-          3.22 M nps vs Basilisk **13.96** at 3.05 M nps. **Rarog goes 2.5 plies
-          DEEPER on the same nodes at the same speed and loses by 65 Elo** — it
-          buys depth it cannot use by discarding width it needs. Supersedes the
-          old "14.6 vs 12.7" figure, which came from mismatched conditions; the
-          real gap is bigger. Also confirms speed parity directly in games, which
-          is why the clock arm reads slightly better for Rarog.
-          📌 **Registered progress metric:** after 10.4.6, re-run that script —
-          mean depth at 250k nodes should FALL toward ~14 while Elo RISES. A
-          re-fit that keeps the +2.5-ply lead has not fixed the over-pruning.
-          ⚠ The same-seed pairing bought only 2.9% (r = +0.056): `-games 2
-          -repeat` already plays both colours per opening, so the pair score has
-          absorbed the opening effect and cross-match pairing has nothing left
-          to remove. Don't budget resolution on it.
-          ⛔ **It RETRACTS the "~35–45 Elo matchup edge" caveat**: −62.15 ± 9.78
-          h2h against −55 ± 21 in the pool agree to within ~7 Elo, so there is
-          no resolvable matchup edge at STC. The old figure came from h2h
-          readings with ±52/±46 error bars and was noise. Bonus: a two-engine
-          h2h is a valid STC proxy for a pool rating, so cross-engine
-          diagnostics are far cheaper than a gauntlet from here on.
-          ⚠ At 3,000 games/arm the arm difference carries ±13.8, and 9.7.5
-          sized TM at ~16 Elo — right at the threshold. A big difference is
-          trustworthy; a null is NOT "TM contributes nothing", only "no TM
-          contribution above ~14 Elo".
-    - [x] (c) **[POSITIVE +4.06 ± 3.71, LOS 98.42%]** Over-pruning probe — **the
-          over-pruning diagnosis is CONFIRMED: Rarog gains from pruning and
-          reducing LESS.** 14,196 games at 3+0.03, nElo +6.27 ± 5.72,
-          DrawRatio 41.97%, PairsRatio 1.07, **zero time losses despite +23.2%
-          nodes**. Twelve constants shifted 15% toward less selectivity on
-          throwaway branch `probe/10.0c-less-pruning` (`7693010`, DO NOT MERGE):
-          LMR reduction surface ×0.85, ×1.15 on the RFP / razoring / LMP-margin
-          / quiet-futility / SEE-prune / quiet-history constants. 15% mirrors
-          8.6's rejected candidate, which searched 16% MORE aggressively and
-          lost −7.78.
-          **Stopped deliberately at LLR 1.68 of 2.94 — recorded as a stop, not
-          an H1.** The consequence triggers on the SIGN, and these values were
-          pre-registered as not a bake candidate, so ~1.5 h more for a
-          magnitude certificate on a point we will never ship failed the EV
-          gate. Estimate was stable in +2.0…+4.2 over the final 7,000 games;
-          nElo 6.27 is ~2× elo1, so it was the width, not the centre, that kept
-          the bound uncrossed.
-          **+4 is a FLOOR, not an estimate:** the probe won while ALSO sitting
-          15% off a jointly SPSA-fitted point, so a correct re-fit should do
-          better. Branch and both binaries kept — re-runnable any time,
-          including as a cheap +4 bake if 10.4.6 underdelivers.
-- [x] **10.4.6(a) THE SELECTIVITY RE-FIT — ACCEPTED 2026-08-02.** The
-      28-knob combined SPSA (`config_selectivity`: pruning 14 + SEE 4 +
-      correction 8 + futility 2; discrete `CorrGuardCapture` excluded)
-      completed its full **5,000 iterations / 160,000 games**. Use the complete
-      console final theta; the post-hoc tail estimator washed twice (1,800 and
-      14,876 games). All 28 values plus bundled 8.11 fail-soft passed the real
-      pre-SPSA gate at **+15.33 ± 7.34 nElo, H1, 8,600 games**, zero anomalies.
-      Bench moved 5,173,540 → 6,477,102 (+25.20% nodes): deliberately less
-      selective, and proven stronger at clock time. `EvalPruneTtMinDepth=0`
-      keeps its experimental guard off; retain it and every other mechanism
-      for the mandatory post-NNUE retune. The setup bug that briefly wrote
-      `A=0.0965` instead of 500 was caught before this tune's first launch;
-      this completed run used the asserted `A=500` schedule.
-- [ ] 10.4.6(d) **Range follow-ups from (a)** — the joint gate has passed, so
-      (a)'s deferral is discharged. Both apply the project's own "a rail means
-      the RANGE was wrong" rule to its own result; neither is urgent.
-    - [ ] **`LmpCountBase` = 1 is ON its floor** (`1..=12`). The tuner pushed
-          down for 5,000 iterations and was clamped, so the optimum is at or
-          below the floor and was never observed. `base = 0` is representable in
-          `base + 2d²/3`. Widen to `0..=12` and re-tune this knob alone, or
-          record why 0 is inadmissible and pin it deliberately. ⚠ It is the ONLY
-          knob that railed toward MORE pruning — and the exact branch 10.0(c)'s
-          probe could not move, which is part of why the fit doubled the probe
-    - [ ] **`RazoringCoeff` = 274 against a 300 ceiling** — 193 → 274 (+42%),
-          still climbing at iteration 1,351 (237.8), finished at 91% of range.
-          Widen the config max before the next tune including this knob, and
-          check the `params.rs` clamp at the same time
-- [x] **10.1 Persistent `RootMove` records — IMPLEMENTED AND RETAINED
-      2026-08-03.** Every legal root move now keeps current/prior
-      score, completed-iteration mean and mean-square, fixed-capacity full PV,
-      cumulative nodes, conservative seldepth, fail-high/low counts, and
-      last-best depth. Existing compact `Vec<Move>` ordering/SMP indexing stays
-      separate; recording is a cold root-only path. Full tests and Clippy pass;
-      bench is identical at 6,477,102. The confirmed-idle remeasurement (three
-      20-pair × three-bench comparisons) found full 10.1 at −0.28% median /
-      −0.38% mean, CI −0.79…+0.33; producer-only at −0.05% median / −0.01%
-      mean, CI −0.47…+0.51. The old “producer costs 0.4–0.5%” statement is
-      withdrawn. **Keep 10.1 while any consumer remains; remove it only if all
-      consumers are removed/rejected.** Preserve `1259013` for later
-      MultiPV/Phase-14 SMP even if it leaves the active line.
-- [~] 10.2(a) **Aspiration shape — MECHANISM LANDED INERT, SPSA READY.**
-      The widening loop is now parameterised instead of hardcoded, and lands
-      **bench-identical at 6,502,902 / EBF 2.449**: every seed reproduces the
-      old arithmetic exactly, so the tune activates it rather than a blind
-      shape change. That staging is lesson 13 applied — the un-retuned modern
-      shape measured −4.52 because the constants were fitted around the old
-      dynamics.
-      ⛔ **7.0b's hang guard is superseded by termination BY CONSTRUCTION**:
-      after `AspMaxFails` consecutive fails a side opens to ±INF and cannot
-      fail again, bounding the loop at `2 × AspMaxFails` iterations whatever
-      the scores do. The old mate/saturation cases are retained (they open
-      earlier where that is correct) but no longer carry the guarantee.
-      `AspMaxFails` seeds at 20 so the delta saturates first and behaviour is
-      unchanged; the interesting direction is DOWN.
-      7 knobs in the tune: `AspirationDelta`, `AspGrowthPct`,
-      `AspGrowthHighPct` (split from the low side so growth can go
-      asymmetric), `AspGrowthAdd`, `AspMaxFails`, `AspCenterAvgPct`,
-      `AspMagnitudeDiv`.
-      ⛔ `AspFailHighReduction` is **excluded and gated separately** — with four
-      reachable values the audit rejects it (perturbation rounds to zero from
-      iteration 894 of 5,000, so 82% of the run would feed both arms the same
-      integer while still updating it). Discrete knobs get their own A/B after
-      the continuous tune, like `CorrGuardCapture`.
-      Verified: audit clean on both hard-error classes; all 7 knobs present in
-      `rarog-p102a-tune.exe` with seeds matching engine defaults and ranges
-      inside the clamps; `aspiration_terminates_on_sudden_mate_scores` passes;
-      19 test blocks green debug and release; schedule asserted `A=500`,
-      `a=0.09655`; runner now on `strength-v1` 600/3 one-sided.
-- [ ] 10.2(a′) **TM escalation slot** — 7.5's `falling_eval` fix re-enters
-      bundled with the `tm`-group re-SPSA if it H0'd standalone; joint verdict
-- [ ] 10.2(b) **Root-informed TM** — root variance / effort distribution /
-      stability age on top of 10.1's `RootMove` records; `[0,3]` **+ LTC
-      confirm** (TC-sensitive)
-- [x] 10.3 **[ACCEPTED +20.31 ± 7.13, nElo +33.06, LOS 100%]** Profile-guided
-      speed pass — the whole stack passed its `[-3,0]` batch gate in one run
-      (3,460 games, 3+0.03, H1; Ptnml [42,353,779,473,83], PairsRatio 1.41).
-      New accepted head **`p103-gate`**. Both sides were bench-identical
-      (5,480,624), so this gate measured **execution speed and nothing else** —
-      the cleanest speed→Elo datapoint the project has.
-      **COLLECTIVE SPEED: +10.35%** (CI 10.10…10.65) — 3,003,789 → 3,314,560
-      NPS, pre-10.3 `c1fe620` vs 10.3 head `1d8afaa`, two independent PGO
-      builds per arm, both base builds below both head builds. Target was
-      ≥2.7M nps native; now ~3.31M pext-PGO ✓
-      (Caveat on the speed figure: the pre-10.3 arm still carries 8.10,
-      reverted inside 10.3(1), so its bench is 5,755,261 vs the head's
-      5,480,624 — the node MIX differs slightly, though NPS is
-      mix-normalised. The Elo gate has no such caveat.)
-    - [x] **REVISED SPEED→ELO RULE: at STC ~2 Elo per 1% NPS, not 0.7.** The
-          plan's "+10% speed ≈ +7 Elo LTC" predicted +7; the gate returned
-          **+20.31**, ~3× that. Use **≈ +2 Elo per 1% NPS at 3+0.03** when
-          grading future speed work. The old figure was an LTC estimate and is
-          probably still right for LTC — deeper searches have more to lose
-          from a shallower tree and less to gain per extra node — so do NOT
-          transfer the STC constant to 10+0.1 without measuring it there.
-          This materially raises the EV of speed work relative to the
-          search-mechanism items, which have been failing (8.6 −7.78,
-          8.7 −7.29).
-    - [x] **NPS-MEASUREMENT PROTOCOL — REWRITTEN 2026-07-22 after the
-          instrument was caught inventing results. Read the six sub-items
-          below before measuring anything.**
-    - [x] **The estimator must be validated on a SELF PAIR first** — the same
-          `.exe` in both arms. It must read ~0.00%. An ABBA design (base,cand,
-          cand,base averaged per round) and a neighbour-sandwich estimator BOTH
-          read **−0.2%…−0.4% on a self pair**, and had already produced two
-          confident-looking false rejections before the self pair caught them.
-    - [x] **Why they fail:** bench NPS is **left-skewed** — interruptions
-          create slow outliers, nothing creates fast ones. Any estimator that
-          weights the arms unequally against that tail (single readings on one
-          side, 2-sample averages on the other) manufactures a bias. Cancelling
-          *linear* drift is not enough; the transient is convex.
-    - [x] **What works:** strictly alternate the two arms, then compare
-          arm-level **median** and **best-of** (both symmetric, both robust to
-          the slow tail), with a bootstrap CI on the median. Reads +0.09% on
-          the self pair. Script: `tools/nps_ab.ps1`.
-    - [x] **Two independent PGO builds of IDENTICAL source differ by −0.36%**
-          (CI −0.75…−0.06). PGO profile luck is a fixed per-binary offset, so
-          **one build per arm cannot resolve a sub-1% effect** — pool 2+ builds
-          per arm (`nps_multibuild.ps1`) and report per-build medians so
-          non-overlap is visible.
-    - [x] **Non-PGO builds are speed-reproducible** (null pair +0.17%, CI
-          −0.34…0.54) and so make a cheap deterministic *screen* — but they
-          badly overstate what ships: 10.3(8d) reads **+6.35% non-PGO and
-          +1.18% under PGO**, because PGO already recovers most of it. Screen
-          non-PGO, always confirm under PGO.
-    - [x] Machine must be idle — video playback inflates the per-round SD from
-          ~0.3% to ~1.4%. If a change is a strict work reduction AND
-          bench-identical, keep it on the structural argument rather than
-          buying rounds it cannot resolve.
-    - [x] **(1) cont_history → boxed const-size tables — +1.15%.** A
-          7-waypoint compiler-fixed bisect pinned the whole Phase-9 NPS loss to
-          one commit (`886916b`): four `Vec` headers with runtime lengths
-          defeated bounds-check elision in the hottest loops. Boxed
-          `[[i16; CONT_SIZE]; 4]` restores compile-time layout, keeps 9.0a's
-          table-driven source shape. Commit `8fdedc3`.
-    - [x] **(2) per-node CheckInfo — +2.75%.** `gives_check` was called for
-          EVERY scored quiet at EVERY node. Now per-node masks (check squares
-          per piece + discovered-check blockers), per-move test = two bitboard
-          tests. Promo/EP/castling fall back. Equivalence `debug_assert!`ed
-          through the whole debug suite. Commit `dcdba44`.
-    - [x] **(3) check-hinted `make_move` — +1.08%.** `calculate_checkers()` ran
-          on every move; now the search passes the answer it already has, so
-          non-checking moves store `EMPTY`. Hint asserted both directions +
-          `board_differential` rebuilds `checkers` after every make/unmake.
-          Commit `6b316af`.
-    - [x] **(4) MovePicker single-buffer collapse — +2.04%, 9,288 → 3,136 B
-          per frame (−66%).** The `Staged` variant held THREE 3,080-byte
-          lists and the enum is sized to its largest variant, so every frame
-          paid 9,288 B. Now ONE buffer partitioned in place: good captures /
-          bad captures / quiets, each phase scanning only its own sub-slice.
-          Pushes stay sequential so the `MaybeUninit` prefix invariant (and
-          the KEEP-UNSAFE accessors) are untouched; captures+quiets provably
-          fit 256. 12 rounds: +2.04% mean, positive in 10/12. Commit
-          `17289ac`.
-    - [x] **(5) pin/blocker sharing — ≲+1%, BELOW RESOLUTION, KEPT.**
-          `compute_pinned` ran 2–3× per staged node: `generate_captures`
-          computed it and `gen_moves` promptly recomputed it, then the quiet
-          stage computed it a third time for the same position. Now computed
-          once and threaded through `gen_moves_pinned` /
-          `generate_quiets_pinned`, cached in `MovePicker::Staged`; a stale
-          share is caught by a `debug_assert_eq!` against a fresh compute.
-          20 interleaved rounds on a QUIET machine: mean +0.27%, trimmed
-          +0.49%, median +0.88%, best-of +0.22%, 95% CI −0.37…+0.91 — the
-          two quiet batches disagree in sign, so the effect is **not
-          resolvable** above this machine's noise. Kept on the structural
-          argument alone: strictly less work, bench bit-identical, no
-          complexity cost. Commit `961e535`.
-    - [x] **(6) qsearch make_move hint — MEASURED, REJECTED (−0.79%).**
-          Implemented exactly as (3) and measured: mean −0.79%, only 2 of 6
-          paired rounds positive, spread +2.0%..−3.3%. The deferral reason was
-          the right one — qnodes make too few moves to amortize the
-          once-per-node mask build, so the extra work outweighs the saved
-          `calculate_checkers`. Reverted; do not retry without a cheaper way
-          to obtain the masks.
-    - [x] **(7) `has_pseudo_capture()` measure-or-keep — SPLIT, +1.5%.** The
-          pre-scan (untouched since the initial commit, never measured) was
-          instrumented first: it fires on **19.1%** of qsearch/ProbCut calls
-          and **18.9%** of staged calls — but **78.5%** of the staged firings
-          then generate quiets anyway, paying a full `compute_pinned` the
-          pre-scan had just "saved". A *failing* pre-scan is a full attack pass
-          over every one of our pieces; `compute_pinned` is four slider lookups
-          plus a short sniper walk, i.e. strictly cheaper. So the answer is
-          per-call-site, not one verdict: **kept** on the captures-only path
-          (qsearch, ProbCut — nothing follows, so the skipped pin is real, and
-          the 80.9% that do find a capture exit the scan early on the
-          king/pawn tests), **removed** on the staged path, which now always
-          computes pins and always shares them. Drops the `Option<Bitboard>`
-          and its `None` branch from `MovePicker::Staged`. 20 interleaved
-          rounds +1.79% (20/20 positive), 14 order-swapped control rounds
-          +1.46% (14/14) — both orders agree, so ordering bias is excluded and
-          the effect sits above this machine's ~1% resolution limit.
-    - [x] **(8) small sweeps — +1.18% combined** (CI 0.69…1.39, two PGO builds
-          per arm, both cand builds above both base builds). All four named
-          candidates were tried; commit `286995b`. Detail below.
-        - [x] **(8d) move-picker scan — the whole gain.** `pick_next` is the
-              hottest loop in the engine and it indexed `moves[current]` AND
-              `moves[best]` every iteration: two loads where one suffices, plus an
-              index LLVM cannot bound-check away (`best` is in range only by
-              induction through the loop). Now scans a `split_at_mut` tail by
-              iterator with the running best SCORE in a local. Ties still resolve
-              to the earliest entry (comparison stays strictly `>`).
-              **+6.35% non-PGO (18/18 pairs), +1.18% as shipped** — PGO had
-              already recovered most of it, which is the whole reason non-PGO
-              screening must be confirmed under PGO.
-        - [x] **(8a) last two runtime-length `Vec` tables boxed — +0.34%**
-              (CI −0.11…0.62, not resolvable alone). `pawn_history` and
-              `continuation_correction_history` were the shape 10.3(1) bisected
-              to −2.1%. Kept on the structural argument, like (5). NB the named
-              "bounds/`Option` overhead in hot accessors" was **already gone** —
-              9.0 masked `Square::index()` to `& 63` and gave
-              `piece_type_at_unchecked` the padded-16 table.
-        - [x] **(8b) boolean attack-test helper — 0.00%, kept.**
-              `is_attacked_by_with_occ` short-circuits
-              `attackers_to_color(...).any()` for the two passed-pawn scans in
-              eval that only need the boolean. The sites are too cold to
-              register; kept because it is strictly less work and reads better.
-        - [x] **(8c) insufficient-material early exit — CLOSED, NO CHANGE.**
-              Sized the prize first with a probe binary that deletes the per-node
-              check outright: **≤ +0.23%** (CI −0.16…0.65), and that probe also
-              searched MORE nodes, so even 0.23% flatters it. Below the
-              resolution floor, so no optimisation of it can pay. The existing
-              code already exits on its first test (`pawns.any()`) in the common
-              case, and no cheaper EXACT pre-filter exists — no piece-count bound
-              works, because ANY number of same-colour bishops is insufficient
-              material.
-    - [x] **(9) startup-only: magics baked — 192 ms → 19 ms on the generic /
-          AVX2 build** (10×, now equal to the PEXT build's 18.9 ms). The magic
-          SEARCH was that build's entire startup cost. Behaviour-preserving by
-          construction: `find_magic` seeds a fixed RNG and is deterministic, so
-          the baked constants ARE what it computes; it verifies each baked value
-          and falls back to searching if one fails, so a stale constant costs
-          startup time, never correctness. `baked_magics_cover_every_square`
-          asserts the fallback stays unused. Commit `1d8afaa`.
-          **The old figures in this item were stale** — PEXT startup is ~19 ms
-          today, not 174–199 ms, so there was never anything to win there; the
-          375–429 ms generic figure is the one that was real.
-    - [x] 10.3(gate) **[ACCEPTED]** — `[-3,0]` vs `p82a-rebuilt`,
-          one run for the whole stack, 2026-07-22. Result in the parent item.
-- [x] **✅ 10.2.5(a) Zero-reduction LMR — ACCEPTED 2026-08-03.** The
-      original unified prospective-depth capstone was decomposed
-      before games. Removing only the mandatory reduction floor widens bench
-      6,477,102 → **6,718,158 (+3.72%)** and selects zero on 104,919 / 1,394,221
-      eligible late moves (7.53%). Zero uses normal full-depth PVS and skips a
-      redundant same-depth LMR verification; no constants change and no SPSA
-      is needed. The proposed LMP/futility/SEE coupling was **REJECTED by the
-      deterministic prerequisite**: coupling alone was −7.78% nodes and
-      combined seeds were −5.9%…−9.9%, contrary to 10.0(c). Keep the accepted
-      pruning surface and gate only 10.2.5(a) against the accepted 10.1 head.
-      The rejected coupling would have absorbed 8.3; this minimal candidate
-      deliberately does not add persistent TT-PV behavior.
-      **Gate:** `p1025a-zero` vs `p101-base`, 3+0.03, 1T, 64 MB, UHO:
-      **+9.13 ±5.45 nElo**, LOS 99.95%, 15,594 games, H1 `[0,3]`, zero
-      anomalies. Commit `74d4426`, fingerprint 6,718,158, is accepted.
-      ⚠ **Schedule this EARLY in the 2.4.0 cycle despite the number** — item
-      numbers are frozen and do not imply order; a weeks-long item with a real
-      chance of rejection needs runway, not the slot before a release.
-      ⚠ Entry condition already MET (8.2 ✅ + 8.4 ✅). Basilisk warning: its
-      TT-PV prototype was **+51% nodes via the LMR route with no good
-      operating point** — the stored bit pays only through pruning
-      conservatism, so weight tt_pv toward the pruning-side consumers.
-      ⚠ Guard against 8.6's failure mode: a self-play-tuned candidate that
-      searched 16% more aggressively won its SPSA then lost the gate. Gate
-      against the accepted head, never a sibling of the tuning run.
-- [x] **10.4.3 Post-capstone Texel refit — ACCEPTED 2026-08-04,
-      `+11.56 ± 5.19` Elo (nElo +17.70 ± 7.93), LOS 100%, H1 at 7,366 games.**
-      3M train / 157,895 holdout rows from 600,000 self-play games at 8,000
-      nodes by accepted head `74d4426`; `--tune all --l2 1e-6`, K = 1.36978,
-      best epoch 40. New baseline: bench **6,502,902**, EBF 2.449. Formatted
-      source reproduces the gated binary's fingerprint exactly; suites green
-      debug and release.
-      ⚠ **This gate refuted a prediction made from its own diagnostics.** A null
-      was forecast because the holdout moved only −0.31% and 57 of 1,204
-      parameters changed by ~1 cp. Both are the wrong statistic: holdout
-      movement is not comparable across fits of *different kinds* (refresh vs
-      re-derivation), and parameter count is not effect size. The per-bucket
-      table was the real signal — rook endings −1.51%, pawn endings −0.89%
-      against a −0.31% global move is a **targeted endgame** gain, and endgame
-      accuracy converts efficiently because small errors there decide games
-      outright. Lesson 1 is sharpened accordingly in PLAN.
-      ⚠ **4 timeouts in 7,366 games** (candidate 1, baseline 3) where recent
-      gates reported zero. Worth ≤0.15 Elo against a measured +11.56 so it
-      cannot have produced the verdict, but it is a change — light file I/O ran
-      on the machine during the match. If it recurs on an idle machine,
-      investigate before trusting a close verdict.
-      ⚠ **`bake_params.py` output is not rustfmt-clean** (one long line per
-      PST), so `cargo fmt --check` fails until `cargo fmt` runs. Behaviour is
-      unaffected — the formatted source reproduces bench 6,502,902 exactly — but
-      the release procedure needs a clean fmt, so **`cargo fmt` belongs in the
-      bake sequence** right after `bake_params.py`.
-      📌 **The "exactly one run" rule is replaced by a trigger:** re-run the
-      refresh whenever the label generator has gained materially since the last
-      fit (working threshold ~+20 nElo of accepted search work). Next natural
-      trigger is after 10.2 and the 10.4 menu, before the 2.4.0 matrix — cheap,
-      since the pipeline exists, 150,000 seed openings are unspent and the fit
-      is minutes.
-    - [ ] 10.4.3(a2) **Measure the per-seed-phase yield matrix — free, uses
-          the pilot PGN already on disk.** A phase-balanced seed book does NOT
-          produce a phase-balanced harvest: traversal is one-directional, so an
-          opening-seeded game feeds every later phase while an endgame-seeded
-          game can never feed the opening. Measured surpluses at the
-          recommended total: opening 1.25×, early-mid 2.11×, middlegame 3.36×,
-          endgame 4.51×, deep-endgame 3.10× — the opening quota alone sets the
-          run length. Tag each pilot game by seed phase and report the 5×5
-          matrix (no new games, no engine time). ⚠ Expect "more opening seeds"
-          and do not adopt it blindly: positions from one game are correlated,
-          so the objective is fewest games **subject to a floor of
-          independently seeded games per phase**. Feeds 12.1a; not worth
-          acting on for this ~4 h run
-- [ ] 10.4 ⏭ all-skippable menu (each its own `[0,3]`, strict EV gate; incl.
-      demoted 8.8 qsearch quiet checks)
-- [ ] 10.6 Guarantee at least one `info` line before every `bestmove`.
-      `info depth` is only emitted when an iteration COMPLETES, so a search
-      whose budget expires mid-iteration reports nothing at all — legal UCI but
-      unhelpful, and it made a CI test race (fixed by raising its node budget,
-      not by changing the engine). Output-only, so bench-identical and needs no
-      SPRT. See PLAN 10.6.
-- [ ] **▶ 10.5 RELEASE 2.4.0 — YOU run the boundary MATRIX, tag & publish
-      `v2.4.0`** (root / speed). Not a single gauntlet: repeat 9.8's four
-      conditions — {1T, 4T} × {3+0.03, 10+0.1} — against **Basilisk 1.9.3**
-      (which carries its own SMP work) and re-anchor to the §S3a ladder so the
-      output is an absolute rating, not just a delta. The 4T comparison is
-      genuinely contested: Rarog led at 4T 10+0.1 (+34 ± 24) on 8.13's SMP
-      rework and 1.9.3 targets exactly that. Report the 9.8 decomposition —
-      what more time is worth, what more threads are worth, and whether the 1T
-      deficit is still TC-independent
-- [ ] 10.7 **Search-accuracy decomposition against Critter 1.6a** — the
-      highest-value diagnostic after 2.4.0. 10.0 ran this against Basilisk
-      (37 ahead) and its over-pruning diagnosis has paid **+15.7 logistic Elo**
-      so far. Critter is **224** ahead, so the same cheap measurements should
-      show a far larger, cleaner signal
-    - [ ] (a) Equal-nodes depth and speed (`tools/pgn_depth_at_nodes.py`).
-          Against Basilisk, Rarog was 2.5 plies DEEPER at equal nodes and 65
-          Elo weaker; the equivalent ratio against Critter is the single most
-          informative number available
-    - [ ] (b) Paired clock and fixed-nodes arms, same seed (10.0(b)'s design),
-          separating search quality from speed and time management
-    - [ ] (c) Re-read first-move cutoff rate and LMR over-reduction
-          (`tools/diag_search_quality.ps1`) on the 2.4.0 head against 10.0(a)'s
-          87.65% / 1.80%. Over-reduction especially should have moved —
-          10.2.5(a) removed the reduction floor that was its prime suspect
-          ⚠ Critter's internals are off-limits: (a) and (c) are absolute
-          readings on Rarog, (b) is the head-to-head. Do NOT assume the
-          Basilisk diagnosis transfers — the answer may be ordering, evaluation
-          quality or endgame technique rather than selectivity
+Evaluator work is frozen. The accepted search refit, zero-reduction LMR,
+`RootMove` infrastructure and Texel refresh form the clean 6,502,902 baseline.
+The rewritten phase fixes how search evidence moves between features, connects
+the root signals already collected, performs one final search-only refit, then
+requires direct wins over the full target ladder. Full rationale, contracts and
+gates are in PLAN §10.
 
-### ━━━ NNUE CUTOFF ━━━ (Phase 11 opens the NNUE line; nothing below survives on HCE)
+- [~] 10.0 **Close and freeze the live experiments.** Finish the 36,400-game
+      Rating Tournament and the registered 5,000-iteration aspiration SPSA
+      unchanged. Archive configs, binaries, PGNs, trajectory and final theta;
+      discard the interim dev vector as evidence, bake/gate the predeclared
+      final estimator once, and restore a clean reproducible baseline.
+- [ ] 10.1 **Diagnostic substrate and interaction map.** Add bench-neutral
+      provenance/consumer, pruning-overlap, history-attribution, qsearch,
+      extension-debt and root-confidence traces plus shadow predicates. Produce
+      a fixed-corpus interaction report before changing behaviour.
+- [ ] 10.2 **Evidence model and TT consumer contracts.** Introduce transient
+      `OutcomeKind`/`NodeEvidence`/`MoveEvidence`; prototype compact TT
+      provenance without growing the 10-byte entry, and define exactly which
+      sources/bounds/depths each pruning or extension consumer may trust.
+- [ ] 10.3 **Qsearch, ProbCut and TT hygiene.** Separate raw eval, stand pat and
+      searched scores; stop depth-0/pruning estimates from posing as searched
+      main-search evidence; store actual ProbCut scores with speculative
+      provenance and forbid them from authorizing singular extension.
+- [ ] 10.4 **NMP, IIR and singular cooperation.** Add subtree null suppression,
+      node/eval/decisive-score and potential-singularity guards; keep IIR off
+      PV-following nodes; constrain singularity by trustworthy evidence and
+      extension debt; replace the global `tt_pv` veto with mechanism-specific
+      predicates. Test isolated arms and a registered joint bundle.
+- [ ] 10.5 **Correction/history attribution.** Implement true continuation
+      pairs, prevent capture/speculative/aborted results from training quiet
+      correction, then ablate threat, noisy/quiet, check/evasion and halfmove
+      contexts. Any larger table needs residual-quality and cache/NPS evidence.
+- [ ] 10.6 **Unified prospective-depth selectivity.** Give LMP, futility, SEE
+      pruning, LMR and re-search one ordered `MoveEvidence`/`lmrDepth` pipeline;
+      preserve the accepted reduction floor, classify quiet checks, resolve
+      the stale late-evasion `!in_check` mismatch and measure pruning overlap.
+- [ ] 10.7 **Qsearch as a first-class search.** After TT hygiene, test staged
+      qsearch move ordering/history, check/evasion safety and coherent
+      delta/futility/SEE pruning. Compare fixed-node decision quality and
+      clock-time Elo; profile hot paths only after behaviour is accepted.
+- [ ] 10.8 **One root-confidence model.** Make aspiration, TM, legal fallback
+      and SMP timing consume the same completed-iteration variance, score-gap,
+      stability, effort, fail and worker-change signals. Never publish partial
+      decisive scores; confirm at 1T STC/LTC and 4T LTC with zero forfeits.
+- [ ] 10.9 **Parallel and throughput pass.** Profile the accepted search at
+      1/2/4/8 threads; audit TT layout/contention after provenance changes and
+      apply behaviour-identical hot-path work through the interleaved NPS
+      protocol. Do not reopen generic worker-diversification experiments.
+- [ ] 10.10 **Final joint search refit.** With mechanisms frozen, fit coupled
+      evidence/selectivity, history/correction, qsearch, NMP-family and root
+      groups, including registered interaction revisits. No HCE coordinates;
+      bake once and pass a clean `[0,3]` gate against the pre-fit head.
+- [ ] 10.11 **Cumulative checkpoint.** Reproduce the release build, pass all
+      correctness suites, beat the frozen 10.0 baseline at 1T STC/LTC, transfer
+      at 4T with zero forfeits, run major-subsystem ablations and clear all
+      provenance, extension, saturation, aspiration and timer telemetry gates.
+- [ ] 10.12 **[RELEASE GATE] Target ladder and 2.4.0.** In a locked direct
+      tournament, its Holm-adjusted 95% paired lower bound must beat Basilisk
+      1.9.3, every Rybka, Critter 1.6a, Houdini 2.0c and Fritz 16; confirm 1T
+      LTC/4T transfer, complete clean build/docs/version/tag/archive work, then
+      release 2.4.0. Rating-list inference cannot replace a missing opponent.
 
 ### Phase 11 — NNUE infra prep (bench-identical per step; no games)
 
@@ -736,104 +364,45 @@ tune "converged" — two of these were got wrong on 8.4's first night.
 
 ## What you run now
 
-**10.2(a) SPSA — the aspiration shape.** Setup has run and is verified; this is
-the launch:
+Both current jobs are **observational until they finish**. Do not change their
+opponent set, openings, adjudication, TC, concurrency, seeds, SPSA bounds or
+stopping rules, and do not bake another interim theta into source.
 
-```powershell
-./tools/spsa.ps1 -ConfigGroup aspiration -LaunchOnly -Iterations 5000
-```
+| Job | Do now | Completion evidence |
+|---|---|---|
+| Rating Tournament | Let all **36,400 games** finish unchanged. | Final standings, full PGN, engine binaries/manifests, tournament JSON/config, openings and exact UCI/TC/thread/hash settings. |
+| Aspiration SPSA | Let the registered **5,000 iterations** finish unchanged. If interrupted, resume the saved state with `./tools/spsa.ps1 -ConfigGroup aspiration -LaunchOnly -Iterations 5000`. | `state.json`, seed/config, full trajectory, logs, final theta and the predeclared estimator result. |
 
-7 knobs, 5,000 iterations ≈ 160,000 games ≈ 40 h — two nights. It stops itself
-at 5,000. Ctrl-C is safe and you resume with the **same command**; never the
-plain setup+launch form, which archives `state.json` and restarts from the
-seeds. The machine is fully occupied while it runs (concurrency 14 of 16): no
-NPS work, no SPRT, no bench.
+The machine is occupied at concurrency 14 of 16 physical cores. Until both
+jobs stop, run **no bench, NPS comparison, PGO build, SPRT, gauntlet, datagen or
+other game workload**. Those results would be contaminated and could disturb
+the registered jobs.
 
-⚠ **Unlike 10.4.6, every seed reproduces today's behaviour** — the mechanism
-landed inert and bench-identical, so there is no known-better starting point.
-A wash therefore means the old aspiration shape was already right, which is a
-legitimate and useful result rather than a failure. The knobs most likely to
-move are `AspMaxFails` (down, toward a bounded number of re-searches before
-opening fully) and `AspGrowthHighPct` (away from `AspGrowthPct`, if fail-highs
-really do want a different rate from fail-lows).
+The current `Rarog 2.4.0-dev` is not a release or gate candidate: it combines
+the accepted development head with constants sampled from an unfinished SPSA.
+Its current +9 pool Elo over 2.3.1 can be the expected improvement, noise, an
+interim-constant effect or a mixture. The finished tournament provides a
+cumulative observation; only the post-SPSA clean A/B decides whether the
+aspiration vector is accepted.
 
-📌 At ~1,500 iterations, paste the trajectory and I'll run the thirds test.
-Then: bake → **`cargo fmt`** → PGO build → one `[0,3]` against
-`rarog-p1043-base-pext-pgo.exe`.
+When both jobs finish, paste/export their final artifacts. The model will:
 
-Afterwards: 10.2(a′) TM escalation and 10.2(b) root-informed TM (the first real
-consumers of 10.1's `RootMove` records), then `AspFailHighReduction` as its own
-discrete A/B, then 10.4 menu picks, the refresh trigger for 10.4.3, and the
-2.4.0 boundary matrix at 10.5.
+1. apply the predeclared SPSA estimator and bake it once;
+2. restore/reproduce the clean **6,502,902 / EBF 2.449** baseline;
+3. build a clean PGO candidate and prepare the registered aspiration gate for
+   you to run;
+4. update the rating-ladder baseline without attributing unproven Elo; and
+5. begin 10.1 diagnostics. No new long game job is requested before that review.
 
-### Record from the previous steps
+### Accepted binaries retained for attribution
 
-The tail-mean-vs-final-theta selection was stopped as a clear wash after 1,800
-games: tail +1.19 ± 16.05 nElo, LLR −0.01, W/L/D 463/459/878, zero anomalies.
-Use **final theta**, meaning the values under `Final parameters` in the tuner
-console. Final theta is SPSA's accumulated estimator, not its last perturbed
-mini-match. A tail window is a different estimator and must not be invented
-after a run; specify and validate it before tuning if we ever adopt one.
-
-The real gate **passed H1** at 8,600 games: +15.33 ± 7.34 nElo, W/L/D
-2325/2083/4192, LLR 2.95, zero anomalies. The full final-theta vector and 8.11
-fail-soft are accepted; cancel the no-fail-soft retry. The independently seeded
-repeat was stopped after 14,876 reported games at tail +0.84 ± 5.58 nElo,
-LLR −0.24, zero anomalies. It does not prove theta is intrinsically stronger;
-it confirms there is no measured benefit from the post-hoc tail estimator.
-
-The tune finished under its original `score=400` one-sided rule. The mandatory
-post-tune calibration then tested 400/500/600 one-sided against 69,350 stricter
-Rarog games. 400 changed 1,533 results (including 80 eventual opposite wins);
-600 changed only 74, of which all three apparent reversals were later time
-forfeits and 71 were draws. Therefore the shared strength-test profile is
-**`strength-v1` = 600/3 one-sided** for SPSA, SPRT, and gauntlets. Datagen stays
-on its separate stricter two-sided label-safety profile.
-
-Completion record: 5,000 iterations / 160,000 games; final theta selected after
-the tail comparison washed; all 28 values baked as one vector; ordinary and
-tune-at-theta bench matched at 6,477,102; primary strength gate passed H1.
-
-Post-acceptance speed/selectivity diagnostic (18 alternating NPS pairs after a
-passing identical-binary null): pre-SPSA 3,295,249 median NPS versus final theta
-3,182,102, **−3.43%** (95% bootstrap CI −5.86…−1.68%); best-of −3.79%.
-Fingerprint moved **5,173,540 / EBF 2.406 → 6,477,102 / EBF 2.446**: +25.20%
-nodes at fixed depth, +41.48% median nodes per position, and more nodes in
-28/40 positions. Rarog is materially less selective now.
-
-Attribution with one `rarog-p1046a-tune.exe` (same code/build/PGO, UCI values
-only) still measured **−2.62% median NPS** (95% CI −3.22…−2.32%), so the effect
-is search-work mix rather than binary variance. Theta increases full negamax
-nodes 3.193M → 4.007M (+25.52%) while qsearch grows only about 2.128M → 2.470M
-(+16.06%); main-search share rises 60.0% → 61.9%. First-move cutoff quality
-improves 87.48% → 88.54%, and the LMR re-search rate is flat (1.74% → 1.76%).
-There is no isolated implementation hotspot to fix without changing the
-accepted search behaviour. Keep theta: the +15.33 nElo gate proves the wider,
-more expensive tree pays at clock time. 10.1 is complete and retained while
-any consumer remains. 10.2.5(a) zero-reduction LMR is accepted at +9.13 ±5.45
-nElo. Do not “recover” NPS by making pruning more aggressive without
-a separately justified strength change.
-
-🔴 **A real bug was found and fixed during this prep:** `spsa.ps1` was writing
-`A=0.0965` instead of `A=500`, because PowerShell variable names are
-case-insensitive and `$A`/`$a` are the same variable — i.e. **no damping at
-all**, the exact defect the 2026-07-27 schedule fix existed to remove. Caught by
-a `-SetupOnly` dry run before this, the first tune that parameterization would
-ever have driven, so **no past fit is contaminated**. `spsa.json` is now
-asserted after writing, and the launch prints
-`Verified: A = 500 (10% of horizon)`.
-
-Binaries in play (clean manifests, same rustc, compiler-equality guard passes):
-
-| binary | bench | what it is |
+| binary | bench | role |
 |---|--:|---|
-| `rarog-p1043-base-pext-pgo.exe` | 6,502,902 | **current accepted baseline**, clean manifest — gate against this |
-| `rarog-p102a-tune.exe` | 6,502,902 | 10.2(a) tune binary, 7 aspiration knobs |
-| `rarog-p1043-refit-pext-pgo.exe` | 6,502,902 | the 10.4.3 gate candidate (built `git_dirty`; superseded by p1043-base) |
-| `rarog-p1025a-zero-pext-pgo.exe` | 6,718,158 | pre-10.4.3 baseline, 10.2.5(a) +9.13 nElo |
-| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | 10.4.6(a) accepted baseline |
-| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-SPSA 2.3.1 comparison baseline |
-| `rarog-p100c-lesspruning-pext-pgo.exe` | 6,373,363 | 10.0(c) probe, 15% less selective, +4.06 |
+| `rarog-p1043-base-pext-pgo.exe` | 6,502,902 | clean accepted Phase-10 baseline and next gate reference |
+| `rarog-p102a-tune.exe` | 6,502,902 | active seven-coordinate aspiration tuner |
+| `rarog-p1025a-zero-pext-pgo.exe` | 6,718,158 | accepted zero-reduction-LMR historical arm |
+| `rarog-p1046a-theta-pext-pgo.exe` | 6,477,102 | accepted broad-search-refit historical arm |
+| `rarog-p100-base-pext-pgo.exe` | 5,173,540 | pre-refit 2.3.1 comparison baseline |
 
 ## Working rhythm
 
@@ -934,23 +503,21 @@ one thing NNUE subsumes, so it waits in the contingent Phase 13.
 | Phase | Outcome | Release / cutoff |
 |---:|---|---|
 | **7** | Correctness bugs (7.6 ✅, 7.4 ✅, 7.2 ✅, 7.5 ✅) — **COMPLETE** | — |
-| **8** | Search-mechanism wave — **COMPLETE** (8.1 ✅ 8.2 ✅ 8.4 ✅ 8.12 ✅ 8.13 ✅; 8.1b/8.6/8.7/8.10/8.11 ❌; 8.5 ⬛; 8.9 → 10.2.5) | — |
+| **8** | Search-mechanism wave — **COMPLETE** (accepted and rejected arms preserved in PLAN/history) | — |
 | **9** | Reproducible builds, CI, shipped PGO + clean-code P1/P2, 9.7.5 SMP II — **COMPLETE** | — |
 | 9.8 | Boundary gauntlet ✅ — +76 / +78 / +194 over 2.2.0 | ✅ **RELEASED 2.3.0** (+2.3.1) |
-| **10** | ▶ **CURRENT** — 10.0 decomposition, root model, aspiration/TM, **10.2.5 the search capstone (moved from 8.9)**, speed pass ✅, ⏭ menu | — |
-| 10.5 | Boundary gauntlet (you) | **▶ RELEASE 2.4.0** |
+| **10** | ▶ **CURRENT** — evidence provenance; NMP/IIR/singularity, history/selectivity/qsearch and root/SMP cooperation; final search-only refit | — |
+| 10.12 | Hard direct target ladder plus cumulative 1T/LTC/4T matrix | **▶ RELEASE 2.4.0** |
 | **━ NNUE CUTOFF ━** | no standalone HCE-eval strength before here | |
 | **11** | NNUE infra prep (StateInfo, accumulator scaffolding, frozen corpus) | — |
 | **12** | NNUE program via `net_trainer` (contract → king buckets → scaling) | **▶ RELEASE 2.5.0** |
 | **13** | HCE deepening — **only if NNUE fails/stalls** (all NNUE-subsumed eval) | — |
 | **14** | Parked: SMP, platform, distributed testing | — |
 
-**Two releases before NNUE** (2.3.0 ✅ after the search wave, 2.4.0 after
-root/speed), then the **NNUE line opens at Phase 11**. Revived rejected work is
-numbered: 7.2 SEE ✅ (+1.47), 10.2a aspiration, 7.5 TM ✅ (+2.85 LTC), 8.11
-fail-soft qsearch (retry rides 10.4.6(a)). 7.4c OCB moved to 13.8
-(NNUE-subsumed). Nothing else from the reject pile is revived — 6.1/6.2, the
-7.1 draw rework and 7.3 stay dead (lessons 1/14).
+**Two releases before NNUE:** 2.3.0/2.3.1 ✅ after the first search wave, then
+2.4.0 only after 10.12. The NNUE line opens at Phase 11. Phase 10 does not
+revive HCE work; old rejected mechanisms return only when the new diagnostics
+identify a concrete contract failure and a registered test.
 
 
 
