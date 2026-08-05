@@ -194,6 +194,42 @@ if ($kindTotal -gt 0) {
     }
     Write-Host ""
 }
+
+# 4.2b shadow test. A contradicting entry cannot cut off (unit-tested in
+# evidence.rs), so everything here is a NON-cutoff consumer admitting evidence
+# that told this node nothing. Sampled, so read shares, not absolute volumes.
+$contradictHits = Value 'contradict_hits'
+if ($contradictHits -gt 0) {
+    Write-Host "  4.2b CONTRADICTING INEXACT BOUNDS (sampled; nothing branches on these)"
+    Write-Host ("      contradicting hits          : {0,7:N2} %   ({1:N0} of {2:N0} sampled hits)" -f `
+        (Ratio $contradictHits (Value 'tt_sample_hit')), $contradictHits, (Value 'tt_sample_hit'))
+
+    $refined = Value 'contradict_refined_eval'
+    $meanDelta = if ($refined -gt 0) { (Value 'contradict_refine_delta_sum') / $refined } else { 0 }
+    Write-Host ("      moved eval_for_pruning      : {0,7:N2} %   ({1:N0} of {2:N0}); mean shift {3:N1} cp" -f `
+        (Ratio $refined $contradictHits), $refined, $contradictHits, $meanDelta)
+    # Slack = ev.depth - EvalPruneTtMinDepth. A penalty of P plies blocks every
+    # bucket below P, so this row IS the answer for each candidate P.
+    Write-Host ("        slack 0 / 1 / 2-3 / 4-7 / 8+ : {0:N0} / {1:N0} / {2:N0} / {3:N0} / {4:N0}" -f `
+        (Value 'contradict_refine_slack_0'), (Value 'contradict_refine_slack_1'), `
+        (Value 'contradict_refine_slack_2_3'), (Value 'contradict_refine_slack_4_7'), `
+        (Value 'contradict_refine_slack_8_plus'))
+
+    $csa = Value 'contradict_singular_attempt'
+    Write-Host ("      seeded a singular window    : {0:N0} of {1:N0} attempts; changed depth {2:N0}" -f `
+        $csa, (Value 'singular_attempt'), (Value 'contradict_singular_changed_depth'))
+    Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
+
+    # THE decision row. If these two rates are close, a depth/confidence penalty
+    # belongs on the SCORE consumers only and must leave ordering and IIR alone.
+    $cPresent = Value 'contradict_move_present'
+    $aPresent = Value 'agree_move_present'
+    Write-Host ("      TT move best - contradicting: {0,7:N2} %   ({1:N0} of {2:N0})" -f `
+        (Ratio (Value 'contradict_move_was_best') $cPresent), (Value 'contradict_move_was_best'), $cPresent)
+    Write-Host ("      TT move best - agreeing     : {0,7:N2} %   ({1:N0} of {2:N0})" -f `
+        (Ratio (Value 'agree_move_was_best') $aPresent), (Value 'agree_move_was_best'), $aPresent)
+    Write-Host ""
+}
 Write-Host "  Raw counters:"
 foreach ($k in ($totals.Keys | Sort-Object)) {
     Write-Host ("      {0,-28} {1,14:N0}" -f $k, $totals[$k])
