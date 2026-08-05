@@ -240,7 +240,7 @@ test, normal/diagnostic test suites and feature-enabled lint wall pass. Record
 future readings and conditional lessons in `EXPERIMENTS.md`; never infer Elo
 from counter movement alone.
 
-### 4.2 — Result evidence and TT contract — **SUBSTANTIALLY COMPLETE (2026-08-05)**
+### 4.2 — Result evidence and TT contract — **COMPLETE (2026-08-05)**
 
 Landed at `47f3ac6` and recorded as RAR-S23: `src/evidence.rs` defines
 `OutcomeKind`, `NodeEvidence` and `MoveEvidence`; all seven store sites declare
@@ -260,10 +260,21 @@ eval refinement enforces a depth floor and a `VALUE_NONE` test, the qsearch
 stand-pat path enforces neither. Both are preserved as distinct named
 capabilities with a test pinning the difference; unifying them is 4.3.
 
-**Still open in 4.2:** the registered shadow test of a confidence/depth penalty
-for inexact bounds that contradict the current window. The detector exists
-(`NodeEvidence::contradicts_window`, 113 of 1,447 sampled hits) but no penalty
-has been measured, and no consumer branches on it.
+The registered shadow test of a confidence/depth penalty for window-
+contradicting inexact bounds ran at `7815054` and is recorded as RAR-S24. It
+returned the opposite of its motivating hypothesis and its result is a design
+constraint on 4.3, not a pending task. Exposure is 18.59% of sampled hits
+(2.4× the previously reported figure, which counted only the cutoff-eligible
+subset). Score consumers are materially exposed — 31.6% of those hits moved
+`eval_for_pruning` by a mean 123.7 cp, and 41 of 101 sampled singular attempts
+were seeded by one. **But a contradicting entry's move was best 91.79% of the
+time against 84.77% for an agreeing entry**, so contradiction improves the
+move as an ordering hint while staling the score. Score staleness and move
+staleness are not the same property, and one per-entry confidence scalar would
+throw away real ordering evidence to fix a scoring problem.
+
+4.2 is therefore closed. Cutoffs need no arm at all: a contradicting entry
+cannot cut off, which is unit-tested rather than assumed.
 
 Original scope for reference. Introduce transient `OutcomeKind`,
 `NodeEvidence` and `MoveEvidence`. Audit
@@ -304,6 +315,30 @@ and measured depth; never authorize singularity/exact learning. Stage complete
 in-check qsearch ordering and test capture/SEE history plus coherent delta/
 SEE/futility after storage is correct. Gate useful arms `[0,3]`, combined
 `[-3,3]`.
+
+Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
+
+- **Separate the two eval-refinement capabilities.** The main search enforces
+      a depth floor and a `VALUE_NONE` test; the qsearch stand-pat path
+      enforces neither. Both are named capabilities today with a test pinning
+      the divergence. RAR-S02 accepted the qsearch form at about +6.5 Elo and
+      RAR-S15 shows a cleaner primitive can de-tune consumers fitted around a
+      looser one, so unification is a gated arm, never a tidy-up.
+- **Deny singular authority to speculative evidence.** ProbCut stores a
+      margin-shifted score at `depth-3` and singular accepts exactly that
+      shape; 32 of 101 sampled attempts sit on the signature and 41 of 101 are
+      seeded by a window-contradicting score. Store the actual result, and
+      require non-speculative evidence for the seed.
+- **Penalize the SCORE, never the MOVE.** RAR-S24 measured a contradicting
+      entry's move as best 91.79% versus 84.77% for an agreeing entry. Any
+      confidence/depth penalty applies to eval refinement and singular
+      seeding; move ordering and IIR keep full nominal authority. A single
+      per-entry confidence scalar is ruled out by measurement.
+- **No cutoff arm.** A contradicting entry cannot produce a cutoff; this is
+      unit-tested, so no gate is needed for that path.
+- **Price the depth penalty from the slack histogram** (20/19/16/22/8 across
+      slack 0/1/2-3/4-7/8+): P=1 blocks 23.5% of contradicting refinements,
+      P=2 45.9%, P=4 64.7%, P=8 90.6%. Pick P from this, not by feel.
 
 ### 4.4 — NMP, IIR and singular cooperation
 

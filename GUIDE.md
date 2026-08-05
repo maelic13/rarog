@@ -46,18 +46,19 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 - [x] **4.1 Diagnostics:** deterministic sampled provenance, pruning recall/
       overlap, NMP/ProbCut/singularity, correction and root/SMP confidence;
       normal/diagnostic search equivalence verified.
-- [ ] **4.2 Evidence/TT:** add result kinds and explicit consumer contracts
-      while preserving the 10-byte TT unless measurements justify growth.
-      Persisted provenance is deferred: `flag_age` has zero spare bits, and the
-      one cheap slot (age 5→4 bits) moves the bench fingerprint, so it needs a
-      strength gate rather than a neutrality check (RAR-S22).
+- [x] **4.2 Evidence/TT:** result kinds and explicit consumer contracts added;
+      the 10-byte TT is preserved. Persisted provenance is deferred: `flag_age`
+      has zero spare bits, and the one cheap slot (age 5→4 bits) moves the
+      bench fingerprint, so it needs a strength gate rather than a neutrality
+      check (RAR-S22).
 - [x] **4.2a Typed evidence:** `src/evidence.rs` types all 7 producers and
       routes all 13 read sites through named capabilities; bench-identical at
       6,502,902 with 96 matching depth lines against the pre-refactor binary
       (RAR-S23).
-- [ ] **4.2b Contradiction penalty:** shadow-test a confidence/depth penalty
-      for inexact bounds that contradict the current window. Detector exists
-      (113 of 1,447 sampled hits); no penalty measured, no consumer reads it.
+- [x] **4.2b Contradiction shadow:** measured, and it reversed its own
+      hypothesis. A contradicting entry's move is best 91.79% versus 84.77%
+      for an agreeing one, so the penalty goes on the SCORE consumers only and
+      must leave ordering and IIR alone (RAR-S24). Constraint carried into 4.3.
 - [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
       cutoffs and improve safe evasion/capture ordering.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
@@ -128,11 +129,13 @@ the user explicitly abandons that program.
 
 No long job is active or requested. Do not resume the old aspiration tuner or
 reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
-the retained baseline. Phases 4.0, 4.1 and 4.2a are complete and everything
-landed so far is bench-identical, so no game time is needed yet. The next
-numbered step is **4.2b — shadow-test the inexact-bound contradiction penalty**,
-which is diagnostic-only and also needs no games. Start another
-SPRT/SPSA/gauntlet only when a later step explicitly prepares and requests it.
+the retained baseline. Phases 4.0, 4.1 and 4.2 are complete and everything
+landed so far is bench-identical, so no game time has been needed yet. The next
+numbered step is **4.3 — qsearch and ProbCut evidence hygiene**, which is the
+first step in Phase 4 that changes move choice and therefore the first that
+needs games: expect registered `[0,3]` arms per mechanism and a `[-3,3]`
+combined gate. Do not start any run until 4.3 explicitly prepares and requests
+one.
 
 To reproduce the 4.2 audit reading, the diag build is required — the plain
 release binary emits no `diag` lines:
