@@ -1,8 +1,9 @@
 # Rarog development plan
 
-This is the maintainer-facing source of truth. `GUIDE.md` is the concise
-operational mirror; `README.md`, `CHANGELOG.md` and release notes are
-user-facing and must not contain experiment bookkeeping.
+This is the maintainer-facing source of truth for future work. `GUIDE.md` is
+the concise operational mirror; [`EXPERIMENTS.md`](EXPERIMENTS.md) is the
+indexed, conditional evidence ledger. `README.md`, `CHANGELOG.md` and release
+notes are user-facing and must not contain experiment bookkeeping.
 
 ## 1. Current state
 
@@ -52,6 +53,9 @@ Model  -> accept/revert from the registered verdict, update docs, commit.
 - Commit after every completed plan step with an imperative subject and useful
   experiment body. No co-author trailers; never push unless asked.
 - Update `PLAN.md` and `GUIDE.md` together.
+- Before proposing or retrying a mechanism, consult `EXPERIMENTS.md` by
+  subsystem. Update its verdict, conditions, lesson and retry trigger in the
+  same commit that closes an experiment; keep forward sequencing only here.
 - Preserve unrelated user changes. A dirty binary records its diff hash and
   cannot become a release baseline.
 - While the two active jobs occupy 14 physical cores: no bench, NPS, PGO,
