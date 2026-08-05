@@ -48,6 +48,9 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       normal/diagnostic search equivalence verified.
 - [ ] **4.2 Evidence/TT:** add result kinds and explicit consumer contracts
       while preserving the 10-byte TT unless measurements justify growth.
+      Persisted provenance is deferred: `flag_age` has zero spare bits, and the
+      one cheap slot (age 5→4 bits) moves the bench fingerprint, so it needs a
+      strength gate rather than a neutrality check (RAR-S22).
 - [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
       cutoffs and improve safe evasion/capture ordering.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
@@ -118,9 +121,18 @@ the user explicitly abandons that program.
 
 No long job is active or requested. Do not resume the old aspiration tuner or
 reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
-the retained baseline. Phases 4.0 and 4.1 are complete, so the next numbered
-implementation step is **4.2 — result evidence and TT contract**. Start another
-SPRT/SPSA/gauntlet only when a later step explicitly prepares and requests it.
+the retained baseline. Phases 4.0 and 4.1 are complete; **4.2 is in progress**
+and is bench-identical by construction, so it needs no game time yet. Start
+another SPRT/SPSA/gauntlet only when a later step explicitly prepares and
+requests it.
+
+To reproduce the 4.2 audit reading, the diag build is required — the plain
+release binary emits no `diag` lines:
+
+```powershell
+cargo build --release --features diag
+.\tools\diag_search_quality.ps1
+```
 
 ## Decision rules
 

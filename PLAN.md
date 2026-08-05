@@ -175,9 +175,9 @@ These are individual mechanism gates, not additive proof of the live binary.
 
 | Area | Rarog today | Repair |
 |---|---|---|
-| TT evidence | 10-byte entry stores score/raw eval/move/depth/bound/PV/age, no producer provenance. | Compact provenance/consumer capabilities while preserving density if possible. |
-| Qsearch → main | Stand-pat/pruning values can become depth-0 bounds; `EvalPruneTtMinDepth=0` lets them refine pruning through depth 8. | Separate raw/corrected/stand-pat/searched evidence. |
-| ProbCut → singular | Stores margin-normalized score at `depth-3`; singular accepts lower/exact at `depth-3`. | Store actual speculative result; forbid singular authority. |
+| TT evidence | 10-byte entry stores score/raw eval/move/depth/bound/PV/age, no producer provenance. `flag_age` is fully allocated (RAR-S22), so provenance is not free. | Compact provenance/consumer capabilities while preserving density if possible. |
+| Qsearch → main | Stand-pat/pruning values can become depth-0 bounds; `EvalPruneTtMinDepth=0` lets them refine pruning through depth 8. Measured: 67% of sampled stores are depth-0 qsearch and 37% are bare stand-pat. | Separate raw/corrected/stand-pat/searched evidence. |
+| ProbCut → singular | Stores margin-normalized score at `depth-3`; singular accepts lower/exact at `depth-3`. Measured: 32 of 101 sampled singular attempts sit on that exact signature. | Store actual speculative result; forbid singular authority. |
 | NMP | Verification disables null only at its root; descendants re-enable it. Missing subtree suppression, cut-node/potential-singularity/raw-eval/decisive guards. | Correct the verification contract before margins. |
 | IIR | Can reduce PV nodes with no TT move, starting depth 4. | Restrict by node role/evidence and expose debt. |
 | `tt_pv` | One inherited bit disables RFP, razor, NMP and ProbCut together. | Per-mechanism eligibility predicates. |
@@ -242,13 +242,34 @@ from counter movement alone.
 
 ### 4.2 — Result evidence and TT contract
 
-Introduce transient `OutcomeKind`, `NodeEvidence` and `MoveEvidence`. Compare
-compact persisted provenance in spare `flag_age` capacity with stack-only
-metadata; widen only if both fail. Audit aging/replacement, local/shared TT,
-mate/rule-50 conversion and all readers. Publish consumer capabilities for
-cutoff/eval refinement/NMP/IIR/ProbCut/singularity. Shadow-test confidence/
-depth penalty for inexact bounds contradicting the current window. Correctness
-and bench first; `[0,3]` if active semantics change.
+Introduce transient `OutcomeKind`, `NodeEvidence` and `MoveEvidence`. Audit
+aging/replacement, local/shared TT, mate/rule-50 conversion and all readers.
+Publish consumer capabilities for cutoff/eval refinement/NMP/IIR/ProbCut/
+singularity. Shadow-test confidence/depth penalty for inexact bounds
+contradicting the current window. Correctness and bench first; `[0,3]` if
+active semantics change.
+
+**Persistence is deferred, and the reason is measured (RAR-S22).** There is no
+spare `flag_age` capacity: the byte is 5 bits age (`0xF8`), 1 bit `is_pv` and
+2 bits bound — 8 of 8. The three candidate slots and their real costs are:
+
+- **Age 5→4 bits** buys one bit. Keeping `entry_quality`'s per-generation
+      penalty needs its divisor moved 2→4, which preserves the penalty exactly
+      (8/2 = 16/4 = 4) but halves the wraparound horizon from 32 to 16
+      generations. `bench` shares one table across its 40 positions and ages it
+      once per position, so this **changes the bench fingerprint** and is a
+      behaviour change requiring a `[0,3]` gate, not a neutral refactor.
+- **`LocalCluster`'s 2 spare bytes** are local-only. `SharedCluster` is a
+      6×10 B/64 B struct-of-arrays with a compile-time size assert and no
+      padding, so this slot cannot be made backend-symmetric.
+- **Widening the entry to 12 B** breaks both cluster invariants (3×10+2=32 and
+      6×10=64) and costs capacity on every target.
+
+So 4.2 lands the transient types and the centralized capability predicates at
+**exactly current semantics** (bench-identical), which converts 4.3 and 4.4
+from scattered condition surgery into single-predicate edits. Persist a
+producer class only when 4.3/4.4 show a consumer that cannot be corrected from
+stack-local evidence, and price it against the list above.
 
 ### 4.3 — Qsearch and ProbCut evidence hygiene
 
