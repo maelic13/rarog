@@ -51,6 +51,13 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       Persisted provenance is deferred: `flag_age` has zero spare bits, and the
       one cheap slot (age 5→4 bits) moves the bench fingerprint, so it needs a
       strength gate rather than a neutrality check (RAR-S22).
+- [x] **4.2a Typed evidence:** `src/evidence.rs` types all 7 producers and
+      routes all 13 read sites through named capabilities; bench-identical at
+      6,502,902 with 96 matching depth lines against the pre-refactor binary
+      (RAR-S23).
+- [ ] **4.2b Contradiction penalty:** shadow-test a confidence/depth penalty
+      for inexact bounds that contradict the current window. Detector exists
+      (113 of 1,447 sampled hits); no penalty measured, no consumer reads it.
 - [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
       cutoffs and improve safe evasion/capture ordering.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
@@ -121,10 +128,11 @@ the user explicitly abandons that program.
 
 No long job is active or requested. Do not resume the old aspiration tuner or
 reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
-the retained baseline. Phases 4.0 and 4.1 are complete; **4.2 is in progress**
-and is bench-identical by construction, so it needs no game time yet. Start
-another SPRT/SPSA/gauntlet only when a later step explicitly prepares and
-requests it.
+the retained baseline. Phases 4.0, 4.1 and 4.2a are complete and everything
+landed so far is bench-identical, so no game time is needed yet. The next
+numbered step is **4.2b — shadow-test the inexact-bound contradiction penalty**,
+which is diagnostic-only and also needs no games. Start another
+SPRT/SPSA/gauntlet only when a later step explicitly prepares and requests it.
 
 To reproduce the 4.2 audit reading, the diag build is required — the plain
 release binary emits no `diag` lines:

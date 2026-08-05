@@ -240,9 +240,33 @@ test, normal/diagnostic test suites and feature-enabled lint wall pass. Record
 future readings and conditional lessons in `EXPERIMENTS.md`; never infer Elo
 from counter movement alone.
 
-### 4.2 — Result evidence and TT contract
+### 4.2 — Result evidence and TT contract — **SUBSTANTIALLY COMPLETE (2026-08-05)**
 
-Introduce transient `OutcomeKind`, `NodeEvidence` and `MoveEvidence`. Audit
+Landed at `47f3ac6` and recorded as RAR-S23: `src/evidence.rs` defines
+`OutcomeKind`, `NodeEvidence` and `MoveEvidence`; all seven store sites declare
+a producer kind; all thirteen read sites go through named capability predicates
+(`cutoff_score`, `refine_eval`, `refine_eval_bound_only`, `allows_singular`,
+`too_shallow_to_order`, `is_exact`, `pv_line`). NMP and ProbCut consume TT
+evidence only through `refine_eval`, so they gained no separate predicate —
+their own eligibility split is 4.4's per-mechanism `tt_pv` work. Mate-distance
+and rule-50 conversion now happen exactly once per node. A debug shape contract
+plus an exact producer census (reconciled against the independent store
+counters) makes a mislabelled store a test failure rather than a later depth
+coincidence. Verified bench-identical at 6,502,902 / EBF 2.449 with 96 matching
+depth lines against the pre-refactor binary.
+
+Centralizing exposed one divergence worth carrying forward: the main search's
+eval refinement enforces a depth floor and a `VALUE_NONE` test, the qsearch
+stand-pat path enforces neither. Both are preserved as distinct named
+capabilities with a test pinning the difference; unifying them is 4.3.
+
+**Still open in 4.2:** the registered shadow test of a confidence/depth penalty
+for inexact bounds that contradict the current window. The detector exists
+(`NodeEvidence::contradicts_window`, 113 of 1,447 sampled hits) but no penalty
+has been measured, and no consumer branches on it.
+
+Original scope for reference. Introduce transient `OutcomeKind`,
+`NodeEvidence` and `MoveEvidence`. Audit
 aging/replacement, local/shared TT, mate/rule-50 conversion and all readers.
 Publish consumer capabilities for cutoff/eval refinement/NMP/IIR/ProbCut/
 singularity. Shadow-test confidence/depth penalty for inexact bounds
