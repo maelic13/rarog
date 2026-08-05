@@ -13,7 +13,8 @@ and lessons live in [`PLAN.md`](PLAN.md).
 | Live tuner | Registered 5,000-iteration aspiration SPSA; dev tournament binary contains interim unfinished constants. |
 | Evaluation | HCE frozen. No feature/weight/Texel work before NNUE. |
 | Current phase | **Phase 4 — evidence-coherent pre-NNUE search** |
-| Next releases | **2.4.0 at 4.10**; baseline NNUE **2.5.0 at 6.7** |
+| Portability branch | `origin/arm_fix` = stale ARM-prefetch/TT-alignment/HCE-hoist experiments; inventory at 4.8, never merge wholesale |
+| Next releases | **2.4.0 at 4.11**; baseline NNUE **2.5.0 at 6.7** |
 
 The 2.4.0 target is direct paired superiority over every installed Rybka,
 Critter 1.6a, Houdini 2.0c and Fritz 16. Basilisk is only the first rung.
@@ -57,11 +58,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
       completed legal fallback and SMP ownership.
-- [ ] **4.8 Throughput/scaling:** profile accepted semantics and 1/2/4/8T;
-      take only measured behaviour-neutral speed work.
-- [ ] **4.9 One search SPSA:** freeze architecture, select ≤24 coordinates and
+- [ ] **4.8 Portability/ISA:** inventory `origin/arm_fix`; make x86 tier
+      contracts executable, verify all native ARM runners/artifacts, target-
+      measure prefetch/alignment/false sharing and archive each branch item.
+- [ ] **4.9 Throughput/scaling:** profile accepted semantics and 1/2/4/8T
+      without regressing the platform/ISA matrix.
+- [ ] **4.10 One search SPSA:** freeze architecture, select ≤24 coordinates and
       run the only additional pre-NNUE fit plus post-fit ablations.
-- [ ] **4.10 Release gate:** cumulative 1T/LTC/4T matrix and Holm-adjusted
+- [ ] **4.11 Release gate:** cumulative 1T/LTC/4T plus production platform/ISA
+      matrix and Holm-adjusted
       paired wins over every Rybka, Critter 1.6a, Houdini 2.0c and Fritz 16;
       then release 2.4.0.
 
@@ -79,7 +84,7 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 - [ ] **6.1** controlled 30–60M initial data and label/mining A/Bs.
 - [ ] **6.2** baseline networks with at least two seeds.
 - [ ] **6.3** strict scalar loader/embedded net and exact references.
-- [ ] **6.4** incremental accumulators and exact portable/SIMD kernels.
+- [ ] **6.4** incremental accumulators and exact portable/x86/ARM64 kernels.
 - [ ] **6.5** baseline data/architecture iteration one variable at a time.
 - [ ] **6.6** gross NNUE-scale search safety calibration only.
 - [ ] **6.7** HCE/STC/LTC/4T/external/parity gates and release 2.5.0.
@@ -95,8 +100,9 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 ### Phase 8 — Scaling, platforms and product completeness
 
 - [ ] **8.0** high-thread/NUMA/root/TT/accumulator scaling.
-- [ ] **8.1** memory/network placement and runtime ISA dispatch.
-- [ ] **8.2** demanded product work such as Chess960/platform/NEON parity.
+- [ ] **8.1** advanced memory/network placement and runtime ISA dispatch.
+- [ ] **8.2** demanded product or additional-platform work; baseline ARM64 and
+      NNUE/NEON parity are already gates in 4.8 and 6.4/6.7.
 - [ ] **8.3** scaling/platform release matrix.
 
 ### Phase 9 — Optional HCE fallback
@@ -134,8 +140,8 @@ another long job.
 | Behaviour-neutral | Exact bench plus fmt/tests/performance evidence |
 | Strength candidate | Registered SPRT; H1 accepts, otherwise revert behaviour |
 | Root/TM/SMP | 1T STC/LTC plus 4T LTC, zero forfeits |
-| Mechanism de-tunes consumers | Keep inert/ablatable until 4.9; post-fit ablation required |
-| SPSA | Active aspiration, Phase 4.9 and Phase 7.3 only unless new evidence authorizes another |
+| Mechanism de-tunes consumers | Keep inert/ablatable until 4.10; post-fit ablation required |
+| SPSA | Active aspiration, Phase 4.10 and Phase 7.3 only unless new evidence authorizes another |
 | NNUE baseline loses | Diagnose contract/data/training/architecture; do not jump to HCE |
 | Target unavailable | Phase 4 stays open; rating-list inference is insufficient |
 
