@@ -524,6 +524,32 @@ mod tests {
     }
 
     #[test]
+    fn a_contradicting_bound_can_never_produce_a_cutoff() {
+        // 4.2b relies on this: the shadow test measures only the NON-cutoff
+        // consumers, and that is sound only because a contradicting entry is
+        // structurally incapable of cutting off. A `Lower` at or below alpha
+        // cannot reach beta, and an `Upper` at or above beta cannot fall to
+        // alpha, for any window with alpha < beta. Swept rather than argued.
+        for alpha in -300..=300 {
+            for beta in (alpha + 1)..=300 {
+                for score in [alpha - 1, alpha, beta, beta + 1] {
+                    for bound in [Bound::Lower, Bound::Upper] {
+                        // Depth is generous so only the bound direction decides.
+                        let ev = evidence(bound, 99, score);
+                        if ev.contradicts_window(alpha, beta) {
+                            assert_eq!(
+                                ev.cutoff_score(0, alpha, beta),
+                                None,
+                                "bound {bound:?} score {score} cut off window [{alpha},{beta}]"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn pv_line_is_the_union_of_node_and_stored_bits() {
         let stored = NodeEvidence {
             stored_pv: true,

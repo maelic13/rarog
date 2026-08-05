@@ -243,6 +243,45 @@ pub mod counters {
         worker_best_disagreement,
         worker_depth_spread_sum,
         worker_score_spread_sum,
+        // 4.2b SHADOW TEST — inexact bounds that CONTRADICT the current window.
+        //
+        // A `Lower` at or below alpha, or an `Upper` at or above beta, resolved
+        // some OTHER window and says nothing about this one. It cannot produce a
+        // cutoff (proved by a unit test in `evidence.rs`), but every consumer
+        // that does not test the bound direction still admits it at full
+        // nominal depth. The registered question is whether it should carry a
+        // confidence/depth penalty. These counters measure what a penalty WOULD
+        // change; no consumer branches on any of them.
+        //
+        // `contradict_hits` is UNGATED, unlike `tt_bound_contradicts_window`
+        // above, which only counts the cutoff-eligible subset (deep enough, at a
+        // non-PV non-excluded node). The consumers below have their own, looser
+        // depth rules, so the gated figure understates their exposure.
+        contradict_hits,
+        // eval_for_pruning: the highest-volume consumer. `slack` is
+        // `ev.depth - EvalPruneTtMinDepth`, so a penalty of P plies blocks
+        // exactly the cases with slack < P — one histogram answers every P.
+        contradict_refined_eval,
+        contradict_refine_slack_0,
+        contradict_refine_slack_1,
+        contradict_refine_slack_2_3,
+        contradict_refine_slack_4_7,
+        contradict_refine_slack_8_plus,
+        contradict_refine_delta_sum,
+        // Singular seeds its verification window from this stored score.
+        contradict_singular_attempt,
+        contradict_singular_changed_depth,
+        // A DEEP contradicting entry suppresses IIR, i.e. it is trusted to
+        // order the node even though it resolved a different window.
+        contradict_iir_suppressed,
+        // Control pair. If a contradicting entry's move is best about as often
+        // as an agreeing one's, the penalty belongs on the SCORE consumers only
+        // and must not touch ordering or IIR. This is the measurement that
+        // decides the shape of the 4.3 change, so it has its own denominator.
+        contradict_move_present,
+        contradict_move_was_best,
+        agree_move_present,
+        agree_move_was_best,
         // Coverage proof for the shadow consumers planned in 4.2--4.7.
         shadow_4_2_evidence,
         shadow_4_3_qsearch,
@@ -342,6 +381,49 @@ pub fn record_best_move(rank: usize, stage: crate::evidence::MoveClass, reduced:
     if reduced {
         counters::best_was_reduced.fetch_add(1, Ordering::Relaxed);
     }
+}
+
+/// 4.2b: record how a contradicting entry's MOVE fared for ordering, against
+/// the agreeing-entry control.
+///
+/// Called from both node exits so the numerator and denominator always cover the
+/// same node set — the same trap `cutoff_first_move` documents. `hit` without
+/// `contradicts` is the control group and includes exact bounds.
+#[cfg(feature = "diag")]
+#[inline]
+pub fn record_contradiction_ordering(contradicts: bool, hit: bool, best_was_tt_move: bool) {
+    use std::sync::atomic::Ordering;
+
+    if contradicts {
+        counters::contradict_move_present.fetch_add(1, Ordering::Relaxed);
+        if best_was_tt_move {
+            counters::contradict_move_was_best.fetch_add(1, Ordering::Relaxed);
+        }
+    } else if hit {
+        counters::agree_move_present.fetch_add(1, Ordering::Relaxed);
+        if best_was_tt_move {
+            counters::agree_move_was_best.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+/// 4.2b: bucket the depth slack a contradicting entry had when it refined
+/// `eval_for_pruning`. A penalty of P plies blocks every case with slack < P.
+#[cfg(feature = "diag")]
+#[inline]
+pub fn record_contradiction_refine(slack: i32, delta: u64) {
+    use std::sync::atomic::Ordering;
+
+    counters::contradict_refined_eval.fetch_add(1, Ordering::Relaxed);
+    counters::contradict_refine_delta_sum.fetch_add(delta, Ordering::Relaxed);
+    let bucket = match slack {
+        i32::MIN..=0 => &counters::contradict_refine_slack_0,
+        1 => &counters::contradict_refine_slack_1,
+        2..=3 => &counters::contradict_refine_slack_2_3,
+        4..=7 => &counters::contradict_refine_slack_4_7,
+        _ => &counters::contradict_refine_slack_8_plus,
+    };
+    bucket.fetch_add(1, Ordering::Relaxed);
 }
 
 /// Root statistics are cold and diagnostic-only. Floating-point conversion is

@@ -1550,11 +1550,19 @@ impl Searcher {
         // same entry twice, at `tt_score` and again inside the cutoff block.
         let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
         let tt_pv = ev.pv_line(is_pv);
+        // 4.2b: captured at node entry, against the window this node was ASKED
+        // to resolve. `alpha` is raised by the move loop below, so reading it
+        // later would ask a different question.
+        #[cfg(feature = "diag")]
+        let diag_contradicts = ev.contradicts_window(alpha, beta);
         #[cfg(feature = "diag")]
         if diag_sample {
             if ev.hit {
                 crate::diag_count!(tt_sample_hit);
                 crate::diag_count!(shadow_4_2_evidence);
+                if diag_contradicts {
+                    crate::diag_count!(contradict_hits);
+                }
                 if !is_pv && excluded.is_null() && ev.depth >= depth {
                     match ev.bound {
                         Some(Bound::Exact) => {
@@ -1622,6 +1630,19 @@ impl Searcher {
 
         #[cfg(feature = "diag")]
         let mut diag_iir_applied = false;
+        // 4.2b: a contradicting entry that is deep enough to SUPPRESS IIR — the
+        // search trusts it to order this node even though it resolved a
+        // different window. A depth penalty would let IIR fire here instead.
+        #[cfg(feature = "diag")]
+        if diag_sample
+            && diag_contradicts
+            && excluded.is_null()
+            && depth >= 4
+            && !tt_move.is_null()
+            && !(!is_pv && ev.too_shallow_to_order(depth))
+        {
+            crate::diag_count!(contradict_iir_suppressed);
+        }
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
         if excluded.is_null()
             && depth >= 4
@@ -1690,10 +1711,17 @@ impl Searcher {
             && eval_for_pruning != static_eval
         {
             crate::diag_count!(tt_eval_refined);
-            crate::diag_add!(
-                tt_eval_delta_sum,
-                u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs())
-            );
+            let delta = u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs());
+            crate::diag_add!(tt_eval_delta_sum, delta);
+            // 4.2b: an entry that told this node nothing still moved the eval
+            // its forward pruning runs on. Slack is measured against the knob
+            // that actually gates the refinement.
+            if diag_contradicts {
+                crate::diag::record_contradiction_refine(
+                    ev.depth - self.params.eval_prune_tt_min_depth,
+                    delta,
+                );
+            }
         }
         // 8.3 diagnostic: a non-PV, non-check node where the *stored* PV bit
         // (tt_pv true while is_pv false) is what keeps the whole forward-pruning
@@ -2128,6 +2156,11 @@ impl Searcher {
                     if ev.depth == depth - 3 && matches!(ev.bound, Some(Bound::Lower)) {
                         crate::diag_count!(singular_probcut_depth_match);
                     }
+                    // 4.2b: the verification window is seeded from a score that
+                    // resolved a different window.
+                    if diag_contradicts {
+                        crate::diag_count!(contradict_singular_attempt);
+                    }
                 }
                 let singular_beta = ev.score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
@@ -2176,6 +2209,13 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 if diag_sample && diag_iir_applied && extension != 0 {
                     crate::diag_count!(iir_extension_debt);
+                }
+                // 4.2b: did that seed actually change the tree? Counts the
+                // multi-cut return too, which is the largest single effect a
+                // contradicting seed can have.
+                #[cfg(feature = "diag")]
+                if diag_sample && diag_contradicts && extension != 0 {
+                    crate::diag_count!(contradict_singular_changed_depth);
                 }
             }
 
@@ -2538,6 +2578,13 @@ impl Searcher {
                             diag_best_stage,
                             diag_best_reduced,
                         );
+                        if !tt_move.is_null() {
+                            crate::diag::record_contradiction_ordering(
+                                diag_contradicts,
+                                ev.hit,
+                                diag_best_stage == MoveClass::TtMove,
+                            );
+                        }
                     }
                     return score;
                 }
@@ -2638,6 +2685,13 @@ impl Searcher {
         #[cfg(feature = "diag")]
         if diag_order_sample && diag_best_rank > 0 {
             crate::diag::record_best_move(diag_best_rank, diag_best_stage, diag_best_reduced);
+            if !tt_move.is_null() {
+                crate::diag::record_contradiction_ordering(
+                    diag_contradicts,
+                    ev.hit,
+                    diag_best_stage == MoveClass::TtMove,
+                );
+            }
         }
         best_score
     }
