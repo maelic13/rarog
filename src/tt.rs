@@ -472,6 +472,46 @@ impl TranspositionTable {
     }
 }
 
+/// 4.3 hazard census: a moveless store INHERITS the resident move.
+///
+/// This is why a persisted producer class is not the only thing missing — for a
+/// `StandPat` store the inheritance means a purely static estimate walks away
+/// carrying a searched move, and the resulting entry (depth 0, `Lower`, with a
+/// move) is byte-identical to a searched `QsearchMove`. Any attempt to infer
+/// "stand pat" from "depth 0 + Lower + no move" is therefore only as sound as
+/// this counter is small, which is exactly why it is measured before 4.3
+/// designs around the inference.
+#[inline(always)]
+fn count_move_inheritance(kind: OutcomeKind, resident: u16) {
+    #[cfg(feature = "diag")]
+    if resident != 0 {
+        crate::diag_count!(tt_move_inherited);
+        if kind == OutcomeKind::StandPat {
+            crate::diag_count!(tt_move_inherited_stand_pat);
+        }
+    }
+    #[cfg(not(feature = "diag"))]
+    {
+        let _ = (kind, resident);
+    }
+}
+
+/// 4.3 hazard census: a depth-0 horizon store landing on a deeper searched entry
+/// for the SAME position. The depth-preservation rule above only protects an
+/// entry more than 3 plies deeper, so depths 1..3 are overwritten by a horizon
+/// estimate. Counted to size that evidence loss before 4.3 tightens anything.
+#[inline(always)]
+fn count_horizon_overwrite(kind: OutcomeKind, depth: i32, same_key: bool, resident_depth: i8) {
+    #[cfg(feature = "diag")]
+    if kind.is_horizon() && same_key && i32::from(resident_depth) > depth {
+        crate::diag_count!(tt_horizon_overwrote_searched);
+    }
+    #[cfg(not(feature = "diag"))]
+    {
+        let _ = (kind, depth, same_key, resident_depth);
+    }
+}
+
 /// Exact per-producer store census. Expands to nothing without `--features
 /// diag`; the `match` and the unused binding both disappear.
 #[inline(always)]
@@ -656,10 +696,12 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
     }
 
     let stored_move = if e.mv.is_null() && replace.key16 == key16 {
+        count_move_inheritance(e.kind, replace.mv);
         replace.mv
     } else {
         e.mv.0
     };
+    count_horizon_overwrite(e.kind, e.depth, replace.key16 == key16, replace.depth);
 
     *replace = make_entry(key16, stored_move, table.age, e);
 }
@@ -708,10 +750,12 @@ fn store_shared(table: &SharedTable, e: TtStore) {
     }
 
     let stored_move = if e.mv.is_null() && replace_hits_same_key {
+        count_move_inheritance(e.kind, replace_entry.mv);
         replace_entry.mv
     } else {
         e.mv.0
     };
+    count_horizon_overwrite(e.kind, e.depth, replace_hits_same_key, replace_entry.depth);
 
     cluster.store(replace_index, key16, make_entry(key16, stored_move, age, e));
 }

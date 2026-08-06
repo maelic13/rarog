@@ -230,6 +230,43 @@ search_params! {
     /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`. [search.rs:1215]
     singular_beta_mult = 4, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6 → 4
 
+    /// 4.3 arm B — how far below the node depth a TT entry may sit and still
+    /// seed a singular verification window (`ev.depth >= depth - margin`).
+    ///
+    /// 3 = current behaviour, and 3 is exactly the depth ProbCut writes
+    /// (`depth - 3`), so today a margin-shifted speculative score is admitted at
+    /// the boundary: RAR-S22 measured 32 of 101 sampled attempts sitting on that
+    /// signature and RAR-S24 measured 41 of 101 seeded by a window-contradicting
+    /// score. Provenance is not persisted, so the only available lever is the
+    /// depth band itself — 2 excludes the ProbCut band entirely, at the cost of
+    /// also excluding a legitimate full search at `depth - 3`. That trade is
+    /// what the registered arm measures; it is not obviously good.
+    singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
+
+    /// 4.3 arm D — plies subtracted from the node depth when ProbCut stores its
+    /// speculative result (`depth - adj`).
+    ///
+    /// 3 = current behaviour. The verification search actually ran at
+    /// `depth - 4`, which makes `depth - 3` the conventional (and defensible)
+    /// parent-bound depth, but it also places the entry exactly on
+    /// `singular_tt_depth_margin`'s boundary. 4 stores the depth the search
+    /// literally measured, which denies the entry singular authority as a side
+    /// effect rather than by a special case. Interacts with arm B — gate them
+    /// separately before any combination.
+    probcut_store_depth_adj = 3, "ProbCutStoreDepthAdj", 3..=4;
+
+    /// 4.3 arm C — minimum stored depth before a TT bound may refine the
+    /// QSEARCH stand pat.
+    ///
+    /// 0 = current behaviour, and provably so: every stored depth is >= 0 and a
+    /// post-conversion `ev.score` can never equal `VALUE_NONE`, so the guarded
+    /// form at 0 admits exactly what the unguarded form admitted. This knob
+    /// exists to make the audited asymmetry against `EvalPruneTtMinDepth`
+    /// adjustable rather than structural. 1 excludes all depth-0 entries, which
+    /// is 67.5% of stores and would gut most of RAR-S02's accepted +6.5 Elo
+    /// mechanism — a real risk, which is why it is gated and not assumed.
+    qs_refine_min_depth = 0, "QsRefineMinDepth", 0..=4;
+
     /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
     lmp_count_base = 1, "LmpCountBase", 1..=12;  // was 4 → 2 → 1 (10.4.6 lower rail; active)
 
@@ -440,6 +477,17 @@ mod tests {
         assert!(p.qs_see_clamp_lo < p.qs_see_clamp_hi);
         assert!(p.qs_see_bad_floor <= 0);
         assert!(p.singular_beta_mult > 0);
+        // 4.3 arms land INERT: these three defaults must reproduce pre-4.3
+        // behaviour exactly, so the bench fingerprint gates the refactor rather
+        // than the arm. A bake that moves one of them is changing play and owes
+        // an SPRT, so pin the inert values here — this assert is the tripwire.
+        assert_eq!(p.singular_tt_depth_margin, 3, "4.3 arm B must land inert");
+        assert_eq!(p.probcut_store_depth_adj, 3, "4.3 arm D must land inert");
+        assert_eq!(p.qs_refine_min_depth, 0, "4.3 arm C must land inert");
+        assert_eq!(
+            p.eval_prune_tt_min_depth, 0,
+            "4.3 arm A must land inert (the knob predates 4.3)"
+        );
         assert!(p.lmp_count_base > 0);
         assert!(p.lmr_tt_pv_adj >= 0);
         assert!(p.lmr_exact_bound >= 0);

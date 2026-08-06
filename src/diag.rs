@@ -117,6 +117,20 @@ pub mod counters {
         store_kind_stand_pat,
         store_kind_probcut,
         store_kind_tablebase,
+        // 4.3 — provenance HAZARDS in the store path, both exact.
+        //
+        // `tt_move_inherited` counts moveless stores that adopted the resident
+        // move; the `_stand_pat` subset is the one that matters, because it
+        // turns a static estimate into an entry indistinguishable from a
+        // searched qmove. If that subset is large, "depth 0 + Lower + no move"
+        // is NOT a usable stand-pat test and 4.3 cannot lean on it.
+        //
+        // `tt_horizon_overwrote_searched` counts depth-0 stores that replaced a
+        // deeper same-position entry, which the depth-preservation rule only
+        // blocks beyond 3 plies.
+        tt_move_inherited,
+        tt_move_inherited_stand_pat,
+        tt_horizon_overwrote_searched,
         // Does helper work actually REACH the main thread? Probe/hit counted
         // on thread 0 only. If helpers contribute, main's hit rate should rise
         // with thread count; if it is flat, the helpers are searching in vain.

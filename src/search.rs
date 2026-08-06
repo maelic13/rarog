@@ -1891,7 +1891,7 @@ impl Searcher {
                         let cutoff_score = score - (probcut_beta - beta);
                         self.tt.store(TtStore {
                             key: hash,
-                            depth: depth - 3,
+                            depth: depth - self.params.probcut_store_depth_adj,
                             score: cutoff_score,
                             bound: Bound::Lower,
                             mv,
@@ -2147,7 +2147,7 @@ impl Searcher {
                 && mv == tt_move
                 && excluded.is_null()
                 && depth >= 4
-                && ev.allows_singular(depth)
+                && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {
@@ -2794,10 +2794,12 @@ impl Searcher {
             // If the TT score is bounded (Exact, or a one-sided bound that
             // agrees with the bound direction), use it as the stand_pat instead
             // of the raw static eval — cheap cutoffs we would otherwise miss.
-            // 4.2: `refine_eval_bound_only`, NOT `refine_eval` — this path has
-            // no depth floor and no VALUE_NONE test, which is a real asymmetry
-            // against the main search and is documented on both capabilities.
-            let stand_pat = ev.refine_eval_bound_only(stand_pat);
+            // 4.3 arm C. At the default `qs_refine_min_depth` of 0 this is
+            // exactly the pre-4.3 unguarded `refine_eval_bound_only`: every
+            // stored depth is >= 0, and a post-conversion `ev.score` can never
+            // be `VALUE_NONE`, so both guards admit everything. Raising the knob
+            // is what closes the asymmetry against `EvalPruneTtMinDepth`.
+            let stand_pat = ev.refine_eval(stand_pat, self.params.qs_refine_min_depth);
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
                 #[cfg(feature = "diag")]

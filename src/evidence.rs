@@ -259,14 +259,14 @@ impl NodeEvidence {
 
     /// CAPABILITY: seed a singular-extension verification window.
     ///
-    /// Requires a lower-or-exact bound within 3 plies of the node depth and a
-    /// non-mate score. It does NOT require the score to come from a full search,
-    /// so ProbCut's margin-shifted `depth-3` `Lower` qualifies — 32 of 101
-    /// sampled attempts sat on that signature. 4.3 forbids it; doing so here
-    /// would change behaviour without a gate.
+    /// Requires a lower-or-exact bound within `depth_margin` plies of the node
+    /// depth and a non-mate score. It does NOT require the score to come from a
+    /// full search, so at the default margin of 3 ProbCut's margin-shifted
+    /// `depth-3` `Lower` qualifies — 32 of 101 sampled attempts sat on that
+    /// signature. Tightening the margin is 4.3 arm B and needs its own gate.
     #[inline(always)]
-    pub fn allows_singular(&self, depth: i32) -> bool {
-        self.depth >= depth - 3
+    pub fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
+        self.depth >= depth - depth_margin
             && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
             && self.score.abs() < MATE_SCORE - MAX_PLY
     }
@@ -436,7 +436,7 @@ mod tests {
         assert_eq!(miss.cutoff_score(0, -100, 100), None);
         assert_eq!(miss.refine_eval(42, 0), 42);
         assert_eq!(miss.refine_eval_bound_only(42), 42);
-        assert!(!miss.allows_singular(4));
+        assert!(!miss.allows_singular(4, 3));
         assert!(!miss.is_exact());
         // -1 is the pre-4.2 `tt_depth` default and must keep behaving as one.
         assert_eq!(miss.depth, -1);
@@ -500,18 +500,51 @@ mod tests {
     }
 
     #[test]
-    fn singular_authority_admits_probcut_shaped_evidence() {
+    fn singular_authority_admits_probcut_shaped_evidence_at_the_default_margin() {
         // Documents current behaviour: ProbCut writes a Lower bound at depth-3,
-        // and singular accepts exactly that. 4.3 must flip this assertion.
+        // and singular at margin 3 accepts exactly that.
         let probcut_shaped = evidence(Bound::Lower, 5, 40);
-        assert!(probcut_shaped.allows_singular(8));
-        // Shallower than depth-3 is refused.
-        assert!(!evidence(Bound::Lower, 4, 40).allows_singular(8));
+        assert!(probcut_shaped.allows_singular(8, 3));
+        // 4.3 arm B: margin 2 is what excludes the ProbCut band.
+        assert!(!probcut_shaped.allows_singular(8, 2));
+        // Shallower than the margin is refused either way.
+        assert!(!evidence(Bound::Lower, 4, 40).allows_singular(8, 3));
         // Upper bounds never qualify.
-        assert!(!evidence(Bound::Upper, 8, 40).allows_singular(8));
+        assert!(!evidence(Bound::Upper, 8, 40).allows_singular(8, 3));
         // Mate scores never qualify.
-        assert!(!evidence(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8));
-        assert!(!evidence(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8));
+        assert!(!evidence(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3));
+        assert!(!evidence(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3));
+    }
+
+    #[test]
+    fn guarded_refinement_at_depth_zero_equals_the_unguarded_form() {
+        // 4.3 arm C lands inert, and this is the claim that makes it inert: for
+        // every state the engine can actually store, `refine_eval(_, 0)` admits
+        // exactly what `refine_eval_bound_only` admits. Two facts carry it —
+        // every stored depth is >= 0 (qsearch writes 0, every other producer
+        // writes >= 1), and a post-conversion `ev.score` can never be
+        // VALUE_NONE (mate scores come back clamped to +/-MATE_SCORE). If a
+        // future producer breaks either, this test fails and the arm stops
+        // being inert, which is the point.
+        for bound in [Bound::Exact, Bound::Lower, Bound::Upper] {
+            for depth in 0..=12 {
+                for score in [-MATE_SCORE, -300, -1, 0, 1, 300, MATE_SCORE] {
+                    for base in [-500, -1, 0, 1, 500] {
+                        let ev = evidence(bound, depth, score);
+                        assert_eq!(
+                            ev.refine_eval(base, 0),
+                            ev.refine_eval_bound_only(base),
+                            "bound {bound:?} depth {depth} score {score} base {base}"
+                        );
+                    }
+                }
+            }
+        }
+        // A miss agrees too, because its bound is None.
+        assert_eq!(
+            NodeEvidence::MISS.refine_eval(42, 0),
+            NodeEvidence::MISS.refine_eval_bound_only(42)
+        );
     }
 
     #[test]
