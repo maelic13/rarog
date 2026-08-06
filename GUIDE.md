@@ -65,17 +65,22 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       `SingularTtDepthMargin`, `ProbCutStoreDepthAdj`, `QsRefineMinDepth`) plus
       the provenance-hazard census; bench-identical at 6,502,902 on normal, diag
       and tune builds (RAR-S25, RAR-S26).
-- [ ] **4.3a-ii Gate the arms:** run arm A first (`EvalPruneTtMinDepth` 2 then
-      1), then B, then D. Arm C is held. A passing arm needs a PGO re-gate with
-      the value baked before acceptance.
+- [x] **4.3a-ii Arm A value 2: REJECTED.** −1.49 ± 2.87 Elo / −2.33 ± 4.49 nElo
+      over 23,044 games, LLR −2.19, manual stop; default stays 0. It searched
+      43.8% fewer nodes for no measurable Elo (RAR-S27).
+- [ ] **4.3a-iii Arm A value 1:** the *targeted* setting — `=2` also denied
+      depth-1 real searches, which the hypothesis never asked for, and depth-1
+      carries ~2x the tree effect of depth-0. Run this before judging the
+      mechanism.
+- [ ] **4.3a-iv Arms B and D:** after value 1. Arm C stays held.
 - [ ] **4.3c Persisted provenance:** 1-bit producer class plus real ProbCut
       result handling. Arms B/D shift a depth band and cannot guarantee ProbCut
       never seeds singular, so a passing arm does NOT close this.
 - [ ] **4.3b In-check qsearch ordering:** staged evasions plus capture/SEE
       history and coherent delta/SEE/futility, after 4.3a and 4.3c.
-- [ ] **Owed:** pooled PGO `nps_ab` of the 4.2 refactor (`47f3ac6` vs
-      `1cf9c51`). Behaviour was gated, throughput never was. Needs an idle
-      machine — never run it while a gate is playing.
+- [x] **4.2 throughput closed:** pooled 3-build PGO A/B in both directions,
+      bias-cancelled −0.125% (≈0.25 Elo), all six builds at bench 6,502,902
+      (RAR-S28).
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
@@ -142,11 +147,11 @@ the user explicitly abandons that program.
 
 ## What you run now
 
-No long job is active or requested. Do not resume the old aspiration tuner or
-reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
-the retained baseline. Phases 4.0, 4.1 and 4.2 are complete. **4.3a has landed
-inert and now requests its first job** — this is the first Phase-4 step needing
-games.
+No long job is active. Do not resume the old aspiration tuner or reuse
+`p102a-snapshot`; its gate was rejected and the original config seeds are the
+retained baseline. Phases 4.0, 4.1 and 4.2 are complete, including 4.2's
+throughput check. **4.3a arm A value 2 was gated and rejected** (RAR-S27); the
+next requested job is **arm A value 1**.
 
 The binary is already built and its manifest is clean:
 `tools\test_engines\rarog-43a-tune.exe`, bench 6,502,902. Each arm runs that one
@@ -154,13 +159,10 @@ binary against itself with a single option changed, which the harness prefers
 (it removes the per-build PGO offset). Run them **one at a time, in this order**,
 and paste the final result before the next starts.
 
-- **Arm A, value 2** — the priority. −43.8% nodes with unchanged probe moves.
-
-```powershell
-.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA EvalPrune2 -NameB Head -OptionsA EvalPruneTtMinDepth=2 -Elo1 3
-```
-
-- **Arm A, value 1** — run only if value 2 fails; −15.3% nodes.
+- **Arm A, value 1** — now the priority. Value 2 was rejected (RAR-S27), but it
+      overshot the hypothesis by also denying depth-1 real searches; value 1
+      denies only the depth-0 horizon estimates the grievance is actually about.
+      −15.3% nodes.
 
 ```powershell
 .\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA EvalPrune1 -NameB Head -OptionsA EvalPruneTtMinDepth=1 -Elo1 3

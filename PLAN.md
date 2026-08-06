@@ -405,19 +405,20 @@ storage to be correct first, and RAR-S25 shows the within-horizon producer
 split is currently un-inferable, so ordering work would be building on evidence
 that cannot yet be attributed.
 
-#### Owed measurement — 4.2 refactor speed
+#### 4.2 refactor speed — **CLOSED (RAR-S28)**
 
-The 4.2 typed-evidence refactor was gated on exact behaviour (bench fingerprint
-plus 96 matching depth lines) and never measured for THROUGHPUT. The §2 gate
-table does not require NPS for a behaviour-neutral refactor, so this is not a
-missed gate, but it is a real exposure: `NodeEvidence` is built eagerly at every
-node where five lazy locals used to be, and at roughly 2 Elo per 1% NPS a silent
-2% regression would quietly cost about 4 Elo for the rest of Phase 4 — long
-before 4.9 would notice. Run a pooled/interleaved PGO `nps_ab` of `47f3ac6`
-against `1cf9c51`, validated on an identical-binary self pair first.
+The typed-evidence refactor cost no measurable throughput. Three independent PGO
+builds per arm, pooled and interleaved in both directions: bias-cancelled
+−0.125% median, implied slot bias +0.025%, all six builds reproducing bench
+6,502,902. At ~2 Elo per 1% NPS that bounds the cost near 0.25 Elo. 4.2 is now
+clean on behaviour and throughput.
 
-⚠ Requires an idle machine. Do not run it while a gate is playing — and do not
-run it from the same build tree a match is running out of.
+Two method points worth reusing. Run the pooled A/B in **both directions** and
+take `(forward − reverse)/2`; it cancels the estimator's slot bias better than a
+single self-pair null estimates it (the two disagreed by 0.28pp here, and the
+difference was better behaved). And pool builds: cand-arm build medians spanned
+0.62% with one build 0.6% below its siblings, which is larger than any effect
+worth measuring at this scale.
 
 ### 4.4 — NMP, IIR and singular cooperation
 
