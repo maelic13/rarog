@@ -68,8 +68,14 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 - [ ] **4.3a-ii Gate the arms:** run arm A first (`EvalPruneTtMinDepth` 2 then
       1), then B, then D. Arm C is held. A passing arm needs a PGO re-gate with
       the value baked before acceptance.
+- [ ] **4.3c Persisted provenance:** 1-bit producer class plus real ProbCut
+      result handling. Arms B/D shift a depth band and cannot guarantee ProbCut
+      never seeds singular, so a passing arm does NOT close this.
 - [ ] **4.3b In-check qsearch ordering:** staged evasions plus capture/SEE
-      history and coherent delta/SEE/futility, after the 4.3a verdicts.
+      history and coherent delta/SEE/futility, after 4.3a and 4.3c.
+- [ ] **Owed:** pooled PGO `nps_ab` of the 4.2 refactor (`47f3ac6` vs
+      `1cf9c51`). Behaviour was gated, throughput never was. Needs an idle
+      machine — never run it while a gate is playing.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement

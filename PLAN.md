@@ -350,7 +350,7 @@ never replace one.
 
 | Arm | Knob | Candidate | Node effect | Moves | Priority |
 |---|---|---|---:|---|---|
-| A | `EvalPruneTtMinDepth` | 1, then 2 | −15.3% / −43.8% | unchanged on probes | **first** |
+| A | `EvalPruneTtMinDepth` | 2, then 1 | −43.8% / −15.3% | unchanged on probes | **first** |
 | B | `SingularTtDepthMargin` | 2 | −11.8% | differ | second |
 | D | `ProbCutStoreDepthAdj` | 4 | +18.2% | differ | third |
 | C | `QsRefineMinDepth` | 1 | +5.3% | differ | held |
@@ -371,13 +371,53 @@ passing arm must be re-gated as a clean PGO build with the value baked** before
 acceptance — §2 item 6's "SPSA proposes; clean PGO SPRT accepts" applies to any
 knob A/B, not only to a fit.
 
-#### 4.3b — after the 4.3a verdicts
+#### 4.3c — persisted provenance and real ProbCut-result handling
+
+Runs after the 4.3a verdicts and **before** 4.3b. Arms B and D are depth
+experiments: they shift which band of stored depths singular will accept, and
+they do not and cannot establish that ProbCut evidence never seeds a singular
+search. A ProbCut entry written at `depth-3` from a depth-10 node is still
+admissible at a depth-9 node under any margin that admits `depth-3` there, so
+the plan's "never authorize singularity" is not achievable by a depth rule at
+all. Two things are therefore owed:
+
+- **Persist a producer class.** RAR-S25's trigger has fired: entry shape cannot
+      separate stand pat from a searched qmove, because a moveless store
+      inherits the resident move. Price the 1-bit slot from 4.2's list — age
+      5→4 bits with `entry_quality`'s divisor moved 2→4, which preserves the
+      per-generation penalty exactly and halves the wraparound horizon. It
+      moves the bench fingerprint, so it is a `[0,3]` gate, not a refactor.
+- **Store ProbCut's actual result.** Independently of the depth it is filed
+      under, the stored score is `score - (probcut_beta - beta)` — sound as a
+      lower bound, but a systematically depressed point estimate for anything
+      that reads it as a value. Singular reads it as a value. Store the real
+      result and let the consumer contract, not arithmetic coincidence, decide
+      who may use it.
+
+Only with a persisted class can a consumer state "not speculative" instead of
+"not at this depth". Do not treat a passing arm B or D as having closed this.
+
+#### 4.3b — after the 4.3a verdicts and 4.3c
 
 Stage complete in-check qsearch ordering, test capture/SEE history and make
-delta/SEE/futility coherent. Deliberately sequenced second: the plan requires
+delta/SEE/futility coherent. Deliberately sequenced last: the plan requires
 storage to be correct first, and RAR-S25 shows the within-horizon producer
 split is currently un-inferable, so ordering work would be building on evidence
 that cannot yet be attributed.
+
+#### Owed measurement — 4.2 refactor speed
+
+The 4.2 typed-evidence refactor was gated on exact behaviour (bench fingerprint
+plus 96 matching depth lines) and never measured for THROUGHPUT. The §2 gate
+table does not require NPS for a behaviour-neutral refactor, so this is not a
+missed gate, but it is a real exposure: `NodeEvidence` is built eagerly at every
+node where five lazy locals used to be, and at roughly 2 Elo per 1% NPS a silent
+2% regression would quietly cost about 4 Elo for the rest of Phase 4 — long
+before 4.9 would notice. Run a pooled/interleaved PGO `nps_ab` of `47f3ac6`
+against `1cf9c51`, validated on an identical-binary self pair first.
+
+⚠ Requires an idle machine. Do not run it while a gate is playing — and do not
+run it from the same build tree a match is running out of.
 
 ### 4.4 — NMP, IIR and singular cooperation
 
