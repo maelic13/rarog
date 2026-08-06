@@ -192,6 +192,25 @@ if ($kindTotal -gt 0) {
         Write-Host ("      *** CENSUS MISMATCH: kinds {0:N0} vs stores {1:N0} ***" -f `
             $kindTotal, $storeTotal) -ForegroundColor Red
     }
+
+    # 4.3 provenance hazards. The leak rate is the decision number: it is the
+    # share of entries that WOULD be granted searched-qmove capability by a
+    # shape test but were actually produced by stand pat.
+    $standPat = Value 'store_kind_stand_pat'
+    $qmove = Value 'store_kind_qsearch_move'
+    $inheritedSp = Value 'tt_move_inherited_stand_pat'
+    Write-Host ""
+    Write-Host "  4.3 PROVENANCE HAZARDS (exact)"
+    Write-Host ("      stand-pat stores that inherited a move : {0,10:N0}   {1,6:N2} % of stand pat" -f `
+        $inheritedSp, (Ratio $inheritedSp $standPat))
+    Write-Host ("      all moveless stores that inherited     : {0,10:N0}" -f (Value 'tt_move_inherited'))
+    Write-Host ("      horizon store overwrote deeper entry   : {0,10:N0}   {1,6:N2} % of horizon" -f `
+        (Value 'tt_horizon_overwrote_searched'), (Ratio (Value 'tt_horizon_overwrote_searched') $horizon))
+    # A shape test for "searched qmove" is `depth 0 + Lower + has a move`. Stand
+    # pat with an inherited move satisfies it too, so this is the false-positive
+    # rate a provenance-free 4.3 inference would carry.
+    Write-Host ("      => shape test 'depth 0 + Lower + move' leak rate : {0,6:N2} %   ({1:N0} of {2:N0})" -f `
+        (Ratio $inheritedSp ($qmove + $inheritedSp)), $inheritedSp, ($qmove + $inheritedSp))
     Write-Host ""
 }
 
