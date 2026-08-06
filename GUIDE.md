@@ -61,6 +61,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       must leave ordering and IIR alone (RAR-S24). Constraint carried into 4.3.
 - [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
       cutoffs and improve safe evasion/capture ordering.
+- [x] **4.3a-i Arms landed inert:** four knobs (`EvalPruneTtMinDepth`,
+      `SingularTtDepthMargin`, `ProbCutStoreDepthAdj`, `QsRefineMinDepth`) plus
+      the provenance-hazard census; bench-identical at 6,502,902 on normal, diag
+      and tune builds (RAR-S25, RAR-S26).
+- [ ] **4.3a-ii Gate the arms:** run arm A first (`EvalPruneTtMinDepth` 2 then
+      1), then B, then D. Arm C is held. A passing arm needs a PGO re-gate with
+      the value baked before acceptance.
+- [ ] **4.3b In-check qsearch ordering:** staged evasions plus capture/SEE
+      history and coherent delta/SEE/futility, after the 4.3a verdicts.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
@@ -129,13 +138,46 @@ the user explicitly abandons that program.
 
 No long job is active or requested. Do not resume the old aspiration tuner or
 reuse `p102a-snapshot`; its gate was rejected and the original config seeds are
-the retained baseline. Phases 4.0, 4.1 and 4.2 are complete and everything
-landed so far is bench-identical, so no game time has been needed yet. The next
-numbered step is **4.3 — qsearch and ProbCut evidence hygiene**, which is the
-first step in Phase 4 that changes move choice and therefore the first that
-needs games: expect registered `[0,3]` arms per mechanism and a `[-3,3]`
-combined gate. Do not start any run until 4.3 explicitly prepares and requests
-one.
+the retained baseline. Phases 4.0, 4.1 and 4.2 are complete. **4.3a has landed
+inert and now requests its first job** — this is the first Phase-4 step needing
+games.
+
+The binary is already built and its manifest is clean:
+`tools\test_engines\rarog-43a-tune.exe`, bench 6,502,902. Each arm runs that one
+binary against itself with a single option changed, which the harness prefers
+(it removes the per-build PGO offset). Run them **one at a time, in this order**,
+and paste the final result before the next starts.
+
+- **Arm A, value 2** — the priority. −43.8% nodes with unchanged probe moves.
+
+```powershell
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA EvalPrune2 -NameB Head -OptionsA EvalPruneTtMinDepth=2 -Elo1 3
+```
+
+- **Arm A, value 1** — run only if value 2 fails; −15.3% nodes.
+
+```powershell
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA EvalPrune1 -NameB Head -OptionsA EvalPruneTtMinDepth=1 -Elo1 3
+```
+
+- **Arm B** — denies the ProbCut depth band singular authority; −11.8% nodes.
+
+```powershell
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA SingMargin2 -NameB Head -OptionsA SingularTtDepthMargin=2 -Elo1 3
+```
+
+- **Arm D** — stores the depth ProbCut actually measured; costs +18.2% nodes, so
+      it has to buy accuracy.
+
+```powershell
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA ProbCutAdj4 -NameB Head -OptionsA ProbCutStoreDepthAdj=4 -Elo1 3
+```
+
+Arm C (`QsRefineMinDepth=1`) is deliberately **not** requested: it costs nodes
+and would gut RAR-S02's accepted mechanism, so it needs a reason beyond symmetry.
+
+A passing arm is not yet accepted — it must be re-gated as a clean PGO build
+with the value baked, per the decision table below.
 
 To reproduce the 4.2 audit reading, the diag build is required — the plain
 release binary emits no `diag` lines:
@@ -151,6 +193,7 @@ cargo build --release --features diag
 |---|---|
 | Behaviour-neutral | Exact bench plus fmt/tests/performance evidence |
 | Strength candidate | Registered SPRT; H1 accepts, otherwise revert behaviour |
+| Knob A/B passes on a tune binary | Not accepted yet — re-gate as clean PGO with the value baked |
 | Root/TM/SMP | 1T STC/LTC plus 4T LTC, zero forfeits |
 | Mechanism de-tunes consumers | Keep inert/ablatable until 4.10; post-fit ablation required |
 | SPSA | Phase 4.10 and Phase 7.3 only unless new evidence authorizes another; never resume the rejected p102a run |

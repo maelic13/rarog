@@ -175,7 +175,7 @@ These are individual mechanism gates, not additive proof of the live binary.
 
 | Area | Rarog today | Repair |
 |---|---|---|
-| TT evidence | 10-byte entry stores score/raw eval/move/depth/bound/PV/age, no producer provenance. `flag_age` is fully allocated (RAR-S22), so provenance is not free. | Compact provenance/consumer capabilities while preserving density if possible. |
+| TT evidence | 10-byte entry stores score/raw eval/move/depth/bound/PV/age, no producer provenance. `flag_age` is fully allocated (RAR-S22), so provenance is not free. A moveless store also inherits the resident move, so entry shape leaks 10.71% (RAR-S25) — the 4.2 trigger for reopening the 1-bit question has fired. | Compact provenance/consumer capabilities while preserving density if possible. |
 | Qsearch → main | Stand-pat/pruning values can become depth-0 bounds; `EvalPruneTtMinDepth=0` lets them refine pruning through depth 8. Measured: 67% of sampled stores are depth-0 qsearch and 37% are bare stand-pat. | Separate raw/corrected/stand-pat/searched evidence. |
 | ProbCut → singular | Stores margin-normalized score at `depth-3`; singular accepts lower/exact at `depth-3`. Measured: 32 of 101 sampled singular attempts sit on that exact signature. | Store actual speculative result; forbid singular authority. |
 | NMP | Verification disables null only at its root; descendants re-enable it. Missing subtree suppression, cut-node/potential-singularity/raw-eval/decisive guards. | Correct the verification contract before margins. |
@@ -339,6 +339,45 @@ Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
 - **Price the depth penalty from the slack histogram** (20/19/16/22/8 across
       slack 0/1/2-3/4-7/8+): P=1 blocks 23.5% of contradicting refinements,
       P=2 45.9%, P=4 64.7%, P=8 90.6%. Pick P from this, not by feel.
+
+#### 4.3a — registered arms, landed inert at `d354d02`
+
+Four knobs, all defaulting to pre-4.3 behaviour, verified bench-identical at
+6,502,902 on normal, diag and tune builds. A `Default` assert pins the inert
+values so baking one becomes a test failure. Sized in RAR-S26 at fixed depth
+12 over 4 positions — node counts only, which per lesson 3 explain a gate and
+never replace one.
+
+| Arm | Knob | Candidate | Node effect | Moves | Priority |
+|---|---|---|---:|---|---|
+| A | `EvalPruneTtMinDepth` | 1, then 2 | −15.3% / −43.8% | unchanged on probes | **first** |
+| B | `SingularTtDepthMargin` | 2 | −11.8% | differ | second |
+| D | `ProbCutStoreDepthAdj` | 4 | +18.2% | differ | third |
+| C | `QsRefineMinDepth` | 1 | +5.3% | differ | held |
+
+Arm A is first because it addresses the headline defect directly — a depth-0
+qsearch bound refining the eval that RFP, razor and NMP consume at any depth —
+and because a 44% node reduction with unchanged probe moves suggests real
+waste. Its prior SPSA retained 0 while sitting ON a rail, where a fit is least
+informative, so that prior is weak rather than decisive. Arm C is held: it
+costs nodes and would gut RAR-S02's accepted +6.5 Elo mechanism, so it needs a
+reason beyond symmetry before spending games on it.
+
+Arms run as one `tune` binary against itself with one option changed. The
+harness blesses this (`sprt.ps1` documents same-binary/different-options as
+strictly better, since it removes the per-build PGO offset), and both sides
+share codegen so PGO cancels. The operating point is still non-PGO, so **a
+passing arm must be re-gated as a clean PGO build with the value baked** before
+acceptance — §2 item 6's "SPSA proposes; clean PGO SPRT accepts" applies to any
+knob A/B, not only to a fit.
+
+#### 4.3b — after the 4.3a verdicts
+
+Stage complete in-check qsearch ordering, test capture/SEE history and make
+delta/SEE/futility coherent. Deliberately sequenced second: the plan requires
+storage to be correct first, and RAR-S25 shows the within-horizon producer
+split is currently un-inferable, so ordering work would be building on evidence
+that cannot yet be attributed.
 
 ### 4.4 — NMP, IIR and singular cooperation
 
