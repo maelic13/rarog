@@ -2197,6 +2197,13 @@ impl Searcher {
                     #[cfg(feature = "diag")]
                     if diag_sample {
                         crate::diag_count!(singular_multicut);
+                        // 4.2b: counted HERE, not below. This arm returns, so
+                        // the post-block counter never sees a multi-cut — the
+                        // single largest tree effect a contradicting seed can
+                        // have was silently missing from the shadow until now.
+                        if diag_contradicts {
+                            crate::diag_count!(contradict_singular_multicut);
+                        }
                     }
                     return singular_beta;
                 } else if ev.score >= beta {
@@ -2210,9 +2217,9 @@ impl Searcher {
                 if diag_sample && diag_iir_applied && extension != 0 {
                     crate::diag_count!(iir_extension_debt);
                 }
-                // 4.2b: did that seed actually change the tree? Counts the
-                // multi-cut return too, which is the largest single effect a
-                // contradicting seed can have.
+                // 4.2b: did that seed change the DEPTH? Extensions and negative
+                // extensions only — the multi-cut path returns above and is
+                // counted there. Sum the two for total tree effect.
                 #[cfg(feature = "diag")]
                 if diag_sample && diag_contradicts && extension != 0 {
                     crate::diag_count!(contradict_singular_changed_depth);

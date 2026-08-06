@@ -131,6 +131,22 @@ pub mod counters {
         tt_move_inherited,
         tt_move_inherited_stand_pat,
         tt_horizon_overwrote_searched,
+        // 4.3 — ATTEMPTED versus COMMITTED stores.
+        //
+        // The `store_kind_*` census above runs before the backend dispatch, so
+        // it counts ATTEMPTS and reconciles with `fresh + same_key`. The hazard
+        // counters run after the depth-preservation `return`, so they count
+        // COMMITTED stores. Dividing one by the other mismatches denominators
+        // and understates every hazard rate, which is exactly the error the
+        // first RAR-S25 figures carried. These give the matched denominators.
+        //
+        // A store is skipped when it lands on a same-position entry more than 3
+        // plies deeper, is not exact, and is the current generation — so horizon
+        // producers are by far the likeliest to be skipped.
+        store_skipped_depth_rule,
+        store_committed_stand_pat,
+        store_committed_qsearch_move,
+        store_committed_horizon,
         // Does helper work actually REACH the main thread? Probe/hit counted
         // on thread 0 only. If helpers contribute, main's hit rate should rise
         // with thread count; if it is flat, the helpers are searching in vain.
@@ -285,6 +301,9 @@ pub mod counters {
         // Singular seeds its verification window from this stored score.
         contradict_singular_attempt,
         contradict_singular_changed_depth,
+        // The multi-cut arm RETURNS, so it cannot be counted alongside the
+        // extension outcomes above; it needs its own counter at its own site.
+        contradict_singular_multicut,
         // A DEEP contradicting entry suppresses IIR, i.e. it is trusted to
         // order the node even though it resolved a different window.
         contradict_iir_suppressed,

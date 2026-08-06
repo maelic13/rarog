@@ -500,16 +500,38 @@ fn count_move_inheritance(kind: OutcomeKind, resident: u16) {
 /// for the SAME position. The depth-preservation rule above only protects an
 /// entry more than 3 plies deeper, so depths 1..3 are overwritten by a horizon
 /// estimate. Counted to size that evidence loss before 4.3 tightens anything.
+///
+/// Also records the COMMITTED-store denominators. Both call sites sit after the
+/// depth-preservation `return`, so everything counted here actually landed —
+/// which is what makes the published hazard rates exact rather than biased low.
 #[inline(always)]
 fn count_horizon_overwrite(kind: OutcomeKind, depth: i32, same_key: bool, resident_depth: i8) {
     #[cfg(feature = "diag")]
-    if kind.is_horizon() && same_key && i32::from(resident_depth) > depth {
-        crate::diag_count!(tt_horizon_overwrote_searched);
+    {
+        match kind {
+            OutcomeKind::StandPat => crate::diag_count!(store_committed_stand_pat),
+            OutcomeKind::QsearchMove => crate::diag_count!(store_committed_qsearch_move),
+            _ => {}
+        }
+        if kind.is_horizon() {
+            crate::diag_count!(store_committed_horizon);
+            if same_key && i32::from(resident_depth) > depth {
+                crate::diag_count!(tt_horizon_overwrote_searched);
+            }
+        }
     }
     #[cfg(not(feature = "diag"))]
     {
         let _ = (kind, depth, same_key, resident_depth);
     }
+}
+
+/// 4.3: a store the depth-preservation rule threw away. Counted at the `return`
+/// so `attempted - skipped == committed` holds on both backends, which is the
+/// arithmetic the tool asserts.
+#[inline(always)]
+fn count_skipped_store() {
+    crate::diag_count!(store_skipped_depth_rule);
 }
 
 /// Exact per-producer store census. Expands to nothing without `--features
@@ -692,6 +714,7 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
         && e.depth < replace.depth as i32 - 3
         && (replace.flag_age & 0xF8) == table.age
     {
+        count_skipped_store();
         return;
     }
 
@@ -746,6 +769,7 @@ fn store_shared(table: &SharedTable, e: TtStore) {
         && e.depth < replace_entry.depth as i32 - 3
         && (replace_entry.flag_age & 0xF8) == age
     {
+        count_skipped_store();
         return;
     }
 
