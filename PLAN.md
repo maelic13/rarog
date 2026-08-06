@@ -308,6 +308,19 @@ stack-local evidence, and price it against the list above.
 
 ### 4.3 — Qsearch and ProbCut evidence hygiene
 
+> **⚠ The premise below is REFUTED for the eval-refinement consumer
+> (RAR-S29/S30).** Denying depth-0 entries the right to refine the pruning eval
+> was gated twice and lost both times — `=2` at −1.49 ± 2.87 and the targeted
+> `=1` at **−3.18 ± 3.23 with a formal H0 and LOS 2.66%**. The shadow explains
+> why: refinement is not self-cancelling but strongly directional (73 prunes
+> caused versus 19 prevented) and a better estimate of the node's value 70.3% of
+> the time. Depth-0 evidence — 67.5% of stores, 35.9% bare stand pat — is
+> *earning strength* there. **Evidence purity is not free, and in this consumer
+> it is not even neutral.** Retire arm C unrun; it is the same shape against the
+> same consumer family. What remains genuinely open is the *speculative*
+> question (ProbCut into singular, arms B/D), which is a different consumer and
+> a different failure mode from horizon depth.
+
 Do not manufacture searched authority from no-TT stand pat. Keep depth-0
 pruning estimates out of deep main consumers; searched qmoves retain limited
 qsearch capability. Store actual ProbCut result with speculative provenance
@@ -318,12 +331,12 @@ SEE/futility after storage is correct. Gate useful arms `[0,3]`, combined
 
 Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
 
-- **Separate the two eval-refinement capabilities.** The main search enforces
-      a depth floor and a `VALUE_NONE` test; the qsearch stand-pat path
-      enforces neither. Both are named capabilities today with a test pinning
-      the divergence. RAR-S02 accepted the qsearch form at about +6.5 Elo and
-      RAR-S15 shows a cleaner primitive can de-tune consumers fitted around a
-      looser one, so unification is a gated arm, never a tidy-up.
+- **~~Separate the two eval-refinement capabilities.~~ DROPPED (RAR-S29).**
+      The asymmetry is real and stays documented in `evidence.rs`, but
+      *tightening* the loose side is now measured as harmful in the main search,
+      and RAR-S02 accepted the loose qsearch form at about +6.5 Elo. Two gates
+      against the same idea is enough; the knob stays inert and enters 4.10's
+      joint fit, where the consumers can move with it.
 - **Deny singular authority to speculative evidence.** ProbCut stores a
       margin-shifted score at `depth-3` and singular accepts exactly that
       shape; 32 of 101 sampled attempts sit on the signature and 41 of 101 are
@@ -381,12 +394,18 @@ admissible at a depth-9 node under any margin that admits `depth-3` there, so
 the plan's "never authorize singularity" is not achievable by a depth rule at
 all. Two things are therefore owed:
 
-- **Persist a producer class.** RAR-S25's trigger has fired: entry shape cannot
-      separate stand pat from a searched qmove, because a moveless store
-      inherits the resident move. Price the 1-bit slot from 4.2's list — age
-      5→4 bits with `entry_quality`'s divisor moved 2→4, which preserves the
-      per-generation penalty exactly and halves the wraparound horizon. It
-      moves the bench fingerprint, so it is a `[0,3]` gate, not a refactor.
+- **Persist a producer class — re-motivated by RAR-S29.** The original reason
+      was to deny stand pat; that goal is now measured as harmful. The surviving
+      reason is *weighting*: a persisted class lets a consumer scale how much it
+      trusts an entry instead of choosing which entries get total authority. The
+      current mechanism is a binary override behind one depth integer, which is
+      why every setting of that integer measures the same or worse — a threshold
+      can pick *which*, never *how much*. RAR-S25's trigger still holds (entry
+      shape cannot separate stand pat from a searched qmove, because a moveless
+      store inherits the resident move). Price the 1-bit slot from 4.2's list —
+      age 5→4 bits with `entry_quality`'s divisor moved 2→4, which preserves the
+      per-generation penalty exactly and halves the wraparound horizon. It moves
+      the bench fingerprint, so it is a `[0,3]` gate, not a refactor.
 - **Store ProbCut's actual result.** Independently of the depth it is filed
       under, the stored score is `score - (probcut_beta - beta)` — sound as a
       lower bound, but a systematically depressed point estimate for anything

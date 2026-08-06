@@ -68,11 +68,16 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
 - [x] **4.3a-ii Arm A value 2: REJECTED.** −1.49 ± 2.87 Elo / −2.33 ± 4.49 nElo
       over 23,044 games, LLR −2.19, manual stop; default stays 0. It searched
       43.8% fewer nodes for no measurable Elo (RAR-S27).
-- [ ] **4.3a-iii Arm A value 1:** the *targeted* setting — `=2` also denied
-      depth-1 real searches, which the hypothesis never asked for, and depth-1
-      carries ~2x the tree effect of depth-0. Run this before judging the
-      mechanism.
-- [ ] **4.3a-iv Arms B and D:** after value 1. Arm C stays held.
+- [x] **4.3a-iii Arm A value 1: REJECTED at a formal H0.** −3.18 ± 3.23 Elo,
+      LOS 2.66%, 18,436 games. The interval EXCLUDES zero, so this is a measured
+      loss. Depth-0 evidence is earning strength in the eval-refinement consumer
+      (RAR-S29), and the shadow shows why: refinement is directional, not
+      self-cancelling, and a better estimator 70.3% of the time (RAR-S30).
+- [x] **4.3a Arm C: RETIRED UNRUN.** Same shape and consumer family as the two
+      rejected arms; spending games on it would buy a third identical answer.
+- [ ] **4.3a-iv Arms B and D:** still open — they test the SPECULATIVE question
+      (ProbCut into singular), a different consumer and failure mode from
+      horizon depth, so 4.3a-ii/iii do not speak to them.
 - [ ] **4.3c Persisted provenance:** 1-bit producer class plus real ProbCut
       result handling. Arms B/D shift a depth band and cannot guarantee ProbCut
       never seeds singular, so a passing arm does NOT close this.
@@ -150,8 +155,8 @@ the user explicitly abandons that program.
 No long job is active. Do not resume the old aspiration tuner or reuse
 `p102a-snapshot`; its gate was rejected and the original config seeds are the
 retained baseline. Phases 4.0, 4.1 and 4.2 are complete, including 4.2's
-throughput check. **4.3a arm A value 2 was gated and rejected** (RAR-S27); the
-next requested job is **arm A value 1**.
+throughput check. **4.3a arm A is closed — both settings rejected** (RAR-S27,
+RAR-S29) and arm C is retired unrun; the next requested job is **arm B**.
 
 The binary is already built and its manifest is clean:
 `tools\test_engines\rarog-43a-tune.exe`, bench 6,502,902. Each arm runs that one
@@ -159,16 +164,9 @@ binary against itself with a single option changed, which the harness prefers
 (it removes the per-build PGO offset). Run them **one at a time, in this order**,
 and paste the final result before the next starts.
 
-- **Arm A, value 1** — now the priority. Value 2 was rejected (RAR-S27), but it
-      overshot the hypothesis by also denying depth-1 real searches; value 1
-      denies only the depth-0 horizon estimates the grievance is actually about.
-      −15.3% nodes.
-
-```powershell
-.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA EvalPrune1 -NameB Head -OptionsA EvalPruneTtMinDepth=1 -Elo1 3
-```
-
 - **Arm B** — denies the ProbCut depth band singular authority; −11.8% nodes.
+      Now the priority: arm A is closed (both settings rejected) and arm B tests
+      a different consumer, so nothing carries over.
 
 ```powershell
 .\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA SingMargin2 -NameB Head -OptionsA SingularTtDepthMargin=2 -Elo1 3
@@ -181,8 +179,14 @@ and paste the final result before the next starts.
 .\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA ProbCutAdj4 -NameB Head -OptionsA ProbCutStoreDepthAdj=4 -Elo1 3
 ```
 
-Arm C (`QsRefineMinDepth=1`) is deliberately **not** requested: it costs nodes
-and would gut RAR-S02's accepted mechanism, so it needs a reason beyond symmetry.
+Arm C (`QsRefineMinDepth=1`) is **retired unrun** (RAR-S29): it is the same shape
+against the same consumer family as the two arms already rejected, so it would
+buy a third identical answer.
+
+⚠ **Do not compile while a gate is playing** — not even `cargo check -j 2`. One
+burst of time losses in the arm-A value-1 run plausibly coincided with exactly
+that. It did not change the verdict (symmetric, 0.02% of games) but the
+standing expectation is zero forfeits.
 
 A passing arm is not yet accepted — it must be re-gated as a clean PGO build
 with the value baked, per the decision table below.
