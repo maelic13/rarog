@@ -193,24 +193,42 @@ if ($kindTotal -gt 0) {
             $kindTotal, $storeTotal) -ForegroundColor Red
     }
 
-    # 4.3 provenance hazards. The leak rate is the decision number: it is the
-    # share of entries that WOULD be granted searched-qmove capability by a
-    # shape test but were actually produced by stand pat.
-    $standPat = Value 'store_kind_stand_pat'
-    $qmove = Value 'store_kind_qsearch_move'
+    # 4.3 provenance hazards.
+    #
+    # ⚠ DENOMINATORS. `store_kind_*` counts ATTEMPTS (it runs before the backend
+    # dispatch, hence the reconciliation above); the hazard counters run after
+    # the depth-preservation `return` and count COMMITTED stores. Every rate
+    # below therefore uses `store_committed_*`, never the census. Mixing them
+    # was the original error in these figures and it biased them LOW.
+    $skipped = Value 'store_skipped_depth_rule'
+    $spCommitted = Value 'store_committed_stand_pat'
+    $qmvCommitted = Value 'store_committed_qsearch_move'
+    $horizonCommitted = Value 'store_committed_horizon'
     $inheritedSp = Value 'tt_move_inherited_stand_pat'
     Write-Host ""
-    Write-Host "  4.3 PROVENANCE HAZARDS (exact)"
-    Write-Host ("      stand-pat stores that inherited a move : {0,10:N0}   {1,6:N2} % of stand pat" -f `
-        $inheritedSp, (Ratio $inheritedSp $standPat))
+    Write-Host "  4.3 PROVENANCE HAZARDS (exact, committed-store denominators)"
+    Write-Host ("      attempted / skipped by depth rule / committed : {0:N0} / {1:N0} / {2:N0}" -f `
+        $kindTotal, $skipped, ($kindTotal - $skipped))
+    # attempted - skipped == committed must hold on both backends. If it does
+    # not, a store path is bypassing one of the two counters.
+    $horizonAttempted = (Value 'store_kind_qsearch_move') + (Value 'store_kind_qsearch_tail') +
+                        (Value 'store_kind_stand_pat')
+    if ($horizonCommitted -gt $horizonAttempted) {
+        Write-Host "      *** COMMITTED EXCEEDS ATTEMPTED - counter placement is wrong ***" -ForegroundColor Red
+    }
+    Write-Host ("      stand pat: committed {0:N0} of {1:N0} attempted  ({2:N2} % skipped)" -f `
+        $spCommitted, (Value 'store_kind_stand_pat'), `
+        (100.0 - (Ratio $spCommitted (Value 'store_kind_stand_pat'))))
+    Write-Host ("      stand-pat stores that inherited a move : {0,10:N0}   {1,6:N2} % of COMMITTED stand pat" -f `
+        $inheritedSp, (Ratio $inheritedSp $spCommitted))
     Write-Host ("      all moveless stores that inherited     : {0,10:N0}" -f (Value 'tt_move_inherited'))
-    Write-Host ("      horizon store overwrote deeper entry   : {0,10:N0}   {1,6:N2} % of horizon" -f `
-        (Value 'tt_horizon_overwrote_searched'), (Ratio (Value 'tt_horizon_overwrote_searched') $horizon))
+    Write-Host ("      horizon store overwrote deeper entry   : {0,10:N0}   {1,6:N2} % of committed horizon" -f `
+        (Value 'tt_horizon_overwrote_searched'), (Ratio (Value 'tt_horizon_overwrote_searched') $horizonCommitted))
     # A shape test for "searched qmove" is `depth 0 + Lower + has a move`. Stand
     # pat with an inherited move satisfies it too, so this is the false-positive
-    # rate a provenance-free 4.3 inference would carry.
+    # rate a provenance-free 4.3 inference would carry. Both terms are committed.
     Write-Host ("      => shape test 'depth 0 + Lower + move' leak rate : {0,6:N2} %   ({1:N0} of {2:N0})" -f `
-        (Ratio $inheritedSp ($qmove + $inheritedSp)), $inheritedSp, ($qmove + $inheritedSp))
+        (Ratio $inheritedSp ($qmvCommitted + $inheritedSp)), $inheritedSp, ($qmvCommitted + $inheritedSp))
     Write-Host ""
 }
 
@@ -235,8 +253,14 @@ if ($contradictHits -gt 0) {
         (Value 'contradict_refine_slack_8_plus'))
 
     $csa = Value 'contradict_singular_attempt'
-    Write-Host ("      seeded a singular window    : {0:N0} of {1:N0} attempts; changed depth {2:N0}" -f `
-        $csa, (Value 'singular_attempt'), (Value 'contradict_singular_changed_depth'))
+    # Extensions and multi-cuts are counted at separate sites (the multi-cut arm
+    # returns), so total tree effect is their sum.
+    $csChanged = Value 'contradict_singular_changed_depth'
+    $csMulticut = Value 'contradict_singular_multicut'
+    Write-Host ("      seeded a singular window    : {0:N0} of {1:N0} attempts" -f `
+        $csa, (Value 'singular_attempt'))
+    Write-Host ("        -> changed depth {0:N0}, multi-cut {1:N0}, total effect {2:N0} ({3:N1} % of seeded)" -f `
+        $csChanged, $csMulticut, ($csChanged + $csMulticut), (Ratio ($csChanged + $csMulticut) $csa))
     Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
 
     # THE decision row. If these two rates are close, a depth/confidence penalty
