@@ -263,6 +263,42 @@ if ($contradictHits -gt 0) {
         $csChanged, $csMulticut, ($csChanged + $csMulticut), (Ratio ($csChanged + $csMulticut) $csa))
     Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
 
+    # 4.3: is TT eval refinement self-cancelling? Two arms of
+    # EvalPruneTtMinDepth measured ~0 Elo while moving 15-44% of the tree; the
+    # margins-absorb-it and helps-as-often-as-it-hurts explanations imply
+    # opposite fixes.
+    $flipNodes = Value 'refine_flip_nodes'
+    if ($flipNodes -gt 0) {
+        Write-Host ""
+        Write-Host "  4.3 IS EVAL REFINEMENT SELF-CANCELLING? (sampled)"
+        Write-Host ("      nodes where refinement moved the eval : {0:N0}" -f $flipNodes)
+        # Unbiased half: counted before any consumer can return.
+        $onTotal = 0; $offTotal = 0
+        foreach ($c in @('rfp','razor','nmp')) {
+            $on = Value "refine_flip_${c}_on"; $off = Value "refine_flip_${c}_off"
+            $onTotal += $on; $offTotal += $off
+            Write-Host ("        {0,-6} caused {1,6:N0} / prevented {2,6:N0}   net {3,7:N0}" -f `
+                $c, $on, $off, ($on - $off))
+        }
+        Write-Host ("        TOTAL  caused {0,6:N0} / prevented {1,6:N0}   net {2,7:N0}  ({3:N1} % of moved nodes flipped a decision)" -f `
+            $onTotal, $offTotal, ($onTotal - $offTotal), (Ratio ($onTotal + $offTotal) $flipNodes))
+        # Biased half - a pruned node never reaches the tail, so the cases where
+        # refinement mattered most are absent. Read with the flip counts above.
+        $rn = Value 'refine_report_nodes'
+        if ($rn -gt 0) {
+            $closer = Value 'refine_report_closer'; $farther = Value 'refine_report_farther'
+            Write-Host ("      agreed with the reported score : closer {0:N0} / farther {1:N0} of {2:N0}  ({3:N1} % closer)" -f `
+                $closer, $farther, $rn, (Ratio $closer $rn))
+            $gainSum = Value 'refine_report_gain_sum'
+            $lossSum = Value 'refine_report_loss_sum'
+            Write-Host ("        mean cp gained when closer {0,7:N1} / lost when farther {1,7:N1}   net {2,8:N0} cp" -f `
+                ($gainSum / [Math]::Max(1, $closer)), `
+                ($lossSum / [Math]::Max(1, $farther)), `
+                ($gainSum - $lossSum))
+            Write-Host "        (biased: excludes every node refinement pruned - see the flip counts)"
+        }
+    }
+
     # THE decision row. If these two rates are close, a depth/confidence penalty
     # belongs on the SCORE consumers only and must leave ordering and IIR alone.
     $cPresent = Value 'contradict_move_present'
