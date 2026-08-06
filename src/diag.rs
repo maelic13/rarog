@@ -315,6 +315,40 @@ pub mod counters {
         contradict_move_was_best,
         agree_move_present,
         agree_move_was_best,
+        // 4.3 SHADOW — is TT eval refinement SELF-CANCELLING?
+        //
+        // Two arms of `EvalPruneTtMinDepth` (1 and 2) both measured ~0 Elo while
+        // moving 15-44% of the tree, which has two very different explanations:
+        // the margins absorb it (lesson 2), or the refinement helps as often as
+        // it hurts. Those imply opposite fixes, so measure rather than guess.
+        //
+        // PART 1 - decision flips, at the pruning site. For each consumer, does
+        // the predicate evaluated on `eval_for_pruning` differ from the same
+        // predicate on `static_eval`? `_on` = refinement CAUSED the prune,
+        // `_off` = refinement PREVENTED one static would have taken. Roughly
+        // balanced on/off is the precise form of "self-cancelling", and this
+        // half is unbiased: it is recorded before any of the three can return.
+        refine_flip_nodes,
+        refine_flip_rfp_on,
+        refine_flip_rfp_off,
+        refine_flip_razor_on,
+        refine_flip_razor_off,
+        refine_flip_nmp_on,
+        refine_flip_nmp_off,
+        // PART 2 - did refinement move the eval TOWARD the value the node went
+        // on to report? Recorded at the node tail.
+        //
+        // ⚠ BIASED, and knowably so: a node that pruned never reaches the tail,
+        // so the cases where refinement mattered MOST are exactly the ones
+        // missing. Part 1 sizes that excluded population. The comparison is also
+        // against what the node REPORTED, not against truth — on a fail-low the
+        // reported score is an upper bound, not a value. Read it as "did
+        // refinement agree with the search's own conclusion", nothing stronger.
+        refine_report_nodes,
+        refine_report_closer,
+        refine_report_farther,
+        refine_report_gain_sum,
+        refine_report_loss_sum,
         // Coverage proof for the shadow consumers planned in 4.2--4.7.
         shadow_4_2_evidence,
         shadow_4_3_qsearch,
@@ -437,6 +471,31 @@ pub fn record_contradiction_ordering(contradicts: bool, hit: bool, best_was_tt_m
         if best_was_tt_move {
             counters::agree_move_was_best.fetch_add(1, Ordering::Relaxed);
         }
+    }
+}
+
+/// 4.3 shadow, part 2: did the refined eval sit closer than the plain static
+/// eval to the score this node went on to report?
+///
+/// `gain`/`loss` accumulate the centipawn improvement or worsening so a small
+/// number of large disagreements cannot hide behind a majority of tiny ones —
+/// the count alone would call that self-cancelling when it is not.
+#[cfg(feature = "diag")]
+#[inline]
+pub fn record_refine_agreement(static_eval: i32, refined: i32, reported: i32) {
+    use std::sync::atomic::Ordering;
+
+    counters::refine_report_nodes.fetch_add(1, Ordering::Relaxed);
+    let plain_err = i64::from(static_eval - reported).abs();
+    let refined_err = i64::from(refined - reported).abs();
+    if refined_err < plain_err {
+        counters::refine_report_closer.fetch_add(1, Ordering::Relaxed);
+        let gain = u64::try_from(plain_err - refined_err).unwrap_or(0);
+        counters::refine_report_gain_sum.fetch_add(gain, Ordering::Relaxed);
+    } else if refined_err > plain_err {
+        counters::refine_report_farther.fetch_add(1, Ordering::Relaxed);
+        let loss = u64::try_from(refined_err - plain_err).unwrap_or(0);
+        counters::refine_report_loss_sum.fetch_add(loss, Ordering::Relaxed);
     }
 }
 

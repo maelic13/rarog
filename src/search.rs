@@ -1744,6 +1744,51 @@ impl Searcher {
                 + self.params.futility_not_improving * futility_improving_term)
                 * depth
                 + corr_abs * self.params.corr_rfp_scale / 128; // 8.5(b)
+            // 4.3 shadow, part 1. Evaluate all three forward-pruning predicates
+            // twice — once on the refined eval the search will actually use, once
+            // on the unrefined static eval — and count the disagreements. Placed
+            // here, before RFP can return, so every consumer is covered by one
+            // block and the sample set is identical for all three. Diagnostic
+            // only: nothing below reads these, and `eval_for_pruning` is
+            // untouched.
+            #[cfg(feature = "diag")]
+            if diag_sample && eval_for_pruning != static_eval {
+                crate::diag_count!(refine_flip_nodes);
+                let nmp_bar = beta
+                    - self.params.nm_depth_coeff * depth
+                    - self.params.nm_improving_bonus * improving_i;
+                let nmp_gated =
+                    allow_null && depth >= 3 && board.has_non_pawn_material(board.side_to_move());
+                // Written out per consumer rather than as an array keyed by an
+                // index: a `(refined, plain, which)` tuple plus a `_` arm is the
+                // positional-sentinel shape the clean-code policy rules out, and
+                // it would silently mislabel a fourth consumer as NMP.
+                if depth <= 8 {
+                    match (
+                        eval_for_pruning - futility_margin >= beta,
+                        static_eval - futility_margin >= beta,
+                    ) {
+                        (true, false) => crate::diag_count!(refine_flip_rfp_on),
+                        (false, true) => crate::diag_count!(refine_flip_rfp_off),
+                        _ => {}
+                    }
+                }
+                if depth <= 3 {
+                    let bar = self.params.razoring_coeff * depth;
+                    match (eval_for_pruning + bar < alpha, static_eval + bar < alpha) {
+                        (true, false) => crate::diag_count!(refine_flip_razor_on),
+                        (false, true) => crate::diag_count!(refine_flip_razor_off),
+                        _ => {}
+                    }
+                }
+                if nmp_gated {
+                    match (eval_for_pruning >= nmp_bar, static_eval >= nmp_bar) {
+                        (true, false) => crate::diag_count!(refine_flip_nmp_on),
+                        (false, true) => crate::diag_count!(refine_flip_nmp_off),
+                        _ => {}
+                    }
+                }
+            }
             if depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 crate::diag_count!(rfp_cut);
                 return eval_for_pruning;
@@ -2686,6 +2731,13 @@ impl Searcher {
                         crate::diag_count!(main_store_upper);
                     }
                     Bound::Lower => {}
+                }
+                // 4.3 shadow, part 2. This node refined its pruning eval and
+                // then completed, so compare which estimate sat closer to the
+                // score it reported. Only reachable when the node was NOT
+                // pruned — see the counter docs for why that biases it.
+                if eval_for_pruning != static_eval && static_eval != VALUE_NONE {
+                    crate::diag::record_refine_agreement(static_eval, eval_for_pruning, best_score);
                 }
             }
         }
