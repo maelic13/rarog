@@ -198,6 +198,7 @@ evidence, or deliberately postponed to the NNUE/scaling phases.
 | RAR-S17, RAR-R04, RAR-R05, RAR-X06 | Completed root-confidence snapshot exists and avoids double-counting. | 4.7, 4.10 |
 | RAR-P06, RAR-P07, RAR-X08 | Cross-build runner and physical non-x64 hardware are available; test one isolated layout/prefetch arm at a time. | 4.8 |
 | RAR-P01–RAR-P05, RAR-X07 | A new profile identifies a material deployed hotspot; use pooled same-target PGO A/B. | 4.9 |
+| RAR-S27 | Retry ONLY as a multi-thread scaling arm: the 43.8% smaller tree also means less TT write pressure and less shared-table contention, which 1T cannot test. Requires 4T/8T against the same-thread baseline, with TT replacement and `same_key` share reported beside strength, and a 1T non-inferiority before anything is baked. | 4.9 |
 | RAR-E03, RAR-E04, RAR-X03 | NNUE data/teacher experiment with changed representation and frozen external holdout—not another HCE refit. | 5.0–7.2 |
 
 Anything not meeting its trigger stays closed. A retry is a new experiment with

@@ -541,6 +541,23 @@ regenerate target-native PGO after final shape. Every speed arm uses pooled/
 interleaved builds. Do not reopen generic worker diversification without a
 specific measured independent-work failure.
 
+#### Carried-in retry — TT pressure of the rejected 4.3a arms
+
+RAR-S27 rejected `EvalPruneTtMinDepth=2` at 1T, where its 43.8% node reduction
+bought nothing: at a clock TC the saving was immediately spent on depth, and the
+deeper, worse-informed tree netted even. One hypothesis survives that verdict
+and belongs here rather than in 4.3, because 1T cannot test it — **a materially
+smaller tree also means less TT write pressure and less shared-table
+contention, which may scale differently at 4T/8T than at 1T.**
+
+Conditions for the retry: test at 4T and 8T with the recorded hash and topology,
+against the same-thread baseline, and report TT replacement and `same_key` share
+alongside strength. `store_kind_*` and `tt_store_fresh`/`same_key` already give
+the write-pressure readout. Treat it as a scaling arm, not a rehabilitation of
+the 1T result — a 1T-neutral, 4T-positive change is a legitimate outcome, but so
+is confirming it is neutral everywhere. Do not bake anything at 1T on the
+strength of a 4T reading without the 1T non-inferiority to match.
+
 ### 4.10 — Single consolidated pre-NNUE search fit
 
 Freeze architecture and generate configuration from the live parameter source.
