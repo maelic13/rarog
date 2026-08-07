@@ -4,8 +4,9 @@
 
 .DESCRIPTION
     Starts a fastchess match with the built-in SPRT stopping rule.  The match
-    runs until the test accepts H0 (no meaningful improvement) or H1
-    (improvement).  Real-time output is printed to the console.
+    runs until the test accepts H0, accepts H1, or exhausts the registered game
+    budget. Real-time output is printed to the console. A budget-exhausted test
+    has not accepted H1 and therefore cannot promote the candidate.
 
     Tooling:
       - fastchess (NOT cutechess-cli): faster, no Qt dependency, built-in SPRT.
@@ -83,15 +84,21 @@
     Display names. Defaults: "New" / "Base".
 
 .PARAMETER Mode
-    "gainer"       -> H0: elo<=0,  H1: elo>=Elo1  (default; test a real gain).
+    "gainer"       -> H0: elo<=3,  H1: elo>=10 (default; demand a material gain).
     "simplify"     -> H0: elo<=-5, H1: elo>=0     (non-regression / cleanup).
     "calibrate"    -> fixed-size identical-binary null match; no SPRT.
     The explicit -Elo0/-Elo1 parameters override the mode if supplied.
 
-.PARAMETER Elo1
-    Upper SPRT bound for "gainer" mode. Default 5 (nElo). Use 3 for small,
-    incremental features (e.g. a single tuned search constant) to demand a
-    cleaner signal.
+.PARAMETER Elo0 / Elo1
+    SPRT hypotheses for "gainer" mode. Defaults 3 and 10 nElo: the project is
+    intentionally parking marginal changes while larger pre-NNUE work remains.
+    Override prospectively for a broad/risky bundle, never after looking at its
+    games.
+
+.PARAMETER MaxGames
+    Maximum games for an SPRT mode. Default 12000 and must be positive/even.
+    Reaching it without H1 means park/revert, not acceptance from the point
+    estimate. Fixed/calibration modes continue to use -Games.
 
 .PARAMETER Hash
     Hash MB per engine. Default 64 (matches deployment).
@@ -153,7 +160,7 @@
     ./tools/sprt.ps1 `
         -EngineA "tools\test_engines\rarog-feat-probcut-pext-pgo.exe" `
         -EngineB "tools\test_engines\rarog-head-pext-pgo.exe" `
-        -NameA "ProbCut" -NameB "Head" -Elo1 3
+        -NameA "ProbCut" -NameB "Head" -Elo0 3 -Elo1 10 -MaxGames 12000
 #>
 param(
     [Parameter(Mandatory)][string]$EngineA,
@@ -178,6 +185,7 @@ param(
     [Nullable[int]]$ThreadsA = $null,
     [Nullable[int]]$ThreadsB = $null,
     [int]$Games = 30000,
+    [int]$MaxGames = 12000,
     [double]$CalibrationTolerance = 5,
     [int]$Seed = 0,
     [string[]]$OptionsA = @(),
@@ -230,10 +238,17 @@ if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
     if ($CalibrationTolerance -le 0) { throw "-CalibrationTolerance must be positive." }
     if ($ThreadsA -ne $ThreadsB) { throw "Calibration must be symmetric: -ThreadsA ($ThreadsA) must equal -ThreadsB ($ThreadsB)." }
 }
+if ($Mode -ne "calibrate" -and $Mode -ne "fixed" -and
+    ($MaxGames -lt 2 -or ($MaxGames % 2) -ne 0)) {
+    throw "-MaxGames must be a positive even number."
+}
 
 # Resolve SPRT bounds from mode unless explicitly overridden.
-if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 0 } }
-if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 5 } }
+if ($null -eq $Elo0) { $Elo0 = if ($Mode -eq "simplify") { -5 } else { 3 } }
+if ($null -eq $Elo1) { $Elo1 = if ($Mode -eq "simplify") {  0 } else { 10 } }
+if ($Mode -ne "calibrate" -and $Mode -ne "fixed" -and $Elo0 -ge $Elo1) {
+    throw "SPRT requires -Elo0 lower than -Elo1."
+}
 
 # Resolve the search limit: clock (default) unless a fixed movetime or a fixed
 # node count is given. All three are mutually exclusive; fastchess would accept
@@ -360,6 +375,7 @@ if (-not $repoSha) { $repoSha = "n/a" } else { $repoSha = $repoSha.Trim() }
     "engineB_sha256:  $shaB"
     "repo_revision:   $repoSha"
     "test_design:     $(if ($Mode -eq 'calibrate') { "fixed ${Games}-game null; tolerance +/-${CalibrationTolerance} nElo" } else { "SPRT elo0=$Elo0 elo1=$Elo1 alpha=$Alpha beta=$Beta model=normalized" })"
+    "game_budget:     $(if ($Mode -eq 'calibrate' -or $Mode -eq 'fixed') { $Games } else { $MaxGames })"
     "time_control:    $tcLabel; timemargin=${TimeMargin}ms"
     "adjudication:    $($strengthProfile.Name); resign=$($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; draw=$($strengthProfile.DrawScore)/$($strengthProfile.DrawMoveCount) from move $($strengthProfile.DrawMoveNumber)"
     "hash_mb:         $Hash"
@@ -385,6 +401,7 @@ if ($Mode -eq "calibrate") {
     Write-Host "  Fixed null calibration: $Games games; 95% nElo CI must fit inside +/-$CalibrationTolerance"
 } else {
     Write-Host "  H0: elo<=$Elo0   H1: elo>=$Elo1   alpha=$Alpha  beta=$Beta  (nElo)"
+    Write-Host "  Budget: $MaxGames games; no H1 at the cap means park/revert"
 }
 Write-Host "  TC: $tcLabel   Margin: ${TimeMargin} ms   Hash: ${Hash} MB   Conc: $Concurrency"
 Write-Host "  Adjudication: resign $($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; profile $($strengthProfile.Name)"
@@ -404,7 +421,11 @@ Write-Host ""
 $optArgsA = @($OptionsA | ForEach-Object { "option.$_" })
 $optArgsB = @($OptionsB | ForEach-Object { "option.$_" })
 
-$rounds = if ($Mode -eq "calibrate" -or $Mode -eq "fixed") { [int]($Games / 2) } else { 50000 }
+$rounds = if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
+    [int]($Games / 2)
+} else {
+    [int]($MaxGames / 2)
+}
 $sprtArgs = if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
     @()
 } else {
@@ -461,6 +482,10 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "Match finished. PGN: $pgnOut"
     Write-Host "Full console log (all per-game lines): $logOut"
+
+    if ($Mode -ne "calibrate" -and $Mode -ne "fixed") {
+        Write-Host "Only an H1 boundary in the log promotes the candidate; a game-budget stop is unresolved and must be parked/reverted."
+    }
 
     if ($Mode -eq "calibrate") {
         $calibrationAnomaly = Select-String -LiteralPath $logOut `

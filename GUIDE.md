@@ -205,8 +205,10 @@ cargo build --release --features diag
 | Situation | Action |
 |---|---|
 | Behaviour-neutral | Exact bench plus fmt/tests/performance evidence |
-| Strength candidate | Registered SPRT; H1 accepts, otherwise revert behaviour |
-| Knob A/B passes on a tune binary | Verify **transfer**, do not re-run the gate: bench fingerprint identical between the tune binary with the option set and a baked non-tune PGO build, plus a cand/base NPS ratio no worse under PGO. A second SPRT only if one of those fails (RAR-S32) |
+| Coherent strength candidate | Bake the release semantics, build candidate and accepted baseline with the final PGO pipeline, then run one registered gate. Default `[3,10]` nElo, maximum 12,000 games; only H1 promotes. |
+| Small knob or tune option | Keep inert, bundle with its subsystem or defer to 4.10. Same-binary games may be a short diagnostic, never a mandatory first release SPRT. |
+| Gate reaches H0 or 12k unresolved | Park/revert. Do not promote from a point estimate and do not spend another 20k games resolving a marginal effect. |
+| Broad architectural bundle | Use `[0,10]` or `[3,12]` as prospectively registered; preserve switches so a failed bundle can be ablated. |
 | Root/TM/SMP | 1T STC/LTC plus 4T LTC, zero forfeits |
 | Mechanism de-tunes consumers | Keep inert/ablatable until 4.10; post-fit ablation required |
 | SPSA | Phase 4.10 and Phase 7.3 only unless new evidence authorizes another; never resume the rejected p102a run |
@@ -228,7 +230,7 @@ cargo fmt --check
 cargo test
 .\tools\build_test.ps1 -Suffix <name>
 .\tools\sprt.ps1 -EngineA <candidate> -EngineB <baseline> `
-  -NameA Candidate -NameB Baseline -Elo1 3
+  -NameA Candidate -NameB Baseline -Elo0 3 -Elo1 10 -MaxGames 12000
 .\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <candidate>
 .\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <baseline> -Rounds 12
 ```

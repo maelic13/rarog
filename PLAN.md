@@ -69,7 +69,9 @@ Model  -> accept/revert from the registered verdict, update docs, commit.
 |---|---|
 | Behaviour-neutral refactor/test/tooling | `cargo fmt --check`, `cargo test`, relevant Python/PowerShell tests, exact bench fingerprint |
 | Correctness repair changing play | Deterministic regression + tactical/mate/endgame suites + strength gate unless unreachable in legal play |
-| Strength mechanism | Registered `[0,3]` nElo SPRT at `3+0.03` against current accepted head; broad/risky bundles use `[-3,3]` |
+| Strength mechanism | Test the **baked final-PGO candidate once** against the current accepted final-PGO baseline. The default material-gain gate is `[3,10]` nElo at `3+0.03`, capped at 12,000 games; only H1 promotes. H0 or an unresolved cap parks/reverts the candidate. |
+| Small knob/probe | Keep inert or fold into its coherent subsystem/Phase 4.10 fit. Same-binary option games may diagnose causality, but are short probes and never a second release gate. |
+| Broad architectural bundle | Register `[0,10]` or `[3,12]` on the final PGO binaries according to risk and expected value. Preserve ablation switches; if the bundle fails, ablate rather than pre-gating every component. |
 | Non-inferiority/simplification | `[-3,0]`; H1 supports non-regression |
 | Speed-only | Bench-identical plus pooled/interleaved PGO NPS after identical-binary self-pair |
 | Root/TM/SMP | 1T STC, 1T `10+0.1`, 4T `10+0.1`, zero forfeits and recorded topology/hash |
@@ -93,8 +95,9 @@ and telemetry explain it.
    identify the required parameter class. No HCE coordinate enters these runs.
 5. Discrete mechanisms use A/B switches or small grids. De-tuned mechanisms
    may land inert and be tested with the joint fit plus post-fit ablations.
-6. SPSA proposes; clean PGO SPRT accepts. Estimator, horizon, bounds and stop
-   rule are registered before launch—no post-hoc tail choice.
+6. SPSA proposes; one baked final-PGO SPRT accepts the retained fit. Estimator,
+   horizon, bounds and game budget are registered before launch—no post-hoc
+   tail choice. A tune/non-PGO SPRT is not an additional prerequisite.
 
 ## 3. Durable lessons
 
@@ -109,11 +112,14 @@ and telemetry explain it.
 6. Canaries catch semantics but are not strength oracles.
 7. Root aspiration, time management, fallback and SMP cannot maintain separate
    incompatible confidence models.
-8. Multi-thread strength/clock safety is a separate deployment condition.
-9. Tuned-off features stay implemented through the post-NNUE fit, but they do
+8. Machine time is a development budget. Do not spend a full gate proving an
+   isolated 3-Elo knob while larger architectural work remains; require a
+   material final-binary gain or park it for the consolidated fit.
+9. Multi-thread strength/clock safety is a separate deployment condition.
+10. Tuned-off features stay implemented through the post-NNUE fit, but they do
    not justify pre-NNUE HCE work.
-10. Git/version history is the archive; GUIDE is a forward overview.
-11. Cross-compilation is not platform validation. A production asset needs
+11. Git/version history is the archive; GUIDE is a forward overview.
+12. Cross-compilation is not platform validation. A production asset needs
     target-native execution, exact search agreement, an executable ISA
     contract and same-target performance evidence.
 
@@ -326,8 +332,9 @@ pruning estimates out of deep main consumers; searched qmoves retain limited
 qsearch capability. Store actual ProbCut result with speculative provenance
 and measured depth; never authorize singularity/exact learning. Stage complete
 in-check qsearch ordering and test capture/SEE history plus coherent delta/
-SEE/futility after storage is correct. Gate useful arms `[0,3]`, combined
-`[-3,3]`.
+SEE/futility after storage is correct. Gate one coherent baked final-PGO
+candidate under the material-gain policy; keep individual arms diagnostic and
+ablatable.
 
 Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
 
@@ -483,7 +490,9 @@ TT-adjusted null windows; nested verification nulls are forbidden unless
 proven. Keep IIR off PV-following nodes, restrict by role/TT quality and expose
 debt. Singular requires compatible full-search evidence, separate single/
 double rules and extension caps. Replace blanket `!tt_pv` with per-mechanism
-eligibility. Test isolated `[0,3]` arms then `[-3,3]` joint.
+eligibility. Use cheap deterministic/short diagnostic ablations while building
+the subsystem, then run one material-gain gate on the coherent final-PGO joint
+candidate.
 
 ### 4.5 — History and correction attribution
 
@@ -510,8 +519,9 @@ Derive completed-iteration confidence from per-move mean/mean-square, gap, PV,
 best-move age, effort, fail direction/count and depth. Use it for bounded
 asymmetric aspiration and TM without double-counting. Abort returns last
 completed legal evidence; incomplete mate/win/loss never becomes authoritative.
-Pool worker instability for time, not result ownership. Gate aspiration
-`[0,3]`; root/TM/SMP `[-3,3]` at 1T STC/LTC and 4T LTC, zero forfeits.
+Pool worker instability for time, not result ownership. Preserve aspiration,
+TM and SMP ablations, but gate the coherent final-PGO root-confidence bundle;
+reserve 1T LTC and 4T LTC for its phase/cumulative confirmation, zero forfeits.
 
 ### 4.8 — Cross-platform and ISA baseline (`origin/arm_fix`)
 
@@ -619,9 +629,9 @@ Freeze architecture and generate configuration from the live parameter source.
 Sensitivity/collinearity selects ≤24 coordinates spanning prospective depth/
 pruning, NMP family, correction/history, qsearch and root/TM. Run one registered
 5,000-iteration SPSA, one estimator and one bake; exclude HCE, dead/off and
-redundant knobs. Clean PGO + fmt/tests/telemetry + `[0,3]` against pre-fit
-architecture. Post-fit switch ablations must show no harmful subsystem hidden
-by compensation.
+redundant knobs. Build the retained fit into one clean final-PGO candidate and
+run the registered material-gain gate against the pre-fit final-PGO baseline.
+Post-fit switch ablations must show no harmful subsystem hidden by compensation.
 
 ### 4.11 — Cumulative target ladder and release 2.4.0
 
