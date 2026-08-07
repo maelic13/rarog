@@ -1,8 +1,0 @@
-{
-    "ProbCutMargin": {
-        "value": 180,
-        "min_value": 60,
-        "max_value": 400,
-        "step": 20
-    }
-}

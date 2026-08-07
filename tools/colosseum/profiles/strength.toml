@@ -1,0 +1,17 @@
+[options]
+a-base-ms = 3000
+a-increment-ms = 30
+a-margin-ms = 20
+b-base-ms = 3000
+b-increment-ms = 30
+b-margin-ms = 20
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]
+draw-move = 40
+draw-moves = 8
+draw-score-cp = 10
+resign-moves = 3
+resign-score-cp = 600
+one-sided-resign-adjudication = true
+placement = "auto"
+headroom-cores = 2

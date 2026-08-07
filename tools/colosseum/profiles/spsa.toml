@@ -1,0 +1,16 @@
+[options]
+iterations = 5000
+games-per-iteration = 32
+r-end = 0.0031
+base-ms = 3000
+increment-ms = 30
+margin-ms = 20
+option = ["Hash=64", "Threads=1"]
+draw-move = 40
+draw-moves = 8
+draw-score-cp = 10
+resign-moves = 3
+resign-score-cp = 600
+one-sided-resign-adjudication = true
+placement = "auto"
+headroom-cores = 2

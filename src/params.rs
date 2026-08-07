@@ -20,8 +20,8 @@ macro_rules! search_params {
         /// Tunable search parameters — every field is a UCI `spin` option in
         /// tune builds. Defaults are the current accepted integration-head
         /// values; the trailing comment on each declaration records its bake
-        /// history. To re-tune, copy the weather-factory configs from
-        /// `tools/spsa_configs/` and run `./tools/spsa.ps1` (see that
+        /// history. To re-tune, select a vector from
+        /// `tools/colosseum/tunes/` and run `colosseum-cli spsa` (see that
         /// directory's README).
         #[derive(Clone, Debug)]
         pub struct SearchParams {
@@ -536,7 +536,7 @@ search_params! {
     /// Re-tuned in the Phase 5 SPSA wave after the Phase 4 eval re-fit changed
     /// what a centipawn means; the flat-margin form is the current accepted
     /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
-    /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
+    /// and dropped, H0 -24.5 Elo — see the historical record in Git).
     probcut_margin = 180, "ProbCutMargin", 60..=400;
 
     /// Futility-margin improving-direction selector (Phase 5.1, relocated 2.5.2).

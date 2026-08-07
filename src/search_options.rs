@@ -116,7 +116,7 @@ impl SearchOptions {
             String::from("option name Syzygy50MoveRule type check default true"),
         ];
         // Tunable search parameters — only exposed when compiled with --features tune.
-        // weather-factory sets these via UCI setoption; production builds omit them
+        // The external tuner sets these via UCI setoption; production builds omit them
         // so they don't pollute the option list shown to GUIs.
         // 9.0a: generated from the single `search_params!` declaration in
         // params.rs — the strings can no longer drift from the defaults and

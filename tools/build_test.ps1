@@ -19,7 +19,7 @@
 
     Tune (-Tune switch): runs `cargo build --release --features tune` — produces
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
-    for weather-factory SPSA runs.  PGO is skipped because (a) xtask does not
+    for Colosseum CLI SPSA runs. PGO is skipped because (a) xtask does not
     support --features, and (b) SPSA accuracy does not depend on absolute NPS —
     both sides of each mini-match use the same binary.
 
@@ -71,8 +71,8 @@ $ErrorActionPreference = "Stop"
 # Every test binary gets a sidecar JSON next to it: git SHA + dirty flag,
 # branch, rustc, and a bench fingerprint VERIFIED by running the binary just
 # built (which doubles as a smoke test — a broken build fails here, not in an
-# SPRT). sprt.ps1 copies both engines' manifests into the result dir, so every
-# result is permanently self-describing.
+# SPRT). This is Rarog-owned build provenance; Colosseum independently hashes
+# each ordinary executable and does not require or inspect this sidecar.
 #
 # LOCAL-ONLY BY DESIGN (user decision 2026-07-20): manifests exist for
 # development provenance. tools/test_engines/ and tools/results/ are

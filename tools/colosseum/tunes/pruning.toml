@@ -1,0 +1,100 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "FutilityBase"
+initial = 52
+min = 30
+max = 150
+c_end = 4.19474
+
+[[parameters]]
+name = "FutilityNotImproving"
+initial = 51
+min = 0
+max = 120
+c_end = 4.19474
+
+[[parameters]]
+name = "RazoringCoeff"
+initial = 274
+min = 60
+max = 300
+c_end = 8.38948
+
+[[parameters]]
+name = "NullMoveDepthCoeff"
+initial = 12
+min = 4
+max = 30
+c_end = 1.677896
+
+[[parameters]]
+name = "NullMoveImprovingBonus"
+initial = 35
+min = 0
+max = 60
+c_end = 3.355792
+
+[[parameters]]
+name = "LmpBase"
+initial = 80
+min = 40
+max = 180
+c_end = 5.872636
+
+[[parameters]]
+name = "LmpNotImproving"
+initial = 64
+min = 0
+max = 120
+c_end = 4.19474
+
+[[parameters]]
+name = "QuietHistPruneCoeff"
+initial = 5617
+min = 1000
+max = 8000
+c_end = 167.789605
+
+[[parameters]]
+name = "SeePruningCoeff"
+initial = 66
+min = 30
+max = 160
+c_end = 5.033688
+
+[[parameters]]
+name = "SeePruningMax"
+initial = 955
+min = 200
+max = 1600
+c_end = 33.557921
+
+[[parameters]]
+name = "AspirationDelta"
+initial = 21
+min = 10
+max = 60
+c_end = 2.516844
+
+[[parameters]]
+name = "SingularBetaMult"
+initial = 4
+min = 1
+max = 8
+c_end = 0.838948
+
+[[parameters]]
+name = "LmpCountBase"
+initial = 1
+min = 1
+max = 10
+c_end = 0.838948
+
+[[parameters]]
+name = "EvalPruneTtMinDepth"
+initial = 0
+min = 0
+max = 8
+c_end = 0.838948

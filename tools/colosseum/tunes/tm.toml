@@ -1,0 +1,51 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "TmOptScale"
+initial = 10000
+min = 5000
+max = 20000
+c_end = 209.737006
+
+[[parameters]]
+name = "TmFallBase"
+initial = 1187
+min = 0
+max = 5000
+c_end = 62.921102
+
+[[parameters]]
+name = "TmFallSlope"
+initial = 221
+min = 0
+max = 1000
+c_end = 16.77896
+
+[[parameters]]
+name = "TmInstabBase"
+initial = 11000
+min = 8000
+max = 16000
+c_end = 167.789605
+
+[[parameters]]
+name = "TmInstabSlope"
+initial = 22900
+min = 0
+max = 50000
+c_end = 838.948024
+
+[[parameters]]
+name = "TmEffortHigh"
+initial = 9240
+min = 6000
+max = 12000
+c_end = 125.842204
+
+[[parameters]]
+name = "TmEffortLow"
+initial = 7100
+min = 4000
+max = 10000
+c_end = 125.842204

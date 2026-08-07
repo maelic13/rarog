@@ -1,0 +1,16 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "FpBase"
+initial = 211
+min = 0
+max = 400
+c_end = 8.38948
+
+[[parameters]]
+name = "FpCoeff"
+initial = 135
+min = 0
+max = 300
+c_end = 6.29211

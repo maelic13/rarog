@@ -1,0 +1,198 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "FutilityBase"
+initial = 52
+min = 20
+max = 200
+c_end = 4.19474
+
+[[parameters]]
+name = "FutilityNotImproving"
+initial = 51
+min = 0
+max = 120
+c_end = 4.19474
+
+[[parameters]]
+name = "RazoringCoeff"
+initial = 274
+min = 50
+max = 300
+c_end = 8.38948
+
+[[parameters]]
+name = "LmpBase"
+initial = 80
+min = 30
+max = 200
+c_end = 5.872636
+
+[[parameters]]
+name = "LmpNotImproving"
+initial = 64
+min = 0
+max = 120
+c_end = 4.19474
+
+[[parameters]]
+name = "QuietHistPruneCoeff"
+initial = 5617
+min = 1000
+max = 10000
+c_end = 167.789605
+
+[[parameters]]
+name = "SeePruningCoeff"
+initial = 66
+min = 20
+max = 200
+c_end = 5.033688
+
+[[parameters]]
+name = "SeePruningMax"
+initial = 955
+min = 200
+max = 1600
+c_end = 33.557921
+
+[[parameters]]
+name = "FpBase"
+initial = 211
+min = 0
+max = 400
+c_end = 8.38948
+
+[[parameters]]
+name = "FpCoeff"
+initial = 135
+min = 0
+max = 300
+c_end = 6.29211
+
+[[parameters]]
+name = "NullMoveDepthCoeff"
+initial = 12
+min = 2
+max = 40
+c_end = 1.677896
+
+[[parameters]]
+name = "NullMoveImprovingBonus"
+initial = 35
+min = 0
+max = 80
+c_end = 3.355792
+
+[[parameters]]
+name = "AspirationDelta"
+initial = 21
+min = 10
+max = 60
+c_end = 2.516844
+
+[[parameters]]
+name = "SingularBetaMult"
+initial = 4
+min = 1
+max = 8
+c_end = 0.838948
+
+[[parameters]]
+name = "LmpCountBase"
+initial = 1
+min = 1
+max = 12
+c_end = 0.838948
+
+[[parameters]]
+name = "EvalPruneTtMinDepth"
+initial = 0
+min = 0
+max = 8
+c_end = 0.838948
+
+[[parameters]]
+name = "QsSeeMargin"
+initial = 265
+min = 0
+max = 600
+c_end = 16.77896
+
+[[parameters]]
+name = "QsSeeClampLo"
+initial = -722
+min = -1600
+max = -100
+c_end = 50.336881
+
+[[parameters]]
+name = "QsSeeClampHi"
+initial = 212
+min = 0
+max = 600
+c_end = 16.77896
+
+[[parameters]]
+name = "QsSeeBadFloor"
+initial = -55
+min = -400
+max = 0
+c_end = 16.77896
+
+[[parameters]]
+name = "CorrRfpScale"
+initial = 3
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrFutScale"
+initial = 3
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrLmrScale"
+initial = 27
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrWeightPawn"
+initial = 135
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightMinor"
+initial = 80
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightOwnNp"
+initial = 104
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightTheirNp"
+initial = 160
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightCont"
+initial = 152
+min = 0
+max = 384
+c_end = 12.58422

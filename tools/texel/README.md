@@ -26,7 +26,7 @@ fit improved offline loss but lost 17.11 Elo. We copy Hydra's reliable
 five-reservoir sampling design, not its label source.
 
 ```
-Beast FENs ──sample_fens.py──▶ beast_seed.epd ──datagen.ps1──▶ selfplay.pgn ──extract.py──▶ train.csv + holdout.csv
+Beast FENs ──sample_fens.py──▶ beast_seed.epd ──Colosseum match──▶ games.pgn ──extract.py──▶ train.csv + holdout.csv
 ```
 
 ### Path B — Stockfish-WDL labels (archived diagnostic; rejected for Rarog)
@@ -52,7 +52,7 @@ copied**. Treat it as an immutable position pool.
 | Script | What it does |
 |---|---|
 | `sample_fens.py` | Streams the Beast pool into five equal phase reservoirs and writes a validated, deduped EPD seed book. Default 750k starts; 7 GB-safe. |
-| `datagen.ps1` (in `tools/`) | Runs one deterministic self-play game per independent book entry. A fixed shuffle seed plus non-overlapping `Start`/`Rounds` segments makes pilot and continuation reproducible; each completed archive gets a provenance manifest. |
+| `tools/colosseum/profiles/datagen.toml` | Supplies Rarog's fixed-node self-play policy to `colosseum-cli match`; Colosseum records the seed, book identity, executable identity and complete run artifacts. |
 | `extract.py` | Reads one or many PGN archives into exact train/holdout quotas. Samples per phase inside each game, dedups globally, splits by game, and writes atomically only when all five reservoirs are full. `--preflight-games` sizes the run first. |
 | `import_beast.py` | For Path B: converts pre-evaluated `FEN<TAB>target` files to `FEN;target` train/holdout, converting side-to-move targets to White perspective. |
 | `reference/basilisk_tuner.cpp` | The proven C++ tuner (Adam + golden-section K-fit + group masks + reconstruction `--verify`). **Reference for the Rust port in Phase 3.3** — do not build; it links Basilisk's eval. |
@@ -79,30 +79,31 @@ python tools\texel\sample_fens.py "A:\Chess\Beast\data\evaluated" `
 
 # 2. Validate, then run ONLY a 20k pilot. Seed 10403 defines one reproducible
 #    shuffled order; later segments retain it and begin at opening 20001.
-.\tools\datagen.ps1 -Suffix p1025a-zero -Nodes 8000 -Rounds 20000 `
-    -Start 1 -Seed 10403 -SetupOnly
-.\tools\datagen.ps1 -Suffix p1025a-zero -Nodes 8000 -Rounds 20000 `
-    -Start 1 -Seed 10403
+colosseum-cli --run-file tools/colosseum/profiles/datagen.toml `
+    match <engine> <engine> --book tools/texel/data/beast_seed.epd `
+    --book-order random --book-start 0 --games 20000 --seed 10403 --concurrency 14 `
+    --dir tools/texel/data/selfplay-pilot
 
 # 3. Size the corpus BEFORE generating the expensive continuation. It reports
 #    the limiting phase and a conservative recommended TOTAL game count.
 python tools\texel\extract.py `
-    tools\texel\data\selfplay-p1025a-zero-n8000-s1-g20000.pgn `
+    tools\texel\data\selfplay-pilot\games.pgn `
     --preflight-games 20000
 
 # 4. Substitute the reported total N. This continuation is exactly N-20,000
 #    games and cannot overlap the pilot or wrap around the 750k book.
 $recommendedTotal = <N_FROM_PREFLIGHT>
-.\tools\datagen.ps1 -Suffix p1025a-zero -Nodes 8000 `
-    -Rounds ($recommendedTotal - 20000) -Start 20001 -Seed 10403 -SetupOnly
-.\tools\datagen.ps1 -Suffix p1025a-zero -Nodes 8000 `
-    -Rounds ($recommendedTotal - 20000) -Start 20001 -Seed 10403
+colosseum-cli --run-file tools/colosseum/profiles/datagen.toml `
+    match <engine> <engine> --book tools/texel/data/beast_seed.epd `
+    --book-order random --book-start 20000 `
+    --games ($recommendedTotal - 20000) --seed 10403 `
+    --concurrency 14 --dir tools/texel/data/selfplay-continuation
 
 # 5. One extraction across pilot + continuation. Defaults: exactly 3M rows,
 #    600k in each phase, plus a phase-balanced 5% holdout.
 python tools\texel\extract.py `
-    tools\texel\data\selfplay-p1025a-zero-n8000-s1-g20000.pgn `
-    tools\texel\data\selfplay-p1025a-zero-n8000-s20001-g*.pgn `
+    tools\texel\data\selfplay-pilot\games.pgn `
+    tools\texel\data\selfplay-continuation\games.pgn `
     --out-dir tools\texel\data --train train.csv --holdout holdout.csv
 
 # 6. Verify reconstruction, then tune a stage:
@@ -123,9 +124,9 @@ The completion contract is **3,000,000 train positions with an equal five-phase
 mix**, not a rough global estimate. Short input exits 2 without touching an
 existing train/holdout pair and reports the exact missing quota. The 20k pilot
 sizes from measured limiting-phase unique quiet yield before the costly tail is
-generated. Keep the same book hash and seed for every segment; `datagen.ps1`
-records both plus engine SHA-256/source commit, fastchess version, range, node
-limit, and the named `datagen-v1` adjudication profile in `*.manifest.json`.
+generated. Keep the same book hash and seed for every segment; Colosseum records
+the executable and book hashes, seed, opening range, node limit, resolved
+configuration, PGN and durable run state in each run directory.
 
 ---
 

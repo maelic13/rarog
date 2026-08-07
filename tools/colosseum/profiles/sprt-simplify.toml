@@ -1,0 +1,9 @@
+extend = "strength.toml"
+
+[options]
+max-pairs = 8000
+model = "normalized"
+elo0 = -5
+elo1 = 0
+alpha = 0.05
+beta = 0.05

@@ -1,0 +1,58 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "CorrRfpScale"
+initial = 3
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrFutScale"
+initial = 3
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrLmrScale"
+initial = 27
+min = 0
+max = 512
+c_end = 20.973701
+
+[[parameters]]
+name = "CorrWeightPawn"
+initial = 135
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightMinor"
+initial = 80
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightOwnNp"
+initial = 104
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightTheirNp"
+initial = 160
+min = 0
+max = 384
+c_end = 12.58422
+
+[[parameters]]
+name = "CorrWeightCont"
+initial = 152
+min = 0
+max = 384
+c_end = 12.58422

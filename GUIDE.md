@@ -325,8 +325,12 @@ You   -> Run only the requested SPSA/SPRT/gauntlet/datagen job.
 cargo fmt --check
 cargo test
 .\tools\build_test.ps1 -Suffix <name>
-.\tools\sprt.ps1 -EngineA <candidate> -EngineB <baseline> `
-  -NameA Candidate -NameB Baseline -Elo0 3 -Elo1 10 -MaxGames 16000
-.\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <candidate>
-.\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <baseline> -Rounds 12
+colosseum-cli --run-file tools/colosseum/profiles/sprt-gainer.toml `
+  sprt <candidate> <baseline> --book <book.epd> --concurrency <games>
+colosseum-cli nps <candidate> --self-pair --nodes 10000000
+colosseum-cli nps <candidate> --against <baseline> --nodes 10000000 --repetitions 12
 ```
+
+Use `tools/colosseum/README.md` for SPSA, calibration, tournament, datagen and
+analysis commands. Colosseum owns generic harness behaviour; Rarog owns builds,
+engine correctness, profiling and engine-specific data/tuning policy.

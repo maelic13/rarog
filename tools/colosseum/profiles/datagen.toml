@@ -1,0 +1,12 @@
+[options]
+a-nodes = 8000
+b-nodes = 8000
+a-option = ["Hash=16", "Threads=1"]
+b-option = ["Hash=16", "Threads=1"]
+draw-move = 40
+draw-moves = 8
+draw-score-cp = 10
+resign-moves = 3
+resign-score-cp = 600
+placement = "auto"
+headroom-cores = 2

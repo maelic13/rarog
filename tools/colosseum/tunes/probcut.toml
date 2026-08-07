@@ -1,0 +1,9 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "ProbCutMargin"
+initial = 180
+min = 60
+max = 400
+c_end = 8.38948

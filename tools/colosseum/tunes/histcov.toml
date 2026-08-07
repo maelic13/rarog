@@ -1,0 +1,72 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "TtCutoffBonusPct"
+initial = 0
+min = 0
+max = 150
+c_end = 8.38948
+
+[[parameters]]
+name = "ExactBonusPct"
+initial = 31
+min = 0
+max = 150
+c_end = 8.38948
+
+[[parameters]]
+name = "CaptureMalusPct"
+initial = 25
+min = 0
+max = 150
+c_end = 8.38948
+
+[[parameters]]
+name = "SurpriseBonusPct"
+initial = 119
+min = 50
+max = 250
+c_end = 8.38948
+
+[[parameters]]
+name = "HistBonusMul"
+initial = 174
+min = 40
+max = 400
+c_end = 12.58422
+
+[[parameters]]
+name = "HistBonusSub"
+initial = 264
+min = 0
+max = 500
+c_end = 20.973701
+
+[[parameters]]
+name = "HistBonusMax"
+initial = 2491
+min = 400
+max = 4000
+c_end = 125.842204
+
+[[parameters]]
+name = "HistMalusMul"
+initial = 210
+min = 40
+max = 400
+c_end = 12.58422
+
+[[parameters]]
+name = "HistMalusSub"
+initial = 0
+min = 0
+max = 500
+c_end = 20.973701
+
+[[parameters]]
+name = "HistMalusMax"
+initial = 1877
+min = 400
+max = 4000
+c_end = 125.842204

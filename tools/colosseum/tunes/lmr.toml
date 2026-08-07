@@ -1,0 +1,51 @@
+# Converted from the legacy 5,000-iteration weather-factory vector.
+# c_end = max(0.5, step * 5000^-0.102).
+
+[[parameters]]
+name = "LmrTtPvAdj"
+initial = 887
+min = 0
+max = 2048
+c_end = 62.921102
+
+[[parameters]]
+name = "LmrExactBound"
+initial = 109
+min = 0
+max = 2048
+c_end = 62.921102
+
+[[parameters]]
+name = "LmrShallowTt"
+initial = 656
+min = 0
+max = 2048
+c_end = 62.921102
+
+[[parameters]]
+name = "LmrCutNode"
+initial = 780
+min = 0
+max = 2048
+c_end = 62.921102
+
+[[parameters]]
+name = "LmrTableBase"
+initial = 646
+min = 384
+max = 1536
+c_end = 41.947401
+
+[[parameters]]
+name = "LmrTableDiv"
+initial = 2335
+min = 1536
+max = 3072
+c_end = 62.921102
+
+[[parameters]]
+name = "LmrHistDiv"
+initial = 8395
+min = 4096
+max = 16384
+c_end = 335.579209
