@@ -1727,8 +1727,19 @@ impl Searcher {
         // 8.5(b): magnitude of the correction applied to this node's static
         // eval. A large |corr| means the raw eval is being heavily adjusted and
         // is less trustworthy, so the margin/reduction knobs below prune and
-        // reduce less. Zero in check (no static eval). Seeds leave every scale
-        // at 0, so this term vanishes and bench is unchanged.
+        // reduce less. Zero in check (no static eval).
+        //
+        // ⚠ The comment here used to say "seeds leave every scale at 0, so this
+        // term vanishes". That is no longer true and had gone stale: the fitted
+        // seeds are `CorrRfpScale = 3`, `CorrFutScale = 3` and
+        // `CorrLmrScale = 27`, so this term is LIVE in the accepted baseline.
+        //
+        // 4.5c: it is also applied to a number the correction may no longer be
+        // part of. `eval_for_pruning` below can be REPLACED wholesale by a TT
+        // bound (28.5% of sampled hits refine it, RAR-S30), and when that
+        // happens the corrected eval is discarded — yet these margins are still
+        // widened by the discarded correction's magnitude. That mismatch is what
+        // `CorrSkipWhenTtRefined` measures and can switch off.
         let corr_abs = if static_eval == VALUE_NONE {
             0
         } else {
@@ -1748,6 +1759,20 @@ impl Searcher {
         } else {
             ev.refine_eval(static_eval, self.params.eval_prune_tt_min_depth)
         };
+        // 4.5c: when a TT bound replaced the corrected eval, the correction is
+        // no longer present in the number the margins test, so charging an
+        // uncertainty penalty for it is charging for an adjustment that is not
+        // there. At the seeded 0 this is exactly the prior behaviour.
+        let corr_abs =
+            if self.params.corr_skip_when_tt_refined != 0 && eval_for_pruning != static_eval {
+                0
+            } else {
+                corr_abs
+            };
+        #[cfg(feature = "diag")]
+        if corr_abs != 0 && eval_for_pruning != static_eval {
+            crate::diag_count!(corr_applied_to_replaced_eval);
+        }
         #[cfg(feature = "diag")]
         if diag_sample
             && eval_for_pruning != VALUE_NONE

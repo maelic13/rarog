@@ -95,6 +95,11 @@ pub mod counters {
         // positional correction. Nobody has measured that. These give the mean
         // |residual| for each class; if the two means are close, the premise is
         // wrong and neither knob should move off its baseline.
+        // 4.5c — nodes where the margin/reduction knobs are widened by a
+        // correction magnitude that is NOT in the eval they test, because a TT
+        // bound replaced the corrected eval. Exact. This sizes the mismatch
+        // `CorrSkipWhenTtRefined` exists to remove.
+        corr_applied_to_replaced_eval,
         correction_resid_capture_n,
         correction_resid_capture_sum,
         correction_resid_quiet_n,

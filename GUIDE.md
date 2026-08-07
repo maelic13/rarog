@@ -141,10 +141,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         drift out of scale and invalidate fitted weights. Both weights inert at
         0 and cost no table access; sized at 152 they run +6.33% and +12.02%
         nodes, so both are 4.10 coordinates rather than bundle members.
-  - [ ] **4.5c Remaining:** prevent correction double-counting across
-        eval/pruning/reduction, and evidence-selected contexts (threat,
-        quiet/noisy, check/evasion, halfmove) only where held-out unique signal
-        is shown.
+  - [x] **4.5c Double-counting found and guarded (RAR-S40).** `corr_abs` widens
+        margins for a correction that a TT bound may have REPLACED — exact
+        population **360,811 nodes, 9.0% of the tree**. `CorrSkipWhenTtRefined`
+        removes it in that case and measures **−4.50% nodes**, the only 4.5 arm
+        cheaper than baseline, so it joins the first bundle. Also fixed a stale
+        comment claiming these scales were inert; the seeds are 3/3/27 and live.
+  - [ ] **4.5d Evidence-selected contexts** (threat, quiet/noisy, check/evasion,
+        halfmove) — only where held-out unique signal is shown. Not started; the
+        plan forbids adding a context without that evidence.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,

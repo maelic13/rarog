@@ -588,6 +588,30 @@ search_params! {
     /// uncertain, the Reckless form). `|corr| = |static_eval − raw_static_eval|`,
     /// already computed per node. Each knob adds `|corr| · knob / 128` to a
     /// margin (or subtracts it from the LMR reduction in 1024ths). Seed 0 = off.
+    /// 4.5c — drop the correction-uncertainty term when a TT bound has REPLACED
+    /// the corrected eval.
+    ///
+    /// 0 = accepted baseline. The three `Corr*Scale` knobs below widen margins
+    /// and shrink reductions in proportion to `|static_eval − raw_eval|`, i.e.
+    /// how much the correction moved the eval. But `eval_for_pruning` can be
+    /// replaced wholesale by a TT bound — RAR-S30 measured that at 28.5% of
+    /// sampled hits — and when it is, the corrected eval is **discarded** while
+    /// the margins are still widened by the discarded correction's magnitude.
+    /// The uncertainty is charged for an adjustment no longer present in the
+    /// number being tested.
+    ///
+    /// 1 zeroes the term in exactly that case. This is PLAN 4.5's "prevent
+    /// correction double-counting across eval/pruning/reduction"; the
+    /// `corr_applied_to_replaced_eval` counter sizes the affected population.
+    ///
+    /// Note the direction is not obviously a gain: RAR-S30 showed TT refinement
+    /// is *earning* strength, and a wider margin may be doing useful work for
+    /// reasons unrelated to its stated rationale. Gate it, do not assume it.
+    corr_skip_when_tt_refined = 0, "CorrSkipWhenTtRefined", 0..=1;
+
+    // ⚠ These three are NOT inert. A stale comment in `search.rs` claimed the
+    // seeds left them at 0; the fitted values below are live in the accepted
+    // baseline, so `corr_abs` actively widens margins and shrinks reductions.
     corr_rfp_scale = 3, "CorrRfpScale", 0..=512;
     corr_fut_scale = 3, "CorrFutScale", 0..=512;
     corr_lmr_scale = 27, "CorrLmrScale", 0..=512;

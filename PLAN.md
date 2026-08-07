@@ -670,6 +670,29 @@ singularity contract expressible at all, since RAR-S25 showed entry shape leaks
 
 ### 4.5 — History and correction attribution
 
+#### 4.5c — correction double-counting found and guarded (RAR-S40)
+
+`corr_abs` widens the RFP and futility margins and shrinks LMR in proportion to
+how far the correction moved the eval. But `eval_for_pruning` can be **replaced
+wholesale** by a TT bound, and when it is, the corrected eval is discarded while
+the margins are still widened by the discarded correction's magnitude — an
+uncertainty charge for an adjustment that is not in the number being tested.
+
+Exact population: **360,811 nodes, 9.0% of the tree.** `CorrSkipWhenTtRefined`
+removes it in exactly that case and measures **−4.50% nodes**, the only 4.5 arm
+cheaper than baseline. It therefore **joins the first bundle**, on both grounds:
+principled and free.
+
+Not assumed to be a gain — RAR-S30 showed TT refinement earns strength, and a
+wider margin may be doing useful work for reasons unrelated to its stated
+rationale. It rides the 4.4 bundle gate.
+
+Also corrected a **stale comment** claiming the `Corr*Scale` seeds were 0 and the
+term therefore vanished. They are 3/3/27 and have been live all along. That is the
+second documentation defect this cycle that would have misled a reader into
+believing a live mechanism was inert: **re-read a mechanism's seeds, never trust
+its comment.**
+
 #### 4.5b — continuation pairs and centralized aging (RAR-S39)
 
 Continuation correction had a **single** slot keyed on the 1-ply-previous
