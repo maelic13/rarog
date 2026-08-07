@@ -87,14 +87,22 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         Candidate fingerprint 6,595,869; 863 otherwise-eligible singular seeds
         blocked in the diagnostic bench. **Gate NOT promoted:** dead neutral at
         +0.35 ± 6.18 Elo over 4,960 games, LLR −1.71 (RAR-S34). Attribution shows
-        why and it is not the contract's fault — the age bit is FREE (0.00%
+        why, and it is not the contract's fault — the age bit is FREE (0.00%
         nodes), the singular rejection is free and 1.15% FASTER to depth, and the
         whole ~4.3% headwind comes from the bundled actual-ProbCut-score change
-        (+5.55% TTD on its own), which the contract does not need. Carry the
-        contract without that change into 4.4; do not re-gate it standalone.
+        (+5.55% TTD alone), which the contract does not need.
+  - [x] **4.3c landed: infrastructure retained, both consumers INERT.** The bit
+        plus age narrowing are bench-identical to baseline, so the head is back
+        at **6,502,902 / EBF 2.449** and this is a behaviour-neutral landing with
+        no strength gate owed. `SingularRejectSpeculative=1` reproduces 6,490,746
+        and `+ProbCutStoreActualScore=1` reproduces 6,595,869 — both verified
+        against the attribution's own builds. **4.4 turns the contract on inside
+        its bundle**; do not flip either switch alone without a gate.
   - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
         history and coherent delta/SEE/futility, after 4.3c.
-- [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
+- [ ] **4.4 NMP/IIR/singular — also owns 4.3c's gate** (turn
+      `SingularRejectSpeculative` on inside this bundle, keep it ablatable):
+      subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.

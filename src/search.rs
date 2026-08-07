@@ -1937,15 +1937,22 @@ impl Searcher {
                         self.tt.store(TtStore {
                             key: hash,
                             depth: depth - self.params.probcut_store_depth_adj,
-                            score,
+                            // Which value to persist is an ablation, NOT part of
+                            // the speculative contract: the producer bit keeps
+                            // this result out of singular seeding either way.
+                            // Storing the actual fail-high costs +5.55%
+                            // time-to-depth on its own (RAR-S34), so the
+                            // conservative margin-shifted value is the default.
+                            score: if self.params.probcut_store_actual_score != 0 {
+                                score
+                            } else {
+                                cutoff_score
+                            },
                             bound: Bound::Lower,
                             mv,
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: false,
-                            // Persist the actual fail-high. The producer bit,
-                            // not score arithmetic or depth coincidence, keeps
-                            // this speculative result out of singular seeding.
                             kind: OutcomeKind::ProbCut,
                         });
                         #[cfg(feature = "diag")]
@@ -2196,7 +2203,11 @@ impl Searcher {
                 crate::diag_count!(singular_speculative_seed_blocked);
             }
             if singular_move_candidate
-                && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
+                && ev.allows_singular(
+                    depth,
+                    self.params.singular_tt_depth_margin,
+                    self.params.singular_reject_speculative != 0,
+                )
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {

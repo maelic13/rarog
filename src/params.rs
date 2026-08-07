@@ -243,6 +243,40 @@ search_params! {
     /// the material-gain policy; explicit provenance is implemented in 4.3c.
     singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
 
+    /// 4.3c contract switch — whether singular verification refuses a seed from
+    /// a persisted **speculative** producer (ProbCut).
+    ///
+    /// 0 = off, which reproduces the accepted baseline exactly; the speculative
+    /// bit is still persisted, and `bench 13` stays 6,502,902 (RAR-S34 measured
+    /// the bit itself as free: 0.00% nodes, +0.10% NPS). 1 enables the contract,
+    /// which was measured *cheaper* than baseline — −0.19% nodes, +0.97% NPS,
+    /// −1.15% time-to-depth.
+    ///
+    /// It lands OFF not because it is doubtful but because it is a strength
+    /// change with no passing gate: the one gate it had (RAR-S34) tested it
+    /// bundled with `probcut_store_actual_score`, which alone costs +5.55%
+    /// time-to-depth and sank the pair to neutral. Its own prior is RAR-S31's
+    /// ~5 nElo, which cannot clear `[3,10]` standalone, so **Phase 4.4 turns it
+    /// on inside the evidence-bound-singularity bundle** where the combined
+    /// effect can resolve. Do not flip it alone without a gate.
+    singular_reject_speculative = 0, "SingularRejectSpeculative", 0..=1;
+
+    /// 4.3c ablation — whether ProbCut persists its ACTUAL fail-high (1) or the
+    /// conservative margin-shifted value the node returns to its caller (0).
+    ///
+    /// 0 = off and measured cheapest. RAR-S34 attributed the entire ~4.3%
+    /// time-to-depth headwind of the first 4.3c candidate to this one change:
+    /// +1.62% nodes and −3.73% NPS on its own, i.e. **+5.55% time-to-depth**.
+    /// The likely mechanism is RAR-S30's: a higher stored `Lower` raises
+    /// `eval_for_pruning`, refinement acts almost purely as an upward correction
+    /// that *prevents* razoring, so more nodes survive and the node mix shifts
+    /// to expensive interior nodes.
+    ///
+    /// The singular contract does **not** need it — the persisted speculative
+    /// bit delivers that guarantee, not the stored value — so the expensive form
+    /// stays inert and enters the 4.10 fit as its own coordinate.
+    probcut_store_actual_score = 0, "ProbCutStoreActualScore", 0..=1;
+
     /// 4.3 arm D — plies subtracted from the node depth when ProbCut stores its
     /// speculative result (`depth - adj`).
     ///
@@ -482,6 +516,16 @@ mod tests {
         // than the arm. A bake that moves one of them is changing play and owes
         // an SPRT, so pin the inert values here — this assert is the tripwire.
         assert_eq!(p.singular_tt_depth_margin, 3, "4.3 arm B must land inert");
+        // 4.3c landed its infrastructure but neither consumer change: RAR-S34's
+        // gate did not promote them, so both stay off and 4.4 owns the gate.
+        assert_eq!(
+            p.singular_reject_speculative, 0,
+            "4.3c contract must land inert until 4.4 gates it"
+        );
+        assert_eq!(
+            p.probcut_store_actual_score, 0,
+            "4.3c score ablation must land inert (RAR-S34: +5.55% TTD)"
+        );
         assert_eq!(p.probcut_store_depth_adj, 3, "4.3 arm D must land inert");
         assert_eq!(p.qs_refine_min_depth, 0, "4.3 arm C must land inert");
         assert_eq!(

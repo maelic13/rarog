@@ -256,19 +256,26 @@ impl NodeEvidence {
 
     /// CAPABILITY: seed a singular-extension verification window.
     ///
-    /// Requires non-speculative evidence, a lower-or-exact bound within
-    /// `depth_margin` plies and a non-mate score. Bound/depth shape alone cannot
-    /// identify ProbCut, which is why 4.3c persists the producer class.
+    /// Requires a lower-or-exact bound within `depth_margin` plies and a
+    /// non-mate score, and — when `reject_speculative` is set — non-speculative
+    /// evidence. Bound/depth shape alone cannot identify ProbCut, which is why
+    /// 4.3c persists the producer class rather than inferring it.
+    ///
+    /// `reject_speculative` is off in the accepted baseline. It is the 4.3c
+    /// contract, measured cheaper than baseline but without a passing strength
+    /// gate of its own, and Phase 4.4 turns it on inside its bundle.
     #[inline(always)]
-    pub fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
-        !self.speculative
+    pub fn allows_singular(&self, depth: i32, depth_margin: i32, reject_speculative: bool) -> bool {
+        !(reject_speculative && self.speculative)
             && self.depth >= depth - depth_margin
             && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
             && self.score.abs() < MATE_SCORE - MAX_PLY
     }
 
-    /// Diagnostic: would this entry have seeded singularity if provenance were
-    /// ignored? Keeps the shadow tied to the production predicate.
+    /// Diagnostic: this entry is speculative AND otherwise qualifies, so the
+    /// 4.3c contract would refuse it. Measures the affected population whether
+    /// or not the contract is currently switched on, and stays tied to the
+    /// production predicate's other clauses so the two cannot drift apart.
     #[cfg(feature = "diag")]
     #[inline(always)]
     pub fn speculative_singular_seed_blocked(&self, depth: i32, depth_margin: i32) -> bool {
@@ -443,7 +450,8 @@ mod tests {
         assert_eq!(miss.cutoff_score(0, -100, 100), None);
         assert_eq!(miss.refine_eval(42, 0), 42);
         assert_eq!(miss.refine_eval_bound_only(42), 42);
-        assert!(!miss.allows_singular(4, 3));
+        assert!(!miss.allows_singular(4, 3, true));
+        assert!(!miss.allows_singular(4, 3, false));
         assert!(!miss.is_exact());
         // -1 is the pre-4.2 `tt_depth` default and must keep behaving as one.
         assert_eq!(miss.depth, -1);
@@ -513,16 +521,16 @@ mod tests {
         // can look identical, and a ProbCut from a deeper search may later be
         // consumed at a shallower node.
         let probcut_shaped = evidence(Bound::Lower, 5, 40);
-        assert!(probcut_shaped.allows_singular(8, 3));
+        assert!(probcut_shaped.allows_singular(8, 3, true));
         // Arm B excludes the whole same-depth band, not just ProbCut.
-        assert!(!probcut_shaped.allows_singular(8, 2));
+        assert!(!probcut_shaped.allows_singular(8, 2, true));
         // Shallower than the margin is refused either way.
-        assert!(!evidence(Bound::Lower, 4, 40).allows_singular(8, 3));
+        assert!(!evidence(Bound::Lower, 4, 40).allows_singular(8, 3, true));
         // Upper bounds never qualify.
-        assert!(!evidence(Bound::Upper, 8, 40).allows_singular(8, 3));
+        assert!(!evidence(Bound::Upper, 8, 40).allows_singular(8, 3, true));
         // Mate scores never qualify.
-        assert!(!evidence(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3));
-        assert!(!evidence(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3));
+        assert!(!evidence(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3, true));
+        assert!(!evidence(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3, true));
 
         let speculative = NodeEvidence {
             speculative: true,
@@ -538,9 +546,39 @@ mod tests {
             "4.3c deliberately leaves eval refinement unchanged"
         );
         assert!(
-            !speculative.allows_singular(8, 3),
-            "only singular-seed authority is denied"
+            !speculative.allows_singular(8, 3, true),
+            "with the contract ON, only singular-seed authority is denied"
         );
+        // The contract is a SWITCH, and it lands off. With it off a speculative
+        // entry seeds singularity exactly as it did in the accepted baseline —
+        // this is what makes `bench 13` still 6,502,902.
+        assert!(
+            speculative.allows_singular(8, 3, false),
+            "with the contract OFF the baseline behaviour must be reproduced"
+        );
+        // The switch may ONLY gate the speculative clause; every other clause
+        // has to hold in both positions.
+        for margin in 0..=4 {
+            for depth in 0..=12 {
+                for spec in [false, true] {
+                    let ev = NodeEvidence {
+                        speculative: spec,
+                        ..evidence(Bound::Lower, depth, 40)
+                    };
+                    let off = ev.allows_singular(8, margin, false);
+                    let on = ev.allows_singular(8, margin, true);
+                    assert_eq!(
+                        off,
+                        if spec { off } else { on },
+                        "the switch changed a non-speculative outcome at margin \
+                         {margin} depth {depth}"
+                    );
+                    if !spec {
+                        assert_eq!(off, on, "non-speculative must ignore the switch");
+                    }
+                }
+            }
+        }
     }
 
     #[test]

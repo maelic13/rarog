@@ -482,13 +482,33 @@ here: the age narrowing is NOT bench-visible (v1 is bench-identical at
 headwind.
 
 Consequences: do not read this gate as evidence against the speculative-evidence
-contract — it tested the contract plus a costly extra. Retain the contract
-*without* the score change, which is strictly cheaper than baseline and so free
-to carry, and make the score change a separate inert knob for 4.10. Do not
-re-gate the contract standalone: its best prior is RAR-S31's ~5 nElo, which
-cannot clear `[3,10]`, so it belongs in **4.4's bundle**, where evidence-bound
-singularity needs the bit anyway and the combined effect is large enough to
-resolve.
+contract — it tested the contract plus a costly extra.
+
+#### 4.3c disposition — **infrastructure retained, both consumers INERT**
+
+The attribution changed the landing. Because the age narrowing and the
+persisted bit are together **bench-identical** to the accepted baseline, 4.3c
+keeps its infrastructure while both behaviour changes become switches that
+default off. The head therefore returns to **6,502,902 / EBF 2.449** and 4.3c
+qualifies under §2's first row (behaviour-neutral: fmt, tests, exact
+fingerprint) rather than owing a strength gate at all.
+
+| Switch | Default | ON reproduces |
+|---|---|---|
+| `SingularRejectSpeculative` | 0 | 6,490,746 — the contract (v2), −1.15% TTD |
+| `ProbCutStoreActualScore` | 0 | with the above, 6,595,869 — the gated v3 |
+
+Both positions were verified against the attribution's independently built
+variants, so the switches are exact reconstructions rather than approximations.
+
+This is deliberately **not** an acceptance of the contract. It has no passing
+strength gate: the only gate it received bundled it with the costly score
+change. Retaining it as an inert switch preserves a measured-cheap mechanism at
+zero baseline risk, which is what §2's "de-tuned mechanisms may land inert"
+allows. **Phase 4.4 turns `SingularRejectSpeculative` on inside the
+evidence-bound-singularity bundle**, where its ~5 nElo prior (RAR-S31) rides a
+combined effect large enough to clear `[3,10]` within budget. Do not flip either
+switch alone without a registered gate.
 
 #### 4.3d — in-check qsearch ordering, after 4.3c
 
@@ -524,6 +544,17 @@ double rules and extension caps. Replace blanket `!tt_pv` with per-mechanism
 eligibility. Use cheap deterministic/short diagnostic ablations while building
 the subsystem, then run one material-gain gate on the coherent final-PGO joint
 candidate.
+
+**4.4 also owns 4.3c's gate.** "Singular requires compatible full-search
+evidence" is already implemented and measured — it is
+`SingularRejectSpeculative`, landed inert, bench 6,490,746 when on, and
+**cheaper than baseline** (−0.19% nodes, +0.97% NPS, −1.15% time-to-depth per
+RAR-S34). Turn it on as part of this bundle rather than re-gating it alone: its
+own prior is RAR-S31's ~5 nElo, which cannot clear `[3,10]` standalone, and this
+subsystem is exactly where it belongs. Keep it ablatable so a bundle failure can
+be attributed — and note that its provenance bit is what makes an evidence-bound
+singularity contract expressible at all, since RAR-S25 showed entry shape leaks
+10.81% and RAR-S31 showed a depth rule cannot cover shallower consumers.
 
 ### 4.5 — History and correction attribution
 
