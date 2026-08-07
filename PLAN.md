@@ -649,6 +649,10 @@ not a flaw in the `[3,10]` policy — it is the policy working as intended: it
 exists to stop exactly this, a gate on a sub-material effect. The conclusion is
 that **the bundle is not yet big enough**, not that the bounds are wrong.
 
+**The gate is not homeless — it is owned by 4.10a**, which is where it belongs:
+4.10 requires a frozen architecture, and gating the accumulated bundle is what
+freezes it. 4.4 itself is closed.
+
 Therefore: **accumulate before gating.** Carry these switches inert through 4.5
 (history/correction), 4.6 (selectivity, which already absorbs former 4.3d) and
 4.7 (root confidence), each of which has identified work, then gate one larger
@@ -864,6 +868,38 @@ is confirming it is neutral everywhere. Do not bake anything at 1T on the
 strength of a 4T reading without the 1T non-inferiority to match.
 
 ### 4.10 — Single consolidated pre-NNUE search fit
+
+#### 4.10a — accumulated-bundle gate, before the fit
+
+This step **owns the gate deferred from 4.4d**, and it runs before the SPSA
+because gating the bundle is what freezes the architecture the fit is defined
+against. Everything Phase 4 has banked inert converges here.
+
+Cheap-set members as of 4.5c, all inert, all individually sized:
+
+| Member | Node effect |
+|---|---:|
+| `CorrSkipWhenTtRefined` | −4.50% |
+| `NmpSuppressNullInVerification` | −2.95% |
+| `SingularRejectSpeculative` | −1.15% time-to-depth |
+| `RazorAllowTtPv` | +0.11% |
+| `NmpDecisiveGuard` | 0.00% (zero bench population) |
+
+Add whatever cheap arms 4.6 and 4.7 produce, then **re-check §2's resolvability
+table against the final composition** and register bounds and cap
+prospectively — a bundle whose prior still lands in the 4–9 nElo band needs
+either more members or a cap that can resolve it (~34,000 games), decided before
+any games are played. Keep every member ablatable: if the bundle fails, ablate
+rather than re-gating each component, which is what 4.3 proved does not pay.
+
+The expensive arms stay OUT of this bundle and go to the fit as coordinates:
+`NmpRequireCutNode` (+14.42%), `NmpMinNonPawnPieces` (+13.06%/+9.53%),
+`CorrWeightCont4` (+12.02%), `NmpSingularGuard` (+11.33%), `RfpAllowTtPv`
+(+6.67%), `SingularMaxExtension=1` (+6.57%), `CorrWeightCont2` (+6.33%),
+`CorrCaptureWeightPct` (+5.18%), `NmpAllowTtPv` (+4.53%), `NmpUseStaticEval`
+(+2.66%), `ProbCutAllowTtPv` (+16.52%), plus `SingularDoubleMargin` (−2.25%,
+cheap but an untuned probe value) and `EvalPruneTtMinDepth`/`QsRefineMinDepth`
+(rejected/retired arms retained as coordinates).
 
 Freeze architecture and generate configuration from the live parameter source.
 Sensitivity/collinearity selects ≤24 coordinates spanning prospective depth/

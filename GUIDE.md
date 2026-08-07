@@ -122,11 +122,12 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         (+11.33%), `NmpMinNonPawnPieces` 2/3 (+13.06%/+9.53%, non-monotone),
         `SingularDoubleMargin=60` (−2.25%). The registered first bundle measures
         **1.57% FEWER nodes than baseline** — no speed headwind, unlike 4.3c.
-  - [ ] **4.4d Gate DEFERRED — bundle too small to resolve.** At its ~5 nElo
-        prior the bundle sits in the dead zone a 16,000-game `[3,10]` gate cannot
-        resolve (only ≤3 or ≥10 nElo resolve; see `PLAN.md` 4.4c). Accumulate
-        through 4.5/4.6/4.7, then gate one larger bundle. Re-check the
-        resolvability table against its composition before launching.
+  - [x] **4.4d Gate deferral DECIDED and handed off.** At a ~5 nElo prior the
+        bundle sat in the dead zone a 16,000-game `[3,10]` gate cannot resolve
+        (only ≤3 or ≥10 nElo resolve; see `PLAN.md` 4.4c). The decision is
+        recorded and closed; **the gate itself is now owned by 4.10a**, which is
+        where it must run because it is what freezes the architecture the fit
+        needs. Nothing about 4.4 is outstanding.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.
   - [x] **4.5a Attribution measured (RAR-S38).** Capture-caused residuals average
@@ -161,6 +162,17 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       without regressing the platform/ISA matrix.
 - [ ] **4.10 One search SPSA:** freeze architecture, select ≤24 coordinates and
       run the only additional pre-NNUE fit plus post-fit ablations.
+  - [ ] **4.10a Accumulated-bundle gate — OWNS the deferred 4.4 gate.** Must run
+        BEFORE the fit: it is what freezes the architecture. Current cheap-set
+        members, all inert and individually sized:
+        `CorrSkipWhenTtRefined` (−4.50% nodes),
+        `NmpSuppressNullInVerification` (−2.95%),
+        `SingularRejectSpeculative` (−1.15% TTD),
+        `RazorAllowTtPv` (+0.11%), `NmpDecisiveGuard` (0.00%).
+        Add any cheap arm 4.6/4.7 produce, then re-check `PLAN.md` §2's
+        resolvability table against the final composition and register bounds
+        and cap **prospectively**. Keep every member ablatable so a failure can
+        be attributed.
 - [ ] **4.11 Release gate:** cumulative 1T/LTC/4T plus production platform/ISA
       matrix and Holm-adjusted
       paired wins over every Rybka, Critter 1.6a, Houdini 2.0c and Fritz 16;
