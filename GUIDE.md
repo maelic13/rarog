@@ -161,7 +161,7 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         VALUE_NONE`. A context needs a distinct mean **and** a population —
         checking only the mean would have justified a useless table. The
         capture/quiet split (4.5a) remains the only context with both.
-- [ ] **4.6 Selectivity (also absorbs former 4.3d):** one history-aware
+- [x] **4.6 Selectivity - CLOSED (absorbed former 4.3d):** one history-aware
       prospective-depth pipeline for
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions,
       plus in-check qsearch ordering and capture/SEE history. ⚠ Do NOT restrict
@@ -177,15 +177,21 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         not just asserted in a comment. `SelectivityProspectiveDepth=1` measures
         **−8.70% nodes, EBF 2.449 → 2.424**: the largest cheap arm in Phase 4 and
         the strongest 4.10a bundle member. Inert at 0.
-  - [ ] **4.6c Remaining:** forcing/safe/losing check classes (replacing the flat
-        32,000 quiet-check bonus), attributable post-LMR feedback, and in-check
-        qsearch ordering with capture/SEE history (from 4.3d).
+  - [x] **4.6c Check classes landed; other two items disposed (RAR-S44).** The
+        flat 32,000 bonus is split into safe/losing classes, inert and free at
+        default. ⚠ **`CheckBonusLosing` measures 0.00% even at 0**, so it is NOT
+        verified effective - it must not enter a bundle until its population is
+        counted. Post-LMR depth feedback needs no new attempt: already rejected
+        twice (Phase 2.8 -1.38, RAR-S14 -7.29). In-check qsearch ordering is
+        already complete (`score_moves` when in check); the lazy-STAGING half is
+        a throughput item and moves to 4.9.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
       completed legal fallback and SMP ownership.
 - [ ] **4.8 Portability/ISA:** inventory `origin/arm_fix`; make x86 tier
       contracts executable, verify all native ARM runners/artifacts, target-
       measure prefetch/alignment/false sharing and archive each branch item.
-- [ ] **4.9 Throughput/scaling:** profile accepted semantics and 1/2/4/8T
+- [ ] **4.9 Throughput/scaling (also owns 4.6's in-check qsearch STAGING):**
+      profile accepted semantics and 1/2/4/8T
       without regressing the platform/ISA matrix.
 - [ ] **4.10 One search SPSA:** freeze architecture, select ≤24 coordinates and
       run the only additional pre-NNUE fit plus post-fit ablations.

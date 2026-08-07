@@ -58,7 +58,6 @@ const JITTER_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 const JITTER_STRIDE: u64 = 0x2545_F491_4F6C_DD1D;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-const DIRECT_CHECK_BONUS: i32 = 32_000;
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // const-evaluated; MAX_PLY = 128
 const TB_WIN_SCORE: i32 = MATE_SCORE - (MAX_PLY as i32) * 2;
 const SEE_UNKNOWN: i16 = i16::MIN;
@@ -3497,8 +3496,19 @@ impl Searcher {
                 cont += self.cont_history[slot][(base + piece_to).min(CONT_SIZE - 1)] as i32;
             }
         }
+        // 4.6c: safe versus losing check classes. A check whose checker can be
+        // taken at a material loss is usually refuted by taking it, so it does
+        // not deserve the same enormous bonus as a safe one. When the two
+        // bonuses are equal (the seeded state) the SEE probe is SKIPPED, so
+        // ordering pays nothing for a distinction it is not making.
         let direct_check = if board.gives_check_with(mv, check_info) {
-            DIRECT_CHECK_BONUS
+            if self.params.check_bonus_losing != self.params.check_bonus_safe
+                && !board.see_ge(mv, 0)
+            {
+                self.params.check_bonus_losing
+            } else {
+                self.params.check_bonus_safe
+            }
         } else {
             0
         };
@@ -4721,7 +4731,10 @@ mod tests {
             .expect("quiet move scored")
             .score;
 
-        assert!(checking_score >= quiet_score + DIRECT_CHECK_BONUS);
+        // 4.6c: read the live parameter, not a duplicate constant, so this
+        // test cannot drift from the value ordering actually uses.
+        let bonus = crate::params::SearchParams::default().check_bonus_safe;
+        assert!(checking_score >= quiet_score + bonus);
     }
 
     #[test]

@@ -754,7 +754,7 @@ or halfmove contexts only with held-out unique signal. Centralize saturation/
 aging and prevent correction double-counting across eval/pruning/reduction. No
 dedicated SPSA; final weights enter 4.10.
 
-### 4.6 — Unified prospective-depth selectivity
+### 4.6 — Unified prospective-depth selectivity — **CLOSED**
 
 Create pre-move `MoveEvidence` with check/evasion/capture class, node/TT
 evidence, SEE, histories, correction confidence and extension/IIR debt. Derive
@@ -763,6 +763,33 @@ preserve the accepted zero-reduction floor. Replace universal quiet-check
 bonus/bypass with forcing/safe/losing check classes. Resolve late-evasion
 `!in_check` mismatch, add attributable post-LMR feedback and track pruning
 overlap/best-move recall. Keep switches ablatable for 4.10.
+
+#### 4.6c — check classes, and honest dispositions (RAR-S44)
+
+The flat `DIRECT_CHECK_BONUS = 32_000` is replaced by `CheckBonusSafe` /
+`CheckBonusLosing`, split on SEE. Inert at the default, and *free*: the SEE probe
+is skipped when the two bonuses are equal, so ordering pays nothing for a
+distinction it is not making. The duplicate constant is gone and its test now
+reads the live parameter.
+
+⚠ **`CheckBonusLosing` measures 0.00% node change at both 16000 and 0.** It is
+therefore NOT demonstrated effective - either the losing-check population is
+empty on this corpus or the class is not reaching the live ordering path. **It
+must not enter any bundle until a counter shows the population is real.** A
+switch that is inert both off and on is indistinguishable from dead code, and
+after three comment/code mismatches this cycle, assuming it works because it
+compiles would be the same class of error. A *forcing* class was not attempted:
+it needs reply counting in the ordering hot path.
+
+The other two 4.6 items are disposed by prior evidence rather than new work:
+
+- **Post-LMR depth feedback: already rejected twice** - Phase 2.8 at -1.38 Elo
+      and RAR-S14 at -7.29 Elo. It needs a retry trigger, not a third attempt.
+- **In-check qsearch ordering is already complete** - quiescence calls the full
+      `score_moves` when in check. What former 4.3d wanted was lazy *staging*,
+      a throughput change, so it migrates to **4.9**.
+
+**Phase 4.6 is CLOSED.**
 
 #### 4.6b — one shared prospective depth (RAR-S43)
 

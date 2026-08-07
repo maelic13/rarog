@@ -312,6 +312,30 @@ search_params! {
     /// sign here is genuinely unknown.
     nmp_use_static_eval = 0, "NmpUseStaticEval", 0..=1;
 
+    // ── 4.6c ──────────────────────────────────────────────────
+
+    /// Ordering bonus for a quiet move that gives a SAFE check (SEE >= 0).
+    ///
+    /// 32000 = the historical flat `DIRECT_CHECK_BONUS`, which the 4.3 audit
+    /// flagged: every checking move got the same enormous bonus whether the
+    /// checker could be captured for free or not.
+    check_bonus_safe = 32000, "CheckBonusSafe", 0..=32000;
+
+    /// Ordering bonus for a quiet move that gives a LOSING check (SEE < 0), i.e.
+    /// one whose checker can be captured at a material loss.
+    ///
+    /// 32000 = inert, and inert at zero *cost*: when the two bonuses are equal
+    /// the SEE probe is skipped entirely, so ordering pays nothing for a
+    /// distinction it is not making. Lowering this demotes checks that are likely
+    /// refuted by simply taking the checker.
+    ///
+    /// This is PLAN 4.6's "replace universal quiet-check bonus with
+    /// forcing/safe/losing classes", implemented with the split the engine can
+    /// already compute cheaply. A *forcing* class (few legal replies) needs reply
+    /// counting in the ordering hot path and is deliberately not attempted here —
+    /// the safe/losing split is the part available for free.
+    check_bonus_losing = 32000, "CheckBonusLosing", 0..=32000;
+
     // ── 4.6b ──────────────────────────────────────────────────
 
     /// Derive LMP, futility and SEE pruning from the same PROSPECTIVE depth LMR
