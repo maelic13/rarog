@@ -233,14 +233,14 @@ search_params! {
     /// 4.3 arm B — how far below the node depth a TT entry may sit and still
     /// seed a singular verification window (`ev.depth >= depth - margin`).
     ///
-    /// 3 = current behaviour, and 3 is exactly the depth ProbCut writes
-    /// (`depth - 3`), so today a margin-shifted speculative score is admitted at
-    /// the boundary: RAR-S22 measured 32 of 101 sampled attempts sitting on that
-    /// signature and RAR-S24 measured 41 of 101 seeded by a window-contradicting
-    /// score. Provenance is not persisted, so the only available lever is the
-    /// depth band itself — 2 excludes the ProbCut band entirely, at the cost of
-    /// also excluding a legitimate full search at `depth - 3`. That trade is
-    /// what the registered arm measures; it is not obviously good.
+    /// 3 = current behaviour, and 3 is exactly the depth a same-node ProbCut
+    /// writes (`depth - 3`), so that signature is admitted at the boundary:
+    /// RAR-S22 measured 32 of 101 sampled attempts there. Margin 2 excludes the
+    /// whole `depth - 3` band, including legitimate full-search entries, but it
+    /// is not a provenance guarantee: a ProbCut entry produced by an earlier
+    /// deeper search can still qualify at a shallower consumer. RAR-S31 found
+    /// value 2 positive on a tune binary, but the ~3 Elo knob was parked under
+    /// the material-gain policy; explicit provenance is implemented in 4.3c.
     singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
 
     /// 4.3 arm D — plies subtracted from the node depth when ProbCut stores its

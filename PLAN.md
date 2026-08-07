@@ -314,23 +314,20 @@ stack-local evidence, and price it against the list above.
 
 ### 4.3 — Qsearch and ProbCut evidence hygiene
 
-> **⚠ The premise below is REFUTED for the eval-refinement consumer
-> (RAR-S29/S30).** Denying depth-0 entries the right to refine the pruning eval
-> was gated twice and lost both times — `=2` at −1.49 ± 2.87 and the targeted
-> `=1` at **−3.18 ± 3.23 with a formal H0 and LOS 2.66%**. The shadow explains
-> why: refinement is not self-cancelling but strongly directional (73 prunes
-> caused versus 19 prevented) and a better estimate of the node's value 70.3% of
-> the time. Depth-0 evidence — 67.5% of stores, 35.9% bare stand pat — is
-> *earning strength* there. **Evidence purity is not free, and in this consumer
-> it is not even neutral.** Retire arm C unrun; it is the same shape against the
-> same consumer family. What remains genuinely open is the *speculative*
-> question (ProbCut into singular, arms B/D), which is a different consumer and
-> a different failure mode from horizon depth.
+> **The flat depth-floor premise is closed for the main-search eval consumer
+> (RAR-S27/S29).** Neither `EvalPruneTtMinDepth=2` nor `=1` met its registered
+> acceptance rule, so the default remains 0. RAR-S29 reached formal H0 with LOS
+> 2.66%, although its −3.18 ± 3.23 Elo interval narrowly includes zero. RAR-S30
+> is an all-depth, overlapping-predicate shadow and cannot causally explain the
+> games or establish estimator quality. It only shows that TT refinement often
+> changes pruning direction in this bench. Arm C is retired as low priority,
+> not inferred equivalent. The independent open defect is explicit ProbCut
+> provenance at the singular consumer.
 
-Do not manufacture searched authority from no-TT stand pat. Keep depth-0
-pruning estimates out of deep main consumers; searched qmoves retain limited
-qsearch capability. Store actual ProbCut result with speculative provenance
-and measured depth; never authorize singularity/exact learning. Stage complete
+Do not infer a producer from depth/bound/move shape. Preserve the currently
+measured depth-0 eval-refinement behaviour until the joint fit. Store the actual
+ProbCut result with explicit speculative provenance and measured depth; never
+authorize speculative evidence to seed singular verification. Stage complete
 in-check qsearch ordering and test capture/SEE history plus coherent delta/
 SEE/futility after storage is correct. Gate one coherent baked final-PGO
 candidate under the material-gain policy; keep individual arms diagnostic and
@@ -338,12 +335,11 @@ ablatable.
 
 Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
 
-- **~~Separate the two eval-refinement capabilities.~~ DROPPED (RAR-S29).**
-      The asymmetry is real and stays documented in `evidence.rs`, but
-      *tightening* the loose side is now measured as harmful in the main search,
-      and RAR-S02 accepted the loose qsearch form at about +6.5 Elo. Two gates
-      against the same idea is enough; the knob stays inert and enters 4.10's
-      joint fit, where the consumers can move with it.
+- **~~Separate the two eval-refinement capabilities now.~~ DEFERRED (RAR-S29).**
+      The asymmetry is real and stays documented in `evidence.rs`, but neither
+      tested main-search depth floor was accepted. RAR-S02 separately accepted
+      the loose qsearch form at about +6.5 Elo. Keep both defaults and revisit
+      only inside 4.10's joint fit, where their consumers can move with them.
 - **Deny singular authority to speculative evidence.** ProbCut stores a
       margin-shifted score at `depth-3` and singular accepts exactly that
       shape; 32 of 101 sampled attempts sit on the signature and 41 of 101 are
@@ -383,83 +379,42 @@ informative, so that prior is weak rather than decisive. Arm C is held: it
 costs nodes and would gut RAR-S02's accepted +6.5 Elo mechanism, so it needs a
 reason beyond symmetry before spending games on it.
 
-Arms run as one `tune` binary against itself with one option changed. The
-harness blesses this (`sprt.ps1` documents same-binary/different-options as
-strictly better, since it removes the per-build PGO offset), and both sides
-share codegen so PGO cancels. The operating point is still non-PGO, so **a
-passing arm must be re-gated as a clean PGO build with the value baked** before
-acceptance — §2 item 6's "SPSA proposes; clean PGO SPRT accepts" applies to any
-knob A/B, not only to a fit.
+These arms ran under the former policy as one non-PGO `tune` binary against
+itself with one option changed. That isolates the option but is now classified
+as diagnostic evidence: only a baked final-PGO candidate can enter the
+accepted baseline, and small standalone knobs are not owed that machine time.
 
-#### 4.3b-gate — arm B transfer check — **PASSED, no second SPRT (RAR-S32)**
+#### 4.3b — arm B resolution — **PARKED, NOT BAKED (RAR-S31/S32)**
 
-RAR-S31 accepted `SingularTtDepthMargin=2` at H1 on the **tune** binary
-(+3.35 ± 2.44 Elo, LOS 99.64%, 31,822 games, zero forfeits). A full PGO re-gate
-was registered, then **withdrawn as the wrong instrument** once its premise was
-tested:
+`SingularTtDepthMargin=2` reached H1 on the tune binary (+3.35 ± 2.44 Elo,
+31,822 games, zero forfeits). It does not isolate ProbCut: margin 2 also rejects
+legitimate full-search entries at `depth-3`, while an older/deeper ProbCut entry
+can still qualify at a shallower consumer. RAR-S32 established identical bench
+decisions and a similar aggregate NPS ratio across build modes; those are useful
+transfer diagnostics, not proof of final-PGO playing strength.
 
-- **Decisions are bit-identical across configurations.** The tune binary with
-      the option set and a baked non-tune PGO build both bench 6,100,099 /
-      EBF 2.437. PGO and `tune` are codegen, not semantics, so no amount of
-      game-playing can find a decision difference that does not exist.
-- **The speed relationship is unchanged within noise.** cand/base NPS is
-      **−1.15% non-PGO** (one binary via `setoption`, zero build noise) versus
-      **−1.355% PGO** (3 builds per arm, pooled, bias-cancelled). They agree to
-      ~0.2pp ≈ 0.4 Elo, against a measured +3.35 Elo effect. For PGO to threaten
-      the verdict it would need a relative swing above roughly 1.5%.
-- **A second SPRT would have been strictly worse evidence.** RAR-S31 ran
-      byte-identical binaries on both sides, so it carries zero build noise. A
-      two-binary PGO comparison reintroduces the ~0.4% per-build offset —
-      roughly 0.8 Elo — against a 3.35 Elo effect, to re-answer a question a
-      fingerprint and an NPS ratio settle in minutes.
-
-So the standing rule is **verify transfer, do not re-run the gate**: identical
-fingerprint plus a non-worse PGO NPS ratio. A confirmation SPRT is warranted
-only when one of those fails. Operating-point risk (an effect measured at one
-NPS/TC not holding at another) is real but is not per-arm work — 4.11's
-cumulative gate with LTC and 4T confirmation is where it is caught, and that
-applies to every arm this project has accepted.
-
-⚠ Both ratios were first measured on a machine concurrently running an SPRT and
-were void; the figures above are the idle re-run. The contended pass read the
-non-PGO ratio as −2.36% against a true −1.15% and had the cross-configuration
-direction backwards. **Never time anything while a gate plays** — deterministic
-outputs such as node counts and fingerprints survive contention, nothing timed
-does.
+Under the material-gain policy, another long gate for an observed ~3 Elo knob is
+not a good use of the machine. Keep `SingularTtDepthMargin=3`, retain value 2 as
+an inert 4.10 coordinate/ablation, and retire arm D unrun: explicit provenance
+solves the producer question without sacrificing unrelated depth bands. This is
+a resource-priority decision, not evidence that value 2 is neutral or harmful.
 
 #### 4.3c — persisted provenance and real ProbCut-result handling
 
-Runs after the 4.3a verdicts and **before** 4.3b. Arms B and D are depth
-experiments: they shift which band of stored depths singular will accept, and
-they do not and cannot establish that ProbCut evidence never seeds a singular
-search. A ProbCut entry written at `depth-3` from a depth-10 node is still
-admissible at a depth-9 node under any margin that admits `depth-3` there, so
-the plan's "never authorize singularity" is not achievable by a depth rule at
-all. Two things are therefore owed:
+Implement one explicit **speculative** bit, not a vague producer-quality bit.
+Take it from TT age (5→4 bits), change age stride 8→16 and replacement divisor
+2→4 so the per-generation penalty remains 4; retain the 10-byte entry and both
+backend densities. Set it from `OutcomeKind::is_speculative`, decode it into
+`NodeEvidence`, and deny only the singular-seed capability. Cutoffs, eval
+refinement, move ordering and IIR keep their existing bound/depth rules.
 
-- **Persist a producer class — re-motivated by RAR-S29.** The original reason
-      was to deny stand pat; that goal is now measured as harmful. The surviving
-      reason is *weighting*: a persisted class lets a consumer scale how much it
-      trusts an entry instead of choosing which entries get total authority. The
-      current mechanism is a binary override behind one depth integer, which is
-      why every setting of that integer measures the same or worse — a threshold
-      can pick *which*, never *how much*. RAR-S25's trigger still holds (entry
-      shape cannot separate stand pat from a searched qmove, because a moveless
-      store inherits the resident move). Price the 1-bit slot from 4.2's list —
-      age 5→4 bits with `entry_quality`'s divisor moved 2→4, which preserves the
-      per-generation penalty exactly and halves the wraparound horizon. It moves
-      the bench fingerprint, so it is a `[0,3]` gate, not a refactor.
-- **Store ProbCut's actual result.** Independently of the depth it is filed
-      under, the stored score is `score - (probcut_beta - beta)` — sound as a
-      lower bound, but a systematically depressed point estimate for anything
-      that reads it as a value. Singular reads it as a value. Store the real
-      result and let the consumer contract, not arithmetic coincidence, decide
-      who may use it.
+Store ProbCut's actual fail-high result in the TT while retaining the existing
+conservative adjusted return value. Add local/shared round-trip, age-wrap and
+consumer-contract tests. This is one coherent final-PGO candidate, registered
+`[3,10]` nElo at `3+0.03`, 1T/64 MB/paired UHO, maximum 12,000 games; only H1
+promotes. Keep the pre-4.3c final-PGO binary as baseline.
 
-Only with a persisted class can a consumer state "not speculative" instead of
-"not at this depth". Do not treat a passing arm B or D as having closed this.
-
-#### 4.3b — after the 4.3a verdicts and 4.3c
+#### 4.3d — in-check qsearch ordering, after 4.3c
 
 Stage complete in-check qsearch ordering, test capture/SEE history and make
 delta/SEE/futility coherent. Deliberately sequenced last: the plan requires

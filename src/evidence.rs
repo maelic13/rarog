@@ -500,12 +500,14 @@ mod tests {
     }
 
     #[test]
-    fn singular_authority_admits_probcut_shaped_evidence_at_the_default_margin() {
-        // Documents current behaviour: ProbCut writes a Lower bound at depth-3,
-        // and singular at margin 3 accepts exactly that.
+    fn singular_depth_margin_cannot_identify_a_probcut_producer() {
+        // A same-node ProbCut writes a Lower bound at depth-3, and singular at
+        // margin 3 accepts that shape. Shape is not provenance: a full search
+        // can look identical, and a ProbCut from a deeper search may later be
+        // consumed at a shallower node.
         let probcut_shaped = evidence(Bound::Lower, 5, 40);
         assert!(probcut_shaped.allows_singular(8, 3));
-        // 4.3 arm B: margin 2 is what excludes the ProbCut band.
+        // Arm B excludes the whole same-depth band, not just ProbCut.
         assert!(!probcut_shaped.allows_singular(8, 2));
         // Shallower than the margin is refused either way.
         assert!(!evidence(Bound::Lower, 4, 40).allows_singular(8, 3));

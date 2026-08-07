@@ -62,9 +62,9 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
   - [x] **4.2c Throughput:** pooled 3-build PGO A/B in both directions,
         bias-cancelled −0.125% (≈0.25 Elo), all six builds at bench 6,502,902
         (RAR-S28).
-- [ ] **4.3 Qsearch/ProbCut:** stop stand-pat laundering, separate speculative
-      cutoffs and improve safe evasion/capture ordering. ⚠ The stand-pat half of
-      this premise is REFUTED for the eval-refinement consumer — see 4.3a-iii.
+- [ ] **4.3 Qsearch/ProbCut:** preserve the measured depth-0 eval behaviour,
+      explicitly separate speculative ProbCut evidence at singular consumers,
+      then improve safe evasion/capture ordering.
   - [x] **4.3a-i Arms landed inert:** four knobs (`EvalPruneTtMinDepth`,
         `SingularTtDepthMargin`, `ProbCutStoreDepthAdj`, `QsRefineMinDepth`)
         plus the provenance-hazard census; bench-identical at 6,502,902 on
@@ -72,33 +72,21 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
   - [x] **4.3a-ii Arm A value 2: REJECTED.** −1.49 ± 2.87 Elo / −2.33 ± 4.49
         nElo over 23,044 games, LLR −2.19, manual stop; default stays 0. It
         searched 43.8% fewer nodes for no measurable Elo (RAR-S27).
-  - [x] **4.3a-iii Arm A value 1: REJECTED at a formal H0.** −3.18 ± 3.23 Elo,
-        LOS 2.66%, 18,436 games. The interval EXCLUDES zero, so this is a
-        measured loss. Depth-0 evidence is EARNING strength in the
-        eval-refinement consumer (RAR-S29), and the shadow shows why:
-        refinement is directional, not self-cancelling, and a better estimator
-        70.3% of the time (RAR-S30).
-  - [x] **4.3a-iv Arm C: RETIRED UNRUN.** Same shape and consumer family as the
-        two rejected arms; games on it would buy a third identical answer.
-  - [x] **4.3a-v Arm B: H1 ACCEPTED on the tune binary.** +3.35 ± 2.44 Elo,
-        nElo +5.24 ± 3.82, LOS 99.64%, 31,822 games, zero forfeits (RAR-S31).
-        First 4.3 arm to pass, and it confirms that speculative-evidence and
-        horizon-depth restrictions are different questions.
-  - [x] **4.3a-vi Arm B transfer check: PASSED, no second SPRT.** Decisions are
-        bit-identical across configurations (both bench 6,100,099), and the
-        cand/base NPS ratio agrees to within ~0.2pp (−1.15% non-PGO versus
-        −1.355% PGO) — inside measurement noise, and far too small to threaten a
-        3.35 Elo effect. A confirmation SPRT would only add build noise to a
-        cleaner result (RAR-S32).
-  - [ ] **4.3a-vii Arm D:** the only unrun arm. Deprioritized — arm B already
-        covers most of its singular-authority motivation, and its +18.2% node
-        cost was sized against the OLD baseline so it needs re-sizing.
-  - [ ] **4.3c Persisted provenance:** ← **next**. 1-bit producer class plus
-        real ProbCut result handling. A depth rule cannot guarantee ProbCut
-        never seeds singular, so arm B does NOT close this.
-  - [ ] **4.3b In-check qsearch ordering:** staged evasions plus capture/SEE
-        history and coherent delta/SEE/futility. Sequenced AFTER 4.3c — the
-        numbers are as first registered, the execution order is c then b.
+  - [x] **4.3a-iii Arm A value 1: REJECTED at formal H0.** −3.18 ± 3.23 Elo,
+        LOS 2.66%, 18,436 games; its interval narrowly includes zero. The
+        all-depth RAR-S30 shadow is diagnostic, not a causal explanation.
+  - [x] **4.3a-iv Arms C/D: RETIRED UNRUN.** They are low-value depth proxies;
+        C stays inert for the joint fit and explicit provenance supersedes D.
+  - [x] **4.3b Arm B: PARKED, NOT BAKED.** Value 2 reached H1 on the tune binary
+        (+3.35 ± 2.44 Elo), while RAR-S32 confirmed matching decisions and
+        similar aggregate speed across build modes. It neither isolates
+        ProbCut nor justifies another long final-PGO gate for ~3 Elo; default 3
+        remains and value 2 stays as an inert 4.10 coordinate/ablation.
+  - [ ] **4.3c Persisted provenance:** ← **next**. One speculative bit plus the
+        real ProbCut result; singular rejects that class while other consumers
+        retain their existing contracts.
+  - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
+        history and coherent delta/SEE/futility, after 4.3c.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
@@ -173,14 +161,13 @@ the user explicitly abandons that program.
 | A | `EvalPruneTtMinDepth` 2 | rejected, −1.49 ± 2.87 (RAR-S27) |
 | A | `EvalPruneTtMinDepth` 1 | rejected at formal H0, −3.18 ± 3.23 (RAR-S29) |
 | C | `QsRefineMinDepth` 1 | retired unrun (RAR-S29) |
-| **B** | **`SingularTtDepthMargin` 2** | **H1 accepted, +3.35 ± 2.44 (RAR-S31)** |
-| D | `ProbCutStoreDepthAdj` 4 | unrun, deprioritized, needs re-sizing |
+| B | `SingularTtDepthMargin` 2 | tune H1, but parked/not baked; default stays 3 |
+| D | `ProbCutStoreDepthAdj` 4 | retired unrun; superseded by explicit provenance |
 
-Arm B's transfer to the shipped configuration is verified (RAR-S32), so **no
-PGO re-gate is needed** — the withdrawn one is explained in `PLAN.md` 4.3b-gate.
-The one open decision is whether to bake arm B, which moves the accepted-head
-fingerprint from 6,502,902 to **6,100,099**; that is a maintainer call because
-every later Phase-4 measurement is compared against it.
+Arm B is resolved: do not bake it and do not spend another gate on it. RAR-S32
+is retained as a build-transfer diagnostic, not final-PGO strength evidence.
+The accepted baseline therefore remains at `SingularTtDepthMargin=3` and the
+6,502,902 fingerprint until 4.3c deliberately changes the tree.
 
 Next implementation step is **4.3c — persisted provenance**, which needs no
 games until its own gate.
