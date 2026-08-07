@@ -75,9 +75,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       self-cancelling, and a better estimator 70.3% of the time (RAR-S30).
 - [x] **4.3a Arm C: RETIRED UNRUN.** Same shape and consumer family as the two
       rejected arms; spending games on it would buy a third identical answer.
-- [ ] **4.3a-iv Arms B and D:** still open — they test the SPECULATIVE question
-      (ProbCut into singular), a different consumer and failure mode from
-      horizon depth, so 4.3a-ii/iii do not speak to them.
+- [x] **4.3a-iv Arm B: H1 ACCEPTED on the tune binary.** +3.35 ± 2.44 Elo,
+      nElo +5.24 ± 3.82, LOS 99.64%, 31,822 games, zero forfeits (RAR-S31). The
+      first 4.3 arm to pass, and it confirms that speculative-evidence and
+      horizon-depth restrictions are different questions.
+- [ ] **4.3b-gate Arm B PGO re-gate:** required before acceptance. Binaries are
+      built and staged; `[0,3]` with a pre-registered `[-3,0]` fallback.
+- [ ] **4.3a-v Arm D:** deprioritized. Arm B already covers most of its
+      singular-authority motivation, leaving the weaker honest-stored-depth
+      argument at a cost of +18.2% nodes.
 - [ ] **4.3c Persisted provenance:** 1-bit producer class plus real ProbCut
       result handling. Arms B/D shift a depth band and cannot guarantee ProbCut
       never seeds singular, so a passing arm does NOT close this.
@@ -155,8 +161,10 @@ the user explicitly abandons that program.
 No long job is active. Do not resume the old aspiration tuner or reuse
 `p102a-snapshot`; its gate was rejected and the original config seeds are the
 retained baseline. Phases 4.0, 4.1 and 4.2 are complete, including 4.2's
-throughput check. **4.3a arm A is closed — both settings rejected** (RAR-S27,
-RAR-S29) and arm C is retired unrun; the next requested job is **arm B**.
+throughput check. Arm A is closed (both settings rejected, RAR-S27/S29), arm C
+is retired unrun, and **arm B passed H1 on the tune binary** (+3.35 ± 2.44,
+RAR-S31). The next requested job is **arm B's PGO re-gate**, which is what turns
+that pass into an acceptance.
 
 The binary is already built and its manifest is clean:
 `tools\test_engines\rarog-43a-tune.exe`, bench 6,502,902. Each arm runs that one
@@ -164,20 +172,29 @@ binary against itself with a single option changed, which the harness prefers
 (it removes the per-build PGO offset). Run them **one at a time, in this order**,
 and paste the final result before the next starts.
 
-- **Arm B** — denies the ProbCut depth band singular authority; −11.8% nodes.
-      Now the priority: arm A is closed (both settings rejected) and arm B tests
-      a different consumer, so nothing carries over.
+- **Arm B PGO re-gate** — the only requested job. Arm B passed H1 on the tune
+      binary (+3.35 ± 2.44, RAR-S31), which is not acceptance: PGO changes
+      hot-path timing and this arm changes node mix. Both binaries are built and
+      staged, median-NPS build per arm, base bench 6,502,902 versus candidate
+      bench **6,100,099**.
 
 ```powershell
-.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA SingMargin2 -NameB Head -OptionsA SingularTtDepthMargin=2 -Elo1 3
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43b-cand-pext-pgo.exe -EngineB .\tools\test_engines\rarog-43b-base-pext-pgo.exe -NameA SingMargin2Pgo -NameB Head -Elo1 3
 ```
 
-- **Arm D** — stores the depth ProbCut actually measured; costs +18.2% nodes, so
-      it has to buy accuracy.
+      If that ends inconclusive **with a positive point estimate**, the
+      pre-registered tiebreak is one non-inferiority run — not a re-run of the
+      same gate:
 
 ```powershell
-.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43a-tune.exe -EngineB .\tools\test_engines\rarog-43a-tune.exe -NameA ProbCutAdj4 -NameB Head -OptionsA ProbCutStoreDepthAdj=4 -Elo1 3
+.\tools\sprt.ps1 -EngineA .\tools\test_engines\rarog-43b-cand-pext-pgo.exe -EngineB .\tools\test_engines\rarog-43b-base-pext-pgo.exe -NameA SingMargin2Pgo -NameB Head -Elo0 -3 -Elo1 0
 ```
+
+      Bounds are passed explicitly because `-Mode simplify` defaults to
+      `[-5, 0]`, while this project's non-inferiority convention is `[-3, 0]`.
+
+- **Arm D** — deprioritized, not requested. Arm B already covers most of its
+      singular-authority motivation and it costs +18.2% nodes.
 
 Arm C (`QsRefineMinDepth=1`) is **retired unrun** (RAR-S29): it is the same shape
 against the same consumer family as the two arms already rejected, so it would

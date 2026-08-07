@@ -384,6 +384,41 @@ passing arm must be re-gated as a clean PGO build with the value baked** before
 acceptance — §2 item 6's "SPSA proposes; clean PGO SPRT accepts" applies to any
 knob A/B, not only to a fit.
 
+#### 4.3b-gate — arm B PGO re-gate (registered, pending)
+
+RAR-S31 accepted `SingularTtDepthMargin=2` at H1 on the **tune** binary
+(+3.35 ± 2.44 Elo, LOS 99.64%, 31,822 games, zero forfeits). Per the decision
+table that is not acceptance: PGO changes hot-path timing, and this arm changes
+the node mix, so the gain must be shown to survive the shipped configuration.
+
+Design, registered before launch:
+
+- **Binaries.** `rarog-43b-base-pext-pgo.exe` (clean manifest at `3eeea89`,
+      bench 6,502,902) versus `rarog-43b-cand-pext-pgo.exe` (bench
+      **6,100,099**). Three independent PGO builds were made per arm and the
+      **median-NPS build of each** was selected; within-arm spread was 0.28% and
+      0.27%, so neither side is represented by an outlier. The candidate carries
+      a DIRTY manifest by design — §2 permits a dirty gate binary provided its
+      diff is recorded, and `rarog-43b-cand.diff` (sha256 `4EA5A309…`) is that
+      record. It will be rebuilt clean only if the gate passes.
+- **Gate.** `[0,3]` nElo at `3+0.03`, 1T, 64 MB, paired UHO — the same design
+      RAR-S31 used, so a pass is directly comparable.
+- **Pre-registered fallback.** The measured effect (~5.2 nElo) sits close
+      enough to the H1 bound of 3 that a confirmation run can fail by chance
+      even if the change is sound. **If `[0,3]` ends inconclusive with a
+      positive point estimate, the tiebreak is one non-inferiority `[-3,0]`
+      run** — the gain itself is already established by RAR-S31, so the residual
+      question is only whether PGO erased it. Registering this now prevents a
+      post-hoc choice of estimator.
+
+⚠ Do not interpret the −1.56% cross-arm NPS as a build offset. The two binaries
+search different trees (6,100,099 versus 6,502,902 nodes), so nodes/second moves
+with node mix: the candidate runs fewer, individually more expensive nodes
+because it skips cheap singular verification searches. Slower per node and 6.2%
+fewer nodes is consistent with the measured gain, and the clock TC already
+prices both — RAR-S31's +3.35 was measured with this same node-mix effect
+present.
+
 #### 4.3c — persisted provenance and real ProbCut-result handling
 
 Runs after the 4.3a verdicts and **before** 4.3b. Arms B and D are depth
