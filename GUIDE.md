@@ -118,12 +118,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         `NmpRequireCutNode` (+14.42%). New `tests/zugzwang.rs` passes with every
         switch off, on individually, and all ten together — the only instrument
         that can verify a guard bench cannot see.
-  - [ ] **4.4c Remaining mechanisms then ONE bundle gate.** Still to build:
-        potential-singularity protection, singular single/double rules, NMP
-        material guard beyond `has_non_pawn_material`. **First bundle:**
-        `SingularRejectSpeculative` + `NmpSuppressNullInVerification` +
-        `RazorAllowTtPv` + `NmpDecisiveGuard` — three cheap-or-negative plus one
-        free guard. Hold every arm that costs nodes.
+  - [x] **4.4c Remaining guards landed inert (RAR-S37).** `NmpSingularGuard`
+        (+11.33%), `NmpMinNonPawnPieces` 2/3 (+13.06%/+9.53%, non-monotone),
+        `SingularDoubleMargin=60` (−2.25%). The registered first bundle measures
+        **1.57% FEWER nodes than baseline** — no speed headwind, unlike 4.3c.
+  - [ ] **4.4d Gate DEFERRED — bundle too small to resolve.** At its ~5 nElo
+        prior the bundle sits in the dead zone a 16,000-game `[3,10]` gate cannot
+        resolve (only ≤3 or ≥10 nElo resolve; see `PLAN.md` 4.4c). Accumulate
+        through 4.5/4.6/4.7, then gate one larger bundle. Re-check the
+        resolvability table against its composition before launching.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for

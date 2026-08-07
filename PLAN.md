@@ -619,9 +619,43 @@ convenient.
 `NmpDecisiveGuard` (free). Three cheap-or-negative mechanisms plus one free
 soundness guard, all ablatable.
 
-Still to implement before the gate: potential-singularity protection, singular's
-separate single/double rules, and the NMP material guard beyond the existing
-`has_non_pawn_material`.
+#### 4.4c — remaining guards landed (RAR-S37), and the gate is NOT yet worth running
+
+`NmpSingularGuard`, `NmpMinNonPawnPieces` and `SingularDoubleMargin` are
+implemented and inert. The registered first bundle measures **6,401,087 — 1.57%
+fewer nodes than baseline**, so unlike RAR-S34's candidate it carries no speed
+headwind.
+
+**But it should not be gated yet, and the reason is arithmetic.** Apply RAR-M10
+to the default `[3,10]` bounds (midpoint 6.5) with the 16,000-game cap:
+
+| True effect | Games to a boundary | Outcome at 16,000 |
+|---:|---:|---|
+| 0 nElo | 7,785 | resolves H0 |
+| 3 nElo | 14,470 | resolves H0 |
+| **5 nElo** | **33,730** | **parks unresolved** |
+| 8 nElo | 33,730 | parks unresolved |
+| 10 nElo | 14,470 | resolves H1 |
+| 12 nElo | 9,200 | resolves H1 |
+
+A 16,000-game `[3,10]` gate resolves only effects **≤3 or ≥10 nElo**; everything
+between parks. The best prior for this bundle's dominant member is RAR-S31's
+**~5.24 nElo**, which lands squarely in that dead zone — and the other three
+members have small populations (83 nested nulls, 8,218 razor nodes, and a guard
+with zero bench population), so they are unlikely to lift the total past 10.
+
+Running it would most likely spend ~2.7 hours to learn "unresolved". Note this is
+not a flaw in the `[3,10]` policy — it is the policy working as intended: it
+exists to stop exactly this, a gate on a sub-material effect. The conclusion is
+that **the bundle is not yet big enough**, not that the bounds are wrong.
+
+Therefore: **accumulate before gating.** Carry these switches inert through 4.5
+(history/correction), 4.6 (selectivity, which already absorbs former 4.3d) and
+4.7 (root confidence), each of which has identified work, then gate one larger
+bundle whose expected effect clears 10 nElo. Re-check this table against the
+bundle's composition before launching; if a future bundle's prior still sits in
+the 4–9 nElo band, either enlarge it or register a cap that can resolve it
+(~34,000 games) — but decide that **prospectively**, never after seeing games.
 
 **4.4 also owns 4.3c's gate.** "Singular requires compatible full-search
 evidence" is already implemented and measured — it is
