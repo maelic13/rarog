@@ -844,6 +844,31 @@ strength. Unify the *depth semantics* without tightening *evidence admission*.
 
 ### 4.7 — One root-confidence model
 
+#### 4.7a — the abort path is now covered by tests (RAR-S46)
+
+4.7 requires that "abort returns last completed legal evidence" and that
+"incomplete mate/win/loss never becomes authoritative". Both were **unverifiable
+claims**: `bench` is fixed-depth and never aborts, so `root_interrupted_fallback`
+reads 0 across all 40 positions, and no strength gate inspects an interrupted
+root either.
+
+`tests/root_abort.rs` interrupts the search at swept poll budgets so the abort
+lands mid-iteration at many points, and pins four properties: the move is legal,
+no mate-range score is reported from an unfinished iteration, the reported depth
+never reaches a limit it did not complete, and the same interruption point gives
+the same answer twice. Determinism is in there on purpose — a fallback that
+varied run to run would mean ownership depends on something outside the recorded
+root evidence, which is precisely what this step exists to prevent.
+
+Third blind spot of this shape found in the cycle, after null-move soundness and
+the zero-population decisive guard: **a property that only manifests under a
+condition the deterministic corpus excludes needs its own test, or it is merely
+asserted.**
+
+⚠ For 4.7b, note the prior: aspiration has been changed twice and lost twice —
+RAR-S17 at −4.52 Elo and RAR-S20's rejected fit. It is the highest-risk consumer
+of a confidence model, so wire TM first and keep aspiration behind its own switch.
+
 Derive completed-iteration confidence from per-move mean/mean-square, gap, PV,
 best-move age, effort, fail direction/count and depth. Use it for bounded
 asymmetric aspiration and TM without double-counting. Abort returns last

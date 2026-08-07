@@ -186,7 +186,16 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         already complete (`score_moves` when in check); the lazy-STAGING half is
         a throughput item and moves to 4.9.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
-      completed legal fallback and SMP ownership.
+      completed legal fallback and SMP ownership. ⚠ Aspiration has LOST twice
+      (RAR-S17 −4.52, RAR-S20) — treat it as the highest-risk consumer.
+  - [x] **4.7a Abort path covered (RAR-S46).** `bench` is fixed-depth and never
+        aborts, so `root_interrupted_fallback` reads 0 and the fingerprint
+        cannot see this path. New `tests/root_abort.rs` interrupts at swept
+        budgets and pins four properties: legal move, no unproven mate score,
+        no depth beyond what completed, and determinism. 9.8s.
+  - [ ] **4.7b Remaining:** one `RootConfidence` snapshot consumed by aspiration
+        and TM without double-counting, and worker instability pooled for TIME
+        only, never for result ownership.
 - [ ] **4.8 Portability/ISA:** inventory `origin/arm_fix`; make x86 tier
       contracts executable, verify all native ARM runners/artifacts, target-
       measure prefetch/alignment/false sharing and archive each branch item.
