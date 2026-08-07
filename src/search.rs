@@ -1459,6 +1459,31 @@ impl Searcher {
         best
     }
 
+    /// 4.4c: does the side to move hold enough non-pawn material to trust a
+    /// null move?
+    ///
+    /// At the seeded `NmpMinNonPawnPieces = 1` this is exactly the historical
+    /// `has_non_pawn_material` test — one piece suffices — so the default is
+    /// inert. Higher values demand more before a pass is believed, because
+    /// zugzwang risk concentrates where the mover has almost nothing left to
+    /// move: with a single minor and pawns, "pass" and "move" can differ by the
+    /// whole game.
+    #[inline(always)]
+    fn nmp_material_ok(&self, board: &Board) -> bool {
+        let color = board.side_to_move();
+        let non_pawn = board.pieces(color, Piece::Knight)
+            | board.pieces(color, Piece::Bishop)
+            | board.pieces(color, Piece::Rook)
+            | board.pieces(color, Piece::Queen);
+        // `count()` only when the threshold actually needs it; `any()` is the
+        // cheap baseline path and keeps the seeded behaviour free.
+        if self.params.nmp_min_non_pawn_pieces <= 1 {
+            non_pawn.any()
+        } else {
+            infra::to_i32(non_pawn.count() as usize) >= self.params.nmp_min_non_pawn_pieces
+        }
+    }
+
     fn negamax<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -1848,12 +1873,23 @@ impl Searcher {
                     || beta.abs() < MATE_SCORE - infra::to_i32(MAX_PLY))
                 // 4.4b: restrict to nodes the caller expects to fail high.
                 && (self.params.nmp_require_cut_node == 0 || cut_node)
+                // 4.4c: a node that hinges on one move is the worst place to
+                // trust a null refutation. Evidence-only, so it slightly
+                // over-approximates - the conservative direction.
+                && (self.params.nmp_singular_guard == 0
+                    || !(depth >= 4
+                        && ev.mv.is_some()
+                        && ev.allows_singular(
+                            depth,
+                            self.params.singular_tt_depth_margin,
+                            self.params.singular_reject_speculative != 0,
+                        )))
                 && depth >= 3
                 && nmp_eval
                     >= beta
                         - self.params.nm_depth_coeff * depth
                         - self.params.nm_improving_bonus * improving_i
-                && board.has_non_pawn_material(board.side_to_move())
+                && self.nmp_material_ok(board)
             {
                 #[cfg(feature = "diag")]
                 if self.nmp_verify_nesting > 0 {
@@ -2291,7 +2327,7 @@ impl Searcher {
                 }
                 if singular_score < singular_beta {
                     extension = if !is_pv
-                        && singular_score < singular_beta - 20
+                        && singular_score < singular_beta - self.params.singular_double_margin
                         // 4.4b: cap 1 removes the double extension entirely.
                         && self.params.singular_max_extension >= 2
                     {

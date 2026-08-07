@@ -312,6 +312,45 @@ search_params! {
     /// sign here is genuinely unknown.
     nmp_use_static_eval = 0, "NmpUseStaticEval", 0..=1;
 
+    // ── 4.4c ────────────────────────────────────────────────────────────────
+
+    /// Refuse NMP at a node whose TT move may be singular.
+    ///
+    /// 0 = accepted baseline. A node that hinges on one move is the worst place
+    /// to trust a null refutation: passing concedes nothing *because* the
+    /// position's value lives in a single reply, so a null cutoff there reports
+    /// safety the position does not have. 1 skips NMP when this node's evidence
+    /// would already admit a singular verification.
+    ///
+    /// This is PLAN 4.4's "potential-singularity protection". Note the
+    /// predicate is evaluated BEFORE the move loop, so it uses node evidence
+    /// only — it cannot know the TT move is legal yet, which makes it a slight
+    /// over-approximation and therefore the conservative direction.
+    nmp_singular_guard = 0, "NmpSingularGuard", 0..=1;
+
+    /// Minimum non-pawn pieces the side to move must have for NMP.
+    ///
+    /// 1 = accepted baseline, i.e. exactly the existing
+    /// `has_non_pawn_material` test. Zugzwang risk concentrates where the mover
+    /// has almost nothing left to move: with one minor piece and pawns, "pass"
+    /// and "move" can differ by the whole game. 2 or 3 demand progressively more
+    /// material before a null is trusted.
+    ///
+    /// The existing guard is not removed — this tightens the same test, so 1
+    /// reproduces it exactly and the `tests/zugzwang.rs` pawn-only assertions
+    /// keep covering the boundary.
+    nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
+
+    /// Margin below `singular_beta` required for a DOUBLE extension.
+    ///
+    /// 20 = accepted baseline, previously a bare literal. PLAN 4.4 asks for
+    /// "separate single/double rules"; making the double rule's own margin a
+    /// coordinate is what separates them, and the 4.1 census measured double
+    /// extensions at 21 of 101 sampled attempts against 25 single — a high share
+    /// for the more aggressive branch. Larger values make doubles rarer without
+    /// removing them, which `SingularMaxExtension=1` does bluntly.
+    singular_double_margin = 20, "SingularDoubleMargin", 0..=200;
+
     /// Cap on a single singular extension.
     ///
     /// 2 = accepted baseline. The 4.1 census measured double extensions at 21 of
@@ -616,13 +655,23 @@ mod tests {
             ("NmpRequireCutNode", p.nmp_require_cut_node),
             ("NmpDecisiveGuard", p.nmp_decisive_guard),
             ("NmpUseStaticEval", p.nmp_use_static_eval),
+            ("NmpSingularGuard", p.nmp_singular_guard),
         ] {
             assert_eq!(value, 0, "4.4 switch {name} must land inert");
         }
-        // Not an on/off switch: 2 is the baseline, 1 is the restrictive arm.
+        // Not on/off switches: these three carry the baseline value itself, so
+        // the inert position is the current constant rather than zero.
         assert_eq!(
             p.singular_max_extension, 2,
             "4.4b extension cap must land inert"
+        );
+        assert_eq!(
+            p.nmp_min_non_pawn_pieces, 1,
+            "4.4c material guard must reproduce has_non_pawn_material"
+        );
+        assert_eq!(
+            p.singular_double_margin, 20,
+            "4.4c double-extension margin must land inert"
         );
         assert_eq!(p.probcut_store_depth_adj, 3, "4.3 arm D must land inert");
         assert_eq!(p.qs_refine_min_depth, 0, "4.3 arm C must land inert");

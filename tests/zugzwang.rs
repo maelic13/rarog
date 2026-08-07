@@ -223,7 +223,7 @@ fn forced_mates_are_still_proven() {
 #[test]
 fn every_4_4_switch_preserves_null_soundness() {
     type Setter = fn(&mut rarog::params::SearchParams);
-    let arms: [(&str, Setter); 10] = [
+    let arms: [(&str, Setter); 15] = [
         ("baseline", |_p| {}),
         ("nmp subtree suppression", |p| {
             p.nmp_suppress_null_in_verification = 1;
@@ -232,6 +232,12 @@ fn every_4_4_switch_preserves_null_soundness() {
         ("nmp require cut node", |p| p.nmp_require_cut_node = 1),
         ("nmp static eval", |p| p.nmp_use_static_eval = 1),
         ("singular cap 1", |p| p.singular_max_extension = 1),
+        ("singular double margin 200", |p| {
+            p.singular_double_margin = 200;
+        }),
+        ("nmp singular guard", |p| p.nmp_singular_guard = 1),
+        ("nmp material >=2", |p| p.nmp_min_non_pawn_pieces = 2),
+        ("nmp material >=3", |p| p.nmp_min_non_pawn_pieces = 3),
         ("singular rejects speculative", |p| {
             p.singular_reject_speculative = 1;
         }),
@@ -247,12 +253,22 @@ fn every_4_4_switch_preserves_null_soundness() {
             p.nmp_decisive_guard = 1;
             p.nmp_require_cut_node = 1;
             p.nmp_use_static_eval = 1;
+            p.nmp_singular_guard = 1;
+            p.nmp_min_non_pawn_pieces = 3;
             p.singular_max_extension = 1;
+            p.singular_double_margin = 200;
             p.singular_reject_speculative = 1;
             p.rfp_allow_tt_pv = 1;
             p.razor_allow_tt_pv = 1;
             p.nmp_allow_tt_pv = 1;
             p.probcut_allow_tt_pv = 1;
+        }),
+        // The registered first bundle, exactly as PLAN 4.4c specifies it.
+        ("first bundle", |p| {
+            p.singular_reject_speculative = 1;
+            p.nmp_suppress_null_in_verification = 1;
+            p.razor_allow_tt_pv = 1;
+            p.nmp_decisive_guard = 1;
         }),
     ];
 
