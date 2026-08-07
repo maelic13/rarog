@@ -453,14 +453,42 @@ both backends, and fmt/clippy×3/tests×3 pass. Gate binaries are
 `rarog-43c-pgo.exe` (median of three clean PGO builds) versus
 `rarog-d00e1ac-pgo.exe`.
 
-Two things the verdict reader must know. The candidate needs **+1.43% more
-nodes** for bench depth 13 *and* runs **−2.45% NPS** — about 4% worse
-time-to-depth, a real headwind at ~2 Elo per 1% NPS. A park would therefore
-reflect that cost/benefit balance, not necessarily a wrong contract. And this
-step bundles the singular-rejection contract with the change from a
-margin-shifted to an actual ProbCut stored score, **with no ablation switch on
-the score half**, so a failure cannot be attributed between them; add one before
-re-testing rather than guessing which half was responsible.
+#### 4.3c result — **NOT PROMOTED; cost attributed (RAR-S34)**
+
+The gate came back dead neutral: +0.35 ± 6.18 Elo over 4,960 games, LLR −1.71 of
+±2.94 and steady, stopped short of a formal H0 because the drift was exactly as
+RAR-M10 predicts for a neutral candidate.
+
+Peeling the step into its three sub-changes, three PGO builds each, one
+interleaved NPS pass (time-to-depth = node ratio ÷ NPS ratio):
+
+| Sub-change | Nodes | NPS | Time-to-depth |
+|---|---:|---:|---:|
+| Age narrowing 5→4 bits | 0.00% | +0.10% | **−0.10% (free)** |
+| \+ singular rejection of speculative | −0.19% | +0.97% | **−1.15% (faster)** |
+| \+ actual ProbCut stored score | +1.43% | −2.79% | **+4.34%** |
+
+**The contract is free; the bundled extra is the whole cost.** The
+actual-ProbCut-score change alone is +5.55% time-to-depth, and the singular
+contract does not need it — persisted provenance delivers that, not the stored
+value. Plausible mechanism, tying to RAR-S30: a higher stored `Lower` raises
+`eval_for_pruning`, refinement acts almost purely as an upward correction that
+*prevents* razoring, so more nodes survive and the mix shifts toward expensive
+interior nodes.
+
+Two of the notes written above this section were **wrong** and are corrected
+here: the age narrowing is NOT bench-visible (v1 is bench-identical at
+6,502,902, so the bit could have landed inert), and it is not the source of the
+headwind.
+
+Consequences: do not read this gate as evidence against the speculative-evidence
+contract — it tested the contract plus a costly extra. Retain the contract
+*without* the score change, which is strictly cheaper than baseline and so free
+to carry, and make the score change a separate inert knob for 4.10. Do not
+re-gate the contract standalone: its best prior is RAR-S31's ~5 nElo, which
+cannot clear `[3,10]`, so it belongs in **4.4's bundle**, where evidence-bound
+singularity needs the bit anyway and the combined effect is large enough to
+resolve.
 
 #### 4.3d — in-check qsearch ordering, after 4.3c
 

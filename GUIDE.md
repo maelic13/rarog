@@ -85,10 +85,13 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
   - [ ] **4.3c Persisted provenance: IMPLEMENTED, GATE OPEN.** One speculative
         bit plus the actual ProbCut result; singular alone rejects that class.
         Candidate fingerprint 6,595,869; 863 otherwise-eligible singular seeds
-        blocked in the diagnostic bench. Verified independently before launch
-        (RAR-S33), and RUNNING now as final-PGO `[3,10]`, max 16k. It carries a
-        ~4% time-to-depth headwind (+1.43% nodes, −2.45% NPS), so a park would
-        reflect that balance rather than a wrong contract.
+        blocked in the diagnostic bench. **Gate NOT promoted:** dead neutral at
+        +0.35 ± 6.18 Elo over 4,960 games, LLR −1.71 (RAR-S34). Attribution shows
+        why and it is not the contract's fault — the age bit is FREE (0.00%
+        nodes), the singular rejection is free and 1.15% FASTER to depth, and the
+        whole ~4.3% headwind comes from the bundled actual-ProbCut-score change
+        (+5.55% TTD on its own), which the contract does not need. Carry the
+        contract without that change into 4.4; do not re-gate it standalone.
   - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
         history and coherent delta/SEE/futility, after 4.3c.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
