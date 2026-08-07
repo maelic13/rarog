@@ -98,8 +98,11 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         and `+ProbCutStoreActualScore=1` reproduces 6,595,869 — both verified
         against the attribution's own builds. **4.4 turns the contract on inside
         its bundle**; do not flip either switch alone without a gate.
-  - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
-        history and coherent delta/SEE/futility, after 4.3c.
+  - [x] **4.3d MIGRATED to 4.6, and 4.3 is CLOSED.** In-check qsearch ordering
+        and capture/SEE history move to 4.6, which already owns the late-evasion
+        mismatch and the check taxonomy, so it is the same work under another
+        heading — and far too small for a fifth standalone gate. Number stays
+        frozen as a historical reference.
 - [ ] **4.4 NMP/IIR/singular — also owns 4.3c's gate** (turn
       `SingularRejectSpeculative` on inside this bundle, keep it ablatable):
       subtree null suppression, node/eval guards,
@@ -168,8 +171,9 @@ the user explicitly abandons that program.
 
 ## What you run now
 
-**No job is requested. 4.3a and 4.3c are resolved and nothing is baked; 4.3d is
-still open.** Do not resume the old aspiration tuner or reuse `p102a-snapshot`.
+**No job is requested. Phase 4.3 is CLOSED with nothing baked** — 4.3a and 4.3c
+are resolved and 4.3d has moved to 4.6. Do not resume the old aspiration tuner
+or reuse `p102a-snapshot`.
 
 | Arm / step | Knob | Verdict |
 |---|---|---|
@@ -185,15 +189,11 @@ provenance bit and age narrowing are retained and cost nothing; its two
 behaviour switches default off and are verified to reproduce 6,490,746 and
 6,595,869 when enabled.
 
-**Recommended next step: 4.4 — NMP/IIR/singular, which also owns 4.3c's gate.**
-Build the subsystem with cheap deterministic ablations, then one material-gain
-gate on the coherent final-PGO bundle with `SingularRejectSpeculative=1`
-included. No games until that bundle exists.
-
-4.3d (in-check qsearch ordering) is nominally next by numbering, but it is a
-~9%-of-qnodes ordering change whose likely size cannot clear `[3,10]` alone —
-the same trap 4.3a fell into four times. Bundle it into 4.4 or 4.6 rather than
-gating it standalone. Maintainer's call; the numbering does not force it.
+**Next step is 4.4 — NMP/IIR/singular, which also owns 4.3c's gate.** Build the
+subsystem with cheap deterministic ablations, then ONE material-gain gate on the
+coherent final-PGO bundle with `SingularRejectSpeculative=1` included. No games
+until that bundle exists — 4.3 spent ~100k games on five standalone gates and
+banked nothing, which is the reason this step bundles.
 
 ⚠ **Never run anything timed while a gate is playing**, and never compile —
 not even `cargo check -j 2`. Both mistakes were made in this cycle: a compile

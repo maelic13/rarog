@@ -510,13 +510,27 @@ evidence-bound-singularity bundle**, where its ~5 nElo prior (RAR-S31) rides a
 combined effect large enough to clear `[3,10]` within budget. Do not flip either
 switch alone without a registered gate.
 
-#### 4.3d — in-check qsearch ordering, after 4.3c
+#### 4.3d — in-check qsearch ordering — **MIGRATED TO 4.6, 4.3 CLOSED**
 
-Stage complete in-check qsearch ordering, test capture/SEE history and make
-delta/SEE/futility coherent. Deliberately sequenced last: the plan requires
-storage to be correct first, and RAR-S25 shows the within-horizon producer
-split is currently un-inferable, so ordering work would be building on evidence
-that cannot yet be attributed.
+Scope was: stage complete in-check qsearch ordering, test capture/SEE history
+and make delta/SEE/futility coherent.
+
+It is not being dropped, it is being **moved to 4.6**, where it belongs on the
+merits: 4.6 already owns the late-evasion `!in_check` mismatch, the
+forcing/safe/losing check taxonomy and the unification of LMP/futility/SEE, so
+"coherent delta/SEE/futility" is the same work under another heading. Doing it
+inside 4.3 would have meant a fifth standalone gate on a change affecting ~9% of
+qnodes — and 4.3a already demonstrated four times over that a mechanism of that
+size cannot clear `[3,10]` alone. The number stays frozen as a historical
+reference; the work is listed in 4.6.
+
+**Phase 4.3 is therefore CLOSED.** Its ledger: no accepted strength change, and
+that is the honest outcome rather than a failure to report. What it did produce
+and hand forward is a persisted speculative-provenance bit that costs nothing,
+two ablatable switches verified to reproduce their measured variants exactly, a
+refuted premise (depth-0 evidence *earns* strength — RAR-S29/S30, so 4.6 must
+not restrict it), a measured ProbCut-score cost to keep out of future candidates
+(RAR-S34), and the drift calibration that now sizes every gate (RAR-M10).
 
 #### 4.2 refactor speed — **CLOSED (RAR-S28)**
 
@@ -574,6 +588,16 @@ preserve the accepted zero-reduction floor. Replace universal quiet-check
 bonus/bypass with forcing/safe/losing check classes. Resolve late-evasion
 `!in_check` mismatch, add attributable post-LMR feedback and track pruning
 overlap/best-move recall. Keep switches ablatable for 4.10.
+
+**Also absorbs former 4.3d:** stage complete in-check qsearch ordering and test
+capture/SEE history as part of making delta/SEE/futility coherent. It lands here
+because the evasion mismatch and the check taxonomy are already this step's
+work, and because it is far too small to carry a gate of its own.
+
+⚠ Carried constraint from RAR-S29/S30: **do not restrict depth-0 TT evidence in
+this step.** Denying it the pruning eval was gated twice and lost both times
+(−1.49 and −3.18 Elo); depth-0 entries are 67.5% of stores and are earning
+strength. Unify the *depth semantics* without tightening *evidence admission*.
 
 ### 4.7 — One root-confidence model
 
