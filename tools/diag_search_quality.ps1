@@ -269,6 +269,23 @@ if ($contradictHits -gt 0) {
         $csChanged, $csMulticut, ($csChanged + $csMulticut), (Ratio ($csChanged + $csMulticut) $csa))
     Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
 
+    # 4.5: IS a capture-caused residual actually noisier? Both `CorrGuardCapture`
+    # and `CorrCaptureWeightPct` assume it is, and nobody had measured it. If the
+    # two means are close, the premise behind both knobs is wrong.
+    $rcN = Value 'correction_resid_capture_n'
+    $rqN = Value 'correction_resid_quiet_n'
+    if (($rcN + $rqN) -gt 0) {
+        $rcMean = if ($rcN -gt 0) { (Value 'correction_resid_capture_sum') / $rcN } else { 0 }
+        $rqMean = if ($rqN -gt 0) { (Value 'correction_resid_quiet_sum') / $rqN } else { 0 }
+        Write-Host ""
+        Write-Host "  4.5 CORRECTION RESIDUAL BY ATTRIBUTION (exact)"
+        Write-Host ("      capture-caused : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rcN, $rcMean)
+        Write-Host ("      quiet-caused   : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rqN, $rqMean)
+        Write-Host ("      capture share  : {0,7:N2} %   ratio of means {1:N3}" -f `
+            (Ratio $rcN ($rcN + $rqN)), $(if ($rqMean -gt 0) { $rcMean / $rqMean } else { 0 }))
+        Write-Host "      (ratio near 1.0 means the down-weighting premise is unsupported)"
+    }
+
     # 4.4a sizing. Measured with every 4.4a switch OFF, so these size the arms
     # BEFORE a gate is spent rather than explaining one afterwards.
     $veto = Value 'tt_pv_veto'

@@ -2724,7 +2724,9 @@ impl Searcher {
                             // capture cutoff (a tactical result the positional
                             // eval should not learn to predict). Seed 0 = train.
                             if !(is_capture && self.params.corr_guard_capture == 1) {
-                                self.update_correction(board, score - static_eval, depth, ply);
+                                let residual =
+                                    self.attributed_residual(score - static_eval, is_capture);
+                                self.update_correction(board, residual, depth, ply);
                             }
                         }
                     }
@@ -2788,7 +2790,8 @@ impl Searcher {
                 // 8.5(a): same capture guard for the end-of-node (Exact /
                 // fail-low) update. Seed 0 = train as before.
                 if !(best_move.is_capture() && self.params.corr_guard_capture == 1) {
-                    self.update_correction(board, diff, depth, ply);
+                    let residual = self.attributed_residual(diff, best_move.is_capture());
+                    self.update_correction(board, residual, depth, ply);
                 }
             }
         }
@@ -3707,6 +3710,38 @@ impl Searcher {
             Wdl::Loss => -TB_WIN_SCORE + infra::to_i32(ply),
             Wdl::BlessedLoss if !self.syzygy_50_move_rule => -TB_WIN_SCORE + infra::to_i32(ply),
             Wdl::BlessedLoss | Wdl::Draw | Wdl::CursedWin => 0,
+        }
+    }
+
+    /// 4.5: weight a correction residual by what produced it.
+    ///
+    /// At the seeded `CorrCaptureWeightPct = 100` this returns `diff` unchanged,
+    /// so the default is exactly inert. Below 100 a capture-caused residual is
+    /// down-weighted rather than discarded — the graded alternative to
+    /// `corr_guard_capture`, whose binary exclusion RAR-S16 measured at −55.98
+    /// Elo because it threw away 51.3% of all training.
+    ///
+    /// Also records the residual magnitude per attribution class, which is the
+    /// measurement that decides whether down-weighting is justified at all: if
+    /// capture-caused residuals are no noisier than quiet ones, the premise
+    /// behind both this knob and `corr_guard_capture` is wrong.
+    #[inline(always)]
+    fn attributed_residual(&self, diff: i32, from_capture: bool) -> i32 {
+        #[cfg(feature = "diag")]
+        {
+            let magnitude = u64::from(diff.unsigned_abs());
+            if from_capture {
+                crate::diag_count!(correction_resid_capture_n);
+                crate::diag_add!(correction_resid_capture_sum, magnitude);
+            } else {
+                crate::diag_count!(correction_resid_quiet_n);
+                crate::diag_add!(correction_resid_quiet_sum, magnitude);
+            }
+        }
+        if from_capture && self.params.corr_capture_weight_pct != 100 {
+            diff * self.params.corr_capture_weight_pct / 100
+        } else {
+            diff
         }
     }
 

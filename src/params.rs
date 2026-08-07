@@ -561,6 +561,27 @@ search_params! {
     /// verified in code — so 8.5(a) adds only the capture guard. Seed 0 = today;
     /// it remains a discrete A/B knob and was excluded from 10.4.6(a).
     corr_guard_capture = 0, "CorrGuardCapture", 0..=1;  // 8.5 closed neutral 2026-07-27; retain through post-NNUE retune
+
+    /// 4.5 — weight (percent) applied to a correction update whose residual came
+    /// from a CAPTURE-caused cutoff, instead of dropping it.
+    ///
+    /// 100 = accepted baseline and exactly inert (`diff * 100 / 100 == diff`).
+    ///
+    /// This is the graded alternative to `corr_guard_capture`, and it exists
+    /// because RAR-S16 measured the binary exclusion at **−55.98 Elo**: the guard
+    /// discarded 59.7% of training, so the run measured a crippled signal rather
+    /// than the mechanism's value. The 4.1 census puts capture-attributed updates
+    /// at **145,372 of 283,590 (51.3%)**, which is far too much to throw away and
+    /// is precisely why exclusion failed.
+    ///
+    /// Scaling keeps the coverage while down-weighting evidence the positional
+    /// eval arguably should not learn to predict. 0 degenerates to the exclusion
+    /// that already lost, so useful values are strictly between — and whether
+    /// ANY down-weighting is justified is an open question the new
+    /// `correction_resid_*` diagnostics answer: if capture-caused residuals are
+    /// no noisier than quiet ones, the whole premise is wrong and this knob
+    /// should stay at 100. Final weight enters the 4.10 fit; no dedicated SPSA.
+    corr_capture_weight_pct = 100, "CorrCaptureWeightPct", 0..=100;
     /// 8.5(b) — magnitude margins: scale forward pruning / LMR by |correction|.
     /// A large correction means the raw static eval is being heavily adjusted
     /// and is less trustworthy, so prune/reduce LESS (conservative-when-

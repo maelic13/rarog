@@ -88,6 +88,17 @@ pub mod counters {
         cutoff_first_move,
         correction_updates,
         correction_on_capture,
+        // 4.5 — residual MAGNITUDE by attribution class, exact.
+        //
+        // The premise behind both `CorrGuardCapture` and `CorrCaptureWeightPct`
+        // is that a capture-caused residual is less trustworthy evidence for a
+        // positional correction. Nobody has measured that. These give the mean
+        // |residual| for each class; if the two means are close, the premise is
+        // wrong and neither knob should move off its baseline.
+        correction_resid_capture_n,
+        correction_resid_capture_sum,
+        correction_resid_quiet_n,
+        correction_resid_quiet_sum,
         // 9.7.5(b) — SMP quality. The question these answer: 16 threads give
         // 13x the nodes but +0 depth and +2 seldepth, so where does the work
         // go? Four hypotheses imply opposite fixes, hence measure first.

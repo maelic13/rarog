@@ -670,6 +670,23 @@ singularity contract expressible at all, since RAR-S25 showed entry shape leaks
 
 ### 4.5 — History and correction attribution
 
+#### 4.5a — attribution measured, graded weight landed inert (RAR-S38)
+
+The premise behind the capture guard is now **measured rather than assumed**, and
+it holds: capture-caused residuals average **179.1 cp** against **78.8 cp** for
+quiet-caused ones, a **2.27x** ratio over 283,590 exact updates split 51.26% /
+48.74%.
+
+That explains RAR-S16's −55.98 Elo without contradicting it. The guard was
+directionally right and its *instrument* was wrong: excluding capture-caused
+updates discards 51.3% of all training. `CorrCaptureWeightPct` (100 = inert) is
+the graded alternative — keep the coverage, down-weight the noisier class.
+
+A weight near 100/2.27 ≈ 44% would roughly equalise per-update contribution, but
+that is a **4.10 tuning coordinate**, not a value to bake: RAR-S13 is the
+precedent against baking an untuned constant, and lesson 2 puts consumer
+constants after architecture. Do not gate this knob standalone.
+
 Prevent capture/speculative/null/aborted outcomes from training quiet
 correction. Compare exclusion/scaled/noisy residual; implement true compact
 2/4-ply continuation-correction pairs. Add threat, quiet/noisy, check/evasion

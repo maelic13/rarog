@@ -129,6 +129,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         resolvability table against its composition before launching.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.
+  - [x] **4.5a Attribution measured (RAR-S38).** Capture-caused residuals average
+        179.1 cp against 78.8 cp quiet — a **2.27x** ratio over 283,590 updates.
+        So the capture guard was directionally RIGHT and its instrument wrong:
+        exclusion discards 51.3% of training (RAR-S16, −55.98 Elo). Graded
+        `CorrCaptureWeightPct` landed inert at 100; the weight is a 4.10
+        coordinate, not a standalone gate.
+  - [ ] **4.5b Remaining:** true compact 2/4-ply continuation-correction pairs,
+        centralized saturation/aging, and preventing double-counting across
+        eval/pruning/reduction.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
