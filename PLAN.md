@@ -395,10 +395,11 @@ tested:
       the option set and a baked non-tune PGO build both bench 6,100,099 /
       EBF 2.437. PGO and `tune` are codegen, not semantics, so no amount of
       game-playing can find a decision difference that does not exist.
-- **The speed relationship transfers favourably.** cand/base NPS is 0.9764
-      non-PGO versus **0.9844 under PGO** — PGO recovers 0.8pp of the
-      candidate's per-node cost, i.e. shipping is *kinder* to the change than
-      the configuration it was measured in.
+- **The speed relationship is unchanged within noise.** cand/base NPS is
+      **−1.15% non-PGO** (one binary via `setoption`, zero build noise) versus
+      **−1.355% PGO** (3 builds per arm, pooled, bias-cancelled). They agree to
+      ~0.2pp ≈ 0.4 Elo, against a measured +3.35 Elo effect. For PGO to threaten
+      the verdict it would need a relative swing above roughly 1.5%.
 - **A second SPRT would have been strictly worse evidence.** RAR-S31 ran
       byte-identical binaries on both sides, so it carries zero build noise. A
       two-binary PGO comparison reintroduces the ~0.4% per-build offset —
@@ -412,10 +413,12 @@ NPS/TC not holding at another) is real but is not per-arm work — 4.11's
 cumulative gate with LTC and 4T confirmation is where it is caught, and that
 applies to every arm this project has accepted.
 
-Caveats recorded: the 0.8pp gap carries roughly ±0.3–0.4pp uncertainty because
-the PGO side comes from pooled 3-build medians while the non-PGO side is
-same-binary, and the ~2 Elo per 1% NPS conversion is a project constant rather
-than a measurement here.
+⚠ Both ratios were first measured on a machine concurrently running an SPRT and
+were void; the figures above are the idle re-run. The contended pass read the
+non-PGO ratio as −2.36% against a true −1.15% and had the cross-configuration
+direction backwards. **Never time anything while a gate plays** — deterministic
+outputs such as node counts and fingerprints survive contention, nothing timed
+does.
 
 #### 4.3c — persisted provenance and real ProbCut-result handling
 
