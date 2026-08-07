@@ -3502,13 +3502,22 @@ impl Searcher {
         // bonuses are equal (the seeded state) the SEE probe is SKIPPED, so
         // ordering pays nothing for a distinction it is not making.
         let direct_check = if board.gives_check_with(mv, check_info) {
-            if self.params.check_bonus_losing != self.params.check_bonus_safe
-                && !board.see_ge(mv, 0)
-            {
-                self.params.check_bonus_losing
+            // 4.6c: the safe/losing SPLIT WAS REVERTED. `see_ge(mv, 0)` returned
+            // true for all 332,683 quiet checking moves on bench and `losing`
+            // counted ZERO, so the split could never fire — `see_ge` is
+            // evidently trivially satisfied for a non-capturing move, making it
+            // the wrong predicate for "the checker can be taken at a loss".
+            // Shipping a knob that cannot fire would be dead code dressed as a
+            // tunable, so only the census survives; a correct classifier needs a
+            // different test (is the destination defended, or the checker
+            // attacked by a lesser piece) and belongs in 4.10's ordering work.
+            #[cfg(feature = "diag")]
+            if board.see_ge(mv, 0) {
+                crate::diag_count!(check_order_safe);
             } else {
-                self.params.check_bonus_safe
+                crate::diag_count!(check_order_losing);
             }
+            self.params.check_bonus_safe
         } else {
             0
         };

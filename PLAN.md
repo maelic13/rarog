@@ -954,6 +954,19 @@ strength of a 4T reading without the 1T non-inferiority to match.
 
 ### 4.10 — Single consolidated pre-NNUE search fit
 
+#### 4.10a — composition must be MEASURED, not summed (RAR-S45)
+
+⚠ The six-member cheap set below was assembled from individually-sized arms
+whose effects summed to about **-17% nodes**. Measured as a SET it is
+**6,800,242 nodes, +4.57%, EBF 2.450** — composition flipped the sign. That is
+the same headwind shape as RAR-S34's candidate, which landed dead neutral.
+
+So the bundle cannot be built by picking cheap singles. Before registering
+bounds and a cap, **measure candidate subsets as sets** and choose a composition
+that is actually cheap together — then re-check the resolvability table against
+that composition. The individual sizings remain useful for ordering candidates
+and for attributing a failure, but not for predicting a bundle.
+
 #### 4.10a — accumulated-bundle gate, before the fit
 
 This step **owns the gate deferred from 4.4d**, and it runs before the SPSA

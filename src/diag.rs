@@ -104,6 +104,16 @@ pub mod counters {
         correction_resid_capture_sum,
         correction_resid_quiet_n,
         correction_resid_quiet_sum,
+        // 4.6c — safe versus losing quiet checks in the ordering path.
+        //
+        // `CheckBonusLosing` measured 0.00% node change even at 0, which is
+        // indistinguishable from dead code. These decide which it is: a zero
+        // `losing` count means the population is genuinely empty, while a
+        // non-zero one means the switch is wired but its effect is masked.
+        // Counted unconditionally, so the answer does not depend on the
+        // switch being enabled.
+        check_order_safe,
+        check_order_losing,
         // 4.5d — residual by HALFMOVE-CLOCK context. PLAN 4.5 allows a new
         // correction context only where held-out unique signal is shown, so the
         // measurement comes before any proposal. Rule-50 proximity is the

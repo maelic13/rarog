@@ -178,10 +178,10 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         **−8.70% nodes, EBF 2.449 → 2.424**: the largest cheap arm in Phase 4 and
         the strongest 4.10a bundle member. Inert at 0.
   - [x] **4.6c Check classes landed; other two items disposed (RAR-S44).** The
-        flat 32,000 bonus is split into safe/losing classes, inert and free at
-        default. ⚠ **`CheckBonusLosing` measures 0.00% even at 0**, so it is NOT
-        verified effective - it must not enter a bundle until its population is
-        counted. Post-LMR depth feedback needs no new attempt: already rejected
+        flat 32,000 bonus became a tunable coordinate. The safe/losing SPLIT was
+        implemented, measured NON-FUNCTIONAL and **reverted** (RAR-S45: zero
+        losing-check population across 332,683 checks, because `see_ge` is
+        trivially true for a non-capture — the predicate was wrong). Post-LMR depth feedback needs no new attempt: already rejected
         twice (Phase 2.8 -1.38, RAR-S14 -7.29). In-check qsearch ordering is
         already complete (`score_moves` when in check); the lazy-STAGING half is
         a throughput item and moves to 4.9.
@@ -195,7 +195,11 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       without regressing the platform/ISA matrix.
 - [ ] **4.10 One search SPSA:** freeze architecture, select ≤24 coordinates and
       run the only additional pre-NNUE fit plus post-fit ablations.
-  - [ ] **4.10a Accumulated-bundle gate — OWNS the deferred 4.4 gate.** Must run
+  - [ ] **4.10a Accumulated-bundle gate — OWNS the deferred 4.4 gate.**
+        ⚠ **Composition must be MEASURED as a set, not summed (RAR-S45):** the
+        six cheap members below summed to −17% nodes but measure **+4.57% as a
+        set**, the same headwind shape that landed 4.3c dead neutral. Rebuild
+        the composition from measured subsets first. Must run
         BEFORE the fit: it is what freezes the architecture. Current cheap-set
         members, all inert and individually sized:
         `CorrSkipWhenTtRefined` (−4.50% nodes),
