@@ -79,8 +79,10 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       nElo +5.24 ± 3.82, LOS 99.64%, 31,822 games, zero forfeits (RAR-S31). The
       first 4.3 arm to pass, and it confirms that speculative-evidence and
       horizon-depth restrictions are different questions.
-- [ ] **4.3b-gate Arm B PGO re-gate:** required before acceptance. Binaries are
-      built and staged; `[0,3]` with a pre-registered `[-3,0]` fallback.
+- [x] **4.3b-gate Arm B transfer check: PASSED, no second SPRT needed.**
+      Decisions bit-identical across configurations (both bench 6,100,099) and
+      the cand/base NPS ratio improves under PGO (0.9764 → 0.9844), so shipping
+      is kinder to the change than the tested configuration (RAR-S32).
 - [ ] **4.3a-v Arm D:** deprioritized. Arm B already covers most of its
       singular-authority motivation, leaving the weaker honest-stored-depth
       argument at a cost of +18.2% nodes.
@@ -222,7 +224,7 @@ cargo build --release --features diag
 |---|---|
 | Behaviour-neutral | Exact bench plus fmt/tests/performance evidence |
 | Strength candidate | Registered SPRT; H1 accepts, otherwise revert behaviour |
-| Knob A/B passes on a tune binary | Not accepted yet — re-gate as clean PGO with the value baked |
+| Knob A/B passes on a tune binary | Verify **transfer**, do not re-run the gate: bench fingerprint identical between the tune binary with the option set and a baked non-tune PGO build, plus a cand/base NPS ratio no worse under PGO. A second SPRT only if one of those fails (RAR-S32) |
 | Root/TM/SMP | 1T STC/LTC plus 4T LTC, zero forfeits |
 | Mechanism de-tunes consumers | Keep inert/ablatable until 4.10; post-fit ablation required |
 | SPSA | Phase 4.10 and Phase 7.3 only unless new evidence authorizes another; never resume the rejected p102a run |
