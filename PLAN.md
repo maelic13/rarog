@@ -764,6 +764,28 @@ bonus/bypass with forcing/safe/losing check classes. Resolve late-evasion
 `!in_check` mismatch, add attributable post-LMR feedback and track pruning
 overlap/best-move recall. Keep switches ablatable for 4.10.
 
+#### 4.6b — one shared prospective depth (RAR-S43)
+
+The audit's finding is confirmed and fixed: LMP, futility and SEE pruning all read
+raw `depth`, so a move about to be reduced by 3 plies was judged as if it were
+not. The LMR reduction arithmetic is now a single extracted formula that both LMR
+and a pre-move prospective depth call, with a **`debug_assert` that the two agree**
+— checked, not asserted in a comment, which matters given three comment/code
+mismatches this cycle.
+
+`SelectivityProspectiveDepth = 1` measures **−8.70% nodes and EBF 2.449 → 2.424**:
+the largest cheap arm in Phase 4 and the strongest single member of the 4.10a
+bundle. All three consumers move on ONE knob by design — switching them
+individually would recreate the mixed-depth incoherence this step removes.
+
+Two terms are excluded from the shared depth, documented rather than hidden: the
+per-thread jitter (drawn once at the real reduction site, never at `Threads = 1`)
+and the singular extension (not known when pruning runs).
+
+⚠ Pruning more is not automatically better — RAR-S27's arm pruned 43.8% more and
+lost. But that arm restricted *evidence*, while this aligns a *decision* with the
+depth actually searched. Different kind of change; still needs the gate.
+
 #### 4.6a — late-evasion contradiction resolved (RAR-S42)
 
 The LMR comment claimed "`!in_check` removed, so late evasions are reducible".

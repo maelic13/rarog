@@ -1502,6 +1502,68 @@ impl Searcher {
         }
     }
 
+    /// 4.6b: LMR reduction in 1024ths, as one formula shared by LMR itself and
+    /// by the prospective depth the pruning consumers may use.
+    ///
+    /// Deliberately EXCLUDES two terms, both documented rather than hidden:
+    ///
+    /// * the per-thread jitter, because it mutates PRNG state and must be drawn
+    ///   exactly once at the real reduction site — it is ±6% of one ply and is
+    ///   not drawn at all at `Threads = 1`;
+    /// * the singular extension, because the pruning consumers run BEFORE the
+    ///   extension is known (pruning at the top of the move loop, extension
+    ///   after it), so a shared pre-move depth cannot include it.
+    ///
+    /// A `debug_assert` at the LMR site checks that both callers agree, so the
+    /// two cannot drift apart the way this arithmetic already did once.
+    #[allow(clippy::too_many_arguments)] // documented policy: search kernels
+    #[inline(always)]
+    fn lmr_reduction_units(
+        &self,
+        depth: i32,
+        searched: usize,
+        is_quiet: bool,
+        see: i32,
+        tt_pv: bool,
+        cut_node: bool,
+        quiet_hist: i32,
+        corr_abs: i32,
+        ev_is_exact: bool,
+        tt_move_is_null: bool,
+        improving: bool,
+    ) -> i32 {
+        let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
+        if tt_pv {
+            r -= self.params.lmr_tt_pv_adj;
+        } else if is_quiet {
+            r += 1024;
+        }
+        if improving {
+            r -= 1024;
+        }
+        if ev_is_exact {
+            r += self.params.lmr_exact_bound;
+        }
+        // `lmr_shallow_tt` is a misnomer: it fires on TT-move PRESENCE and was
+        // SPSA'd as such. See the `params.rs` note.
+        if !tt_move_is_null && searched >= 4 {
+            r += self.params.lmr_shallow_tt;
+        }
+        if cut_node {
+            r += self.params.lmr_cut_node;
+        }
+        if !is_quiet && see < 0 {
+            r += 1024;
+        }
+        if !tt_pv && !cut_node && quiet_hist > 4_000 {
+            r -= 1024;
+        }
+        r -= quiet_hist * 1024 / self.params.lmr_hist_div;
+        // 8.5(b): reduce less when the static eval is heavily corrected.
+        r -= corr_abs * self.params.corr_lmr_scale / 128;
+        r
+    }
+
     fn negamax<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -2209,6 +2271,46 @@ impl Searcher {
             #[cfg(feature = "diag")]
             let mut diag_move_reduced = false;
 
+            // 4.6b: ONE prospective depth for LMP, futility, SEE pruning and
+            // LMR. The audit's finding was that later pruning did not use the
+            // depth the move would actually be searched at — LMR reduced it,
+            // while the pruning tests all read raw `depth`, so a move about to
+            // be searched 3 plies shallower was still judged as if it were not.
+            //
+            // `r_units_estimate` is the shared reduction; `prospective_depth` is
+            // what remains after it. Both are computed pre-move so the pruning
+            // consumers can see them, and the LMR site debug-asserts it derives
+            // the same units.
+            let r_units_estimate = self.lmr_reduction_units(
+                depth,
+                searched,
+                is_quiet,
+                see,
+                tt_pv,
+                cut_node,
+                quiet_hist,
+                corr_abs,
+                ev.is_exact(),
+                tt_move.is_null(),
+                improving,
+            );
+            // `depth - 1` is the child's nominal depth; subtract the estimated
+            // reduction and floor at 1 so a consumer never reads a depth that
+            // would make its own `depth <= N` guards nonsensical.
+            let prospective_depth = if depth >= 3 && searched >= 2 {
+                (depth - 1 - lmr_reduction(r_units_estimate, depth - 1)).max(1)
+            } else {
+                depth
+            };
+            // At the seeded 0 every consumer keeps reading raw `depth`, so this
+            // lands inert; 1 switches all four onto the shared depth together,
+            // because switching them one at a time would recreate exactly the
+            // incoherence 4.6 exists to remove.
+            let sel_depth = if self.params.selectivity_prospective_depth != 0 {
+                prospective_depth
+            } else {
+                depth
+            };
             if !tt_pv && !in_check && searched > 0 {
                 #[cfg(feature = "diag")]
                 if diag_order_sample {
@@ -2268,18 +2370,19 @@ impl Searcher {
                 if is_quiet {
                     let prune_margin = (self.params.lmp_base
                         + self.params.lmp_not_improving * not_improving_i)
-                        * depth;
-                    let prune_candidate = (depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                        || (depth <= 8
+                        * sel_depth;
+                    let prune_candidate = (sel_depth <= 3
+                        && eval_for_pruning + prune_margin <= alpha)
+                        || (sel_depth <= 8
                             && searched
                                 > late_move_prune_count(
-                                    depth,
+                                    sel_depth,
                                     improving,
                                     self.params.lmp_count_base,
                                 ))
-                        || (depth <= 4 && quiet_hist < -10_000)
-                        || (depth <= 7
-                            && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
+                        || (sel_depth <= 4 && quiet_hist < -10_000)
+                        || (sel_depth <= 7
+                            && quiet_hist < -(self.params.quiet_hist_prune_coeff * sel_depth));
                     if prune_candidate
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -2290,10 +2393,10 @@ impl Searcher {
                     // whose TT-refined static eval plus a margin can't reach alpha
                     // is skipped. Plain skip (no fail-soft best_score update), to
                     // match the existing LMP/SEE prunes in this loop.
-                    if depth <= 8
+                    if sel_depth <= 8
                         && eval_for_pruning
                             + self.params.fp_base
-                            + self.params.fp_coeff * depth
+                            + self.params.fp_coeff * sel_depth
                             + corr_abs * self.params.corr_fut_scale / 128 // 8.5(b)
                             <= alpha
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
@@ -2306,9 +2409,9 @@ impl Searcher {
                         self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
+                    let see_threshold = (-self.params.see_pruning_coeff * sel_depth - cap_hist / 8)
                         .max(-self.params.see_pruning_max);
-                    if depth <= 8
+                    if sel_depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -2485,40 +2588,27 @@ impl Searcher {
                     // behavior exactly. SPSA tunes from this baseline.
                     // `reducible` already guarantees depth >= 3 && searched >= 2, so the
                     // table lookup is always in the populated region.
-                    let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
-                    // PV / TT-PV nodes: reduce less (param stored positive, subtracted).
-                    if tt_pv {
-                        r -= self.params.lmr_tt_pv_adj;
-                    } else if is_quiet {
-                        r += 1024;
-                    }
-                    if improving {
-                        r -= 1024;
-                    }
-                    // Exact TT bound: new term, default 0 (no current behavior displaced).
-                    if ev.is_exact() {
-                        r += self.params.lmr_exact_bound;
-                    }
-                    // TT move present and late in the list (see the `params.rs`
-                    // note: the `lmr_shallow_tt` name is a misnomer — this fires
-                    // on TT-move *presence*, and the value was SPSA'd as such).
-                    if !tt_move.is_null() && searched >= 4 {
-                        r += self.params.lmr_shallow_tt;
-                    }
-                    // Cut node.
-                    if cut_node {
-                        r += self.params.lmr_cut_node;
-                    }
-                    if !is_quiet && see < 0 {
-                        r += 1024;
-                    }
-                    if !tt_pv && !cut_node && quiet_hist > 4_000 {
-                        r -= 1024;
-                    }
-                    r -= quiet_hist * 1024 / self.params.lmr_hist_div;
-                    // 8.5(b): reduce less when the static eval is being heavily
-                    // corrected (untrustworthy). Seed 0 = no change.
-                    r -= corr_abs * self.params.corr_lmr_scale / 128;
+                    // 4.6b: ONE formula, shared with the prospective depth the
+                    // pruning consumers can use. Previously this arithmetic lived
+                    // only here, so LMP/futility/SEE had no way to know how deep
+                    // the move would actually be searched.
+                    let mut r = self.lmr_reduction_units(
+                        depth,
+                        searched,
+                        is_quiet,
+                        see,
+                        tt_pv,
+                        cut_node,
+                        quiet_hist,
+                        corr_abs,
+                        ev.is_exact(),
+                        tt_move.is_null(),
+                        improving,
+                    );
+                    debug_assert_eq!(
+                        r, r_units_estimate,
+                        "4.6b: LMR and the prospective depth must share one formula"
+                    );
                     // 8.13: per-thread reduction jitter, the Reckless
                     // diversification shape. `r` is in 1024ths of a ply, so
                     // ±64 is ±6% of one ply: enough to send threads down

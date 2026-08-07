@@ -312,6 +312,33 @@ search_params! {
     /// sign here is genuinely unknown.
     nmp_use_static_eval = 0, "NmpUseStaticEval", 0..=1;
 
+    // ── 4.6b ──────────────────────────────────────────────────
+
+    /// Derive LMP, futility and SEE pruning from the same PROSPECTIVE depth LMR
+    /// will search the move at, instead of from raw `depth`.
+    ///
+    /// 0 = accepted baseline: every consumer reads raw `depth`, which is the
+    /// incoherence the 4.3 audit recorded — a move about to be reduced by 3 plies
+    /// was still judged for pruning as if it were not. 1 switches all three onto
+    /// `prospective_depth = depth - 1 - lmr_reduction(...)`, floored at 1.
+    ///
+    /// All three move together on purpose. Switching them one at a time would
+    /// recreate precisely the mixed-depth incoherence this step exists to remove,
+    /// so there is no per-consumer knob.
+    ///
+    /// The shared depth excludes two terms, both documented at
+    /// `lmr_reduction_units`: the per-thread jitter (drawn once, at the real
+    /// reduction site, and not drawn at all at `Threads = 1`) and the singular
+    /// extension (not yet known when pruning runs). A `debug_assert` checks the
+    /// two callers derive identical reduction units, so they cannot drift.
+    ///
+    /// ⚠ Expect this to PRUNE MORE, since a reduced depth passes `depth <= N`
+    /// guards more often and shrinks the margins. The 0.47% measured pruning
+    /// overlap (RAR-S21) says deduplication is not the prize here — the prize, if
+    /// any, is that the decisions become coherent with the depth actually
+    /// searched.
+    selectivity_prospective_depth = 0, "SelectivityProspectiveDepth", 0..=1;
+
     // ── 4.6a ──────────────────────────────────────────────────
 
     /// May a LATE EVASION be reduced by LMR?

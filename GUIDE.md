@@ -171,9 +171,15 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         was right — making them reducible costs **+14.83% nodes**, so the arm is
         a 4.10 coordinate, not a bundle member. Third comment/code mismatch this
         cycle: a comment asserting a mechanism's state is not evidence.
-  - [ ] **4.6b Remaining:** one shared prospective depth for LMP/futility/SEE/LMR
-        preserving the zero-reduction floor, forcing/safe/losing check classes,
-        attributable post-LMR feedback, and in-check qsearch ordering.
+  - [x] **4.6b Shared prospective depth (RAR-S43).** LMP, futility and SEE now
+        can read the depth LMR will actually search at, via one extracted
+        reduction formula that both callers share — checked by a `debug_assert`,
+        not just asserted in a comment. `SelectivityProspectiveDepth=1` measures
+        **−8.70% nodes, EBF 2.449 → 2.424**: the largest cheap arm in Phase 4 and
+        the strongest 4.10a bundle member. Inert at 0.
+  - [ ] **4.6c Remaining:** forcing/safe/losing check classes (replacing the flat
+        32,000 quiet-check bonus), attributable post-LMR feedback, and in-check
+        qsearch ordering with capture/SEE history (from 4.3d).
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
       completed legal fallback and SMP ownership.
 - [ ] **4.8 Portability/ISA:** inventory `origin/arm_fix`; make x86 tier
