@@ -96,9 +96,17 @@
     games.
 
 .PARAMETER MaxGames
-    Maximum games for an SPRT mode. Default 12000 and must be positive/even.
+    Maximum games for an SPRT mode. Default 16000 and must be positive/even.
     Reaching it without H1 means park/revert, not acceptance from the point
     estimate. Fixed/calibration modes continue to use -Games.
+
+    Why 16000 and not a rounder 12000: the LLR drift of this project's own gates
+    fits `drift/game ~ 8.3e-6 * (Elo1-Elo0) * (true_nElo - midpoint)`, calibrated
+    within 1% on three runs (RAR-M10). Under the default [3,10] that puts a
+    candidate sitting exactly ON H1 at about 14,500 games to the boundary, so a
+    12,000 cap would park a share of the very changes the bounds are meant to
+    accept. 16000 leaves headroom for that case plus variance. Raise it
+    PROSPECTIVELY for tighter bounds; never after looking at a run's games.
 
 .PARAMETER Hash
     Hash MB per engine. Default 64 (matches deployment).
@@ -160,7 +168,7 @@
     ./tools/sprt.ps1 `
         -EngineA "tools\test_engines\rarog-feat-probcut-pext-pgo.exe" `
         -EngineB "tools\test_engines\rarog-head-pext-pgo.exe" `
-        -NameA "ProbCut" -NameB "Head" -Elo0 3 -Elo1 10 -MaxGames 12000
+        -NameA "ProbCut" -NameB "Head" -Elo0 3 -Elo1 10 -MaxGames 16000
 #>
 param(
     [Parameter(Mandatory)][string]$EngineA,
@@ -185,7 +193,7 @@ param(
     [Nullable[int]]$ThreadsA = $null,
     [Nullable[int]]$ThreadsB = $null,
     [int]$Games = 30000,
-    [int]$MaxGames = 12000,
+    [int]$MaxGames = 16000,
     [double]$CalibrationTolerance = 5,
     [int]$Seed = 0,
     [string[]]$OptionsA = @(),

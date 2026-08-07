@@ -85,7 +85,10 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
   - [ ] **4.3c Persisted provenance: IMPLEMENTED, GATE OPEN.** One speculative
         bit plus the actual ProbCut result; singular alone rejects that class.
         Candidate fingerprint 6,595,869; 863 otherwise-eligible singular seeds
-        blocked in the diagnostic bench. Final-PGO `[3,10]`, max 12k, is next.
+        blocked in the diagnostic bench. Verified independently before launch
+        (RAR-S33), and RUNNING now as final-PGO `[3,10]`, max 16k. It carries a
+        ~4% time-to-depth headwind (+1.43% nodes, −2.45% NPS), so a park would
+        reflect that balance rather than a wrong contract.
   - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
         history and coherent delta/SEE/futility, after 4.3c.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
@@ -178,7 +181,7 @@ gate on the other idle machine:
 ```powershell
 .\tools\sprt.ps1 -EngineA <rarog-43c-pgo.exe> `
   -EngineB <rarog-d00e1ac-pgo.exe> -NameA 43c -NameB Baseline `
-  -Elo0 3 -Elo1 10 -MaxGames 12000
+  -Elo0 3 -Elo1 10 -MaxGames 16000
 ```
 
 Only H1 promotes 4.3c. H0 or the unresolved 12k cap parks/reverts it; do not
@@ -204,7 +207,7 @@ cargo build --release --features diag
 | Situation | Action |
 |---|---|
 | Behaviour-neutral | Exact bench plus fmt/tests/performance evidence |
-| Coherent strength candidate | Bake the release semantics, build candidate and accepted baseline with the final PGO pipeline, then run one registered gate. Default `[3,10]` nElo, maximum 12,000 games; only H1 promotes. |
+| Coherent strength candidate | Bake the release semantics, build candidate and accepted baseline with the final PGO pipeline, then run one registered gate. Default `[3,10]` nElo, maximum **16,000** games; only H1 promotes. The cap is derived from the LLR drift calibration in `PLAN.md` §2 — a candidate exactly on H1 needs ~14,500 games, so 12,000 would have parked changes the bounds accept. |
 | Small knob or tune option | Keep inert, bundle with its subsystem or defer to 4.10. Same-binary games may be a short diagnostic, never a mandatory first release SPRT. |
 | Gate reaches H0 or 12k unresolved | Park/revert. Do not promote from a point estimate and do not spend another 20k games resolving a marginal effect. |
 | Broad architectural bundle | Use `[0,10]` or `[3,12]` as prospectively registered; preserve switches so a failed bundle can be ablated. |
@@ -229,7 +232,7 @@ cargo fmt --check
 cargo test
 .\tools\build_test.ps1 -Suffix <name>
 .\tools\sprt.ps1 -EngineA <candidate> -EngineB <baseline> `
-  -NameA Candidate -NameB Baseline -Elo0 3 -Elo1 10 -MaxGames 12000
+  -NameA Candidate -NameB Baseline -Elo0 3 -Elo1 10 -MaxGames 16000
 .\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <candidate>
 .\tools\nps_ab.ps1 -EngineA <candidate> -EngineB <baseline> -Rounds 12
 ```

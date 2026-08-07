@@ -69,7 +69,7 @@ Model  -> accept/revert from the registered verdict, update docs, commit.
 |---|---|
 | Behaviour-neutral refactor/test/tooling | `cargo fmt --check`, `cargo test`, relevant Python/PowerShell tests, exact bench fingerprint |
 | Correctness repair changing play | Deterministic regression + tactical/mate/endgame suites + strength gate unless unreachable in legal play |
-| Strength mechanism | Test the **baked final-PGO candidate once** against the current accepted final-PGO baseline. The default material-gain gate is `[3,10]` nElo at `3+0.03`, capped at 12,000 games; only H1 promotes. H0 or an unresolved cap parks/reverts the candidate. |
+| Strength mechanism | Test the **baked final-PGO candidate once** against the current accepted final-PGO baseline. The default material-gain gate is `[3,10]` nElo at `3+0.03`, capped at **16,000** games; only H1 promotes. H0 or an unresolved cap parks/reverts the candidate. The cap is derived, not chosen — see the drift calibration below. |
 | Small knob/probe | Keep inert or fold into its coherent subsystem/Phase 4.10 fit. Same-binary option games may diagnose causality, but are short probes and never a second release gate. |
 | Broad architectural bundle | Register `[0,10]` or `[3,12]` on the final PGO binaries according to risk and expected value. Preserve ablation switches; if the bundle fails, ablate rather than pre-gating every component. |
 | Non-inferiority/simplification | `[-3,0]`; H1 supports non-regression |
@@ -82,6 +82,37 @@ Use `strength-v1` adjudication and the paired UHO book. Record engine/source
 SHA, compiler/PGO manifest, binary/book hashes, TC, threads, hash, concurrency,
 affinity and adjudication. SPRT decides strength; node counts, WAC, static loss
 and telemetry explain it.
+
+#### Deriving a game budget instead of guessing one
+
+A cap must be able to resolve the bounds it is paired with, or the gate quietly
+becomes stricter than it reads. This project's own gates fit
+
+```text
+LLR drift per game  ~  8.3e-6 * (Elo1 - Elo0) * (true_nElo - midpoint)
+```
+
+calibrated within 1% on three independent runs — RAR-S31 (+5.24 nElo, `[0,3]`),
+RAR-S29 (−4.95, `[0,3]`) and RAR-S27 (−2.33, `[0,3]`) — and recorded as RAR-M10.
+Games to a ±2.94 boundary is then `2.94 / drift`.
+
+For the default `[3,10]`, midpoint 6.5:
+
+| True effect | Games to boundary |
+|---:|---:|
+| 12 nElo | ~9,200 (H1) |
+| **10 nElo (exactly H1)** | **~14,500 (H1)** |
+| 8 nElo | ~33,700 — indifference region, resolves slowly by design |
+| **3 nElo (exactly H0)** | **~14,500 (H0)** |
+
+Hence the 16,000 default: it covers a candidate sitting exactly on either
+hypothesis, with headroom for the random walk. A 12,000 cap would have parked a
+share of the changes the bounds exist to accept, making the effective bar about
+12 nElo rather than the stated 10.
+
+Recompute this table before adopting different bounds, and change a cap only
+**prospectively** — the calibration is a design tool, never a reason to extend a
+run whose games you have already seen.
 
 ### SPSA budget
 
@@ -413,8 +444,23 @@ age-wrap and consumer-contract tests pass. Release and diagnostic builds both
 bench **6,595,869 / EBF 2.447**; the diagnostic census records **863** actual
 speculative singular seeds blocked in `bench 13`. This is one coherent
 final-PGO candidate, registered `[3,10]` nElo at `3+0.03`, 1T/64 MB/paired UHO,
-maximum 12,000 games; only H1 promotes. Baseline commit is `d00e1ac` at
+maximum **16,000** games; only H1 promotes. Baseline commit is `d00e1ac` at
 6,502,902 nodes.
+
+Independently verified before launch (RAR-S33): the fingerprint reproduces on
+normal, diag AND tune builds, the census reconciles, provenance round-trips on
+both backends, and fmt/clippy×3/tests×3 pass. Gate binaries are
+`rarog-43c-pgo.exe` (median of three clean PGO builds) versus
+`rarog-d00e1ac-pgo.exe`.
+
+Two things the verdict reader must know. The candidate needs **+1.43% more
+nodes** for bench depth 13 *and* runs **−2.45% NPS** — about 4% worse
+time-to-depth, a real headwind at ~2 Elo per 1% NPS. A park would therefore
+reflect that cost/benefit balance, not necessarily a wrong contract. And this
+step bundles the singular-rejection contract with the change from a
+margin-shifted to an actual ProbCut stored score, **with no ablation switch on
+the score half**, so a failure cannot be attributed between them; add one before
+re-testing rather than guessing which half was responsible.
 
 #### 4.3d — in-check qsearch ordering, after 4.3c
 
