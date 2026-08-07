@@ -602,6 +602,27 @@ search_params! {
     corr_w_their_np = 160, "CorrWeightTheirNp", 0..=384;
     corr_w_cont = 152, "CorrWeightCont", 0..=384;
 
+    /// 4.5b — continuation-correction weights at 2- and 4-ply distance.
+    ///
+    /// 0 = inert, and inert at zero *cost*: `corrected_eval_from_raw` and
+    /// `update_correction` both check the weight before touching the table, so
+    /// the seeded default performs neither a read nor a write.
+    ///
+    /// The pre-4.5b model had a single continuation slot keyed on the
+    /// 1-ply-previous `(piece, to)`, which the 4.3 audit flagged as standing in
+    /// for a pair structure it did not have. These add the same compact keying at
+    /// distance 2 and 4; all three tables age through one loop so they cannot
+    /// drift out of scale with each other and invalidate their fitted weights.
+    ///
+    /// Deliberately NOT given a plausible-looking default. Adding a new eval
+    /// term with a guessed weight is how RAR-S13 went wrong; these are 4.10
+    /// coordinates, and the fit decides whether either distance carries unique
+    /// signal beyond the 1-ply term. If neither does, both stay at 0 and the
+    /// tables cost nothing.
+    corr_w_cont2 = 0, "CorrWeightCont2", 0..=384;
+    /// See `corr_w_cont2`.
+    corr_w_cont4 = 0, "CorrWeightCont4", 0..=384;
+
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
     // falling-eval × best-move-instability × effort (search.rs soft-stop block);

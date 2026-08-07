@@ -670,6 +670,22 @@ singularity contract expressible at all, since RAR-S25 showed entry shape leaks
 
 ### 4.5 — History and correction attribution
 
+#### 4.5b — continuation pairs and centralized aging (RAR-S39)
+
+Continuation correction had a **single** slot keyed on the 1-ply-previous
+`(piece, to)`, which the 4.3 audit flagged as standing in for a pair structure it
+did not have. Distance-2 and distance-4 tables now exist with the same compact
+keying, and **all three age through one loop** — three siblings on different
+halving schedules drift out of scale with each other, after which a fitted weight
+no longer means what it meant when fitted, and a fingerprint cannot see that.
+
+Both weights are 0, and 0 costs nothing: read and write each check the weight
+before touching a table. Sized at the existing 1-ply weight of 152 for
+comparability, `cont2` runs +6.33% nodes and `cont4` +12.02%, so both are 4.10
+coordinates rather than bundle members. They were deliberately **not** given
+plausible-looking defaults — adding an eval term with a guessed weight is how
+RAR-S13 went wrong.
+
 #### 4.5a — attribution measured, graded weight landed inert (RAR-S38)
 
 The premise behind the capture guard is now **measured rather than assumed**, and

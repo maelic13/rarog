@@ -135,9 +135,16 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         exclusion discards 51.3% of training (RAR-S16, −55.98 Elo). Graded
         `CorrCaptureWeightPct` landed inert at 100; the weight is a 4.10
         coordinate, not a standalone gate.
-  - [ ] **4.5b Remaining:** true compact 2/4-ply continuation-correction pairs,
-        centralized saturation/aging, and preventing double-counting across
-        eval/pruning/reduction.
+  - [x] **4.5b Continuation pairs + centralized aging (RAR-S39).** Continuation
+        correction extended from one 1-ply slot to compact 2- and 4-ply
+        distances; all three tables now age through a single loop so they cannot
+        drift out of scale and invalidate fitted weights. Both weights inert at
+        0 and cost no table access; sized at 152 they run +6.33% and +12.02%
+        nodes, so both are 4.10 coordinates rather than bundle members.
+  - [ ] **4.5c Remaining:** prevent correction double-counting across
+        eval/pruning/reduction, and evidence-selected contexts (threat,
+        quiet/noisy, check/evasion, halfmove) only where held-out unique signal
+        is shown.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,

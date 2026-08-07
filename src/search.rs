@@ -306,6 +306,20 @@ pub struct Searcher {
     non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
     /// 10.3(8a): boxed const-size, see [`Searcher::pawn_history`].
     continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
+    /// 4.5b: continuation correction at 2- and 4-ply distance.
+    ///
+    /// The pre-4.5b model had a SINGLE slot keyed on the 1-ply-previous
+    /// `(piece, to)`, so a correction learned from one reply was the only
+    /// continuation context available. These add the same compact keying at
+    /// distance 2 and 4, which is what PLAN 4.5's "true compact 2/4-ply
+    /// continuation-correction pairs" asks for; the three together form the pair
+    /// structure rather than a single slot standing in for it.
+    ///
+    /// Both are inert at the seeded weights of 0: `corrected_eval_from_raw`
+    /// skips the read and `update_correction` skips the write, so neither table
+    /// is even touched and `bench` is unchanged.
+    continuation_correction_2ply: Box<[i16; PIECE_TO_SIZE]>,
+    continuation_correction_4ply: Box<[i16; PIECE_TO_SIZE]>,
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
     /// 8.13: 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
@@ -376,6 +390,8 @@ impl Default for Searcher {
             minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
             non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
             continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
+            continuation_correction_2ply: Box::new([0; PIECE_TO_SIZE]),
+            continuation_correction_4ply: Box::new([0; PIECE_TO_SIZE]),
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             thread_id: 0,
@@ -605,6 +621,8 @@ impl Searcher {
         *self.minor_correction_history = [[0; CORR_SIZE]; 2];
         *self.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
         *self.continuation_correction_history = [0; PIECE_TO_SIZE];
+        *self.continuation_correction_2ply = [0; PIECE_TO_SIZE];
+        *self.continuation_correction_4ply = [0; PIECE_TO_SIZE];
         *self.countermove = [[Move::NULL; 64]; 64];
         self.killers = [[Move::NULL; 2]; MAX_PLY];
     }
@@ -3538,7 +3556,16 @@ impl Searcher {
                 }
             }
         }
-        for value in self.continuation_correction_history.iter_mut() {
+        // 4.5b: all three continuation tables age through the same loop, which
+        // is the "centralize saturation/aging" half of PLAN 4.5 - a table that
+        // ages on a different schedule from its siblings drifts out of scale
+        // with them and the weights stop meaning what they meant when fitted.
+        for value in self
+            .continuation_correction_history
+            .iter_mut()
+            .chain(self.continuation_correction_2ply.iter_mut())
+            .chain(self.continuation_correction_4ply.iter_mut())
+        {
             *value /= 2;
         }
     }
@@ -3667,11 +3694,18 @@ impl Searcher {
         // continuation term keeps its inherent `/2`). `Σ src·W / 16384`
         // reproduces the old `(pawn+minor+own_np+their_np+cont/2)/128` bit-for-
         // bit at seed, since `Σsrc·128/16384 == Σsrc/128` in integer division.
+        // 4.5b: distance-2 and distance-4 continuation terms. Both reads are
+        // skipped entirely at the seeded weight of 0, so the default costs not
+        // even a table lookup.
+        let cont2 = self.continuation_at(ply, 2, self.params.corr_w_cont2);
+        let cont4 = self.continuation_at(ply, 4, self.params.corr_w_cont4);
         (pawn * self.params.corr_w_pawn
             + minor * self.params.corr_w_minor
             + own_non_pawn * self.params.corr_w_own_np
             + their_non_pawn * self.params.corr_w_their_np
-            + (continuation / 2) * self.params.corr_w_cont)
+            + (continuation / 2) * self.params.corr_w_cont
+            + (cont2 / 2) * self.params.corr_w_cont2
+            + (cont4 / 2) * self.params.corr_w_cont4)
             / 16384
     }
 
@@ -3822,6 +3856,61 @@ impl Searcher {
                 );
             }
         }
+        // 4.5b: same keying at distance 2 and 4. Writes are skipped at weight 0
+        // so an unused table is never touched; enabling a weight simply starts
+        // from an empty table, exactly as a fresh `new_game` would.
+        if self.params.corr_w_cont2 != 0
+            && let Some(index) = self.continuation_index(ply, 2)
+        {
+            update_hist_entry(
+                &mut self.continuation_correction_2ply[index],
+                scaled / 2,
+                HISTORY_MAX,
+            );
+        }
+        if self.params.corr_w_cont4 != 0
+            && let Some(index) = self.continuation_index(ply, 4)
+        {
+            update_hist_entry(
+                &mut self.continuation_correction_4ply[index],
+                scaled / 2,
+                HISTORY_MAX,
+            );
+        }
+    }
+
+    /// 4.5b: compact `(piece, to)` key for the move `distance` plies back, or
+    /// `None` when that ply does not exist or held a null move.
+    #[inline(always)]
+    fn continuation_index(&self, ply: usize, distance: usize) -> Option<usize> {
+        if ply < distance {
+            return None;
+        }
+        let prev = self.stack_moves[ply - distance];
+        if prev.is_null() {
+            return None;
+        }
+        Some(piece_to_index(
+            self.stack_pieces[ply - distance] as usize,
+            prev.to_sq().index(),
+        ))
+    }
+
+    /// 4.5b: read the distance-`distance` continuation correction, or 0 when the
+    /// term is switched off. Checking the weight FIRST is what keeps the seeded
+    /// default free of a table access.
+    #[inline(always)]
+    fn continuation_at(&self, ply: usize, distance: usize, weight: i32) -> i32 {
+        if weight == 0 {
+            return 0;
+        }
+        let table = if distance == 2 {
+            &self.continuation_correction_2ply
+        } else {
+            &self.continuation_correction_4ply
+        };
+        self.continuation_index(ply, distance)
+            .map_or(0, |index| i32::from(table[index]))
     }
 
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
