@@ -269,6 +269,25 @@ if ($contradictHits -gt 0) {
         $csChanged, $csMulticut, ($csChanged + $csMulticut), (Ratio ($csChanged + $csMulticut) $csa))
     Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
 
+    # 4.4a sizing. Measured with every 4.4a switch OFF, so these size the arms
+    # BEFORE a gate is spent rather than explaining one afterwards.
+    $veto = Value 'tt_pv_veto'
+    if ($veto -gt 0) {
+        Write-Host ""
+        Write-Host "  4.4a SWITCH SIZING (exact, all switches OFF)"
+        Write-Host ("      shared tt_pv veto blocks all four at : {0,10:N0} nodes" -f $veto)
+        foreach ($m in @(@('rfp','RfpAllowTtPv'), @('razor','RazorAllowTtPv'),
+                         @('nmp','NmpAllowTtPv'), @('probcut','ProbCutAllowTtPv'))) {
+            $e = Value "tt_pv_veto_$($m[0])_eligible"
+            Write-Host ("        {0,-8} would reach {1,10:N0}  ({2,6:N2} % of vetoed)  via {3}" -f `
+                $m[0], $e, (Ratio $e $veto), $m[1])
+        }
+        Write-Host ("      nested nulls inside verification    : {0,10:N0}  (NmpSuppressNullInVerification refuses these)" -f `
+            (Value 'nmp_nested_attempt'))
+        Write-Host ("      IIR at a PV node                    : {0,10:N0}  (sampled; ~zero population, so PV-safe IIR is not a strength arm)" -f `
+            (Value 'iir_pv'))
+    }
+
     # 4.3: is TT eval refinement self-cancelling? Two arms of
     # EvalPruneTtMinDepth measured ~0 Elo while moving 15-44% of the tree; the
     # margins-absorb-it and helps-as-often-as-it-hurts explanations imply

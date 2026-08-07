@@ -559,6 +559,40 @@ eligibility. Use cheap deterministic/short diagnostic ablations while building
 the subsystem, then run one material-gain gate on the coherent final-PGO joint
 candidate.
 
+#### 4.4a — switches landed inert and sized (RAR-S35)
+
+Five mechanisms are implemented behind switches that all default to the accepted
+baseline, so `bench 13` remains 6,502,902 on normal, diag and tune builds. Each
+was then measured alone, and the diagnostics size the population it reaches:
+
+| Switch | Population | Nodes alone |
+|---|---:|---:|
+| `NmpSuppressNullInVerification` | 83 nested nulls | **6,310,949 (−2.95%)** |
+| `RazorAllowTtPv` | 8,218 of 24,754 vetoed | 6,509,913 (+0.11%) |
+| `NmpAllowTtPv` | 16,544 | 6,797,234 (+4.53%) |
+| `RfpAllowTtPv` | 21,689 | 6,936,480 (+6.67%) |
+| `ProbCutAllowTtPv` | 16,536 | 7,577,452 (+16.52%) |
+
+**Build the first bundle from the cheap set only:**
+`NmpSuppressNullInVerification` + `RazorAllowTtPv` + the 4.3c
+`SingularRejectSpeculative` (−1.15% time-to-depth). Hold RFP, NMP and ProbCut
+`tt_pv` eligibility for a second bundle — RAR-S34 showed a +4.34%
+time-to-depth candidate landing dead neutral, so a +16.5% one needs to buy a
+great deal before it is worth 16,000 games.
+
+Two 4.4 items are **de-scoped by measurement**: PV-safe IIR has a population of
+~1 sampled node, so it is a correctness tidy-up rather than a strength arm; and
+`nmp_verify_pass`/`fail` is 533/7, so verification almost never overturns a null
+cutoff — worth revisiting as a possible *cost* saving rather than an accuracy
+one. Node deltas above are per-switch at fixed depth and compound
+unpredictably: all four `tt_pv` switches raise node counts even though three of
+them enable pruning.
+
+Still to implement before the bundle gate: the raw-eval/non-decisive/material and
+cut-node NMP guards, potential-singularity protection, zugzwang tests, the
+raw-versus-TT-adjusted null window comparison, and singular's separate
+single/double rules with extension caps.
+
 **4.4 also owns 4.3c's gate.** "Singular requires compatible full-search
 evidence" is already implemented and measured — it is
 `SingularRejectSpeculative`, landed inert, bench 6,490,746 when on, and

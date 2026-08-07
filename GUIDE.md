@@ -107,6 +107,17 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
       `SingularRejectSpeculative` on inside this bundle, keep it ablatable):
       subtree null suppression, node/eval guards,
       PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
+  - [x] **4.4a Switches landed inert and sized (RAR-S35).** Five switches, all
+        defaulting to baseline, bench still 6,502,902 on normal/diag/tune. Cheap
+        set for the first bundle: `NmpSuppressNullInVerification` (−2.95% nodes)
+        + `RazorAllowTtPv` (+0.11%) + 4.3c's contract (−1.15% TTD). Expensive and
+        held back: `NmpAllowTtPv` +4.53%, `RfpAllowTtPv` +6.67%,
+        `ProbCutAllowTtPv` +16.52%. PV-safe IIR de-scoped — population is ~1
+        sampled node.
+  - [ ] **4.4b Remaining guards:** NMP raw-eval/non-decisive/material and
+        cut-node guards, potential-singularity protection, zugzwang tests, raw
+        vs TT-adjusted null windows, singular single/double rules and extension
+        caps. Then ONE bundle gate.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for

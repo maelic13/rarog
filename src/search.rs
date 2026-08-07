@@ -321,10 +321,15 @@ pub struct Searcher {
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
-    /// Non-zero while a verified null cutoff is being re-searched. Diagnostic
-    /// builds use it to expose descendant null attempts inside that subtree.
-    #[cfg(feature = "diag")]
-    diag_nmp_verify_nesting: usize,
+    /// Non-zero while a verified null cutoff is being re-searched.
+    ///
+    /// 4.4a promoted this from a diagnostic-only counter to a production one:
+    /// NMP verification passes `allow_null = false` at its own root only, so
+    /// descendants re-enable null and the subtree can null-prune inside the very
+    /// search meant to check a null cutoff. With
+    /// `NmpSuppressNullInVerification` on, this field suppresses NMP for the
+    /// whole subtree instead of just its root.
+    nmp_verify_nesting: usize,
 }
 
 impl Default for Searcher {
@@ -383,8 +388,7 @@ impl Default for Searcher {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
-            #[cfg(feature = "diag")]
-            diag_nmp_verify_nesting: 0,
+            nmp_verify_nesting: 0,
         }
     }
 }
@@ -739,10 +743,7 @@ impl Searcher {
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
         self.root_best_effort = 0.0;
-        #[cfg(feature = "diag")]
-        {
-            self.diag_nmp_verify_nesting = 0;
-        }
+        self.nmp_verify_nesting = 0;
         if age_tt {
             self.tt.new_search();
         }
@@ -1728,8 +1729,36 @@ impl Searcher {
         // block below from running.
         if tt_pv && !is_pv && !in_check && excluded.is_null() {
             crate::diag_count!(tt_pv_veto);
+            // 4.4a sizing: of the nodes this shared veto blocks, how many would
+            // each mechanism actually reach if its own switch handed them back?
+            // Depth preconditions only — the margin tests need the eval, which
+            // is what the veto is denying them.
+            #[cfg(feature = "diag")]
+            {
+                if depth <= 8 {
+                    crate::diag_count!(tt_pv_veto_rfp_eligible);
+                }
+                if depth <= 3 {
+                    crate::diag_count!(tt_pv_veto_razor_eligible);
+                }
+                if allow_null && depth >= 3 && board.has_non_pawn_material(board.side_to_move()) {
+                    crate::diag_count!(tt_pv_veto_nmp_eligible);
+                }
+                if depth >= 4 {
+                    crate::diag_count!(tt_pv_veto_probcut_eligible);
+                }
+            }
         }
-        if !tt_pv && !in_check && excluded.is_null() {
+        // 4.4a: the shared `!tt_pv` veto becomes four per-mechanism predicates.
+        // At the seeded zeros `tt_pv_allows_any` is false, so this outer test is
+        // exactly the old `!tt_pv && ...` — including the fast path, so a
+        // `tt_pv` node still skips the margin arithmetic entirely.
+        let rfp_tt_pv_ok = !tt_pv || self.params.rfp_allow_tt_pv != 0;
+        let razor_tt_pv_ok = !tt_pv || self.params.razor_allow_tt_pv != 0;
+        let nmp_tt_pv_ok = !tt_pv || self.params.nmp_allow_tt_pv != 0;
+        let probcut_tt_pv_ok = !tt_pv || self.params.probcut_allow_tt_pv != 0;
+        let tt_pv_allows_any = rfp_tt_pv_ok || razor_tt_pv_ok || nmp_tt_pv_ok || probcut_tt_pv_ok;
+        if tt_pv_allows_any && !in_check && excluded.is_null() {
             // Futility-direction A/B (relocated 2.5.2): dir 0 adds the
             // not-improving coefficient when *not* improving (margin shrinks when
             // improving → prunes more, the current/SF-RFP direction); dir 1 adds
@@ -1789,15 +1818,23 @@ impl Searcher {
                     }
                 }
             }
-            if depth <= 8 && eval_for_pruning - futility_margin >= beta {
+            if rfp_tt_pv_ok && depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 crate::diag_count!(rfp_cut);
                 return eval_for_pruning;
             }
-            if depth <= 3 && eval_for_pruning + self.params.razoring_coeff * depth < alpha {
+            if razor_tt_pv_ok
+                && depth <= 3
+                && eval_for_pruning + self.params.razoring_coeff * depth < alpha
+            {
                 crate::diag_count!(razor_drop);
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
             if allow_null
+                && nmp_tt_pv_ok
+                // 4.4a: with the switch on, a null-verification subtree may not
+                // null-prune anywhere inside itself, not merely at its root.
+                && (self.params.nmp_suppress_null_in_verification == 0
+                    || self.nmp_verify_nesting == 0)
                 && depth >= 3
                 && eval_for_pruning
                     >= beta
@@ -1806,7 +1843,10 @@ impl Searcher {
                 && board.has_non_pawn_material(board.side_to_move())
             {
                 #[cfg(feature = "diag")]
-                if self.diag_nmp_verify_nesting > 0 {
+                if self.nmp_verify_nesting > 0 {
+                    // Exact, not sampled, and this IS the population
+                    // `NmpSuppressNullInVerification` refuses: same predicate,
+                    // so the counter and the switch cannot drift apart.
                     crate::diag_count!(nmp_nested_attempt);
                 }
                 #[cfg(feature = "diag")]
@@ -1849,10 +1889,7 @@ impl Searcher {
                     if depth >= 10 {
                         crate::diag_count!(nmp_verify_attempt);
                         let verify_depth = (depth - reduction).max(1);
-                        #[cfg(feature = "diag")]
-                        {
-                            self.diag_nmp_verify_nesting += 1;
-                        }
+                        self.nmp_verify_nesting += 1;
                         let verified = self.negamax(
                             board,
                             verify_depth,
@@ -1865,10 +1902,7 @@ impl Searcher {
                             false,
                             poll,
                         );
-                        #[cfg(feature = "diag")]
-                        {
-                            self.diag_nmp_verify_nesting -= 1;
-                        }
+                        self.nmp_verify_nesting -= 1;
                         if self.stopped || self.quit {
                             return 0;
                         }
@@ -1886,7 +1920,7 @@ impl Searcher {
                 }
             }
 
-            if depth >= 4 {
+            if probcut_tt_pv_ok && depth >= 4 {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(probcut_attempt);

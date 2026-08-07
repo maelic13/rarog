@@ -316,6 +316,19 @@ pub mod counters {
         contradict_move_was_best,
         agree_move_present,
         agree_move_was_best,
+        // 4.4a SIZING — how much work does each candidate switch actually reach?
+        //
+        // All exact, all measured with the switches OFF, so they size the arms
+        // BEFORE the bundle is chosen rather than after a gate has been spent.
+        // `tt_pv_veto` above is the shared denominator: the nodes where one
+        // inherited PV bit currently blocks all four mechanisms at once. These
+        // count, per mechanism, how many of those vetoed nodes would additionally
+        // satisfy that mechanism's own depth precondition — i.e. the population
+        // its `*AllowTtPv` switch would hand back.
+        tt_pv_veto_rfp_eligible,
+        tt_pv_veto_razor_eligible,
+        tt_pv_veto_nmp_eligible,
+        tt_pv_veto_probcut_eligible,
         // 4.3 SHADOW — is TT eval refinement SELF-CANCELLING?
         //
         // Two arms of `EvalPruneTtMinDepth` (1 and 2) both measured ~0 Elo while

@@ -243,6 +243,45 @@ search_params! {
     /// the material-gain policy; explicit provenance is implemented in 4.3c.
     singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
 
+    // ── 4.4a — NMP/IIR/singular cooperation, all landed INERT ───────────────
+    // Every switch here defaults to the accepted baseline, so `bench 13` stays
+    // 6,502,902. They exist so 4.4 can size each mechanism with cheap
+    // deterministic ablations and then gate ONE coherent bundle, instead of
+    // repeating 4.3's five standalone gates that banked nothing.
+
+    /// Suppress NMP for the WHOLE null-verification subtree, not just its root.
+    ///
+    /// 0 = accepted baseline. Verification calls `negamax` with
+    /// `allow_null = false`, but that only covers its own root — descendants
+    /// re-enable null, so the search meant to check a null cutoff can itself
+    /// null-prune. The 4.1 census measured this happening (`nmp_nested_attempt`
+    /// = 42 sampled). 1 makes the suppression cover the subtree via
+    /// `Searcher::nmp_verify_nesting`.
+    ///
+    /// PLAN 4.4 states nested verification nulls are forbidden unless proven, so
+    /// 1 is the intended direction — but it is a strength change and rides the
+    /// 4.4 bundle gate, not a standalone one.
+    nmp_suppress_null_in_verification = 0, "NmpSuppressNullInVerification", 0..=1;
+
+    /// Per-mechanism `tt_pv` eligibility (4.4). One inherited PV bit currently
+    /// vetoes RFP, razoring, NMP and ProbCut **together** — 24,361 exact vetoes
+    /// on `bench 13`, and the bit may have been inherited from a search that
+    /// proved nothing about this window. 0 keeps the shared veto (baseline); 1
+    /// lets that one mechanism run at a `tt_pv` node.
+    ///
+    /// Separate knobs because the four have different risk: RFP and razoring
+    /// return immediately on a margin, NMP spends a reduced search first, and
+    /// ProbCut spends a qsearch plus a reduced search. They should not be
+    /// forced to share one eligibility rule just because they happen to share
+    /// one `if`.
+    rfp_allow_tt_pv = 0, "RfpAllowTtPv", 0..=1;
+    /// See `rfp_allow_tt_pv`.
+    razor_allow_tt_pv = 0, "RazorAllowTtPv", 0..=1;
+    /// See `rfp_allow_tt_pv`.
+    nmp_allow_tt_pv = 0, "NmpAllowTtPv", 0..=1;
+    /// See `rfp_allow_tt_pv`.
+    probcut_allow_tt_pv = 0, "ProbCutAllowTtPv", 0..=1;
+
     /// 4.3c contract switch — whether singular verification refuses a seed from
     /// a persisted **speculative** producer (ProbCut).
     ///
@@ -526,6 +565,19 @@ mod tests {
             p.probcut_store_actual_score, 0,
             "4.3c score ablation must land inert (RAR-S34: +5.55% TTD)"
         );
+        // 4.4a switches all land inert; the bundle gate flips them together.
+        for (name, value) in [
+            (
+                "NmpSuppressNullInVerification",
+                p.nmp_suppress_null_in_verification,
+            ),
+            ("RfpAllowTtPv", p.rfp_allow_tt_pv),
+            ("RazorAllowTtPv", p.razor_allow_tt_pv),
+            ("NmpAllowTtPv", p.nmp_allow_tt_pv),
+            ("ProbCutAllowTtPv", p.probcut_allow_tt_pv),
+        ] {
+            assert_eq!(value, 0, "4.4a switch {name} must land inert");
+        }
         assert_eq!(p.probcut_store_depth_adj, 3, "4.3 arm D must land inert");
         assert_eq!(p.qs_refine_min_depth, 0, "4.3 arm C must land inert");
         assert_eq!(
