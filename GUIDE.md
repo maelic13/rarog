@@ -82,22 +82,20 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         similar aggregate speed across build modes. It neither isolates
         ProbCut nor justifies another long final-PGO gate for ~3 Elo; default 3
         remains and value 2 stays as an inert 4.10 coordinate/ablation.
-  - [ ] **4.3c Persisted provenance: IMPLEMENTED, GATE OPEN.** One speculative
-        bit plus the actual ProbCut result; singular alone rejects that class.
-        Candidate fingerprint 6,595,869; 863 otherwise-eligible singular seeds
-        blocked in the diagnostic bench. **Gate NOT promoted:** dead neutral at
-        +0.35 ± 6.18 Elo over 4,960 games, LLR −1.71 (RAR-S34). Attribution shows
-        why, and it is not the contract's fault — the age bit is FREE (0.00%
-        nodes), the singular rejection is free and 1.15% FASTER to depth, and the
-        whole ~4.3% headwind comes from the bundled actual-ProbCut-score change
-        (+5.55% TTD alone), which the contract does not need.
-  - [x] **4.3c landed: infrastructure retained, both consumers INERT.** The bit
-        plus age narrowing are bench-identical to baseline, so the head is back
-        at **6,502,902 / EBF 2.449** and this is a behaviour-neutral landing with
-        no strength gate owed. `SingularRejectSpeculative=1` reproduces 6,490,746
-        and `+ProbCutStoreActualScore=1` reproduces 6,595,869 — both verified
-        against the attribution's own builds. **4.4 turns the contract on inside
-        its bundle**; do not flip either switch alone without a gate.
+  - [x] **4.3c Persisted provenance: DONE — gate resolved, landed inert.** One
+        speculative bit plus the actual ProbCut result, with singular alone
+        rejecting that class. **Gate NOT promoted:** dead neutral at +0.35 ± 6.18
+        Elo over 4,960 games, LLR −1.71 (RAR-S34). Attribution: the age bit is
+        FREE (0.00% nodes), the singular rejection is free and 1.15% FASTER to
+        depth, and the whole ~4.3% headwind is the bundled
+        actual-ProbCut-score change (+5.55% TTD alone) which the contract does
+        not need. So the infrastructure is retained and BOTH consumers became
+        switches defaulting off — the head is back at **6,502,902 / EBF 2.449**,
+        a behaviour-neutral landing owing no strength gate.
+        `SingularRejectSpeculative=1` reproduces 6,490,746 and adding
+        `ProbCutStoreActualScore=1` reproduces 6,595,869, both verified against
+        the attribution's own builds. **4.4 turns the contract on inside its
+        bundle**; neither switch may be flipped alone without a gate.
   - [x] **4.3d MIGRATED to 4.6, and 4.3 is CLOSED.** In-check qsearch ordering
         and capture/SEE history move to 4.6, which already owns the late-evasion
         mismatch and the check taxonomy, so it is the same work under another
@@ -114,10 +112,18 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         held back: `NmpAllowTtPv` +4.53%, `RfpAllowTtPv` +6.67%,
         `ProbCutAllowTtPv` +16.52%. PV-safe IIR de-scoped — population is ~1
         sampled node.
-  - [ ] **4.4b Remaining guards:** NMP raw-eval/non-decisive/material and
-        cut-node guards, potential-singularity protection, zugzwang tests, raw
-        vs TT-adjusted null windows, singular single/double rules and extension
-        caps. Then ONE bundle gate.
+  - [x] **4.4b Guards landed inert and sized (RAR-S36).** `NmpDecisiveGuard`
+        (0.00% — zero bench population, so a soundness guard not a strength arm),
+        `NmpUseStaticEval` (+2.66%), `SingularMaxExtension=1` (+6.57%),
+        `NmpRequireCutNode` (+14.42%). New `tests/zugzwang.rs` passes with every
+        switch off, on individually, and all ten together — the only instrument
+        that can verify a guard bench cannot see.
+  - [ ] **4.4c Remaining mechanisms then ONE bundle gate.** Still to build:
+        potential-singularity protection, singular single/double rules, NMP
+        material guard beyond `has_non_pawn_material`. **First bundle:**
+        `SingularRejectSpeculative` + `NmpSuppressNullInVerification` +
+        `RazorAllowTtPv` + `NmpDecisiveGuard` — three cheap-or-negative plus one
+        free guard. Hold every arm that costs nodes.
 - [ ] **4.5 History/correction:** prevent capture contamination, implement
       compact true continuation correction and evidence-selected contexts.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for

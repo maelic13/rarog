@@ -1829,14 +1829,27 @@ impl Searcher {
                 crate::diag_count!(razor_drop);
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
+            // 4.4b: which eval the null threshold may read. At the seeded 0
+            // this is `eval_for_pruning`, exactly as before.
+            let nmp_eval = if self.params.nmp_use_static_eval != 0 {
+                static_eval
+            } else {
+                eval_for_pruning
+            };
             if allow_null
                 && nmp_tt_pv_ok
                 // 4.4a: with the switch on, a null-verification subtree may not
                 // null-prune anywhere inside itself, not merely at its root.
                 && (self.params.nmp_suppress_null_in_verification == 0
                     || self.nmp_verify_nesting == 0)
+                // 4.4b: a null move cannot refute a forced mate, so a decisive
+                // window spends a reduced search to learn nothing.
+                && (self.params.nmp_decisive_guard == 0
+                    || beta.abs() < MATE_SCORE - infra::to_i32(MAX_PLY))
+                // 4.4b: restrict to nodes the caller expects to fail high.
+                && (self.params.nmp_require_cut_node == 0 || cut_node)
                 && depth >= 3
-                && eval_for_pruning
+                && nmp_eval
                     >= beta
                         - self.params.nm_depth_coeff * depth
                         - self.params.nm_improving_bonus * improving_i
@@ -1861,7 +1874,7 @@ impl Searcher {
                         crate::diag_count!(nmp_eval_raw);
                     }
                 }
-                let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
+                let reduction = 4 + depth / 4 + ((nmp_eval - beta) / 200).clamp(0, 3);
                 board.make_null_move();
                 self.tt.prefetch(board.hash);
                 let score = -self.negamax(
@@ -2277,7 +2290,11 @@ impl Searcher {
                     return 0;
                 }
                 if singular_score < singular_beta {
-                    extension = if !is_pv && singular_score < singular_beta - 20 {
+                    extension = if !is_pv
+                        && singular_score < singular_beta - 20
+                        // 4.4b: cap 1 removes the double extension entirely.
+                        && self.params.singular_max_extension >= 2
+                    {
                         #[cfg(feature = "diag")]
                         if diag_sample {
                             crate::diag_count!(singular_extend_two);

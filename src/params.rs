@@ -282,6 +282,44 @@ search_params! {
     /// See `rfp_allow_tt_pv`.
     probcut_allow_tt_pv = 0, "ProbCutAllowTtPv", 0..=1;
 
+    // ── 4.4b — NMP and singular guards, all landed INERT ────────────────────
+
+    /// Require a cut node before attempting NMP.
+    ///
+    /// 0 = accepted baseline (any non-PV node may try). 1 restricts NMP to nodes
+    /// the caller expects to fail high, which is where a null refutation is
+    /// actually cheap information; at an all-node a failed null costs a reduced
+    /// search and tells us little. PLAN 4.4's "cut-node guard".
+    nmp_require_cut_node = 0, "NmpRequireCutNode", 0..=1;
+
+    /// Refuse NMP when the window is already decisive.
+    ///
+    /// 0 = accepted baseline. 1 skips NMP when `|beta|` is within `MAX_PLY` of
+    /// mate. A null move cannot refute a forced mate, so the reduced search is
+    /// spent to learn nothing, and a null cutoff against a mate-range beta is
+    /// exactly the unsound case zugzwang tests target. PLAN 4.4's
+    /// "non-decisive guard".
+    nmp_decisive_guard = 0, "NmpDecisiveGuard", 0..=1;
+
+    /// Which eval the NMP threshold reads.
+    ///
+    /// 0 = accepted baseline, `eval_for_pruning` — i.e. TT-refined when a bound
+    /// is available, which the 4.1 census measured at 78 of 190 sampled
+    /// attempts (41%). 1 reads the corrected static eval instead, so a null
+    /// decision never rests on a bound some other window produced. This is
+    /// PLAN 4.4's "compare raw vs TT-adjusted null windows"; note RAR-S29/S30
+    /// showed TT refinement is *earning* strength elsewhere, so the expected
+    /// sign here is genuinely unknown.
+    nmp_use_static_eval = 0, "NmpUseStaticEval", 0..=1;
+
+    /// Cap on a single singular extension.
+    ///
+    /// 2 = accepted baseline. The 4.1 census measured double extensions at 21 of
+    /// 101 sampled singular attempts against 25 single ones, which is a high
+    /// share for the more aggressive branch; 1 removes the double extension
+    /// entirely. PLAN 4.4's "extension caps".
+    singular_max_extension = 2, "SingularMaxExtension", 1..=2;
+
     /// 4.3c contract switch — whether singular verification refuses a seed from
     /// a persisted **speculative** producer (ProbCut).
     ///
@@ -575,9 +613,17 @@ mod tests {
             ("RazorAllowTtPv", p.razor_allow_tt_pv),
             ("NmpAllowTtPv", p.nmp_allow_tt_pv),
             ("ProbCutAllowTtPv", p.probcut_allow_tt_pv),
+            ("NmpRequireCutNode", p.nmp_require_cut_node),
+            ("NmpDecisiveGuard", p.nmp_decisive_guard),
+            ("NmpUseStaticEval", p.nmp_use_static_eval),
         ] {
-            assert_eq!(value, 0, "4.4a switch {name} must land inert");
+            assert_eq!(value, 0, "4.4 switch {name} must land inert");
         }
+        // Not an on/off switch: 2 is the baseline, 1 is the restrictive arm.
+        assert_eq!(
+            p.singular_max_extension, 2,
+            "4.4b extension cap must land inert"
+        );
         assert_eq!(p.probcut_store_depth_adj, 3, "4.3 arm D must land inert");
         assert_eq!(p.qs_refine_min_depth, 0, "4.3 arm C must land inert");
         assert_eq!(

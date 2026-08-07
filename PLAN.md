@@ -588,10 +588,40 @@ one. Node deltas above are per-switch at fixed depth and compound
 unpredictably: all four `tt_pv` switches raise node counts even though three of
 them enable pruning.
 
-Still to implement before the bundle gate: the raw-eval/non-decisive/material and
-cut-node NMP guards, potential-singularity protection, zugzwang tests, the
-raw-versus-TT-adjusted null window comparison, and singular's separate
-single/double rules with extension caps.
+#### 4.4b — NMP and singular guards, landed inert and sized (RAR-S36)
+
+| Switch | Nodes alone |
+|---|---:|
+| `NmpDecisiveGuard` | **6,502,902 (0.00%)** — zero bench population |
+| `NmpUseStaticEval` | 6,675,647 (+2.66%) |
+| `SingularMaxExtension=1` | 6,930,264 (+6.57%) |
+| `NmpRequireCutNode` | 7,440,358 (+14.42%) |
+
+**None of these belongs in the first bundle**: every one costs nodes, and
+RAR-S34 already showed a +4.34% time-to-depth candidate landing dead neutral.
+`NmpRequireCutNode` at +14.42% is the clearest hold.
+
+`NmpDecisiveGuard` is a different category. Zero bench population means the
+**fingerprint cannot verify it in either direction**, so it is a soundness guard
+rather than a strength arm — enable it in the bundle at zero measured cost, but
+attribute no Elo to it, and rely on `tests/zugzwang.rs` for its safety evidence.
+
+`tests/zugzwang.rs` is the reusable product of this step. Null-move unsoundness
+is invisible to bench fingerprints and tactical suites because a bad null cutoff
+yields a *plausible* move rather than a crash, so it needed a dedicated
+instrument. It asserts bounds and legality rather than exact moves (the KQvK
+tripwire precedent), and it runs every 4.4 switch off, on individually, and all
+ten on together — which is what makes landing them inert safe rather than merely
+convenient.
+
+**The first bundle is therefore:** `SingularRejectSpeculative` (−1.15% TTD),
+`NmpSuppressNullInVerification` (−2.95% nodes), `RazorAllowTtPv` (+0.11%) and
+`NmpDecisiveGuard` (free). Three cheap-or-negative mechanisms plus one free
+soundness guard, all ablatable.
+
+Still to implement before the gate: potential-singularity protection, singular's
+separate single/double rules, and the NMP material guard beyond the existing
+`has_non_pawn_material`.
 
 **4.4 also owns 4.3c's gate.** "Singular requires compatible full-search
 evidence" is already implemented and measured — it is
