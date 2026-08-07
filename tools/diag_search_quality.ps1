@@ -286,6 +286,31 @@ if ($contradictHits -gt 0) {
         Write-Host "      (ratio near 1.0 means the down-weighting premise is unsupported)"
     }
 
+    # 4.5d: does a halfmove-clock context carry usable signal? PLAN 4.5 permits a
+    # new correction context only where held-out UNIQUE signal is shown, so the
+    # POPULATION matters as much as the mean - a context nothing lands in cannot
+    # be learned however distinct its residuals look.
+    $hmTotal = 0
+    foreach ($b in @("low","mid","high")) { $hmTotal += Value "correction_resid_hm_${b}_n" }
+    if ($hmTotal -gt 0) {
+        Write-Host ""
+        Write-Host "  4.5d CORRECTION RESIDUAL BY HALFMOVE CLOCK (exact)"
+        foreach ($b in @(@("low","0-19"), @("mid","20-49"), @("high","50+"))) {
+            $n = Value "correction_resid_hm_$($b[0])_n"
+            $sum = Value "correction_resid_hm_$($b[0])_sum"
+            $mean = if ($n -gt 0) { $sum / $n } else { 0 }
+            Write-Host ("      clock {0,-6} : {1,9:N0} updates ({2,6:N2} %)  mean |residual| {3,7:N1} cp" -f $b[1], $n, (Ratio $n $hmTotal), $mean)
+        }
+        $updates = Value "correction_updates"
+        if ([Math]::Abs($hmTotal - $updates) -lt 0.5) {
+            Write-Host ("      reconciles with correction_updates: {0:N0} OK" -f $updates)
+        } else {
+            Write-Host ("      *** MISMATCH: buckets {0:N0} vs correction_updates {1:N0} ***" -f $hmTotal, $updates) -ForegroundColor Red
+        }
+        Write-Host "      check/evasion context is structurally unreachable: correction trains"
+        Write-Host "      only where static_eval != VALUE_NONE, i.e. only when NOT in check."
+    }
+
     # 4.4a sizing. Measured with every 4.4a switch OFF, so these size the arms
     # BEFORE a gate is spent rather than explaining one afterwards.
     $veto = Value 'tt_pv_veto'

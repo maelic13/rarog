@@ -104,6 +104,22 @@ pub mod counters {
         correction_resid_capture_sum,
         correction_resid_quiet_n,
         correction_resid_quiet_sum,
+        // 4.5d — residual by HALFMOVE-CLOCK context. PLAN 4.5 allows a new
+        // correction context only where held-out unique signal is shown, so the
+        // measurement comes before any proposal. Rule-50 proximity is the
+        // plausible mechanism: near the horizon a position's value stops being a
+        // function of its structure.
+        //
+        // The check/evasion context the plan also lists is NOT measured, because
+        // it is structurally unreachable: correction only trains where
+        // `static_eval != VALUE_NONE`, which IS the not-in-check condition, so
+        // its population is zero by construction rather than by observation.
+        correction_resid_hm_low_n,
+        correction_resid_hm_low_sum,
+        correction_resid_hm_mid_n,
+        correction_resid_hm_mid_sum,
+        correction_resid_hm_high_n,
+        correction_resid_hm_high_sum,
         // 9.7.5(b) — SMP quality. The question these answer: 16 threads give
         // 13x the nodes but +0 depth and +2 seldepth, so where does the work
         // go? Four hypotheses imply opposite fixes, hence measure first.

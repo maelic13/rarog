@@ -2767,8 +2767,11 @@ impl Searcher {
                             // capture cutoff (a tactical result the positional
                             // eval should not learn to predict). Seed 0 = train.
                             if !(is_capture && self.params.corr_guard_capture == 1) {
-                                let residual =
-                                    self.attributed_residual(score - static_eval, is_capture);
+                                let residual = self.attributed_residual(
+                                    score - static_eval,
+                                    is_capture,
+                                    board.halfmove_clock,
+                                );
                                 self.update_correction(board, residual, depth, ply);
                             }
                         }
@@ -2833,7 +2836,11 @@ impl Searcher {
                 // 8.5(a): same capture guard for the end-of-node (Exact /
                 // fail-low) update. Seed 0 = train as before.
                 if !(best_move.is_capture() && self.params.corr_guard_capture == 1) {
-                    let residual = self.attributed_residual(diff, best_move.is_capture());
+                    let residual = self.attributed_residual(
+                        diff,
+                        best_move.is_capture(),
+                        board.halfmove_clock,
+                    );
                     self.update_correction(board, residual, depth, ply);
                 }
             }
@@ -3785,7 +3792,7 @@ impl Searcher {
     /// capture-caused residuals are no noisier than quiet ones, the premise
     /// behind both this knob and `corr_guard_capture` is wrong.
     #[inline(always)]
-    fn attributed_residual(&self, diff: i32, from_capture: bool) -> i32 {
+    fn attributed_residual(&self, diff: i32, from_capture: bool, halfmove: u8) -> i32 {
         #[cfg(feature = "diag")]
         {
             let magnitude = u64::from(diff.unsigned_abs());
@@ -3796,6 +3803,32 @@ impl Searcher {
                 crate::diag_count!(correction_resid_quiet_n);
                 crate::diag_add!(correction_resid_quiet_sum, magnitude);
             }
+            // 4.5d: halfmove-clock context. PLAN 4.5 permits a new correction
+            // context only where held-out UNIQUE signal is shown, so measure the
+            // residual per bucket before proposing one. Rule-50 proximity is the
+            // plausible mechanism: near the horizon a position's value stops
+            // being a function of its structure at all.
+            match halfmove {
+                0..=19 => {
+                    crate::diag_count!(correction_resid_hm_low_n);
+                    crate::diag_add!(correction_resid_hm_low_sum, magnitude);
+                }
+                20..=49 => {
+                    crate::diag_count!(correction_resid_hm_mid_n);
+                    crate::diag_add!(correction_resid_hm_mid_sum, magnitude);
+                }
+                _ => {
+                    crate::diag_count!(correction_resid_hm_high_n);
+                    crate::diag_add!(correction_resid_hm_high_sum, magnitude);
+                }
+            }
+        }
+        // The clock is a diagnostic input only; production reads it nowhere, so
+        // discard it explicitly rather than renaming the parameter to `_halfmove`
+        // and losing the name at both call sites.
+        #[cfg(not(feature = "diag"))]
+        {
+            let _ = halfmove;
         }
         if from_capture && self.params.corr_capture_weight_pct != 100 {
             diff * self.params.corr_capture_weight_pct / 100

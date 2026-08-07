@@ -62,9 +62,11 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
   - [x] **4.2c Throughput:** pooled 3-build PGO A/B in both directions,
         bias-cancelled −0.125% (≈0.25 Elo), all six builds at bench 6,502,902
         (RAR-S28).
-- [ ] **4.3 Qsearch/ProbCut:** preserve the measured depth-0 eval behaviour,
-      explicitly separate speculative ProbCut evidence at singular consumers,
-      then improve safe evasion/capture ordering.
+- [x] **4.3 Qsearch/ProbCut — CLOSED, nothing baked.** Depth-0 eval behaviour
+      preserved (restricting it lost twice), speculative ProbCut evidence is now
+      separable at singular consumers via a persisted bit, and the
+      evasion/capture-ordering half moved to 4.6. Five gates spent, no accepted
+      strength change — the honest outcome, and the reason later steps bundle.
   - [x] **4.3a-i Arms landed inert:** four knobs (`EvalPruneTtMinDepth`,
         `SingularTtDepthMargin`, `ProbCutStoreDepthAdj`, `QsRefineMinDepth`)
         plus the provenance-hazard census; bench-identical at 6,502,902 on
@@ -101,10 +103,12 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         mismatch and the check taxonomy, so it is the same work under another
         heading — and far too small for a fifth standalone gate. Number stays
         frozen as a historical reference.
-- [ ] **4.4 NMP/IIR/singular — also owns 4.3c's gate** (turn
-      `SingularRejectSpeculative` on inside this bundle, keep it ablatable):
-      subtree null suppression, node/eval guards,
-      PV-safe IIR, evidence-bound singularity and per-mechanism `tt_pv` gates.
+- [x] **4.4 NMP/IIR/singular — CLOSED, all mechanisms inert and sized.** Subtree
+      null suppression, node/eval guards, evidence-bound singularity and
+      per-mechanism `tt_pv` eligibility all implemented behind switches, each
+      individually measured. PV-safe IIR de-scoped by measurement (~1 sampled
+      node). The gate it was to have run is owned by **4.10a**, where the
+      accumulated bundle freezes the architecture.
   - [x] **4.4a Switches landed inert and sized (RAR-S35).** Five switches, all
         defaulting to baseline, bench still 6,502,902 on normal/diag/tune. Cheap
         set for the first bundle: `NmpSuppressNullInVerification` (−2.95% nodes)
@@ -128,8 +132,10 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         recorded and closed; **the gate itself is now owned by 4.10a**, which is
         where it must run because it is what freezes the architecture the fit
         needs. Nothing about 4.4 is outstanding.
-- [ ] **4.5 History/correction:** prevent capture contamination, implement
-      compact true continuation correction and evidence-selected contexts.
+- [x] **4.5 History/correction — CLOSED.** Capture attribution measured and a
+      graded weight landed, true 2/4-ply continuation pairs added with
+      centralized aging, a 9%-of-tree double-count found and guarded, and
+      evidence-selected contexts resolved to ADD NONE. All inert; nothing baked.
   - [x] **4.5a Attribution measured (RAR-S38).** Capture-caused residuals average
         179.1 cp against 78.8 cp quiet — a **2.27x** ratio over 283,590 updates.
         So the capture guard was directionally RIGHT and its instrument wrong:
@@ -148,9 +154,13 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         removes it in that case and measures **−4.50% nodes**, the only 4.5 arm
         cheaper than baseline, so it joins the first bundle. Also fixed a stale
         comment claiming these scales were inert; the seeds are 3/3/27 and live.
-  - [ ] **4.5d Evidence-selected contexts** (threat, quiet/noisy, check/evasion,
-        halfmove) — only where held-out unique signal is shown. Not started; the
-        plan forbids adding a context without that evidence.
+  - [x] **4.5d Contexts measured — ADD NONE (RAR-S41).** Halfmove clock 0–19
+        holds 98.64% of all 283,590 updates, so the 2.1x low-versus-high residual
+        ratio has no population to learn from; and check/evasion is unreachable
+        by construction, since correction trains only where `static_eval !=
+        VALUE_NONE`. A context needs a distinct mean **and** a population —
+        checking only the mean would have justified a useless table. The
+        capture/quiet split (4.5a) remains the only context with both.
 - [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for
       LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,

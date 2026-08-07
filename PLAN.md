@@ -343,7 +343,7 @@ from scattered condition surgery into single-predicate edits. Persist a
 producer class only when 4.3/4.4 show a consumer that cannot be corrected from
 stack-local evidence, and price it against the list above.
 
-### 4.3 — Qsearch and ProbCut evidence hygiene
+### 4.3 — Qsearch and ProbCut evidence hygiene — **CLOSED (nothing baked)**
 
 > **The flat depth-floor premise is closed for the main-search eval consumer
 > (RAR-S27/S29).** Neither `EvalPruneTtMinDepth=2` nor `=1` met its registered
@@ -547,7 +547,7 @@ difference was better behaved). And pool builds: cand-arm build medians spanned
 0.62% with one build 0.6% below its siblings, which is larger than any effect
 worth measuring at this scale.
 
-### 4.4 — NMP, IIR and singular cooperation
+### 4.4 — NMP, IIR and singular cooperation — **CLOSED (mechanisms inert; gate at 4.10a)**
 
 Add subtree null suppression, raw-eval/non-decisive/material and cut-node
 guards, potential-singularity protection and zugzwang tests. Compare raw vs
@@ -672,7 +672,24 @@ be attributed — and note that its provenance bit is what makes an evidence-bou
 singularity contract expressible at all, since RAR-S25 showed entry shape leaks
 10.81% and RAR-S31 showed a depth rule cannot cover shallower consumers.
 
-### 4.5 — History and correction attribution
+### 4.5 — History and correction attribution — **CLOSED (all inert)**
+
+#### 4.5d — contexts measured, and the answer is ADD NONE (RAR-S41)
+
+Halfmove clock 0–19 holds **279,741 of 283,590 updates (98.64%)**; 20–49 holds
+0.84% and 50+ holds 0.52%. Mean |residual| does differ — 130.7 / 115.8 /
+**61.9 cp** — but a 2.1x ratio over 0.52% of samples cannot support a learned
+context. The check/evasion context is **unreachable by construction**: correction
+trains only where `static_eval != VALUE_NONE`, which is precisely the
+not-in-check condition.
+
+The transferable lesson: this context fails on **population, not signal**. Its
+2.1x ratio looks as promising as 4.5a's 2.27x capture ratio, but 4.5a's split was
+51/49 and this one is 99/0.5 — one is learnable, the other is a table of slots
+that never fill. **A context needs a distinct mean AND a population; checking
+only the mean would have justified a useless table.** Revisit only if a corpus or
+TC shifts the clock distribution, which a rule-50-heavy endgame cohort would —
+Phase 5.0 freezes exactly such cohorts.
 
 #### 4.5c — correction double-counting found and guarded (RAR-S40)
 
