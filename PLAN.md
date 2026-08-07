@@ -764,6 +764,25 @@ bonus/bypass with forcing/safe/losing check classes. Resolve late-evasion
 `!in_check` mismatch, add attributable post-LMR feedback and track pruning
 overlap/best-move recall. Keep switches ablatable for 4.10.
 
+#### 4.6a — late-evasion contradiction resolved (RAR-S42)
+
+The LMR comment claimed "`!in_check` removed, so late evasions are reducible".
+It was false — the predicate still carried the clause, so an evasion was never
+reduced. The comment is corrected and `LmrReduceLateEvasions` makes the described
+behaviour testable rather than merely asserted.
+
+**It resolved in favour of the code:** reducing late evasions measures
+**+14.83% nodes**, among the most expensive arms in Phase 4, because reducing an
+evasion triggers far more LMR re-searches than it saves. So it goes to 4.10 as a
+coordinate, not into the bundle.
+
+This is the **third comment/code mismatch this cycle**, after the false multicut
+claim and the `Corr*Scale` "seeds are 0" claim. That is a pattern, not an
+accident: **in this codebase a comment asserting a mechanism's state is not
+evidence — read the predicate.** For contrast, `check_extensions` reading 0 is
+correctly documented: the extension was deliberately removed and the counter is
+left defined as explicit confirmation.
+
 **Also absorbs former 4.3d:** stage complete in-check qsearch ordering and test
 capture/SEE history as part of making delta/SEE/futility coherent. It lands here
 because the evasion mismatch and the check taxonomy are already this step's

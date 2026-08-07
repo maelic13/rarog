@@ -2459,17 +2459,25 @@ impl Searcher {
                     poll,
                 );
             } else {
-                // Phase 8.6 bundle: revived 8.2(b) — `!in_check` removed, so
-                // late evasions are reducible (the first two are spared by
-                // `searched >= 2`, good captures of the checker by `is_quiet
-                // || see < 0`, counter-checks by `!checking_move`); revived
-                // 8.2(c) — a weak quiet check loses the checking-move
-                // exemption.
+                // Phase 8.6 bundle: revived 8.2(c) — a weak quiet check loses
+                // the checking-move exemption. (Its 8.2(b) claim about
+                // reducible evasions was inaccurate; see below.)
+                // 4.6a CORRECTION: the comment above used to claim "`!in_check`
+                // removed, so late evasions are reducible". That was FALSE - the
+                // clause is right here, so an evasion is never reduced. The code
+                // is authoritative and the comment was wrong; this is the third
+                // comment/code mismatch found this cycle.
+                //
+                // `LmrReduceLateEvasions = 1` makes the described behaviour
+                // testable. The remaining guards still spare what matters:
+                // `searched >= 2` the first two evasions, `is_quiet || see < 0`
+                // good captures of the checker, `!checking_move` counter-checks.
+                let evasion_ok = self.params.lmr_reduce_late_evasions != 0 || !in_check;
                 let reducible = depth >= 3
                     && searched >= 2
                     && (is_quiet || see < 0)
                     && !mv.is_promo()
-                    && !in_check
+                    && evasion_ok
                     && !checking_move;
                 if reducible {
                     // Accumulate in 1024ths; `>> 10` gives integer ply reduction.

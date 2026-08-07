@@ -312,6 +312,28 @@ search_params! {
     /// sign here is genuinely unknown.
     nmp_use_static_eval = 0, "NmpUseStaticEval", 0..=1;
 
+    // ── 4.6a ──────────────────────────────────────────────────
+
+    /// May a LATE EVASION be reduced by LMR?
+    ///
+    /// 0 = accepted baseline: evasions are never reduced. This knob exists
+    /// because the code and its own comment disagreed — the comment claimed
+    /// "`!in_check` removed, so late evasions are reducible" while the live
+    /// predicate still carried `&& !in_check`. The code is authoritative, so the
+    /// comment was wrong and is now fixed; this switch makes the behaviour the
+    /// comment described actually testable instead of merely asserted.
+    ///
+    /// How the mismatch arose is not recoverable from the comment alone — the
+    /// clause was either re-added after the 8.6 bundle or never removed — so no
+    /// claim is made about intent.
+    ///
+    /// 1 drops the clause. The other guards still spare the moves that matter:
+    /// `searched >= 2` spares the first two evasions, `is_quiet || see < 0`
+    /// spares good captures of the checker, `!checking_move` spares
+    /// counter-checks. In-check nodes are 433,330 of 4,005,332 (10.8%), so this
+    /// is not a small population — gate it, do not assume it.
+    lmr_reduce_late_evasions = 0, "LmrReduceLateEvasions", 0..=1;
+
     // ── 4.4c ────────────────────────────────────────────────────────────────
 
     /// Refuse NMP at a node whose TT move may be singular.

@@ -161,8 +161,19 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         VALUE_NONE`. A context needs a distinct mean **and** a population —
         checking only the mean would have justified a useless table. The
         capture/quiet split (4.5a) remains the only context with both.
-- [ ] **4.6 Selectivity:** one history-aware prospective-depth pipeline for
-      LMP/futility/SEE/LMR, forcing-check classes and safe late evasions.
+- [ ] **4.6 Selectivity (also absorbs former 4.3d):** one history-aware
+      prospective-depth pipeline for
+      LMP/futility/SEE/LMR, forcing-check classes and safe late evasions,
+      plus in-check qsearch ordering and capture/SEE history. ⚠ Do NOT restrict
+      depth-0 TT evidence here — that lost twice (RAR-S27/S29).
+  - [x] **4.6a Late-evasion contradiction resolved (RAR-S42).** The LMR comment
+        claimed evasions were reducible; the predicate said otherwise. The code
+        was right — making them reducible costs **+14.83% nodes**, so the arm is
+        a 4.10 coordinate, not a bundle member. Third comment/code mismatch this
+        cycle: a comment asserting a mechanism's state is not evidence.
+  - [ ] **4.6b Remaining:** one shared prospective depth for LMP/futility/SEE/LMR
+        preserving the zero-reduction floor, forcing/safe/losing check classes,
+        attributable post-LMR feedback, and in-check qsearch ordering.
 - [ ] **4.7 Root confidence:** connect root variance to aspiration, TM,
       completed legal fallback and SMP ownership.
 - [ ] **4.8 Portability/ISA:** inventory `origin/arm_fix`; make x86 tier
