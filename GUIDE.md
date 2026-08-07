@@ -82,9 +82,10 @@ forfeits; 2.3.1 restored Windows ARM64 PGO without changing search.
         similar aggregate speed across build modes. It neither isolates
         ProbCut nor justifies another long final-PGO gate for ~3 Elo; default 3
         remains and value 2 stays as an inert 4.10 coordinate/ablation.
-  - [ ] **4.3c Persisted provenance:** ← **next**. One speculative bit plus the
-        real ProbCut result; singular rejects that class while other consumers
-        retain their existing contracts.
+  - [ ] **4.3c Persisted provenance: IMPLEMENTED, GATE OPEN.** One speculative
+        bit plus the actual ProbCut result; singular alone rejects that class.
+        Candidate fingerprint 6,595,869; 863 otherwise-eligible singular seeds
+        blocked in the diagnostic bench. Final-PGO `[3,10]`, max 12k, is next.
   - [ ] **4.3d In-check qsearch ordering:** staged evasions plus capture/SEE
         history and coherent delta/SEE/futility, after 4.3c.
 - [ ] **4.4 NMP/IIR/singular:** subtree null suppression, node/eval guards,
@@ -153,8 +154,8 @@ the user explicitly abandons that program.
 
 ## What you run now
 
-**No job is requested.** Do not resume the old aspiration tuner or reuse
-`p102a-snapshot`. Phase 4.3a is finished as far as games go:
+**Run only the 4.3c final-PGO gate below.** Do not resume the old aspiration
+tuner or reuse `p102a-snapshot`. Phase 4.3a is finished as far as games go:
 
 | Arm | Knob | Verdict |
 |---|---|---|
@@ -167,10 +168,21 @@ the user explicitly abandons that program.
 Arm B is resolved: do not bake it and do not spend another gate on it. RAR-S32
 is retained as a build-transfer diagnostic, not final-PGO strength evidence.
 The accepted baseline therefore remains at `SingularTtDepthMargin=3` and the
-6,502,902 fingerprint until 4.3c deliberately changes the tree.
+6,502,902 fingerprint. The unaccepted 4.3c candidate deliberately changes the
+tree to 6,595,869.
 
-Next implementation step is **4.3c — persisted provenance**, which needs no
-games until its own gate.
+Build the accepted baseline from `d00e1ac` and the 4.3c candidate from current
+`development` using the same pinned final-PGO pipeline. Then run exactly one
+gate on the other idle machine:
+
+```powershell
+.\tools\sprt.ps1 -EngineA <rarog-43c-pgo.exe> `
+  -EngineB <rarog-d00e1ac-pgo.exe> -NameA 43c -NameB Baseline `
+  -Elo0 3 -Elo1 10 -MaxGames 12000
+```
+
+Only H1 promotes 4.3c. H0 or the unresolved 12k cap parks/reverts it; do not
+start a tune/non-PGO SPRT first.
 
 ⚠ **Never run anything timed while a gate is playing**, and never compile —
 not even `cargo check -j 2`. Both mistakes were made in this cycle: a compile

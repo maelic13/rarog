@@ -1937,16 +1937,15 @@ impl Searcher {
                         self.tt.store(TtStore {
                             key: hash,
                             depth: depth - self.params.probcut_store_depth_adj,
-                            score: cutoff_score,
+                            score,
                             bound: Bound::Lower,
                             mv,
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: false,
-                            // The score is `score - (probcut_beta - beta)`, i.e.
-                            // shifted off the speculative window rather than a
-                            // negamax value at `depth - 3`. RAR-S22 measured a
-                            // third of singular attempts reading this shape.
+                            // Persist the actual fail-high. The producer bit,
+                            // not score arithmetic or depth coincidence, keeps
+                            // this speculative result out of singular seeding.
                             kind: OutcomeKind::ProbCut,
                         });
                         #[cfg(feature = "diag")]
@@ -2188,10 +2187,15 @@ impl Searcher {
 
             let child_is_pv = is_pv && searched == 0;
             let mut extension = 0;
-            if ply > 0
-                && mv == tt_move
-                && excluded.is_null()
-                && depth >= 4
+            let singular_move_candidate =
+                ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
+            #[cfg(feature = "diag")]
+            if singular_move_candidate
+                && ev.speculative_singular_seed_blocked(depth, self.params.singular_tt_depth_margin)
+            {
+                crate::diag_count!(singular_speculative_seed_blocked);
+            }
+            if singular_move_candidate
                 && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
             {
                 #[cfg(feature = "diag")]
@@ -2199,6 +2203,9 @@ impl Searcher {
                     crate::diag_count!(singular_attempt);
                     crate::diag_count!(shadow_4_4_selectivity);
                     if ev.depth == depth - 3 && matches!(ev.bound, Some(Bound::Lower)) {
+                        // Since 4.3c this is explicitly only the historical
+                        // ProbCut-shaped signature; tagged ProbCut producers
+                        // have already been rejected above.
                         crate::diag_count!(singular_probcut_depth_match);
                     }
                     // 4.2b: the verification window is seeded from a score that

@@ -225,6 +225,7 @@ pub mod counters {
         probcut_tt_store,
         singular_attempt,
         singular_probcut_depth_match,
+        singular_speculative_seed_blocked,
         singular_extend_one,
         singular_extend_two,
         singular_multicut,

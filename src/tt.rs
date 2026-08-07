@@ -10,6 +10,12 @@ use crate::evidence::{OutcomeKind, debug_assert_outcome};
 use crate::infra;
 
 const MAX_PLY: i32 = 128;
+const BOUND_MASK: u8 = 0x03;
+const PV_BIT: u8 = 0x04;
+const SPECULATIVE_BIT: u8 = 0x08;
+const AGE_MASK: u8 = 0xF0;
+const AGE_STRIDE: u8 = 0x10;
+const AGE_QUALITY_DIVISOR: i32 = 4;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bound {
@@ -21,7 +27,7 @@ pub enum Bound {
 impl Bound {
     #[inline(always)]
     fn from_bits(bits: u8) -> Option<Self> {
-        match bits & 3 {
+        match bits & BOUND_MASK {
             1 => Some(Self::Exact),
             2 => Some(Self::Upper),
             3 => Some(Self::Lower),
@@ -48,12 +54,19 @@ impl TtEntry {
 
     #[inline(always)]
     fn is_occupied(self) -> bool {
-        self.flag_age & 3 != 0
+        self.flag_age & BOUND_MASK != 0
     }
 
     #[inline(always)]
     pub fn is_pv_node(self) -> bool {
-        (self.flag_age >> 2) & 1 != 0
+        self.flag_age & PV_BIT != 0
+    }
+
+    /// Whether this entry came from a window-speculative producer such as
+    /// ProbCut. This is orthogonal to bound, depth and move authority.
+    #[inline(always)]
+    pub fn is_speculative(self) -> bool {
+        self.flag_age & SPECULATIVE_BIT != 0
     }
 
     #[inline(always)]
@@ -250,13 +263,10 @@ pub struct TtStore {
     pub ply: usize,
     pub static_eval: i32,
     pub is_pv: bool,
-    /// 4.2: what produced `score`. Deliberately NOT persisted — `flag_age` has
-    /// no spare bits (see `PLAN.md` §5 4.2). It drives the debug producer
-    /// contract and the exact diagnostic census, which is what makes a
-    /// mislabelled store a test failure instead of a depth coincidence someone
-    /// has to reverse-engineer later. Required, not defaulted: invariant 1 is
-    /// that every result is typed, and an optional field would let the next
-    /// store site skip it.
+    /// What produced `score`. The full kind drives the debug contract/census;
+    /// 4.3c also persists its speculative/non-speculative class in one TT bit.
+    /// Required, not defaulted: invariant 1 is that every result is typed, and
+    /// an optional field would let the next store site skip it.
     pub kind: OutcomeKind,
 }
 
@@ -377,13 +387,13 @@ impl TranspositionTable {
     pub fn new_search(&mut self) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                table.age = table.age.wrapping_add(8) & 0xF8;
+                table.age = table.age.wrapping_add(AGE_STRIDE) & AGE_MASK;
             }
             TtStorage::Shared(table) => {
                 let age = table.age.load(Ordering::Relaxed);
                 table
                     .age
-                    .store(age.wrapping_add(8) & 0xF8, Ordering::Relaxed);
+                    .store(age.wrapping_add(AGE_STRIDE) & AGE_MASK, Ordering::Relaxed);
             }
         }
     }
@@ -586,7 +596,7 @@ fn key16_of(key: u64) -> u16 {
 
 #[inline(always)]
 fn current_entry(entry: TtEntry, age: u8) -> bool {
-    entry.is_occupied() && (entry.flag_age & 0xF8) == age
+    entry.is_occupied() && (entry.flag_age & AGE_MASK) == age
 }
 
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {
@@ -712,7 +722,7 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
     if replace.key16 == key16
         && e.bound != Bound::Exact
         && e.depth < replace.depth as i32 - 3
-        && (replace.flag_age & 0xF8) == table.age
+        && (replace.flag_age & AGE_MASK) == table.age
     {
         count_skipped_store();
         return;
@@ -767,7 +777,7 @@ fn store_shared(table: &SharedTable, e: TtStore) {
     if replace_hits_same_key
         && e.bound != Bound::Exact
         && e.depth < replace_entry.depth as i32 - 3
-        && (replace_entry.flag_age & 0xF8) == age
+        && (replace_entry.flag_age & AGE_MASK) == age
     {
         count_skipped_store();
         return;
@@ -793,6 +803,7 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
         ply,
         static_eval,
         is_pv,
+        kind,
         ..
     } = e;
     TtEntry {
@@ -801,7 +812,14 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
         static_eval: crate::infra::saturating_i16(static_eval),
         mv,
         depth: crate::infra::saturating_i8(depth, -1),
-        flag_age: age | bound as u8 | ((is_pv as u8) << 2),
+        flag_age: age
+            | bound as u8
+            | if is_pv { PV_BIT } else { 0 }
+            | if kind.is_speculative() {
+                SPECULATIVE_BIT
+            } else {
+                0
+            },
     }
 }
 
@@ -810,6 +828,50 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
     if !entry.is_occupied() {
         return i32::MIN;
     }
-    let age_delta = age.wrapping_sub(entry.flag_age & 0xF8) & 0xF8;
-    entry.depth as i32 - age_delta as i32 / 2
+    let age_delta = age.wrapping_sub(entry.flag_age & AGE_MASK) & AGE_MASK;
+    entry.depth as i32 - age_delta as i32 / AGE_QUALITY_DIVISOR
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, LocalTable, PV_BIT, SPECULATIVE_BIT,
+        TranspositionTable, TtEntry, TtStorage, entry_quality,
+    };
+
+    #[test]
+    fn four_bit_age_preserves_the_per_generation_replacement_penalty() {
+        let entry = TtEntry {
+            depth: 20,
+            flag_age: Bound::Exact as u8 | PV_BIT | SPECULATIVE_BIT,
+            ..TtEntry::default()
+        };
+
+        for generation in 0_u8..16 {
+            let age = generation.wrapping_mul(AGE_STRIDE) & AGE_MASK;
+            assert_eq!(
+                entry_quality(entry, age),
+                20 - i32::from(generation) * 4,
+                "generation {generation}"
+            );
+        }
+        assert_eq!(AGE_QUALITY_DIVISOR, 4);
+    }
+
+    #[test]
+    fn four_bit_age_wraps_after_sixteen_searches() {
+        let mut tt = TranspositionTable::new(1);
+        for expected_generation in 1_u8..16 {
+            tt.new_search();
+            let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
+                panic!("new table must use local storage");
+            };
+            assert_eq!(*age, expected_generation * AGE_STRIDE);
+        }
+        tt.new_search();
+        let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
+            panic!("new table must use local storage");
+        };
+        assert_eq!(*age, 0);
+    }
 }

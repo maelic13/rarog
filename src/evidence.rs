@@ -18,21 +18,13 @@
 //!   [`NodeEvidence::refine_eval`] versus
 //!   [`NodeEvidence::refine_eval_bound_only`].
 //!
-//! # What 4.2 changes, and what it deliberately does not
+//! # What 4.2/4.3c change
 //!
-//! This module is **behaviour-neutral by construction**. Every predicate below
-//! reproduces its pre-4.2 condition exactly, including the drift just named, so
-//! the bench fingerprint is unchanged. The point is to move the rules to one
-//! place where 4.3 and 4.4 can each tighten ONE predicate under its own gate,
-//! instead of performing scattered condition surgery and hoping the arms stay
-//! separable.
-//!
-//! [`OutcomeKind`] is therefore recorded at the store sites and consumed by the
-//! debug contract and the diagnostic producer map, but it is **not persisted**:
-//! `TtEntry.flag_age` has no spare bits, and the one cheap slot moves the bench
-//! fingerprint. `PLAN.md` §5 4.2 prices the alternatives. Consumers may not
-//! branch on a producer class they cannot actually read back yet — where a rule
-//! needs provenance, that is 4.3/4.4 work with a strength gate attached.
+//! Phase 4.2 centralized the existing predicates without changing behaviour.
+//! Phase 4.3c persists one deliberately narrow class in the TT: whether a
+//! result is speculative. It spends one age bit while preserving the 10-byte
+//! entry and the per-generation replacement penalty. Singular verification
+//! rejects that class; every other consumer retains its existing contract.
 
 use crate::board::Move;
 use crate::eval::{MATE_SCORE, VALUE_NONE};
@@ -65,8 +57,8 @@ pub enum OutcomeKind {
     QsearchTail,
     /// Static evaluation returned without searching a single move.
     StandPat,
-    /// Speculative ProbCut result. The stored score is margin-shifted off the
-    /// speculative window, so it is not a plain search result at its depth.
+    /// Speculative ProbCut fail-high. Since 4.3c the actual search result is
+    /// stored, but its reduced/windowed producer still cannot seed singularity.
     ProbCut,
     /// Null-move result. Declared for 4.4; not currently stored.
     Null,
@@ -98,9 +90,9 @@ impl OutcomeKind {
         matches!(self, Self::QsearchMove | Self::QsearchTail | Self::StandPat)
     }
 
-    /// The score is margin-shifted or window-speculative rather than a plain
-    /// negamax value at the stored depth. 4.3 forbids these from granting
-    /// singular or exact-learning authority.
+    /// The result comes from a speculative/reduced window rather than a full
+    /// search at the stored depth. 4.3 forbids these from granting singular or
+    /// exact-learning authority.
     #[inline(always)]
     pub const fn is_speculative(self) -> bool {
         matches!(self, Self::ProbCut | Self::Null)
@@ -153,6 +145,9 @@ pub struct NodeEvidence {
     pub stored_pv: bool,
     /// Whether the probe hit at all.
     pub hit: bool,
+    /// Persisted producer class. Currently true for ProbCut (and future stored
+    /// null results), independent of the entry's bound/depth/move authority.
+    pub speculative: bool,
 }
 
 impl NodeEvidence {
@@ -165,6 +160,7 @@ impl NodeEvidence {
         mv: None,
         stored_pv: false,
         hit: false,
+        speculative: false,
     };
 
     /// Decode a probe result. `halfmove_clock` is the node's, and is what makes
@@ -181,6 +177,7 @@ impl NodeEvidence {
                 mv: entry.best_move(),
                 stored_pv: entry.is_pv_node(),
                 hit: true,
+                speculative: entry.is_speculative(),
             },
         }
     }
@@ -259,14 +256,24 @@ impl NodeEvidence {
 
     /// CAPABILITY: seed a singular-extension verification window.
     ///
-    /// Requires a lower-or-exact bound within `depth_margin` plies of the node
-    /// depth and a non-mate score. It does NOT require the score to come from a
-    /// full search, so at the default margin of 3 ProbCut's margin-shifted
-    /// `depth-3` `Lower` qualifies — 32 of 101 sampled attempts sat on that
-    /// signature. Tightening the margin is 4.3 arm B and needs its own gate.
+    /// Requires non-speculative evidence, a lower-or-exact bound within
+    /// `depth_margin` plies and a non-mate score. Bound/depth shape alone cannot
+    /// identify ProbCut, which is why 4.3c persists the producer class.
     #[inline(always)]
     pub fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
-        self.depth >= depth - depth_margin
+        !self.speculative
+            && self.depth >= depth - depth_margin
+            && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
+            && self.score.abs() < MATE_SCORE - MAX_PLY
+    }
+
+    /// Diagnostic: would this entry have seeded singularity if provenance were
+    /// ignored? Keeps the shadow tied to the production predicate.
+    #[cfg(feature = "diag")]
+    #[inline(always)]
+    pub fn speculative_singular_seed_blocked(&self, depth: i32, depth_margin: i32) -> bool {
+        self.speculative
+            && self.depth >= depth - depth_margin
             && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
             && self.score.abs() < MATE_SCORE - MAX_PLY
     }
@@ -516,6 +523,24 @@ mod tests {
         // Mate scores never qualify.
         assert!(!evidence(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3));
         assert!(!evidence(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3));
+
+        let speculative = NodeEvidence {
+            speculative: true,
+            ..evidence(Bound::Lower, 8, 150)
+        };
+        assert!(
+            speculative.cutoff_score(8, 0, 100).is_some(),
+            "a real fail-high lower bound keeps cutoff authority"
+        );
+        assert_eq!(
+            speculative.refine_eval(30, 0),
+            150,
+            "4.3c deliberately leaves eval refinement unchanged"
+        );
+        assert!(
+            !speculative.allows_singular(8, 3),
+            "only singular-seed authority is denied"
+        );
     }
 
     #[test]

@@ -181,9 +181,9 @@ These are individual mechanism gates, not additive proof of the live binary.
 
 | Area | Rarog today | Repair |
 |---|---|---|
-| TT evidence | 10-byte entry stores score/raw eval/move/depth/bound/PV/age, no producer provenance. `flag_age` is fully allocated (RAR-S22), so provenance is not free. A moveless store also inherits the resident move, so entry shape leaks 10.71% (RAR-S25) — the 4.2 trigger for reopening the 1-bit question has fired. | Compact provenance/consumer capabilities while preserving density if possible. |
+| TT evidence | The accepted baseline has no producer provenance. The 4.3c candidate preserves the 10-byte entry while trading one age bit for an explicit speculative bit; age wrap falls 32→16 generations while replacement cost per generation stays 4. | Final-PGO gate the narrow producer/consumer contract; do not generalize the bit into a scalar quality score. |
 | Qsearch → main | Stand-pat/pruning values can become depth-0 bounds; `EvalPruneTtMinDepth=0` lets them refine pruning through depth 8. Measured: 67% of sampled stores are depth-0 qsearch and 37% are bare stand-pat. | Separate raw/corrected/stand-pat/searched evidence. |
-| ProbCut → singular | Stores margin-normalized score at `depth-3`; singular accepts lower/exact at `depth-3`. Measured: 32 of 101 sampled singular attempts sit on that exact signature. | Store actual speculative result; forbid singular authority. |
+| ProbCut → singular | The accepted baseline stores a margin-normalized score and infers authority from depth/bound shape. The 4.3c candidate stores the actual fail-high, tags it speculative and blocked 863 otherwise-eligible singular seeds in `bench 13`. | Gate the explicit contract; retain cutoff/eval/move/IIR authority unless separate evidence changes it. |
 | NMP | Verification disables null only at its root; descendants re-enable it. Missing subtree suppression, cut-node/potential-singularity/raw-eval/decisive guards. | Correct the verification contract before margins. |
 | IIR | Can reduce PV nodes with no TT move, starting depth 4. | Restrict by node role/evidence and expose debt. |
 | `tt_pv` | One inherited bit disables RFP, razor, NMP and ProbCut together. | Per-mechanism eligibility predicates. |
@@ -340,11 +340,10 @@ Carried in from 4.2 (RAR-S22–S24), with the measurement that justifies each:
       tested main-search depth floor was accepted. RAR-S02 separately accepted
       the loose qsearch form at about +6.5 Elo. Keep both defaults and revisit
       only inside 4.10's joint fit, where their consumers can move with them.
-- **Deny singular authority to speculative evidence.** ProbCut stores a
-      margin-shifted score at `depth-3` and singular accepts exactly that
-      shape; 32 of 101 sampled attempts sit on the signature and 41 of 101 are
-      seeded by a window-contradicting score. Store the actual result, and
-      require non-speculative evidence for the seed.
+- **Deny singular authority to speculative evidence.** The accepted baseline
+      stores a margin-shifted ProbCut score at `depth-3`, while singular accepts
+      that shape. The 4.3c candidate stores the actual result and requires
+      non-speculative evidence for the seed.
 - **Penalize the SCORE, never the MOVE.** RAR-S24 measured a contradicting
       entry's move as best 91.79% versus 84.77% for an agreeing entry. Any
       confidence/depth penalty applies to eval refinement and singular
@@ -399,20 +398,23 @@ an inert 4.10 coordinate/ablation, and retire arm D unrun: explicit provenance
 solves the producer question without sacrificing unrelated depth bands. This is
 a resource-priority decision, not evidence that value 2 is neutral or harmful.
 
-#### 4.3c — persisted provenance and real ProbCut-result handling
+#### 4.3c — persisted provenance and real ProbCut-result handling — **IMPLEMENTED; GATE OPEN**
 
-Implement one explicit **speculative** bit, not a vague producer-quality bit.
-Take it from TT age (5→4 bits), change age stride 8→16 and replacement divisor
-2→4 so the per-generation penalty remains 4; retain the 10-byte entry and both
-backend densities. Set it from `OutcomeKind::is_speculative`, decode it into
-`NodeEvidence`, and deny only the singular-seed capability. Cutoffs, eval
-refinement, move ordering and IIR keep their existing bound/depth rules.
+Implemented one explicit **speculative** bit, not a vague producer-quality bit.
+It comes from TT age (5→4 bits); age stride 8→16 and replacement divisor 2→4
+preserve the 4-point per-generation penalty, the 10-byte entry and both backend
+densities. `OutcomeKind::is_speculative` supplies it, `NodeEvidence` decodes it,
+and only singular-seed capability is denied. Cutoffs, eval refinement, move
+ordering and IIR retain their existing bound/depth rules.
 
-Store ProbCut's actual fail-high result in the TT while retaining the existing
-conservative adjusted return value. Add local/shared round-trip, age-wrap and
-consumer-contract tests. This is one coherent final-PGO candidate, registered
-`[3,10]` nElo at `3+0.03`, 1T/64 MB/paired UHO, maximum 12,000 games; only H1
-promotes. Keep the pre-4.3c final-PGO binary as baseline.
+ProbCut now stores its actual fail-high while returning the existing
+conservative adjusted value to the live caller. Local/shared round-trip,
+age-wrap and consumer-contract tests pass. Release and diagnostic builds both
+bench **6,595,869 / EBF 2.447**; the diagnostic census records **863** actual
+speculative singular seeds blocked in `bench 13`. This is one coherent
+final-PGO candidate, registered `[3,10]` nElo at `3+0.03`, 1T/64 MB/paired UHO,
+maximum 12,000 games; only H1 promotes. Baseline commit is `d00e1ac` at
+6,502,902 nodes.
 
 #### 4.3d — in-check qsearch ordering, after 4.3c
 

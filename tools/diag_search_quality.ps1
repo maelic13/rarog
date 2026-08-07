@@ -232,6 +232,12 @@ if ($kindTotal -gt 0) {
     Write-Host ""
 }
 
+$speculativeSingularBlocked = Value 'singular_speculative_seed_blocked'
+Write-Host "  4.3c SPECULATIVE-EVIDENCE CONTRACT (exact blocked-consumer count)"
+Write-Host ("      ProbCut/speculative singular seeds blocked : {0:N0}" -f $speculativeSingularBlocked)
+Write-Host "      cutoff/eval/move/IIR consumers retain their prior contracts"
+Write-Host ""
+
 # 4.2b shadow test. A contradicting entry cannot cut off (unit-tested in
 # evidence.rs), so everything here is a NON-cutoff consumer admitting evidence
 # that told this node nothing. Sampled, so read shares, not absolute volumes.
