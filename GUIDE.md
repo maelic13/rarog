@@ -168,35 +168,32 @@ the user explicitly abandons that program.
 
 ## What you run now
 
-**Run only the 4.3c final-PGO gate below.** Do not resume the old aspiration
-tuner or reuse `p102a-snapshot`. Phase 4.3a is finished as far as games go:
+**No job is requested. 4.3a and 4.3c are resolved and nothing is baked; 4.3d is
+still open.** Do not resume the old aspiration tuner or reuse `p102a-snapshot`.
 
-| Arm | Knob | Verdict |
+| Arm / step | Knob | Verdict |
 |---|---|---|
 | A | `EvalPruneTtMinDepth` 2 | rejected, −1.49 ± 2.87 (RAR-S27) |
 | A | `EvalPruneTtMinDepth` 1 | rejected at formal H0, −3.18 ± 3.23 (RAR-S29) |
 | C | `QsRefineMinDepth` 1 | retired unrun (RAR-S29) |
-| B | `SingularTtDepthMargin` 2 | tune H1, but parked/not baked; default stays 3 |
-| D | `ProbCutStoreDepthAdj` 4 | retired unrun; superseded by explicit provenance |
+| B | `SingularTtDepthMargin` 2 | tune H1, parked; default stays 3 (RAR-S31) |
+| D | `ProbCutStoreDepthAdj` 4 | retired unrun; superseded by provenance |
+| 4.3c | `SingularRejectSpeculative` | gate NOT promoted, neutral +0.35 ± 6.18; landed INERT (RAR-S34) |
 
-Arm B is resolved: do not bake it and do not spend another gate on it. RAR-S32
-is retained as a build-transfer diagnostic, not final-PGO strength evidence.
-The accepted baseline therefore remains at `SingularTtDepthMargin=3` and the
-6,502,902 fingerprint. The unaccepted 4.3c candidate deliberately changes the
-tree to 6,595,869.
+The accepted head is therefore unchanged at **6,502,902 / EBF 2.449**. 4.3c's
+provenance bit and age narrowing are retained and cost nothing; its two
+behaviour switches default off and are verified to reproduce 6,490,746 and
+6,595,869 when enabled.
 
-Build the accepted baseline from `d00e1ac` and the 4.3c candidate from current
-`development` using the same pinned final-PGO pipeline. Then run exactly one
-gate on the other idle machine:
+**Recommended next step: 4.4 — NMP/IIR/singular, which also owns 4.3c's gate.**
+Build the subsystem with cheap deterministic ablations, then one material-gain
+gate on the coherent final-PGO bundle with `SingularRejectSpeculative=1`
+included. No games until that bundle exists.
 
-```powershell
-.\tools\sprt.ps1 -EngineA <rarog-43c-pgo.exe> `
-  -EngineB <rarog-d00e1ac-pgo.exe> -NameA 43c -NameB Baseline `
-  -Elo0 3 -Elo1 10 -MaxGames 16000
-```
-
-Only H1 promotes 4.3c. H0 or the unresolved 12k cap parks/reverts it; do not
-start a tune/non-PGO SPRT first.
+4.3d (in-check qsearch ordering) is nominally next by numbering, but it is a
+~9%-of-qnodes ordering change whose likely size cannot clear `[3,10]` alone —
+the same trap 4.3a fell into four times. Bundle it into 4.4 or 4.6 rather than
+gating it standalone. Maintainer's call; the numbering does not force it.
 
 ⚠ **Never run anything timed while a gate is playing**, and never compile —
 not even `cargo check -j 2`. Both mistakes were made in this cycle: a compile
