@@ -1,9 +1,18 @@
 # SPSA tuning with weather-factory and fastchess
 
-This directory contains reusable and historical tuning surfaces. There is no
-active Phase-4 SPSA: the proposed 30-coordinate, 10,000-iteration run was
-canceled before its first game during the 2.3.2 review. Do not reconstruct or
-launch it from old notes.
+This directory contains reusable and historical tuning surfaces. **There is no
+active SPSA, and none is scheduled.**
+
+Two separate reasons, often confused:
+
+1. The 30-coordinate, 10,000-iteration run proposed by the **closed** Phase-4
+   line was canceled before its first game during the 2.3.2 review. Do not
+   reconstruct or launch it from old notes; its config files were removed.
+2. The **current** Phase 4 (`PLAN.md` §4) is a different programme that reuses
+   the number. It explicitly forbids a broad SPSA: it gates categorical
+   architecture first, and permits only a narrow fit at 4.17 over constants
+   whose structural owner has already passed a game gate. The next broad fit is
+   7.3, after NNUE scale freezes.
 
 ## Current decision
 

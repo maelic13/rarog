@@ -1,0 +1,600 @@
+{
+  "schema": "rarog-endgame-truth-v2",
+  "engine": "D:\\code\\rarog\\tools\\test_engines\\rarog-411b-cand-pext-pgo.exe",
+  "syzygy": "D:\\chess\\tablebases\\syzygy3456",
+  "positions_per_family": 100,
+  "nodes_per_move": 60000,
+  "max_plies": 100,
+  "seed": 6200600,
+  "hash_mb": 16,
+  "persistent_tt_per_game": true,
+  "workers": 1,
+  "layers": {
+    "1_theory_truth": "first_discard_ply per graded move (Syzygy WDL)",
+    "2_move_quality": "win_preserving_rate and dtz_progress_rate",
+    "3_conversion": "converted / theoretically_won, per position",
+    "4_game_strength": "NOT MEASURED HERE; requires a registered SPRT"
+  },
+  "families": {
+    "KQ-K": {
+      "spec": "KQ-K",
+      "theory": {
+        "win": 100
+      },
+      "outcomes": {
+        "mated": 98,
+        "stalemate": 1,
+        "fifty_move": 1
+      },
+      "theoretically_won": 100,
+      "converted": 98,
+      "conversion_rate": 0.98,
+      "graded_moves": 812,
+      "win_preserving_moves": 811,
+      "win_preserving_rate": 0.9987684729064039,
+      "dtz_checked_moves": 811,
+      "dtz_progress_moves": 477,
+      "dtz_progress_rate": 0.5881627620221949,
+      "dtz_progress_is_technique": true,
+      "median_mate_plies": 12.0,
+      "median_optimal_dtz": 11.0,
+      "mate_efficiency": 1.154,
+      "mate_efficiency_n": 98,
+      "cohort_sha256": "142bc6e3ae6fb53e56904f3aa4d956f3899595fe1bbf31f6738170aea3e8ece3"
+    },
+    "KR-K": {
+      "spec": "KR-K",
+      "theory": {
+        "win": 100
+      },
+      "outcomes": {
+        "mated": 96,
+        "fifty_move": 3,
+        "insufficient_material": 1
+      },
+      "theoretically_won": 100,
+      "converted": 96,
+      "conversion_rate": 0.96,
+      "graded_moves": 1439,
+      "win_preserving_moves": 1438,
+      "win_preserving_rate": 0.9993050729673384,
+      "dtz_checked_moves": 1438,
+      "dtz_progress_moves": 891,
+      "dtz_progress_rate": 0.6196105702364395,
+      "dtz_progress_is_technique": true,
+      "median_mate_plies": 23.0,
+      "median_optimal_dtz": 20.0,
+      "mate_efficiency": 1.209,
+      "mate_efficiency_n": 96,
+      "cohort_sha256": "e0aca4941f89942d2b1dde5ee3df13b1bcae1b27c16abb63e644f9ad814c5fd2"
+    },
+    "KBB-K": {
+      "spec": "KBB-K",
+      "theory": {
+        "win": 100
+      },
+      "outcomes": {
+        "mated": 100
+      },
+      "theoretically_won": 100,
+      "converted": 100,
+      "conversion_rate": 1.0,
+      "graded_moves": 1465,
+      "win_preserving_moves": 1465,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 1465,
+      "dtz_progress_moves": 1095,
+      "dtz_progress_rate": 0.7474402730375427,
+      "dtz_progress_is_technique": true,
+      "median_mate_plies": 29.0,
+      "median_optimal_dtz": 24.0,
+      "mate_efficiency": 1.188,
+      "mate_efficiency_n": 100,
+      "cohort_sha256": "ad6339c872b5624bb6050396f3b20e5d4efb7a07a6d262ffb04772310de4daa2"
+    },
+    "KBN-K": {
+      "spec": "KBN-K",
+      "theory": {
+        "win": 98,
+        "draw": 2
+      },
+      "outcomes": {
+        "mated": 89,
+        "fifty_move": 10,
+        "insufficient_material": 1
+      },
+      "theoretically_won": 98,
+      "converted": 88,
+      "conversion_rate": 0.8979591836734694,
+      "graded_moves": 3180,
+      "win_preserving_moves": 3178,
+      "win_preserving_rate": 0.9993710691823899,
+      "dtz_checked_moves": 3178,
+      "dtz_progress_moves": 2146,
+      "dtz_progress_rate": 0.6752674638137193,
+      "dtz_progress_is_technique": true,
+      "median_mate_plies": 59.0,
+      "median_optimal_dtz": 52.0,
+      "mate_efficiency": 1.167,
+      "mate_efficiency_n": 88,
+      "cohort_sha256": "4866ed257acd1c2a1af8ea40f944666230fd3afd7e0af0b18930c2eb47e06f9c"
+    },
+    "KNN-K": {
+      "spec": "KNN-K",
+      "theory": {
+        "draw": 99,
+        "win": 1
+      },
+      "outcomes": {
+        "insufficient_material": 59,
+        "fifty_move": 40,
+        "mated": 1
+      },
+      "theoretically_won": 1,
+      "converted": 1,
+      "conversion_rate": 1.0,
+      "graded_moves": 1,
+      "win_preserving_moves": 1,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 1,
+      "dtz_progress_moves": 0,
+      "dtz_progress_rate": 0.0,
+      "dtz_progress_is_technique": true,
+      "median_mate_plies": 1,
+      "median_optimal_dtz": 1,
+      "mate_efficiency": 1.0,
+      "mate_efficiency_n": 1,
+      "cohort_sha256": "b7992f2691261f8a4b209326e0cb7cf29c23bea612ac570d04d0e11253bb5511"
+    },
+    "KP-K": {
+      "spec": "KP-K",
+      "theory": {
+        "win": 80,
+        "draw": 20
+      },
+      "outcomes": {
+        "mated": 77,
+        "insufficient_material": 20,
+        "ply_limit": 3
+      },
+      "theoretically_won": 80,
+      "converted": 77,
+      "conversion_rate": 0.9625,
+      "graded_moves": 1328,
+      "win_preserving_moves": 1328,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 1328,
+      "dtz_progress_moves": 542,
+      "dtz_progress_rate": 0.40813253012048195,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 25,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "6587009f7fba8d9bc6c8789d2cf72b9ba5c49c884c408c3e37750f122e2f8c65"
+    },
+    "KPP-K": {
+      "spec": "KPP-K",
+      "theory": {
+        "win": 98,
+        "draw": 2
+      },
+      "outcomes": {
+        "mated": 96,
+        "insufficient_material": 2,
+        "ply_limit": 2
+      },
+      "theoretically_won": 98,
+      "converted": 96,
+      "conversion_rate": 0.9795918367346939,
+      "graded_moves": 1254,
+      "win_preserving_moves": 1254,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 1254,
+      "dtz_progress_moves": 214,
+      "dtz_progress_rate": 0.17065390749601275,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 19.0,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "0727b8c47aa101de85f47b7eaba06b6946fc839e4d32de73f624ab8ce55f60e0"
+    },
+    "KBP-K": {
+      "spec": "KBP-K",
+      "theory": {
+        "win": 94,
+        "draw": 6
+      },
+      "outcomes": {
+        "mated": 94,
+        "ply_limit": 2,
+        "insufficient_material": 4
+      },
+      "theoretically_won": 94,
+      "converted": 94,
+      "conversion_rate": 1.0,
+      "graded_moves": 1298,
+      "win_preserving_moves": 1298,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 1298,
+      "dtz_progress_moves": 584,
+      "dtz_progress_rate": 0.44992295839753466,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 25.0,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "397951faf781fadc5cc5edb4505f6a843cc8a57eedfc5fe21d6a6162a1a833a3"
+    },
+    "KR-KP": {
+      "spec": "KR-KP",
+      "theory": {
+        "win": 98,
+        "draw": 2
+      },
+      "outcomes": {
+        "mated": 90,
+        "stalemate": 1,
+        "ply_limit": 6,
+        "insufficient_material": 3
+      },
+      "theoretically_won": 98,
+      "converted": 90,
+      "conversion_rate": 0.9183673469387755,
+      "graded_moves": 1837,
+      "win_preserving_moves": 1834,
+      "win_preserving_rate": 0.9983669025585193,
+      "dtz_checked_moves": 1834,
+      "dtz_progress_moves": 953,
+      "dtz_progress_rate": 0.5196292257360959,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 31.0,
+      "median_optimal_dtz": 3.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "b6b0f63a2027f970acfc82baa5138f0c7e4c7db2bbc384f7a1a33f314931dd28"
+    },
+    "KR-KB": {
+      "spec": "KR-KB",
+      "theory": {
+        "win": 28,
+        "draw": 72
+      },
+      "outcomes": {
+        "mated": 33,
+        "fifty_move": 58,
+        "insufficient_material": 7,
+        "ply_limit": 2
+      },
+      "theoretically_won": 28,
+      "converted": 26,
+      "conversion_rate": 0.9285714285714286,
+      "graded_moves": 795,
+      "win_preserving_moves": 754,
+      "win_preserving_rate": 0.9484276729559749,
+      "dtz_checked_moves": 754,
+      "dtz_progress_moves": 452,
+      "dtz_progress_rate": 0.5994694960212201,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 34.0,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "cb657cb074b12a852102e5b5c277a62c6a592c84588f67cc56b3ddc9140d6b81"
+    },
+    "KR-KN": {
+      "spec": "KR-KN",
+      "theory": {
+        "win": 45,
+        "draw": 55
+      },
+      "outcomes": {
+        "mated": 42,
+        "insufficient_material": 7,
+        "fifty_move": 49,
+        "ply_limit": 2
+      },
+      "theoretically_won": 45,
+      "converted": 42,
+      "conversion_rate": 0.9333333333333333,
+      "graded_moves": 771,
+      "win_preserving_moves": 740,
+      "win_preserving_rate": 0.959792477302205,
+      "dtz_checked_moves": 740,
+      "dtz_progress_moves": 472,
+      "dtz_progress_rate": 0.6378378378378379,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 28.0,
+      "median_optimal_dtz": 1,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "775fe8e6ee096e0e628fd626da65d9912641b0d3469b506ba9fdb0a06a87de00"
+    },
+    "KQ-KP": {
+      "spec": "KQ-KP",
+      "theory": {
+        "win": 98,
+        "draw": 2
+      },
+      "outcomes": {
+        "mated": 95,
+        "ply_limit": 4,
+        "insufficient_material": 1
+      },
+      "theoretically_won": 98,
+      "converted": 94,
+      "conversion_rate": 0.9591836734693877,
+      "graded_moves": 1133,
+      "win_preserving_moves": 1132,
+      "win_preserving_rate": 0.999117387466902,
+      "dtz_checked_moves": 1132,
+      "dtz_progress_moves": 503,
+      "dtz_progress_rate": 0.44434628975265017,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 16.0,
+      "median_optimal_dtz": 3.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "6a8da560f5e4d552140488b12901567ba33fbc47e553971b7e7461f86c6405ab"
+    },
+    "KQ-KR": {
+      "spec": "KQ-KR",
+      "theory": {
+        "win": 100
+      },
+      "outcomes": {
+        "mated": 82,
+        "fifty_move": 15,
+        "ply_limit": 2,
+        "insufficient_material": 1
+      },
+      "theoretically_won": 100,
+      "converted": 82,
+      "conversion_rate": 0.82,
+      "graded_moves": 1968,
+      "win_preserving_moves": 1965,
+      "win_preserving_rate": 0.9984756097560976,
+      "dtz_checked_moves": 1965,
+      "dtz_progress_moves": 784,
+      "dtz_progress_rate": 0.3989821882951654,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 19.0,
+      "median_optimal_dtz": 3.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "603fe4f936c766a3bf63d8b752affb710dbd59bfd47f68b2cced3c49911fece4"
+    },
+    "KNN-KP": {
+      "spec": "KNN-KP",
+      "theory": {
+        "draw": 68,
+        "win": 23,
+        "cursed_win": 8,
+        "loss": 1
+      },
+      "outcomes": {
+        "ply_limit": 67,
+        "insufficient_material": 18,
+        "fifty_move": 8,
+        "mated": 6,
+        "stalemate": 1
+      },
+      "theoretically_won": 23,
+      "converted": 3,
+      "conversion_rate": 0.13043478260869565,
+      "graded_moves": 997,
+      "win_preserving_moves": 844,
+      "win_preserving_rate": 0.8465396188565697,
+      "dtz_checked_moves": 844,
+      "dtz_progress_moves": 400,
+      "dtz_progress_rate": 0.47393364928909953,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 19,
+      "median_optimal_dtz": 38,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "144cc1f71c152b38514c170ea0a114d79a39af9cbc88225a1051e138657051b6"
+    },
+    "KRP-KR": {
+      "spec": "KRP-KR",
+      "theory": {
+        "win": 73,
+        "draw": 27
+      },
+      "outcomes": {
+        "mated": 72,
+        "insufficient_material": 23,
+        "ply_limit": 5
+      },
+      "theoretically_won": 73,
+      "converted": 71,
+      "conversion_rate": 0.9726027397260274,
+      "graded_moves": 1306,
+      "win_preserving_moves": 1301,
+      "win_preserving_rate": 0.9961715160796325,
+      "dtz_checked_moves": 1301,
+      "dtz_progress_moves": 542,
+      "dtz_progress_rate": 0.4166026133743274,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 23,
+      "median_optimal_dtz": 1,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "66ec88609820909e6933c352790220b28fa961bf78987d4fe8d7dd464e820927"
+    },
+    "KRP-KB": {
+      "spec": "KRP-KB",
+      "theory": {
+        "win": 96,
+        "draw": 4
+      },
+      "outcomes": {
+        "mated": 90,
+        "ply_limit": 10
+      },
+      "theoretically_won": 96,
+      "converted": 90,
+      "conversion_rate": 0.9375,
+      "graded_moves": 1779,
+      "win_preserving_moves": 1770,
+      "win_preserving_rate": 0.9949409780775716,
+      "dtz_checked_moves": 1770,
+      "dtz_progress_moves": 575,
+      "dtz_progress_rate": 0.3248587570621469,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 29.0,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "d09190f0f4fc2f7ee84075b3ca96fb35be70abb2c30de7590c7077ba15610584"
+    },
+    "KBP-KB": {
+      "spec": "KBP-KB",
+      "theory": {
+        "draw": 74,
+        "win": 26
+      },
+      "outcomes": {
+        "insufficient_material": 41,
+        "ply_limit": 29,
+        "mated": 23,
+        "fifty_move": 7
+      },
+      "theoretically_won": 26,
+      "converted": 23,
+      "conversion_rate": 0.8846153846153846,
+      "graded_moves": 489,
+      "win_preserving_moves": 485,
+      "win_preserving_rate": 0.9918200408997955,
+      "dtz_checked_moves": 485,
+      "dtz_progress_moves": 202,
+      "dtz_progress_rate": 0.41649484536082476,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 37,
+      "median_optimal_dtz": 1.0,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "b730954492fafc8a30a8a3a4ee6e6d83eb3fdf8031fa8a9e1a6584eb830d32cb"
+    },
+    "KBP-KN": {
+      "spec": "KBP-KN",
+      "theory": {
+        "draw": 43,
+        "win": 57
+      },
+      "outcomes": {
+        "insufficient_material": 40,
+        "mated": 56,
+        "ply_limit": 3,
+        "stalemate": 1
+      },
+      "theoretically_won": 57,
+      "converted": 54,
+      "conversion_rate": 0.9473684210526315,
+      "graded_moves": 927,
+      "win_preserving_moves": 924,
+      "win_preserving_rate": 0.9967637540453075,
+      "dtz_checked_moves": 924,
+      "dtz_progress_moves": 340,
+      "dtz_progress_rate": 0.36796536796536794,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 27.0,
+      "median_optimal_dtz": 1,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "652d64e1fa5aa158e0069bfcd06bf4718f631df6844612e70a8a08301484d0bf"
+    },
+    "KP-KP": {
+      "spec": "KP-KP",
+      "theory": {
+        "win": 57,
+        "draw": 28,
+        "loss": 15
+      },
+      "outcomes": {
+        "mated": 56,
+        "insufficient_material": 25,
+        "wrong_mate": 15,
+        "ply_limit": 2,
+        "stalemate": 2
+      },
+      "theoretically_won": 57,
+      "converted": 56,
+      "conversion_rate": 0.9824561403508771,
+      "graded_moves": 919,
+      "win_preserving_moves": 919,
+      "win_preserving_rate": 1.0,
+      "dtz_checked_moves": 919,
+      "dtz_progress_moves": 356,
+      "dtz_progress_rate": 0.38737758433079433,
+      "dtz_progress_is_technique": false,
+      "median_mate_plies": 27.0,
+      "median_optimal_dtz": 1,
+      "mate_efficiency": null,
+      "mate_efficiency_n": 0,
+      "mate_efficiency_note": "reported only for pawnless strong side vs bare king, where DTZ equals DTM",
+      "cohort_sha256": "33e36814f9252f525619ab70ec08e2868ed31fca0cb13f92930a92150b7ac1ec"
+    }
+  },
+  "cohort": {
+    "seed": 6200600,
+    "positions_per_family": 100,
+    "families": [
+      "KQ-K",
+      "KR-K",
+      "KBB-K",
+      "KBN-K",
+      "KNN-K",
+      "KP-K",
+      "KPP-K",
+      "KBP-K",
+      "KR-KP",
+      "KR-KB",
+      "KR-KN",
+      "KQ-KP",
+      "KQ-KR",
+      "KNN-KP",
+      "KRP-KR",
+      "KRP-KB",
+      "KBP-KB",
+      "KBP-KN",
+      "KP-KP"
+    ],
+    "family_sha256": {
+      "KQ-K": "142bc6e3ae6fb53e56904f3aa4d956f3899595fe1bbf31f6738170aea3e8ece3",
+      "KR-K": "e0aca4941f89942d2b1dde5ee3df13b1bcae1b27c16abb63e644f9ad814c5fd2",
+      "KBB-K": "ad6339c872b5624bb6050396f3b20e5d4efb7a07a6d262ffb04772310de4daa2",
+      "KBN-K": "4866ed257acd1c2a1af8ea40f944666230fd3afd7e0af0b18930c2eb47e06f9c",
+      "KNN-K": "b7992f2691261f8a4b209326e0cb7cf29c23bea612ac570d04d0e11253bb5511",
+      "KP-K": "6587009f7fba8d9bc6c8789d2cf72b9ba5c49c884c408c3e37750f122e2f8c65",
+      "KPP-K": "0727b8c47aa101de85f47b7eaba06b6946fc839e4d32de73f624ab8ce55f60e0",
+      "KBP-K": "397951faf781fadc5cc5edb4505f6a843cc8a57eedfc5fe21d6a6162a1a833a3",
+      "KR-KP": "b6b0f63a2027f970acfc82baa5138f0c7e4c7db2bbc384f7a1a33f314931dd28",
+      "KR-KB": "cb657cb074b12a852102e5b5c277a62c6a592c84588f67cc56b3ddc9140d6b81",
+      "KR-KN": "775fe8e6ee096e0e628fd626da65d9912641b0d3469b506ba9fdb0a06a87de00",
+      "KQ-KP": "6a8da560f5e4d552140488b12901567ba33fbc47e553971b7e7461f86c6405ab",
+      "KQ-KR": "603fe4f936c766a3bf63d8b752affb710dbd59bfd47f68b2cced3c49911fece4",
+      "KNN-KP": "144cc1f71c152b38514c170ea0a114d79a39af9cbc88225a1051e138657051b6",
+      "KRP-KR": "66ec88609820909e6933c352790220b28fa961bf78987d4fe8d7dd464e820927",
+      "KRP-KB": "d09190f0f4fc2f7ee84075b3ca96fb35be70abb2c30de7590c7077ba15610584",
+      "KBP-KB": "b730954492fafc8a30a8a3a4ee6e6d83eb3fdf8031fa8a9e1a6584eb830d32cb",
+      "KBP-KN": "652d64e1fa5aa158e0069bfcd06bf4718f631df6844612e70a8a08301484d0bf",
+      "KP-KP": "33e36814f9252f525619ab70ec08e2868ed31fca0cb13f92930a92150b7ac1ec"
+    },
+    "sha256": "fe4866045506636f884ee30526b4188c3def9ca9747f5960ea5c5e7cba5dbb5e"
+  }
+}

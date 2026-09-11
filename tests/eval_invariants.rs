@@ -117,7 +117,7 @@ fn eval_is_colour_symmetric() {
                 break;
             }
             let mut moves = moves;
-            moves.sort_by_key(|m| m.to_string());
+            moves.sort_by_key(std::string::ToString::to_string);
             let mv = moves[0];
             board.make_move(mv);
         }

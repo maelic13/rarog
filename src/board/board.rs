@@ -8,7 +8,7 @@ use std::fmt;
 
 use super::attacks::ATTACKS;
 use super::bitboard::Bitboard;
-use super::movegen::{between, generate_legal_moves, ray_through};
+use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -17,6 +17,52 @@ use super::moves::{
 use super::piece::{CastlingRights, Color, Piece};
 use super::square::{Rank, Square};
 use super::zobrist::ZOBRIST;
+
+/// FEN fullmove storage is deliberately bounded to `u16`. Zero is normalized
+/// to one on input; a black real or null move at the maximum saturates so the
+/// public counter is defined identically in debug and release.
+const MAX_FULLMOVE: u16 = u16::MAX;
+
+/// Material scale used by static exchange evaluation.
+///
+/// This is a value object so benchmarks and later fitting can exercise the
+/// same SEE implementation without changing evaluation or playing defaults.
+/// Production callers use [`PRODUCTION_SEE_VALUES`].
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct SeeValues {
+    values: [i32; 6],
+}
+
+impl SeeValues {
+    pub const fn new(
+        pawn: i32,
+        knight: i32,
+        bishop: i32,
+        rook: i32,
+        queen: i32,
+        king: i32,
+    ) -> Self {
+        Self {
+            values: [pawn, knight, bishop, rook, queen, king],
+        }
+    }
+
+    pub const fn as_array(self) -> [i32; 6] {
+        self.values
+    }
+
+    #[inline(always)]
+    const fn value(self, piece: Piece) -> i32 {
+        self.values[piece as usize]
+    }
+}
+
+/// The shipped SEE scale. Its king value is an internal sentinel; legal SEE
+/// never captures a king. It deliberately remains separate from HCE values.
+pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 900, 20_000);
+
+/// Frozen `cross-engine-board-v1` comparison scale.
+pub const CROSS_ENGINE_SEE_VALUES: SeeValues = SeeValues::new(100, 300, 300, 500, 900, 20_000);
 
 // -----------------------------------------------------------------------
 // Unmake info — everything needed to undo a move
@@ -34,52 +80,30 @@ struct UnmakeInfo {
     checkers: Bitboard,
 }
 
-/// Absolute pins on one king, captured for SEE recapture filtering (Phase
-/// 7.2). At most 8 simultaneous pins (one per direction). A pinned blocker may
-/// not recapture on the exchange square unless its pinner has left the board or
-/// the square lies on its pin line.
-struct SeePins {
-    king: Square,
-    len: usize,
-    blockers: [Square; 8],
-    pinners: [Square; 8],
-}
-
-impl SeePins {
-    #[inline]
-    fn new(king: Square) -> Self {
-        Self {
-            king,
-            len: 0,
-            blockers: [Square(0); 8],
-            pinners: [Square(0); 8],
-        }
-    }
-
-    #[inline]
-    fn push(&mut self, blocker: Square, pinner: Square) {
-        // At most one blocker per direction, so `len` cannot exceed 8.
-        self.blockers[self.len] = blocker;
-        self.pinners[self.len] = pinner;
-        self.len += 1;
-    }
-
-    /// Squares of attackers that may NOT capture on `target` under `occ`:
-    /// pinned, pinner still present, and `target` off the pin line.
-    #[inline]
-    fn forbidden(&self, target: Square, occ: Bitboard) -> Bitboard {
-        let mut forbidden = Bitboard::EMPTY;
-        let target_bb = Bitboard::from(target);
-        for i in 0..self.len {
-            if (occ & Bitboard::from(self.pinners[i])).any()
-                && (ray_through(self.king, self.blockers[i]) & target_bb).is_empty()
-            {
-                forbidden |= Bitboard::from(self.blockers[i]);
-            }
-        }
-        forbidden
-    }
-}
+/// Hot-struct footprint, measured for RAR-M39 / 4.11b.14 and pinned here.
+///
+/// 4.11b.14 decided against replacing the 12 colour-piece bitboards with six
+/// type boards plus colours, and against copying per-ply state instead of the
+/// compact `UnmakeInfo`. Both arms of that decision are footprint arguments, so
+/// the footprint is guarded rather than left to drift:
+///
+/// - `Board` is 264 bytes. The six-board variant would save 48 and neither
+///   figure is near any cache boundary that matters, while the extra mask would
+///   land on 208 `pieces()` call sites, 102 of them inside evaluation.
+/// - `UnmakeInfo` is 24 bytes, so a 128-ply search stack costs 3 KiB and stays
+///   comfortably in L1. Copying whole board state per ply instead would cost
+///   128 x 264 = 33 KiB and leave it.
+///
+/// Upper bounds, not equalities: padding may differ between supported targets,
+/// and only growth would invalidate the decision.
+const _: () = assert!(
+    core::mem::size_of::<Board>() <= 264,
+    "Board grew past the 264 bytes 4.11b.14 measured; re-open the PLAN 4.11b.14 representation comparison before accepting the growth"
+);
+const _: () = assert!(
+    core::mem::size_of::<UnmakeInfo>() <= 24,
+    "UnmakeInfo grew past 24 bytes; a 128-ply stack no longer costs 3 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
+);
 
 const NO_PIECE: u8 = 255;
 // 9.0: padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
@@ -158,6 +182,15 @@ pub struct CheckInfo {
 }
 
 impl Clone for Board {
+    /// Clones preserve history CAPACITY, not just contents.
+    ///
+    /// This is the mechanism by which a search-time reservation reaches every
+    /// helper: `search_impl` reserves on the root once, and each worker's
+    /// `root.clone()` inherits that capacity, so no thread reallocates in its
+    /// hot path. Dropping the capacity here would silently reintroduce
+    /// mid-search growth on helpers only, which is exactly the kind of
+    /// thread-asymmetric behaviour that does not show up in a single-threaded
+    /// bench.
     fn clone(&self) -> Self {
         let mut history = Vec::with_capacity(self.history.capacity().max(128));
         history.extend_from_slice(&self.history);
@@ -617,9 +650,32 @@ impl Board {
         self.king_safe_after(canonical).then_some(canonical)
     }
 
+    /// Legality as a plain boolean.
+    ///
+    /// This DISCARDS the canonical move that [`Board::legal_move`] returns.
+    /// `Move::from_uci` cannot know whether a move is a capture, a double
+    /// push, en passant or castling, so it always yields `QUIET`; only the
+    /// canonical move carries the correct flags. Use this when the answer is
+    /// the only thing wanted. **If the move is going to be played, use
+    /// [`Board::legal_move`] and play the move it returns**, never the input.
+    /// Playing a non-canonical move corrupts make/unmake.
     #[inline(always)]
     pub fn is_legal(&self, mv: Move) -> bool {
         self.legal_move(mv).is_some()
+    }
+
+    /// Reserve room for `plies` further make/unmake pairs.
+    ///
+    /// One `UnmakeInfo` is pushed per ply, so the peak depth of the history
+    /// vector is the game length already played plus the deepest line the
+    /// search walks. Reserving that headroom before the hot path is entered
+    /// means no `push` can reallocate mid-search.
+    ///
+    /// Deliberately a reservation on the existing `Vec` and not a fixed array:
+    /// game history length is unbounded in principle, and a clamped array
+    /// would silently drop repetition evidence in a long game.
+    pub(crate) fn reserve_history(&mut self, plies: usize) {
+        self.history.reserve(plies);
     }
 
     pub fn play_uci(&mut self, input: &str) -> bool {
@@ -644,8 +700,20 @@ impl Board {
         super::movegen::generate_legal_movelist(self)
     }
 
+    /// [`Board::generate_legal_movelist`] into a caller-owned list, which is
+    /// the form the search uses: the value form pays a 520-byte return copy
+    /// (RAR-M44).
+    pub fn generate_legal_movelist_into(&self, moves: &mut MoveList) {
+        super::movegen::generate_legal_into(self, moves);
+    }
+
     pub fn generate_legal_captures(&mut self) -> MoveList {
         super::movegen::generate_captures(self)
+    }
+
+    /// [`Board::generate_legal_captures`] into a caller-owned list.
+    pub fn generate_legal_captures_into(&mut self, moves: &mut MoveList) {
+        super::movegen::generate_captures_into(self, moves);
     }
 
     pub fn generate_legal_quiets(&self) -> MoveList {
@@ -658,10 +726,21 @@ impl Board {
         super::movegen::generate_captures_pinned(self)
     }
 
+    /// [`Board::generate_legal_captures_pinned`] into a caller-owned list,
+    /// handing back only the pinned set.
+    pub fn generate_legal_captures_pinned_into(&mut self, moves: &mut MoveList) -> Bitboard {
+        super::movegen::generate_captures_pinned_into(self, moves)
+    }
+
     /// Quiet generation reusing a pinned set from
     /// [`Board::generate_legal_captures_pinned`] at the same node.
     pub fn generate_legal_quiets_pinned(&self, pinned: Bitboard) -> MoveList {
         super::movegen::generate_quiets_pinned(self, pinned)
+    }
+
+    /// [`Board::generate_legal_quiets_pinned`] into a caller-owned list.
+    pub fn generate_legal_quiets_pinned_into(&self, pinned: Bitboard, moves: &mut MoveList) {
+        super::movegen::generate_quiets_pinned_into(self, pinned, moves);
     }
 
     pub fn perft(&mut self, depth: u32) -> u64 {
@@ -698,6 +777,7 @@ impl Board {
     /// check test then collapses to two bitboard membership tests
     /// ([`Board::gives_check_with`]).
     pub fn check_info(&self) -> CheckInfo {
+        crate::diag_count!(board_check_info_calls);
         let us = self.side_to_move;
         let them = !us;
         let ksq = self.king_sq(them);
@@ -753,6 +833,7 @@ impl Board {
     /// move. (Promotions break this argument, which is one reason they fall
     /// back.)
     pub fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
+        crate::diag_count!(board_gives_check_fast_calls);
         if mv.is_promo() || mv.is_en_passant() || mv.is_castling() {
             return self.gives_check(mv);
         }
@@ -771,6 +852,7 @@ impl Board {
     }
 
     pub fn gives_check(&self, mv: Move) -> bool {
+        crate::diag_count!(board_gives_check_full_calls);
         if mv.is_castling() {
             // After castling, the only piece that can give check is the rook
             // from its post-castle square. The king never gives check (kings
@@ -956,9 +1038,9 @@ impl Board {
         captured: Option<(Square, Piece)>,
     ) -> bool {
         let atk = &*ATTACKS;
-        let captured_bb = captured
-            .map(|(captured_sq, _)| Bitboard::from(captured_sq))
-            .unwrap_or(Bitboard::EMPTY);
+        let captured_bb = captured.map_or(Bitboard::EMPTY, |(captured_sq, _)| {
+            Bitboard::from(captured_sq)
+        });
         let captured_piece = captured.map(|(_, piece)| piece);
         let pieces = |piece| {
             let bb = self.pieces(attacker, piece);
@@ -1202,116 +1284,100 @@ FEN: {}",
         (atk.rook(sq, occ) & (self.pieces(color, Piece::Rook) | queens) & occ).any()
     }
 
-    /// Absolute pins on `color`'s king, for SEE recapture filtering (Phase
-    /// 7.2). Same x-ray technique as `movegen::compute_pinned`, but keeps each
-    /// (blocker, pinner) pair so the exchange loop can tell when a pinned piece
-    /// becomes a legal recapturer — its pinner leaves the board, or the
-    /// exchange square lies on its pin line.
-    fn see_pins(&self, color: Color) -> SeePins {
-        let king_sq = self.king_sq(color);
-        let them = !color;
-        let our_occ = self.color_occ(color);
-        let atk = &*ATTACKS;
-        let mut pins = SeePins::new(king_sq);
-
-        let bishop_vision = atk.bishop(king_sq, self.all_occ);
-        let xray_bishop = atk.bishop(king_sq, self.all_occ ^ (bishop_vision & our_occ));
-        let mut diag =
-            (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen)) & xray_bishop;
-        while diag.any() {
-            let pinner_sq = diag.pop_lsb();
-            let blockers = between(king_sq, pinner_sq) & our_occ;
-            if blockers.any() && !blockers.more_than_one() {
-                pins.push(blockers.lsb(), pinner_sq);
+    /// Select the least-valued LEGAL recapturer under the evolving exchange
+    /// occupancy. Original piece sets remain valid off `target`: every piece
+    /// that moved there has had its source removed from `occ`. Keep target
+    /// occupied as a ray blocker, but exclude its original (captured) occupant
+    /// from enemy attacks when checking the recapturer's king.
+    fn see_recapturer(
+        &self,
+        target: Square,
+        occ: Bitboard,
+        side: Color,
+    ) -> Option<(Square, Piece)> {
+        let mut attackers = self.attackers_to_color(target, occ, side);
+        while attackers.any() {
+            let (from, piece) = self.least_valuable_attacker(attackers, side);
+            let after = occ ^ Bitboard::from(from);
+            let king = if piece == Piece::King {
+                target
+            } else {
+                self.king_sq(side)
+            };
+            if (self.attackers_to_color(king, after, !side) & !Bitboard::from(target)).is_empty() {
+                return Some((from, piece));
             }
+            attackers ^= Bitboard::from(from);
         }
+        None
+    }
 
-        let rook_vision = atk.rook(king_sq, self.all_occ);
-        let xray_rook = atk.rook(king_sq, self.all_occ ^ (rook_vision & our_occ));
-        let mut ortho =
-            (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen)) & xray_rook;
-        while ortho.any() {
-            let pinner_sq = ortho.pop_lsb();
-            let blockers = between(king_sq, pinner_sq) & our_occ;
-            if blockers.any() && !blockers.more_than_one() {
-                pins.push(blockers.lsb(), pinner_sq);
-            }
+    /// Queen promotion is optimal in this material-only exchange: if the
+    /// promoted piece is recaptured, the extra gain and loss cancel; otherwise
+    /// its larger gain wins. Every recapture removes it, so the choice cannot
+    /// change the legality of that recapture. This is not a tactical claim.
+    fn see_recapture_piece(piece: Piece, target: Square) -> Piece {
+        if piece == Piece::Pawn && matches!(target.rank(), Rank::R1 | Rank::R8) {
+            Piece::Queen
+        } else {
+            piece
         }
+    }
 
-        pins
+    fn see_occupancy(&self, mv: Move) -> Bitboard {
+        let target = mv.to_sq();
+        let mut occ = self.all_occ ^ Bitboard::from(mv.from_sq());
+        if mv.is_en_passant() {
+            let captured = if self.side_to_move == Color::White {
+                Square(target.0 - 8)
+            } else {
+                Square(target.0 + 8)
+            };
+            occ ^= Bitboard::from(captured);
+        }
+        occ | Bitboard::from(target)
     }
 
     #[inline(always)]
     pub fn see(&self, mv: Move) -> i32 {
+        crate::diag_count!(board_see_full_calls);
+        self.see_with_values(mv, PRODUCTION_SEE_VALUES)
+    }
+
+    #[inline(always)]
+    pub fn see_with_values(&self, mv: Move, values: SeeValues) -> i32 {
         let Some(victim) = self.captured_piece(mv) else {
             return if mv.is_promo() {
-                piece_value(mv.promo_piece()) - piece_value(Piece::Pawn)
+                values.value(mv.promo_piece()) - values.value(Piece::Pawn)
             } else {
                 0
             };
         };
 
         let target = mv.to_sq();
-        let mut occ = self.all_occ;
+        let mut occ = self.see_occupancy(mv);
         let mut side = self.side_to_move;
         let mut gains = [0i32; 32];
         let mut depth = 0usize;
-
-        gains[0] = piece_value(victim);
+        gains[0] = values.value(victim);
+        let mut occupant = self.moving_piece(mv);
         if mv.is_promo() {
-            gains[0] += piece_value(mv.promo_piece()) - piece_value(Piece::Pawn);
+            occupant = mv.promo_piece();
+            gains[0] += values.value(occupant) - values.value(Piece::Pawn);
         }
 
-        let from = mv.from_sq();
-        let mut attacker_piece = if mv.is_promo() {
-            mv.promo_piece()
-        } else {
-            self.moving_piece(mv)
-        };
-        occ ^= Bitboard::from(from);
-        if mv.is_en_passant() {
-            let cap_sq = if side == Color::White {
-                Square(target.0 - 8)
-            } else {
-                Square(target.0 + 8)
-            };
-            occ ^= Bitboard::from(cap_sq);
-        } else {
-            occ ^= Bitboard::from(target);
-        }
-        occ |= Bitboard::from(target);
-
-        // Absolute-pin masks, computed lazily per side on first recapture and
-        // reused (Phase 7.2). Most exchanges never touch a pinned piece, so the
-        // x-ray work is skipped entirely on the common path.
-        let mut pins: [Option<SeePins>; 2] = [None, None];
-
-        loop {
+        // A legal king capture ends the exchange; kings are never victims.
+        while occupant != Piece::King {
             side = !side;
-            let mut attackers = self.attackers_to_color(target, occ, side);
-            if attackers.is_empty() {
+            let Some((from, piece)) = self.see_recapturer(target, occ, side) else {
                 break;
-            }
-            let pin_set = pins[side as usize].get_or_insert_with(|| self.see_pins(side));
-            attackers &= !pin_set.forbidden(target, occ);
-            if attackers.is_empty() {
-                break;
-            }
-
-            let (sq, piece) = self.least_valuable_attacker(attackers, side);
+            };
+            let promoted = Self::see_recapture_piece(piece, target);
+            let gain = values.value(occupant) + values.value(promoted) - values.value(piece);
             depth += 1;
-            gains[depth] = piece_value(attacker_piece) - gains[depth - 1];
-
-            if gains[depth].max(-gains[depth - 1]) < 0 {
-                break;
-            }
-
-            attacker_piece = piece;
-            occ ^= Bitboard::from(sq);
-            attackers = self.attackers_to_color(target, occ, !side);
-            if (attackers & self.pieces(!side, Piece::King)).any() {
-                break;
-            }
+            gains[depth] = gain - gains[depth - 1];
+            occupant = promoted;
+            occ ^= Bitboard::from(from);
         }
 
         while depth > 0 {
@@ -1323,81 +1389,95 @@ FEN: {}",
 
     #[inline(always)]
     pub fn see_ge(&self, mv: Move, threshold: i32) -> bool {
-        if !mv.is_capture() {
+        crate::diag_count!(board_see_threshold_calls);
+        self.see_ge_impl(mv, threshold, false, PRODUCTION_SEE_VALUES)
+    }
+
+    #[inline(always)]
+    pub fn see_ge_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
+        self.see_ge_impl(mv, threshold, false, values)
+    }
+
+    /// As [`Board::see_ge`], but a QUIET move is put through the full exchange
+    /// instead of being answered with its immediate gain.
+    ///
+    /// `see_ge` short-circuits every non-capture to `gain >= threshold`, and
+    /// `gain` is 0 for a plain quiet move — so against any negative threshold
+    /// it is trivially true and the caller learns nothing. That makes it
+    /// impossible to ask the one question a quiet SEE prune exists to ask:
+    /// does this move hang the piece it just moved? The reference's SEE
+    /// answers it, and prices the pruning it enables at ~20 Elo.
+    ///
+    /// The exchange body needs no special case: `captured_piece` is `None` for
+    /// a quiet move, so the immediate balance starts at 0, which is exactly
+    /// right — nothing was won, and the moved piece is now the thing at risk.
+    pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
+        crate::diag_count!(board_see_quiet_threshold_calls);
+        self.see_ge_impl(mv, threshold, true, PRODUCTION_SEE_VALUES)
+    }
+
+    pub fn see_ge_quiet_aware_with_values(
+        &self,
+        mv: Move,
+        threshold: i32,
+        values: SeeValues,
+    ) -> bool {
+        self.see_ge_impl(mv, threshold, true, values)
+    }
+
+    fn see_ge_impl(
+        &self,
+        mv: Move,
+        threshold: i32,
+        evaluate_quiet: bool,
+        values: SeeValues,
+    ) -> bool {
+        if !mv.is_capture() && !(evaluate_quiet && !mv.is_promo()) {
             let gain = if mv.is_promo() {
-                piece_value(mv.promo_piece()) - piece_value(Piece::Pawn)
+                values.value(mv.promo_piece()) - values.value(Piece::Pawn)
             } else {
                 0
             };
             return gain >= threshold;
         }
 
-        let mut balance = self.captured_piece(mv).map(piece_value).unwrap_or(0);
+        let mut gain = self
+            .captured_piece(mv)
+            .map_or(0, |piece| values.value(piece));
+        let mut occupant = self.moving_piece(mv);
         if mv.is_promo() {
-            balance += piece_value(mv.promo_piece()) - piece_value(Piece::Pawn);
+            occupant = mv.promo_piece();
+            gain += values.value(occupant) - values.value(Piece::Pawn);
         }
-        balance -= threshold;
-        if balance < 0 {
+        if gain < threshold {
             return false;
         }
 
         let target = mv.to_sq();
-        let from = mv.from_sq();
-        let mut attacker_piece = if mv.is_promo() {
-            mv.promo_piece()
-        } else {
-            self.moving_piece(mv)
-        };
-
-        balance = piece_value(attacker_piece) - balance;
-        if balance <= 0 {
-            return true;
-        }
-
-        let mut occ = self.all_occ ^ Bitboard::from(from);
-        if mv.is_en_passant() {
-            let cap_sq = if self.side_to_move == Color::White {
-                Square(target.0 - 8)
-            } else {
-                Square(target.0 + 8)
-            };
-            occ ^= Bitboard::from(cap_sq);
-        } else if mv.is_capture() {
-            occ ^= Bitboard::from(target);
-        }
-        occ |= Bitboard::from(target);
-
+        let mut occ = self.see_occupancy(mv);
         let mut side = self.side_to_move;
         let mut result = true;
-        let mut pins: [Option<SeePins>; 2] = [None, None];
-        loop {
+        // We pass iff the opponent cannot gain >= gain - threshold + 1.
+        // At each optional recapture V = max(0, capture_gain - next_V).
+        // For positive `limit`, V >= limit iff next_V < capture_gain-limit+1.
+        // Toggling result expresses that negation; +1 preserves equality.
+        let mut limit = gain - threshold + 1;
+        while occupant != Piece::King {
             side = !side;
-            let mut attackers = self.attackers_to_color(target, occ, side);
-            if attackers.is_empty() {
+            let Some((from, piece)) = self.see_recapturer(target, occ, side) else {
+                break;
+            };
+            let promoted = Self::see_recapture_piece(piece, target);
+            let capture_gain =
+                values.value(occupant) + values.value(promoted) - values.value(piece);
+            if capture_gain < limit {
                 break;
             }
-            let pin_set = pins[side as usize].get_or_insert_with(|| self.see_pins(side));
-            attackers &= !pin_set.forbidden(target, occ);
-            if attackers.is_empty() {
-                break;
-            }
-
-            let (sq, piece) = self.least_valuable_attacker(attackers, side);
-            attacker_piece = piece;
-            occ ^= Bitboard::from(sq);
-
-            let next_attackers = self.attackers_to_color(target, occ, !side);
-            if (next_attackers & self.pieces(!side, Piece::King)).any() {
-                break;
-            }
-
-            balance = piece_value(attacker_piece) - balance;
+            limit = capture_gain - limit + 1;
             result = !result;
-            if result == (balance >= 0) {
-                break;
-            }
+            occupant = promoted;
+            occ ^= Bitboard::from(from);
         }
-
         result
     }
 
@@ -1501,6 +1581,7 @@ FEN: {}",
     #[inline(always)]
     /// Play `mv`, computing the new checker set from scratch.
     pub fn make_move(&mut self, mv: Move) {
+        crate::diag_count!(board_make_plain_calls);
         self.make_move_inner(mv, None);
     }
 
@@ -1520,6 +1601,7 @@ FEN: {}",
     /// every make and unmake — a wrong hint fails loudly rather than
     /// producing illegal moves.
     pub fn make_move_with_check(&mut self, mv: Move, gives_check: bool) {
+        crate::diag_count!(board_make_with_check_calls);
         self.make_move_inner(mv, Some(gives_check));
     }
 
@@ -1552,43 +1634,56 @@ FEN: {}",
         debug_assert!(self.mailbox[from.index()] < 12);
         let moving_piece = self.piece_type_at_unchecked(from);
 
-        // Remove moving piece from origin
-        self.remove_piece(us, moving_piece, from);
-        self.hash ^= zob.piece(us, moving_piece, from);
-
-        // Handle en passant capture
-        if flags == EN_PASSANT {
-            let ep_cap_sq = if us == Color::White {
-                Square(to.0 - 8)
+        if flags == QUIET {
+            // 4.11b.9 fused ordinary relocation. `to` is empty and the piece
+            // keeps its identity, so one from/to mask and one paired key
+            // reproduce remove_piece(from) + add_piece(to) exactly.
+            self.move_piece(us, moving_piece, from, to);
+            self.hash ^= zob.piece(us, moving_piece, from) ^ zob.piece(us, moving_piece, to);
+            if moving_piece == Piece::Pawn {
+                self.halfmove_clock = 0;
             } else {
-                Square(to.0 + 8)
-            };
-            captured = encode_piece(them, Piece::Pawn);
-            self.remove_piece(them, Piece::Pawn, ep_cap_sq);
-            self.hash ^= zob.piece(them, Piece::Pawn, ep_cap_sq);
-            self.halfmove_clock = 0;
-        } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
-            // Regular capture (including promo-captures)
-            debug_assert!(self.mailbox[to.index()] < 12);
-            let captured_piece = self.piece_type_at_unchecked(to);
-            captured = encode_piece(them, captured_piece);
-            self.remove_piece(them, captured_piece, to);
-            self.hash ^= zob.piece(them, captured_piece, to);
-            self.halfmove_clock = 0;
-        } else if moving_piece == Piece::Pawn {
-            self.halfmove_clock = 0;
+                self.halfmove_clock = self.halfmove_clock.saturating_add(1);
+            }
         } else {
-            self.halfmove_clock = self.halfmove_clock.saturating_add(1);
-        }
+            // Remove moving piece from origin
+            self.remove_piece(us, moving_piece, from);
+            self.hash ^= zob.piece(us, moving_piece, from);
 
-        // Place moving piece on destination (or promotion piece)
-        if flags >= PROMO_KNIGHT {
-            let promo = mv.promo_piece();
-            self.add_piece(us, promo, to);
-            self.hash ^= zob.piece(us, promo, to);
-        } else {
-            self.add_piece(us, moving_piece, to);
-            self.hash ^= zob.piece(us, moving_piece, to);
+            // Handle en passant capture
+            if flags == EN_PASSANT {
+                let ep_cap_sq = if us == Color::White {
+                    Square(to.0 - 8)
+                } else {
+                    Square(to.0 + 8)
+                };
+                captured = encode_piece(them, Piece::Pawn);
+                self.remove_piece(them, Piece::Pawn, ep_cap_sq);
+                self.hash ^= zob.piece(them, Piece::Pawn, ep_cap_sq);
+                self.halfmove_clock = 0;
+            } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
+                // Regular capture (including promo-captures)
+                debug_assert!(self.mailbox[to.index()] < 12);
+                let captured_piece = self.piece_type_at_unchecked(to);
+                captured = encode_piece(them, captured_piece);
+                self.remove_piece(them, captured_piece, to);
+                self.hash ^= zob.piece(them, captured_piece, to);
+                self.halfmove_clock = 0;
+            } else if moving_piece == Piece::Pawn {
+                self.halfmove_clock = 0;
+            } else {
+                self.halfmove_clock = self.halfmove_clock.saturating_add(1);
+            }
+
+            // Place moving piece on destination (or promotion piece)
+            if flags >= PROMO_KNIGHT {
+                let promo = mv.promo_piece();
+                self.add_piece(us, promo, to);
+                self.hash ^= zob.piece(us, promo, to);
+            } else {
+                self.add_piece(us, moving_piece, to);
+                self.hash ^= zob.piece(us, moving_piece, to);
+            }
         }
 
         // Castling: move the rook as well
@@ -1643,7 +1738,14 @@ FEN: {}",
 
         // Fullmove counter
         if us == Color::Black {
-            self.fullmove += 1;
+            self.fullmove = self.fullmove.checked_add(1).unwrap_or(MAX_FULLMOVE);
+        }
+        #[cfg(feature = "diag")]
+        {
+            crate::diag_count!(board_history_pushes);
+            if self.history.len() == self.history.capacity() {
+                crate::diag_count!(board_history_growths);
+            }
         }
         self.history.push(UnmakeInfo {
             captured,
@@ -1674,6 +1776,7 @@ FEN: {}",
     }
 
     pub fn make_null_move(&mut self) {
+        crate::diag_count!(board_make_null_calls);
         debug_assert!(!self.is_in_check(), "null move while in check");
         let old_castling = self.castling;
         let old_ep_sq = self.ep_sq;
@@ -1687,11 +1790,18 @@ FEN: {}",
             self.ep_sq = 255;
         }
         if self.side_to_move == Color::Black {
-            self.fullmove += 1;
+            self.fullmove = self.fullmove.checked_add(1).unwrap_or(MAX_FULLMOVE);
         }
         self.halfmove_clock = self.halfmove_clock.saturating_add(1);
         self.side_to_move = !self.side_to_move;
         self.hash ^= ZOBRIST.side();
+        #[cfg(feature = "diag")]
+        {
+            crate::diag_count!(board_history_pushes);
+            if self.history.len() == self.history.capacity() {
+                crate::diag_count!(board_history_growths);
+            }
+        }
         self.history.push(UnmakeInfo {
             captured: NO_PIECE,
             castling: old_castling,
@@ -1705,6 +1815,7 @@ FEN: {}",
     }
 
     pub fn unmake_null_move(&mut self) {
+        crate::diag_count!(board_unmake_null_calls);
         let info = self
             .history
             .pop()
@@ -1722,6 +1833,7 @@ FEN: {}",
     /// Undo the last move.
     #[inline(always)]
     pub fn unmake_move(&mut self, mv: Move) {
+        crate::diag_count!(board_unmake_calls);
         let info = self.history.pop().expect("unmake_move with empty history");
 
         let from = mv.from_sq();
@@ -1742,19 +1854,26 @@ FEN: {}",
         self.checkers = info.checkers;
 
         // Move the piece back from `to` to `from`
-        let moved_piece = if flags >= PROMO_KNIGHT {
-            // Promotion: remove the promo piece, restore a pawn
-            let promo = mv.promo_piece();
-            self.remove_piece(us, promo, to);
-            Piece::Pawn
-        } else {
+        if flags == QUIET {
+            // 4.11b.9 fused ordinary relocation; mirrors the make-side path.
             debug_assert!(self.mailbox[to.index()] < 12);
             let p = self.piece_type_at_unchecked(to);
-            self.remove_piece(us, p, to);
-            p
-        };
+            self.move_piece(us, p, to, from);
+        } else {
+            let moved_piece = if flags >= PROMO_KNIGHT {
+                // Promotion: remove the promo piece, restore a pawn
+                let promo = mv.promo_piece();
+                self.remove_piece(us, promo, to);
+                Piece::Pawn
+            } else {
+                debug_assert!(self.mailbox[to.index()] < 12);
+                let p = self.piece_type_at_unchecked(to);
+                self.remove_piece(us, p, to);
+                p
+            };
 
-        self.add_piece(us, moved_piece, from);
+            self.add_piece(us, moved_piece, from);
+        }
 
         // Restore captured piece
         if info.captured != 255 {
@@ -1823,6 +1942,33 @@ FEN: {}",
         }
     }
 
+    /// Fused ordinary relocation of `piece` from `from` to `to`.
+    ///
+    /// Only valid when `to` is empty and the piece keeps its identity, i.e. for
+    /// `QUIET` moves. The combined from/to mask and paired key are exactly the
+    /// XOR of [`Board::remove_piece`] and [`Board::add_piece`].
+    #[inline(always)]
+    fn move_piece(&mut self, color: Color, piece: Piece, from: Square, to: Square) {
+        debug_assert!(self.mailbox[to.index()] == NO_PIECE);
+        debug_assert!(from != to);
+        let mask = Bitboard::from(from) | Bitboard::from(to);
+        self.mailbox[from.index()] = NO_PIECE;
+        self.mailbox[to.index()] = encode_piece(color, piece);
+        self.pieces[color as usize * 6 + piece as usize] ^= mask;
+        self.occupancy[color as usize] ^= mask;
+        self.all_occ ^= mask;
+        let key = ZOBRIST.piece(color, piece, from) ^ ZOBRIST.piece(color, piece, to);
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= key,
+            Piece::Knight | Piece::Bishop => {
+                self.minor_hash ^= key;
+                self.non_pawn_hash[color as usize] ^= key;
+            }
+            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= key,
+            Piece::King => {}
+        }
+    }
+
     #[inline(always)]
     fn remove_piece(&mut self, color: Color, piece: Piece, sq: Square) {
         let bb = Bitboard::from(sq);
@@ -1869,6 +2015,7 @@ FEN: {}",
 
     #[inline(always)]
     fn calculate_checkers(&self) -> Bitboard {
+        crate::diag_count!(board_calculate_checkers_calls);
         let attacker = !self.side_to_move;
         let king_sq = self.king_sq(self.side_to_move);
         let atk = &*ATTACKS;
@@ -2201,18 +2348,6 @@ fn decode_piece_type(encoded: u8) -> Option<Piece> {
     }
 }
 
-#[inline(always)]
-fn piece_value(piece: Piece) -> i32 {
-    match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
-        Piece::King => 20_000,
-    }
-}
-
 // -----------------------------------------------------------------------
 // Display
 // -----------------------------------------------------------------------
@@ -2254,5 +2389,155 @@ impl fmt::Display for Board {
         }
         writeln!(f, "  Hash: 0x{:016X}", self.hash)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod history_contract_tests {
+    use super::*;
+
+    /// Shuffle both knights out and back: four plies that always exist from the
+    /// starting position, so a walk of any even length can be built from them.
+    const SHUFFLE: [&str; 4] = ["g1f3", "g8f6", "f3g1", "f6g8"];
+
+    fn walk(board: &mut Board, plies: usize) -> Vec<Move> {
+        let mut played = Vec::with_capacity(plies);
+        for index in 0..plies {
+            let uci = SHUFFLE[index % SHUFFLE.len()];
+            let mv = board
+                .parse_move(uci)
+                .unwrap_or_else(|| panic!("{uci} must be legal at ply {index}"));
+            board.make_move_unchecked(mv);
+            played.push(mv);
+        }
+        played
+    }
+
+    #[test]
+    fn reserve_history_provides_headroom_above_the_game_already_played() {
+        let mut board = Board::starting_position();
+        walk(&mut board, 40);
+        let played = board.history.len();
+        board.reserve_history(128);
+        assert!(
+            board.history.capacity() >= played + 128,
+            "capacity {} < {} played + 128 reserved",
+            board.history.capacity(),
+            played
+        );
+    }
+
+    #[test]
+    fn a_reserved_history_does_not_reallocate_through_a_full_depth_walk() {
+        let mut board = Board::starting_position();
+        walk(&mut board, 40);
+        board.reserve_history(128);
+        let reserved = board.history.capacity();
+
+        // 128 plies is the search's MAX_PLY; the reservation must absorb all
+        // of it without a single reallocation.
+        let played = walk(&mut board, 128);
+        assert_eq!(
+            board.history.capacity(),
+            reserved,
+            "history reallocated mid-walk: {reserved} -> {}",
+            board.history.capacity()
+        );
+
+        for mv in played.into_iter().rev() {
+            board.unmake_move(mv);
+        }
+        assert_eq!(board.history.len(), 40, "history depth not restored");
+        assert_eq!(
+            board.history.capacity(),
+            reserved,
+            "capacity changed on unwind"
+        );
+    }
+
+    #[test]
+    fn clone_preserves_reserved_capacity_so_workers_inherit_it() {
+        let mut board = Board::starting_position();
+        // A multiple of SHUFFLE.len(), so the cycle restarts cleanly for the
+        // clone's own walk below.
+        walk(&mut board, 12);
+        board.reserve_history(128);
+        let reserved = board.history.capacity();
+
+        let worker = board.clone();
+        assert_eq!(
+            worker.history.capacity(),
+            reserved,
+            "worker clone dropped the reservation"
+        );
+        assert_eq!(worker.history.len(), board.history.len());
+
+        // And the clone must then be able to search without reallocating.
+        let mut worker = worker;
+        walk(&mut worker, 128);
+        assert_eq!(
+            worker.history.capacity(),
+            reserved,
+            "worker reallocated despite inheriting the reservation"
+        );
+    }
+
+    #[test]
+    fn history_restoration_is_exact_through_a_deep_walk() {
+        let mut board = Board::starting_position();
+        board.reserve_history(128);
+        let before = board.clone();
+
+        let played = walk(&mut board, 64);
+        for mv in played.into_iter().rev() {
+            board.unmake_move(mv);
+        }
+
+        board
+            .check_consistency()
+            .unwrap_or_else(|err| panic!("inconsistent after unwind: {err}"));
+        assert_eq!(board.hash, before.hash, "position hash not restored");
+        assert_eq!(board.history.len(), before.history.len());
+        assert_eq!(board.halfmove_clock, before.halfmove_clock);
+        assert_eq!(board.fullmove, before.fullmove);
+        assert_eq!(board.side_to_move, before.side_to_move);
+    }
+
+    #[test]
+    fn legal_move_canonicalizes_flags_that_from_uci_cannot_know() {
+        // `Move::from_uci` always yields QUIET, because a UCI string carries no
+        // flag information. `legal_move` must supply the real flags, and a
+        // caller that plays its own input instead of the returned move would
+        // push the wrong UnmakeInfo. This pins that difference.
+        let cases = [
+            (
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "e2e4",
+            ),
+            (
+                "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",
+                "e4d5",
+            ),
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "e1g1"),
+        ];
+        for (fen, uci) in cases {
+            let board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
+            let raw = Move::from_uci(uci).expect("valid UCI shape");
+            assert_eq!(raw.flags(), QUIET, "{uci}: from_uci should be QUIET");
+            let canonical = board
+                .legal_move(raw)
+                .unwrap_or_else(|| panic!("{uci} must be legal in {fen}"));
+            assert_ne!(
+                canonical.flags(),
+                raw.flags(),
+                "{uci}: legal_move did not canonicalize the flags"
+            );
+            assert_eq!(canonical.from_sq(), raw.from_sq());
+            assert_eq!(canonical.to_sq(), raw.to_sq());
+            assert!(
+                board.is_legal(raw),
+                "{uci}: is_legal must agree with legal_move"
+            );
+        }
     }
 }

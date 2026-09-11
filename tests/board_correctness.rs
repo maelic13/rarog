@@ -228,7 +228,7 @@ fn threshold_see_matches_full_see_for_tactical_moves() {
     for fen in ORACLE_FENS {
         let mut board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
         let captures = board.generate_legal_captures();
-        for &mv in captures.iter() {
+        for &mv in &captures {
             let see = board.see(mv);
             for threshold in thresholds {
                 assert_eq!(
@@ -513,6 +513,69 @@ fn make_unmake_restores_state_through_two_ply_walk() {
 }
 
 #[test]
+fn ordinary_relocation_updates_and_restores_every_piece_class() {
+    let cases = [
+        (
+            "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+            "e2e3",
+            Color::White,
+            Piece::Pawn,
+        ),
+        (
+            "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
+            "b1c3",
+            Color::White,
+            Piece::Knight,
+        ),
+        (
+            "2b1k3/8/8/8/8/8/8/4K3 b - - 0 1",
+            "c8g4",
+            Color::Black,
+            Piece::Bishop,
+        ),
+        (
+            "r3k3/8/8/8/8/8/8/4K3 b - - 0 1",
+            "a8a5",
+            Color::Black,
+            Piece::Rook,
+        ),
+        (
+            "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
+            "d1d4",
+            Color::White,
+            Piece::Queen,
+        ),
+        (
+            "4k3/8/8/8/8/8/8/4K3 b - - 0 1",
+            "e8f7",
+            Color::Black,
+            Piece::King,
+        ),
+    ];
+
+    for (fen, uci, color, piece) in cases {
+        let mut board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
+        let before = Snapshot::from(&board);
+        let mv = board
+            .parse_move(uci)
+            .unwrap_or_else(|| panic!("{uci} must be legal in {fen}"));
+        let from = mv.from_sq();
+        let to = mv.to_sq();
+
+        assert!(!mv.is_capture() && !mv.is_promo() && !mv.is_castling());
+        board.make_move_unchecked(mv);
+        assert_eq!(board.piece_at(from), None, "{uci} left its origin occupied");
+        assert_eq!(board.piece_at(to), Some((color, piece)), "{uci} target");
+        board
+            .check_consistency()
+            .unwrap_or_else(|err| panic!("{uci} make left inconsistent state: {err}"));
+
+        board.unmake_move(mv);
+        before.assert_same(&board, &format!("ordinary relocation {uci}"));
+    }
+}
+
+#[test]
 fn move_generation_does_not_mutate_board_state() {
     for fen in ORACLE_FENS {
         let mut board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
@@ -667,7 +730,7 @@ fn custom_move_set(board: &Board) -> BTreeSet<String> {
 }
 
 fn move_set(moves: &[&str]) -> BTreeSet<String> {
-    moves.iter().map(|mv| mv.to_string()).collect()
+    moves.iter().map(std::string::ToString::to_string).collect()
 }
 
 fn custom_perft_divide(board: &mut Board, depth: u32) -> BTreeMap<String, u64> {
@@ -973,6 +1036,55 @@ fn fullmove_counter_tracking() {
         board.fullmove, 3,
         "fullmove must increment after each black move"
     );
+}
+
+#[test]
+fn fullmove_boundary_saturates_and_unmakes_for_real_and_null_moves() {
+    const MAX: u16 = u16::MAX;
+    let cases = [
+        ("white", "4k3/8/8/8/8/8/8/4K3 w - - 0 65535", "e1d1"),
+        ("black", "4k3/8/8/8/8/8/8/4K3 b - - 0 65535", "e8d8"),
+    ];
+
+    for (color, fen, uci) in cases {
+        let mut board = Board::from_fen(fen).expect("maximum fullmove FEN is valid");
+        let original = board.to_fen();
+        let mv = board.parse_move(uci).expect("boundary move is legal");
+        board.make_move(mv);
+        assert_eq!(board.fullmove, MAX, "real {color} move must saturate");
+        board
+            .check_consistency()
+            .expect("real move stays consistent");
+        board.unmake_move(mv);
+        assert_eq!(board.to_fen(), original, "real {color} move must unmake");
+
+        board.make_null_move();
+        assert_eq!(board.fullmove, MAX, "null {color} move must saturate");
+        board
+            .check_consistency()
+            .expect("null move stays consistent");
+        board.unmake_null_move();
+        assert_eq!(board.to_fen(), original, "null {color} move must unmake");
+    }
+
+    for color in ["w", "b"] {
+        let fen = format!("4k3/8/8/8/8/8/8/4K3 {color} - - 0 65536");
+        assert!(
+            Board::from_fen(&fen).is_err(),
+            "first fullmove value beyond u16 must be rejected for {color}"
+        );
+    }
+}
+
+#[test]
+fn malformed_uci_move_tokens_are_rejected_without_panicking() {
+    let board = Board::starting_position();
+    for input in ["aé1", "é2e4", "e2é4", "e2e4é", "e2e4qé"] {
+        let parsed = std::panic::catch_unwind(|| Move::from_uci(input));
+        assert!(parsed.is_ok(), "{input:?} must not panic");
+        assert_eq!(parsed.expect("panic already checked"), None, "{input:?}");
+        assert_eq!(board.parse_move(input), None, "{input:?}");
+    }
 }
 
 // -----------------------------------------------------------------------

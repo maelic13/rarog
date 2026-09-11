@@ -155,6 +155,12 @@ pub(crate) fn update_hist_entry(entry: &mut i16, bonus: i32, max_value: i32) {
 /// so `& (SIZE - 1)` is *not* a valid substitute for `.min()` here — masking
 /// would remap valid in-range indices (65,536 would fold to 0). Only
 /// `pawn_history_index`'s 4,096-entry slot table may use a mask.
+/// Retained as the SPECIFICATION of the continuation index, even though
+/// the search now reads a per-ply `cont_key` instead of calling this. The
+/// test below proves `cont_index == cont_row_base + piece_to_index`, which
+/// is the identity `NodeContext::cont_row_base` depends on — delete these
+/// and that identity becomes an unchecked assumption.
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn cont_index(prev_piece: usize, prev_to: usize, piece: usize, to: usize) -> usize {
     debug_assert!(prev_piece < 6 && piece < 6, "piece index out of range");
     debug_assert!(prev_to < 64 && to < 64, "square index out of range");
@@ -167,6 +173,12 @@ pub(crate) fn cont_index(prev_piece: usize, prev_to: usize, piece: usize, to: us
 /// (equivalence pinned by a test below). Move scoring resolves this once per
 /// node instead of once per quiet move — the 8.12(g2) hoist from the Basilisk
 /// cross-review (its 8.7.6(b+d), +3.03% NPS there).
+/// Retained as the SPECIFICATION of the continuation index, even though
+/// the search now reads a per-ply `cont_key` instead of calling this. The
+/// test below proves `cont_index == cont_row_base + piece_to_index`, which
+/// is the identity `NodeContext::cont_row_base` depends on — delete these
+/// and that identity becomes an unchecked assumption.
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn cont_row_base(prev_piece: usize, prev_to: usize) -> usize {
     debug_assert!(prev_piece < 6, "piece index out of range");
     debug_assert!(prev_to < 64, "square index out of range");

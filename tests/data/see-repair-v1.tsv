@@ -1,0 +1,24 @@
+# see-repair-v1: name|disposition|FEN|move|legal-tree value|immediate gain
+promoted-piece-recaptured|exchange|7k/8/8/8/8/8/pR6/1rR1K3 w - - 0 1|b2b1|100|500
+pin-created-later|exchange|2k5/2n5/2B1p3/3p4/8/8/3R4/2R4K w - - 0 1|d2d5|-300|100
+skip-pinned-choose-rook|exchange|2kr4/2n5/2B5/3p4/8/8/8/2R1K3 w - - 0 1|c6d5|-230|100
+quiet-allows-promotion|policy-quiet|7k/8/8/8/8/7K/pR6/8 w - - 0 1|b2b1|-1300|0
+initial-king-capture|exchange|k7/7p/8/3n4/4K3/8/7P/8 w - - 0 1|e4d5|320|320
+mirror-free-pawn|exchange|4k3/3r4/8/8/3P4/8/8/4K3 b - - 0 1|d7d4|100|100
+mirror-defended-pawn|exchange|4k3/3r4/8/8/3P4/2P5/8/4K3 b - - 0 1|d7d4|-400|100
+mirror-king-after-pawn|debt|8/3r4/8/8/3Pk3/2P5/8/7K b - - 0 1|d7d4|-300|100
+mirror-legal-king-recapture|exchange|3k4/3q4/8/8/8/8/8/3QK3 b - - 0 1|d7d1|0|900
+mirror-defended-king-destination|exchange|3k4/3q4/8/8/6b1/8/8/3QK3 b - - 0 1|d7d1|900|900
+mirror-pinned-pawn|exchange|3rk3/8/8/4b3/8/2P5/3P4/3K4 b - - 0 1|e5c3|100|100
+mirror-pin-created|debt|2r1k3/8/8/8/3P4/2b5/2N5/2K5 b - - 0 1|c3d4|100|100
+mirror-pin-released|exchange|4k3/8/8/8/8/2b5/1R1P4/K7 b - - 0 1|c3d2|-230|100
+mirror-xray|exchange|3rk3/3r4/8/8/3R4/8/8/3RK3 b - - 0 1|d7d4|500|500
+mirror-ep-opens-rook|exchange|3R4/k7/8/8/3Pp3/8/8/7K b - d3 0 1|e4d3|0|100
+mirror-quiet-hanging|policy-quiet|7k/3r4/8/8/2P5/8/8/7K b - - 0 1|d7d5|-500|0
+mirror-quiet-promotion-hanging|policy-promotion|k7/8/8/8/8/7K/p7/7R b - - 0 1|a2a1q|-100|800
+mirror-quiet-underpromotion|policy-promotion|4k3/8/8/8/8/8/p7/4K3 b - - 0 1|a2a1n|220|220
+mirror-capture-promotion|exchange|4k3/8/8/8/8/8/p7/1R2K3 b - - 0 1|a2b1q|1300|1300
+mirror-capture-underpromotion|exchange|4k3/8/8/8/8/8/p7/1R2K3 b - - 0 1|a2b1n|720|720
+mirror-promotion-recapture|debt|1R6/Pr6/7k/8/8/8/8/7K b - - 0 1|b7b8|-800|500
+mirror-castle-king|policy-castle|r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1|e8g8|0|0
+mirror-castle-queen|policy-castle|r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1|e8c8|0|0

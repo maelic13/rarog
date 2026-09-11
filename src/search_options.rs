@@ -74,6 +74,17 @@ pub struct SearchLimits {
     pub infinite: bool,
     pub ponder: bool,
     pub search_moves: Vec<Move>,
+    /// The instant the `go` command was parsed on the UCI thread.
+    ///
+    /// A.3.3 (RAR-R11): the harness charges the clock from the moment it
+    /// writes `go`, so the search budget must start there too. Stockfish
+    /// stamps `limits.startTime` while parsing `go` ("the search starts as
+    /// early as possible") and Reckless builds its `TimeManager` at parse;
+    /// Rarog stamped its clock on the engine thread after the command
+    /// hand-off, so any wake-up or setup latency under a loaded host was
+    /// invisible to its budget and came straight off the harness margin.
+    /// `None` (tests, bench) means the search stamps its own start.
+    pub issued: Option<std::time::Instant>,
 }
 
 impl SearchLimits {
@@ -90,6 +101,7 @@ impl SearchLimits {
         self.infinite = false;
         self.ponder = false;
         self.search_moves.clear();
+        self.issued = None;
     }
 }
 
@@ -102,7 +114,11 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
-        // `mut` is needed when compiled with --features tune (the extend below).
+        // `mut` is needed when compiled with --features tune (the extend
+        // below). Stays `allow`, not `expect`: the lint fires under default
+        // features and does NOT under `tune`, so an expectation would be
+        // unfulfilled in one of the two configurations whichever way it is
+        // written. This is the only suppression in the crate with that shape.
         #[allow(unused_mut)]
         let mut opts = vec![
             String::from("option name Hash type spin default 64 min 1 max 33554432"),
@@ -175,6 +191,7 @@ impl SearchOptions {
 
     pub fn set_search_parameters(&mut self, args: &[String]) {
         self.limits.reset_temporary_parameters();
+        self.limits.issued = Some(std::time::Instant::now());
 
         self.limits.ponder = args.iter().any(|r| r == "ponder");
 

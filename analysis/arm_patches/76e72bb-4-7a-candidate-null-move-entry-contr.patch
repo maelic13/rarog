@@ -1,0 +1,124 @@
+Arm 76e72bb  (4.7a candidate: null-move entry contract (NOT gated, NOT accepted))
+Author-date: 2026-08-13 14:48:05 +0200
+Applies to: 090dedc  (reachable from dev)
+Command:    git diff <base> <arm>
+
+diff --git a/analysis/phase4_differential_47a_depth8.txt b/analysis/phase4_differential_47a_depth8.txt
+new file mode 100644
+index 0000000..823eaf8
+--- /dev/null
++++ b/analysis/phase4_differential_47a_depth8.txt
+@@ -0,0 +1,78 @@
++suite phase4_suite_v1.epd, 50 positions, depth 8, 1 thread
++
++Invariants (per engine; a failure voids the run)
++  all pass
++
++node ratio rarog/oracle = 1.930; norm divides it out
++
++counter                               rarog       oracle      r/o    norm  flag
++------------------------------------------------------------------------------
++lmp_prune                            551631        21412   25.763   13.35  **
++q_tt_cut                              73608         9234    7.971    4.13  **
++singular_attempt                       8696         1401    6.207    3.22  **
++singular_multicut                      1403          276    5.083    2.63  *
++q_tt_hit                             120690        24438    4.939    2.56  *
++tt_bound_not_usable                   23347         5191    4.498    2.33  *
++probcut_attempt                        8376         1900    4.408    2.28  *
++move_seen_quiet                      813479       200343    4.060    2.10  *
++move_seen_tt                          59590        15921    3.743    1.94  
++see_prune                             17496        48016    0.364    0.19  **
++nmp_cut                                3013         7622    0.395    0.20  **
++asp_fail_low                            195          358    0.545    0.28  **
++root_best_changes                       109          180    0.606    0.31  **
++razor_drop                            11434         3542    3.228    1.67  
++qnodes                               281525        90573    3.108    1.61  
++q_stand_pat_cut                       93345        30578    3.053    1.58  
++quiet_futility_prune                  16824        19682    0.855    0.44  *
++lmr_research                           1960         2006    0.977    0.51  
++root_iterations                         400          400    1.000    0.52  
++reduction_depth_sum                  257333        92083    2.795    1.45  
++main_store_upper                      29399        26963    1.090    0.57  
++probcut_cut                            1905         1733    1.099    0.57  
++main_store_exact                       3037         2755    1.102    0.57  
++asp_fail_high                           335          291    1.151    0.60  
++move_seen_bad_capture                 34503        29505    1.169    0.61  
++singular_extend_one                    2317          865    2.679    1.39  
++best_rank_4_7                          1246         1010    1.234    0.64  
++rfp_cut                              124696        47641    2.617    1.36  
++nodes_in_check                        29183        11238    2.597    1.35  
++best_rank_2_3                          5644         4444    1.270    0.66  
++cutoff_capture                        40437        15772    2.564    1.33  
++cutoff_quiet                          28179        21619    1.303    0.68  
++tt_cut_exact                            747          563    1.327    0.69  
++move_seen_good_capture                30500        22664    1.346    0.70  
++nmp_attempt                           12652         9154    1.382    0.72  
++best_rank_8_plus                        640          454    1.410    0.73  
++lmr_applied                          118937        49856    2.386    1.24  
++q_in_check                            27056        11789    2.295    1.19  
++tt_cut_upper                           1713         1090    1.572    0.81  
++main_tt_hits                         193341        88427    2.186    1.13  
++q_move_cut                            34868        16343    2.134    1.11  
++tt_cut_lower                          27954        15634    1.788    0.93  
++main_store_lower                      68616        37391    1.835    0.95  
++cutoff_first_move                     61086        31483    1.940    1.01  
++best_rank_1                           61086        31483    1.940    1.01  
++main_tt_probes                       283012       146602    1.930    1.00  
++nodes                                283012       146655    1.930    1.00  
++nmp_verify_pass                           0            0        -       -  oracle zero
++nmp_verify_fail                           0            0        -       -  oracle zero
++nmp_verify_attempt                        0            0        -       -  oracle zero
++
++Not differenced (definition differs, not a gap)
++  check_extensions               r=0         o=8513       Rarog removed its in-check extension (+30.75); oracle extends
++  iid_applied                    r=0         o=97         oracle-only; Rarog has IIR, a different mechanism
++  prune_shadow_check_exempt      r=13280     o=7481       see prune_shadow_moves
++  prune_shadow_futility          r=26246     o=20245      see prune_shadow_moves
++  prune_shadow_lmp               r=523536    o=26637      see prune_shadow_moves
++  prune_shadow_moves             r=652897    o=170740     SEE families range over different populations (4.7)
++  prune_shadow_overlap_two_plus  r=8849      o=15026      see prune_shadow_moves
++  prune_shadow_see               r=21820     o=37254      see prune_shadow_moves
++  singular_extend_two            r=2052      o=0          mechanism absent in 9587eeeb
++  singular_negative_extension    r=614       o=0          mechanism absent in 9587eeeb
++
++Per-cohort first-move cutoff rate
++  endgame            rarog  84.5%   oracle  84.3%
++  opening            rarog  88.8%   oracle  83.8%
++  quiet_middlegame   rarog  92.5%   oracle  84.5%
++  tactical           rarog  90.2%   oracle  83.5%
++  zugzwang           rarog  89.4%   oracle  87.0%
+diff --git a/src/search.rs b/src/search.rs
+index ff902a2..1c5f12d 100644
+--- a/src/search.rs
++++ b/src/search.rs
+@@ -2367,7 +2367,29 @@ impl Searcher {
+                             self.params.singular_reject_speculative != 0,
+                         )))
+                 && depth >= 3
+-                && nmp_eval
++                // 4.7a NULL-MOVE ENTRY CONTRACT. The primary gate is now "the
++                // pruning eval already says this node fails high", not "the
++                // pruning eval is within a margin of failing high".
++                //
++                // The old single relaxed test admitted nodes up to
++                // `12*depth + 35*improving` BELOW beta — about 131 cp at depth
++                // 8 — and RAR-S55 measured what that costs: Rarog attempted
++                // null move at 0.94x the reference's rate per node and
++                // converted 19.2% of attempts against its 83.3%. Four out of
++                // five null searches were spent on nodes that were never going
++                // to fail high.
++                //
++                // The margin is not deleted, it is RE-HOMED onto the raw static
++                // eval as a secondary floor. That keeps both tuned parameters
++                // live and gives them a defensible role — "the position is not
++                // wildly worse than beta once TT refinement is removed" — while
++                // the decision itself is made by the refined eval. `static_eval`
++                // is always real here: this whole block is under `!in_check`.
++                //
++                // Direction is de-selectivity, which is where RAR-S53/S54 point:
++                // fewer null cutoffs, a larger tree, better decisions per node.
++                && nmp_eval >= beta
++                && static_eval
+                     >= beta
+                         - self.params.nm_depth_coeff * depth
+                         - self.params.nm_improving_bonus * improving_i

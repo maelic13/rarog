@@ -259,6 +259,27 @@ jobs:
       - name: Build --features diag
         run: cargo build --release --features diag
 
+      # `ablate` was the fourth declared feature and the only one CI never
+      # built, so it could rot unnoticed exactly like the other three would
+      # have. It is the paired-ablation instrument; it is needed the moment an
+      # ablation is wanted, which is never a convenient moment to discover a
+      # build error.
+      - name: Build --features ablate
+        run: cargo build --release --features ablate
+
+      # 4.10.12: single features are not enough. Which items arrive under a
+      # given `cfg` differs per COMBINATION, so a module can compile under
+      # `diag` and under `tune` and fail under both. This enumerates all 16
+      # subsets with `cargo check --all-targets`, which catches the same
+      # compilation errors far more cheaply than 16 builds.
+      #
+      # Deliberately NOT `--all-features`: that is not a shipped configuration.
+      # It enables `texel`, which bypasses the eval and pawn caches, and a
+      # binary left in target/release by an --all-features test run must never
+      # be measured (AGENTS.md).
+      - name: Feature matrix (all 16 subsets compile)
+        run: python tools/diag/feature_matrix.py
+
       - name: Build the texel tuner (uses --features texel)
         run: cargo build --release -p texel-tuner
 

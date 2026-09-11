@@ -1,0 +1,283 @@
+{
+  "schema": "rarog-endgame-reference-results-v1",
+  "layer": "3_conversion",
+  "what_this_is": "The conversion ONE reference engine attained on ONE cohort at ONE node budget. Not a theoretical bound and not an empirical one.",
+  "what_this_is_not": [
+    "not a ceiling: the candidate may exceed it",
+    "not an acceptance target: failing to equal it is not a rejection",
+    "not transferable to another node budget or another cohort",
+    "the paired union proves each position was converted by at least one engine, NOT that one engine can convert the union"
+  ],
+  "conditions": {
+    "nodes_per_move": 60000,
+    "max_plies": 100,
+    "positions_per_family": 100,
+    "seed": 6200600,
+    "hash_mb": 16
+  },
+  "cohort_sha256": "fe4866045506636f884ee30526b4188c3def9ca9747f5960ea5c5e7cba5dbb5e",
+  "candidate_engine": "D:\\code\\rarog\\target\\release\\rarog.exe",
+  "reference_engine": "D:\\chess\\engines\\stockfish-windows-x86-64-bmi2.exe",
+  "totals": {
+    "clean_wins": 1372,
+    "candidate_converted": 1276,
+    "attained_reference_result": 1361,
+    "paired": {
+      "both": 1273,
+      "candidate_only": 3,
+      "reference_only": 88,
+      "neither": 8
+    },
+    "paired_union": 1364,
+    "hard_residue": 8
+  },
+  "families": {
+    "KQ-K": {
+      "clean_wins": 100,
+      "candidate_converted": 98,
+      "attained_reference_result": 100,
+      "paired": {
+        "both": 98,
+        "candidate_only": 0,
+        "reference_only": 2,
+        "neither": 0
+      },
+      "paired_union": 100,
+      "deficit_to_reference": 2
+    },
+    "KR-K": {
+      "clean_wins": 100,
+      "candidate_converted": 96,
+      "attained_reference_result": 100,
+      "paired": {
+        "both": 96,
+        "candidate_only": 0,
+        "reference_only": 4,
+        "neither": 0
+      },
+      "paired_union": 100,
+      "deficit_to_reference": 4
+    },
+    "KBB-K": {
+      "clean_wins": 100,
+      "candidate_converted": 100,
+      "attained_reference_result": 100,
+      "paired": {
+        "both": 100,
+        "candidate_only": 0,
+        "reference_only": 0,
+        "neither": 0
+      },
+      "paired_union": 100,
+      "deficit_to_reference": 0
+    },
+    "KBN-K": {
+      "clean_wins": 98,
+      "candidate_converted": 88,
+      "attained_reference_result": 98,
+      "paired": {
+        "both": 88,
+        "candidate_only": 0,
+        "reference_only": 10,
+        "neither": 0
+      },
+      "paired_union": 98,
+      "deficit_to_reference": 10
+    },
+    "KNN-K": {
+      "clean_wins": 1,
+      "candidate_converted": 1,
+      "attained_reference_result": 1,
+      "paired": {
+        "both": 1,
+        "candidate_only": 0,
+        "reference_only": 0,
+        "neither": 0
+      },
+      "paired_union": 1,
+      "deficit_to_reference": 0
+    },
+    "KP-K": {
+      "clean_wins": 80,
+      "candidate_converted": 77,
+      "attained_reference_result": 80,
+      "paired": {
+        "both": 77,
+        "candidate_only": 0,
+        "reference_only": 3,
+        "neither": 0
+      },
+      "paired_union": 80,
+      "deficit_to_reference": 3
+    },
+    "KPP-K": {
+      "clean_wins": 98,
+      "candidate_converted": 96,
+      "attained_reference_result": 98,
+      "paired": {
+        "both": 96,
+        "candidate_only": 0,
+        "reference_only": 2,
+        "neither": 0
+      },
+      "paired_union": 98,
+      "deficit_to_reference": 2
+    },
+    "KBP-K": {
+      "clean_wins": 94,
+      "candidate_converted": 94,
+      "attained_reference_result": 94,
+      "paired": {
+        "both": 94,
+        "candidate_only": 0,
+        "reference_only": 0,
+        "neither": 0
+      },
+      "paired_union": 94,
+      "deficit_to_reference": 0
+    },
+    "KR-KP": {
+      "clean_wins": 98,
+      "candidate_converted": 90,
+      "attained_reference_result": 98,
+      "paired": {
+        "both": 90,
+        "candidate_only": 0,
+        "reference_only": 8,
+        "neither": 0
+      },
+      "paired_union": 98,
+      "deficit_to_reference": 8
+    },
+    "KR-KB": {
+      "clean_wins": 28,
+      "candidate_converted": 26,
+      "attained_reference_result": 28,
+      "paired": {
+        "both": 26,
+        "candidate_only": 0,
+        "reference_only": 2,
+        "neither": 0
+      },
+      "paired_union": 28,
+      "deficit_to_reference": 2
+    },
+    "KR-KN": {
+      "clean_wins": 45,
+      "candidate_converted": 42,
+      "attained_reference_result": 45,
+      "paired": {
+        "both": 42,
+        "candidate_only": 0,
+        "reference_only": 3,
+        "neither": 0
+      },
+      "paired_union": 45,
+      "deficit_to_reference": 3
+    },
+    "KQ-KP": {
+      "clean_wins": 98,
+      "candidate_converted": 94,
+      "attained_reference_result": 98,
+      "paired": {
+        "both": 94,
+        "candidate_only": 0,
+        "reference_only": 4,
+        "neither": 0
+      },
+      "paired_union": 98,
+      "deficit_to_reference": 4
+    },
+    "KQ-KR": {
+      "clean_wins": 100,
+      "candidate_converted": 77,
+      "attained_reference_result": 100,
+      "paired": {
+        "both": 77,
+        "candidate_only": 0,
+        "reference_only": 23,
+        "neither": 0
+      },
+      "paired_union": 100,
+      "deficit_to_reference": 23
+    },
+    "KNN-KP": {
+      "clean_wins": 23,
+      "candidate_converted": 5,
+      "attained_reference_result": 14,
+      "paired": {
+        "both": 3,
+        "candidate_only": 2,
+        "reference_only": 11,
+        "neither": 7
+      },
+      "paired_union": 16,
+      "deficit_to_reference": 9
+    },
+    "KRP-KR": {
+      "clean_wins": 73,
+      "candidate_converted": 67,
+      "attained_reference_result": 72,
+      "paired": {
+        "both": 66,
+        "candidate_only": 1,
+        "reference_only": 6,
+        "neither": 0
+      },
+      "paired_union": 73,
+      "deficit_to_reference": 5
+    },
+    "KRP-KB": {
+      "clean_wins": 96,
+      "candidate_converted": 90,
+      "attained_reference_result": 95,
+      "paired": {
+        "both": 90,
+        "candidate_only": 0,
+        "reference_only": 5,
+        "neither": 1
+      },
+      "paired_union": 95,
+      "deficit_to_reference": 5
+    },
+    "KBP-KB": {
+      "clean_wins": 26,
+      "candidate_converted": 24,
+      "attained_reference_result": 26,
+      "paired": {
+        "both": 24,
+        "candidate_only": 0,
+        "reference_only": 2,
+        "neither": 0
+      },
+      "paired_union": 26,
+      "deficit_to_reference": 2
+    },
+    "KBP-KN": {
+      "clean_wins": 57,
+      "candidate_converted": 55,
+      "attained_reference_result": 57,
+      "paired": {
+        "both": 55,
+        "candidate_only": 0,
+        "reference_only": 2,
+        "neither": 0
+      },
+      "paired_union": 57,
+      "deficit_to_reference": 2
+    },
+    "KP-KP": {
+      "clean_wins": 57,
+      "candidate_converted": 56,
+      "attained_reference_result": 57,
+      "paired": {
+        "both": 56,
+        "candidate_only": 0,
+        "reference_only": 1,
+        "neither": 0
+      },
+      "paired_union": 57,
+      "deficit_to_reference": 1
+    }
+  }
+}

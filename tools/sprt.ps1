@@ -85,8 +85,18 @@
 
 .PARAMETER Mode
     "gainer"       -> H0: elo<=3,  H1: elo>=10 (default; demand a material gain).
+                      NOTE these are the HARNESS defaults, not the project's.
+                      AGENTS.md makes [0,3] the default bracket: wide bounds
+                      anchored high REJECT a small true gain, so pass
+                      -Elo0 0 -Elo1 3 for an ordinary candidate.
     "simplify"     -> H0: elo<=-5, H1: elo>=0     (non-regression / cleanup).
-    "calibrate"    -> fixed-size identical-binary null match; no SPRT.
+    "calibrate"    -> fixed-size identical-binary null match; no SPRT. Asserts
+                      the two arms are symmetric.
+    "fixed"        -> fixed-size match of -Games games between DIFFERENT arms;
+                      no SPRT and no early stop. This is the ablation and
+                      observation mode: it reports an Elo with an interval and
+                      never decides anything. Use it for matched ablation
+                      (see PROCESS.md), never as a strength gate.
     The explicit -Elo0/-Elo1 parameters override the mode if supplied.
 
 .PARAMETER Elo0 / Elo1
@@ -156,6 +166,33 @@
     Windows scheduler / process IO jitter from being counted as a time
     forfeit. It does not change the engine's own time budget.
 
+.PARAMETER AllowDirtyTree
+    Permit an engine built from uncommitted changes. Refused by default (4.10.9):
+    such a binary cannot be reproduced from git, so a ledger row citing it is a
+    promise that someone is still storing the evidence. Use only for a
+    deliberate throwaway screen, and say why in the registration.
+
+.PARAMETER ExpectRevision
+    Refuse to start unless BOTH engines' manifests record a git SHA with this
+    prefix. A gate that measures a different revision than the one it registers
+    is not evidence for that revision.
+
+.PARAMETER Adjudicate
+    Opt IN to fastchess draw and resign adjudication under the named
+    strength-v2 profile. Off by default since 2026-09-01: RAR-M16 priced
+    playing games out at about 10% wall time, against RAR-M15's finding that
+    adjudication destroys 52.7% of all endgames before they are reached.
+
+    Use it only when wall time genuinely binds AND the change provably cannot
+    touch conversion or defensive holding. A result produced with this flag is
+    not comparable with one produced without it.
+
+.PARAMETER NoAdjudication
+    Omit fastchess draw and resign adjudication. This is now the DEFAULT; the
+    switch is retained because it still describes exactly what happens, so
+    every recipe recorded in EXPERIMENTS.md reproduces verbatim. Passing both
+    -Adjudicate and -NoAdjudication is refused.
+
 .PARAMETER Book
     Opening book, PGN or EPD (format auto-detected from the extension).
     Default tools\books\UHO_Lichess_4852_v1.epd. Balanced-book fallback:
@@ -202,6 +239,10 @@ param(
     [double]$MoveTime = 0,
     [int]$Nodes = 0,
     [int]$TimeMargin = 20,
+    [switch]$Adjudicate,
+    [switch]$NoAdjudication,
+    [switch]$AllowDirtyTree,
+    [string]$ExpectRevision = "",
     [string]$Book = "$PSScriptRoot\books\UHO_Lichess_4852_v1.epd",
     [string]$FastchessPath = "$PSScriptRoot\bin\fastchess.exe"
 )
@@ -209,8 +250,51 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
+# PowerShell's native-argument binding can deliver a comma-separated option
+# list as one string. Normalize it before equality checks, manifests or UCI
+# validation so all three describe what fastchess will actually receive.
+# The leading comma is load-bearing: without it PowerShell unrolls an EMPTY
+# result to $null, and `[string[]]$null` then rebuilds a ONE-element array
+# holding $null. That fake element made the advertisement guard below throw on
+# every options-free gate, and made $optArgsA emit a bare `option.` to
+# fastchess. Return the array itself, always.
+$splitOpts = {
+    param($items)
+    ,@($items | ForEach-Object { $_ -split ',' } |
+        ForEach-Object { $_.Trim().Trim('"') } |
+        Where-Object { $_ })
+}
+$OptionsA = & $splitOpts $OptionsA
+$OptionsB = & $splitOpts $OptionsB
+
 $strengthProfile = Get-StrengthTestProfile
 $resignArgs = @(Get-StrengthTestResignArgs)
+# ADJUDICATION IS OFF BY DEFAULT since 2026-09-01 (RAR-M16, maintainer
+# decision). Playing games out costs about 10% wall time -- 97.5 games/min
+# adjudicated against RAR-E06's 88.4 -- and adjudication destroys 52.7% of all
+# endgames before they are reached (RAR-M15). It is not unfair, being symmetric
+# between arms, but it is lossy, and the loss scales with how badly the engine
+# converts: for an engine that converts KRP-KR at 52%, the adjudicated verdict
+# and the played-out verdict disagree far more often than for one that converts
+# it at 99%. Revisit the default if conversion ever gets that good.
+#
+# `-NoAdjudication` is kept and still means exactly what it says, so every
+# recipe recorded in EXPERIMENTS.md (RAR-E06's included) reproduces verbatim.
+if ($Adjudicate -and $NoAdjudication) {
+    throw "-Adjudicate and -NoAdjudication are contradictory; pass at most one."
+}
+if (-not $Adjudicate) {
+    $adjudicationArgs = @()
+    $adjudicationLabel = "none (games play to a rules result)"
+} else {
+    $adjudicationArgs = @(
+        '-draw'
+        "movenumber=$($strengthProfile.DrawMoveNumber)"
+        "movecount=$($strengthProfile.DrawMoveCount)"
+        "score=$($strengthProfile.DrawScore)"
+    ) + $resignArgs
+    $adjudicationLabel = "$($strengthProfile.Name); resign=$($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount)$(if ($strengthProfile.ResignTwoSided) { ' two-sided' } else { ' one-sided' }); draw=$($strengthProfile.DrawScore)/$($strengthProfile.DrawMoveCount) from move $($strengthProfile.DrawMoveNumber)"
+}
 
 # Per-engine Threads resolve to $Threads unless overridden. The game slot must
 # hold the larger of the two, so the core arithmetic uses max(ThreadsA,ThreadsB).
@@ -239,6 +323,28 @@ if ($maxThreads -gt 1) {
     Write-Host "AFFINITY: -use-affinity DROPPED for Threads>1 (fastchess 1.8.0 pins 1 core/game, which starves multi-thread engines). OS-scheduled across all physical cores. Null-calibrate at this Threads before trusting a verdict." -ForegroundColor Yellow
 } else {
     $affinityArgs = @('-use-affinity', $AffinityCpus)
+}
+
+# 4.2a.4: an option this script ACCEPTS but the chosen mode cannot HONOR is
+# the same defect class as a dead `--rset` -- the run completes, reports a
+# plausible number, and measured something other than what was asked for.
+# Basilisk hit exactly this: `-Games` was accepted in a mode that ignored it.
+# Here, `-Games` is read only by calibrate/fixed while gainer/simplify size
+# themselves from `-MaxGames`, so `-Mode gainer -Games 5000` silently ran to
+# the default 16,000 instead. Refuse rather than reinterpret.
+$modeIgnores = if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
+    @{ Elo0 = "-MaxGames/-Elo0/-Elo1/-Alpha/-Beta describe an SPRT; this mode runs a fixed-size match with no stop rule"
+       Elo1 = $null; Alpha = $null; Beta = $null; MaxGames = $null }
+} else {
+    @{ Games = "-Games sizes calibrate/fixed matches; an SPRT is sized by -MaxGames"
+       CalibrationTolerance = "-CalibrationTolerance is the calibrate-mode null bound; an SPRT is bounded by -Elo0/-Elo1" }
+}
+$ignored = @($modeIgnores.Keys | Where-Object { $PSBoundParameters.ContainsKey($_) })
+if ($ignored.Count -gt 0) {
+    $why = @($ignored | ForEach-Object { $modeIgnores[$_] } | Where-Object { $_ }) | Select-Object -First 1
+    throw ("-Mode $Mode ignores: $($ignored -join ', '). $why. " +
+           "Remove the option or change -Mode; this script will not accept a " +
+           "parameter it cannot honor.")
 }
 
 if ($Mode -eq "calibrate" -or $Mode -eq "fixed") {
@@ -295,6 +401,26 @@ $EngineA = (Resolve-Path $EngineA).Path
 $EngineB = (Resolve-Path $EngineB).Path
 $Book    = (Resolve-Path $Book).Path
 
+$optionDetailsA = @(Get-EngineUciOptions -Path $EngineA -Detailed)
+$optionDetailsB = @(Get-EngineUciOptions -Path $EngineB -Detailed)
+$optionsAdvertisedA = @($optionDetailsA.Name)
+$optionsAdvertisedB = @($optionDetailsB.Name)
+$normalizeOption = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
+function Assert-RequestedOptions {
+    param([object[]]$Advertised, [string[]]$Wanted, [string]$Label)
+    if (-not $Wanted -or @($Wanted).Count -eq 0) { return }
+    $have = @($Advertised.Name | ForEach-Object { & $normalizeOption $_ })
+    $missing = @($Wanted | Where-Object { $_ } |
+        ForEach-Object { ($_ -split '=', 2)[0] } |
+        Where-Object { $have -notcontains (& $normalizeOption $_) })
+    if ($missing.Count -gt 0) {
+        throw ("$Label does not advertise: $($missing -join ', '). Rebuild it before measuring; " +
+               "fastchess would otherwise play the match at default values.")
+    }
+}
+Assert-RequestedOptions -Advertised $optionDetailsA -Wanted $OptionsA -Label $NameA
+Assert-RequestedOptions -Advertised $optionDetailsB -Wanted $OptionsB -Label $NameB
+
 $shaA = Get-HarnessSha256 $EngineA
 $shaB = Get-HarnessSha256 $EngineB
 if ($Mode -eq "calibrate" -and $shaA -ne $shaB) {
@@ -332,9 +458,56 @@ $manifestPath = [System.IO.Path]::ChangeExtension($pgnOut, ".manifest.txt")
 # self-describing: which SHA vs which SHA, both bench fingerprints, dirty
 # flags. Warn-not-fail on absence — pre-9.7 binaries have no manifest.
 # Local-only: tools/results/ is gitignored; nothing here reaches a release.
+$engineManifests = @{}
 foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
     $manifest = [System.IO.Path]::ChangeExtension($pair[0], ".json")
     if (Test-Path $manifest) {
+        $manifestData = Get-Content $manifest -Raw | ConvertFrom-Json
+        $engineManifests[$pair[1]] = $manifestData
+        if ($manifestData.engine -and $manifestData.engine -ne (Split-Path $pair[0] -Leaf)) {
+            throw "Manifest for $($pair[1]) names '$($manifestData.engine)', not the selected binary."
+        }
+        if ($manifestData.binary_sha256) {
+            $actualHash = Get-HarnessSha256 $pair[0]
+            if ($actualHash -ne $manifestData.binary_sha256) {
+                throw ("PROVENANCE MISMATCH - sidecar does not describe the selected binary.`n" +
+                       "  Engine:  $($pair[1])`n  Actual:  $actualHash`n" +
+                       "  Sidecar: $($manifestData.binary_sha256)`nRebuild with tools/build_test.ps1.")
+            }
+        } else {
+            Write-Warning "Legacy manifest for $($pair[1]) is not bound to its binary SHA-256."
+        }
+        if ($manifestData.verification -and $manifestData.verification -ne "bench") {
+            throw "Manifest for $($pair[1]) records '$($manifestData.verification)', not bench verification."
+        }
+        if ($manifestData.flavor -like "*-tune") {
+            throw "Manifest for $($pair[1]) is a tune build; rebuild a PGO gate binary."
+        }
+        # 4.10.9: a dirty tree is a REFUSAL, not a warning. The rule this
+        # protects is AGENTS.md's evidence rule -- a ledger row must reproduce
+        # its artifact without the branch it came from -- and a binary built
+        # from uncommitted changes cannot, by construction. A warning here is
+        # read once and forgotten; by the time the row is questioned the tree
+        # is long gone. -AllowDirtyTree exists for a deliberate throwaway
+        # screen and must be justified in the registration.
+        if ($manifestData.git_dirty -and -not $AllowDirtyTree) {
+            throw ("DIRTY TREE - $($pair[1]) was built from uncommitted changes at " +
+                   "$($manifestData.git_sha), so this result cannot be reproduced " +
+                   "from git alone.`nCommit the change and rebuild with " +
+                   "tools/build_test.ps1, or pass -AllowDirtyTree and say why in " +
+                   "the EXPERIMENTS.md registration.")
+        }
+        if ($manifestData.git_dirty) {
+            Write-Warning ("$($pair[1]) was built from a DIRTY tree and -AllowDirtyTree " +
+                           "was passed. This result is not reproducible from git.")
+        }
+        if ($manifestData.git_sha -and $ExpectRevision -and
+            $manifestData.git_sha -notlike "$ExpectRevision*") {
+            throw ("WRONG REVISION - $($pair[1]) was built at $($manifestData.git_sha), " +
+                   "not the expected $ExpectRevision.`nA gate that measures a " +
+                   "different revision than the one it registers is not evidence " +
+                   "for that revision.")
+        }
         Copy-Item $manifest (Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.$($pair[1]).manifest.json") -Force
     } else {
         Write-Host "NOTE: no manifest next to $(Split-Path $pair[0] -Leaf) (pre-9.7 build) — result will lack provenance for $($pair[1])." -ForegroundColor Yellow
@@ -354,13 +527,22 @@ foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
 # independently bad ideas. HARD-FAIL so it can never recur silently.
 $compilers = @{}
 foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
-    $manifest = [System.IO.Path]::ChangeExtension($pair[0], ".json")
-    if (Test-Path $manifest) {
-        $compilers[$pair[1]] = (Get-Content $manifest -Raw | ConvertFrom-Json).rustc
+    if ($engineManifests.ContainsKey($pair[1])) {
+        $compilers[$pair[1]] = $engineManifests[$pair[1]].rustc
     } else {
         Write-Warning ("No manifest for $($pair[1]) - compiler equality NOT checkable. " +
             "Rebuild it with tools/build_test.ps1 before trusting a small verdict.")
     }
+}
+
+if ($engineManifests.Count -eq 2) {
+    $flavorA = $engineManifests[$NameA].flavor
+    $flavorB = $engineManifests[$NameB].flavor
+    if ($flavorA -and $flavorB -and $flavorA -ne $flavorB) {
+        throw ("BUILD FLAVOR MISMATCH - both sides must use the same target/PGO contract.`n" +
+               "  $NameA : $flavorA`n  $NameB : $flavorB")
+    }
+    if ($flavorA -and $flavorB) { Write-Host "  Build flavor equality OK: $flavorA" }
 }
 if ($compilers.Count -eq 2) {
     $cA = $compilers[$NameA]; $cB = $compilers[$NameB]
@@ -382,10 +564,11 @@ if (-not $repoSha) { $repoSha = "n/a" } else { $repoSha = $repoSha.Trim() }
     "engineB:         $NameB = $EngineB"
     "engineB_sha256:  $shaB"
     "repo_revision:   $repoSha"
-    "test_design:     $(if ($Mode -eq 'calibrate') { "fixed ${Games}-game null; tolerance +/-${CalibrationTolerance} nElo" } else { "SPRT elo0=$Elo0 elo1=$Elo1 alpha=$Alpha beta=$Beta model=normalized" })"
+    "test_design:     $(if ($Mode -eq 'calibrate') { "fixed ${Games}-game null; tolerance +/-${CalibrationTolerance} nElo" } elseif ($Mode -eq 'fixed') { "fixed ${Games}-game match; no stop rule" } else { "SPRT elo0=$Elo0 elo1=$Elo1 alpha=$Alpha beta=$Beta model=normalized" })"
     "game_budget:     $(if ($Mode -eq 'calibrate' -or $Mode -eq 'fixed') { $Games } else { $MaxGames })"
     "time_control:    $tcLabel; timemargin=${TimeMargin}ms"
-    "adjudication:    $($strengthProfile.Name); resign=$($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; draw=$($strengthProfile.DrawScore)/$($strengthProfile.DrawMoveCount) from move $($strengthProfile.DrawMoveNumber)"
+    "adjudication:    $adjudicationLabel"
+    "termination:     $(if ($Adjudicate) { 'ADJUDICATED - do NOT pool with natural-termination runs; different sampling processes with different draw rates bias a pooled estimate by the mixing ratio' } else { 'natural (games played out)' })"
     "hash_mb:         $Hash"
     "threads:         $(if ($ThreadsA -eq $ThreadsB) { $ThreadsA } else { "$NameA=$ThreadsA $NameB=$ThreadsB" })"
     "concurrency:     $Concurrency"
@@ -397,6 +580,8 @@ if (-not $repoSha) { $repoSha = "n/a" } else { $repoSha = $repoSha.Trim() }
     "opening_seed:    $Seed"
     "optionsA:        $(if ($OptionsA) { $OptionsA -join ' ' } else { '(none)' })"
     "optionsB:        $(if ($OptionsB) { $OptionsB -join ' ' } else { '(none)' })"
+    "advertised_A:    $($optionsAdvertisedA -join ', ')"
+    "advertised_B:    $($optionsAdvertisedB -join ', ')"
     "fastchess:       $($fcInfo.Text)"
     "fastchess_sha256: $(Get-HarnessSha256 $fastchess)"
     "started_utc:     $((Get-Date).ToUniversalTime().ToString('u'))"
@@ -407,12 +592,18 @@ Write-Host "======================================================="
 Write-Host "  SPRT ($Mode): $NameA  vs  $NameB"
 if ($Mode -eq "calibrate") {
     Write-Host "  Fixed null calibration: $Games games; 95% nElo CI must fit inside +/-$CalibrationTolerance"
+} elseif ($Mode -eq "fixed") {
+    # No SPRT is run in this mode -- `$sprtArgs` is empty -- so printing H0/H1
+    # and a park/revert cap described a test that was not happening. An
+    # observation that looks like a gate invites being read as one.
+    Write-Host "  Fixed-size observation: $Games games, no SPRT and no early stop"
+    Write-Host "  Reports an Elo with an interval; it decides nothing"
 } else {
     Write-Host "  H0: elo<=$Elo0   H1: elo>=$Elo1   alpha=$Alpha  beta=$Beta  (nElo)"
     Write-Host "  Budget: $MaxGames games; no H1 at the cap means park/revert"
 }
 Write-Host "  TC: $tcLabel   Margin: ${TimeMargin} ms   Hash: ${Hash} MB   Conc: $Concurrency"
-Write-Host "  Adjudication: resign $($strengthProfile.ResignScore)/$($strengthProfile.ResignMoveCount) one-sided; profile $($strengthProfile.Name)"
+Write-Host "  Adjudication: $adjudicationLabel"
 Write-Host "  CPUs: $AffinityCpus"
 Write-Host "  Book: $(Split-Path $Book -Leaf)"
 Write-Host "  Runner: $($fcInfo.Text)"
@@ -473,8 +664,7 @@ $dropNoise = {
     -srand $Seed `
     -ratinginterval 20 `
     @sprtArgs `
-    -draw "movenumber=$($strengthProfile.DrawMoveNumber)" "movecount=$($strengthProfile.DrawMoveCount)" "score=$($strengthProfile.DrawScore)" `
-    @resignArgs `
+    @adjudicationArgs `
     -pgnout "file=$pgnOut" `
     -output format=fastchess 2>&1 |    # console ticker format (not the PGN path)
     Tee-Object -FilePath $logOut |
@@ -487,6 +677,12 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "fastchess exited with code $LASTEXITCODE — no games were played."
 } else {
     Assert-NoAffinityFailure -LogPath $logOut
+    Assert-NoMatchAnomaly -LogPath $logOut
+    Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value @(
+        "completed_utc:   $((Get-Date).ToUniversalTime().ToString('u'))"
+        "pgn_sha256:      $(Get-HarnessSha256 $pgnOut)"
+        "log_sha256:      $(Get-HarnessSha256 $logOut)"
+    )
     Write-Host ""
     Write-Host "Match finished. PGN: $pgnOut"
     Write-Host "Full console log (all per-game lines): $logOut"
@@ -496,13 +692,6 @@ if ($LASTEXITCODE -ne 0) {
     }
 
     if ($Mode -eq "calibrate") {
-        $calibrationAnomaly = Select-String -LiteralPath $logOut `
-            -Pattern '(?i)(loses on time|timeouts:\s*[1-9]|crashed:\s*[1-9]|disconnect|illegal move)' `
-            -ErrorAction SilentlyContinue
-        if ($calibrationAnomaly) {
-            throw "Calibration contained a timeout/crash/protocol anomaly and is invalid. See '$logOut'."
-        }
-
         $eloLine = Select-String -LiteralPath $logOut `
             -Pattern '\bnElo:\s*(?<estimate>[+-]?\d+(?:\.\d+)?)\s*\+/-\s*(?<error>\d+(?:\.\d+)?)' |
             Select-Object -Last 1

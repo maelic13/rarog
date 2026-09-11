@@ -3,14 +3,13 @@
 use std::sync::{Arc, atomic::Ordering, mpsc};
 use std::time::Instant;
 
-use crate::board::{Bitboard, Board, CheckInfo, Color, GameResult, Move, Piece};
+use crate::board::{Bitboard, Board, CheckInfo, Color, GameResult, Move, MoveList, Piece};
 use crate::eval::{Evaluator, INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::infra;
 use crate::move_ordering::{
     BadCaptureList, CAP_HISTORY_MAX, CONT_SIZE, CORR_SIZE, HISTORY_MAX, LOW_PLY_HISTORY_SIZE,
-    PAWN_HISTORY_SIZE, PIECE_TO_SIZE, ScoredMove, ScoredMoveList, cont_index, cont_row_base,
-    diversify_root_scores, pawn_history_index, pawn_row_base, pick_next, piece_to_index,
-    update_hist_entry,
+    PAWN_HISTORY_SIZE, PIECE_TO_SIZE, ScoredMove, ScoredMoveList, diversify_root_scores,
+    pawn_history_index, pawn_row_base, pick_next, piece_to_index, update_hist_entry,
 };
 use crate::params::SearchParams;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
@@ -58,7 +57,7 @@ const JITTER_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 const JITTER_STRIDE: u64 = 0x2545_F491_4F6C_DD1D;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // const-evaluated; MAX_PLY = 128
+#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // const-evaluated; MAX_PLY = 128
 const TB_WIN_SCORE: i32 = MATE_SCORE - (MAX_PLY as i32) * 2;
 const SEE_UNKNOWN: i16 = i16::MIN;
 /// Heap-allocate the continuation tables without a ~1.1 MB stack temporary
@@ -73,7 +72,7 @@ fn boxed_cont_tables() -> Box<[[i16; CONT_SIZE]; CONT_TABLES]> {
 
 // Float→int truncation IS the intended rounding of the LMR table formula
 // (kept bit-exact with the pre-9.0b table), hence the scoped cast allow.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     let base_f = base as f64 / 1024.0;
     let div_f = div as f64 / 1024.0;
@@ -88,8 +87,14 @@ fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
 }
 
 #[inline]
-fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
-    (r >> 10).clamp(0, new_depth.max(0))
+fn lmr_reduction(r: i32, new_depth: i32, min_reduced_depth: i32) -> i32 {
+    // 4.8.1: the ceiling is what the reduced search is allowed to consume.
+    // At `min_reduced_depth == 0` this is the accepted behaviour and the
+    // reduced search may run at depth 0, i.e. in quiescence. `max(0)` keeps
+    // the ceiling non-negative when new_depth is already below the floor,
+    // so a shallow move is simply left unreduced rather than extended.
+    let ceiling = (new_depth - min_reduced_depth).max(0);
+    (r >> 10).clamp(0, ceiling)
 }
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
@@ -286,7 +291,7 @@ impl RootConfidence {
         // product is provably inside `0..=1000` rather than merely saturating,
         // and `round` is the rounding intended. Same contract as the window
         // centre's cast in `search_root`.
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let effort = (effort_term(self.effort) * 1000.0).round() as i64;
 
         let fails = i64::from(self.fail_lows.max(0) + self.fail_highs.max(0));
@@ -438,14 +443,51 @@ fn tm_instability_factor(params: &SearchParams, instability: f64) -> f64 {
 // MovePicker is constructed at EVERY interior node, and boxing the large
 // variant would trade a stack-resident list for a heap allocation per node.
 // Measured elsewhere in 9.0: making the move lists heap/initialized cost
-// -10% NPS. The enum size is a deliberate space-for-speed trade.
-#[allow(clippy::large_enum_variant)]
+// -10% NPS. The enum size is a deliberate space-for-speed trade, and the
+// note is kept even though clippy no longer objects: if the variants diverge
+// again the lint fires, and this is the reason not to "fix" it by boxing.
+/// 4.5.2 MOVE-PICKER STAGE CONTRACT.
+///
+/// The staged picker's transitions used to live implicitly in three cursor
+/// comparisons (`good_index < good_len`, `cap_len + quiet_index < len`,
+/// `good_len + bad_index < cap_len`). Reading the order off that required
+/// reconstructing the buffer partition in your head, and nothing named the
+/// order or made it assertable. This enum is that order.
+///
+/// Contract, and all three parts are covered by tests below:
+///   ORDER      staged: TtMove, GoodCaptures, Quiets, BadCaptures.
+///              full (root and in-check): TtMove, AllRemaining.
+///   DUPLICATES the TT move is emitted at most once, and every later stage
+///              filters it out, so no move is ever emitted twice.
+///   LEGALITY   both paths only ever emit moves from a legal generator; the
+///              TT move is validated by the caller before construction.
+///
+/// Stages are visited in declaration order and never revisited. `Done` is
+/// terminal: once reached the picker yields `None` forever.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum Stage {
+    /// Emit the TT move alone, if there is one.
+    TtMove,
+    /// Staged path: captures with SEE >= 0, best-first.
+    GoodCaptures,
+    /// Staged path: generate quiets on demand, once.
+    GenerateQuiets,
+    /// Staged path: quiets, best-first.
+    Quiets,
+    /// Staged path: SEE-losing captures, best-first, deliberately last.
+    BadCaptures,
+    /// Full path: everything except the TT move, best-first from one list.
+    AllRemaining,
+    /// Terminal.
+    Done,
+}
+
 enum MovePicker {
     Full {
         scored: ScoredMoveList,
         index: usize,
         tt_move: Move,
-        emitted_tt: bool,
+        stage: Stage,
     },
     /// 10.3(4): ONE buffer, partitioned in place, instead of three separate
     /// 3,080-byte lists. Layout — `[0, good_len)` good captures,
@@ -463,7 +505,6 @@ enum MovePicker {
         quiet_index: usize,
         /// Cursor within `[good_len, cap_len)`, relative to `good_len`.
         bad_index: usize,
-        quiets_generated: bool,
         /// 10.3(5): the pinned set computed by capture generation, reused when
         /// quiets are generated later at this same node. `board` is restored
         /// by `unmake_move` between the two stages, so the position — and
@@ -472,9 +513,122 @@ enum MovePicker {
         /// a pinned set always exists to share.
         pinned: Bitboard,
         tt_move: Move,
-        emitted_tt: bool,
+        stage: Stage,
         ply: usize,
     },
+}
+
+/// 4.5.1 PER-PLY SEARCH CONTEXT.
+///
+/// Replaces three parallel `[_; MAX_PLY]` arrays with one record per ply.
+///
+/// The move and the piece that made it were never independent: every
+/// continuation-history lookup read both at the same ply, so the split cost
+/// two cache lines to answer one question. The static eval joins them because
+/// it is written at the same node and read at `ply - 2` by the improving test.
+///
+/// That locality argument did NOT pay, and the record should say so: a pooled
+/// three-build-per-arm PGO A/B measured **+0.11%, CI −0.14%..+0.48%** — a null
+/// inside this machine's ±0.5% floor (RAR-P17). The justification for this
+/// change is that it is the substrate 4.5.2–4.5.4 consume, not that it is
+/// faster. It is not faster.
+///
+/// This is a REPRESENTATION change and nothing else. PLAN 4.5.1 also lists
+/// TT/PV evidence, previous reduction, statistical score, cutoff count,
+/// previous-PV following and continuation keys — none are added here, because
+/// nothing consumes them yet and rule 2 forbids landing speculative state.
+/// They arrive with 4.5.2–4.5.4, which is where their consumers are.
+/// 4.5.1 THE REDUCTION CONTRACT'S INPUTS.
+///
+/// `lmr_reduction_units` took thirteen positional arguments and PLAN 4.5.1
+/// named that as the defect: it was a pile of parameters rather than a
+/// contract over the per-ply context, and adding an input meant editing three
+/// signatures and hoping the two call sites stayed in step. They must, because
+/// one computes the PROSPECTIVE depth the pruning consumers read and the other
+/// computes the reduction actually applied; a `debug_assert_eq!` between them
+/// is what keeps 4.6b's "ONE formula" rule honest.
+///
+/// Naming the inputs also removes the whole class of bug where two `bool`s or
+/// two `i32`s are passed in the wrong order and still compile.
+#[derive(Copy, Clone)]
+struct ReductionInputs {
+    depth: i32,
+    searched: usize,
+    is_quiet: bool,
+    see: i32,
+    tt_pv: bool,
+    cut_node: bool,
+    quiet_hist: i32,
+    corr_abs: i32,
+    ev_is_exact: bool,
+    tt_move_is_null: bool,
+    improving: bool,
+    is_root: bool,
+    /// Move count at the PARENT when it played into this node.
+    parent_move_count: i32,
+    /// Quiet history of the move that led to this node.
+    parent_stat_score: i32,
+    /// The node's TT move is a capture.
+    tt_move_is_capture: bool,
+    /// The node's TT move was proved singular by the extension search.
+    tt_move_singular: bool,
+}
+
+#[derive(Copy, Clone)]
+struct NodeContext {
+    /// The move made AT this ply. `Move::NULL` when the ply holds no move.
+    mv: Move,
+    /// The piece that made `mv`. Only meaningful when `mv` is not null.
+    piece: Piece,
+    /// Static eval of the position at this ply, or `VALUE_NONE` in check.
+    static_eval: i32,
+    /// 4.5.1 MOVE COUNT at this ply when `mv` was made, i.e. how many moves
+    /// this node had already searched. Read by the CHILD, which reduces less
+    /// when its parent had to look at many moves before this one — a node
+    /// whose parent was still searching late is less likely to be a clean cut.
+    move_count: i32,
+    /// 4.5.1 STAT SCORE of `mv`: the quiet history the reduction saw when this
+    /// move was chosen. Read by the CHILD, which compares its own move's
+    /// history against it. An absolute history says how good a move looks; the
+    /// comparison says whether the position is getting better or worse for the
+    /// side to move, which is what the reduction wants to know.
+    stat_score: i32,
+    /// 4.5.3 CONTINUATION KEY: `piece_to_index(piece, mv.to)`, derived once
+    /// when the move is pushed. Meaningless when `mv` is null; every consumer
+    /// checks that first.
+    ///
+    /// This exists to make a class of bug unrepresentable, not to save the
+    /// multiply. `mv` and `piece` used to be written by hand at four sites and
+    /// ProbCut wrote only `mv`, so continuation history inside a ProbCut child
+    /// search was indexed by the ProbCut move's destination paired with a piece
+    /// left over from a sibling subtree. Deriving the key at push time means
+    /// the three can no longer disagree.
+    cont_key: usize,
+}
+
+impl NodeContext {
+    /// Row base for continuation tables at this ply.
+    ///
+    /// `cont_row_base(piece, to) == piece_to_index(piece, to) * PIECE_TO_SIZE`,
+    /// so the stored key serves every continuation site and none of them needs
+    /// to re-derive the pair from `mv`/`piece`.
+    #[inline]
+    fn cont_row_base(&self) -> usize {
+        self.cont_key * PIECE_TO_SIZE
+    }
+}
+
+impl Default for NodeContext {
+    fn default() -> Self {
+        Self {
+            mv: Move::NULL,
+            piece: Piece::Pawn,
+            static_eval: VALUE_NONE,
+            cont_key: 0,
+            move_count: 0,
+            stat_score: 0,
+        }
+    }
 }
 
 pub struct Searcher {
@@ -495,9 +649,8 @@ pub struct Searcher {
     limits: RuntimeLimits,
     pv_table: [[Move; MAX_PLY]; MAX_PLY],
     pv_len: [usize; MAX_PLY],
-    stack_moves: [Move; MAX_PLY],
-    stack_pieces: [Piece; MAX_PLY],
-    stack_static_eval: [i32; MAX_PLY],
+    /// 4.5.1 per-ply search context. See `NodeContext`.
+    stack: [NodeContext; MAX_PLY],
     killers: [[Move; 2]; MAX_PLY],
     /// Compact root-order/index backbone. Keep this separate from the larger
     /// records below so existing move-membership and SMP hot reads retain
@@ -595,9 +748,7 @@ impl Default for Searcher {
             },
             pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
             pv_len: [0; MAX_PLY],
-            stack_moves: [Move::NULL; MAX_PLY],
-            stack_pieces: [Piece::Pawn; MAX_PLY],
-            stack_static_eval: [VALUE_NONE; MAX_PLY],
+            stack: [NodeContext::default(); MAX_PLY],
             killers: [[Move::NULL; 2]; MAX_PLY],
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
@@ -637,12 +788,13 @@ impl MovePicker {
             scored,
             index: 0,
             tt_move,
-            emitted_tt: false,
+            stage: Stage::TtMove,
         }
     }
 
     fn staged(searcher: &Searcher, board: &mut Board, tt_move: Move, ply: usize) -> Self {
-        let (captures, pinned) = board.generate_legal_captures_pinned();
+        let mut captures = MoveList::new();
+        let pinned = board.generate_legal_captures_pinned_into(&mut captures);
         let (moves, good_len, cap_len) =
             searcher.score_staged_captures(board, captures.as_slice(), tt_move);
         Self::Staged {
@@ -652,37 +804,67 @@ impl MovePicker {
             good_index: 0,
             quiet_index: 0,
             bad_index: 0,
-            quiets_generated: false,
             pinned,
             tt_move,
-            emitted_tt: false,
+            stage: Stage::TtMove,
             ply,
         }
     }
 
+    /// Abandon the remaining quiet moves.
+    ///
+    /// 4.6.5: the reference feeds its move-count-pruning flag back INTO the
+    /// picker, so once the flag is set it stops emitting quiets altogether.
+    /// Rarog had no such path: it generated every quiet, scored it, and then
+    /// rejected them one at a time in the move loop. Skipping from
+    /// `GenerateQuiets` also avoids generating and scoring them at all, which
+    /// is where most of the saving is.
+    ///
+    /// Safe from either stage: `BadCaptures` is next in declaration order, and
+    /// the bad-capture partition is independent of the quiet buffer.
+    fn skip_quiets(&mut self) {
+        if let Self::Staged { stage, .. } = self
+            && matches!(*stage, Stage::GenerateQuiets | Stage::Quiets)
+        {
+            *stage = Stage::BadCaptures;
+        }
+    }
+
+    /// Yield the next move, advancing through `Stage` in declaration order.
+    ///
+    /// Every stage is a `loop`+`match` step rather than a fallthrough chain, so
+    /// a stage that runs dry advances exactly once and the order is readable
+    /// without reconstructing the buffer partition.
     fn next(&mut self, searcher: &Searcher, board: &mut Board) -> Option<ScoredMove> {
         match self {
             Self::Full {
                 scored,
                 index,
                 tt_move,
-                emitted_tt,
-            } => {
-                if !*emitted_tt {
-                    *emitted_tt = true;
-                    if !tt_move.is_null() {
-                        return Some(tt_scored_move(*tt_move));
+                stage,
+            } => loop {
+                match *stage {
+                    Stage::TtMove => {
+                        *stage = Stage::AllRemaining;
+                        if !tt_move.is_null() {
+                            return Some(tt_scored_move(*tt_move));
+                        }
                     }
-                }
-                while *index < scored.len() {
-                    let picked = pick_next(scored.as_mut_slice(), *index);
-                    *index += 1;
-                    if picked.mv != *tt_move {
-                        return Some(picked);
+                    Stage::AllRemaining => {
+                        while *index < scored.len() {
+                            let picked = pick_next(scored.as_mut_slice(), *index);
+                            *index += 1;
+                            // Duplicate guarantee: the TT move already went out
+                            // in Stage::TtMove.
+                            if picked.mv != *tt_move {
+                                return Some(picked);
+                            }
+                        }
+                        *stage = Stage::Done;
                     }
+                    _ => return None,
                 }
-                None
-            }
+            },
             Self::Staged {
                 moves,
                 good_len,
@@ -690,57 +872,73 @@ impl MovePicker {
                 good_index,
                 quiet_index,
                 bad_index,
-                quiets_generated,
                 pinned,
                 tt_move,
-                emitted_tt,
+                stage,
                 ply,
-            } => {
-                if !*emitted_tt {
-                    *emitted_tt = true;
-                    if !tt_move.is_null() {
-                        return Some(tt_scored_move(*tt_move));
+            } => loop {
+                match *stage {
+                    Stage::TtMove => {
+                        *stage = Stage::GoodCaptures;
+                        if !tt_move.is_null() {
+                            return Some(tt_scored_move(*tt_move));
+                        }
                     }
-                }
-                // Good captures — the selection scan is bounded to the good
-                // partition so it can never pull a bad capture forward.
-                while *good_index < *good_len {
-                    let picked = pick_next(&mut moves.as_mut_slice()[..*good_len], *good_index);
-                    *good_index += 1;
-                    if picked.mv != *tt_move {
-                        return Some(picked);
+                    Stage::GoodCaptures => {
+                        // The selection scan is bounded to the good partition,
+                        // so it can never pull a bad capture forward.
+                        while *good_index < *good_len {
+                            let picked =
+                                pick_next(&mut moves.as_mut_slice()[..*good_len], *good_index);
+                            *good_index += 1;
+                            if picked.mv != *tt_move {
+                                return Some(picked);
+                            }
+                        }
+                        *stage = Stage::GenerateQuiets;
                     }
-                }
-                // Quiets, generated on demand and appended after the captures.
-                if !*quiets_generated {
-                    *quiets_generated = true;
-                    let quiet_moves = board.generate_legal_quiets_pinned(*pinned);
-                    searcher.append_scored_moves(
-                        board,
-                        quiet_moves.as_slice(),
-                        *tt_move,
-                        *ply,
-                        moves,
-                    );
-                }
-                while *cap_len + *quiet_index < moves.len() {
-                    let picked = pick_next(&mut moves.as_mut_slice()[*cap_len..], *quiet_index);
-                    *quiet_index += 1;
-                    if picked.mv != *tt_move {
-                        return Some(picked);
+                    Stage::GenerateQuiets => {
+                        // Once, on demand, appended after the captures. The
+                        // stage exists so "have the quiets been generated" is a
+                        // position in the order rather than a bool.
+                        let mut quiet_moves = MoveList::new();
+                        board.generate_legal_quiets_pinned_into(*pinned, &mut quiet_moves);
+                        searcher.append_scored_moves(
+                            board,
+                            quiet_moves.as_slice(),
+                            *tt_move,
+                            *ply,
+                            moves,
+                        );
+                        *stage = Stage::Quiets;
                     }
-                }
-                // Bad captures last.
-                while *good_len + *bad_index < *cap_len {
-                    let picked =
-                        pick_next(&mut moves.as_mut_slice()[*good_len..*cap_len], *bad_index);
-                    *bad_index += 1;
-                    if picked.mv != *tt_move {
-                        return Some(picked);
+                    Stage::Quiets => {
+                        while *cap_len + *quiet_index < moves.len() {
+                            let picked =
+                                pick_next(&mut moves.as_mut_slice()[*cap_len..], *quiet_index);
+                            *quiet_index += 1;
+                            if picked.mv != *tt_move {
+                                return Some(picked);
+                            }
+                        }
+                        *stage = Stage::BadCaptures;
                     }
+                    Stage::BadCaptures => {
+                        while *good_len + *bad_index < *cap_len {
+                            let picked = pick_next(
+                                &mut moves.as_mut_slice()[*good_len..*cap_len],
+                                *bad_index,
+                            );
+                            *bad_index += 1;
+                            if picked.mv != *tt_move {
+                                return Some(picked);
+                            }
+                        }
+                        *stage = Stage::Done;
+                    }
+                    _ => return None,
                 }
-                None
-            }
+            },
         }
     }
 }
@@ -873,7 +1071,7 @@ impl Searcher {
 
     fn search_impl<const ALLOW_PARALLEL: bool, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
-        root: Board,
+        mut root: Board,
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         emit_info: bool,
@@ -888,6 +1086,14 @@ impl Searcher {
         self.shared_state = None;
         self.root_move_offset = 0;
         self.thread_id = 0;
+
+        // Reserve the whole search's history headroom once, before any hot
+        // path or helper exists. Search pushes one UnmakeInfo per ply and pops
+        // it again, so MAX_PLY bounds the peak above the game history already
+        // present. Board::clone preserves capacity, so every worker's
+        // root.clone() inherits this and no thread reallocates while searching.
+        root.reserve_history(MAX_PLY);
+
         let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
         self.reset_search_state(
@@ -900,7 +1106,8 @@ impl Searcher {
         );
 
         let board = root;
-        let legal_moves = board.generate_legal_movelist();
+        let mut legal_moves = MoveList::new();
+        board.generate_legal_movelist_into(&mut legal_moves);
         if legal_moves.is_empty() {
             return self.no_legal_moves_result(&board);
         }
@@ -956,7 +1163,23 @@ impl Searcher {
         age_tt: bool,
         age_history: bool,
     ) {
-        self.start = Instant::now();
+        // LazyMargin changes the raw evaluation function. The evaluator owns
+        // its whole-eval cache, while the main searcher owns TT lifecycle and
+        // must also discard stored raw evals and bounds from the old function.
+        // Helpers receive the already-cleared shared TT, so they clear only
+        // their private evaluator cache; clearing shared storage here would
+        // race with helpers or main already searching.
+        let lazy_margin_changed = self
+            .evaluator
+            .set_lazy_margin(engine_options.search_params.lazy_margin);
+        if lazy_margin_changed && age_tt {
+            self.tt.clear();
+        }
+
+        // The clock starts when `go` was parsed, as the harness measures it;
+        // configuration invalidation and thread hand-off are on the clock
+        // because they are on the harness's clock (A.3.3, RAR-R11).
+        self.start = limits.issued.unwrap_or_else(Instant::now);
         self.nodes = 0;
         self.tb_hits = 0;
         self.seldepth = 0;
@@ -971,9 +1194,6 @@ impl Searcher {
         self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
         self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
         self.params = engine_options.search_params.clone();
-        // Push the (UCI-settable) lazy-eval margin into the evaluator. At the
-        // default 600 this is a no-op and the eval — hence `bench` — is unchanged.
-        self.evaluator.set_lazy_margin(self.params.lazy_margin);
         let table_key = (self.params.lmr_table_base, self.params.lmr_table_div);
         if table_key != self.lmr_table_key {
             self.lmr_table = build_lmr_table(table_key.0, table_key.1);
@@ -992,9 +1212,7 @@ impl Searcher {
         }
         self.pv_table = [[Move::NULL; MAX_PLY]; MAX_PLY];
         self.pv_len = [0; MAX_PLY];
-        self.stack_moves = [Move::NULL; MAX_PLY];
-        self.stack_pieces = [Piece::Pawn; MAX_PLY];
-        self.stack_static_eval = [VALUE_NONE; MAX_PLY];
+        self.stack = [NodeContext::default(); MAX_PLY];
         // 9.7.5(k): re-seed the LMR-jitter PRNG per search, per thread, so each
         // thread walks a different sequence and a given thread's sequence does
         // not depend on how the previous search happened to end. `thread_id` is
@@ -1014,7 +1232,7 @@ impl Searcher {
     /// same amplitude as before, with mean −0.5/1024 — nine times closer to
     /// zero, so the jitter now diversifies without also pruning harder.
     #[inline(always)]
-    fn next_jitter(&mut self) -> i32 {
+    fn next_jitter(&mut self, magnitude: i32) -> i32 {
         let mut x = self.jitter_state;
         x ^= x << 13;
         x ^= x >> 7;
@@ -1023,7 +1241,12 @@ impl Searcher {
         // Top 7 bits, not the bottom ones: xorshift64's low bits are its
         // weakest (they carry the least mixing), and taking them measurably
         // skewed the mean. `>> 57` yields 0..=127, so the result is [−64, 63].
-        i32::try_from(x >> 57).expect("7-bit shift fits i32") - 64
+        // `magnitude` in 1024ths of a ply; the result is [−magnitude,
+        // +magnitude]. At magnitude 64 this is EXACTLY the pre-4.5 expression
+        // `(x >> 57) - 64`, since `bits * 64 / 64 - 64 == bits - 64`, so the
+        // SMP path is unchanged by construction rather than by measurement.
+        let bits = i32::try_from(x >> 57).expect("7-bit shift fits i32");
+        bits * magnitude / 64 - magnitude
     }
 
     fn no_legal_moves_result(&mut self, board: &Board) -> SearchResult {
@@ -1137,7 +1360,7 @@ impl Searcher {
         // into the score domain BEFORE the cast, so the conversion is provably
         // exact rather than saturating, and NaN is handled by the clamp instead
         // of the language's float-cast rule.
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let deviation = variance.sqrt().clamp(0.0, f64::from(INF_SCORE)).round() as i32;
         // Pooling is a CLOCK input, so it is admitted only when its own switch
         // is on and only when a pool exists; a serial search has no shared
@@ -1150,7 +1373,7 @@ impl Searcher {
             .map(|milli| {
                 // KEEP-ALLOW: `u64 -> f64` on a value bounded by the published
                 // thousandths of a decaying count that converges to 2.0.
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(clippy::cast_precision_loss)]
                 let milli = milli as f64;
                 milli / 1000.0
             });
@@ -1251,7 +1474,7 @@ impl Searcher {
                 // inside `i32`, and `.round()` is the rounding intended. The
                 // clamp also makes NaN handling explicit instead of relying on
                 // the language's float-cast NaN rule.
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 let avg = prev_avg_score
                     .round()
                     .clamp(-f64::from(INF_SCORE), f64::from(INF_SCORE))
@@ -1433,7 +1656,7 @@ impl Searcher {
                 // KEEP-ALLOW: `tot_best_move_changes` is a decaying count that
                 // converges to 2.0, so the thousandths are clamped into a small
                 // range before the cast rather than merely saturating.
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 let milli = (tot_best_move_changes * 1000.0).clamp(0.0, 1_000_000.0) as u64;
                 shared.publish_instability(self.thread_id, milli);
             }
@@ -1872,24 +2095,35 @@ impl Searcher {
     ///   extension is known (pruning at the top of the move loop, extension
     ///   after it), so a shared pre-move depth cannot include it.
     ///
-    /// A `debug_assert` at the LMR site checks that both callers agree, so the
-    /// two cannot drift apart the way this arithmetic already did once.
-    #[allow(clippy::too_many_arguments)] // documented policy: search kernels
+    /// Both callers pass the SAME `ReductionInputs` value, built once per move,
+    /// so the prospective depth and the applied reduction cannot drift apart
+    /// the way this arithmetic already did once. The `debug_assert` at the LMR
+    /// site is kept as a cheap restatement of that, not as the guarantee.
+    ///
+    /// 4.5.1 removed this function's `#[expect(clippy::too_many_arguments)]`:
+    /// the thirteen positional arguments are now one named struct, and the
+    /// expectation went unfulfilled the moment they did. That is the
+    /// self-cleaning property `#[expect]` is used for.
     #[inline(always)]
-    fn lmr_reduction_units(
-        &self,
-        depth: i32,
-        searched: usize,
-        is_quiet: bool,
-        see: i32,
-        tt_pv: bool,
-        cut_node: bool,
-        quiet_hist: i32,
-        corr_abs: i32,
-        ev_is_exact: bool,
-        tt_move_is_null: bool,
-        improving: bool,
-    ) -> i32 {
+    fn lmr_reduction_units(&self, i: ReductionInputs) -> i32 {
+        let ReductionInputs {
+            depth,
+            searched,
+            is_quiet,
+            see,
+            tt_pv,
+            cut_node,
+            quiet_hist,
+            corr_abs,
+            ev_is_exact,
+            tt_move_is_null,
+            improving,
+            is_root,
+            parent_move_count,
+            parent_stat_score,
+            tt_move_is_capture,
+            tt_move_singular,
+        } = i;
         let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
         if tt_pv {
             r -= self.params.lmr_tt_pv_adj;
@@ -1919,6 +2153,48 @@ impl Searcher {
         r -= quiet_hist * 1024 / self.params.lmr_hist_div;
         // 8.5(b): reduce less when the static eval is heavily corrected.
         r -= corr_abs * self.params.corr_lmr_scale / 128;
+        // ─── 4.5.1 contract additions. All default to 0, so the accepted
+        // fingerprint is preserved until they are fitted. Each is a MECHANISM
+        // taken from the reference; none of its constants are, both because
+        // the independence boundary forbids it and because its thresholds are
+        // in its own history units, which are not Rarog's.
+        //
+        // (a) The TT move is a capture, so a quiet sibling is a worse bet.
+        if is_quiet && tt_move_is_capture {
+            r += self.params.lmr_tt_capture;
+        }
+        // (b) The TT move proved singular here, so this node's value rests on
+        // one move and its siblings deserve a fairer look.
+        if tt_move_singular {
+            r -= self.params.lmr_singular_relief;
+        }
+        // (c) The parent was still searching late when it played into this
+        // node, so this node is less likely to be a clean cut.
+        if parent_move_count >= self.params.lmr_parent_movecount_min {
+            r -= self.params.lmr_parent_movecount_relief;
+        }
+        // (d) Compare this move's history with the move that led here. The
+        // absolute history already has a term above; this asks whether the
+        // position is IMPROVING for the side to move, which the absolute
+        // value cannot say.
+        if is_quiet {
+            let swing = quiet_hist - parent_stat_score;
+            if swing > self.params.lmr_stat_swing_margin {
+                r -= self.params.lmr_stat_swing;
+            } else if swing < -self.params.lmr_stat_swing_margin {
+                r += self.params.lmr_stat_swing;
+            }
+        }
+        // 4.6.7: the root is where the answer is chosen, and it was the
+        // one node type the reduction could not see.
+        if is_root {
+            r -= self.params.lmr_root_relief;
+        }
+        // 4.10 CANDIDATE: unconditional relief. Applied last, inside
+        // `lmr_reduction_units`, so both call sites see it and the
+        // prospective-depth estimate keeps agreeing with the real reduction —
+        // the `debug_assert_eq!` between them is what enforces that.
+        r -= self.params.lmr_relief;
         r
     }
 
@@ -1948,10 +2224,8 @@ impl Searcher {
             return 0;
         }
 
-        crate::diag_count!(nodes);
         let in_check = board.is_in_check();
         if in_check {
-            crate::diag_count!(nodes_in_check);
             // Phase 8.2(a): the unconditional in-check extension (`depth += 1`)
             // is REMOVED. It was the first of five stacked protections around
             // checked nodes and the prime EBF suspect — every check bought a
@@ -1975,6 +2249,18 @@ impl Searcher {
 
         if depth <= 0 {
             return self.quiescence(board, alpha, beta, ply, 0, poll);
+        }
+
+        // 4.2: counted HERE, after the depth<=0 hand-off, so `nodes` means
+        // interior nodes actually searched — which is the oracle's population.
+        // Counting at function entry inflated it by every node that
+        // immediately became a qnode, and that same node was then counted a
+        // second time as `qnodes`. That double count silently deflated every
+        // rate taken against `nodes`.
+        crate::diag_count!(nodes);
+        #[cfg(feature = "diag")]
+        if in_check {
+            crate::diag_count!(nodes_in_check);
         }
 
         let original_alpha = alpha;
@@ -2134,7 +2420,8 @@ impl Searcher {
             crate::diag_count!(contradict_iir_suppressed);
         }
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
-        if excluded.is_null()
+        if !self.ablated(4)
+            && excluded.is_null()
             && depth >= 4
             && (tt_move.is_null() || (!is_pv && ev.too_shallow_to_order(depth)))
         {
@@ -2169,7 +2456,7 @@ impl Searcher {
             };
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
-        self.stack_static_eval[ply] = static_eval;
+        self.stack[ply].static_eval = static_eval;
         // 8.5(b): magnitude of the correction applied to this node's static
         // eval. A large |corr| means the raw eval is being heavily adjusted and
         // is less trustworthy, so the margin/reduction knobs below prune and
@@ -2191,10 +2478,15 @@ impl Searcher {
         } else {
             (static_eval - raw_static_eval).abs()
         };
+        // A `ply - 4` fallback for an unusable `ply - 2` was measured and
+        // rejected: RAR-S66 stopped at 13,882 games with the LLR receding from
+        // a +2.44 peak. `improving = false` after a check is a conservative
+        // default, not a defect — there is genuinely no comparable static eval
+        // two plies back when that node was in check.
         let improving = !in_check
             && ply >= 2
-            && self.stack_static_eval[ply - 2] != VALUE_NONE
-            && static_eval > self.stack_static_eval[ply - 2];
+            && self.stack[ply - 2].static_eval != VALUE_NONE
+            && static_eval > self.stack[ply - 2].static_eval;
         let improving_i = if improving { 1 } else { 0 };
         let not_improving_i = 1 - improving_i;
         // 9.7.5 lead: the TT may only stand in for the static eval here if its
@@ -2319,11 +2611,16 @@ impl Searcher {
                     }
                 }
             }
-            if rfp_tt_pv_ok && depth <= 8 && eval_for_pruning - futility_margin >= beta {
+            if !self.ablated(1)
+                && rfp_tt_pv_ok
+                && depth <= 8
+                && eval_for_pruning - futility_margin >= beta
+            {
                 crate::diag_count!(rfp_cut);
                 return eval_for_pruning;
             }
-            if razor_tt_pv_ok
+            if !self.ablated(0)
+                && razor_tt_pv_ok
                 && depth <= 3
                 && eval_for_pruning + self.params.razoring_coeff * depth < alpha
             {
@@ -2337,7 +2634,8 @@ impl Searcher {
             } else {
                 eval_for_pruning
             };
-            if allow_null
+            if !self.ablated(2)
+                && allow_null
                 && nmp_tt_pv_ok
                 // 4.4a: with the switch on, a null-verification subtree may not
                 // null-prune anywhere inside itself, not merely at its root.
@@ -2475,22 +2773,81 @@ impl Searcher {
                 }
             }
 
-            if probcut_tt_pv_ok && depth >= 4 {
+            if !self.ablated(3) && probcut_tt_pv_ok && depth >= 4 {
+                // Per NODE entering the block, before capture generation, so
+                // nodes with no eligible capture are counted here too. This
+                // carried the `probcut_attempt` name until 4.7c prep, and was
+                // differenced against the oracle's per-MOVE counter of the same
+                // name -- the RAR-S25 denominator shape. See the RAR-S55
+                // correction.
                 #[cfg(feature = "diag")]
                 if diag_sample {
-                    crate::diag_count!(probcut_attempt);
+                    crate::diag_count!(probcut_nodes);
                     crate::diag_count!(shadow_4_4_selectivity);
                 }
                 let probcut_beta = beta + self.params.probcut_margin;
-                let captures = board.generate_legal_captures();
+                // 4.7c PROBCUT MOVE FILTER. The entry contract for the
+                // speculative capture search moves from "this capture does not
+                // lose material" to "this capture can plausibly bridge the gap
+                // to probcut_beta".
+                //
+                // RAR-S55 v3 measured what the old contract costs. Per node the
+                // two engines convert alike -- 22.7% against the reference's
+                // 25.2% -- so the yield was never the divergence. The PRICE was:
+                // Rarog searched 5.17x the normalised ProbCut moves and
+                // converted 32.6% of them against 71.9%. Two in three of its
+                // ProbCut move-searches produced nothing.
+                //
+                // `see_ge(mv, 0)` admits any capture that is not outright
+                // losing, which is unrelated to the question this search asks.
+                // The gap `probcut_beta - static_eval` IS that question in
+                // material terms, and it is floored at 0 so the filter can only
+                // tighten the old contract, never loosen it -- a negative
+                // threshold would admit losing captures at nodes already above
+                // probcut_beta, which is de-selectivity nothing here motivates.
+                //
+                // `static_eval` is real: the whole block is under `!in_check`.
+                // i32 throughout: the gap is bounded by the mate range, so
+                // gap * 100 cannot approach i32's limit.
+                let see_threshold =
+                    ((probcut_beta - static_eval) * self.params.probcut_see_gap_scale / 100).max(0);
+                // The flat cap of 8 had no stated derivation. Scale it by the
+                // node's own prediction instead: a cut node is where a fail-high
+                // is expected and the speculative search is likeliest to pay.
+                let move_cap = self.params.probcut_move_cap_base
+                    + if cut_node {
+                        self.params.probcut_move_cap_cut_bonus
+                    } else {
+                        0
+                    };
+                let mut captures = MoveList::new();
+                board.generate_legal_captures_into(&mut captures);
                 let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
-                for index in 0..scored.len().min(8) {
+                let mut searched_here = 0i32;
+                for index in 0..scored.len() {
+                    if searched_here >= move_cap {
+                        break;
+                    }
                     let picked = pick_next(scored.as_mut_slice(), index);
                     let mv = picked.mv;
-                    if !board.see_ge(mv, 0) {
+                    if !board.see_ge(mv, see_threshold) {
                         continue;
                     }
-                    self.stack_moves[ply] = mv;
+                    searched_here += 1;
+                    // Per MOVE: a ProbCut search is about to start. This is the
+                    // counter the oracle's `probcut_attempt` can be differenced
+                    // against -- placed after the eligibility filter and before
+                    // the qsearch, exactly where the oracle places its own.
+                    // Up to 8 of these can fire at a single node.
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(probcut_attempt);
+                    }
+                    let probcut_piece = board.moving_piece(mv);
+                    // ProbCut's child is a verification search, not a
+                    // reduced sibling, so it consumes neither selectivity
+                    // input. Written explicitly rather than left stale.
+                    self.push_move(ply, mv, probcut_piece, 0, 0);
                     board.make_move_unchecked(mv);
                     self.tt.prefetch(board.hash);
                     let score =
@@ -2516,11 +2873,19 @@ impl Searcher {
                         score
                     };
                     board.unmake_move(mv);
-                    self.stack_moves[ply] = Move::NULL;
+                    self.clear_move(ply);
                     if self.stopped || self.quit {
                         return 0;
                     }
                     if score >= probcut_beta {
+                        // Deliberately EXACT, like every other `*_cut` counter
+                        // (`rfp_cut`, `nmp_cut`, `see_prune`). The core set is
+                        // guarded inconsistently on purpose: the spec's chosen
+                        // resolution is `RAROG_DIAG_SAMPLE_STRIDE=1`, which
+                        // makes the sampled half exact in one place rather than
+                        // lifting counters out of guards in the hottest file.
+                        // Never read this against `probcut_attempt` at the
+                        // default stride.
                         crate::diag_count!(probcut_cut);
                         let cutoff_score = score - (probcut_beta - beta);
                         self.tt.store(TtStore {
@@ -2555,7 +2920,8 @@ impl Searcher {
         }
 
         let mut move_picker = if in_check || ply == 0 || !excluded.is_null() {
-            let legal_moves = board.generate_legal_movelist();
+            let mut legal_moves = MoveList::new();
+            board.generate_legal_movelist_into(&mut legal_moves);
             if legal_moves.is_empty() {
                 return if in_check {
                     -MATE_SCORE + infra::to_i32(ply)
@@ -2605,6 +2971,10 @@ impl Searcher {
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut searched = 0usize;
+        // 4.5.5: every move the loop LOOKED at, pruned or not. `searched`
+        // counts only those actually searched and keeps that meaning, because
+        // the PVS first-move logic and the mate/stalemate test depend on it.
+        let mut considered = 0usize;
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
         #[cfg(feature = "diag")]
@@ -2619,11 +2989,21 @@ impl Searcher {
         // and for the `make_move` check hint below. `board` is restored by
         // `unmake_move` each iteration, so these stay valid for the whole loop.
         let mut node_ci: Option<CheckInfo> = None;
-        let mut quiets = crate::board::MoveList::new();
+        // 4.5.1: set when the TT move is proved singular at THIS node. Read by
+        // the node's later moves, which is safe because the TT move is searched
+        // first, so the flag is settled before any move LMR can apply to.
+        let mut tt_move_singular = false;
+        // 4.6.5: latch so `skip_quiets_nodes` counts NODES, not calls.
+        let mut skip_quiets_latched = false;
+        // 4.7b: latch so `lmp_nodes` counts NODES, not moves -- the oracle can
+        // only observe the per-node event, so that is the comparable unit.
+        #[cfg(feature = "diag")]
+        let mut diag_node_lmp_seen = false;
+        let mut quiets = MoveList::new();
         let mut good_caps = BadCaptureList::new();
         let mut bad_caps = BadCaptureList::new();
         let previous_move = if ply > 0 {
-            self.stack_moves[ply - 1]
+            self.stack[ply - 1].mv
         } else {
             Move::NULL
         };
@@ -2633,6 +3013,16 @@ impl Searcher {
                 continue;
             }
             legal_move_seen = true;
+            // 4.5.5: incremented HERE, where the reference increments, so a
+            // move pruned below still advances the index.
+            considered += 1;
+            // The index the selectivity mechanisms use. Behind a switch, so
+            // the accepted fingerprint holds while it is 0.
+            let move_index = if self.params.selectivity_count_considered != 0 {
+                considered - 1
+            } else {
+                searched
+            };
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut see = if is_capture { picked.see as i32 } else { 0 };
@@ -2682,24 +3072,49 @@ impl Searcher {
             // what remains after it. Both are computed pre-move so the pruning
             // consumers can see them, and the LMR site debug-asserts it derives
             // the same units.
-            let r_units_estimate = self.lmr_reduction_units(
+            // 4.5.1: built ONCE and used at both sites, so the prospective
+            // depth and the applied reduction cannot drift apart by
+            // construction rather than by assertion. At the root there is no
+            // parent, and 0 is the inert value for both parent inputs.
+            let reduction_inputs = ReductionInputs {
                 depth,
-                searched,
+                searched: move_index,
                 is_quiet,
                 see,
                 tt_pv,
                 cut_node,
                 quiet_hist,
                 corr_abs,
-                ev.is_exact(),
-                tt_move.is_null(),
+                ev_is_exact: ev.is_exact(),
+                tt_move_is_null: tt_move.is_null(),
                 improving,
-            );
+                is_root: ply == 0,
+                parent_move_count: if ply > 0 {
+                    self.stack[ply - 1].move_count
+                } else {
+                    0
+                },
+                parent_stat_score: if ply > 0 {
+                    self.stack[ply - 1].stat_score
+                } else {
+                    0
+                },
+                tt_move_is_capture: !tt_move.is_null() && tt_move.is_capture(),
+                tt_move_singular,
+            };
+            let r_units_estimate = self.lmr_reduction_units(reduction_inputs);
             // `depth - 1` is the child's nominal depth; subtract the estimated
             // reduction and floor at 1 so a consumer never reads a depth that
             // would make its own `depth <= N` guards nonsensical.
-            let prospective_depth = if depth >= 3 && searched >= 2 {
-                (depth - 1 - lmr_reduction(r_units_estimate, depth - 1)).max(1)
+            let prospective_depth = if depth >= 3 && move_index >= 2 {
+                (depth
+                    - 1
+                    - lmr_reduction(
+                        r_units_estimate,
+                        depth - 1,
+                        self.params.lmr_min_reduced_depth,
+                    ))
+                .max(1)
             } else {
                 depth
             };
@@ -2723,7 +3138,7 @@ impl Searcher {
                             * depth;
                         let lmp = (depth <= 3 && eval_for_pruning + lmp_margin <= alpha)
                             || (depth <= 8
-                                && searched
+                                && move_index
                                     > late_move_prune_count(
                                         depth,
                                         improving,
@@ -2772,22 +3187,41 @@ impl Searcher {
                     let prune_margin = (self.params.lmp_base
                         + self.params.lmp_not_improving * not_improving_i)
                         * sel_depth;
-                    let prune_candidate = (sel_depth <= 3
-                        && eval_for_pruning + prune_margin <= alpha)
-                        || (sel_depth <= 8
-                            && searched
-                                > late_move_prune_count(
-                                    sel_depth,
-                                    improving,
-                                    self.params.lmp_count_base,
-                                ))
-                        || (sel_depth <= 4 && quiet_hist < -10_000)
-                        || (sel_depth <= 7
-                            && quiet_hist < -(self.params.quiet_hist_prune_coeff * sel_depth));
+                    // 4.6.5: the move-count component ALONE, so it can be fed
+                    // back to the picker the way the reference feeds its
+                    // `moveCountPruning` flag into `next_move`.
+                    let move_count_pruning = sel_depth <= 8
+                        && move_index
+                            > late_move_prune_count(
+                                sel_depth,
+                                improving,
+                                self.params.lmp_count_base,
+                            );
+                    if move_count_pruning
+                        && self.params.skip_quiets_on_move_count != 0
+                        && !self.ablated(5)
+                    {
+                        if !skip_quiets_latched {
+                            skip_quiets_latched = true;
+                            crate::diag_count!(skip_quiets_nodes);
+                        }
+                        move_picker.skip_quiets();
+                    }
+                    let prune_candidate = !self.ablated(5)
+                        && ((sel_depth <= 3 && eval_for_pruning + prune_margin <= alpha)
+                            || move_count_pruning
+                            || (sel_depth <= 4 && quiet_hist < -10_000)
+                            || (sel_depth <= 7
+                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * sel_depth)));
                     if prune_candidate
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
                         crate::diag_count!(lmp_prune);
+                        #[cfg(feature = "diag")]
+                        if !diag_node_lmp_seen {
+                            diag_node_lmp_seen = true;
+                            crate::diag_count!(lmp_nodes);
+                        }
                         continue;
                     }
                     // Per-move quiet futility pruning (Phase 2.7): a quiet move
@@ -2803,6 +3237,23 @@ impl Searcher {
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
                         crate::diag_count!(quiet_futility_prune);
+                        continue;
+                    }
+                    // 4.6.4: a quiet move that hangs material. Rarog's only
+                    // SEE prune is in the capture branch, so this population
+                    // was never pruned for losing material. Gated OFF by a
+                    // zero depth limit, which is why the accepted fingerprint
+                    // survives.
+                    if self.params.quiet_see_prune_depth != 0
+                        && sel_depth <= self.params.quiet_see_prune_depth
+                        && !board.see_ge_quiet_aware(
+                            mv,
+                            (-self.params.quiet_see_prune_coeff * sel_depth * sel_depth)
+                                .max(-self.params.see_pruning_max),
+                        )
+                        && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
+                    {
+                        crate::diag_count!(quiet_see_prune);
                         continue;
                     }
                 } else if is_capture && see < 0 {
@@ -2825,7 +3276,7 @@ impl Searcher {
             let child_is_pv = is_pv && searched == 0;
             let mut extension = 0;
             let singular_move_candidate =
-                ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
+                !self.ablated(6) && ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
             #[cfg(feature = "diag")]
             if singular_move_candidate
                 && ev.speculative_singular_seed_blocked(depth, self.params.singular_tt_depth_margin)
@@ -2873,6 +3324,7 @@ impl Searcher {
                     return 0;
                 }
                 if singular_score < singular_beta {
+                    tt_move_singular = true;
                     extension = if !is_pv
                         && singular_score < singular_beta - self.params.singular_double_margin
                     {
@@ -2922,14 +3374,23 @@ impl Searcher {
             }
 
             let checking_move =
-                if depth >= 3 && searched >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
+                if depth >= 3 && move_index >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
                     move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 } else {
                     gives_check.unwrap_or(false)
                 };
 
-            self.stack_moves[ply] = mv;
-            self.stack_pieces[ply] = moving_piece;
+            // 4.5.1: the child reduces using its parent's move count and the
+            // history of the move that led there. `searched` is the count
+            // BEFORE this move, so +1 makes it this move's index.
+            let searched_i32 = i32::try_from(searched).unwrap_or(i32::MAX);
+            self.push_move(
+                ply,
+                mv,
+                moving_piece,
+                searched_i32.saturating_add(1),
+                if is_quiet { quiet_hist } else { 0 },
+            );
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
             // bitboard tests) and lets `make_move` skip `calculate_checkers`
@@ -2963,8 +3424,9 @@ impl Searcher {
             } else {
                 // Late evasions are intentionally not reduced. The alternative
                 // increased the deterministic tree by 14.83% and had no owner.
-                let reducible = depth >= 3
-                    && searched >= 2
+                let reducible = !self.ablated(7)
+                    && depth >= 3
+                    && move_index >= 2
                     && (is_quiet || see < 0)
                     && !mv.is_promo()
                     && !in_check
@@ -2979,19 +3441,7 @@ impl Searcher {
                     // pruning consumers can use. Previously this arithmetic lived
                     // only here, so LMP/futility/SEE had no way to know how deep
                     // the move would actually be searched.
-                    let mut r = self.lmr_reduction_units(
-                        depth,
-                        searched,
-                        is_quiet,
-                        see,
-                        tt_pv,
-                        cut_node,
-                        quiet_hist,
-                        corr_abs,
-                        ev.is_exact(),
-                        tt_move.is_null(),
-                        improving,
-                    );
+                    let mut r = self.lmr_reduction_units(reduction_inputs);
                     debug_assert_eq!(
                         r, r_units_estimate,
                         "4.6b: LMR and the prospective depth must share one formula"
@@ -3009,23 +3459,57 @@ impl Searcher {
                     // with the counter and biased +4.5/1024. Only in a parallel
                     // search — `shared_state` is None at Threads=1, which is
                     // what keeps bench identical.
+                    // SMP diversification, unchanged: magnitude 64 reproduces
+                    // the original expression exactly.
+                    //
+                    // 4.10 CANDIDATE — 1T selectivity jitter. Three independent
+                    // results say perturbing this surface beats leaving it
+                    // alone: RAR-S54 (+4.06 ± 3.71 over 14,196 games for a
+                    // blind uniform de-selectivity shift), RAR-S62 (a ProbCut
+                    // desync reading an arbitrary continuation row beat correct
+                    // indexing by ~5 Elo) and RAR-S64 (a stale prior-reduction
+                    // firing on a quasi-random subset beat the correct one by
+                    // ~4.5). Twice a BUG that scattered noise into selectivity
+                    // beat its own correction. The machinery already existed
+                    // and was disabled at 1T only to keep bench deterministic
+                    // for SMP work — the PRNG is re-seeded per search from a
+                    // fixed seed, so 1T stays reproducible.
                     if self.shared_state.is_some() {
-                        r += self.next_jitter();
+                        r += self.next_jitter(64);
+                    } else if self.params.lmr_jitter_1t != 0 {
+                        r += self.next_jitter(self.params.lmr_jitter_1t);
                     }
                     // 10.2.5 candidate: strong late moves may escape the old
                     // mandatory one-ply reduction. A zero reduction is a normal
                     // full-depth PVS search and must not trigger a redundant
                     // verification search at the same depth.
-                    let reduction = lmr_reduction(r, new_depth);
+                    let reduction = lmr_reduction(r, new_depth, self.params.lmr_min_reduced_depth);
                     #[cfg(feature = "diag")]
                     {
-                        diag_move_reduced = reduction > 0;
-                        if diag_sample {
+                        if r < 0 {
+                            crate::diag_count!(lmr_floor_clamped);
+                        }
+                        if new_depth > 0 && reduction == new_depth {
+                            crate::diag_count!(lmr_qs_clamped);
+                        }
+                        if ply == 0 {
+                            crate::diag_count!(lmr_root_applied);
                             crate::diag_add!(
-                                reduction_depth_sum,
+                                lmr_root_reduction_sum,
                                 u64::try_from(reduction).unwrap_or(0)
                             );
                         }
+                    }
+                    #[cfg(feature = "diag")]
+                    {
+                        diag_move_reduced = reduction > 0;
+                        // 4.2: EXACT, because its denominator `lmr_applied` is
+                        // exact. Sampling only the numerator made the mean
+                        // reduction read 1024x low at the default stride.
+                        crate::diag_add!(
+                            reduction_depth_sum,
+                            u64::try_from(reduction).unwrap_or(0)
+                        );
                     }
                     if reduction == 0 {
                         crate::diag_count!(lmr_zero_reduction);
@@ -3095,7 +3579,7 @@ impl Searcher {
                 }
             }
             board.unmake_move(mv);
-            self.stack_moves[ply] = Move::NULL;
+            self.clear_move(ply);
 
             if self.stopped || self.quit {
                 return 0;
@@ -3150,6 +3634,18 @@ impl Searcher {
                         #[cfg(feature = "diag")]
                         if searched == 1 {
                             crate::diag_count!(cutoff_first_move);
+                        }
+                        // 4.2 core: cutoff rank, exact, same block and same
+                        // denominator as cutoff_quiet + cutoff_capture. The
+                        // buckets must sum to that total and best_rank_1 must
+                        // equal cutoff_first_move; both are cross-checks the
+                        // oracle satisfies too.
+                        #[cfg(feature = "diag")]
+                        match searched {
+                            1 => crate::diag_count!(best_rank_1),
+                            2 | 3 => crate::diag_count!(best_rank_2_3),
+                            4..=7 => crate::diag_count!(best_rank_4_7),
+                            _ => crate::diag_count!(best_rank_8_plus),
                         }
                         // 8.4(e): the cutoff REWARD is scaled when the node
                         // static eval sat below beta - the search found a good
@@ -3409,6 +3905,7 @@ impl Searcher {
         }
 
         let in_check = board.is_in_check();
+        crate::diag_count!(qnodes);
         let hash = board.hash;
         #[cfg(feature = "diag")]
         let diag_q_sample = crate::diag::sampled(hash, ply + qply, crate::diag::SAMPLE_QSEARCH);
@@ -3494,6 +3991,15 @@ impl Searcher {
                     crate::diag_count!(q_stand_pat_cut);
                     crate::diag_count!(q_stand_pat_store);
                 }
+                // 4.6.1 MEASURED AND KEPT. A bare stand-pat is a Lower bound
+                // at depth 0 that searched no move and carries none, and it is
+                // 35.87% of all stores (RAR-S23), so the audit suspected it of
+                // causing `tt_bound_not_usable` 2.13x. Suppressing it makes
+                // that metric WORSE, not better: not-usable per hit rises
+                // 9.5% -> 14.9%, hit rate falls 20.6pp, and total TT cutoffs
+                // fall 10.3% against a 7.5% smaller tree — cutoffs dropping
+                // faster than nodes, which is the RAR-S59 signature of a bad
+                // change. These entries earn their slot. Do not re-derive.
                 self.tt.store(TtStore {
                     key: hash,
                     depth: 0,
@@ -3503,7 +4009,6 @@ impl Searcher {
                     ply,
                     static_eval: q_raw_static_eval,
                     is_pv: false,
-                    // No move was searched. RAR-S22: 37% of sampled stores.
                     kind: OutcomeKind::StandPat,
                 });
                 return stand_pat;
@@ -3521,11 +4026,12 @@ impl Searcher {
             }
         }
 
-        let moves = if in_check {
-            board.generate_legal_movelist()
+        let mut moves = MoveList::new();
+        if in_check {
+            board.generate_legal_movelist_into(&mut moves);
         } else {
-            board.generate_legal_captures()
-        };
+            board.generate_legal_captures_into(&mut moves);
+        }
 
         if in_check && moves.is_empty() {
             return -MATE_SCORE + infra::to_i32(ply);
@@ -3563,9 +4069,7 @@ impl Searcher {
                 tactical_count += 1;
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
-                    && stand_pat_for_pruning
-                        + board.captured_piece(mv).map(piece_value).unwrap_or(0)
-                        + 150
+                    && stand_pat_for_pruning + board.captured_piece(mv).map_or(0, piece_value) + 150
                         <= alpha
                     && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 {
@@ -3590,13 +4094,14 @@ impl Searcher {
                 }
             }
             let moving_piece = board.moving_piece(mv);
-            self.stack_moves[ply] = mv;
-            self.stack_pieces[ply] = moving_piece;
+            // Quiescence does not reduce, so it has no reduction inputs to
+            // hand its children.
+            self.push_move(ply, mv, moving_piece, 0, 0);
             board.make_move_unchecked(mv);
             self.tt.prefetch(board.hash);
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
-            self.stack_moves[ply] = Move::NULL;
+            self.clear_move(ply);
             if self.stopped || self.quit {
                 return 0;
             }
@@ -3685,7 +4190,7 @@ impl Searcher {
         scored: &mut ScoredMoveList,
     ) {
         let previous = if ply > 0 {
-            self.stack_moves[ply - 1]
+            self.stack[ply - 1].mv
         } else {
             Move::NULL
         };
@@ -3840,14 +4345,11 @@ impl Searcher {
             if ply < back {
                 continue;
             }
-            let prev = self.stack_moves[ply - back];
+            let prev = self.stack[ply - back].mv;
             if prev.is_null() {
                 continue;
             }
-            cont_bases[slot] = Some(cont_row_base(
-                self.stack_pieces[ply - back] as usize,
-                prev.to_sq().index(),
-            ));
+            cont_bases[slot] = Some(self.stack[ply - back].cont_row_base());
         }
         QuietHistoryCtx {
             cont_bases,
@@ -3950,6 +4452,17 @@ impl Searcher {
         let bonus = self.history_bonus(depth) * bonus_pct / 100;
         let malus = self.history_malus(depth);
         self.update_quiet_history(color, best, best_piece, pawn_key, ply, bonus);
+        // NOTE, 4.5.3: these quiets get a malus in main, low-ply and pawn
+        // history but deliberately NOT in continuation history. That asymmetry
+        // looks like an omission and was measured as a candidate: adding the
+        // continuation malus leaves ordering flat (first-move cutoff 88.04% ->
+        // 88.09%) while cutting the tree 7.5% and total cutoffs 9.6%. Cutoffs
+        // fall FASTER than nodes, so it is not an ordering gain — continuation
+        // history feeds `quiet_hist`, which drives two of LMP's four disjuncts
+        // and the LMR reduction, so a broad negative push simply prunes more.
+        // That is the one direction four independent readings say is wrong for
+        // this engine (RAR-S53/S54/S55, and 4.7 paying +15.56 for pruning
+        // LESS). Rejected on measurement, not left undone.
         for &quiet in quiets {
             let quiet_piece = board.moving_piece(quiet);
             self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -malus);
@@ -3981,16 +4494,11 @@ impl Searcher {
             if ply < back {
                 continue;
             }
-            let prev = self.stack_moves[ply - back];
+            let prev = self.stack[ply - back].mv;
             if prev.is_null() {
                 continue;
             }
-            let index = cont_index(
-                self.stack_pieces[ply - back] as usize,
-                prev.to_sq().index(),
-                piece,
-                to,
-            );
+            let index = self.stack[ply - back].cont_row_base() + piece_to_index(piece, to);
             update_hist_entry(
                 &mut self.cont_history[slot][index],
                 bonus / divisor,
@@ -4214,13 +4722,11 @@ impl Searcher {
             [infra::index(board.non_pawn_key(!color)) & (CORR_SIZE - 1)]
             as i32;
         let continuation = if ply >= 1 {
-            let prev = self.stack_moves[ply - 1];
+            let prev = self.stack[ply - 1].mv;
             if prev.is_null() {
                 0
             } else {
-                self.continuation_correction_history
-                    [piece_to_index(self.stack_pieces[ply - 1] as usize, prev.to_sq().index())]
-                    as i32
+                self.continuation_correction_history[self.stack[ply - 1].cont_key] as i32
             }
         } else {
             0
@@ -4407,11 +4913,10 @@ impl Searcher {
             HISTORY_MAX,
         );
         if ply >= 1 {
-            let prev = self.stack_moves[ply - 1];
+            let prev = self.stack[ply - 1].mv;
             if !prev.is_null() {
                 update_hist_entry(
-                    &mut self.continuation_correction_history
-                        [piece_to_index(self.stack_pieces[ply - 1] as usize, prev.to_sq().index())],
+                    &mut self.continuation_correction_history[self.stack[ply - 1].cont_key],
                     scaled / 2,
                     HISTORY_MAX,
                 );
@@ -4440,6 +4945,29 @@ impl Searcher {
         }
     }
 
+    /// Record the move being searched at `ply`, deriving its continuation key.
+    ///
+    /// The ONLY way to put a move on the stack. Writing `mv` and `piece`
+    /// separately is what let ProbCut desynchronise them (see `NodeContext`).
+    #[inline]
+    fn push_move(&mut self, ply: usize, mv: Move, piece: Piece, move_count: i32, stat_score: i32) {
+        self.stack[ply].mv = mv;
+        self.stack[ply].piece = piece;
+        self.stack[ply].cont_key = piece_to_index(piece as usize, mv.to_sq().index());
+        self.stack[ply].move_count = move_count;
+        self.stack[ply].stat_score = stat_score;
+    }
+
+    /// Clear the move at `ply`. The static eval is deliberately preserved: it
+    /// belongs to the node, not to the move being tried at it.
+    #[inline]
+    fn clear_move(&mut self, ply: usize) {
+        self.stack[ply].mv = Move::NULL;
+        self.stack[ply].cont_key = 0;
+        self.stack[ply].move_count = 0;
+        self.stack[ply].stat_score = 0;
+    }
+
     /// 4.5b: compact `(piece, to)` key for the move `distance` plies back, or
     /// `None` when that ply does not exist or held a null move.
     #[inline(always)]
@@ -4447,14 +4975,11 @@ impl Searcher {
         if ply < distance {
             return None;
         }
-        let prev = self.stack_moves[ply - distance];
+        let prev = self.stack[ply - distance].mv;
         if prev.is_null() {
             return None;
         }
-        Some(piece_to_index(
-            self.stack_pieces[ply - distance] as usize,
-            prev.to_sq().index(),
-        ))
+        Some(self.stack[ply - distance].cont_key)
     }
 
     /// 4.5b: read the distance-`distance` continuation correction, or 0 when the
@@ -4472,6 +4997,21 @@ impl Searcher {
         };
         self.continuation_index(ply, distance)
             .map_or(0, |index| i32::from(table[index]))
+    }
+
+    /// True when mechanism `bit` is ablated. Const `false` without the
+    /// feature, so every guard below folds away in a shipped build.
+    #[cfg(feature = "ablate")]
+    #[inline]
+    fn ablated(&self, bit: u32) -> bool {
+        (self.params.ablation_mask >> bit) & 1 == 1
+    }
+
+    #[cfg(not(feature = "ablate"))]
+    #[inline]
+    #[expect(clippy::unused_self, reason = "mirrors the ablate-feature signature")]
+    fn ablated(&self, _bit: u32) -> bool {
+        false
     }
 
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
@@ -4591,7 +5131,7 @@ impl Searcher {
             .unwrap_or(nodes as u128);
         let pv = pv
             .iter()
-            .map(|mv| mv.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(" ");
         println!(
@@ -4619,7 +5159,7 @@ impl Searcher {
         child.make_move_unchecked(bestmove);
         self.tt
             .probe(child.hash)
-            .and_then(|entry| entry.best_move())
+            .and_then(super::tt::TtEntry::best_move)
             .and_then(|mv| child.legal_move(mv))
             .unwrap_or(Move::NULL)
     }
@@ -4747,17 +5287,171 @@ fn format_score(score: i32) -> String {
 
 #[cfg(test)]
 mod tests {
+    /// The evaluator mirrors `MAX_PLY` to bound its mop-up drive below the mate
+    /// band without taking a dependency on the search. This is the assertion
+    /// that keeps the mirror honest, and it lives here because this module is
+    /// the one that legitimately sees both constants (PLAN 4.10.11).
+    #[test]
+    fn mopup_mirror_matches_the_real_ply_horizon() {
+        assert_eq!(
+            crate::eval::MOPUP_ASSUMED_MAX_PLY as usize,
+            super::MAX_PLY,
+            "eval.rs mirrors MAX_PLY to bound the mop-up drive; the two have \
+             drifted, so the compile-time bound in eval.rs is now checking \
+             the wrong number"
+        );
+    }
+
     use super::*;
     use crate::board::Square;
     use std::time::{Duration, Instant};
 
+    const LAZY_MARGIN_REGRESSION_FEN: &str = "5k2/5p1p/p3B1p1/Pp6/1P6/5P1P/4K1P1/8 b - - 0 1";
+
+    /// A.3.3 (RAR-R11): the budget is measured from the instant `go` was
+    /// parsed, not from the engine thread's start. A `go movetime 200`
+    /// parsed 300 ms ago has already spent its budget and must return at
+    /// once with a legal move from the first completed iteration.
+    #[test]
+    fn search_clock_starts_when_go_was_parsed() {
+        let board = Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).unwrap();
+        let legal = board.generate_legal_moves();
+        let limits = SearchLimits {
+            move_time: 200,
+            issued: Some(Instant::now() - Duration::from_millis(300)),
+            ..SearchLimits::default()
+        };
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+            true,
+        );
+        let started = Instant::now();
+        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+        let took = started.elapsed();
+        assert!(
+            took < Duration::from_millis(100),
+            "a search whose budget expired before it began must stop at once, took {took:?}"
+        );
+        assert!(
+            result.depth >= 1,
+            "at least one iteration completes: {}",
+            result.depth
+        );
+        assert!(legal.contains(&result.bestmove), "bestmove must be legal");
+        assert!(
+            result.elapsed_ms >= 300,
+            "elapsed is measured from the parse instant: {} ms",
+            result.elapsed_ms
+        );
+    }
+
+    fn store_static_eval(searcher: &mut Searcher, board: &Board, static_eval: i32) {
+        let mv = board
+            .generate_legal_moves()
+            .into_iter()
+            .next()
+            .expect("regression position has a legal move");
+        searcher.tt.store(TtStore {
+            key: board.hash,
+            depth: 1,
+            score: static_eval,
+            bound: Bound::Exact,
+            mv,
+            ply: 0,
+            static_eval,
+            is_pv: false,
+            kind: OutcomeKind::Full,
+        });
+    }
+
+    #[test]
+    fn lazy_margin_change_invalidates_local_and_shared_tt_evals() {
+        const LOW_MARGIN: i32 = 200;
+        const HIGH_MARGIN: i32 = 2_000;
+        let board =
+            Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).expect("valid lazy-eval regression FEN");
+        let limits = SearchLimits::default();
+
+        for shared in [false, true] {
+            let mut searcher = Searcher::default();
+            let mut options = EngineOptions::default();
+            options.search_params.lazy_margin = LOW_MARGIN;
+            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
+            let low_margin_score = searcher.raw_eval(&board);
+
+            if shared {
+                searcher.tt.make_shared(searcher.hash_mb);
+            }
+            store_static_eval(&mut searcher, &board, low_margin_score);
+            assert_eq!(
+                i32::from(
+                    searcher
+                        .tt
+                        .probe(board.hash)
+                        .expect("stored TT entry")
+                        .static_eval
+                ),
+                low_margin_score
+            );
+
+            options.search_params.lazy_margin = HIGH_MARGIN;
+            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
+            assert!(
+                searcher.tt.probe(board.hash).is_none(),
+                "LazyMargin change retained a {} TT evaluation",
+                if shared { "shared" } else { "local" }
+            );
+            assert_ne!(searcher.raw_eval(&board), low_margin_score);
+        }
+    }
+
+    #[test]
+    fn helper_lazy_margin_sync_does_not_clear_live_shared_tt() {
+        let board =
+            Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).expect("valid lazy-eval regression FEN");
+        let mut main = Searcher::default();
+        main.tt.make_shared(main.hash_mb);
+        store_static_eval(&mut main, &board, 123);
+
+        let mut helper = Searcher::worker_default();
+        helper.tt = main.tt.clone();
+        let mut options = EngineOptions::default();
+        options.search_params.lazy_margin = 2_000;
+        helper.reset_search_state(
+            &SearchLimits::default(),
+            &options,
+            board.side_to_move(),
+            0,
+            false,
+            false,
+        );
+
+        assert!(
+            main.tt.probe(board.hash).is_some(),
+            "helper startup cleared the shared TT after another thread made it live"
+        );
+    }
+
     #[test]
     fn lmr_reduction_allows_strong_late_moves_to_reach_zero() {
-        assert_eq!(lmr_reduction(1023, 8), 0);
-        assert_eq!(lmr_reduction(1024, 8), 1);
-        assert_eq!(lmr_reduction(4096, 3), 3);
-        assert_eq!(lmr_reduction(-1, 8), 0);
-        assert_eq!(lmr_reduction(1024, 0), 0);
+        assert_eq!(lmr_reduction(1023, 8, 0), 0);
+        assert_eq!(lmr_reduction(1024, 8, 0), 1);
+        assert_eq!(lmr_reduction(4096, 3, 0), 3);
+        assert_eq!(lmr_reduction(-1, 8, 0), 0);
+        assert_eq!(lmr_reduction(1024, 0, 0), 0);
+        // 4.8.1: with a floor of one ply the reduced search keeps a ply.
+        // The 4096/3 case is exactly the one the audit counts: it consumed
+        // the whole of new_depth and ran in quiescence.
+        assert_eq!(lmr_reduction(4096, 3, 1), 2);
+        assert_eq!(lmr_reduction(4096, 1, 1), 0);
+        // new_depth already at or below the floor: leave it unreduced,
+        // never extend it.
+        assert_eq!(lmr_reduction(4096, 0, 1), 0);
     }
 
     #[test]
@@ -5513,6 +6207,87 @@ mod tests {
             losing_capture_seen,
             "test position must include the losing capture"
         );
+    }
+
+    /// Collect everything a picker yields, for the contract tests below.
+    fn drain_picker(picker: &mut MovePicker, searcher: &Searcher, board: &mut Board) -> Vec<Move> {
+        let mut out = Vec::new();
+        while let Some(picked) = picker.next(searcher, board) {
+            out.push(picked.mv);
+        }
+        out
+    }
+
+    /// 4.5.2 CONTRACT — staged path: every legal move, exactly once.
+    ///
+    /// This is the legality and duplicate guarantee in one assertion. It holds
+    /// with a TT move set, which is the case that can double-emit: the TT move
+    /// goes out in `Stage::TtMove` and every later stage must filter it.
+    #[test]
+    fn staged_picker_emits_every_legal_move_exactly_once() {
+        let searcher = Searcher::default();
+        for fen in [
+            "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "4k3/8/4p3/3p4/8/2N5/8/4K3 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            let mut legal: Vec<Move> = board.generate_legal_movelist().as_slice().to_vec();
+            for tt in [Move::NULL, legal[0], legal[legal.len() - 1]] {
+                let mut picker = MovePicker::staged(&searcher, &mut board, tt, 0);
+                let mut got = drain_picker(&mut picker, &searcher, &mut board);
+                got.sort_unstable_by_key(|m| m.0);
+                legal.sort_unstable_by_key(|m| m.0);
+                assert_eq!(
+                    got, legal,
+                    "staged picker must emit every legal move exactly once                      (fen {fen}, tt {tt})"
+                );
+            }
+        }
+    }
+
+    /// 4.5.2 CONTRACT — full path (root and in-check): same guarantee.
+    #[test]
+    fn full_picker_emits_every_legal_move_exactly_once() {
+        let searcher = Searcher::default();
+        // Second FEN is a check position — rook on e2 checking Ke1, with
+        // Kxe2/Kd1/Kf1 legal — which is exactly when the search takes the full
+        // path. Not a mate: a mated position has no legal moves and would test
+        // nothing here.
+        for fen in [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            let mut legal: Vec<Move> = board.generate_legal_movelist().as_slice().to_vec();
+            assert!(!legal.is_empty(), "test FEN must have legal moves: {fen}");
+            for tt in [Move::NULL, legal[0]] {
+                let scored = searcher.score_moves(&board, legal.as_slice(), tt, 0);
+                let mut picker = MovePicker::full(scored, tt);
+                let mut got = drain_picker(&mut picker, &searcher, &mut board);
+                got.sort_unstable_by_key(|m| m.0);
+                legal.sort_unstable_by_key(|m| m.0);
+                assert_eq!(
+                    got, legal,
+                    "full picker must emit every legal move exactly once                      (fen {fen}, tt {tt})"
+                );
+            }
+        }
+    }
+
+    /// 4.5.2 CONTRACT — `Stage::Done` is terminal and stays terminal.
+    #[test]
+    fn picker_is_exhausted_permanently() {
+        let searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
+        let mut picker = MovePicker::staged(&searcher, &mut board, Move::NULL, 0);
+        while picker.next(&searcher, &mut board).is_some() {}
+        for _ in 0..3 {
+            assert!(
+                picker.next(&searcher, &mut board).is_none(),
+                "an exhausted picker must keep returning None"
+            );
+        }
     }
 
     fn test_search_result(bestmove: Move, score: i32, depth: usize) -> SearchResult {

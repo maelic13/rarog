@@ -190,7 +190,33 @@ search_params! {
     /// [search.rs:1195]
     see_pruning_coeff = 66, "SeePruningCoeff", 20..=200;  // was 83 → 51 → 66
     /// SEE bad-capture threshold maximum magnitude (floor of `-(coeff * depth)`). [search.rs:1195]
-    see_pruning_max = 955, "SeePruningMax", 200..=1600;  // was 804 → 869 → 955
+    see_pruning_max = 955, "SeePruningMax", 200..=1600;
+
+    /// 4.6.4 QUIET SEE PRUNING. `depth` 0 = OFF = accepted behaviour.
+    ///
+    /// Rarog's only SEE prune lives in the CAPTURE branch, behind `see < 0`.
+    /// Its quiet branch has move-count and futility pruning and nothing else,
+    /// so a quiet move that simply hangs material is never pruned for that
+    /// reason. The reference prunes exactly that case, and annotates it at
+    /// ~20 Elo. This is the one gap in Step 13 that the counters could not
+    /// explain as a population effect: `see_prune` runs at 0.20x the oracle's
+    /// per-node rate, five times down, against a 30% shrinkage in the late-move
+    /// population.
+    ///
+    /// Threshold is quadratic in the prospective depth, as the reference's is:
+    /// `-coeff * d * d`, floored by `see_pruning_max`. `coeff` is seeded from
+    /// Rarog's own capture-side `see_pruning_coeff` (66), not from the
+    /// reference's constants.
+    quiet_see_prune_depth = 0, "QuietSeePruneDepth", 0..=12;
+    quiet_see_prune_coeff = 25, "QuietSeePruneCoeff", 1..=200;
+
+    /// 4.6.5 SKIP QUIETS once move-count pruning fires. 0 = off = accepted.
+    ///
+    /// The reference sets a `moveCountPruning` flag and passes it to the move
+    /// picker, which then stops emitting quiets entirely. Rarog generated,
+    /// scored and individually rejected every remaining quiet instead — the
+    /// same decision, paid for once per move rather than once per node.
+    skip_quiets_on_move_count = 0, "SkipQuietsOnMoveCount", 0..=1;  // was 804 → 869 → 955
 
     // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
     // Exposed so the `config_see` SPSA can re-tune SEE's consumers alongside
@@ -596,6 +622,96 @@ search_params! {
     /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
     /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
     probcut_margin = 180, "ProbCutMargin", 60..=400;
+
+    /// 4.7c PROBCUT MOVE FILTER. Two constants for the entry contract of the
+    /// speculative capture search; both are categorical-frozen defaults awaiting
+    /// the cluster fit, not tuned values.
+    ///
+    /// `probcut_see_gap_scale` is a percentage applied to the gap the capture
+    /// must bridge, `probcut_beta - static_eval`. At 100 the move must win at
+    /// least the whole gap by SEE; at 0 the gap is ignored and the filter
+    /// degenerates to the pre-4.7c `see_ge(mv, 0)`. The threshold is floored at
+    /// 0, so this can only ever tighten the old contract, never loosen it —
+    /// RAR-S55 v3 measured Rarog searching 5.17x the reference's normalised
+    /// ProbCut moves and converting 32.6% of them against 71.9%.
+    /// 4.10 CANDIDATE: single-thread LMR-reduction jitter, in 1024ths of a
+    /// ply. 0 = off = accepted behaviour. The multi-thread path is unaffected
+    /// and keeps its own magnitude of 64.
+    /// 4.10 CANDIDATE: unconditional LMR-reduction relief, in 1024ths of a
+    /// ply, subtracted from every reduction. 0 = off = accepted behaviour.
+    ///
+    /// This is the DIRECTIONAL form of what RAR-S54 and RAR-S64 measured.
+    /// RAR-S67 built the symmetric form (jitter) and it failed: symmetric noise
+    /// has zero mean effect on the reduction, so it cannot reproduce an effect
+    /// that is about reducing LESS.
+    lmr_relief = 0, "LmrRelief", 0..=512;
+    lmr_jitter_1t = 0, "LmrJitter1t", 0..=512;
+    /// 4.6.7 ROOT REDUCTION RELIEF, in 1024ths of a ply. 0 = off = accepted
+    /// behaviour.
+    ///
+    /// `lmr_reduction_units` is not passed the ply and `reducible` has no
+    /// `ply == 0` term, so the root is reduced exactly like an interior node
+    /// from the third move onward. An alternative root move is therefore
+    /// searched at REDUCED depth and can only displace the incumbent by
+    /// beating alpha while reduced. The answer harness measures the
+    /// consequence: Rarog revises its root move 1.50 times against the
+    /// oracle's 2.16 and lands on a different move a third of the time.
+    /// 4.8.1 MINIMUM REDUCED DEPTH, in plies. 0 = off = accepted behaviour.
+    ///
+    /// `lmr_reduction` clamps to `new_depth`, so a reduced search may run at
+    /// depth 0 and be answered by quiescence. Measured at bench 13: that is
+    /// **46.7%** of all applied reductions -- a prune wearing a reduction's
+    /// name, counted in no pruning family, and able to fail high off a
+    /// stand-pat. The reference guarantees the reduced search is at least one
+    /// ply. 1 reproduces that contract.
+    lmr_min_reduced_depth = 0, "LmrMinReducedDepth", 0..=2;
+    /// Paired-ablation mask. Bit per mechanism, matching the oracle's:
+    /// 0 razoring, 1 futility-child, 2 nullmove, 3 probcut, 4 iir,
+    /// 5 shallow-pruning, 6 extensions, 7 lmr. 0 = shipped behaviour.
+    /// Only consulted when built with `--features ablate`.
+    ablation_mask = 0, "AblationMask", 0..=255;
+    lmr_root_relief = 1536, "LmrRootRelief", 0..=2048;
+    /// 4.5.5 MOVE-INDEX SEMANTICS. 0 = accepted behaviour, 1 = count every
+    /// move CONSIDERED.
+    ///
+    /// Rarog increments `searched` at the END of the move loop, after the LMP,
+    /// quiet-futility and SEE `continue`s, so a pruned move never advances it.
+    /// The reference increments before its Step 13 pruning, so its count
+    /// includes every legal move it looked at. Both then feed the SAME
+    /// log(depth)*log(count) reduction — whose two engines' constants agree to
+    /// within 2% — and the SAME move-count pruning threshold.
+    ///
+    /// So Rarog applies the identical formula to a systematically smaller
+    /// argument, and its move-count pruning is self-limiting: pruning a move
+    /// withholds the increment that would trigger more pruning. `LmpCountBase`
+    /// sitting pinned at its lower rail is what that looks like from the
+    /// tuner's side.
+    selectivity_count_considered = 0, "SelectivityCountConsidered", 0..=1;
+    /// 4.5.1 reduction-contract additions, in 1024ths of a ply. All 0 =
+    /// accepted behaviour; the accepted fingerprint holds until they are
+    /// fitted. The MECHANISMS come from the reference, the constants do not:
+    /// its thresholds are in its own history units, and the independence
+    /// boundary forbids importing them regardless.
+    ///
+    /// Extra reduction for a quiet move when the TT move is a capture.
+    lmr_tt_capture = 0, "LmrTtCapture", 0..=2048;
+    /// Relief when the TT move was proved singular at this node.
+    lmr_singular_relief = 0, "LmrSingularRelief", 0..=2048;
+    /// Relief when the parent was still searching late; `min` is the move
+    /// count at which it applies and is inert while the relief is 0.
+    lmr_parent_movecount_relief = 0, "LmrParentMoveCountRelief", 0..=2048;
+    lmr_parent_movecount_min = 0, "LmrParentMoveCountMin", 0..=64;
+    /// Swing from comparing this move's history with the parent move's.
+    /// `margin` is the dead zone in history units.
+    lmr_stat_swing = 0, "LmrStatSwing", 0..=2048;
+    lmr_stat_swing_margin = 0, "LmrStatSwingMargin", 0..=32768;
+    probcut_see_gap_scale = 100, "ProbCutSeeGapScale", 0..=100;
+    /// Base cap on captures searched at one ProbCut node, before the cut-node
+    /// bonus. Replaces a flat 8 that had no stated derivation.
+    probcut_move_cap_base = 2, "ProbCutMoveCapBase", 1..=8;
+    /// Extra captures allowed at an expected cut node, where a fail-high is the
+    /// predicted outcome and the speculative search is likeliest to pay.
+    probcut_move_cap_cut_bonus = 2, "ProbCutMoveCapCutBonus", 0..=8;
 
     /// Lazy-eval margin (Phase 5.1b; mirrors `eval::LAZY_MARGIN` = 600). If the
     /// tapered material + PST + pawn score already exceeds this, the expensive

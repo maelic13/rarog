@@ -159,12 +159,13 @@ mod malformed_position {
 
     /// Inputs that MUST be fatal — the position could not be established, so
     /// continuing would mean searching a stale board.
-    const FATAL: [&str; 6] = [
+    const FATAL: [&str; 7] = [
         "position fen ",
         "position fen  ",
         "position fen not a fen at all",
         "position fen",
         "position startpos moves xxxx",
+        "position startpos moves aé1",
         "position fen 8/8/8/8/8/8/8/8 w - - 0 1 moves a1a2",
     ];
 

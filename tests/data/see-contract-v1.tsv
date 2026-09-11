@@ -1,0 +1,19 @@
+# see-contract-v1: name|disposition|FEN|move|legal-tree value|immediate gain
+free-pawn|exchange|4k3/8/8/3p4/8/8/3R4/4K3 w - - 0 1|d2d5|100|100
+defended-pawn|exchange|4k3/8/2p5/3p4/8/8/3R4/4K3 w - - 0 1|d2d5|-400|100
+king-after-pawn|debt|7k/8/2p5/3pK3/8/8/3R4/8 w - - 0 1|d2d5|-300|100
+legal-king-recapture|exchange|3qk3/8/8/8/8/8/3Q4/3K4 w - - 0 1|d2d8|0|900
+defended-king-destination|exchange|3qk3/8/8/6B1/8/8/3Q4/3K4 w - - 0 1|d2d8|900|900
+pinned-pawn|exchange|3k4/3p4/2p5/8/4B3/8/8/3RK3 w - - 0 1|e4c6|100|100
+pin-created|debt|2k5/2n5/2B5/3p4/8/8/8/2R1K3 w - - 0 1|c6d5|100|100
+pin-released|exchange|k7/1r1p4/2B5/8/8/8/8/4K3 w - - 0 1|c6d7|-230|100
+xray|exchange|3rk3/8/8/3r4/8/8/3R4/3RK3 w - - 0 1|d2d5|500|500
+ep-opens-rook|exchange|7k/8/8/3pP3/8/8/K7/3r4 w - d6 0 1|e5d6|0|100
+quiet-hanging|policy-quiet|7k/8/8/2p5/8/8/3R4/7K w - - 0 1|d2d4|-500|0
+quiet-promotion-hanging|policy-promotion|7r/P7/7k/8/8/8/8/K7 w - - 0 1|a7a8q|-100|800
+quiet-underpromotion|policy-promotion|4k3/P7/8/8/8/8/8/4K3 w - - 0 1|a7a8n|220|220
+capture-promotion|exchange|1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1|a7b8q|1300|1300
+capture-underpromotion|exchange|1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1|a7b8n|720|720
+promotion-recapture|debt|7k/8/8/8/8/7K/pR6/1r6 w - - 0 1|b2b1|-800|500
+castle-king|policy-castle|4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1|e1g1|0|0
+castle-queen|policy-castle|4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1|e1c1|0|0

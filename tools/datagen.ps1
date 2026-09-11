@@ -11,10 +11,19 @@
     continuation cannot silently replay openings. The output filename records
     the engine suffix, node count, start, and game count.
 
-    Adjudication uses the named datagen-v1 profile: draw after move 40 with an
+    Adjudication is OFF by default (profile datagen-v2, 2026-09-01, RAR-M17):
+    games play to a rules result. The reason is sample depletion rather than
+    mislabeling -- RAR-M15 measured adjudication ending 52.7% of all endgames
+    before they are reached, which leaves an adjudicated corpus systematically
+    short of the positions the endgame families need to be fitted on.
+
+    Pass -Adjudicate for the legacy datagen-v1 profile, which `hce-v2` and
+    every manifest written before 2026-09-01 used: draw after move 40 with an
     8-move window at score < 10 cp; resign after 3 moves at score > 600 cp only
-    when both engines agree. This is deliberately stricter than strength-v1:
-    one wrong game result would mislabel many training positions.
+    when both engines agree. Identical to strength-v2 since 2026-08-18, but
+    kept as a separate named profile: one wrong game result mislabels every
+    position sampled from that game, so labels must never silently follow a
+    future loosening of the strength rule.
 
 .PARAMETER Suffix
     Engine binary suffix. Looks for
@@ -76,6 +85,13 @@
 .EXAMPLE
     # If preflight recommends 180k total, generate exactly the disjoint tail.
     .\tools\datagen.ps1 -Suffix p1025a-zero -Rounds 160000 -Start 20001 -Seed 10403
+    One truncation remains and is deliberate: `-maxmoves 200`, a runaway guard
+    that ends a game as a draw after 200 moves. It is not adjudication and it
+    does not deplete the corpus the way the draw rule did -- measured against
+    RAR-E06's 3,915 unadjudicated games, only 0.05% run past 400 plies, against
+    the 52.7% of endgames the draw rule was ending. Keep it: without a cap a
+    single pathological game can hold a concurrency slot indefinitely.
+
 #>
 param(
     [Parameter(Mandatory)][string]$Suffix,
@@ -84,28 +100,41 @@ param(
     [int]   $Seed        = 10403,
     [int]   $Nodes       = 8000,
     [int]   $Hash        = 16,
-    [int]   $Concurrency = 0,        # 0 = auto (physical CPUs - 2)
+    [int]   $Concurrency = 0,        # 0 = auto (logical processors - 2; node-limited)
     [string]$OutputPgn   = "",
     [string]$Book        = "",
     [ValidateSet("pgn", "epd")]
     [string]$BookFormat  = "pgn",
     [string]$FastchessPath = "",
     [switch]$Append,
+    # Opt back into datagen-v1 adjudication. Off by default since 2026-09-01.
+    [switch]$Adjudicate,
+    # Syzygy WDL directory. When set, games are adjudicated on TABLEBASE TRUTH
+    # at 6 men (profile datagen-v3) instead of being played out at the datagen
+    # node budget, which the engine often cannot convert. Never use this for a
+    # strength gate. Mutually exclusive with -Adjudicate.
+    [string]$SyzygyPath = "",
+    [int]$SyzygyPieces = 6,
     [switch]$SetupOnly
 )
 
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 . "$PSScriptRoot\harness_common.ps1"
 
-function Get-TextLineCount([string]$Path) {
-    $reader = [System.IO.File]::OpenText($Path)
-    try {
-        $count = 0
-        while ($null -ne $reader.ReadLine()) { $count++ }
-        return $count
-    } finally {
-        $reader.Dispose()
+function Get-UniqueEpdOpeningCount([string]$Path) {
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $count = 0
+    foreach ($line in [IO.File]::ReadLines($Path)) {
+        $parts = $line.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
+        if ($parts.Count -lt 4) { throw "$Path opening $($count + 1) is not a four-field FEN." }
+        $fen4 = $parts[0..3] -join ' '
+        if (-not $seen.Add($fen4)) {
+            throw "$Path repeats opening '$fen4'; refusing duplicate-seeded datagen."
+        }
+        $count++
     }
+    return $count
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -145,14 +174,21 @@ try {
     # Auto concurrency leaves two physical cores for interactive use. Explicit
     # oversubscription is valid for deterministic fixed-node datagen.
     if ($Concurrency -le 0) {
-        $Concurrency = [Math]::Max(1, (Get-PhysicalCoreCount) - 2)
+        # Datagen is NODE-limited (`tc=inf nodes=N`), so it may oversubscribe
+        # where a timed harness may not. A `go nodes` search plays identical
+        # moves however slowly it runs: contention costs wall time and changes
+        # nothing about the result. The physical-core rule that governs
+        # sprt.ps1 exists for timed games, where contention causes the forfeits
+        # RAR-M14 measured -- a hazard this path does not have. Defaulting to
+        # physical-2 was leaving over half of a 32-thread machine idle.
+        $Concurrency = (Resolve-HarnessConcurrency -Requested 0 -AllowOversubscribe).Concurrency
     }
 
     # Book-diversity guard (Phase 6.2.0, lesson 5): fixed-node self-play from a
     # small book replays near-identical games — Basilisk got 31,880 unique
     # positions from 200k games off SuperGM_4mvs vs 1.73M off a diverse seed.
     if ($BookFormat -eq "epd") {
-        $openings = Get-TextLineCount $Book
+        $openings = Get-UniqueEpdOpeningCount $Book
     } else {
         $openings = (Select-String -Path $Book -Pattern '^\[Event ' -SimpleMatch:$false).Count
     }
@@ -194,14 +230,59 @@ try {
     if ($engineManifest.git_dirty) {
         throw "Datagen engine was built from a dirty tree; rebuild a reproducible binary before generating labels."
     }
+    $verificationProperty = $engineManifest.PSObject.Properties["verification"]
+    if ($verificationProperty -and $verificationProperty.Value -ne "bench") {
+        throw "Datagen engine manifest records '$($verificationProperty.Value)', not bench verification."
+    }
+    if ($engineManifest.flavor -like "*-tune") {
+        throw "Datagen requires a production PGO build, not a tune binary."
+    }
 
     $fastchessInfo = Get-FastchessVersion -Path $FastchessPath
-    $profile = Get-DatagenProfile
+    if ($Adjudicate -and $SyzygyPath) {
+        throw "-Adjudicate and -SyzygyPath are contradictory; pick one label contract."
+    }
+    if ($SyzygyPath -and -not (Test-Path -LiteralPath $SyzygyPath -PathType Container)) {
+        throw "-SyzygyPath is not a directory: $SyzygyPath"
+    }
+    $profile = if ($Adjudicate) {
+        Get-DatagenProfile
+    } elseif ($SyzygyPath) {
+        Get-DatagenProfileV3 -SyzygyPath ((Resolve-Path $SyzygyPath).Path) -Pieces $SyzygyPieces
+    } else {
+        Get-DatagenProfileV2
+    }
     # Hash before launch so the manifest identifies the inputs fastchess
     # actually opened, even if a file is changed after the run begins.
     $engineHash = Get-HarnessSha256 -Path $enginePath
+    $binaryHashProperty = $engineManifest.PSObject.Properties["binary_sha256"]
+    if (-not $binaryHashProperty -or -not $binaryHashProperty.Value) {
+        throw "Datagen requires a hash-bound engine manifest; rebuild with tools\build_test.ps1."
+    }
+    if ($binaryHashProperty.Value -ne $engineHash) {
+        throw "Engine binary SHA-256 does not match its sidecar; rebuild before generating labels."
+    }
+    foreach ($requiredOption in @("Hash", "Threads")) {
+        if (-not (Test-EngineSupportsOption -Path $enginePath -Name $requiredOption)) {
+            throw "Datagen engine does not advertise required UCI option '$requiredOption'."
+        }
+    }
     $bookHash = Get-HarnessSha256 -Path $Book
-    $resignArgs = @(Get-DatagenResignArgs)
+    $fastchessHash = Get-HarnessSha256 -Path $FastchessPath
+    # Adjudication off by default since 2026-09-01 (RAR-M17). See
+    # Get-DatagenProfileV2 for why the label-quality case is stronger here than
+    # for a strength gate: the harm is sample depletion, not mislabeling.
+    $adjudicationArgs = if ($Adjudicate) {
+        @('-draw', "movenumber=$($profile.DrawMoveNumber)",
+          "movecount=$($profile.DrawMoveCount)", "score=$($profile.DrawScore)") +
+        @(Get-DatagenResignArgs)
+    } elseif ($SyzygyPath) {
+        @('-tb', $profile.TablebasePath,
+          '-tbpieces', "$($profile.TablebasePieces)",
+          '-tbadjudicate', 'BOTH')
+    } else {
+        @()
+    }
     $fastchessArgs = @(
         '-engine', "cmd=$enginePath", 'name=A', "option.Hash=$Hash", 'option.Threads=1',
         '-engine', "cmd=$enginePath", 'name=B', "option.Hash=$Hash", 'option.Threads=1',
@@ -209,10 +290,10 @@ try {
         '-openings', "file=$Book", "format=$BookFormat", 'order=random', "start=$Start",
         '-srand', "$Seed",
         '-rounds', "$Rounds", '-games', '1',
-        '-concurrency', "$Concurrency",
-        '-draw', "movenumber=$($profile.DrawMoveNumber)", "movecount=$($profile.DrawMoveCount)", "score=$($profile.DrawScore)"
-    ) + $resignArgs + @(
-        '-pgnout', "file=$OutputPgn",
+        '-concurrency', "$Concurrency"
+    ) + $adjudicationArgs + @(
+        '-maxmoves', '200',
+        '-pgnout', "file=$OutputPgn", 'append=false',
         '-output', 'format=fastchess'
     )
 
@@ -228,7 +309,14 @@ try {
     Write-Host "  Conc.   : $Concurrency"
     Write-Host "  Book    : $(Split-Path $Book -Leaf) ($BookFormat)"
     Write-Host "  Book SHA: $bookHash"
-    Write-Host "  Profile : $($profile.Name) (resign $($profile.ResignScore)/$($profile.ResignMoveCount), two-sided)"
+    $profileDetail = if ($Adjudicate) {
+        "resign $($profile.ResignScore)/$($profile.ResignMoveCount), two-sided"
+    } elseif ($SyzygyPath) {
+        "Syzygy truth at $($profile.TablebasePieces) men, fifty-move rule kept"
+    } else {
+        "no adjudication; games play to a rules result"
+    }
+    Write-Host "  Profile : $($profile.Name) ($profileDetail)"
     Write-Host "  Runner  : $($fastchessInfo.Text)"
     Write-Host "  Output  : $OutputPgn"
     Write-Host "============================================================"
@@ -254,23 +342,29 @@ try {
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     }
 
+    $startedUtc = (Get-Date).ToUniversalTime()
     & $FastchessPath @fastchessArgs
 
     if ($LASTEXITCODE -ne 0) {
-        throw "fastchess exited with code $LASTEXITCODE."
+        throw "fastchess exited with code $LASTEXITCODE; partial PGN retained at $OutputPgn."
+    }
+    if (-not (Test-Path -LiteralPath $OutputPgn -PathType Leaf)) {
+        throw "fastchess exited successfully without producing $OutputPgn."
     }
 
     Write-Host ""
     Write-Host "Done. PGN: $OutputPgn"
 
     $runManifest = [ordered]@{
-        schema             = "rarog-datagen-v1"
+        schema             = "rarog-fastchess-datagen-v2"
+        started_utc        = $startedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
         completed_utc      = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-        output_pgn         = $OutputPgn
         engine             = [ordered]@{
             path        = $enginePath
             sha256      = $engineHash
+            manifest    = $engineManifestPath
             git_sha     = $engineManifest.git_sha
+            git_tree    = $engineManifest.git_tree
             git_branch  = $engineManifest.git_branch
             git_dirty   = [bool]$engineManifest.git_dirty
             bench_nodes = [int64]$engineManifest.bench_nodes
@@ -288,11 +382,21 @@ try {
         games              = $Rounds
         nodes_per_move     = $Nodes
         hash_mb            = $Hash
+        effective_threads  = 1
         concurrency        = $Concurrency
-        fastchess          = $fastchessInfo.Text
+        fastchess          = [ordered]@{
+            version = $fastchessInfo.Text
+            sha256  = $fastchessHash
+        }
         adjudication       = $profile
+        max_moves          = 200
+        output             = [ordered]@{
+            path   = $OutputPgn
+            bytes  = (Get-Item -LiteralPath $OutputPgn).Length
+            sha256 = Get-HarnessSha256 -Path $OutputPgn
+        }
     }
-    $runManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $outputManifest -Encoding utf8
+    Write-JsonAtomic -Path $outputManifest -Value $runManifest
     Write-Host "Manifest: $outputManifest"
 
     # Do not re-read a multi-GB PGN merely to count lines. The bounded preflight

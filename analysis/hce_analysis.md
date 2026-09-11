@@ -1,5 +1,13 @@
 # Rarog HCE analysis
 
+> **Historical audit.** This report describes revision `ff21dc1` on
+> 2026-07-13. Its four concrete activation defects (`attacked2`, enemy rook
+> behind a passer, unstoppable passers, and phalanx detection) were fixed by
+> `d5a6054` and are covered by current evaluator tests. Do not use their old
+> priority or Elo estimate as current work. The current maturity disposition
+> and pre-NNUE programme are in
+> [`hce_maturity_2026-08-25.md`](hce_maturity_2026-08-25.md).
+
 Status: working analysis, intended to be extended  
 Analysis date: 2026-07-13  
 Rarog revision: `ff21dc1` (`development`)  

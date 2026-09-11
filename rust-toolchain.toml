@@ -10,10 +10,10 @@
 # THIS DOES NOT FREEZE YOU. `rustup update` still updates the global
 # toolchain and every other project on the machine; only rarog waits for a
 # deliberate bump of the line below (rustup auto-downloads it on next build).
-# Bump ritual: GUIDE.md item 9.1 — never bump between building an
-# SPRT baseline and its candidate.
+# Bump ritual: PROCESS.md "Toolchain and harness notes" — never bump between
+# building an SPRT baseline and its candidate.
 [toolchain]
-channel = "1.97.1"
+channel = "1.98.1"
 components = ["rustfmt", "clippy", "llvm-tools-preview"]
 profile = "minimal"
 

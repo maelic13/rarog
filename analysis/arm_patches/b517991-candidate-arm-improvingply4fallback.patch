@@ -1,0 +1,18 @@
+Arm b517991  (Candidate arm: ImprovingPly4Fallback default 1 (audit finding 2))
+Author-date: 2026-08-20 11:38:27 +0200
+Applies to: e2fd4e0  (reachable from dev)
+Command:    git diff <base> <arm>
+
+diff --git a/src/params.rs b/src/params.rs
+index 9f0905f..4453fa1 100644
+--- a/src/params.rs
++++ b/src/params.rs
+@@ -614,7 +614,7 @@ search_params! {
+     /// of LMR reduction and feeds the LMP margin, so the bias is toward MORE
+     /// selectivity, the one direction four readings contradict. 1 walks back to
+     /// `ply - 4` instead. Default 0 = accepted behaviour.
+-    improving_ply4_fallback = 0, "ImprovingPly4Fallback", 0..=1;
++    improving_ply4_fallback = 1, "ImprovingPly4Fallback", 0..=1;
+     probcut_see_gap_scale = 100, "ProbCutSeeGapScale", 0..=100;
+     /// Base cap on captures searched at one ProbCut node, before the cut-node
+     /// bonus. Replaces a flat 8 that had no stated derivation.

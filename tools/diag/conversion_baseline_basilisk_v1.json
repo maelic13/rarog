@@ -1,0 +1,43 @@
+{
+  "engine": "Basilisk 1.9.3",
+  "opponents": [
+    "Critter 1.6a",
+    "Fritz 16",
+    "HIARCS 14",
+    "Houdini 1.5a",
+    "Rybka 4",
+    "Shredder 12"
+  ],
+  "parameters": {
+    "persist_plies": 12,
+    "min_advantage": 3,
+    "endgame_non_pawn_material": 26,
+    "exclude_lone_minor": true
+  },
+  "counts": {
+    "draw_after_persistent_advantage": 40,
+    "draw_after_persistent_advantage_endgame": 35,
+    "draw_saved_from_persistent_deficit": 32,
+    "draws": 442,
+    "games": 2400,
+    "lone_minor_windows_suppressed": 2,
+    "loss_after_persistent_advantage": 12,
+    "losses": 1147,
+    "win_from_persistent_deficit": 12,
+    "wins": 811
+  },
+  "draw_terminations": {
+    "FiftyMove": 22,
+    "InsufficientMaterial": 5,
+    "Stalemate": 4,
+    "Threefold": 9
+  },
+  "thrown_away": 52,
+  "pgn": [
+    {
+      "path": "analysis/artifacts/conversion-41768fe9.pgn",
+      "sha256": "c1335a6c1dfe7b32c869e90937a75c604db8e506eed10333c8675499b85cb00a"
+    }
+  ],
+  "generated_utc": "2026-09-10T16:46:29+00:00"
+}

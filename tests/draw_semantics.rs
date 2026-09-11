@@ -109,3 +109,65 @@ fn three_occurrences_are_a_threefold_for_the_arbiter() {
     assert!(board.can_declare_draw_in_search());
     assert!(board.can_declare_draw());
 }
+
+/// 4.11b.15: the repetition identity is the position hash and NOTHING else.
+///
+/// PLAN forbids putting rule-50 buckets into the repetition identity merely
+/// because a transposition-table key might want them. This pins the separation
+/// executably: two positions that differ only in the halfmove clock must share
+/// one hash, so the clock cannot leak into repetition matching. If a future
+/// change mixes the clock into the Zobrist key, repetition detection silently
+/// stops finding real repetitions and this test fails first.
+#[test]
+fn the_halfmove_clock_is_not_part_of_the_position_identity() {
+    let cases = [
+        (
+            "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 40",
+            "6k1/5ppp/8/8/8/8/8/R5K1 w - - 99 40",
+        ),
+        (
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 3 12",
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 87 12",
+        ),
+    ];
+    for (low, high) in cases {
+        let low_board = Board::from_fen(low).expect("valid FEN");
+        let high_board = Board::from_fen(high).expect("valid FEN");
+        assert_ne!(
+            low_board.halfmove_clock, high_board.halfmove_clock,
+            "the two FENs must actually differ in the clock"
+        );
+        assert_eq!(
+            low_board.hash, high_board.hash,
+            "halfmove clock leaked into the position hash for {low}"
+        );
+    }
+}
+
+/// The rule-50 window bounds the repetition scan for COST, not correctness.
+///
+/// `is_repetition` stops at `halfmove_clock` plies back, and null moves advance
+/// that clock, so the bound can reach past an irreversible move. That is safe:
+/// an irreversible move changes piece placement permanently, so those older
+/// positions carry a different hash and can never match. This test pins the
+/// underlying property — a capture makes the prior position unreachable by
+/// hash — so the scan bound stays a performance choice.
+#[test]
+fn an_irreversible_move_makes_the_earlier_position_hash_unreachable() {
+    let mut board = Board::from_fen("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1").expect("valid FEN");
+    let before = board.hash;
+    board.make_move(mv(&board, "e4d5"));
+    assert_ne!(
+        board.hash, before,
+        "a capture must change the position hash"
+    );
+    // Shuffle kings back and forth: the pre-capture hash must never reappear.
+    for uci in ["e8d8", "e1d1", "d8e8", "d1e1"] {
+        board.make_move(mv(&board, uci));
+        assert_ne!(
+            board.hash, before,
+            "pre-capture hash reappeared after {uci}; the rule-50 scan bound \
+             would no longer be a pure cost bound"
+        );
+    }
+}

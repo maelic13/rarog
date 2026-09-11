@@ -27,73 +27,73 @@ const LAZY_MARGIN: i32 = 600;
 // Material values (Phase 4.6 fitted). King pinned 0. mg values rescaled up ~×1.1
 // vs the old PeSTO seeds to match the lower fitted K (1.70) — ratios-to-pawn are
 // essentially unchanged, so this is a benign scale shift, not a distortion.
-const MG_VAL: [i32; 6] = [89, 396, 419, 538, 1130, 0];
-const EG_VAL: [i32; 6] = [107, 229, 285, 482, 927, 0];
+const MG_VAL: [i32; 6] = [88, 394, 418, 537, 1131, 0];
+const EG_VAL: [i32; 6] = [123, 239, 290, 486, 930, 0];
 const PHASE_W: [i32; 6] = [0, 1, 1, 2, 4, 0];
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 
 const MG_PAWN_PST: [i32; 64] = [
-    0, 0, 0, 0, 0, 0, 0, 0, -50, -24, -11, 16, -12, 53, 63, -56, -56, -44, -23, 1, -13, -11, 10,
-    -44, -56, -43, -8, -17, 5, -9, -49, -49, -36, -11, -7, -2, 0, 2, -9, -17, -5, 24, 54, 38, 85,
-    77, 102, 33, 221, 256, 180, 216, 192, 228, 139, -29, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, -37, -25, -13, 16, -5, 47, 47, -39, -55, -42, -25, -12, -2, -7, 0, -35,
+    -47, -48, -17, -17, 3, -5, -41, -44, -28, -18, -14, -13, 6, 9, -9, -17, -1, 21, 49, 32, 79, 75,
+    102, 32, 221, 256, 180, 216, 192, 228, 139, -29, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 const EG_PAWN_PST: [i32; 64] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 18, 19, 13, -32, 5, -7, -17, -11, 31, 21, 3, -10, -1, 3, -9, -5, 39,
-    35, -3, -1, -15, -10, 10, 2, 57, 31, 1, -23, -22, -17, 5, -2, 82, 62, 34, 11, -16, 2, 5, 28,
-    84, 63, 92, 36, 23, 27, 71, 88, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 27, 16, 5, -32, 5, -2, -15, -9, 28, 16, -3, -10, -1, 1, -12, -5, 41,
+    29, -5, -10, -15, -5, 12, 6, 58, 28, -2, -27, -17, -12, 7, 13, 83, 62, 30, 8, -16, 4, 9, 35,
+    85, 64, 92, 36, 23, 28, 72, 89, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 const MG_KNIGHT_PST: [i32; 64] = [
-    -142, -150, -112, -21, -20, -23, 26, -56, -45, -108, -19, 6, 15, -7, -47, 40, -86, 26, 7, 40,
-    89, 53, 41, -34, 30, 31, 64, 48, 87, 92, 122, 64, 11, -12, 47, 68, 46, 95, 99, 87, -101, -29,
-    38, 60, 120, 107, 119, -35, -26, 20, 62, 95, 80, 48, 39, 16, -184, -43, -62, 35, 24, -17, -6,
+    -142, -130, -110, -21, -17, -16, 11, -56, -45, -106, -17, 12, 12, -7, -46, 26, -79, 18, 18, 38,
+    72, 43, 43, -32, 20, 31, 63, 57, 77, 88, 114, 53, 11, -6, 44, 72, 54, 99, 97, 87, -101, -26,
+    38, 62, 120, 109, 119, -35, -26, 20, 62, 95, 80, 48, 39, 16, -184, -43, -62, 35, 24, -17, -6,
     19,
 ];
 const EG_KNIGHT_PST: [i32; 64] = [
-    -98, 17, -6, -31, -21, -59, -39, -40, -73, 3, -24, -23, -27, -13, 5, -73, 17, -37, -18, -21,
-    -29, -49, -44, -7, -5, -17, -6, -9, -16, -33, -36, -24, 25, -18, -7, -13, -15, -36, -44, -4,
-    23, -18, -6, -14, -28, -33, -57, 13, 21, 3, -24, -35, -36, -26, -7, 10, -102, -54, 1, -14, -8,
-    -49, 11, -47,
+    -98, 17, -6, -31, -21, -59, -40, -40, -73, 3, -24, -23, -28, -13, 5, -73, 17, -37, -20, -21,
+    -29, -48, -44, -7, -5, -17, -6, -6, -14, -33, -36, -24, 21, -18, -8, -13, -9, -34, -44, -4, 23,
+    -18, -6, -14, -28, -33, -57, 13, 21, 3, -24, -35, -36, -26, -7, 10, -102, -54, 1, -14, -8, -49,
+    11, -47,
 ];
 const MG_BISHOP_PST: [i32; 64] = [
-    -65, -45, -8, -71, 3, -36, -32, -68, 63, -15, -13, -3, 8, 20, 15, -58, 2, 41, 30, 31, 28, 52,
-    8, 11, 40, 13, 88, 54, 63, 35, 31, 12, 51, 27, 19, 77, 48, 52, 17, -11, -14, 11, 22, 33, 66,
-    68, 26, 4, 14, 37, 6, -26, -60, 40, -35, -80, -6, 4, -45, -1, -60, -36, 40, -79,
+    -65, -37, -4, -65, 3, -24, -32, -68, 52, 0, -7, -5, 0, 20, 21, -54, 2, 41, 26, 27, 17, 45, 16,
+    11, 34, 13, 74, 53, 62, 38, 31, 15, 42, 27, 19, 73, 47, 52, 21, -11, -14, 11, 22, 33, 66, 68,
+    26, 7, 14, 36, 6, -26, -60, 40, -35, -80, -6, 4, -45, -1, -60, -36, 40, -79,
 ];
 const EG_BISHOP_PST: [i32; 64] = [
-    1, -10, -16, -18, -22, -28, 0, -50, -9, 6, -7, -4, -21, -22, -43, -10, -1, -15, 6, -17, 4, -35,
-    -6, -21, 3, 18, -12, 10, -16, -9, -14, -5, 17, 8, 11, -8, 5, -1, 0, 3, 17, 25, 12, 11, -11, 3,
-    19, 23, 30, 11, 15, 9, 38, 12, 31, 10, 64, 24, 20, -3, 23, 14, -4, 19,
+    1, -10, -16, -17, -22, -28, 0, -50, -10, 4, -7, -5, -21, -22, -40, -10, -1, -15, 4, -16, 5,
+    -35, -6, -21, 2, 18, -12, 8, -16, -6, -14, -5, 13, 8, 11, -8, 5, -1, 1, 3, 17, 25, 10, 11, -11,
+    3, 19, 23, 29, 11, 15, 9, 38, 12, 31, 10, 60, 24, 20, -3, 23, 14, -4, 19,
 ];
 const MG_ROOK_PST: [i32; 64] = [
-    -17, 3, -7, 7, 21, 34, 16, -30, -35, -6, -17, 3, 23, 24, 32, 5, -79, -77, -43, -10, -19, -3,
-    -32, -36, -86, -4, -22, -15, 12, 24, 65, -63, -66, 25, 6, 68, 34, 98, 47, 4, -28, 23, -9, 47,
-    72, 127, 88, 50, -15, 14, 63, 66, 83, 108, 119, 110, -32, 15, 55, 45, 25, 53, 58, 82,
+    -17, -5, -9, 5, 19, 26, 23, -21, -35, -12, -18, -3, 18, 24, 35, -1, -78, -75, -42, -10, -14, 1,
+    -25, -35, -86, -4, -22, -11, 12, 24, 65, -62, -64, 23, 6, 65, 34, 98, 48, 4, -24, 24, -9, 45,
+    72, 127, 88, 50, -17, 14, 61, 66, 83, 108, 119, 110, -32, 15, 55, 45, 25, 53, 58, 82,
 ];
 const EG_ROOK_PST: [i32; 64] = [
-    -28, -34, -19, -25, -46, -51, -32, -51, -13, -9, -3, -5, -26, -25, -30, -29, 21, 12, 5, -12,
-    -6, -9, 10, 12, 45, 6, 12, 4, -10, -11, -7, 18, 37, -1, -2, -24, -23, -36, -15, 2, 22, -4, 1,
-    -21, -27, -37, -17, -22, 33, 17, -8, -10, -8, -16, -17, -15, 54, 41, 19, 10, 23, 15, 17, 22,
+    -28, -36, -19, -31, -48, -47, -32, -50, -13, -11, -3, -11, -30, -26, -30, -29, 20, 12, 5, -12,
+    -6, -9, 10, 11, 45, 6, 12, 4, -10, -11, -7, 18, 39, -1, -2, -24, -23, -36, -15, 2, 26, 0, 1,
+    -21, -27, -37, -17, -22, 33, 20, -6, -9, -8, -15, -17, -15, 53, 39, 19, 12, 24, 17, 17, 21,
 ];
 const MG_QUEEN_PST: [i32; 64] = [
-    40, 0, 4, 19, 25, 8, -24, 2, -3, 4, -15, 3, 14, 55, -8, 52, 5, 11, -20, -24, 14, 66, 32, -10,
-    15, -2, -4, 47, 41, 28, 34, 19, -17, -55, -54, -21, 44, 7, 58, -20, 8, -7, -24, -52, 34, 63,
-    67, 55, -72, -69, -42, -22, -25, 16, 5, 11, -27, -51, -24, 0, 22, 51, 33, 28,
+    40, 0, 4, 14, 25, 6, -24, 2, -3, 1, -4, 6, 21, 51, -5, 52, 5, 7, -14, -16, 11, 54, 39, -8, 12,
+    -2, -2, 42, 41, 33, 40, 20, -19, -55, -54, -19, 44, 7, 58, -16, 2, -7, -24, -52, 34, 63, 67,
+    51, -72, -69, -42, -22, -25, 16, 5, 11, -27, -51, -24, 0, 22, 51, 33, 28,
 ];
 const EG_QUEEN_PST: [i32; 64] = [
     -37, -1, -15, -10, -13, -28, -25, -32, 10, 48, 47, 23, 20, -28, 16, -23, -38, 22, 74, 83, 45,
-    18, 44, 55, 52, 64, 82, 65, 51, 55, 85, 64, -38, 16, -3, -7, -20, 17, -35, 12, -87, -60, -25,
+    18, 44, 55, 51, 64, 82, 65, 51, 56, 85, 64, -39, 16, -3, -7, -20, 17, -35, 12, -87, -60, -25,
     15, 22, -15, -48, -48, -37, -31, 13, 12, 48, 25, 1, -17, -38, 2, 1, 10, -4, 19, 3, 6,
 ];
 const MG_KING_PST: [i32; 64] = [
-    -37, 45, -6, -122, -39, -80, 41, 43, 29, 17, -53, -106, -70, -33, 33, 31, -21, -42, -26, -39,
-    -72, 16, 64, -8, -60, 35, -93, -143, -135, -54, -16, -44, 24, 19, -116, -144, -126, -42, -6,
+    -36, 47, -2, -122, -34, -80, 31, 43, 29, 17, -53, -106, -70, -33, 38, 36, -21, -42, -26, -39,
+    -72, 14, 56, -8, -60, 35, -93, -143, -135, -54, -16, -44, 24, 19, -116, -144, -126, -42, -6,
     -34, 19, 61, 48, -59, -66, 43, 61, 21, 83, 51, 42, 49, 20, 63, 24, 20, -14, 75, 74, 40, -9, 31,
     66, 32,
 ];
 const EG_KING_PST: [i32; 64] = [
-    -14, -39, -6, 25, 12, -6, -46, -66, -6, -3, 20, 35, 23, 1, -14, -22, 13, 14, 25, 32, 35, 8,
-    -13, -1, 21, 10, 48, 62, 55, 38, 23, 16, 19, 53, 65, 62, 66, 67, 61, 32, 36, 61, 55, 45, 61,
-    73, 81, 57, 43, 19, 56, 39, 40, 86, 102, 48, -67, 17, 26, 18, 28, 64, 52, -3,
+    -14, -39, -6, 23, 11, -3, -47, -68, -6, -3, 21, 35, 22, 11, -13, -21, 12, 12, 25, 32, 38, 11,
+    -15, -1, 21, 10, 48, 69, 63, 45, 23, 16, 19, 49, 67, 70, 71, 68, 61, 32, 36, 56, 55, 50, 63,
+    74, 76, 57, 43, 19, 54, 39, 40, 80, 93, 48, -67, 17, 26, 18, 28, 64, 52, -3,
 ];
 
 /// Flatten the six per-piece PST consts into one `[i32; 384]` array in
@@ -147,15 +147,14 @@ macro_rules! eval_params {
             }
         }
 
-        /// (name, length) for every field — addresses the Phase 3.2/3.3
-        /// tune-time loader/dumper and Texel tuner (not wired up yet).
-        #[allow(dead_code)]
+        /// (name, length) for every field. Consumed by the Phase 3.2/3.3
+        /// tune-time loader/dumper and by `tools/texel-tuner`, which imports
+        /// it directly — so this is live, not reserved.
         pub const EVAL_PARAM_NAMES: &[(&str, usize)] = &[
             $( (stringify!($field), $len), )*
         ];
 
         impl EvalParams {
-            #[allow(dead_code)]
             pub fn get(&self, name: &str, idx: usize) -> i32 {
                 match name {
                     $( stringify!($field) => self.$field[idx], )*
@@ -163,7 +162,6 @@ macro_rules! eval_params {
                 }
             }
 
-            #[allow(dead_code)]
             pub fn set(&mut self, name: &str, idx: usize, value: i32) {
                 match name {
                     $( stringify!($field) => self.$field[idx] = value, )*
@@ -269,7 +267,7 @@ macro_rules! eval_params {
             /// 0 (guaranteed by the language since Rust 1.45), and `.round()`
             /// is exactly the rounding the tuner wants. There is no checked
             /// helper to reach for here.
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             pub fn set_from_flat(&mut self, w: &[f64]) {
                 let mut k = 0usize;
                 $( for i in 0..$len { self.$field[i] = w[k].round() as i32; k += 1; } )*
@@ -285,20 +283,20 @@ eval_params! {
     pst_eg: 384 = build_default_pst(false);
     // Passers & pawn structure (Phase 4.4 fitted). passed_*/connected per-rank
     // tables; passed bonuses stay monotonic (rank 1/8 pinned 0).
-    passed_mg: 8 = [0, 0, 0, 1, 54, 134, 152, 0];
-    passed_eg: 8 = [0, 0, 1, 40, 76, 97, 98, 0];
-    passed_supported_mg: 1 = [0];
+    passed_mg: 8 = [0, 0, 0, 7, 51, 122, 152, 0];
+    passed_eg: 8 = [0, 0, 0, 24, 67, 107, 110, 0];
+    passed_supported_mg: 1 = [7];
     passed_supported_eg_base: 1 = [0];
     passed_supported_eg_per_rank: 1 = [0];
     passed_freestop_mg_per_rank: 1 = [0];
     passed_freestop_eg_per_rank: 1 = [2];
-    passed_safestop_eg_per_rank: 1 = [17];
-    passed_candidate_mg: 1 = [1];
+    passed_safestop_eg_per_rank: 1 = [14];
+    passed_candidate_mg: 1 = [0];
     passed_candidate_eg: 1 = [0];
-    pawn_doubled_mg: 1 = [1];
-    pawn_doubled_eg: 1 = [16];
-    pawn_isolated_mg: 1 = [5];
-    pawn_isolated_eg: 1 = [12];
+    pawn_doubled_mg: 1 = [0];
+    pawn_doubled_eg: 1 = [12];
+    pawn_isolated_mg: 1 = [1];
+    pawn_isolated_eg: 1 = [5];
     // Rank-scaled pawn *support* (Phase 3.8), Phase 4.4 fitted; indexed by the
     // pawn's relative rank (0..7). NB despite the historical name, this term
     // fires only for a pawn defended diagonally from behind by an own pawn
@@ -306,78 +304,78 @@ eval_params! {
     // the same rank, which do not defend each other) is the separate
     // `pawn_phalanx_*` table below. (Rename to `pawn_supported_*` deferred: it
     // churns the tuner's string-keyed param list; see PLAN 7.4.)
-    pawn_connected_mg: 8 = [7, 7, 35, 19, 19, 61, 175, 7];
-    pawn_connected_eg: 8 = [5, 5, 0, 0, 12, 22, 21, 5];
+    pawn_connected_mg: 8 = [7, 7, 35, 27, 21, 57, 175, 7];
+    pawn_connected_eg: 8 = [5, 5, 7, 0, 13, 22, 22, 5];
     // Same-rank phalanx (Phase 7.4, seeded 0): a pawn with an own pawn on an
     // adjacent file *on the same rank* (d4+e4). Rank-scaled; the refit activates
     // it. Was entirely unrepresented before 7.4.
-    pawn_phalanx_mg: 8 = [0, 0, 2, 4, 1, 0, 0, 0];
-    pawn_phalanx_eg: 8 = [0, 0, 1, 2, 2, 0, 0, 0];
+    pawn_phalanx_mg: 8 = [0, 2, 6, 20, 24, 2, 0, 0];
+    pawn_phalanx_eg: 8 = [0, 0, 3, 11, 24, 11, 1, 0];
     pawn_backward_mg: 1 = [0];
-    pawn_backward_eg: 1 = [18];
+    pawn_backward_eg: 1 = [14];
     // Pawn-structure / passer detail (Phase 3.8), Phase 4.4 fitted. pawn_lever
     // stayed frozen at 0 (feature-support: too sparse to fit reliably).
     pawn_lever_mg: 1 = [0];
     pawn_lever_eg: 1 = [0];
-    pawn_doubled_isolated_mg: 1 = [0];
-    pawn_doubled_isolated_eg: 1 = [4];
-    blocked_passer_mg: 1 = [46];
-    blocked_passer_eg: 1 = [1];
-    ideal_blockader_mg: 1 = [23];
+    pawn_doubled_isolated_mg: 1 = [4];
+    pawn_doubled_isolated_eg: 1 = [11];
+    blocked_passer_mg: 1 = [43];
+    blocked_passer_eg: 1 = [8];
+    ideal_blockader_mg: 1 = [21];
     ideal_blockader_eg: 1 = [0];
     // Minors & rooks (Phase 4.4 fitted). rook_7th and a few others fitted to 0 —
     // the data verdict that they add nothing atop mobility/threats/open-file.
-    bishop_pair_mg: 1 = [25];
-    bishop_pair_eg: 1 = [55];
-    rook_open_mg: 1 = [43];
-    rook_open_eg: 1 = [0];
-    rook_semiopen_mg: 1 = [3];
-    rook_semiopen_eg: 1 = [23];
+    bishop_pair_mg: 1 = [24];
+    bishop_pair_eg: 1 = [57];
+    rook_open_mg: 1 = [50];
+    rook_open_eg: 1 = [12];
+    rook_semiopen_mg: 1 = [19];
+    rook_semiopen_eg: 1 = [14];
     rook_7th_mg: 1 = [0];
-    rook_7th_eg: 1 = [0];
+    rook_7th_eg: 1 = [13];
     rook_behind_passer_mg: 1 = [0];
-    rook_behind_passer_eg: 1 = [75];
-    enemy_rook_behind_passer_mg: 1 = [13];
-    enemy_rook_behind_passer_eg: 1 = [1];
-    knight_outpost_mg: 1 = [55];
-    knight_outpost_eg: 1 = [5];
+    rook_behind_passer_eg: 1 = [68];
+    enemy_rook_behind_passer_mg: 1 = [23];
+    enemy_rook_behind_passer_eg: 1 = [23];
+    knight_outpost_mg: 1 = [57];
+    knight_outpost_eg: 1 = [8];
     // Per-count mobility tables (Phase 3.7 structure; Phase 4.3 fitted). Each is
     // non-decreasing in the count (a trapped piece is worst); low entries can go
     // negative (e.g. a 0-mobility bishop). Fitted at 250 epochs — the clean point
     // where every holdout bucket still improves (a fuller fit overvalued rook
     // activity in drawish rook endings, regressing that bucket).
-    mob_n_mg: 9 = [-12, -4, 7, 21, 33, 39, 49, 54, 54];
-    mob_n_eg: 9 = [-20, 16, 21, 30, 51, 70, 71, 71, 71];
-    mob_b_mg: 14 = [24, 27, 30, 35, 41, 46, 51, 58, 60, 63, 70, 70, 70, 70];
-    mob_b_eg: 14 = [-36, -3, 43, 49, 64, 74, 78, 81, 86, 86, 86, 86, 86, 86];
-    mob_r_mg: 15 = [12, 33, 46, 48, 51, 59, 61, 65, 70, 73, 82, 88, 88, 88, 88];
-    mob_r_eg: 15 = [4, 41, 41, 50, 66, 77, 87, 99, 105, 105, 105, 107, 107, 107, 107];
-    mob_q_mg: 28 = [-45, 18, 65, 65, 67, 68, 69, 70, 74, 74, 82, 85, 85, 87, 89, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101];
-    mob_q_eg: 28 = [-13, 8, 25, 25, 33, 33, 95, 97, 97, 101, 101, 101, 108, 111, 111, 118, 118, 121, 121, 125, 125, 125, 125, 125, 125, 125, 125, 125];
+    mob_n_mg: 9 = [-17, -9, 17, 26, 33, 38, 45, 54, 54];
+    mob_n_eg: 9 = [-20, 12, 21, 34, 51, 73, 77, 78, 78];
+    mob_b_mg: 14 = [13, 19, 30, 37, 45, 50, 54, 58, 61, 63, 70, 70, 70, 70];
+    mob_b_eg: 14 = [-36, -3, 38, 49, 64, 74, 83, 85, 90, 91, 91, 91, 91, 91];
+    mob_r_mg: 15 = [19, 33, 46, 54, 56, 59, 63, 65, 68, 74, 81, 88, 90, 90, 90];
+    mob_r_eg: 15 = [4, 41, 41, 50, 66, 77, 86, 96, 104, 106, 109, 113, 113, 113, 119];
+    mob_q_mg: 28 = [-45, 18, 65, 65, 66, 69, 69, 70, 74, 75, 82, 85, 87, 89, 89, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101];
+    mob_q_eg: 28 = [-13, 8, 25, 25, 33, 33, 89, 97, 97, 101, 101, 101, 108, 111, 111, 118, 118, 121, 121, 125, 125, 125, 125, 125, 125, 125, 125, 125];
     // Threats (Phase 3.6 structure; Phase 4.2 fitted). The base threat scalars
     // converged to a common (38, 25) — the per-victim `threat_by_*` tables below
     // now carry the attacker/victim-specific signal.
-    threat_minor_mg: 1 = [60];
+    threat_minor_mg: 1 = [64];
     threat_minor_eg: 1 = [44];
-    threat_rook_mg: 1 = [60];
+    threat_rook_mg: 1 = [64];
     threat_rook_eg: 1 = [44];
-    threat_queen_mg: 1 = [60];
+    threat_queen_mg: 1 = [64];
     threat_queen_eg: 1 = [44];
     // Threats package v2 (Phase 3.6), seeded 0; fitted in Phase 4.2. Per-victim
     // arrays indexed by `Piece as usize` (0=pawn..5=king). The refined hanging
     // term absorbed the old flat hanging penalty, which the joint fit drove to
     // ~0 (see hanging_* below).
-    threat_by_minor_mg: 6 = [0, 50, 82, 83, 72, 0];
-    threat_by_minor_eg: 6 = [3, 22, 0, 0, 0, 0];
-    threat_by_rook_mg: 6 = [0, 37, 32, 4, 71, 0];
-    threat_by_rook_eg: 6 = [13, 19, 24, 1, 18, 0];
-    threat_hanging_refined_mg: 6 = [0, 16, 51, 33, 0, 0];
-    threat_hanging_refined_eg: 6 = [53, 28, 14, 2, 0, 0];
-    threat_safe_pawn_push_mg: 1 = [29];
-    threat_safe_pawn_push_eg: 1 = [1];
-    threat_weak_piece_mg: 1 = [46];
+    threat_by_minor_mg: 6 = [0, 50, 82, 82, 71, 0];
+    threat_by_minor_eg: 6 = [7, 28, 0, 0, 0, 0];
+    threat_by_rook_mg: 6 = [0, 29, 41, 4, 71, 0];
+    threat_by_rook_eg: 6 = [11, 22, 30, 1, 18, 0];
+    threat_hanging_refined_mg: 6 = [4, 22, 44, 31, 0, 0];
+    threat_hanging_refined_eg: 6 = [49, 28, 14, 2, 0, 0];
+    threat_safe_pawn_push_mg: 1 = [35];
+    threat_safe_pawn_push_eg: 1 = [0];
+    threat_weak_piece_mg: 1 = [42];
     threat_weak_piece_eg: 1 = [0];
-    threat_restricted_mg: 1 = [12];
+    threat_restricted_mg: 1 = [10];
     threat_restricted_eg: 1 = [0];
     king_safety_unit_minor: 1 = [2];
     king_safety_unit_rook: 1 = [2];
@@ -387,36 +385,36 @@ eval_params! {
     // table with the danger-index inputs below by re-evaluating the 2.19M set
     // (`--tune-kingsafety`): the tail rose well above the old 118 cap into the
     // danger² curve strong engines use, staying monotonic non-decreasing.
-    king_safety_table: 40 = [31, 31, 60, 60, 83, 83, 121, 121, 172, 172, 216, 216, 217, 217, 217, 217, 217, 217, 217, 217, 217, 217, 217, 259, 259, 288, 288, 288, 288, 288, 288, 288, 288, 288, 288, 288, 288, 288, 288, 369];
+    king_safety_table: 40 = [84, 84, 98, 98, 112, 112, 153, 153, 153, 218, 248, 253, 253, 253, 253, 254, 254, 256, 256, 256, 256, 256, 256, 315, 315, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 440, 515];
     // King-danger inputs (Phase 3.5). Seeded 0 (danger == the old attacker-unit
     // sum); they select the danger bucket non-linearly, so they are invisible
     // to the linear Texel trace and were fitted in Phase 4.1 by re-evaluation
     // (`--tune-kingsafety`). ks_weak_ring / ks_flank_attack stayed at 0 in the
     // fit.
     ks_weak_ring: 1 = [0];
-    ks_safe_check_knight: 1 = [2];
-    ks_safe_check_bishop: 1 = [4];
-    ks_safe_check_rook: 1 = [4];
+    ks_safe_check_knight: 1 = [8];
+    ks_safe_check_bishop: 1 = [8];
+    ks_safe_check_rook: 1 = [8];
     ks_safe_check_queen: 1 = [16];
     ks_queen_relief: 1 = [2];
     ks_flank_attack: 1 = [0];
-    ks_pawnless_flank: 1 = [12];
-    shelter_missing_file_mg: 1 = [0];
-    shelter_missing_adjacent_mg: 1 = [1];
-    shelter_dist1_mg: 1 = [23];
-    shelter_dist2_mg: 1 = [13];
+    ks_pawnless_flank: 1 = [17];
+    shelter_missing_file_mg: 1 = [25];
+    shelter_missing_adjacent_mg: 1 = [8];
+    shelter_dist1_mg: 1 = [29];
+    shelter_dist2_mg: 1 = [14];
     storm_file_weight: 1 = [0];
-    storm_adjacent_weight: 1 = [2];
+    storm_adjacent_weight: 1 = [3];
     // Old flat hanging penalty (Phase 3.6). Phase 4.2 dropped it data-driven:
     // the refined hanging term (`threat_hanging_refined`) generalises and fully
     // absorbed it, so the joint fit drove these to ~0. Kept (not deleted) so the
     // term stays available; the values are now near-inert.
     hanging_minor: 1 = [0];
-    hanging_rook: 1 = [1];
-    hanging_queen: 1 = [1];
-    passer_proximity_base: 1 = [14];
+    hanging_rook: 1 = [0];
+    hanging_queen: 1 = [0];
+    passer_proximity_base: 1 = [12];
     space_weight: 1 = [0];
-    tempo: 1 = [38];
+    tempo: 1 = [35];
     // trapped_bishop frozen at hand value (feature-support: too sparse to fit).
     trapped_bishop_mg: 1 = [60];
     trapped_bishop_eg: 1 = [40];
@@ -431,47 +429,47 @@ eval_params! {
     // linear and Texel-tunable; the scale is the tuner's to find (Phase 4.5).
     // Phase 4.5 fitted (lower triangle; upper entries never fire). Rows/cols in
     // the imbalance "piece" order [bishop_pair, pawn, knight, bishop, rook, queen].
-    imbalance_ours: 36 = [25, 0, 0, 0, 0, 0, 2, 9, 0, 0, 0, 0, -11, 44, -19, 0, 0, 0, 26, 42, -23, -39, 0, 0, -4, 52, -47, -42, -49, 0, 6, 92, -95, -61, -127, -101];
-    imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, -6, 43, 0, 0, 0, 0, 6, 46, -15, 0, 0, 0, -14, 63, 16, 10, 0, 0, 11, 116, -3, 30, -3, 0];
+    imbalance_ours: 36 = [25, 0, 0, 0, 0, 0, 2, 7, 0, 0, 0, 0, -9, 47, -20, 0, 0, 0, 26, 46, -26, -36, 0, 0, -5, 54, -47, -38, -38, 0, 3, 107, -98, -63, -130, -97];
+    imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, -9, 47, 0, 0, 0, 0, 6, 50, -11, 0, 0, 0, -14, 66, 11, 12, 0, 0, 13, 132, 4, 35, 0, 0];
     // Small positional terms (Phase 3.10), all seeded 0 (bench unchanged),
     // tuned in Phase 4.4/4.5.
     // Small positional terms (Phase 3.10), Phase 4.4 fitted. rook_trapped frozen
     // (feature-support: too sparse).
-    bishop_pair_pawn_mg: 1 = [-2];
-    bishop_pair_pawn_eg: 1 = [-4];
-    bishop_outpost_mg: 1 = [47];
-    bishop_outpost_eg: 1 = [0];
+    bishop_pair_pawn_mg: 1 = [0];
+    bishop_pair_pawn_eg: 1 = [-3];
+    bishop_outpost_mg: 1 = [46];
+    bishop_outpost_eg: 1 = [1];
     rook_trapped_mg: 1 = [0];
     rook_trapped_eg: 1 = [0];
-    rook_connected_mg: 1 = [9];
-    rook_connected_eg: 1 = [38];
-    bishop_long_diagonal_mg: 1 = [24];
-    bishop_long_diagonal_eg: 1 = [2];
-    bad_bishop_mg: 1 = [0];
-    bad_bishop_eg: 1 = [15];
-    initiative_weight: 1 = [2];
+    rook_connected_mg: 1 = [6];
+    rook_connected_eg: 1 = [47];
+    bishop_long_diagonal_mg: 1 = [28];
+    bishop_long_diagonal_eg: 1 = [1];
+    bad_bishop_mg: 1 = [1];
+    bad_bishop_eg: 1 = [19];
+    initiative_weight: 1 = [1];
     // Closedness (rammed-pawn count) value swing: per own-piece-count, added
     // for knights (expected positive when tuned) and rooks (expected
     // negative). mg-only — see eval_closedness for the caveat that the
     // marginal lever beyond 3.7's per-count mobility is the material-value
     // swing alone, so this is deliberately kept as a single small weight.
-    closedness_knight_mg: 1 = [12];
-    closedness_rook_mg: 1 = [-10];
+    closedness_knight_mg: 1 = [10];
+    closedness_rook_mg: 1 = [-9];
     // Central-king / lost-castling danger: fires only when the king is still
     // on its home square, on a central file, with all castling rights for
     // that side gone.
     king_centrality_danger_mg: 1 = [65];
     // Gauntlet-driven additions (Phase 3.12), Phase 4.4 fitted. king_protector /
     // space_piece fitted to 0 (no marginal value atop the rest).
-    unstoppable_passer_eg: 1 = [52];
-    minor_behind_pawn_mg: 1 = [14];
+    unstoppable_passer_eg: 1 = [60];
+    minor_behind_pawn_mg: 1 = [18];
     minor_behind_pawn_eg: 1 = [0];
-    pawn_islands_mg: 1 = [6];
+    pawn_islands_mg: 1 = [9];
     pawn_islands_eg: 1 = [0];
-    queen_infiltration_mg: 1 = [47];
-    queen_infiltration_eg: 1 = [73];
-    king_protector_mg: 1 = [8];
-    king_protector_eg: 1 = [4];
+    queen_infiltration_mg: 1 = [46];
+    queen_infiltration_eg: 1 = [81];
+    king_protector_mg: 1 = [7];
+    king_protector_eg: 1 = [5];
     space_piece_mg: 1 = [0];
     // Phase 6.2.1 refresh structure — all seeded 0 (inert, bench-identical);
     // activated by the 6.2.2 on-policy joint refit.
@@ -481,16 +479,16 @@ eval_params! {
     // Passed-pawn whole-path weighting: the entire path to promotion is empty
     // ("free path") / never attacked by the enemy ("safe path"), scaled by
     // relative rank like the existing free/safe-stop terms.
-    passed_freepath_mg_per_rank: 1 = [0];
-    passed_freepath_eg_per_rank: 1 = [4];
-    passed_safepath_eg_per_rank: 1 = [8];
+    passed_freepath_mg_per_rank: 1 = [-7];
+    passed_freepath_eg_per_rank: 1 = [8];
+    passed_safepath_eg_per_rank: 1 = [25];
     // Deferred §3.12 trio.
-    bishop_xray_pawns_mg: 1 = [0];
-    bishop_xray_pawns_eg: 1 = [0];
-    queen_battery_mg: 1 = [2];
-    queen_battery_eg: 1 = [1];
-    slider_on_queen_mg: 1 = [1];
-    slider_on_queen_eg: 1 = [0];
+    bishop_xray_pawns_mg: 1 = [-8];
+    bishop_xray_pawns_eg: 1 = [4];
+    queen_battery_mg: 1 = [13];
+    queen_battery_eg: 1 = [17];
+    slider_on_queen_mg: 1 = [26];
+    slider_on_queen_eg: 1 = [6];
     // Shelter/storm folded into the king-danger index (nonlinear — selects the
     // safety-table bucket, so it is invisible to the linear trace and is fit by
     // the --tune-kingsafety re-eval path, like the other ks_* inputs). The
@@ -779,6 +777,16 @@ const SQUARE_FILE: [usize; 64] = init_square_file();
 const SQUARE_RANK: [usize; 64] = init_square_rank();
 const RELATIVE_RANKS: [[u8; 64]; 2] = init_relative_ranks();
 const KING_DISTANCE: [[u8; 64]; 64] = init_king_distance();
+/// Manhattan (taxicab) distance between squares, used only by the mate drive.
+///
+/// 4.9a.4: the drive was pure Chebyshev, and Chebyshev is FLAT -- every square
+/// in a ring around the target scores identically. Measured over 300
+/// theoretically won KBNK positions, the 19 legal moves collapsed into a median
+/// of 3 distinct mop-up values and **94% of positions had a tied best move**,
+/// median best-vs-second gap 0 cp. A term that cannot order its own moves
+/// cannot steer a search, which is why raising the magnitude alone would have
+/// changed nothing: 40x a 0 cp gap is still 0. Manhattan breaks the rings.
+const MANHATTAN_DISTANCE: [[u8; 64]; 64] = init_manhattan_distance();
 // The two main diagonals (a1-h8, a8-h1) minus their corner squares (Phase
 // 3.10 bishop-on-long-diagonal term). Square index = rank*8 + file.
 const LONG_DIAGONALS: Bitboard = Bitboard(
@@ -801,6 +809,63 @@ const LONG_DIAGONALS: Bitboard = Bitboard(
 // exactly the corner squares contained in `Bitboard::LIGHT_SQUARES` /
 // `DARK_SQUARES`. NB this engine's colour convention puts a1 in LIGHT_SQUARES
 // (see bitboard.rs), so the "light" corners are a1(0) and h8(63).
+/// Mate-drive weights (4.9a.4). Chebyshev carries the coarse pull and Manhattan
+/// supplies the resolution that breaks its rings; the pair is what takes the
+/// tied-best-move rate from 94% to 11% on won KBNK positions.
+///
+/// Three things were needed and they were found in this order: RESOLUTION (a
+/// flat metric cannot order its own moves), MAGNITUDE (once ordered, the
+/// difference must survive the pruning thresholds), and RATIO (the corner pull
+/// must dominate the king pull, not merely exceed it). Swept on KBN-K
+/// conversion at 100 positions, 60k nodes:
+///
+///   Chebyshev, 8/4 (accepted head)     19.4%    KBB-K  78.0%
+///   Chebyshev+Manhattan 16/8/10/5      32.7%    KBB-K  96.0%
+///   Chebyshev+Manhattan 32/16/20/10    57.1%    KBB-K 100.0%
+///   diagonal 60  (~1:1 vs king terms)  56.1%    KBB-K 100.0%
+///   diagonal 120 (~3:1)                83.7%    KBB-K 100.0%
+///   diagonal 240 (~6:1)                94.9%    KBB-K 100.0%
+///   diagonal 360 (THESE)               96.9%    KBB-K 100.0%
+///   diagonal 480                       96.9%    KBB-K 100.0%
+///   diagonal 720                       94.9%    KBB-K 100.0%
+///
+/// 360 and 480 tie at the peak; the smaller is taken. The term is gated on
+/// `|approximate| > 200` and on minor-piece mates, so even at this size it only
+/// applies to an already-won bare-king ending and `bench 13` is unchanged.
+const MOPUP_DIAGONAL: i32 = 360;
+const MOPUP_KING_CHEB: i32 = 20;
+const MOPUP_KING_MAN: i32 = 10;
+
+/// The largest score `apply_mop_up`'s minor-mate branch can add.
+///
+/// `diagonal` peaks at 7 (a corner), `7 - king_distance` at 7 (adjacent kings)
+/// and `14 - king_man` at 14 (adjacent kings again), so this is the exact
+/// supremum rather than a bound with slack.
+const MOPUP_MAX: i32 = MOPUP_DIAGONAL * 7 + MOPUP_KING_CHEB * 7 + MOPUP_KING_MAN * 14;
+
+/// The search's ply horizon, mirrored here on purpose.
+///
+/// `search::MAX_PLY` is module-private, and the evaluator should not depend on
+/// the search to know its own safety bound. `search::tests::
+/// mopup_mirror_matches_the_real_ply_horizon` ties the two together in a module
+/// that legitimately sees both, so the mirror cannot drift silently.
+pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 128;
+
+/// A guidance term must never reach the band the search reads as a forced mate.
+///
+/// This is a `const` assertion rather than a debug check or a validator inside
+/// an option-setter, and that is the point (PLAN 4.10.11): the SHIPPED default
+/// is what plays the games, so the bound has to hold in every build type
+/// including release, not only where a tuning build happens to compile a
+/// setter. Basilisk shipped exactly that gap -- its bound was enforced only in
+/// tuning builds and the release default was validated by nothing (BAS-E52).
+///
+/// If this fails, the drive can manufacture a mate score out of king geometry
+/// and the search will believe it.
+const _: () = assert!(
+    MOPUP_MAX < MATE_SCORE - MOPUP_ASSUMED_MAX_PLY,
+    "mop-up drive can reach the search's mate band; lower MOPUP_DIAGONAL"
+);
 const KBNK_LIGHT_CORNERS: [usize; 2] = [0, 63]; // a1, h8 — on LIGHT_SQUARES
 const KBNK_DARK_CORNERS: [usize; 2] = [7, 56]; // h1, a8 — on DARK_SQUARES
 /// Endgame scale-factor framework (Phase 3.11). A scale of `SCALE_NORMAL`
@@ -838,7 +903,7 @@ const fn init_square_rank() -> [usize; 64] {
 // Const-evaluated init: the `infra` helpers are not `const fn` (trait-based),
 // and any out-of-range here would surface at COMPILE time, so plain casts are
 // sound and the lint is scoped off with this justification.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 const fn init_relative_ranks() -> [[u8; 64]; 2] {
     let mut table = [[0u8; 64]; 2];
     let mut sq = 0usize;
@@ -852,7 +917,7 @@ const fn init_relative_ranks() -> [[u8; 64]; 2] {
 }
 
 // Const-evaluated init — see `init_relative_ranks` for the lint scoping.
-#[allow(
+#[expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss
@@ -870,6 +935,36 @@ const fn init_king_distance() -> [[u8; 64]; 64] {
             let df = if af > bf { af - bf } else { bf - af };
             let dr = if ar > br { ar - br } else { br - ar };
             table[a][b] = if df > dr { df as u8 } else { dr as u8 };
+            b += 1;
+        }
+        a += 1;
+    }
+    table
+}
+
+// Const-evaluated init, same justification as `init_relative_ranks` above: the
+// `infra` helpers are not `const fn`, both operands are file/rank differences in
+// 0..=7 so the sum is 0..=14, and any out-of-range would surface at COMPILE
+// time. Sign loss cannot occur because both differences are taken larger-minus-
+// smaller.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
+const fn init_manhattan_distance() -> [[u8; 64]; 64] {
+    let mut table = [[0u8; 64]; 64];
+    let mut a = 0usize;
+    while a < 64 {
+        let af = (a & 7) as i32;
+        let ar = (a >> 3) as i32;
+        let mut b = 0usize;
+        while b < 64 {
+            let bf = (b & 7) as i32;
+            let br = (b >> 3) as i32;
+            let df = if af > bf { af - bf } else { bf - af };
+            let dr = if ar > br { ar - br } else { br - ar };
+            table[a][b] = (df + dr) as u8;
             b += 1;
         }
         a += 1;
@@ -919,7 +1014,7 @@ const fn init_forward_ranks() -> [[Bitboard; 8]; 2] {
 }
 
 // Const-evaluated init — see `init_relative_ranks` for the lint scoping.
-#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
     let mut table = [[Bitboard::EMPTY; 64]; 2];
     let mut color = 0usize;
@@ -1100,10 +1195,17 @@ impl Evaluator {
 }
 
 impl Evaluator {
-    /// Override the lazy-eval margin (Phase 5.1b `LazyMargin` UCI option). Pushed
-    /// in at every search start; at the default 600 the eval is unchanged.
-    pub fn set_lazy_margin(&mut self, margin: i32) {
-        self.lazy_margin = margin;
+    /// Override the lazy-eval margin (Phase 5.1b `LazyMargin` UCI option).
+    /// Returns whether the evaluation semantics changed, so the search owner
+    /// can invalidate cached raw evaluations outside this evaluator as well.
+    pub fn set_lazy_margin(&mut self, margin: i32) -> bool {
+        if self.lazy_margin != margin {
+            self.lazy_margin = margin;
+            self.eval_table.fill(EvalEntry::default());
+            true
+        } else {
+            false
+        }
     }
 
     pub fn clear_pawn_table(&mut self) {
@@ -1123,6 +1225,23 @@ impl Evaluator {
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
+        // 4.9a search-tree occurrence, counted BEFORE the cache lookup: a
+        // cache hit is still the search reaching that family, and counting
+        // only misses would undercount exactly the families the tree revisits
+        // most. Compiled out entirely without `--features diag`.
+        #[cfg(feature = "diag")]
+        {
+            let counts = |c: Color| {
+                [
+                    board.pieces(c, Piece::Pawn).count(),
+                    board.pieces(c, Piece::Knight).count(),
+                    board.pieces(c, Piece::Bishop).count(),
+                    board.pieces(c, Piece::Rook).count(),
+                    board.pieces(c, Piece::Queen).count(),
+                ]
+            };
+            crate::diag::record_endgame_family(counts(Color::White), counts(Color::Black));
+        }
         // The whole-eval cache must be bypassed under `texel`: a cache hit
         // returns without re-emitting trace counts, which would poison the
         // per-position trace the tuner records.
@@ -1529,7 +1648,7 @@ impl Evaluator {
         // 8.12(f): reused scratch — see `Evaluator::attacks_from_sq`. Debug
         // builds poison it so an unwritten read is detectable.
         #[cfg(debug_assertions)]
-        for side in self.attacks_from_sq.iter_mut() {
+        for side in &mut self.attacks_from_sq {
             side.fill(Bitboard(u64::MAX));
         }
         let mut attacked_by = [[Bitboard::EMPTY; 6]; 2];
@@ -1623,9 +1742,18 @@ impl Evaluator {
                     tr_eg!(self, bishop_outpost_eg, 0, sign);
                 }
 
-                if LONG_DIAGONALS.0 & (1u64 << sq.index()) != 0
-                    && (self.attacks_from_sq[color as usize][sq.index()] & king_zone).any()
-                {
+                if LONG_DIAGONALS.0 & (1u64 << sq.index()) != 0 && {
+                    // AUDIT FINDING 4: the scratch is poisoned with all-ones
+                    // between evaluations, so an unwritten read is now an
+                    // assertion failure in debug rather than a plausible
+                    // wrong answer in both builds.
+                    debug_assert_ne!(
+                        self.attacks_from_sq[color as usize][sq.index()],
+                        Bitboard(u64::MAX),
+                        "attacks_from_sq read for a square this evaluation never wrote"
+                    );
+                    (self.attacks_from_sq[color as usize][sq.index()] & king_zone).any()
+                } {
                     *mg += sign * self.params.bishop_long_diagonal_mg[0];
                     *eg += sign * self.params.bishop_long_diagonal_eg[0];
                     tr_mg!(self, bishop_long_diagonal_mg, 0, sign);
@@ -1743,6 +1871,12 @@ impl Evaluator {
                     let mut pieces = board.pieces(color, $piece);
                     while pieces.any() {
                         let sq = pieces.pop_lsb();
+                        // AUDIT FINDING 4: see the note at the king-zone read.
+                        debug_assert_ne!(
+                            self.attacks_from_sq[color as usize][sq.index()],
+                            Bitboard(u64::MAX),
+                            "attacks_from_sq read for a square this evaluation never wrote"
+                        );
                         let attacks = self.attacks_from_sq[color as usize][sq.index()];
                         let mobility = (attacks & safe & !own_occ).count() as usize;
                         let i = mobility.min(self.params.$mgf.len() - 1);
@@ -2026,6 +2160,11 @@ impl Evaluator {
         mg: &mut i32,
         eg: &mut i32,
     ) {
+        // Resolve the LazyLock once for the whole feature group. Each slider
+        // accessor is hot and inlined; spelling `ATTACKS.*` inside the loops
+        // otherwise asks the compiler to rediscover that initialization state
+        // repeatedly.
+        let atk = &*ATTACKS;
         let them = !color;
         let pawns_only = pawns[0] | pawns[1];
         let enemy_pawns = pawns[them as usize];
@@ -2038,7 +2177,7 @@ impl Evaluator {
         let mut xray = 0i32;
         while bishops.any() {
             let sq = bishops.pop_lsb();
-            xray += infra::to_i32((ATTACKS.bishop(sq, pawns_only) & enemy_pawns).count());
+            xray += infra::to_i32((atk.bishop(sq, pawns_only) & enemy_pawns).count());
         }
         if xray != 0 {
             *mg += sign * xray * self.params.bishop_xray_pawns_mg[0];
@@ -2053,8 +2192,8 @@ impl Evaluator {
         let mut battery = 0i32;
         while queens.any() {
             let q = queens.pop_lsb();
-            battery += infra::to_i32((ATTACKS.rook(q, occupied) & own_rooks).count());
-            battery += infra::to_i32((ATTACKS.bishop(q, occupied) & own_bishops).count());
+            battery += infra::to_i32((atk.rook(q, occupied) & own_rooks).count());
+            battery += infra::to_i32((atk.bishop(q, occupied) & own_bishops).count());
         }
         if battery != 0 {
             *mg += sign * battery * self.params.queen_battery_mg[0];
@@ -2069,8 +2208,8 @@ impl Evaluator {
         let mut enemy_queens = board.pieces(them, Piece::Queen);
         while enemy_queens.any() {
             let q = enemy_queens.pop_lsb();
-            on_queen += infra::to_i32((ATTACKS.rook(q, pawns_only) & own_rooks).count());
-            on_queen += infra::to_i32((ATTACKS.bishop(q, pawns_only) & own_bishops).count());
+            on_queen += infra::to_i32((atk.rook(q, pawns_only) & own_rooks).count());
+            on_queen += infra::to_i32((atk.bishop(q, pawns_only) & own_bishops).count());
         }
         if on_queen != 0 {
             *mg += sign * on_queen * self.params.slider_on_queen_mg[0];
@@ -2204,22 +2343,98 @@ impl Evaluator {
             // bishop-coloured one. For that exact material pattern, drive the
             // losing king to a corner matching the winning bishop's colour
             // instead; keep the generic drive for every other won ending.
-            let mopup = if let Some(light_bishop) = kbnk_winner_bishop(board, winning) {
-                let corners = if light_bishop {
-                    KBNK_LIGHT_CORNERS
-                } else {
-                    KBNK_DARK_CORNERS
-                };
-                let corner_distance = (KING_DISTANCE[lksq.index()][corners[0]]
-                    .min(KING_DISTANCE[lksq.index()][corners[1]]))
-                    as i32;
-                sign * (8 * (7 - corner_distance) + (14 - king_distance) * 4)
-            } else {
+            // 4.9a.4. The finer drive applies ONLY when the losing side is a
+            // bare king at the point of evaluation. KXK/KBNK match directly,
+            // but a pawn-root family can enter this material shape after an
+            // under-promotion and exchange; its real scope is the dispatcher's
+            // promotion closure (4.11.9), never root material alone. The enclosing
+            // gate is `|approximate| > 200`, which is "up two pawns" and fires
+            // in plenty of middlegames; scaling the drive there moved `bench 13`
+            // by +7.9% (7,226,051 -> 7,800,345) purely by perturbing positions
+            // this term was never meant to steer. Everything else keeps the old
+            // mild edge push, avoiding a broad middlegame blast radius.
+            // Scoped to MINOR-PIECE mates, following Basilisk BAS-E34. Their
+            // first version drove every bare-king mate, queen and rook
+            // included, and cost +20.5% bench nodes; restricting it to
+            // minor-piece mates returned bench to baseline byte for byte. The
+            // reason generalises: a recogniser is worth adding only where
+            // SEARCH CANNOT ALREADY SOLVE THE CLASS, and overriding a class it
+            // solves only churns aspiration windows wherever a deep line
+            // touches a won ending. Their KQ-K/KR-K were already 100/100.
+            let minor_mate = board.color_occ(losing) == Bitboard::from(lksq)
+                && !board.pieces(winning, Piece::Pawn).any()
+                && !board.pieces(winning, Piece::Rook).any()
+                && !board.pieces(winning, Piece::Queen).any();
+            let mopup = if !minor_mate {
                 let lfile = infra::to_i32(SQUARE_FILE[lksq.index()]);
                 let lrank = infra::to_i32(SQUARE_RANK[lksq.index()]);
                 let file_push = (3 - lfile).max(lfile - 4);
                 let rank_push = (3 - lrank).max(lrank - 4);
                 sign * (5 * (file_push + rank_push) + (14 - king_distance) * 4)
+            } else {
+                // Both branches below drive to a CORNER through the same
+                // Chebyshev+Manhattan metric. Chebyshev alone is flat -- it scores
+                // every square in a ring identically -- and the measured cost was
+                // total: over 300 won KBNK positions, 94% had a TIED best move and
+                // the whole term spanned 8 cp across all 19 legal moves. The same
+                // metric serves KXK and KBNK because they share that one defect,
+                // which is why one change fixes both.
+                let corners = match kbnk_winner_bishop(board, winning) {
+                    Some(true) => KBNK_LIGHT_CORNERS,
+                    Some(false) => KBNK_DARK_CORNERS,
+                    // Generic KXK: drive toward whichever corner is already
+                    // nearest. A corner is on the edge, so this subsumes the old
+                    // edge push while giving the search an ordering to follow.
+                    None => {
+                        if KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[0]]
+                            .min(KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[1]])
+                            <= KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
+                                .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
+                        {
+                            KBNK_LIGHT_CORNERS
+                        } else {
+                            KBNK_DARK_CORNERS
+                        }
+                    }
+                };
+                // Pick the corner by Chebyshev first, Manhattan as the tie-break,
+                // so the target itself does not flip between equally distant
+                // corners and undo the gradient we just created.
+                let target = if (
+                    KING_DISTANCE[lksq.index()][corners[0]],
+                    MANHATTAN_DISTANCE[lksq.index()][corners[0]],
+                ) <= (
+                    KING_DISTANCE[lksq.index()][corners[1]],
+                    MANHATTAN_DISTANCE[lksq.index()][corners[1]],
+                ) {
+                    corners[0]
+                } else {
+                    corners[1]
+                };
+                let king_man = i32::from(MANHATTAN_DISTANCE[wksq.index()][lksq.index()]);
+                // DIAGONAL pull. `|7 - rank - file|` is 0 on the a8-h1
+                // anti-diagonal and rises to 7 at the a1/h8 corners, so it is
+                // plateau-free by construction and describes the actual
+                // technique: walk the king DOWN A DIAGONAL rather than at a
+                // corner. Mirroring the file serves the dark corner pair with
+                // one formula. Structure and scale both come from the reference
+                // HCE, whose corner term outweighs its king term by roughly 24
+                // to 1 -- and that RATIO is the whole mechanism. An earlier
+                // sweep tried this shape at roughly 1:1 and measured it WORSE
+                // than the Chebyshev version it replaced (33-50% against
+                // 57.1%), which is why it was wrongly rejected once already.
+                let lfile = infra::to_i32(SQUARE_FILE[lksq.index()]);
+                let lrank = infra::to_i32(SQUARE_RANK[lksq.index()]);
+                let diag_file =
+                    if target == KBNK_LIGHT_CORNERS[0] || target == KBNK_LIGHT_CORNERS[1] {
+                        lfile
+                    } else {
+                        7 - lfile
+                    };
+                let diagonal = (7 - lrank - diag_file).abs();
+                sign * (MOPUP_DIAGONAL * diagonal
+                    + MOPUP_KING_CHEB * (7 - king_distance)
+                    + MOPUP_KING_MAN * (14 - king_man))
             };
             *eg += mopup;
             // Frozen mate-drive term — not a tunable weight; goes into `rest`.
@@ -2287,10 +2502,12 @@ impl Evaluator {
         pawns: &[Bitboard; 2],
         maps: &KsMaps,
     ) {
+        // One LazyLock resolution covers every king-zone attack lookup below.
+        let atk = &*ATTACKS;
         let them = !color;
         let king = board.king_sq(color);
         let king_bb = Bitboard::from(king);
-        let king_attacks = ATTACKS.king(king);
+        let king_attacks = atk.king(king);
         let mut zone = king_attacks | king_bb;
         zone |= if color == Color::White {
             king_attacks.north()
@@ -2335,9 +2552,9 @@ impl Evaluator {
         // defend (and are not occupied by an enemy piece).
         let occ = maps.occupied;
         let safe = !maps.attacked[color as usize] & !maps.their_occ;
-        let knight_from = ATTACKS.knight(king);
-        let bishop_from = ATTACKS.bishop(king, occ);
-        let rook_from = ATTACKS.rook(king, occ);
+        let knight_from = atk.knight(king);
+        let bishop_from = atk.bishop(king, occ);
+        let rook_from = atk.rook(king, occ);
         let knight_checks = knight_from & maps.attacked_by_them[Piece::Knight as usize] & safe;
         let bishop_checks = bishop_from & maps.attacked_by_them[Piece::Bishop as usize] & safe;
         let rook_checks = rook_from & maps.attacked_by_them[Piece::Rook as usize] & safe;
@@ -2894,6 +3111,15 @@ fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     if let Some(sf) = krkp_drawish_scale(board) {
         return Some(sf);
     }
+    // KRP vs KR (Phase 4.9a.7): the highest-value open reference family, at
+    // 10.04% of real games.
+    if let Some(sf) = krpkr_scale(board) {
+        return Some(sf);
+    }
+    // KRP vs KB (Phase 4.9a.8): rook-pawn fortresses only; partial scales.
+    if let Some(sf) = krpkb_scale(board) {
+        return Some(sf);
+    }
 
     let no_pawns = board.pieces(Color::White, Piece::Pawn).is_empty()
         && board.pieces(Color::Black, Piece::Pawn).is_empty();
@@ -3050,6 +3276,187 @@ fn kqkp_fortress_scale(board: &Board) -> Option<i32> {
 /// ending is usually drawn (the rook must give itself for the pawn). A
 /// *partial* scale (≈¼) only — never a forced draw — so an actually-won KRKP
 /// keeps a clearly winning score and a wrong guess cannot throw the game.
+/// KRP vs KB (Phase 4.9a.8). The rook side is winning almost everywhere, so
+/// the drawn subset is small -- 94 of 4,000 sampled positions, 2.35% -- and the
+/// evaluator was wrong about nearly all of it: **95.74% of drawn KRP-KB
+/// positions scored above +100 cp, mean +347.2, max +771**.
+///
+/// **The reference only addresses ROOK pawns**, so it can reach at most about a
+/// quarter of that cohort by construction; a non-rook-pawn KRP-KB draw is
+/// outside its case analysis entirely. Ported from `sf_11` `endgame.cpp`, which
+/// returns partial scales here (24, 48, 8 on the same `/64` basis) and never a
+/// forced draw -- appropriate for a family this close to won.
+///
+/// Rank-normalised so the strong side is White and the pawn pushes `+8`. Every
+/// predicate used below -- square colour agreement, diagonal alignment,
+/// Chebyshev distance -- is preserved under a rank flip, since both squares in
+/// each comparison flip together.
+fn krpkb_scale(board: &Board) -> Option<i32> {
+    for strong in [Color::White, Color::Black] {
+        let weak = !strong;
+        if !has_exact_material(board, strong, 1, 0, 0, 1, 0)
+            || !has_exact_material(board, weak, 0, 0, 1, 0, 0)
+        {
+            continue;
+        }
+        let pawn_sq = board.pieces(strong, Piece::Pawn).lsb();
+        let pawn_file = SQUARE_FILE[pawn_sq.index()];
+        // Rook pawn only; the reference has no case for anything else.
+        if pawn_file != 0 && pawn_file != 7 {
+            continue;
+        }
+
+        let flip: u8 = if strong == Color::Black { 56 } else { 0 };
+        let psq = pawn_sq.0 ^ flip;
+        let ksq = board.king_sq(weak).0 ^ flip;
+        let bsq = board.pieces(weak, Piece::Bishop).lsb().0 ^ flip;
+        let strong_ksq = board.king_sq(strong).0 ^ flip;
+
+        let rank = |s: u8| s / 8;
+        let file = |s: u8| s % 8;
+        let dist = |a: u8, b: u8| i32::from(KING_DISTANCE[usize::from(a)][usize::from(b)]);
+        let same_colour = |a: u8, b: u8| (rank(a) + file(a)) % 2 == (rank(b) + file(b)) % 2;
+        let on_diagonal = |a: u8, b: u8| {
+            (i32::from(file(a)) - i32::from(file(b))).abs()
+                == (i32::from(rank(a)) - i32::from(rank(b))).abs()
+        };
+
+        let rk = rank(psq);
+        // Pawn on the 5th with the bishop on the pawn's own colour: a fortress
+        // is possible, and how good it is depends on where the defending king
+        // stands relative to the queening square.
+        if rk == 4 && same_colour(bsq, psq) {
+            let d = dist(psq + 24, ksq);
+            return if d <= 2 && !(d == 0 && ksq == strong_ksq + 16) {
+                Some(24)
+            } else {
+                Some(48)
+            };
+        }
+        // Pawn on the 6th, defending king beside the queening square, bishop
+        // covering the square in front of the pawn from a distance.
+        if rk == 5
+            && dist(psq + 16, ksq) <= 1
+            && on_diagonal(bsq, psq + 8)
+            && (i32::from(file(bsq)) - i32::from(file(psq))).abs() >= 2
+        {
+            return Some(8);
+        }
+    }
+    None
+}
+
+/// KRP vs KR (Phase 4.9a.7), the highest-expected-value open reference family:
+/// 10.04% of real games by RAR-M15 occurrence.
+///
+/// WHAT THE DEFECT ACTUALLY IS. The conversion number looks alarming and is
+/// not the problem: RAR-E11 measured Stockfish 18 converting this family at
+/// 47.9% against Rarog's 43.8% at the same node budget, so the reachable mark
+/// is about four points away, not fifty-five. The measured defect is the
+/// complementary cohort -- **37.1% of theoretically DRAWN KRP-KR positions
+/// scored above +100 cp** (46 of 124, mean +93.8, max +473), which makes the
+/// engine steer into dead-drawn rook endings from positions it could have won
+/// another way. No measurement taken inside the ending can see that happen;
+/// `tools/diag/endgame_drawn.py` is the instrument for it.
+///
+/// The case analysis is ported from the final pre-NNUE Stockfish (`sf_11`
+/// `endgame.cpp`), whose own comment calls it "far from perfect" and notes it
+/// descends from Glaurung. Both engines use a `/64` scale basis, so the
+/// constants transfer without rescaling -- a seed, not a result.
+///
+/// **The reference's two WINNING branches are deliberately NOT ported.** They
+/// return `SCALE_FACTOR_MAX - k*distance`, i.e. above the neutral 64, which
+/// AMPLIFIES the score. Rarog's surface is Texel-fitted and its magnitudes are
+/// not the reference's, so an untested amplifier interacts with a fitted
+/// evaluation in a way the drawn cohort cannot measure. Only the draw
+/// detection is taken, which is what the measured defect calls for.
+fn krpkr_scale(board: &Board) -> Option<i32> {
+    for strong in [Color::White, Color::Black] {
+        let weak = !strong;
+        if !has_exact_material(board, strong, 1, 0, 0, 1, 0)
+            || !has_exact_material(board, weak, 0, 0, 0, 1, 0)
+        {
+            continue;
+        }
+        // Normalise to the reference frame: strong side is White, pawn on
+        // files A-D. Rank flip for a Black strong side, file mirror for a
+        // pawn on the east half; both are index XORs, so the whole case
+        // analysis below reads exactly as the reference does.
+        // Indices stay `u8` throughout, so every widening below is infallible
+        // (`i32::from`) and the function needs no cast suppressions.
+        let pawn_sq = board.pieces(strong, Piece::Pawn).lsb();
+        let flip: u8 = if strong == Color::Black { 56 } else { 0 };
+        let mirror: u8 = if SQUARE_FILE[pawn_sq.index()] >= 4 {
+            7
+        } else {
+            0
+        };
+        let norm = |sq: Square| sq.0 ^ flip ^ mirror;
+
+        let wk = norm(board.king_sq(strong));
+        let bk = norm(board.king_sq(weak));
+        let wr = norm(board.pieces(strong, Piece::Rook).lsb());
+        let br = norm(board.pieces(weak, Piece::Rook).lsb());
+        let wp = norm(pawn_sq);
+
+        let rank = |s: u8| s / 8;
+        let file = |s: u8| s % 8;
+        let dist = |a: u8, b: u8| i32::from(KING_DISTANCE[usize::from(a)][usize::from(b)]);
+        let file_dist = |a: u8, b: u8| (i32::from(file(a)) - i32::from(file(b))).abs();
+
+        let r = rank(wp);
+        let queening = 56 + file(wp);
+        // The reference's `tempo` is 1 when the strong side is to move.
+        let tempo = i32::from(board.side_to_move == strong);
+
+        // Third-rank defence: pawn not far advanced, defending king on the
+        // queening square, defending rook cutting on the 6th.
+        if r <= 4
+            && dist(bk, queening) <= 1
+            && wk <= 39
+            && (rank(br) == 5 || (r <= 2 && rank(wr) != 5))
+        {
+            return Some(0);
+        }
+        // Checking from behind once the pawn reaches the 6th.
+        if r == 5
+            && dist(bk, queening) <= 1
+            && i32::from(rank(wk)) + tempo <= 5
+            && (rank(br) == 0 || (tempo == 0 && file_dist(br, wp) >= 3))
+        {
+            return Some(0);
+        }
+        if r >= 5 && bk == queening && rank(br) == 0 && (tempo == 0 || dist(wk, wp) >= 2) {
+            return Some(0);
+        }
+        // Pawn a7, rook a8, defending king boxed on g7/h7 with its rook behind.
+        if wp == 48
+            && wr == 56
+            && (bk == 55 || bk == 54)
+            && file(br) == 0
+            && (rank(br) <= 2 || file(wk) >= 3 || rank(wk) <= 4)
+        {
+            return Some(0);
+        }
+        // Defending king blockades the pawn and the attacking king is far.
+        if r <= 4 && bk == wp + 8 && dist(wk, wp) - tempo >= 2 && dist(wk, br) - tempo >= 2 {
+            return Some(0);
+        }
+        // Not a forced draw, but drawish: the defending king sits in the
+        // pawn's path with the pawn still short of the 5th. Partial scales, so
+        // an actually-won position keeps a winning score.
+        if r <= 3 && bk > wp {
+            if file(bk) == file(wp) {
+                return Some(10);
+            }
+            if file_dist(bk, wp) == 1 && dist(wk, bk) > 2 {
+                return Some(24 - 2 * dist(wk, bk));
+            }
+        }
+    }
+    None
+}
+
 fn krkp_drawish_scale(board: &Board) -> Option<i32> {
     for strong in [Color::White, Color::Black] {
         let weak = !strong;
@@ -3247,6 +3654,74 @@ mod endgame_311c_tests {
             krkp_drawish_scale(&board("8/8/6K1/8/8/8/1kp5/7R w - - 0 1")),
             Some(16)
         );
+    }
+
+    /// KRP-vs-KB rook-pawn fortresses (4.9a.8). Both FENs are Syzygy DRAW.
+    ///
+    /// This is also the **live-wire proof** the null result needs: the drawn
+    /// cohort's overclaim rate did not move at all (0.9574 before and after),
+    /// because the reference addresses only rook pawns -- at most a quarter of
+    /// that cohort -- and its partial scales leave a +350 score above the
+    /// 100 cp threshold even where they fire. A null from a dead wire and a
+    /// null from a narrow mechanism look identical in the aggregate, so the
+    /// mechanism is asserted directly here instead.
+    #[test]
+    fn krpkb_scales_rook_pawn_fortresses() {
+        // Pawn a5, bishop on the pawn's own colour, defending king next to the
+        // queening square: the reference's moderate fortress reduction.
+        assert_eq!(
+            krpkb_scale(&board("8/1kb5/8/P7/8/8/8/6KR w - - 0 1")),
+            Some(24)
+        );
+        // A non-rook pawn is outside the reference's case analysis entirely,
+        // and must fall through rather than be scaled on a guess.
+        assert_eq!(
+            krpkb_scale(&board("8/2kb4/8/1P6/8/8/8/6KR w - - 0 1")),
+            None
+        );
+    }
+
+    /// KRP-vs-KR draw recognition (4.9a.7). Every FEN here was probed against
+    /// Syzygy before it was written down, so these assert chess truth rather
+    /// than the recognizer's own opinion of itself.
+    #[test]
+    fn krpkr_recognizes_textbook_draws() {
+        // Philidor third-rank defence: defending rook on the 6th cuts the
+        // attacking king while the pawn is still short of it. Syzygy: DRAW.
+        assert_eq!(
+            krpkr_scale(&board("8/3k4/r7/3PK3/8/8/8/7R w - - 0 1")),
+            Some(0)
+        );
+        // Pawn a7 with the rook in front on a8 and the defending king boxed on
+        // h7, its rook behind the pawn. Syzygy: DRAW.
+        assert_eq!(
+            krpkr_scale(&board("R7/P6k/8/8/8/8/8/r5K1 w - - 0 1")),
+            Some(0)
+        );
+    }
+
+    /// The failure mode that matters: a hard `Some(0)` on a position that is
+    /// actually WON would turn wins into claimed draws. The reference calls its
+    /// own case analysis "far from perfect", so this is the guard that earns
+    /// porting it. All three are Syzygy WIN.
+    #[test]
+    fn krpkr_never_zeroes_a_won_position() {
+        for fen in [
+            "1R6/1P6/8/8/8/7k/r7/6K1 w - - 0 1",
+            "8/8/1PK5/8/8/7k/r7/1R6 w - - 0 1",
+            "8/8/8/1PK5/8/7k/r7/1R6 w - - 0 1",
+        ] {
+            assert_ne!(
+                krpkr_scale(&board(fen)),
+                Some(0),
+                "won KRP-KR must not be scaled to a forced draw: {fen}"
+            );
+            let score = static_eval(fen);
+            assert!(
+                score > 150,
+                "won KRP-KR should stay clearly winning, got {score} for {fen}"
+            );
+        }
     }
 
     /// Won endings must keep a clearly winning static score — guards against the

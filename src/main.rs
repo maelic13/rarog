@@ -1,10 +1,13 @@
+use std::process;
 use std::sync::Arc;
 use std::thread;
 
+use rarog::cpu_advice;
+use rarog::crash_report;
 use rarog::engine::Engine;
 use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::capitalize_first_letter;
-use rarog::uci_protocol::UciProtocol;
+use rarog::uci_protocol::{CommandOutcome, UciProtocol};
 
 // 9.0b: Rarog supports 64-bit targets only (user decision 2026-07-19 — the
 // shipped arches are x86-64/x86-64-v3, and 64-bit is what makes the
@@ -42,6 +45,11 @@ const ENGINE_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 // requirement exactly. `README` now lists the measured CPU requirement per
 // asset, and `cargo xtask verify-isa` proves each asset matches it.
 fn main() {
+    // 4.11.11: FIRST, before any thread exists. A panic on the engine thread
+    // is otherwise reported only on stderr, which the tournament harness
+    // drains asynchronously and loses to a fast abort -- the reason the
+    // 2026-09-04 EngineCrash could not be diagnosed. See `crash_report`.
+    crash_report::install_stdout_reporter();
     request_fine_grained_scheduling();
 
     println!(
@@ -50,6 +58,12 @@ fn main() {
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS").replace(':', ", ")
     );
+
+    // A.4.2: say so when this CPU would be better served by a different asset.
+    // Silent when the choice is already right, which is the common case.
+    if let Some(advice) = cpu_advice::startup_advice() {
+        println!("{advice}");
+    }
 
     let commands = EngineCommandQueue::default();
     let control = Arc::new(EngineControl::default());
@@ -69,8 +83,27 @@ fn main() {
         })
         .expect("Engine thread failed to start.");
 
-    UciProtocol::new(commands, control).uci_loop();
+    // A.4.5: arguments are commands, run through the very same dispatch stdin
+    // uses. Before this, `main` ignored `std::env::args()` entirely, so
+    // `rarog.exe bench 13` printed the banner, hit EOF, benched nothing and
+    // exited 0 — a silent no-op with a success code, which is the one outcome
+    // a command-line tool must never produce.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut protocol = UciProtocol::new(commands, control);
+    let outcome = if args.is_empty() {
+        // No arguments: a GUI's path, byte-identical to before.
+        protocol.uci_loop();
+        CommandOutcome::Handled
+    } else {
+        protocol.run_once(&args.join(" "))
+    };
     engine_thread.join().expect("Engine thread failed.");
+
+    if outcome == CommandOutcome::Unknown {
+        // Non-zero so a script can tell a typo from a result. The message came
+        // from `unknown_command`, which has already printed and flushed.
+        process::exit(2);
+    }
 }
 
 /// Ask Windows for 1 ms scheduling granularity.

@@ -51,6 +51,11 @@ struct Config {
     target: String,
     pgo: bool,
     bench_depth: u16,
+    /// Cargo features, comma-separated. Needed so a paired-ablation arm
+    /// can be PGO-built: a non-PGO arm runs shallower, and a
+    /// depth-dependent mechanism's ablation delta would be understated
+    /// at that shallower operating point.
+    features: String,
 }
 
 fn main() {
@@ -72,7 +77,14 @@ fn run() -> Result<()> {
         build_with_pgo(&config)
     } else {
         let target_dir = target_dir("release", config.arch, config.native, &config.target);
-        cargo_build(&config.target, config.arch, config.native, &target_dir, &[])?;
+        cargo_build(
+            &config.target,
+            config.arch,
+            config.native,
+            &target_dir,
+            &[],
+            &config.features,
+        )?;
         copy_dist_binary(
             &binary_path(&target_dir, &config.target),
             config.arch,
@@ -108,9 +120,15 @@ fn parse_args() -> Result<Config> {
     let mut native = false;
     let mut default_cpu = false;
     let mut bench_depth = 13u16;
+    let mut features = String::new();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--features" => {
+                features = args
+                    .next()
+                    .ok_or_else(|| "`--features` requires a value".to_string())?;
+            }
             "--arch" | "-a" => {
                 let value = args
                     .next()
@@ -169,6 +187,7 @@ fn parse_args() -> Result<Config> {
         target,
         pgo,
         bench_depth,
+        features,
     })
 }
 
@@ -989,6 +1008,7 @@ fn build_with_pgo(config: &Config) -> Result<()> {
         config.native,
         &gen_target_dir,
         &generate_flags,
+        &config.features,
     )?;
 
     let instrumented = binary_path(&gen_target_dir, &config.target);
@@ -1010,6 +1030,7 @@ fn build_with_pgo(config: &Config) -> Result<()> {
         config.native,
         &use_target_dir,
         &use_flags,
+        &config.features,
     )?;
     copy_dist_binary(
         &binary_path(&use_target_dir, &config.target),
@@ -1026,6 +1047,7 @@ fn cargo_build(
     native: bool,
     target_dir: &Path,
     override_flags: &[String],
+    features: &str,
 ) -> Result<()> {
     let mut flags = if override_flags.is_empty() {
         rustflags(arch, native)
@@ -1049,13 +1071,18 @@ fn cargo_build(
         }
     ));
 
-    let status = Command::new("cargo")
+    let mut command = Command::new("cargo");
+    command
         .arg("build")
         .arg("--release")
         .arg("--target")
         .arg(target)
         .arg("--target-dir")
-        .arg(target_dir)
+        .arg(target_dir);
+    if !features.is_empty() {
+        command.arg("--features").arg(features);
+    }
+    let status = command
         .env("CARGO_ENCODED_RUSTFLAGS", flags.join(RUSTFLAGS_SEPARATOR))
         .env_remove("RUSTFLAGS")
         .status()

@@ -1,0 +1,22 @@
+# board-search-profile-v1. Fields after FEN: cohort, name, source.
+# Four frozen roots per cohort; all roots already have repository provenance.
+rnb1kbnr/ppp1pppp/8/4q3/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 ; cohort opening ; name opening-01 ; src tools/books/UHO_Lichess_4852_v1.epd#0
+rnbqkbnr/pp1p1ppp/8/2pp4/2P5/2N5/PP2PPPP/R1BQKBNR b KQkq - 1 4 ; cohort opening ; name opening-02 ; src tools/books/UHO_Lichess_4852_v1.epd#391
+rn1qkb1r/p1p2ppp/1p2pn2/5b2/2pP1B2/1QN1P3/PP3PPP/R3KBNR w KQkq - 0 7 ; cohort opening ; name opening-03 ; src tools/books/UHO_Lichess_4852_v1.epd#782
+rnbqkb1r/ppp2ppp/3ppn2/4Q3/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 0 4 ; cohort opening ; name opening-04 ; src tools/books/UHO_Lichess_4852_v1.epd#1173
+2br2k1/2q3rn/p2NppQ1/2p1P3/Pp5R/4P3/1P3PPP/3R2K1 w - - 0 1 ; cohort middlegame ; name middlegame-01 ; src src/wac.epd#9
+6k1/6p1/p7/3Pn3/5p2/4rBqP/P4RP1/5QK1 b - - 0 1 ; cohort middlegame ; name middlegame-02 ; src src/wac.epd#52
+r2b1rk1/pq4p1/4ppQP/3pB1p1/3P4/2R5/PP3PP1/5RK1 w - - 0 1 ; cohort middlegame ; name middlegame-03 ; src src/wac.epd#139
+3r2k1/p1rn1p1p/1p2pp2/6q1/3PQNP1/5P2/P1P4R/R5K1 w - - 0 1 ; cohort middlegame ; name middlegame-04 ; src src/wac.epd#177
+2r5/1r6/4pNpk/3pP1qp/8/2P1QP2/5PK1/R7 w - - 0 1 ; cohort check-heavy ; name check-heavy-01 ; src src/wac.epd#94
+rnbqkb1r/1p3ppp/5N2/1p2p1B1/2P5/8/PP2PPPP/R2QKB1R b KQkq - 0 1 ; cohort check-heavy ; name check-heavy-02 ; src src/wac.epd#112
+4r1k1/p1qr1p2/2pb1Bp1/1p5p/3P1n1R/1B3P2/PP3PK1/2Q4R w - - 0 1 ; cohort check-heavy ; name check-heavy-03 ; src src/wac.epd#140
+rnbqkbnr/ppp2ppp/8/1B1P4/4p3/5N2/PPPP1PPP/RNBQK2R b KQkq - 1 4 ; cohort check-heavy ; name check-heavy-04 ; src tests/search_strength.rs
+rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8 ; cohort promotion ; name promotion-01 ; src tests/board_correctness.rs
+8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1 ; cohort promotion ; name promotion-02 ; src tests/board_differential.rs
+4k3/P6P/8/8/8/8/p6p/4K3 w - - 0 1 ; cohort promotion ; name promotion-03 ; src tests/board_correctness.rs
+1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1 ; cohort promotion ; name promotion-04 ; src tests/data/board-v2.tsv#capture-underpromotion
+8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 97 143 ; cohort sparse-endgame ; name sparse-endgame-01 ; src tests/data/board-v2.tsv#sparse-endgame-long-clock
+7k/8/8/8/4K3/8/8/2B3N1 w - - 0 1 ; cohort sparse-endgame ; name sparse-endgame-02 ; src tests/endgames.rs#0
+7k/p7/1R5K/6r1/6p1/6P1/8/8 w - - 0 1 ; cohort sparse-endgame ; name sparse-endgame-03 ; src src/wac.epd#5
+R7/P4k2/8/8/8/8/r7/6K1 w - - 0 1 ; cohort sparse-endgame ; name sparse-endgame-04 ; src src/wac.epd#17

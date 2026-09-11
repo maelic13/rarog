@@ -1,0 +1,173 @@
+{
+  "schema": "rarog-board-occurrence-v1",
+  "games": 36400,
+  "engine_filter": "Rarog",
+  "engine_games": 10000,
+  "all": {
+    "KXK": {
+      "games": 13549,
+      "share": 0.3722252747252747
+    },
+    "KPsK": {
+      "games": 2261,
+      "share": 0.062115384615384614
+    },
+    "KPK": {
+      "games": 1086,
+      "share": 0.029835164835164834
+    },
+    "KBPsK": {
+      "games": 876,
+      "share": 0.024065934065934064
+    },
+    "KBNK": {
+      "games": 126,
+      "share": 0.0034615384615384616
+    },
+    "KNNK": {
+      "games": 5,
+      "share": 0.00013736263736263736
+    },
+    "KRPKR": {
+      "games": 1341,
+      "share": 0.03684065934065934
+    },
+    "KRPKB": {
+      "games": 167,
+      "share": 0.004587912087912088
+    },
+    "KRKP": {
+      "games": 487,
+      "share": 0.01337912087912088
+    },
+    "KRKN": {
+      "games": 117,
+      "share": 0.0032142857142857142
+    },
+    "KRKB": {
+      "games": 116,
+      "share": 0.003186813186813187
+    },
+    "KBPKB": {
+      "games": 244,
+      "share": 0.006703296703296703
+    },
+    "KBPPKB": {
+      "games": 194,
+      "share": 0.00532967032967033
+    },
+    "KBPKN": {
+      "games": 135,
+      "share": 0.0037087912087912086
+    },
+    "KPKP": {
+      "games": 515,
+      "share": 0.014148351648351648
+    },
+    "KQKP": {
+      "games": 466,
+      "share": 0.012802197802197803
+    },
+    "KQKR": {
+      "games": 200,
+      "share": 0.005494505494505495
+    },
+    "KNNKP": {
+      "games": 4,
+      "share": 0.00010989010989010989
+    },
+    "KQKRPs": {
+      "games": 143,
+      "share": 0.003928571428571429
+    },
+    "KRPPKRP": {
+      "games": 1808,
+      "share": 0.04967032967032967
+    }
+  },
+  "engine": {
+    "KXK": {
+      "games": 3778,
+      "share": 0.3778
+    },
+    "KPsK": {
+      "games": 452,
+      "share": 0.0452
+    },
+    "KPK": {
+      "games": 241,
+      "share": 0.0241
+    },
+    "KBPsK": {
+      "games": 259,
+      "share": 0.0259
+    },
+    "KBNK": {
+      "games": 30,
+      "share": 0.003
+    },
+    "KNNK": {
+      "games": 1,
+      "share": 0.0001
+    },
+    "KRPKR": {
+      "games": 403,
+      "share": 0.0403
+    },
+    "KRPKB": {
+      "games": 45,
+      "share": 0.0045
+    },
+    "KRKP": {
+      "games": 125,
+      "share": 0.0125
+    },
+    "KRKN": {
+      "games": 51,
+      "share": 0.0051
+    },
+    "KRKB": {
+      "games": 46,
+      "share": 0.0046
+    },
+    "KBPKB": {
+      "games": 67,
+      "share": 0.0067
+    },
+    "KBPPKB": {
+      "games": 50,
+      "share": 0.005
+    },
+    "KBPKN": {
+      "games": 29,
+      "share": 0.0029
+    },
+    "KPKP": {
+      "games": 128,
+      "share": 0.0128
+    },
+    "KQKP": {
+      "games": 117,
+      "share": 0.0117
+    },
+    "KQKR": {
+      "games": 63,
+      "share": 0.0063
+    },
+    "KNNKP": {
+      "games": 0,
+      "share": 0.0
+    },
+    "KQKRPs": {
+      "games": 42,
+      "share": 0.0042
+    },
+    "KRPPKRP": {
+      "games": 540,
+      "share": 0.054
+    }
+  },
+  "reaches_6_men": 0.44357142857142856,
+  "reaches_7_men": 0.5487912087912088,
+  "source": "C:\\Users\\macur\\AppData\\Roaming\\Colosseum\\data\\colosseum.sqlite#Rating Tournament"
+}

@@ -103,11 +103,7 @@ struct LocalTable {
 /// stored through u16; depth is i8 stored through u8, so −1 travels as 255) —
 /// a range-checking helper would be WRONG, not just noisy.
 #[inline(always)]
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_sign_loss
-)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
     let flag_age = (data >> 56) as u8;
     Bound::from_bits(flag_age)?;
@@ -124,7 +120,7 @@ fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
 
 /// Bit-exact serialization — the mirror of [`unpack_entry`]; same reasoning.
 #[inline(always)]
-#[allow(clippy::cast_sign_loss)]
+#[expect(clippy::cast_sign_loss)]
 fn pack_entry(entry: TtEntry) -> u64 {
     entry.score as u16 as u64
         | ((entry.static_eval as u16 as u64) << 16)
@@ -136,7 +132,7 @@ fn pack_entry(entry: TtEntry) -> u64 {
 /// XOR-fold of the payload down to 16 bits, used as the tag's checksum half.
 /// The truncation IS the fold, hence the scoped allow.
 #[inline(always)]
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 fn fold16(data: u64) -> u16 {
     let folded = data ^ (data >> 32);
     let folded = folded ^ (folded >> 16);
@@ -222,10 +218,18 @@ impl SharedCluster {
 // independent `SharedCluster`s share one line there and two threads touching
 // unrelated TT entries can contend. Neither cluster type can ever STRADDLE a
 // 128 B line — 32 and 64 both divide 128 and both are aligned to their own size
-// — so `origin/arm_fix`'s `3ee4660` was aimed at a hazard that cannot occur;
-// this is the real one, and it is a Threads>1 ARM64 question that PLAN 4.8
-// item 4 owns. Do not "fix" it by over-aligning without a 4T ARM measurement:
-// padding to 128 B would halve the density this second assert exists to hold.
+// — so the 128 B block wrapper this project twice considered was aimed at a
+// hazard that cannot occur; this is the real one.
+//
+// Both halves are now settled, so this is a CLOSED question, not an open TODO.
+// RAR-P12 measured the Threads>1 exposure and found none (3.89x at 4T against a
+// pre-registered >=3.8x bar). RAR-P16 then measured the wrapper itself on an M4:
+// -0.12% median, 4/12 paired wins, inside the noise floor — and showed why, by
+// probing the allocator, which already returns 128 B-aligned TT bases at every
+// Hash size, so the wrapper cannot move a single address. Do not reintroduce it
+// without a Threads>1 ARM result that contradicts RAR-P12; RAR-P16 carries the
+// recipe if one is ever needed. Naive padding to 128 B would additionally halve
+// the density this second assert exists to hold.
 const _: () = assert!(size_of::<SharedCluster>() == 64);
 const _: () = assert!(
     SHARED_CLUSTER_ENTRIES * size_of::<LocalCluster>()
@@ -630,7 +634,6 @@ fn prefetch_ptr<T>(ptr: *const T) {
 /// Upper 16 bits of the hash — the cluster-entry verification tag. The
 /// truncation IS the design (a 16-bit tag), hence the scoped allow.
 #[inline(always)]
-#[allow(clippy::cast_possible_truncation)]
 fn key16_of(key: u64) -> u16 {
     (key >> 48) as u16
 }

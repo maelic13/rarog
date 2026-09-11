@@ -15,7 +15,7 @@
 #[cfg(feature = "diag")]
 // Counter statics are deliberately lower_snake_case: the name is emitted
 // verbatim as the `info string diag <name>` label.
-#[allow(non_upper_case_globals)]
+#[expect(non_upper_case_globals)]
 pub mod counters {
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -40,8 +40,12 @@ pub mod counters {
     }
 
     declare!(
-        // Denominators.
+        // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
+        // Phase-4 differential needs a qsearch denominator collected the same
+        // way the oracle collects it, and a 1/1024 sample cannot be joined
+        // against an exact count (analysis/phase4_counter_spec.md).
         nodes,
+        qnodes,
         // 8.2 — check-node cost.
         nodes_in_check,
         check_extensions,
@@ -52,14 +56,42 @@ pub mod counters {
         razor_drop,
         nmp_cut,
         probcut_cut,
+        // Per-MOVE: every quiet skipped by move-count/history pruning.
+        // Rarog-only -- the oracle cannot count this without generating the
+        // quiets it is declining to generate.
         lmp_prune,
+        // Per-NODE: nodes at which at least one quiet was suppressed. THIS is
+        // the comparable one; see analysis/phase4_counter_spec.md.
+        lmp_nodes,
         quiet_futility_prune,
         see_prune,
+        // 4.6.4: quiet moves pruned for hanging material. Rarog had no
+        // such population before; the capture-side `see_prune` is separate.
+        quiet_see_prune,
+        // 4.6.5: nodes where the picker was told to stop emitting quiets.
+        skip_quiets_nodes,
         // LMR reduction and its verification re-search.
         lmr_applied,
         // 10.2.5 — late moves whose confidence estimate removes the old
         // mandatory one-ply reduction.
         lmr_zero_reduction,
+        // 4.8.1 AUDIT of the reduction floor, which 4.5.4 named and never
+        // measured. `lmr_reduction` is `(r >> 10).clamp(0, new_depth)`, so
+        // both ends silently discard information:
+        //   lmr_floor_clamped -- r was NEGATIVE. The formula asked for an
+        //     extension and the floor refused it. Every relief term
+        //     (tt_pv, improving, corr, and 4.6.7's root relief) is eaten
+        //     here once the accumulated r crosses zero.
+        //   lmr_qs_clamped -- reduction reached new_depth, so the "reduced
+        //     search" ran at depth 0 and was answered by quiescence. That
+        //     is a prune wearing a reduction's name, and it is counted
+        //     nowhere in the pruning family.
+        lmr_floor_clamped,
+        lmr_qs_clamped,
+        // Root-only reduction census: the denominator 4.6.7 needs to know
+        // whether a root relief can move anything at all.
+        lmr_root_applied,
+        lmr_root_reduction_sum,
         lmr_research,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)
@@ -308,6 +340,14 @@ pub mod counters {
         // is a defect the guard does not fix.
         nmp_decisive_population,
         nmp_cut_unproven_mate,
+        // Per-NODE: nodes passing the ProbCut entry gate, counted before
+        // capture generation, so nodes with no eligible capture are included.
+        // Per-MOVE: `probcut_attempt` -- a ProbCut search was actually started,
+        // which is what the spec says and what the oracle counts. Until 4.7c
+        // prep the per-node figure carried the `probcut_attempt` name and was
+        // differenced against the oracle's per-move one; see the RAR-S55
+        // correction in EXPERIMENTS.md.
+        probcut_nodes,
         probcut_attempt,
         probcut_qpass,
         probcut_tt_store,
@@ -328,6 +368,17 @@ pub mod counters {
         move_seen_good_capture,
         move_seen_quiet,
         move_seen_bad_capture,
+        // Rarog-only: rank of the BEST MOVE at any node, including PV nodes
+        // where it merely raised alpha. Strictly larger population than a beta
+        // cutoff, so it must never be differenced against the oracle's
+        // cutoff-rank counters -- see analysis/phase4_counter_spec.md.
+        best_move_rank_1,
+        best_move_rank_2_3,
+        best_move_rank_4_7,
+        best_move_rank_8_plus,
+        // Core (comparable): rank at which a beta cutoff occurred. Exact, and
+        // counted in the same block as cutoff_quiet/cutoff_capture so the
+        // buckets sum to that denominator.
         best_rank_1,
         best_rank_2_3,
         best_rank_4_7,
@@ -523,7 +574,179 @@ pub mod counters {
         shadow_4_5_correction,
         shadow_4_6_prospective_depth,
         shadow_4_7_root_confidence,
+        // 4.9a search-tree occurrence. RAR-M15 measured how often each
+        // reference endgame family occurs ON THE BOARD in real games, and 4.9a
+        // is ordered on that. These count how often each family is reached in
+        // the SEARCH TREE, which is a different quantity: 4.9a.4's mate drive
+        // left `bench 13` byte-identical (no bench tree reaches a bare-king
+        // minor mate at depth 13) while 4.9a.7's rook-ending scale moved it
+        // 14%. EXACT, not sampled -- these are cheap and a ratio against
+        // `nodes` must be joinable (analysis/phase4_counter_spec.md).
+        eg_krpkr,
+        eg_krpkb,
+        eg_kpsk,
+        eg_kpk,
+        eg_krkp,
+        eg_kbpsk,
+        eg_kpkp,
+        eg_kqkp,
+        eg_kbpkb,
+        eg_kbppkb,
+        eg_krkn,
+        eg_krkb,
+        eg_kbpkn,
+        eg_knnkp,
+        eg_knnk,
+        eg_kqkr,
+        eg_kqkrps,
+        eg_krppkrp,
+        eg_kxk,
+        eg_kbnk,
+        // Denominator: evaluations of positions with at most 7 men, the set
+        // the classifier looks at. Without it an occurrence count cannot be
+        // read as a rate.
+        eg_classified,
+        // 4.11b.7 board cost census. These are exact call/work counters from
+        // real search paths. They observe only and compile away completely
+        // without `--features diag`.
+        board_gen_vec_calls,
+        board_gen_vec_moves,
+        board_gen_full_calls,
+        board_gen_full_moves,
+        board_gen_capture_calls,
+        board_gen_capture_moves,
+        board_gen_staged_capture_calls,
+        board_gen_staged_capture_moves,
+        board_gen_staged_quiet_calls,
+        board_gen_staged_quiet_moves,
+        board_compute_pinned_calls,
+        board_check_info_calls,
+        board_gives_check_fast_calls,
+        board_gives_check_full_calls,
+        board_calculate_checkers_calls,
+        board_see_full_calls,
+        board_see_threshold_calls,
+        board_see_quiet_threshold_calls,
+        board_make_plain_calls,
+        board_make_with_check_calls,
+        board_unmake_calls,
+        board_make_null_calls,
+        board_unmake_null_calls,
+        board_history_pushes,
+        board_history_growths,
     );
+}
+
+/// Count one evaluation against the 4.9a reference-family table.
+///
+/// Called from `evaluate()` and compiled out entirely without `--features
+/// diag`, so the production fingerprint is untouched -- which is this feature's
+/// own acceptance gate.
+///
+/// The table is the 20 families of the final pre-NNUE Stockfish dispatcher, in
+/// the order 4.9a works them. `counts` is (pawns, knights, bishops, rooks,
+/// queens) per side; each family is tried in both orientations, so a Black
+/// strong side counts the same as a White one.
+#[cfg(feature = "diag")]
+pub fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
+    // At most 7 men total (2 kings + 5 pieces) can match any listed family.
+    let men: u32 = w.iter().sum::<u32>() + b.iter().sum::<u32>();
+    if men > 5 {
+        return;
+    }
+    crate::diag_count!(eg_classified);
+
+    // Each arm is (strong, weak) as (P, N, B, R, Q). `None` in a slot means
+    // "one or more", used by the families whose reference name carries `Ps`.
+    let hit = |s: [u32; 5], k: [Option<u32>; 5]| -> bool {
+        (0..5).all(|i| match k[i] {
+            Some(n) => s[i] == n,
+            None => s[i] >= 1,
+        })
+    };
+    let e = |n: u32| Some(n);
+    let bare = [e(0), e(0), e(0), e(0), e(0)];
+
+    for (i, (strong, weak)) in [(w, b), (b, w)].into_iter().enumerate() {
+        // A SYMMETRIC family matches in both orientations and would be counted
+        // twice. KPKP is the only one in this table, and it read 370 instead of
+        // 185 before this guard.
+        if i == 1 && w == b {
+            break;
+        }
+        // Order matters only for readability; the arms are disjoint.
+        if hit(strong, [e(1), e(0), e(0), e(1), e(0)]) && hit(weak, [e(0), e(0), e(0), e(1), e(0)])
+        {
+            crate::diag_count!(eg_krpkr);
+        } else if hit(strong, [e(1), e(0), e(0), e(1), e(0)])
+            && hit(weak, [e(0), e(0), e(1), e(0), e(0)])
+        {
+            crate::diag_count!(eg_krpkb);
+        } else if hit(strong, [e(2), e(0), e(0), e(1), e(0)])
+            && hit(weak, [e(1), e(0), e(0), e(1), e(0)])
+        {
+            crate::diag_count!(eg_krppkrp);
+        } else if hit(strong, [e(1), e(0), e(0), e(0), e(0)]) && hit(weak, bare) {
+            crate::diag_count!(eg_kpk);
+            crate::diag_count!(eg_kpsk);
+        } else if hit(strong, [None, e(0), e(0), e(0), e(0)]) && hit(weak, bare) {
+            crate::diag_count!(eg_kpsk);
+        } else if hit(strong, [e(0), e(0), e(0), e(1), e(0)])
+            && hit(weak, [e(1), e(0), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_krkp);
+        } else if hit(strong, [e(1), e(0), e(0), e(0), e(0)])
+            && hit(weak, [e(1), e(0), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_kpkp);
+        } else if hit(strong, [None, e(0), e(1), e(0), e(0)]) && hit(weak, bare) {
+            crate::diag_count!(eg_kbpsk);
+        } else if hit(strong, [e(0), e(0), e(0), e(0), e(1)])
+            && hit(weak, [e(1), e(0), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_kqkp);
+        } else if hit(strong, [e(2), e(0), e(1), e(0), e(0)])
+            && hit(weak, [e(0), e(0), e(1), e(0), e(0)])
+        {
+            crate::diag_count!(eg_kbppkb);
+        } else if hit(strong, [e(1), e(0), e(1), e(0), e(0)])
+            && hit(weak, [e(0), e(0), e(1), e(0), e(0)])
+        {
+            crate::diag_count!(eg_kbpkb);
+        } else if hit(strong, [e(1), e(0), e(1), e(0), e(0)])
+            && hit(weak, [e(0), e(1), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_kbpkn);
+        } else if hit(strong, [e(0), e(0), e(0), e(1), e(0)])
+            && hit(weak, [e(0), e(1), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_krkn);
+        } else if hit(strong, [e(0), e(0), e(0), e(1), e(0)])
+            && hit(weak, [e(0), e(0), e(1), e(0), e(0)])
+        {
+            crate::diag_count!(eg_krkb);
+        } else if hit(strong, [e(0), e(2), e(0), e(0), e(0)])
+            && hit(weak, [e(1), e(0), e(0), e(0), e(0)])
+        {
+            crate::diag_count!(eg_knnkp);
+        } else if hit(strong, [e(0), e(2), e(0), e(0), e(0)]) && hit(weak, bare) {
+            crate::diag_count!(eg_knnk);
+        } else if hit(strong, [e(0), e(0), e(0), e(0), e(1)])
+            && hit(weak, [e(0), e(0), e(0), e(1), e(0)])
+        {
+            crate::diag_count!(eg_kqkr);
+        } else if hit(strong, [e(0), e(0), e(0), e(0), e(1)])
+            && hit(weak, [None, e(0), e(0), e(1), e(0)])
+        {
+            crate::diag_count!(eg_kqkrps);
+        } else if hit(strong, [e(0), e(1), e(1), e(0), e(0)]) && hit(weak, bare) {
+            crate::diag_count!(eg_kbnk);
+            crate::diag_count!(eg_kxk);
+        } else if hit(weak, bare) && strong.iter().sum::<u32>() == 1 && strong[0] == 0 {
+            // KXK: one non-pawn piece against a bare king.
+            crate::diag_count!(eg_kxk);
+        }
+    }
 }
 
 /// Stable domains keep independent samples from accidentally selecting exactly
@@ -535,15 +758,44 @@ pub const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
 #[cfg(feature = "diag")]
 pub const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
 
-/// Deterministic 1/1024 position sampler. It is deliberately available only in
-/// diagnostic builds: production code must contain neither the mix nor a branch.
+/// Sampling stride mask, read once from `RAROG_DIAG_SAMPLE_STRIDE`.
+///
+/// Phase 4.2: the differential suite needs the CORE counters exact, because the
+/// oracle collects them exactly and a 1/1024 sample cannot be joined against an
+/// exact count — the ratio reads 1024x off while looking plausible. Rather than
+/// lift seventeen counters out of their sampling guards in the hottest file in
+/// the engine, the stride itself is configurable, so `RAROG_DIAG_SAMPLE_STRIDE=1`
+/// makes every sampled counter exact in one place.
+///
+/// The stride must be a power of two; anything else falls back to the 1024
+/// default, which keeps every historical reading (RAR-S21/S22/S24) reproducible
+/// by simply not setting the variable.
+#[cfg(feature = "diag")]
+fn sample_mask() -> u64 {
+    use std::sync::OnceLock;
+    static MASK: OnceLock<u64> = OnceLock::new();
+    *MASK.get_or_init(|| {
+        std::env::var("RAROG_DIAG_SAMPLE_STRIDE")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|stride| *stride >= 1 && stride.is_power_of_two())
+            .map_or(1023, |stride| stride - 1)
+    })
+}
+
+/// Deterministic position sampler, 1/1024 by default. It is deliberately
+/// available only in diagnostic builds: production code must contain neither
+/// the mix nor a branch.
+///
+/// With a stride of 1 the mask is 0, so the test is always true and every
+/// position is sampled — the exact mode the Phase-4 differential requires.
 #[cfg(feature = "diag")]
 #[inline]
 pub fn sampled(hash: u64, ply: usize, domain: u64) -> bool {
     let mut value = hash ^ domain ^ (ply as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
     value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    ((value ^ (value >> 31)) & 1023) == 0
+    ((value ^ (value >> 31)) & sample_mask()) == 0
 }
 
 /// Diagnostic-only ownership tags for the deliberately lossy correction
@@ -565,13 +817,15 @@ mod correction_probe {
     pub fn reset() {
         owners()
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clear();
     }
 
     pub fn record(source: u8, index: usize, key: u64, value: i16) {
         use crate::diag::counters;
-        let mut owners = owners().lock().unwrap_or_else(|error| error.into_inner());
+        let mut owners = owners()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         match owners.insert((source, index), key) {
             None => counters::correction_slot_first.fetch_add(1, Ordering::Relaxed),
             Some(old) if old == key => {
@@ -597,10 +851,10 @@ pub fn record_best_move(rank: usize, stage: crate::evidence::MoveClass, reduced:
     use std::sync::atomic::Ordering;
 
     let rank_counter = match rank {
-        1 => &counters::best_rank_1,
-        2 | 3 => &counters::best_rank_2_3,
-        4..=7 => &counters::best_rank_4_7,
-        _ => &counters::best_rank_8_plus,
+        1 => &counters::best_move_rank_1,
+        2 | 3 => &counters::best_move_rank_2_3,
+        4..=7 => &counters::best_move_rank_4_7,
+        _ => &counters::best_move_rank_8_plus,
     };
     rank_counter.fetch_add(1, Ordering::Relaxed);
     // 4.2: takes `MoveClass` rather than a 0..3 integer, so the picker's stage
@@ -715,7 +969,7 @@ pub struct RootConfidenceShadow {
 /// intentionally lossy because these are aggregate telemetry units, not search
 /// inputs (effort in ppm, deviation in cp, multipliers in ten-thousandths).
 #[cfg(feature = "diag")]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn record_root_confidence(shadow: &RootConfidenceShadow) {
     use std::sync::atomic::Ordering;
 
@@ -946,7 +1200,11 @@ pub fn reset() {
 
 #[cfg(all(test, feature = "diag"))]
 mod tests {
-    use super::{SAMPLE_MAIN, SAMPLE_QSEARCH, sampled};
+    use std::sync::atomic::Ordering;
+
+    use crate::board::Board;
+
+    use super::{SAMPLE_MAIN, SAMPLE_QSEARCH, counters, sampled};
 
     #[test]
     fn sampler_is_stable_sparse_and_domain_separated() {
@@ -967,6 +1225,61 @@ mod tests {
             first.len()
         );
         assert_ne!(first, qsearch);
+    }
+
+    #[test]
+    fn board_profile_counters_are_live() {
+        counters::reset();
+        let mut board = Board::starting_position();
+        let (captures, pinned) = board.generate_legal_captures_pinned();
+        let quiets = board.generate_legal_quiets_pinned(pinned);
+        assert!(captures.is_empty());
+        assert_eq!(quiets.len(), 20);
+
+        let check_info = board.check_info();
+        let mv = board.parse_move("e2e4").expect("legal test move");
+        let gives_check = board.gives_check_with(mv, &check_info);
+        assert!(!gives_check);
+        assert!(board.see_ge(mv, 0));
+        board.make_move_with_check(mv, gives_check);
+        board.unmake_move(mv);
+
+        assert_eq!(
+            counters::board_gen_staged_capture_calls.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            counters::board_gen_staged_quiet_moves.load(Ordering::Relaxed),
+            20
+        );
+        assert_eq!(
+            counters::board_compute_pinned_calls.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(counters::board_check_info_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            counters::board_gives_check_fast_calls.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            counters::board_see_threshold_calls.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            counters::board_make_with_check_calls.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(counters::board_unmake_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(counters::board_history_pushes.load(Ordering::Relaxed), 1);
+        assert_eq!(counters::board_history_growths.load(Ordering::Relaxed), 0);
+
+        counters::reset();
+        let mut growth = Board::starting_position();
+        for _ in 0..129 {
+            growth.make_null_move();
+        }
+        assert_eq!(counters::board_history_pushes.load(Ordering::Relaxed), 129);
+        assert_eq!(counters::board_history_growths.load(Ordering::Relaxed), 1);
     }
 }
 

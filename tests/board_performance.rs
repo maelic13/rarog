@@ -176,7 +176,7 @@ fn custom_make_unmake(boards: &mut [Board]) -> u64 {
     let mut ops = 0;
     for board in boards {
         let moves = board.generate_legal_moves();
-        for &mv in moves.iter() {
+        for &mv in &moves {
             board.make_move_unchecked(mv);
             black_box(board.occupied());
             board.unmake_move(mv);
@@ -199,7 +199,7 @@ fn custom_game_simulation(boards: &mut [Board]) -> u64 {
     let mut ops = 0;
     for board in boards {
         let moves = board.generate_legal_moves();
-        for &mv in moves.iter() {
+        for &mv in &moves {
             board.make_move_unchecked(mv);
             let opponent_moves = board.generate_legal_moves();
             ops += opponent_moves.len() as u64;

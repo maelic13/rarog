@@ -17,7 +17,10 @@
 //!   cargo run --release -p texel-tuner -- --tune material \
 //!       tools/texel/data/train.csv tools/texel/data/holdout.csv out.txt
 
+use std::collections::HashMap;
 use std::fs;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::process::exit;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -196,6 +199,21 @@ fn push_material(out: &mut Vec<usize>) {
     push_field_indices(out, "eg_val", 0, 5);
 }
 
+/// One PST square per non-king piece and phase is pinned to remove the exact
+/// material/PST gauge: adding C to a piece value and subtracting C from all 64
+/// of its PST entries represents the same evaluator. Pinning square 0 retains
+/// all 64 identifiable piece-square scores while keeping material interpretable.
+fn pst_gauge_anchors() -> Vec<usize> {
+    let mut out = Vec::with_capacity(10);
+    for field in ["pst_mg", "pst_eg"] {
+        let (off, _) = field_offset(field);
+        for piece in 0..5 {
+            out.push(off + piece * 64);
+        }
+    }
+    out
+}
+
 fn active_indices_for_group(group: &str) -> Vec<usize> {
     let mut active = Vec::new();
     let push_all = |a: &mut Vec<usize>, fields: &[&str]| {
@@ -289,6 +307,15 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, KINGSAFETY);
             push_all(&mut active, IMBALANCE);
         }
+        // Phase 4.8 complete existing-surface fit. This is `all` with the ten
+        // exact material/PST gauge anchors removed. The two king material
+        // values are invariant (both kings are always present), and the twelve
+        // danger-index selectors use the nonlinear re-evaluation instrument.
+        "complete" => {
+            active = active_indices_for_group("all");
+            let anchors = pst_gauge_anchors();
+            active.retain(|i| !anchors.contains(i));
+        }
         // Stage 4.7 global polish: everything linearly tunable, but the three
         // feature-support sparse pairs stay frozen (Step 4.0) — "everything
         // unfrozen" predates that audit. The nonlinear king-danger inputs are
@@ -331,7 +358,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
 fn print_groups() {
     eprintln!(
         "Groups: material pawnstruct passers rooks minors mobility threats \
-         threats42 hanging misc kingsafety imbalance smallpos gauntlet scalars scalars44 pst all"
+         threats42 hanging misc kingsafety imbalance smallpos gauntlet scalars scalars44 pst all complete"
     );
 }
 
@@ -587,26 +614,36 @@ const BUCKET_NAMES: &[&str] = &[
 
 /// Flat-index ranges of the trace families used for the king-attack / passer /
 /// threat buckets, computed once from `EVAL_PARAM_NAMES`.
+///
+/// Each family is a LIST of ranges, not one min..max span. The span form was a
+/// silent instrument failure: `passed*` is 13 fields totalling 27 slots but
+/// they are **not contiguous**, so min..max covered [780,1211) = 431 slots, of
+/// which 404 belonged to 113 other fields -- every pawn-structure term, the
+/// threats, king safety, all of it. The bucket then fired whenever any of those
+/// foreign slots was nonzero, which is nearly always: it selected 127,777 of
+/// 127,778 positions and therefore measured nothing at all, while looking like
+/// a working cohort. `threat` (48 slots) and `king_safety_table` (40) happen to
+/// be contiguous, so those two buckets were correct -- which is exactly why the
+/// bug survived: two thirds of the instrument worked.
 struct FamilyRanges {
-    passer: (usize, usize),
-    threat: (usize, usize),
-    ksafe: (usize, usize),
+    passer: Vec<(usize, usize)>,
+    threat: Vec<(usize, usize)>,
+    ksafe: Vec<(usize, usize)>,
 }
 
 fn family_ranges() -> &'static FamilyRanges {
     static R: OnceLock<FamilyRanges> = OnceLock::new();
     R.get_or_init(|| {
-        let (mut passer, mut threat, mut ksafe) =
-            ((usize::MAX, 0), (usize::MAX, 0), (usize::MAX, 0));
+        let (mut passer, mut threat, mut ksafe) = (Vec::new(), Vec::new(), Vec::new());
         let mut off = 0usize;
         for &(name, len) in EVAL_PARAM_NAMES {
             let end = off + len;
             if name.starts_with("passed") {
-                passer = (passer.0.min(off), passer.1.max(end));
+                passer.push((off, end));
             } else if name.starts_with("threat") {
-                threat = (threat.0.min(off), threat.1.max(end));
+                threat.push((off, end));
             } else if name == "king_safety_table" {
-                ksafe = (ksafe.0.min(off), ksafe.1.max(end));
+                ksafe.push((off, end));
             }
             off = end;
         }
@@ -672,26 +709,33 @@ fn position_buckets(board: &Board, phase: i32, coeffs: &[f64]) -> u32 {
     }
 
     let fr = family_ranges();
-    let any_nz = |(s, e): (usize, usize)| s < e && coeffs[s..e].iter().any(|&c| c != 0.0);
-    if any_nz(fr.ksafe) {
+    let any_nz = |ranges: &[(usize, usize)]| {
+        ranges
+            .iter()
+            .any(|&(s, e)| s < e && coeffs[s..e].iter().any(|&c| c != 0.0))
+    };
+    if any_nz(&fr.ksafe) {
         m |= 1 << 7;
     }
-    if any_nz(fr.passer) {
+    if any_nz(&fr.passer) {
         m |= 1 << 8;
     }
-    if any_nz(fr.threat) {
+    if any_nz(&fr.threat) {
         m |= 1 << 9;
     }
     m
 }
 
 struct TuneSet {
-    active_count: usize,
     result: Vec<f32>,
     base_score: Vec<f32>,
-    /// Row-major `len × active_count`: the tapered per-weight coefficient
-    /// `(count_mg·phase + count_eg·(24−phase))/24 · delta_scale`.
-    coeffs: Vec<f32>,
+    /// CSR row offsets plus parallel active-coordinate/value arrays. A complete
+    /// 1,194-coordinate row is overwhelmingly zero; the old dense layout used
+    /// about 11 GiB for the 2.30M-position corpus and multiplied every zero in
+    /// every epoch. `u16` is sufficient because FLAT_SIZE is 1,218.
+    row_offsets: Vec<usize>,
+    coeff_indices: Vec<u16>,
+    coeff_values: Vec<f32>,
     /// Per-position bucket bitmask (see `BUCKET_NAMES`).
     buckets: Vec<u32>,
 }
@@ -700,8 +744,24 @@ impl TuneSet {
     fn len(&self) -> usize {
         self.result.len()
     }
-    fn row(&self, i: usize) -> &[f32] {
-        &self.coeffs[i * self.active_count..(i + 1) * self.active_count]
+    fn row(&self, i: usize) -> (&[u16], &[f32]) {
+        let start = self.row_offsets[i];
+        let end = self.row_offsets[i + 1];
+        (
+            &self.coeff_indices[start..end],
+            &self.coeff_values[start..end],
+        )
+    }
+
+    fn print_storage(&self, label: &str) {
+        let nnz = self.coeff_values.len();
+        let bytes = nnz * (std::mem::size_of::<u16>() + std::mem::size_of::<f32>())
+            + self.row_offsets.len() * std::mem::size_of::<usize>();
+        println!(
+            "  {label}: {nnz} nonzero coefficients ({:.1}/position), {:.2} GiB CSR",
+            nnz as f64 / self.len() as f64,
+            bytes as f64 / 1024.0f64.powi(3)
+        );
     }
 }
 
@@ -761,6 +821,83 @@ fn read_lines(path: &str) -> Vec<String> {
     text.lines().map(str::to_string).collect()
 }
 
+/// Atomically consume a frozen test set immediately before its first read.
+/// `create_new` makes a second run fail across processes and restarts rather
+/// than quietly converting the test set into another validation set.
+fn claim_frozen_test(marker: &str, test_path: &str) {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(marker)
+        .unwrap_or_else(|e| {
+            eprintln!("Cannot claim frozen test via {marker}: {e}");
+            exit(1)
+        });
+    writeln!(file, "rarog-frozen-test-v1\ntest={test_path}").unwrap_or_else(|e| {
+        eprintln!("Cannot record frozen-test claim in {marker}: {e}");
+        exit(1)
+    });
+    file.sync_all().unwrap_or_else(|e| {
+        eprintln!("Cannot persist frozen-test claim in {marker}: {e}");
+        exit(1)
+    });
+    println!("Frozen test claimed atomically via {marker}");
+}
+
+/// Load a complete `name index value` vector. Production stage chaining must
+/// never accept a partial file: an omitted field would silently fall back to
+/// source defaults and discard an earlier fit.
+fn load_eval_file(path: &str) -> EvalParams {
+    let lines = read_lines(path);
+    let mut params = EvalParams::default();
+    let mut seen = vec![false; EvalParams::FLAT_SIZE];
+    for (line_no, line) in lines.iter().enumerate() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let parts: Vec<_> = line.split_whitespace().collect();
+        if parts.len() != 3 {
+            eprintln!("{path}:{}: expected 'name index value'", line_no + 1);
+            exit(1);
+        }
+        let name = parts[0];
+        let Some(&(_, len)) = EVAL_PARAM_NAMES.iter().find(|&&(field, _)| field == name) else {
+            eprintln!("{path}:{}: unknown eval field '{name}'", line_no + 1);
+            exit(1);
+        };
+        let idx: usize = parts[1].parse().unwrap_or_else(|_| {
+            eprintln!("{path}:{}: bad index '{}'", line_no + 1, parts[1]);
+            exit(1)
+        });
+        if idx >= len {
+            eprintln!("{path}:{}: {name}[{idx}] is outside 0..{len}", line_no + 1);
+            exit(1);
+        }
+        let value: i32 = parts[2].parse().unwrap_or_else(|_| {
+            eprintln!("{path}:{}: bad value '{}'", line_no + 1, parts[2]);
+            exit(1)
+        });
+        let (off, _) = field_offset(name);
+        let flat = off + idx;
+        if seen[flat] {
+            eprintln!("{path}:{}: duplicate {name}[{idx}]", line_no + 1);
+            exit(1);
+        }
+        seen[flat] = true;
+        params.set(name, idx, value);
+    }
+    let missing = seen.iter().filter(|&&present| !present).count();
+    if missing != 0 {
+        eprintln!(
+            "{path}: incomplete eval vector: {missing}/{} slots missing",
+            EvalParams::FLAT_SIZE
+        );
+        exit(1);
+    }
+    params
+}
+
 fn n_threads() -> usize {
     thread::available_parallelism()
         .map(|n| n.get())
@@ -769,12 +906,20 @@ fn n_threads() -> usize {
 
 /// Evaluate one line into (result, base_score_white, coeff row, bucket mask)
 /// for the given active indices. Returns None for blank/malformed lines.
+struct TuneRow {
+    result: f32,
+    base_score: f32,
+    indices: Vec<u16>,
+    values: Vec<f32>,
+    buckets: u32,
+}
+
 fn process_line(
     evaluator: &mut Evaluator,
-    defaults: &EvalParams,
+    base_params: &EvalParams,
     active: &[usize],
     line: &str,
-) -> Option<(f32, f32, Vec<f32>, u32)> {
+) -> Option<TuneRow> {
     let line = line.trim();
     if line.is_empty() || line.starts_with('#') {
         return None;
@@ -791,58 +936,72 @@ fn process_line(
     } else {
         -score
     };
-    let recon = trace.reconstruct(defaults);
+    let recon = trace.reconstruct(base_params);
     let rest = score_white - recon;
     let base_white = recon + rest; // == score_white, kept explicit for clarity
 
     let scale = linear_delta_scale(&board) as f32;
     let coeffs = trace.flat_coeffs();
-    let row: Vec<f32> = active
-        .iter()
-        .map(|&idx| coeffs[idx] as f32 * scale)
-        .collect();
+    let mut row_indices = Vec::new();
+    let mut row_values = Vec::new();
+    for (active_index, &flat_index) in active.iter().enumerate() {
+        let value = coeffs[flat_index] as f32 * scale;
+        if value != 0.0 {
+            row_indices.push(active_index as u16);
+            row_values.push(value);
+        }
+    }
     let buckets = position_buckets(&board, trace.phase, &coeffs);
-    Some((result, base_white as f32, row, buckets))
+    Some(TuneRow {
+        result,
+        base_score: base_white as f32,
+        indices: row_indices,
+        values: row_values,
+        buckets,
+    })
 }
 
-/// One worker chunk's contribution to the sparse dataset: the mg feature
-/// weights, the eg feature weights, the per-position phase factors, and the
-/// index of each active feature. Kept as four parallel `Vec`s (rather than a
-/// `Vec` of structs) because the fitter consumes them as flat columns.
-type ChunkColumns = (Vec<f32>, Vec<f32>, Vec<f32>, Vec<u32>);
+/// One worker chunk's contribution to the CSR dataset.
+type ChunkColumns = (Vec<f32>, Vec<f32>, Vec<usize>, Vec<u16>, Vec<f32>, Vec<u32>);
 
-fn load_tune_dataset(path: &str, active: &[usize], max_positions: usize) -> TuneSet {
+fn load_tune_dataset(
+    path: &str,
+    active: &[usize],
+    max_positions: usize,
+    base_params: &EvalParams,
+) -> TuneSet {
     let mut lines = read_lines(path);
     if max_positions > 0 && lines.len() > max_positions {
         lines.truncate(max_positions);
     }
-    let active_count = active.len();
+    assert!(active.len() <= u16::MAX as usize);
     let threads = n_threads().min(lines.len().max(1));
     let chunk = lines.len().div_ceil(threads.max(1));
 
-    let defaults = EvalParams::default();
     let parts: Vec<ChunkColumns> = thread::scope(|s| {
         let handles: Vec<_> = lines
             .chunks(chunk.max(1))
             .map(|slice| {
-                let defaults = &defaults;
                 s.spawn(move || {
                     let mut evaluator = Evaluator::default();
+                    evaluator.set_params(base_params.clone());
                     let mut res = Vec::new();
                     let mut base = Vec::new();
-                    let mut co = Vec::new();
+                    let mut offsets = vec![0usize];
+                    let mut indices = Vec::new();
+                    let mut values = Vec::new();
                     let mut bk = Vec::new();
                     for line in slice {
-                        if let Some((r, b, row, mask)) =
-                            process_line(&mut evaluator, defaults, active, line)
-                        {
-                            res.push(r);
-                            base.push(b);
-                            co.extend_from_slice(&row);
-                            bk.push(mask);
+                        if let Some(row) = process_line(&mut evaluator, base_params, active, line) {
+                            res.push(row.result);
+                            base.push(row.base_score);
+                            indices.extend_from_slice(&row.indices);
+                            values.extend_from_slice(&row.values);
+                            offsets.push(indices.len());
+                            bk.push(row.buckets);
                         }
                     }
-                    (res, base, co, bk)
+                    (res, base, offsets, indices, values, bk)
                 })
             })
             .collect();
@@ -850,16 +1009,21 @@ fn load_tune_dataset(path: &str, active: &[usize], max_positions: usize) -> Tune
     });
 
     let mut set = TuneSet {
-        active_count,
         result: Vec::new(),
         base_score: Vec::new(),
-        coeffs: Vec::new(),
+        row_offsets: vec![0],
+        coeff_indices: Vec::new(),
+        coeff_values: Vec::new(),
         buckets: Vec::new(),
     };
-    for (res, base, co, bk) in parts {
+    for (res, base, offsets, indices, values, bk) in parts {
+        let prior_nnz = set.coeff_indices.len();
         set.result.extend(res);
         set.base_score.extend(base);
-        set.coeffs.extend(co);
+        set.row_offsets
+            .extend(offsets.into_iter().skip(1).map(|offset| prior_nnz + offset));
+        set.coeff_indices.extend(indices);
+        set.coeff_values.extend(values);
         set.buckets.extend(bk);
     }
     if set.len() == 0 {
@@ -906,9 +1070,10 @@ fn default_loss(set: &TuneSet, k: f64) -> f64 {
 
 fn score_from_weights(set: &TuneSet, i: usize, active: &[usize], base_w: &[f64], w: &[f64]) -> f64 {
     let mut score = set.base_score[i] as f64;
-    let row = set.row(i);
-    for (j, &idx) in active.iter().enumerate() {
-        score += row[j] as f64 * (w[idx] - base_w[idx]);
+    let (indices, values) = set.row(i);
+    for (&active_index, &value) in indices.iter().zip(values) {
+        let idx = active[active_index as usize];
+        score += value as f64 * (w[idx] - base_w[idx]);
     }
     score
 }
@@ -1097,7 +1262,7 @@ fn print_active_deltas(active: &[usize], base_w: &[f64], w: &[f64]) {
 // Commands
 // ---------------------------------------------------------------------------
 
-fn cmd_verify(path: &str) {
+fn cmd_verify(path: &str, weights: Option<&str>) {
     const VERIFY_COUNT: usize = 10_000;
     println!("Loading up to {VERIFY_COUNT} positions from {path} ...");
     let mut lines = read_lines(path);
@@ -1107,8 +1272,9 @@ fn cmd_verify(path: &str) {
     });
     lines.truncate(VERIFY_COUNT);
 
-    let defaults = EvalParams::default();
+    let params = weights.map_or_else(EvalParams::default, load_eval_file);
     let mut evaluator = Evaluator::default();
+    evaluator.set_params(params.clone());
     let mut checked = 0usize;
     let mut mismatches = 0usize;
     let mut max_err = 0i32;
@@ -1119,31 +1285,21 @@ fn cmd_verify(path: &str) {
         let Ok(board) = Board::from_fen(fen) else {
             continue;
         };
-        let score = evaluator.evaluate(&board);
+        let _ = evaluator.evaluate(&board);
         let trace = evaluator.last_trace();
-        let score_white = if board.side_to_move() == rarog::board::Color::White {
-            score
-        } else {
-            -score
-        };
-        let recon = trace.reconstruct(&defaults);
-        let rest = score_white - recon;
-
-        // Re-evaluate and confirm reconstruct + rest reproduces the eval.
-        let fresh = evaluator.evaluate(&board);
-        let fresh_white = if board.side_to_move() == rarog::board::Color::White {
-            fresh
-        } else {
-            -fresh
-        };
-        let err = (fresh_white - (recon + rest)).abs();
+        // `trace.raw` is the independently accumulated linear tapered score.
+        // Comparing reconstruction directly against it catches missing/wrong
+        // feature counts. The old check derived `rest = score - recon` and
+        // then compared `score == recon + rest`, which was true by definition.
+        let recon = trace.reconstruct(&params);
+        let err = (trace.raw - recon).abs();
         if err != 0 {
             mismatches += 1;
             max_err = max_err.max(err);
             if mismatches <= 5 {
                 eprintln!(
-                    "MISMATCH: actual={fresh_white} recon+rest={} fen={fen}",
-                    recon + rest
+                    "MISMATCH: trace.raw={} reconstruct={recon} fen={fen}",
+                    trace.raw
                 );
             }
         }
@@ -1174,6 +1330,19 @@ struct TuneOpts {
     /// optimistically biased by construction: it is the best of N epochs on
     /// the very data that picked them.
     test: Option<String>,
+    /// Complete source vector used as the frozen-test comparator. This is
+    /// deliberately separate from `initial`: the final polish starts from the
+    /// preceding nonlinear stage, while the production question is whether the
+    /// complete rounded candidate beats the source HCE that began the run.
+    test_baseline: Option<String>,
+    /// Persistent exclusive marker created at the exact moment the frozen test
+    /// is first opened. Production fits use it to enforce one-shot use across
+    /// separate invocations, not merely within one process.
+    test_marker: Option<String>,
+    /// Complete vector produced by the preceding stage. Omission means source
+    /// defaults. Partial vectors are rejected so stage chaining cannot reset a
+    /// family silently.
+    initial: Option<String>,
     out: String,
     epochs: usize,
     lr: f64,
@@ -1197,17 +1366,27 @@ fn cmd_tune(opts: &TuneOpts) {
         active.len()
     );
 
+    let base_params = opts
+        .initial
+        .as_deref()
+        .map_or_else(EvalParams::default, load_eval_file);
+    println!(
+        "Initial vector: {}",
+        opts.initial.as_deref().unwrap_or("source defaults")
+    );
     println!("Loading train from {} ...", opts.train);
-    let train = load_tune_dataset(&opts.train, &active, opts.max_positions);
+    let train = load_tune_dataset(&opts.train, &active, opts.max_positions, &base_params);
     println!("  {} train positions", train.len());
+    train.print_storage("train storage");
     println!("Loading holdout from {} ...", opts.holdout);
-    let holdout = load_tune_dataset(&opts.holdout, &active, opts.max_positions);
+    let holdout = load_tune_dataset(&opts.holdout, &active, opts.max_positions, &base_params);
     println!("  {} holdout positions", holdout.len());
+    holdout.print_storage("holdout storage");
 
     let k = fit_k(&holdout);
     println!("K = {}", k_label(k));
 
-    let base_w = EvalParams::default().to_flat();
+    let base_w = base_params.to_flat();
     let mut w = base_w.clone();
 
     let mut best_w = w.clone();
@@ -1244,9 +1423,9 @@ fn cmd_tune(opts: &TuneOpts) {
                             let err = train.result[i] as f64 - sig;
                             let dsig = sig * (1.0 - sig);
                             let coeff = -2.0 * err * dsig * (k / 400.0);
-                            let row = train.row(i);
-                            for (j, gj) in g.iter_mut().enumerate() {
-                                *gj += coeff * row[j] as f64;
+                            let (indices, values) = train.row(i);
+                            for (&active_index, &value) in indices.iter().zip(values) {
+                                g[active_index as usize] += coeff * value as f64;
                             }
                         }
                         g
@@ -1294,27 +1473,18 @@ fn cmd_tune(opts: &TuneOpts) {
     println!("optimistic estimate. Pass --test <frozen.csv> for an unbiased one.");
     report_bucket_table(&holdout, &active, &base_w, &w, k);
 
-    // 9.6(a): the frozen test set is loaded only now — after every selection
-    // decision (K, best epoch) has been made — and evaluated exactly once.
-    if let Some(test_path) = &opts.test {
-        println!(
-            "
-Loading FROZEN TEST set from {test_path} ..."
-        );
-        let test = load_tune_dataset(test_path, &active, opts.max_positions);
-        println!("  {} test positions", test.len());
-        let base_test = traced_loss(&test, &active, &base_w, &base_w, k);
-        let test_loss = traced_loss(&test, &active, &base_w, &w, k);
-        println!(
-            "Frozen test loss = {test_loss:.8} (base {base_test:.8}, delta {:+.8})",
-            test_loss - base_test
-        );
-        println!("(one-shot residual report; this set selected nothing)");
-        report_bucket_table(&test, &active, &base_w, &w, k);
-    }
+    // Persist and reload before any final evidence. `EvalParams` is integer;
+    // the optimizer is floating-point. Measuring `w` here would report a model
+    // that can never be baked into the engine.
+    write_eval_file(&opts.out, &w);
+    let persisted = load_eval_file(&opts.out);
+    let persisted_w = persisted.to_flat();
+    let persisted_holdout = traced_loss(&holdout, &active, &base_w, &persisted_w, k);
+    println!("Persisted rounded validation loss = {persisted_holdout:.8}");
+
+    report_frozen_test(opts, k);
 
     print_active_deltas(&active, &base_w, &w);
-    write_eval_file(&opts.out, &w);
     println!("Tuned weights written to {}", opts.out);
 }
 
@@ -1342,9 +1512,14 @@ const KS_DANGER_INPUTS: &[&str] = &[
     "ks_queen_relief",
 ];
 
-/// Active flat indices for the king-safety fit: the 11 danger-index inputs plus
+/// Active flat indices for the king-safety fit: the 12 danger-index inputs plus
 /// the 40-entry safety table they index into. The table is co-tuned because its
 /// shape only makes sense against the index distribution the inputs produce.
+///
+/// The count said 11 until 2026-09-01; `ks_shelter_storm` was folded into the
+/// danger index at Phase 6.2.1 and the comment was not updated. `KS_DANGER_INPUTS`
+/// is the authority and has 12 entries, which is what 4.7.3's 1,194 + 12 + 10 + 2
+/// partition of FLAT_SIZE counts.
 fn ks_active_indices() -> Vec<usize> {
     let mut a = Vec::new();
     for f in KS_DANGER_INPUTS {
@@ -1358,7 +1533,7 @@ type RawPos = (Board, f32, u32);
 
 /// Load (board, result, bucket-mask) triples. One eval per position records the
 /// bucket mask (king-attack / passer / threat reuse the trace activation).
-fn load_raw_dataset(path: &str, max_positions: usize) -> Vec<RawPos> {
+fn load_raw_dataset(path: &str, max_positions: usize, base_params: &EvalParams) -> Vec<RawPos> {
     let mut lines = read_lines(path);
     if max_positions > 0 && lines.len() > max_positions {
         lines.truncate(max_positions);
@@ -1371,6 +1546,7 @@ fn load_raw_dataset(path: &str, max_positions: usize) -> Vec<RawPos> {
             .map(|slice| {
                 s.spawn(move || {
                     let mut ev = Evaluator::default();
+                    ev.set_params(base_params.clone());
                     let mut out = Vec::new();
                     for line in slice {
                         let line = line.trim();
@@ -1529,6 +1705,188 @@ fn ks_report_buckets(base: &[(f64, u64)], fin: &[(f64, u64)]) {
     }
 }
 
+/// Compare the exact persisted integer candidate with the explicit source
+/// vector. The raw evaluator is required: the source and candidate can differ
+/// in nonlinear danger-index coordinates, which a linear trace based on the
+/// preceding stage cannot reconstruct.
+fn report_frozen_test(opts: &TuneOpts, k: f64) {
+    let Some(test_path) = &opts.test else {
+        return;
+    };
+    let baseline_path = opts
+        .test_baseline
+        .as_deref()
+        .expect("validated --test-baseline must accompany --test");
+    // Validate both vectors before consuming the one-shot marker. A corrupt
+    // artifact must fail without burning the test set.
+    let baseline = load_eval_file(baseline_path);
+    let candidate = load_eval_file(&opts.out);
+    if let Some(marker) = &opts.test_marker {
+        claim_frozen_test(marker, test_path);
+    }
+    println!(
+        "\nLoading FROZEN TEST set from {test_path} ...\n\
+         Exact comparison: source vector {baseline_path}\n\
+         Candidate: persisted rounded vector {}",
+        opts.out
+    );
+    // The baseline defines cohort membership, so parameter movement cannot
+    // silently move positions between the base and final columns.
+    let test = load_raw_dataset(test_path, opts.max_positions, &baseline);
+    println!("  {} test positions", test.len());
+    let mut evs: Vec<Evaluator> = (0..n_threads()).map(|_| Evaluator::default()).collect();
+    let base_test = ks_mse(&test, &mut evs, &baseline, k);
+    let test_loss = ks_mse(&test, &mut evs, &candidate, k);
+    println!(
+        "Frozen test loss = {test_loss:.8} (source baseline {base_test:.8}, delta {:+.8})",
+        test_loss - base_test
+    );
+    println!("(one-shot exact rounded report; this set selected nothing)");
+    let base_buckets = ks_bucket_losses(&test, &mut evs, &baseline, k);
+    let final_buckets = ks_bucket_losses(&test, &mut evs, &candidate, k);
+    ks_report_buckets(&base_buckets, &final_buckets);
+}
+
+fn cmd_compare_frozen(test_path: &str, baseline_path: &str, candidate_path: &str, marker: &str) {
+    let k = fixed_k().unwrap_or_else(|| {
+        eprintln!("--compare-frozen requires --fix-k K.");
+        exit(1)
+    });
+    // Reuse the same exact path as production tuning without constructing a
+    // fake optimization stage or reading the confirmation set as train data.
+    let opts = TuneOpts {
+        group: "confirmation-only".to_string(),
+        train: String::new(),
+        holdout: String::new(),
+        test: Some(test_path.to_string()),
+        test_baseline: Some(baseline_path.to_string()),
+        test_marker: Some(marker.to_string()),
+        initial: None,
+        out: candidate_path.to_string(),
+        epochs: 1,
+        lr: 0.0,
+        max_positions: 0,
+        l2: 0.0,
+    };
+    report_frozen_test(&opts, k);
+}
+
+#[derive(Default)]
+struct EndgameClassStats {
+    positions: u64,
+    loss: f64,
+    predicted: f64,
+    result: f64,
+    draw_positions: u64,
+    draw_predicted: f64,
+}
+
+fn material_side(board: &Board, color: Color) -> (String, [u32; 6]) {
+    let counts = [
+        board.pieces(color, Piece::Queen).count(),
+        board.pieces(color, Piece::Rook).count(),
+        board.pieces(color, Piece::Bishop).count(),
+        board.pieces(color, Piece::Knight).count(),
+        board.pieces(color, Piece::Pawn).count(),
+    ];
+    let mut name = String::from("K");
+    for (count, symbol) in counts.iter().zip(['Q', 'R', 'B', 'N', 'P']) {
+        for _ in 0..*count {
+            name.push(symbol);
+        }
+    }
+    let key = [
+        counts[0] * 9 + counts[1] * 5 + (counts[2] + counts[3]) * 3 + counts[4],
+        counts[0],
+        counts[1],
+        counts[2],
+        counts[3],
+        counts[4],
+    ];
+    (name, key)
+}
+
+fn endgame_class(board: &Board) -> Option<(String, Color)> {
+    let (white, white_key) = material_side(board, Color::White);
+    let (black, black_key) = material_side(board, Color::Black);
+    let pieces = white_key[1..].iter().sum::<u32>() + black_key[1..].iter().sum::<u32>() + 2;
+    if pieces > 7 {
+        return None;
+    }
+    let white_strong = white_key >= black_key;
+    let (strong, weak, color) = if white_strong {
+        (white, black, Color::White)
+    } else {
+        (black, white, Color::Black)
+    };
+    Some((format!("{strong}-{weak}"), color))
+}
+
+fn cmd_report_endgames(path: &str, weights_path: &str) {
+    let k = fixed_k().unwrap_or_else(|| {
+        eprintln!("--report-endgames requires --fix-k K.");
+        exit(1)
+    });
+    let params = load_eval_file(weights_path);
+    let boards = load_raw_dataset(path, 0, &params);
+    let mut evaluator = Evaluator::default();
+    evaluator.set_params(params);
+    let mut classes: HashMap<String, EndgameClassStats> = HashMap::new();
+    let mut global_loss = 0.0;
+    for (board, result_white, _) in &boards {
+        let score_white = eval_white(&mut evaluator, board);
+        let predicted_white = sigmoid(score_white, k);
+        let error = *result_white as f64 - predicted_white;
+        global_loss += error * error;
+        let Some((name, strong)) = endgame_class(board) else {
+            continue;
+        };
+        let (predicted, result) = if strong == Color::White {
+            (predicted_white, *result_white as f64)
+        } else {
+            (1.0 - predicted_white, 1.0 - *result_white as f64)
+        };
+        let stats = classes.entry(name).or_default();
+        stats.positions += 1;
+        stats.loss += error * error;
+        stats.predicted += predicted;
+        stats.result += result;
+        if (*result_white - 0.5).abs() < f32::EPSILON {
+            stats.draw_positions += 1;
+            stats.draw_predicted += predicted;
+        }
+    }
+    let global = global_loss / boards.len() as f64;
+    let mut rows: Vec<_> = classes.into_iter().collect();
+    rows.sort_by_key(|row| std::cmp::Reverse(row.1.positions));
+    println!(
+        "# endgame material report: {} positions, K={k:.8}, global loss={global:.8}",
+        boards.len()
+    );
+    println!(
+        "class,n,loss,loss_vs_global,mean_predicted,mean_result,draw_n,draw_predicted,draw_bias"
+    );
+    for (name, stats) in rows {
+        let n = stats.positions as f64;
+        let draw_predicted = if stats.draw_positions == 0 {
+            f64::NAN
+        } else {
+            stats.draw_predicted / stats.draw_positions as f64
+        };
+        println!(
+            "{name},{},{:.8},{:.4},{:.6},{:.6},{},{:.6},{:+.6}",
+            stats.positions,
+            stats.loss / n,
+            (stats.loss / n) / global,
+            stats.predicted / n,
+            stats.result / n,
+            stats.draw_positions,
+            draw_predicted,
+            draw_predicted - 0.5,
+        );
+    }
+}
+
 /// Fit K once from base-parameter scores (ternary search), so the K-fit does
 /// not re-evaluate the dataset per iteration.
 fn ks_fit_k(boards: &[RawPos], evs: &mut [Evaluator], base: &EvalParams) -> f64 {
@@ -1596,22 +1954,29 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
         KS_DANGER_INPUTS.len(),
     );
 
+    let base_params = opts
+        .initial
+        .as_deref()
+        .map_or_else(EvalParams::default, load_eval_file);
+    println!(
+        "Initial vector: {}",
+        opts.initial.as_deref().unwrap_or("source defaults")
+    );
     println!("Loading train from {} ...", opts.train);
-    let train = load_raw_dataset(&opts.train, opts.max_positions);
+    let train = load_raw_dataset(&opts.train, opts.max_positions, &base_params);
     println!("  {} train positions", train.len());
     println!("Loading holdout from {} ...", opts.holdout);
-    let holdout = load_raw_dataset(&opts.holdout, opts.max_positions);
+    let holdout = load_raw_dataset(&opts.holdout, opts.max_positions, &base_params);
     println!("  {} holdout positions", holdout.len());
 
     let mut evs: Vec<Evaluator> = (0..n_threads()).map(|_| Evaluator::default()).collect();
 
-    let base_params = EvalParams::default();
     let k = ks_fit_k(&holdout, &mut evs, &base_params);
     println!("K = {}", k_label(k));
 
     let base_w = base_params.to_flat();
     let mut w = base_w.clone();
-    let mut params = EvalParams::default();
+    let mut params = base_params.clone();
 
     params.set_from_flat(&w);
     let mut cur_train = ks_mse(&train, &mut evs, &params, k);
@@ -1680,35 +2045,14 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
     let fin_buckets = ks_bucket_losses(&holdout, &mut evs, &params, k);
     ks_report_buckets(&base_buckets, &fin_buckets);
 
-    // 9.6(a): one-shot frozen-test residual, evaluated only after the fit and
-    // its epoch selection are complete. See TuneOpts::test.
-    if let Some(test_path) = &opts.test {
-        println!(
-            "
-Loading FROZEN TEST set from {test_path} ..."
-        );
-        let test = load_raw_dataset(test_path, opts.max_positions);
-        println!("  {} test positions", test.len());
-        params.set_from_flat(&base_w);
-        let base_test = ks_mse(&test, &mut evs, &params, k);
-        params.set_from_flat(&w);
-        let test_loss = ks_mse(&test, &mut evs, &params, k);
-        println!(
-            "Frozen test loss = {test_loss:.8} (base {base_test:.8}, delta {:+.8})",
-            test_loss - base_test
-        );
-        println!("(one-shot residual report; this set selected nothing)");
-        let base_b = {
-            params.set_from_flat(&base_w);
-            ks_bucket_losses(&test, &mut evs, &params, k)
-        };
-        params.set_from_flat(&w);
-        let fin_b = ks_bucket_losses(&test, &mut evs, &params, k);
-        ks_report_buckets(&base_b, &fin_b);
-    }
+    write_eval_file(&opts.out, &w);
+    let persisted = load_eval_file(&opts.out);
+    let persisted_holdout = ks_mse(&holdout, &mut evs, &persisted, k);
+    println!("Persisted rounded validation loss = {persisted_holdout:.8}");
+
+    report_frozen_test(opts, k);
 
     print_active_deltas(&active, &base_w, &w);
-    write_eval_file(&opts.out, &w);
     println!("Tuned weights written to {}", opts.out);
 }
 
@@ -1896,31 +2240,88 @@ fn cmd_feature_support(path: &str, max_positions: usize) {
     }
 }
 
+/// Exact primary instrument/disposition for every EvalParams scalar. The
+/// nonlinear king-safety fit also co-tunes the linearly traced safety table,
+/// but its primary owner remains the complete linear surface so this partition
+/// totals exactly once to FLAT_SIZE.
+fn coverage_partition() -> Vec<&'static str> {
+    let mut owner = vec![""; EvalParams::FLAT_SIZE];
+    let mut claim = |idx: usize, label: &'static str| {
+        assert!(owner[idx].is_empty(), "slot {idx} claimed twice");
+        owner[idx] = label;
+    };
+    for idx in active_indices_for_group("complete") {
+        claim(idx, "linear");
+    }
+    for field in KS_DANGER_INPUTS {
+        let (off, len) = field_offset(field);
+        for idx in off..off + len {
+            claim(idx, "nonlinear");
+        }
+    }
+    for idx in pst_gauge_anchors() {
+        claim(idx, "gauge");
+    }
+    for field in ["mg_val", "eg_val"] {
+        let (off, len) = field_offset(field);
+        claim(off + len - 1, "invariant");
+    }
+    assert!(owner.iter().all(|label| !label.is_empty()));
+    owner
+}
+
+fn cmd_audit_coverage() {
+    let owner = coverage_partition();
+    let mut flat = 0usize;
+    let mut counts = std::collections::BTreeMap::<&str, usize>::new();
+    println!("EvalParams instrument coverage (primary owner per scalar):");
+    for &(name, len) in EVAL_PARAM_NAMES {
+        for index in 0..len {
+            let label = owner[flat];
+            *counts.entry(label).or_default() += 1;
+            println!("{flat:>4} {name:<30} {index:>3} {label}");
+            flat += 1;
+        }
+    }
+    println!("Coverage summary:");
+    for (label, count) in counts {
+        println!("  {label:<10} {count:>4}");
+    }
+    println!("  total      {flat:>4}");
+    assert_eq!(flat, EvalParams::FLAT_SIZE);
+    println!(
+        "PASS: all {} EvalParams slots have exactly one primary disposition; nonlinear fit additionally co-tunes the 40-entry king_safety_table.",
+        EvalParams::FLAT_SIZE
+    );
+}
+
 /// Phase 4.0 readiness — per-bucket loss snapshot of the *current* eval, no
 /// fit. Establishes the baselines a later fit's per-bucket table is judged
 /// against.
 fn cmd_buckets(path: &str, max_positions: usize) {
     let active: Vec<usize> = Vec::new();
+    let base_params = EvalParams::default();
     println!("Loading {path} ...");
-    let set = load_tune_dataset(path, &active, max_positions);
+    let set = load_tune_dataset(path, &active, max_positions, &base_params);
     println!("  {} positions", set.len());
     let k = fit_k(&set);
     println!("K = {}", k_label(k));
     println!("Aggregate loss = {:.8}", default_loss(&set, k));
-    let base_w = EvalParams::default().to_flat();
+    let base_w = base_params.to_flat();
     report_bucket_table(&set, &active, &base_w, &base_w, k);
 }
 
 fn usage(exe: &str) {
     eprintln!("Usage:");
-    eprintln!("  {exe} --verify <dataset.csv>");
+    eprintln!("  {exe} --verify <dataset.csv> [--weights complete-vector.txt]");
+    eprintln!("  {exe} --audit-coverage");
     eprintln!("  {exe} --feature-support <dataset.csv> [--max-positions N]");
     eprintln!("  {exe} --buckets <dataset.csv> [--max-positions N] [--from-cp] [--fix-k K]");
     eprintln!(
-        "  {exe} --tune <group> <train.csv> <validation.csv> [out.txt] [--test frozen.csv] [--epochs N] [--lr X] [--l2 X] [--max-positions N] [--from-cp] [--fix-k K]"
+        "  {exe} --tune <group> <train.csv> <validation.csv> [out.txt] [--initial complete-vector.txt] [--test frozen.csv --test-baseline source-vector.txt] [--test-marker FILE] [--epochs N] [--lr X] [--l2 X] [--max-positions N] [--from-cp] [--fix-k K]"
     );
     eprintln!(
-        "  {exe} --tune-kingsafety <train.csv> <validation.csv> [out.txt] [--test frozen.csv] [--epochs N] [--max-positions N] [--from-cp] [--fix-k K]"
+        "  {exe} --tune-kingsafety <train.csv> <validation.csv> [out.txt] [--initial complete-vector.txt] [--test frozen.csv --test-baseline source-vector.txt] [--test-marker FILE] [--epochs N] [--max-positions N] [--from-cp] [--fix-k K]"
     );
     eprintln!();
     eprintln!("  --test      FROZEN test set: loaded after the fit, read once,");
@@ -1930,7 +2331,28 @@ fn usage(exe: &str) {
     eprintln!("  --from-cp   targets are White-POV centipawns (e.g. Hydra sf_*.csv),");
     eprintln!("              squashed 1/(1+10^(-cp/400)) at load (Phase 6.1 SF-distill)");
     eprintln!("  --fix-k K   pin sigmoid K instead of fitting it (e.g. --fix-k 1)");
+    eprintln!("  --initial   start from a complete prior-stage vector; partial files fail");
+    eprintln!("  --test-marker atomically enforce one-shot frozen-test use across runs");
+    eprintln!(
+        "  --test-baseline complete source vector for exact source-to-rounded-candidate test"
+    );
+    eprintln!("  {exe} --write-defaults <complete-vector.txt>");
+    eprintln!(
+        "  {exe} --compare-frozen <test.csv> <source-vector.txt> <candidate-vector.txt> <marker> --fix-k K"
+    );
+    eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
     print_groups();
+}
+
+fn validate_test_contract(opts: &TuneOpts) {
+    if opts.test_marker.is_some() && opts.test.is_none() {
+        eprintln!("--test-marker requires --test.");
+        exit(1);
+    }
+    if opts.test.is_some() != opts.test_baseline.is_some() {
+        eprintln!("--test and --test-baseline must be supplied together.");
+        exit(1);
+    }
 }
 
 /// Parse the global `--from-cp` / `--fix-k` flags shared by several
@@ -1967,12 +2389,63 @@ fn main() {
     }
     match args[1].as_str() {
         "--verify" => {
+            if args.len() != 3 && args.len() != 5 {
+                usage(&args[0]);
+                exit(1);
+            }
+            let weights = if args.len() == 5 && args[3] == "--weights" {
+                Some(args[4].as_str())
+            } else if args.len() == 3 {
+                None
+            } else {
+                usage(&args[0]);
+                exit(1)
+            };
+            cmd_verify(&args[2], weights);
+        }
+        "--write-defaults" => {
             if args.len() != 3 {
                 usage(&args[0]);
                 exit(1);
             }
-            cmd_verify(&args[2]);
+            write_eval_file(&args[2], &EvalParams::default().to_flat());
+            println!("Complete source-default vector written to {}", args[2]);
         }
+        "--compare-frozen" => {
+            if args.len() < 7 {
+                usage(&args[0]);
+                exit(1);
+            }
+            let mut i = 6;
+            while i < args.len() {
+                let flag = args[i].clone();
+                i += 1;
+                if !parse_global_flag(&flag, &args, &mut i) {
+                    eprintln!("Unknown option {flag}");
+                    usage(&args[0]);
+                    exit(1);
+                }
+            }
+            cmd_compare_frozen(&args[2], &args[3], &args[4], &args[5]);
+        }
+        "--report-endgames" => {
+            if args.len() < 5 {
+                usage(&args[0]);
+                exit(1);
+            }
+            let mut i = 4;
+            while i < args.len() {
+                let flag = args[i].clone();
+                i += 1;
+                if !parse_global_flag(&flag, &args, &mut i) {
+                    eprintln!("Unknown option {flag}");
+                    usage(&args[0]);
+                    exit(1);
+                }
+            }
+            cmd_report_endgames(&args[2], &args[3]);
+        }
+        "--audit-coverage" => cmd_audit_coverage(),
         "--tune" => {
             if args.len() < 5 {
                 usage(&args[0]);
@@ -1983,6 +2456,9 @@ fn main() {
                 train: args[3].clone(),
                 holdout: args[4].clone(),
                 test: None,
+                test_baseline: None,
+                test_marker: None,
+                initial: None,
                 out: "tools/texel/out/eval_params.txt".to_string(),
                 epochs: 200,
                 lr: 0.3,
@@ -2004,8 +2480,20 @@ fn main() {
                     })
                 };
                 match flag.as_str() {
+                    "--initial" => {
+                        opts.initial = Some(val().clone());
+                        i += 1;
+                    }
                     "--test" => {
                         opts.test = Some(val().clone());
+                        i += 1;
+                    }
+                    "--test-baseline" => {
+                        opts.test_baseline = Some(val().clone());
+                        i += 1;
+                    }
+                    "--test-marker" => {
+                        opts.test_marker = Some(val().clone());
                         i += 1;
                     }
                     "--epochs" => {
@@ -2049,6 +2537,7 @@ fn main() {
                 eprintln!("--epochs must be positive.");
                 exit(1);
             }
+            validate_test_contract(&opts);
             cmd_tune(&opts);
         }
         "--tune-kingsafety" => {
@@ -2061,6 +2550,9 @@ fn main() {
                 train: args[2].clone(),
                 holdout: args[3].clone(),
                 test: None,
+                test_baseline: None,
+                test_marker: None,
+                initial: None,
                 out: "tools/texel/out/king_safety.txt".to_string(),
                 epochs: 40,
                 lr: 0.0,
@@ -2082,8 +2574,20 @@ fn main() {
                     })
                 };
                 match flag.as_str() {
+                    "--initial" => {
+                        opts.initial = Some(val().clone());
+                        i += 1;
+                    }
                     "--test" => {
                         opts.test = Some(val().clone());
+                        i += 1;
+                    }
+                    "--test-baseline" => {
+                        opts.test_baseline = Some(val().clone());
+                        i += 1;
+                    }
+                    "--test-marker" => {
+                        opts.test_marker = Some(val().clone());
                         i += 1;
                     }
                     "--epochs" => {
@@ -2113,6 +2617,7 @@ fn main() {
                 eprintln!("--epochs must be positive.");
                 exit(1);
             }
+            validate_test_contract(&opts);
             cmd_tune_kingsafety(&opts);
         }
         "--feature-support" => {

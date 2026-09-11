@@ -68,14 +68,31 @@ param(
     [int]$Hash = 64,
     [string]$Book = "$PSScriptRoot\books\UHO_Lichess_4852_v1.epd",
     [string]$FastchessPath = "$PSScriptRoot\bin\fastchess.exe",
-    [string]$EnginesDir = "D:\chess\engines"
+    [string]$EnginesDir = "D:\chess\engines",
+    [switch]$Adjudicate
 )
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
+# ADJUDICATION OFF BY DEFAULT since 2026-09-01 (RAR-M16). A gauntlet is
+# cross-evaluator by construction, which is where the confounder is largest:
+# RAR-O01 and RAR-O02 are the same four engines with adjudication on and off,
+# and they differ by about 74 Elo. `-Adjudicate` opts back in.
 $strengthProfile = Get-StrengthTestProfile
-$resignArgs = @(Get-StrengthTestResignArgs)
+if ($Adjudicate) {
+    $adjudicationArgs = @(
+        '-draw'
+        "movenumber=$($strengthProfile.DrawMoveNumber)"
+        "movecount=$($strengthProfile.DrawMoveCount)"
+        "score=$($strengthProfile.DrawScore)"
+    ) + @(Get-StrengthTestResignArgs)
+    $adjudicationLabel = $strengthProfile.Name
+} else {
+    $adjudicationArgs = @()
+    $adjudicationLabel = "none (games play to a rules result)"
+}
+Write-Host "  Adjudication: $adjudicationLabel"
 
 $concurrencyInfo = Resolve-HarnessConcurrency -Requested $Concurrency
 $Concurrency = $concurrencyInfo.Concurrency
@@ -151,8 +168,7 @@ Write-Host ""
     -concurrency $Concurrency `
     -use-affinity $AffinityCpus `
     -srand $Seed `
-    -draw "movenumber=$($strengthProfile.DrawMoveNumber)" "movecount=$($strengthProfile.DrawMoveCount)" "score=$($strengthProfile.DrawScore)" `
-    @resignArgs `
+    @adjudicationArgs `
     -pgnout "file=$pgnOut" `
     -output format=fastchess 2>&1 |
     Tee-Object -FilePath $logOut

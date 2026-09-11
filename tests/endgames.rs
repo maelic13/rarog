@@ -17,7 +17,7 @@
 //! `src/eval.rs` (`endgame_311c_tests`) rather than here.
 
 use rarog::board::{Board, Color, Move, Piece};
-use rarog::eval::Evaluator;
+use rarog::eval::{Evaluator, MATE_SCORE};
 use rarog::search::{SearchEvent, Searcher};
 use rarog::search_options::SearchOptions;
 
@@ -25,10 +25,30 @@ const ENDGAMES_EPD: &str = include_str!("endgames.epd");
 
 /// Move budget (plies) for a KBNK playout. Perfect play mates in <= ~33 plies;
 /// from the near-corner suite positions far fewer are needed.
-const KBNK_MOVE_BUDGET: usize = 40;
-/// Fixed search depth per move during a KBNK playout. KBNK trees are tiny, so
-/// this stays fast even under heavy CPU load.
-const KBNK_SEARCH_DEPTH: u32 = 10;
+/// 40 was too small for any position the anchor could actually discriminate
+/// on: the head needs 45-75 plies from a centre-king start, so a 40-ply budget
+/// admitted only near-corner cases -- which mate even with a broken drive.
+const KBNK_MOVE_BUDGET: usize = 90;
+/// Node budget per move during a KBNK playout.
+///
+/// PLAN 4.10.4. This was a fixed DEPTH of 10 with a fresh `Searcher` -- and so
+/// a fresh, empty transposition table -- for every move of the game. Both
+/// halves of that were wrong, and wrong in the direction that makes an anchor
+/// pass when it should fail:
+///
+/// * The conversion failure this suite exists to catch was measured at 60,000
+///   nodes per move with ONE table persisting across the game
+///   (`tools/diag/endgame_truth.py`). A depth cap is a different budget, and
+///   an empty table each move is a different search.
+/// * Basilisk hit exactly this: an anchor written for a specific losing line
+///   PASSED under the very vector it was written to catch, for these two
+///   reasons, and only reproducing the original conditions made it fail
+///   correctly (BAS-E39).
+///
+/// So the playout now matches the instrument: a node budget, and one searcher
+/// for the whole game. 60,000 is the instrument's figure; the suite runs a
+/// handful of positions, so the cost is small.
+const KBNK_NODE_BUDGET: u64 = 60_000;
 
 struct Case {
     fen: String,
@@ -65,11 +85,27 @@ fn static_eval(fen: &str) -> i32 {
     evaluator.evaluate(&board)
 }
 
-fn search_bestmove(board: Board, depth: u32) -> Move {
+/// Scores that mean "forced mate found". `MATE_SCORE` minus the ply horizon is
+/// the standard band; anything at or above it is a mate claim.
+const MATE_THRESHOLD: i32 = MATE_SCORE - 256;
+
+fn search_score(board: Board, depth: u32) -> i32 {
     let mut searcher = Searcher::default();
     let mut options = SearchOptions::default();
     options.position.board = board.clone();
     options.limits.depth = Some(depth);
+    options.engine.threads = 1;
+    searcher
+        .search(board, &options, false, || SearchEvent::None)
+        .score
+}
+
+/// One move from a searcher that PERSISTS across the game, under a node
+/// budget. See `KBNK_NODE_BUDGET` for why both properties matter.
+fn search_bestmove_nodes(searcher: &mut Searcher, board: Board, nodes: u64) -> Move {
+    let mut options = SearchOptions::default();
+    options.position.board = board.clone();
+    options.limits.nodes = nodes;
     options.engine.threads = 1;
     searcher
         .search(board, &options, false, || SearchEvent::None)
@@ -86,6 +122,11 @@ fn assert_kbnk_mates(fen: &str, comment: &str) {
     } else {
         Color::Black
     };
+    // ONE searcher for the whole game, so the table carries across moves --
+    // the condition the defect was measured under. `new_game` once, not once
+    // per move.
+    let mut searcher = Searcher::default();
+    searcher.new_game();
 
     for _ in 0..KBNK_MOVE_BUDGET {
         if board.generate_legal_moves().is_empty() {
@@ -102,7 +143,7 @@ fn assert_kbnk_mates(fen: &str, comment: &str) {
             );
             return;
         }
-        let mv = search_bestmove(board.clone(), KBNK_SEARCH_DEPTH);
+        let mv = search_bestmove_nodes(&mut searcher, board.clone(), KBNK_NODE_BUDGET);
         assert!(
             !mv.is_null(),
             "[{comment}] search returned a null move: {}",
@@ -144,11 +185,108 @@ fn won_positions_are_clearly_winning() {
     assert!(checked > 0, "no `win` cases found");
 }
 
+/// Search depth for the `tb-draw` mate veto. Deep enough to find a real forced
+/// mate in these tiny trees, shallow enough to stay fast in debug.
+const TB_DRAW_SEARCH_DEPTH: u32 = 12;
+
+// WHY THERE IS NO MATE-DRIVE GRADIENT TEST HERE (4.9a.4).
+//
+// The 4.9a.4 defect was that the drive used pure Chebyshev distance, which is
+// flat: 94% of won KBNK positions had a TIED best move, so the engine shuffled
+// until the fifty-move rule and converted 19.4% of them. Every test in this
+// file stayed green throughout -- the mate-in-one passed, the direction was
+// correct, the recognizer was present and wired. That is a gap worth closing if
+// it can be closed cheaply, and two attempts show it cannot:
+//
+//   1. Tie rate over `static_eval` across legal moves. PASSED on the broken
+//      drive: static_eval is the WHOLE evaluation, and its other terms break
+//      ties that the mop-up alone cannot. It measured something real, just not
+//      the thing named.
+//   2. Corner progress over 24 plies at depth 6, aggregated over the frozen
+//      KBNK cases. Also PASSED on the broken drive: at short range the SEARCH
+//      finds progress without needing an eval gradient, so the bar cannot be
+//      set anywhere that separates 19.4% conversion from 57.1%.
+//
+// What actually separates them is conversion rate over ~100 positions per
+// family at 60,000 nodes -- about two minutes of compute, and a statistic with
+// real sampling noise rather than an absolute property. That belongs in
+// `tools/diag/endgame_floors.json`, compared with a noise allowance and
+// ratcheted after accepted improvements, which is exactly where it lives.
+//
+// The lesson generalises: a term can be present, correctly signed, and
+// individually tested, and still fail to steer a search. Direction is testable
+// here; ORDERING is not, and asserting the wrong one produces a green suite
+// over a broken engine.
+
+#[test]
+fn syzygy_won_positions_are_not_scored_as_drawn_or_lost() {
+    // HARD VETO, not a tuning target. Syzygy says the side to move wins; the
+    // static score must at least have the right sign. This is deliberately
+    // loose: RAR-E09 measured a won KR-K scoring +426 cornered and +487
+    // centralised, and pinning a floor near those would turn a correctness test
+    // into a calibration test that any refit could trip.
+    let mut checked = 0;
+    for case in parse_cases().iter().filter(|c| c.verdict == "tb-win") {
+        let eval = static_eval(&case.fen);
+        assert!(
+            eval > 0,
+            "[{}] Syzygy says this is won but static eval is {eval}: {}",
+            case.comment,
+            case.fen
+        );
+        checked += 1;
+    }
+    assert!(
+        checked >= 30,
+        "expected the frozen tb-win set, found {checked}"
+    );
+}
+
+#[test]
+fn syzygy_drawn_positions_are_never_claimed_as_forced_mate() {
+    // HARD VETO. A theoretically drawn position may legitimately carry a large
+    // material score -- a drawn KR-KP really is a rook up -- so the veto is on
+    // the one thing that is unambiguously wrong: claiming a forced mate.
+    let mut checked = 0;
+    for case in parse_cases().iter().filter(|c| c.verdict == "tb-draw") {
+        let board = Board::from_fen(&case.fen)
+            .unwrap_or_else(|_| panic!("bad FEN in endgames.epd: {}", case.fen));
+        let score = search_score(board, TB_DRAW_SEARCH_DEPTH);
+        assert!(
+            score.abs() < MATE_THRESHOLD,
+            "[{}] Syzygy says this is drawn but search reports a mate score              ({score}): {}",
+            case.comment,
+            case.fen
+        );
+        checked += 1;
+    }
+    assert!(
+        checked >= 25,
+        "expected the frozen tb-draw set, found {checked}"
+    );
+}
+
 #[test]
 fn kbnk_positions_are_driven_to_mate() {
+    // Thin-sample refusal (PLAN 4.10.4). Without a count, an EPD that stopped
+    // producing `kbnk-mate` rows -- a rename, a parse change, a bad filter --
+    // would make this test pass over an empty set. A guard that cannot fail is
+    // not a guard. The sibling Syzygy vetoes already carry `checked >= 30` and
+    // `checked >= 25`; this one carried nothing.
+    let mut checked = 0;
     for case in parse_cases().iter().filter(|c| c.verdict == "kbnk-mate") {
         assert_kbnk_mates(&case.fen, &case.comment);
+        checked += 1;
     }
+    // The frozen set holds exactly ONE kbnk-mate case, which is thin for an
+    // anchor guarding the family 4.9a.4 rebuilt. The guard records the real
+    // number rather than an aspirational one; widening the set belongs to
+    // 4.12.21, which owns KBNK. What this guard does buy is that a parse or
+    // filter change cannot silently reduce it to zero.
+    assert!(
+        checked >= 4,
+        "expected the frozen kbnk-mate set, found {checked}"
+    );
 }
 
 /// The KBNK corner-drive must steer the bare king toward a corner the winning

@@ -1,0 +1,92 @@
+{
+  "schema": "rarog-board-occurrence-v1",
+  "games": 3915,
+  "engine_filter": "Rarog",
+  "engine_games": 0,
+  "all": {
+    "KXK": {
+      "games": 1467,
+      "share": 0.37471264367816093
+    },
+    "KPsK": {
+      "games": 164,
+      "share": 0.041890166028097066
+    },
+    "KPK": {
+      "games": 111,
+      "share": 0.028352490421455937
+    },
+    "KBPsK": {
+      "games": 78,
+      "share": 0.01992337164750958
+    },
+    "KBNK": {
+      "games": 11,
+      "share": 0.00280970625798212
+    },
+    "KNNK": {
+      "games": 1,
+      "share": 0.0002554278416347382
+    },
+    "KRPKR": {
+      "games": 320,
+      "share": 0.08173690932311622
+    },
+    "KRPKB": {
+      "games": 34,
+      "share": 0.008684546615581098
+    },
+    "KRKP": {
+      "games": 94,
+      "share": 0.02401021711366539
+    },
+    "KRKN": {
+      "games": 24,
+      "share": 0.006130268199233717
+    },
+    "KRKB": {
+      "games": 20,
+      "share": 0.005108556832694764
+    },
+    "KBPKB": {
+      "games": 35,
+      "share": 0.008939974457215836
+    },
+    "KBPPKB": {
+      "games": 26,
+      "share": 0.0066411238825031926
+    },
+    "KBPKN": {
+      "games": 11,
+      "share": 0.00280970625798212
+    },
+    "KPKP": {
+      "games": 48,
+      "share": 0.012260536398467433
+    },
+    "KQKP": {
+      "games": 46,
+      "share": 0.011749680715197957
+    },
+    "KQKR": {
+      "games": 45,
+      "share": 0.011494252873563218
+    },
+    "KNNKP": {
+      "games": 2,
+      "share": 0.0005108556832694764
+    },
+    "KQKRPs": {
+      "games": 16,
+      "share": 0.004086845466155811
+    },
+    "KRPPKRP": {
+      "games": 395,
+      "share": 0.10089399744572158
+    }
+  },
+  "engine": {},
+  "reaches_6_men": 0.5269476372924649,
+  "reaches_7_men": 0.6086845466155811,
+  "source": "tools\\results\\sprt_HCERefit_vs_HCEBase_20260901_072106.pgn"
+}

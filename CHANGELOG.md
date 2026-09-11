@@ -5,6 +5,90 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [2.4.0] - 2026-09-11
+
+A consolidation release. Its gate, RAR-E16, measured this head against a 2.3.2
+binary rebuilt from the release recipe at `3+0.03`, 1T, accepting H1 after
+**742 games at +54.77 ± 17.04 Elo**; a fixed-size 400-game `3+0.03` 4T
+direction check read +79.53 ± 21.21 with zero forfeits, zero crashes and zero
+protocol warnings. An SPRT decides rather than estimates and stops biased
+upward, so the honest reading is "clearly and substantially positive, magnitude
+not settled" — do not quote +54.77 as the release's Elo over 2.3.2. The
+individual results below are sequential gates under different baselines and
+estimators; they are not additive and must not be summed.
+
+### Added
+
+- `help` prints what the engine is, how to drive it and where the source lives.
+  It had been advertised by the unknown-command message without ever existing.
+- Command-line arguments are now executed as engine commands — `rarog bench 13`
+  benches — and an unknown argument exits 2. Previously every argument was
+  discarded silently with a success code.
+- A startup advisory names the CPU tier mismatch it can detect: a capable CPU
+  running the portable `base` asset, and a slow-PEXT part (Excavator, Zen,
+  Zen+, Zen 2) running the `pext` asset, which is the slowest build for it.
+
+### Changed
+
+- **ProbCut move filter.** Capture eligibility is tied to the gap the capture
+  must bridge and the cap applies to moves searched rather than examined,
+  scaled by `cut_node`. Gated as a bundle at **+15.44 ± 8.06 Elo
+  (+24.50 ± 12.78 nElo)** in 2,838 games; the RAR-S58 ablation credits the
+  filter alone at +24.90 ± 16.01 nElo and its null-move partner at zero, so
+  that partner was reverted and is not part of this release.
+- **Root-only LMR relief** of 1.5 ply at ply 0, where the reduction formula
+  previously could not see the root at all. **+2.33 ± 1.85 Elo
+  (+3.58 ± 2.85 nElo)** over 56,928 games, for 6.6% fewer nodes.
+- **Two complete evaluation refits.** The first whole-surface WDL refit of the
+  1,218-slot HCE measured **+22.04 ± 7.51 Elo**; the later `hce-v3` refit on a
+  602,619-game non-adjudicated corpus measured a further **+11.81 ± 5.33 Elo**.
+- **Tablebase-corrected training labels.** Every training position with six men
+  or fewer is relabelled to its Syzygy value with the fifty-move rule kept, so
+  a cursed win is labelled the draw it is. **+6.73 ± 3.82 Elo** over the
+  identical position set with self-play labels.
+- **Board and move-generation cluster**, gated as one dependency-complete
+  change at **+12.12 ± 10.17 Elo**: the SEE and UCI repairs listed below plus
+  caller-owned move-list delivery and related throughput work, together worth
+  +1.421% whole-search NPS.
+- The search clock now starts when `go` is parsed, as both reference engines
+  do, rather than after move setup. Re-measured at **zero time forfeits in
+  10,000 games** and −0.69 ± 3.62 Elo, i.e. free.
+- The build is pinned to `rustc 1.98.1` and `cc` 1.4.5, with `rust-version`
+  held in lockstep with `rust-toolchain.toml` so a stale toolchain fails with
+  a clear cargo message.
+
+### Fixed
+
+- **Static exchange evaluation** no longer treats king recaptures into
+  attacked squares as legal, ignores pins it creates, or mis-values recapture
+  promotions. This makes the search prune less — the fixed-depth `bench 13`
+  node count rises 6,901,489 → 7,601,220 — and was gated as part of the board
+  cluster above rather than assumed harmless.
+- Two boundary defects on the board and protocol edge: the FEN fullmove counter
+  saturates instead of overflowing at `u16::MAX`, so it is defined identically
+  in debug and release, and `Move::from_uci` rejects non-ASCII input rather
+  than indexing into the middle of a multi-byte character.
+- **KBN-K conversion.** The mate drive had been passing its anchor test under a
+  broken drive; repaired, conversion of the bishop-and-knight mate moves from
+  **19.4% to 96.9%**, with no change to the search fingerprint — fingerprint
+  equality alone never proved narrow-feature neutrality.
+- Changing the `LazyMargin` UCI option now clears the evaluation cache. The
+  margin decides which expensive evaluation terms run, so scores cached under
+  the previous margin stayed readable and wrong.
+- A panic is now reported on stdout, where a tournament harness records it,
+  instead of on stderr where 2.3.2's single crash in ~5,200 games left nothing
+  the operator could act on.
+
+### Removed
+
+- `lmr_prior_reduction_adj`, together with its consumer, its call sites and the
+  now-unused reduction field it read. With the stale-read defect it depended on
+  repaired, RAR-S64 measured the whole cluster at +0.39 ± 4.89 Elo against the
+  head: the gain had been the bug. A knob parked at its no-op value is still a
+  branch in the hot path and a coordinate in the tuning surface.
+- The null-move entry half of the 4.7 selectivity bundle, reverted after its
+  ablation measured its contribution in company at zero.
+
 ## [2.3.2] - 2026-08-11
 
 A consolidation release: accepted search and evaluation gains since 2.3.1,

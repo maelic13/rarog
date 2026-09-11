@@ -24,6 +24,8 @@ compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing r
 
 pub mod bench;
 pub mod board;
+pub mod cpu_advice;
+pub mod crash_report;
 pub mod diag;
 pub mod engine;
 pub mod engine_command;

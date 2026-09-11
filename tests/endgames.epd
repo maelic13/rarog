@@ -4,6 +4,13 @@
 #   draw       -> static eval is exactly 0 (insufficient material / framework draw)
 #   kbnk-mate  -> K+B+N vs K; the engine must drive the bare king into the
 #                 bishop-coloured corner and deliver checkmate within a move budget.
+#   tb-win     -> Syzygy says the side to move wins. HARD VETO: static eval must
+#                 be positive. A won position may not score as a draw or a loss.
+#   tb-draw    -> Syzygy says the position is drawn. HARD VETO: search must not
+#                 report a forced mate. It may score the position materially --
+#                 a drawn KR-KP really is a rook up, and demanding a small score
+#                 there would be asserting a recognizer we have not built, which
+#                 is a tuning target and not a correctness one.
 # Lines starting with '#' and blank lines are ignored.
 
 # --- Pawnless insufficient-material draws (forced to a dead draw) ---
@@ -15,6 +22,9 @@
 
 # --- KBNK mate, dark-squared bishop: mate in 1 (Bf2-d4#) ---
 7k/8/6KN/8/8/8/5B2/8 w - - 0 1 ; kbnk-mate dark bishop, bare king in dark (h8) corner
+7N/8/7B/8/8/8/8/2K2k2 w - - 0 1 ; kbnk-mate RAR-E14 discriminator: head mates in 45 plies, a drive at 1/24 scale does not
+8/8/K3B3/8/5N2/8/7k/8 w - - 0 1 ; kbnk-mate RAR-E14 discriminator: head mates in 49 plies, a drive at 1/24 scale does not
+8/8/7K/8/5B2/8/1k6/4N3 w - - 0 1 ; kbnk-mate RAR-E14 discriminator: head mates in 55 plies, a drive at 1/24 scale does not
 
 # --- KPK (king + pawn vs king): bitbase-confirmed draws ---
 k7/8/8/8/8/8/P7/K7 w - - 0 1 ; draw KPK rook pawn, defender holds the corner
@@ -36,3 +46,74 @@ k7/8/8/8/8/8/P7/K7 w - - 0 1 ; draw KPK rook pawn, defender holds the corner
 
 # KRKP (~x0.25 partial scale) and OCB passer relaxation are partial-scale terms;
 # they are covered by the src/eval.rs `endgame_311c_tests` unit tests.
+
+# --- Syzygy-verified theory vetoes (4.9a.3) ---
+# Generated once against the 6-man tables with seed 0xC0FFEE and FROZEN here,
+# so the suite needs no tablebases at run time. The audit's warning about the
+# hand-picked cases above -- "it tests direction and local mate recognition,
+# not class-wide conversion" -- is why these span the reference families
+# instead of one KBNK mate-in-one.
+8/8/8/8/8/6K1/7Q/2k5 w - - 0 1 ; tb-win KQ-K dtz=7 (Syzygy-verified)
+8/6K1/8/6Q1/k7/8/8/8 w - - 0 1 ; tb-win KQ-K dtz=15 (Syzygy-verified)
+8/8/8/6R1/8/5K1k/8/8 w - - 0 1 ; tb-win KR-K dtz=1 (Syzygy-verified)
+8/8/4R3/8/8/8/4K2k/8 w - - 0 1 ; tb-win KR-K dtz=5 (Syzygy-verified)
+8/1B4B1/8/k3K3/8/8/8/8 w - - 0 1 ; tb-win KBB-K dtz=22 (Syzygy-verified)
+8/3K4/8/8/8/8/k3B3/2B5 w - - 0 1 ; tb-win KBB-K dtz=20 (Syzygy-verified)
+2B5/8/2B5/8/3k2K1/8/8/8 w - - 0 1 ; tb-draw KBB-K dtz=0 (Syzygy-verified)
+8/1k1K4/1B6/8/8/8/5B2/8 w - - 0 1 ; tb-draw KBB-K dtz=0 (Syzygy-verified)
+8/3N4/8/7B/4k3/8/1K6/8 w - - 0 1 ; tb-win KBN-K dtz=56 (Syzygy-verified)
+2N5/8/4B3/8/8/k7/7K/8 w - - 0 1 ; tb-win KBN-K dtz=54 (Syzygy-verified)
+8/8/8/8/4Bk2/4N3/K7/8 w - - 0 1 ; tb-draw KBN-K dtz=0 (Syzygy-verified)
+8/8/2K5/8/8/8/6k1/2B4N w - - 0 1 ; tb-draw KBN-K dtz=0 (Syzygy-verified)
+4R3/K7/4pk2/8/8/8/8/8 w - - 0 1 ; tb-win KR-KP dtz=11 (Syzygy-verified)
+8/1k4p1/8/2R5/8/8/8/1K6 w - - 0 1 ; tb-win KR-KP dtz=3 (Syzygy-verified)
+5K2/8/8/8/8/2kp4/5R2/8 w - - 0 1 ; tb-draw KR-KP dtz=0 (Syzygy-verified)
+6K1/8/8/8/6k1/5p2/4R3/8 w - - 0 1 ; tb-draw KR-KP dtz=0 (Syzygy-verified)
+8/3b4/6k1/3R4/8/8/8/5K2 w - - 0 1 ; tb-win KR-KB dtz=1 (Syzygy-verified)
+8/8/1k1K4/8/8/8/1b6/1R6 w - - 0 1 ; tb-win KR-KB dtz=1 (Syzygy-verified)
+8/8/8/4R3/8/5b2/7K/2k5 w - - 0 1 ; tb-draw KR-KB dtz=0 (Syzygy-verified)
+4R3/8/6b1/8/3k4/7K/8/8 w - - 0 1 ; tb-draw KR-KB dtz=0 (Syzygy-verified)
+7K/8/8/1k6/8/2R5/8/2n5 w - - 0 1 ; tb-win KR-KN dtz=1 (Syzygy-verified)
+4R3/2k3n1/8/8/8/8/K7/8 w - - 0 1 ; tb-win KR-KN dtz=2 (Syzygy-verified)
+8/2K5/8/8/2R5/8/1n6/4k3 w - - 0 1 ; tb-draw KR-KN dtz=0 (Syzygy-verified)
+8/2n5/6R1/8/8/8/1k6/4K3 w - - 0 1 ; tb-draw KR-KN dtz=0 (Syzygy-verified)
+8/8/8/2k5/8/2K4p/8/7Q w - - 0 1 ; tb-win KQ-KP dtz=1 (Syzygy-verified)
+8/7k/8/8/2Q2p2/8/8/1K6 w - - 0 1 ; tb-win KQ-KP dtz=1 (Syzygy-verified)
+8/8/1Q6/8/K7/8/5p2/5k2 w - - 0 1 ; tb-draw KQ-KP dtz=0 (Syzygy-verified)
+8/8/8/8/8/5Q2/2p5/1k4K1 w - - 0 1 ; tb-draw KQ-KP dtz=0 (Syzygy-verified)
+4K3/8/8/7r/8/8/3k4/1Q6 w - - 0 1 ; tb-win KQ-KR dtz=13 (Syzygy-verified)
+8/8/Q7/K7/8/8/1k2r3/8 w - - 0 1 ; tb-win KQ-KR dtz=1 (Syzygy-verified)
+8/8/8/8/8/8/7k/2K2Qr1 w - - 0 1 ; tb-draw KQ-KR dtz=0 (Syzygy-verified)
+8/8/2k5/1r6/1Q6/8/8/1K6 w - - 0 1 ; tb-draw KQ-KR dtz=0 (Syzygy-verified)
+8/6K1/8/1kr4R/8/8/7P/8 w - - 0 1 ; tb-win KRP-KR dtz=1 (Syzygy-verified)
+6R1/1P4K1/2r5/8/8/7k/8/8 w - - 0 1 ; tb-win KRP-KR dtz=1 (Syzygy-verified)
+K2R4/5r2/8/5P2/8/8/8/k7 w - - 0 1 ; tb-draw KRP-KR dtz=0 (Syzygy-verified)
+8/6R1/4r3/8/5k2/8/P7/2K5 w - - 0 1 ; tb-draw KRP-KR dtz=0 (Syzygy-verified)
+8/1k6/6R1/4P3/8/8/8/b5K1 w - - 0 1 ; tb-win KRP-KB dtz=1 (Syzygy-verified)
+8/4K3/6k1/bP2R3/8/8/8/8 w - - 0 1 ; tb-win KRP-KB dtz=1 (Syzygy-verified)
+5R2/4kP2/8/8/8/8/7K/b7 w - - 0 1 ; tb-draw KRP-KB dtz=0 (Syzygy-verified)
+8/8/5kP1/K6b/1R6/8/8/8 w - - 0 1 ; tb-draw KRP-KB dtz=0 (Syzygy-verified)
+8/K7/5P2/8/8/8/1B6/1b2k3 w - - 0 1 ; tb-win KBP-KB dtz=1 (Syzygy-verified)
+8/1K6/8/8/1b5B/P7/8/2k5 w - - 0 1 ; tb-win KBP-KB dtz=1 (Syzygy-verified)
+8/8/8/3P4/8/2b1K1B1/8/1k6 w - - 0 1 ; tb-draw KBP-KB dtz=0 (Syzygy-verified)
+7K/8/4b3/1B6/8/2P5/8/1k6 w - - 0 1 ; tb-draw KBP-KB dtz=0 (Syzygy-verified)
+8/8/k3BK2/8/8/8/1n5P/8 w - - 0 1 ; tb-win KBP-KN dtz=1 (Syzygy-verified)
+7n/B7/4K3/1k6/6P1/8/8/8 w - - 0 1 ; tb-win KBP-KN dtz=1 (Syzygy-verified)
+8/8/3K4/8/3P4/1kn3B1/8/8 w - - 0 1 ; tb-draw KBP-KN dtz=0 (Syzygy-verified)
+8/5n2/5k2/5B2/8/1K1P4/8/8 w - - 0 1 ; tb-draw KBP-KN dtz=0 (Syzygy-verified)
+8/6P1/8/8/8/4p2K/8/6k1 w - - 0 1 ; tb-win KP-KP dtz=1 (Syzygy-verified)
+8/2P5/1p6/2k5/8/5K2/8/8 w - - 0 1 ; tb-win KP-KP dtz=1 (Syzygy-verified)
+7k/6p1/8/8/5P2/7K/8/8 w - - 0 1 ; tb-draw KP-KP dtz=0 (Syzygy-verified)
+8/2p5/8/8/7k/8/5P2/K7 w - - 0 1 ; tb-draw KP-KP dtz=0 (Syzygy-verified)
+1k6/8/6N1/2p5/8/2N5/1K6/8 w - - 0 1 ; tb-win KNN-KP dtz=40 (Syzygy-verified)
+1N6/3p1K2/8/8/8/k3N3/8/8 w - - 0 1 ; tb-win KNN-KP dtz=42 (Syzygy-verified)
+8/8/5K2/5N2/8/2N5/1p6/4k3 w - - 0 1 ; tb-draw KNN-KP dtz=0 (Syzygy-verified)
+8/8/K7/2N5/2p5/8/8/4N1k1 w - - 0 1 ; tb-draw KNN-KP dtz=0 (Syzygy-verified)
+8/8/7b/5BP1/8/8/k3P3/6K1 w - - 0 1 ; tb-win KBPP-KB dtz=1 (Syzygy-verified)
+5K2/1P6/6P1/4k3/8/5b2/B7/8 w - - 0 1 ; tb-win KBPP-KB dtz=1 (Syzygy-verified)
+8/8/3B4/3k3K/1P6/3P4/b7/8 w - - 0 1 ; tb-draw KBPP-KB dtz=0 (Syzygy-verified)
+5B2/8/6k1/8/2b2P2/6P1/7K/8 w - - 0 1 ; tb-draw KBPP-KB dtz=0 (Syzygy-verified)
+6r1/8/8/6k1/1KQp4/8/8/8 w - - 0 1 ; tb-win KQ-KRP dtz=1 (Syzygy-verified)
+3Q4/8/K7/8/2p5/8/5r2/2k5 w - - 0 1 ; tb-win KQ-KRP dtz=11 (Syzygy-verified)
+8/8/Q6K/8/1r6/5p2/8/4k3 w - - 0 1 ; tb-draw KQ-KRP dtz=0 (Syzygy-verified)
+8/8/3K4/8/2r5/5Q2/1p6/2k5 w - - 0 1 ; tb-draw KQ-KRP dtz=0 (Syzygy-verified)

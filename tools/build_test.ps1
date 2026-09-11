@@ -26,10 +26,14 @@
     Output always goes to tools\test_engines\ (repo-local and separate from
     released engines).
 
+    A schema-versioned sidecar binds the copied binary to its exact SHA-256,
+    source tree, compiler, build command and bench verification. Use
+    -SourceRoot to build a frozen worktree with this same checked wrapper.
+
 .PARAMETER Suffix
     Short label for the output file.
     Normal:  rarog-<Suffix>-pext-pgo.exe
-    Native:  rarog-<Suffix>-native-pgo.exe
+    Native:  rarog-<Suffix>-pext-native-pgo.exe
     Tune:    rarog-<Suffix>-tune.exe
 
 .PARAMETER Native
@@ -41,6 +45,13 @@
 
 .PARAMETER TestEnginesDir
     Destination directory.  Default: tools\test_engines
+
+.PARAMETER SourceRoot
+    Rarog worktree to build. Default: the repository containing this script.
+
+.PARAMETER BuildOnly
+    Write a hash-bound manifest without launching bench. Match and datagen
+    launchers reject this verification state; it is only for staged builds.
 
 .EXAMPLE
     # Normal SPRT binary
@@ -58,14 +69,20 @@ param(
     [Parameter(Mandatory)][string]$Suffix,
     [switch]$Tune,
     [switch]$Native,
-    [string]$TestEnginesDir = "$PSScriptRoot\test_engines"
+    [switch]$BuildOnly,
+    [int]$BenchDepth = 13,
+    [string]$TestEnginesDir = "$PSScriptRoot\test_engines",
+    [string]$SourceRoot = ""
 )
 
 if ($Tune -and $Native) {
     throw "-Tune and -Native are mutually exclusive."
 }
+if ($BenchDepth -lt 1) { throw "-BenchDepth must be positive." }
 
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+. "$PSScriptRoot\harness_common.ps1"
 
 # --- 9.7 provenance manifest -------------------------------------------------
 # Every test binary gets a sidecar JSON next to it: git SHA + dirty flag,
@@ -82,46 +99,88 @@ function Write-EngineManifest {
     param(
         [Parameter(Mandatory)][string]$BinaryPath,
         [Parameter(Mandatory)][string]$Suffix,
-        [Parameter(Mandatory)][string]$Flavor
+        [Parameter(Mandatory)][string]$Flavor,
+        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [Parameter(Mandatory)][string]$BuildCommand,
+        [Parameter(Mandatory)][int]$Depth,
+        [switch]$SkipBench
     )
 
-    $sha    = (git rev-parse HEAD).Trim()
-    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-    $dirty  = [bool](git status --porcelain)
+    $sha    = (& git -C $RepositoryRoot rev-parse HEAD).Trim()
+    $tree   = (& git -C $RepositoryRoot rev-parse 'HEAD^{tree}').Trim()
+    $branch = (& git -C $RepositoryRoot rev-parse --abbrev-ref HEAD).Trim()
+    $dirty  = [bool](& git -C $RepositoryRoot status --porcelain)
     $rustc  = (rustc -V).Trim()
+    $binary = Get-Item -LiteralPath $BinaryPath
 
-    Write-Host "Verifying bench fingerprint of $([IO.Path]::GetFileName($BinaryPath)) ..."
-    $benchOut  = "bench" | & $BinaryPath 2>&1 | Out-String
-    $benchLine = ($benchOut -split "`n" | Where-Object { $_ -match "Nodes searched" }) -join ""
-    if ($benchLine -notmatch "([0-9][0-9,]*)\s*$") {
-        throw "Could not parse a bench node count from the built binary — refusing to write a manifest for an unverified engine."
+    $nodes = $null
+    $benchLine = $null
+    if (-not $SkipBench) {
+        Write-Host "Verifying bench fingerprint of $($binary.Name) (depth $Depth) ..."
+        $inputPath = [IO.Path]::GetTempFileName()
+        $stdoutPath = [IO.Path]::GetTempFileName()
+        $stderrPath = [IO.Path]::GetTempFileName()
+        try {
+            Set-Content -LiteralPath $inputPath -Value "bench $Depth" -Encoding ascii
+            $process = Start-Process -FilePath $BinaryPath -WindowStyle Hidden -Wait -PassThru `
+                -RedirectStandardInput $inputPath -RedirectStandardOutput $stdoutPath `
+                -RedirectStandardError $stderrPath
+            if ($process.ExitCode -ne 0) {
+                throw "Bench exited with code $($process.ExitCode); refusing an unverified manifest."
+            }
+            $benchOut = (Get-Content -LiteralPath $stdoutPath -Raw) +
+                (Get-Content -LiteralPath $stderrPath -Raw)
+        } finally {
+            Remove-Item -LiteralPath $inputPath, $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        }
+        $benchLine = (($benchOut -split "`n" | Where-Object { $_ -match "Nodes searched" }) | Select-Object -Last 1).Trim()
+        if ($benchLine -notmatch "([0-9][0-9,]*)\s*$") {
+            throw "Could not parse a bench node count from the built binary - refusing an unverified manifest."
+        }
+        $nodes = [int64]($Matches[1] -replace ",", "")
+        if ($nodes -le 0) { throw "Bench reported $nodes nodes - broken binary." }
     }
-    $nodes = [int64]($Matches[1] -replace ",", "")
-    if ($nodes -le 0) { throw "Bench reported $nodes nodes — broken binary." }
 
     $manifest = [ordered]@{
-        engine        = [IO.Path]::GetFileName($BinaryPath)
-        suffix        = $Suffix
-        flavor        = $Flavor
-        git_sha       = $sha
-        git_branch    = $branch
-        git_dirty     = $dirty
-        rustc         = $rustc
-        bench_nodes   = $nodes
-        pgo_workload  = if ($Flavor -like "*-pgo") { "bench 13 (xtask default)" } else { $null }
-        built_utc     = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        schema_version    = 2
+        engine            = $binary.Name
+        binary_sha256     = Get-HarnessSha256 $BinaryPath
+        binary_size_bytes = $binary.Length
+        suffix            = $Suffix
+        flavor            = $Flavor
+        build_command      = $BuildCommand
+        git_sha           = $sha
+        git_tree          = $tree
+        git_branch        = $branch
+        git_dirty         = $dirty
+        rustc             = $rustc
+        verification      = if ($SkipBench) { "build-only" } else { "bench" }
+        bench_depth       = if ($SkipBench) { $null } else { $Depth }
+        bench_nodes       = $nodes
+        bench_line        = $benchLine
+        pgo_workload      = if ($Flavor -like "*-pgo") { "bench 13 (xtask default)" } else { $null }
+        built_utc         = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
     }
 
     $manifestPath = [IO.Path]::ChangeExtension($BinaryPath, ".json")
-    $manifest | ConvertTo-Json | Out-File -FilePath $manifestPath -Encoding utf8
-    Write-Host "Manifest: $manifestPath  (bench $nodes$(if ($dirty) { ', DIRTY WORKING TREE' }))"
+    Write-JsonAtomic -Path $manifestPath -Value $manifest
+    $verified = if ($SkipBench) { "build-only; engine not launched" } else { "bench $nodes" }
+    Write-Host "Manifest: $manifestPath  ($verified$(if ($dirty) { ', DIRTY WORKING TREE' }))"
     if ($dirty) {
         Write-Host "WARNING: built from a DIRTY working tree — this binary is not reproducible from git_sha alone." -ForegroundColor Yellow
     }
 }
 
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = if ($SourceRoot) {
+    (Resolve-Path -LiteralPath $SourceRoot).Path
+} else {
+    Split-Path -Parent $PSScriptRoot
+}
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "Cargo.toml") -PathType Leaf)) {
+    throw "-SourceRoot is not a Rarog worktree: $repoRoot"
+}
+$TestEnginesDir = [IO.Path]::GetFullPath($TestEnginesDir)
 Push-Location $repoRoot
 try {
     if ($Tune) {
@@ -131,10 +190,14 @@ try {
         Write-Host ""
 
         # pext RUSTFLAGS matching xtask's pext arch (rarog_pext cfg + BMI2 target features).
-        $env:RUSTFLAGS = "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
-        cargo build --release --features tune
-        if ($LASTEXITCODE -ne 0) { throw "cargo build --features tune failed (exit $LASTEXITCODE)" }
-        $env:RUSTFLAGS = $null
+        $savedRustFlags = $env:RUSTFLAGS
+        try {
+            $env:RUSTFLAGS = "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
+            cargo build --release --features tune
+            if ($LASTEXITCODE -ne 0) { throw "cargo build --features tune failed (exit $LASTEXITCODE)" }
+        } finally {
+            $env:RUSTFLAGS = $savedRustFlags
+        }
 
         $src = Join-Path $repoRoot "target\release\rarog.exe"
         if (-not (Test-Path $src)) { throw "Binary not found at: $src" }
@@ -145,7 +208,9 @@ try {
 
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-tune.exe"
         Copy-Item $src $dest -Force
-        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor "tune"
+        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor "pext-tune" `
+            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features tune" `
+            -Depth $BenchDepth -SkipBench:$BuildOnly
         Write-Host ""
         Write-Host "Done: $dest"
         Write-Host ""
@@ -179,9 +244,13 @@ try {
             New-Item -ItemType Directory -Path $TestEnginesDir | Out-Null
         }
 
-        $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$arch-pgo.exe"
+        $fileFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
+        $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$fileFlavor.exe"
         Copy-Item $dist.FullName $dest -Force
-        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor "$arch-pgo"
+        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo"
+        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $fileFlavor `
+            -RepositoryRoot $repoRoot -BuildCommand $buildCommand -Depth $BenchDepth `
+            -SkipBench:$BuildOnly
         Write-Host ""
         Write-Host "Done: $dest"
         Write-Host ""

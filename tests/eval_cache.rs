@@ -51,7 +51,7 @@ fn eval_cache_equals_cold_recompute() {
             if moves.is_empty() {
                 break;
             }
-            moves.sort_by_key(|m| m.to_string());
+            moves.sort_by_key(std::string::ToString::to_string);
             let mv = moves[0];
             board.make_move(mv);
         }
@@ -60,5 +60,33 @@ fn eval_cache_equals_cold_recompute() {
     assert!(
         checked > 200,
         "expected to check many positions, got {checked}"
+    );
+}
+
+#[test]
+fn changing_lazy_margin_invalidates_eval_cache() {
+    const LOW_MARGIN: i32 = 200;
+    const HIGH_MARGIN: i32 = 2_000;
+    const FEN: &str = "5k2/5p1p/p3B1p1/Pp6/1P6/5P1P/4K1P1/8 b - - 0 1";
+
+    let board = Board::from_fen(FEN).expect("valid lazy-eval regression FEN");
+
+    let mut reused = Evaluator::default();
+    assert!(reused.set_lazy_margin(LOW_MARGIN));
+    let low_margin_score = reused.evaluate(&board);
+
+    let mut cold = Evaluator::default();
+    assert!(cold.set_lazy_margin(HIGH_MARGIN));
+    let high_margin_score = cold.evaluate(&board);
+
+    assert_ne!(
+        low_margin_score, high_margin_score,
+        "regression FEN must exercise different lazy-eval paths"
+    );
+    assert!(reused.set_lazy_margin(HIGH_MARGIN));
+    assert_eq!(
+        reused.evaluate(&board),
+        high_margin_score,
+        "eval cache retained a score from LazyMargin={LOW_MARGIN} at {FEN}"
     );
 }

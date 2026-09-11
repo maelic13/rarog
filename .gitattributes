@@ -1,2 +1,9 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve archived measurement bytes exactly; patches and raw logs may contain
+# whitespace that is meaningful to their recorded SHA-256 identities.
+analysis/artifacts/see-normalized-20260907/** -text -whitespace
+
+# Stored arm recipes must stay byte-exact: a CRLF round-trip breaks `git apply`.
+analysis/arm_patches/*.patch -text -whitespace

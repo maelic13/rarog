@@ -1,0 +1,29 @@
+Arm 7ea0620  (4.5.3 variant: ProbCut does not record its speculative move)
+Author-date: 2026-08-19 07:37:29 +0200
+Applies to: 05ba633  (reachable from dev)
+Command:    git diff <base> <arm>
+
+diff --git a/src/search.rs b/src/search.rs
+index 8bcb8ea..eab23de 100644
+--- a/src/search.rs
++++ b/src/search.rs
+@@ -2690,8 +2690,17 @@ impl Searcher {
+                     if diag_sample {
+                         crate::diag_count!(probcut_attempt);
+                     }
+-                    let probcut_piece = board.moving_piece(mv);
+-                    self.push_move(ply, mv, probcut_piece);
++                    // 4.5.3 VARIANT: a speculative ProbCut search does not
++                    // record its move at all. The child then sees a null
++                    // previous move, so it neither READS nor TRAINS
++                    // continuation history, counter-moves or continuation
++                    // correction through a move the search does not yet
++                    // believe in. Speculation does not get to teach.
++                    //
++                    // The clear is explicit rather than implicit: this ply may
++                    // still hold a move from a sibling subtree, which is
++                    // exactly the desync RAR-S62 measured.
++                    self.clear_move(ply);
+                     board.make_move_unchecked(mv);
+                     self.tt.prefetch(board.hash);
+                     let score =

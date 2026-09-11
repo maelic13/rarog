@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    One-shot setup: download fastchess and clone weather-factory into tools/.
+    Stage fastchess, the UHO book and the patched weather-factory toolchain.
 
 .DESCRIPTION
     Makes the Rarog tuning toolchain self-contained inside the repo. Run this
@@ -9,23 +9,27 @@
 
     After this script:
       - tools/bin/fastchess.exe
+      - tools/books/UHO_Lichess_4852_v1.epd (when present in -BookSource)
       - tools/weather-factory/
       - matplotlib installed for Python
 
-    The opening books belong in tools/books/ (git-ignored; source:
-    D:\chess\books\): UHO_Lichess_4852_v1.epd (SPRT/SPSA/gauntlet default)
-    and IM_4mvs.pgn (balanced fallback / CCRL-comparable gauntlets). Copy
-    them there before running SPRT or SPSA.
+    Opening books are git-ignored. The UHO strength-test book is copied from
+    -BookSource when it is not already staged; IM_4mvs.pgn remains an optional
+    balanced fallback.
 
 .PARAMETER FastchessTag
     GitHub release tag to download. Default v1.8.0-alpha, a pinned release
     containing the Windows process-affinity fix introduced before v1.7.0.
 
+.PARAMETER BookSource
+    Directory containing UHO_Lichess_4852_v1.epd. Default D:\chess\books.
+
 .EXAMPLE
     ./tools/setup_tools.ps1
 #>
 param(
-    [string]$FastchessTag = "v1.8.0-alpha"
+    [string]$FastchessTag = "v1.8.0-alpha",
+    [string]$BookSource = "D:\chess\books"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,9 +40,11 @@ $ErrorActionPreference = "Stop"
 # which is unacceptable for a runner that will consume 160,000 games.
 $weatherFactoryRevision = "19b4805c9a2372955c29666118070269f34aa2eb"
 
-$binDir = Join-Path $PSScriptRoot "bin"
-$wfDir  = Join-Path $PSScriptRoot "weather-factory"
+$binDir   = Join-Path $PSScriptRoot "bin"
+$booksDir = Join-Path $PSScriptRoot "books"
+$wfDir    = Join-Path $PSScriptRoot "weather-factory"
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+New-Item -ItemType Directory -Force -Path $booksDir | Out-Null
 
 $fastchessExe = Join-Path $binDir "fastchess.exe"
 $downloadFastchess = -not (Test-Path $fastchessExe)
@@ -105,6 +111,19 @@ if ($downloadFastchess) {
     Assert-AffinityFastchess -Path $fastchessExe | Out-Null
 }
 
+$bookName = "UHO_Lichess_4852_v1.epd"
+$bookDest = Join-Path $booksDir $bookName
+if (-not (Test-Path -LiteralPath $bookDest -PathType Leaf)) {
+    $bookSourcePath = Join-Path $BookSource $bookName
+    if (Test-Path -LiteralPath $bookSourcePath -PathType Leaf) {
+        Write-Host "Copying $bookName -> tools/books/ ..."
+        Copy-Item -LiteralPath $bookSourcePath -Destination $bookDest -Force
+        Write-Host "  SHA-256: $(Get-HarnessSha256 $bookDest)"
+    } else {
+        Write-Warning "$bookName was not found in '$BookSource'; stage it before SPRT or SPSA."
+    }
+}
+
 if (Test-Path (Join-Path $wfDir "main.py")) {
     Write-Host "weather-factory already present at tools/weather-factory/; skipping clone."
 } else {
@@ -122,6 +141,16 @@ if ($actualWeatherFactoryRevision -ne $weatherFactoryRevision) {
         "$weatherFactoryRevision. Preserve any tuner state, recreate tools/weather-factory, and rerun setup.")
 }
 Write-Host "weather-factory revision verified: $weatherFactoryRevision"
+
+# Literal multi-line patch anchors must not depend on core.autocrlf. Normalize
+# the pinned Python sources once so setup is reproducible across worktrees.
+foreach ($pyFile in @("cutechess.py", "spsa.py", "main.py")) {
+    $pyPath = Join-Path $wfDir $pyFile
+    if (-not (Test-Path -LiteralPath $pyPath)) { continue }
+    $text = (Get-Content $pyPath -Raw) -replace "`r`n", "`n"
+    Set-Content -LiteralPath $pyPath -Value ($text.TrimEnd() + "`n") -Encoding utf8 -NoNewline
+}
+Write-Host "  Normalized weather-factory sources to LF for deterministic patching."
 
 # weather-factory has no native affinity setting. Patch its generated
 # fastchess command with the OS-derived physical-core list. Rebuild this line
@@ -190,47 +219,68 @@ if (Test-Path $wfCute) {
     }
 }
 
-# STRENGTH ADJUDICATION ALIGNMENT (calibrated 2026-08-02). weather-factory
-# ships 400/3 one-sided. Rarog's shared strength-v1 profile is 600/3 one-sided,
-# matching Stockfish's convention and our measured evaluation scale. The
-# retrospective 69,350-game calibration found no chess-result reversals at
-# 600/3 (three apparent reversals were later time forfeits), while 400/3 changed
-# 1,533 outcomes and included 80 eventual opposite winners. SPSA, SPRT, and
-# gauntlets therefore use 600/3 one-sided. Datagen is a separate label-safety
-# profile and remains stricter.
+# ADJUDICATION REMOVED FROM THE TUNER, 2026-09-01 (RAR-M17). weather-factory
+# ships `-resign movecount=3 score=400` and a `-draw` rule; both go, so SPSA
+# matches sprt.ps1, gauntlet.ps1 and datagen.ps1, all of which now play games
+# to a rules result.
 #
-# NOT aligned to fishtest, deliberately: the draw rule. Ours is
-# `movenumber=40 movecount=8 score=10` against fishtest's
-# `movenumber=34 movecount=8 score=20` — later AND with a tighter score
-# window, i.e. strictly more conservative on both axes, and it already agrees
-# between sprt.ps1 and the tuner. Changing it would move the verdict
-# instrument and break comparability with the whole existing ledger for no
-# correctness gain.
+# The history this replaces is worth keeping, because it is what makes
+# dropping the rule cheap rather than reckless. V1-V3 aligned the tuner's
+# RESIGN rule to 600/3 two-sided after a retrospective 69,350-game
+# calibration: 600/3 produced no chess-result reversals (three apparent ones
+# were later time forfeits) while 400/3 changed 1,533 outcomes and included 80
+# eventual opposite winners. So resign at 600/3 was already close to free,
+# which means removing it costs close to nothing either.
+#
+# The DRAW rule was the one nobody had priced, and V1-V3 never touched it.
+# RAR-M15 measured it ending 52.7% of all endgames before they are reached.
+# That is the line that mattered, and it is gone too.
 $wfCuteAdj = Join-Path $wfDir "cutechess.py"
 if (Test-Path $wfCuteAdj) {
-    $strengthProfile = Get-StrengthTestProfile
-    $targetResign = '"-resign movecount={0} score={1} "  # RAROG_ADJUDICATION_PATCH_V2: strength-v1 one-sided' -f $strengthProfile.ResignMoveCount, $strengthProfile.ResignScore
+    # V4, 2026-09-01 (RAR-M17): SPSA runs with NO adjudication, like every
+    # other instrument here. Earlier versions aligned the tuner's resign rule
+    # to strength-v2; the alignment argument is now moot because there is
+    # nothing left to align to. Both the resign and draw lines are removed --
+    # V1-V3 only ever rewrote resign and left the draw rule standing, which is
+    # the line RAR-M15 measured ending 52.7% of endgames.
+    #
+    # This is a bigger change for SPSA than for a gate, and it is deliberate:
+    # SPSA runs far more games, so it pays the ~10% throughput cost the most,
+    # but a tuner blind to conversion tunes toward positions it never has to
+    # convert. Do not switch a RUNNING tune to it; spsa.ps1 exempts resumes.
     $a = Get-Content $wfCuteAdj -Raw
-    if ($a -match 'RAROG_ADJUDICATION_PATCH_V2') {
-        Write-Host "  weather-factory adjudication patch already present."
+    if ($a -match 'RAROG_ADJUDICATION_PATCH_V4') {
+        Write-Host "  weather-factory adjudication patch already present (V4: none)."
     } else {
-        $anchorResign = '"-resign movecount=3 score=400 "'
-        $oldPatchedResign = '"-resign movecount=3 score=600 twosided=true "  # RAROG_ADJUDICATION_PATCH_V1: match sprt.ps1'
-        if ($a.Contains($anchorResign)) {
-            $a = $a.Replace($anchorResign, $targetResign)
-        } elseif ($a.Contains($oldPatchedResign)) {
-            $a = $a.Replace($oldPatchedResign, $targetResign)
-        } else {
-            throw ("weather-factory/cutechess.py adjudication anchor not found; upstream changed. " +
-                "Expected the upstream 400/3 line or the old V1 patch — inspect it before assuming alignment.")
+        $resignPattern = '(?m)^\s*"-resign[^"]*"(\s*#\s*RAROG_ADJUDICATION_PATCH_V[0-9][^
+]*)?
+?
+'
+        $drawPattern = '(?m)^\s*"-draw[^"]*"(\s*#[^
+]*)?
+?
+'
+        if ($a -notmatch $resignPattern) {
+            throw ("weather-factory/cutechess.py resign anchor not found; upstream changed. " +
+                "Inspect it before assuming the tuner runs without adjudication.")
         }
+        if ($a -notmatch $drawPattern) {
+            throw ("weather-factory/cutechess.py draw anchor not found; upstream changed. " +
+                "Inspect it before assuming the tuner runs without adjudication.")
+        }
+        $marker = '            ""  # RAROG_ADJUDICATION_PATCH_V4: adjudication off (RAR-M17)' + "`n"
+        $a = [regex]::Replace($a, $resignPattern, $marker)
+        $a = [regex]::Replace($a, $drawPattern, '')
         Set-Content -Path $wfCuteAdj -Value $a -Encoding utf8
 
         python -m py_compile $wfCuteAdj
         if ($LASTEXITCODE -ne 0) {
             throw "weather-factory adjudication patch failed Python syntax validation: $wfCuteAdj"
         }
-        Write-Host "  weather-factory adjudication patch and Python syntax verified."
+        if ((Get-Content $wfCuteAdj -Raw) -match '(?m)^\s*"-(resign|draw)') {
+            throw "weather-factory/cutechess.py still passes adjudication after the V4 patch."
+        }
+        Write-Host "  weather-factory adjudication removed (V4) and Python syntax verified."
     }
 }
 

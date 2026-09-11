@@ -8,6 +8,18 @@ use crate::infra::capitalize_first_letter;
 use crate::search_options::SearchOptions;
 use crate::wac::DEFAULT_WAC_DEPTH;
 
+/// What one command line did, so a caller knows whether to keep reading and
+/// what to exit with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandOutcome {
+    /// Recognised and dispatched.
+    Handled,
+    /// `quit`: stop reading input.
+    Quit,
+    /// Not a command. A message has already been printed.
+    Unknown,
+}
+
 pub struct UciProtocol {
     search_options: SearchOptions,
     commands: EngineCommandQueue,
@@ -34,37 +46,65 @@ impl UciProtocol {
                 self.commands.push(EngineCommand::quit(0));
                 break;
             }
-            let command_line = input.trim().to_string();
-            let input: Vec<String> = command_line
-                .split_whitespace()
-                .map(str::to_string)
-                .collect();
-            if input.is_empty() {
-                continue;
-            }
-            let command: &str = &input[0];
-            let args: &[String] = &input[1..];
-
-            match command {
-                "uci" => self.uci(),
-                "isready" => self.is_ready(),
-                "go" => self.go(args),
-                "stop" => self.stop(),
-                "setoption" => self.set_option(args),
-                "ucinewgame" => self.new_game(),
-                "position" => self.position_with_command(args, &command_line),
-                "bench" => self.bench(args),
-                "wac" => self.wac(args),
-                #[cfg(feature = "tune")]
-                "dumpeval" => self.dump_eval(),
-                "ponderhit" => self.ponderhit(),
-                "quit" => {
-                    self.quit();
-                    break;
-                }
-                _ => self.unknown_command(&command_line),
+            if self.handle_command(input.trim()) == CommandOutcome::Quit {
+                break;
             }
         }
+    }
+
+    /// Run one command line and shut down, as `rarog bench 13` does.
+    ///
+    /// A.4.5. The shutdown deliberately mirrors **stdin EOF** and not the
+    /// interactive `quit`, and the difference is not cosmetic: `quit` calls
+    /// `control.request_quit()` and `push_priority`, which jumps the queue and
+    /// cuts short work already dispatched to the engine thread, while EOF
+    /// pushes an ordinary FIFO `quit` that a running `bench` completes ahead
+    /// of. That asymmetry is exactly why feeding `bench 13\nquit` on stdin
+    /// benches nothing while `bench 13` alone works.
+    pub fn run_once(&mut self, command_line: &str) -> CommandOutcome {
+        let outcome = self.handle_command(command_line);
+        if outcome != CommandOutcome::Quit {
+            self.commands.push(EngineCommand::quit(0));
+        }
+        outcome
+    }
+
+    /// Dispatch one command line, exactly as the interactive loop does.
+    pub fn handle_command(&mut self, command_line: &str) -> CommandOutcome {
+        let input: Vec<String> = command_line
+            .split_whitespace()
+            .map(str::to_string)
+            .collect();
+        if input.is_empty() {
+            return CommandOutcome::Handled;
+        }
+        let command: &str = &input[0];
+        let args: &[String] = &input[1..];
+
+        match command {
+            "uci" => self.uci(),
+            "isready" => self.is_ready(),
+            "go" => self.go(args),
+            "stop" => self.stop(),
+            "setoption" => self.set_option(args),
+            "ucinewgame" => self.new_game(),
+            "position" => self.position_with_command(args, command_line),
+            "bench" => self.bench(args),
+            "wac" => self.wac(args),
+            #[cfg(feature = "tune")]
+            "dumpeval" => self.dump_eval(),
+            "ponderhit" => self.ponderhit(),
+            "help" | "--help" | "-h" | "license" | "--license" => self.help(),
+            "quit" => {
+                self.quit();
+                return CommandOutcome::Quit;
+            }
+            _ => {
+                self.unknown_command(command_line);
+                return CommandOutcome::Unknown;
+            }
+        }
+        CommandOutcome::Handled
     }
 
     fn uci(&self) {
@@ -202,6 +242,21 @@ impl UciProtocol {
         let _ = ready_rx.recv();
     }
 
+    /// `help` — orientation, not a manual.
+    ///
+    /// Deliberately short: what the engine is, its licence, that it is normally
+    /// driven by a GUI, and where to read more. A full command reference here
+    /// would be a second copy of the UCI specification, going stale against
+    /// `README` and the protocol both.
+    ///
+    /// What it does list is the handful of commands a person types by hand,
+    /// and the fact that they work as arguments — someone who reached this text
+    /// by typing `rarog help` at a shell is exactly who needs telling.
+    fn help(&self) {
+        println!("{}", help_text());
+        flush_stdout();
+    }
+
     fn unknown_command(&self, command_line: &str) {
         if command_line.is_empty() || command_line.starts_with('#') {
             return;
@@ -209,6 +264,39 @@ impl UciProtocol {
         println!("Unknown command: '{command_line}'. Type help for more information.");
         flush_stdout();
     }
+}
+
+/// The text `help` prints.
+///
+/// Separated from the printing so its content is testable without capturing
+/// stdout, and `const` so it costs nothing when unused.
+const fn help_text() -> &'static str {
+    concat!(
+        "\n",
+        "Rarog is a chess engine for playing and analysing chess.\n",
+        "It is free software, licensed under the GNU General Public License v3 or later.\n",
+        "\n",
+        "Rarog speaks the Universal Chess Interface (UCI) protocol and is normally used\n",
+        "from a chess GUI rather than typed at directly. Any UCI-compatible GUI will do.\n",
+        "\n",
+        "Beyond the UCI commands a GUI sends, these are useful by hand:\n",
+        "\n",
+        "  bench [depth] [repeats]   Search a fixed suite of positions. The node count is\n",
+        "                            identical on every platform, so it tells you a build\n",
+        "                            is correct; the speed tells you how fast this machine\n",
+        "                            is. Defaults to depth 13.\n",
+        "  wac [depth]               Run the WAC tactical suite and report how many it\n",
+        "                            solved. A diagnostic, not a rating.\n",
+        "  help                      This text.\n",
+        "  quit                      Exit.\n",
+        "\n",
+        "These work as command-line arguments too, so `rarog bench 13` runs one command\n",
+        "and exits. An unrecognised argument exits with status 2.\n",
+        "\n",
+        "For more, see ",
+        env!("CARGO_PKG_REPOSITORY"),
+        "#readme\n",
+    )
 }
 
 fn flush_stdout() {
@@ -239,6 +327,93 @@ mod tests {
         let commands = EngineCommandQueue::default();
         let control = Arc::new(EngineControl::default());
         (UciProtocol::new(commands.clone(), control), commands)
+    }
+
+    #[test]
+    fn handle_command_reports_what_it_did() {
+        let (mut protocol, _commands) = protocol_fixture();
+        assert_eq!(protocol.handle_command("uci"), CommandOutcome::Handled);
+        // Not `isready`: it blocks on a reply from the engine thread, and this
+        // fixture deliberately has none.
+        // Blank and whitespace-only lines are not errors; the interactive loop
+        // has always skipped them and argv must agree.
+        assert_eq!(protocol.handle_command(""), CommandOutcome::Handled);
+        assert_eq!(protocol.handle_command("   "), CommandOutcome::Handled);
+        assert_eq!(
+            protocol.handle_command("notacommand"),
+            CommandOutcome::Unknown
+        );
+        assert_eq!(protocol.handle_command("quit"), CommandOutcome::Quit);
+    }
+
+    #[test]
+    fn run_once_queues_the_eof_style_quit_not_the_interactive_one() {
+        // A.4.5's load-bearing detail. `quit` from the keyboard uses
+        // `push_priority`, which jumps ahead of a dispatched `bench` and cuts
+        // it short; EOF uses an ordinary push that the bench completes before.
+        // `run_once` must use the latter, or `rarog bench 13` benches nothing -
+        // which is the exact bug this leaf exists to fix.
+        let (mut protocol, commands) = protocol_fixture();
+        assert_eq!(protocol.run_once("bench 1"), CommandOutcome::Handled);
+
+        // `bench` enqueues a stop ahead of the bench itself.
+        let stop = commands.wait_pop();
+        assert!(stop.stop && !stop.quit && stop.bench_depth.is_none());
+
+        let bench = commands.wait_pop();
+        assert_eq!(bench.bench_depth, Some(1), "the bench must be queued");
+        assert!(!bench.quit, "the bench command must not carry quit");
+
+        let quit = commands.wait_pop();
+        assert!(quit.quit, "a quit must follow the bench");
+        assert_eq!(
+            quit.epoch, 0,
+            "epoch 0 is the EOF-style quit; the interactive one carries the \
+             control's epoch, is pushed with priority, and pre-empts the bench"
+        );
+    }
+
+    #[test]
+    fn help_is_recognised_under_every_alias() {
+        let (mut protocol, _commands) = protocol_fixture();
+        // `unknown_command` has always told users to "Type help"; before this
+        // existed, doing so answered "Unknown command: 'help'".
+        for alias in ["help", "--help", "-h", "license", "--license"] {
+            assert_eq!(
+                protocol.handle_command(alias),
+                CommandOutcome::Handled,
+                "`{alias}` must be recognised"
+            );
+        }
+    }
+
+    #[test]
+    fn help_text_orients_rather_than_lists_the_protocol() {
+        let text = help_text();
+        // The four things orientation has to cover.
+        assert!(text.contains("chess engine"), "says what it is");
+        assert!(
+            text.contains("General Public License"),
+            "states the licence"
+        );
+        assert!(text.contains("Universal Chess Interface"), "names UCI");
+        assert!(text.contains("github.com"), "points somewhere further");
+        // Plus the one thing a shell user cannot learn elsewhere.
+        assert!(text.contains("rarog bench 13"), "shows the argument form");
+        // And NOT a second copy of the UCI specification.
+        for protocol_command in ["isready", "ucinewgame", "ponderhit", "setoption"] {
+            assert!(
+                !text.contains(protocol_command),
+                "help must not restate the UCI spec, found `{protocol_command}`"
+            );
+        }
+    }
+
+    #[test]
+    fn run_once_on_quit_does_not_queue_a_second_quit() {
+        let (mut protocol, commands) = protocol_fixture();
+        assert_eq!(protocol.run_once("quit"), CommandOutcome::Quit);
+        assert!(commands.wait_pop().quit);
     }
 
     #[test]

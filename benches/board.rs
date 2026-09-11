@@ -5,30 +5,33 @@
 //! verified by a preflight pass, so "same benchmark" is enforced rather than
 //! assumed.
 //!
+//! Every generating workload writes into a caller-owned `MoveList` built
+//! before timing starts, which is what the peer harnesses do and what the
+//! search itself does. The by-value form returns a 520-byte aggregate that the
+//! fat-LTO build copies on the normal return path, and RAR-M44 measured that
+//! copy at +11.2% on legal generation and +40.5% on captures -- it was inside
+//! the timed region and reported as move generation. `see_captures` and
+//! `perft` deliberately keep their own delivery: they are the untouched
+//! controls for the 4.11b.19 sessions.
+//!
 //! The profile is shared with Basilisk (`tests/board_performance.cpp`) and
 //! Manta (`tools/board_bench.zig`); the contract they all implement is written
 //! down in Manta's `docs/BOARD_BENCHMARK.md`. Corpus, order, work quanta,
 //! estimator (150 ms warm-up, 11 x 150 ms samples, median +- MAD) and batch
 //! calibration match those two implementations.
 //!
-//! ⚠ ONE COLUMN IS NOT CROSS-ENGINE COMPARABLE: **threshold SEE**. The contract
-//! specifies P/N/B/R/Q/K = 100/300/300/500/900/20000, and both peers pass those
-//! values in explicitly — Basilisk from a dedicated `SEE_VALUES` table, Manta
-//! from a `see.PieceValues` literal. Rarog has no separate SEE table: `see_ge`
-//! reads the EVAL values, `[100, 320, 330, 500, 900, MATE_SCORE]`. Knight,
-//! bishop and king therefore differ, so an exchange sequence can settle at a
-//! different point and the throughput is not measuring the same operation.
-//! Every other column is comparable.
-//!
-//! This is deliberately NOT "fixed" here. Making it match would mean giving the
-//! engine a separate SEE value table, which changes `see_ge` at twelve pruning
-//! sites in `search.rs` and needs a strength gate — a benchmark must not smuggle
-//! in a playing-strength change to make its own numbers prettier.
+//! Threshold SEE uses the frozen P/N/B/R/Q/K = 100/300/300/500/900/20000
+//! comparison vector through Board's injected-value interface. Production SEE
+//! remains 100/320/330/500/900/20000. Preflight prints the exact move/verdict
+//! set, so the comparison runner checks answers as well as call count.
 
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use rarog::board::{Board, MoveList, generate_captures, generate_legal_movelist, perft};
+use rarog::board::{
+    Board, CROSS_ENGINE_SEE_VALUES, MoveList, SeeValues, generate_captures, generate_captures_into,
+    generate_legal_into, perft,
+};
 
 const WARMUP: Duration = Duration::from_millis(150);
 // 9.7: N shorter samples instead of one 750 ms shot. A single sample on a
@@ -99,6 +102,7 @@ impl BenchResult {
 }
 
 fn main() {
+    let (preflight_only, see_values) = arguments();
     let boards: Vec<Board> = BENCHMARK_FENS
         .iter()
         .map(|(_, fen)| Board::from_fen(fen).unwrap())
@@ -113,18 +117,24 @@ fn main() {
     // region. `perft` restores it exactly through make/unmake, so one board
     // serves every sample — which is also what the peer implementations do.
     let mut perft_board = Board::starting_position();
+    // Caller-owned lists, built here for the same reason the boards are: a
+    // container the workload constructs (or receives by value) is charged to
+    // board throughput and is not board work.
+    let mut scratch = MoveList::new();
+    let mut outer = MoveList::new();
+    let mut inner = MoveList::new();
 
     // Preflight: prove every work quantum before timing anything. A workload
     // that generates a different number of moves than its peers is not the
     // same benchmark, however similar the label looks.
     {
         let measured = [
-            legal_movegen(&boards),
-            capture_gen(&mut capture_boards),
-            make_unmake(&mut mutable_boards),
-            see_captures(&mut see_boards),
+            legal_movegen(&boards, &mut scratch),
+            capture_gen(&mut capture_boards, &mut scratch),
+            make_unmake(&mut mutable_boards, &mut scratch),
+            see_captures(&mut see_boards, see_values),
             perft(&mut perft_board, 4),
-            game_simulation(&mut simulation_boards),
+            game_simulation(&mut simulation_boards, &mut outer, &mut inner),
         ];
         let mut ok = true;
         for (i, (&got, &want)) in measured.iter().zip(EXPECTED_OPS.iter()).enumerate() {
@@ -139,24 +149,32 @@ fn main() {
         );
     }
 
+    println!("see-values: {}", format_values(see_values));
+    println!("see-verdicts: {}", see_verdicts(&boards, see_values));
+    println!("see-probe: {}", see_probe(see_values));
+    if preflight_only {
+        println!("preflight: PASS");
+        return;
+    }
+
     let results = [
         measure("legal moves", "moves", EXPECTED_OPS[0], || {
-            legal_movegen(&boards)
+            legal_movegen(&boards, &mut scratch)
         }),
         measure("legal captures", "moves", EXPECTED_OPS[1], || {
-            capture_gen(&mut capture_boards)
+            capture_gen(&mut capture_boards, &mut scratch)
         }),
         measure("make/unmake", "moves", EXPECTED_OPS[2], || {
-            make_unmake(&mut mutable_boards)
+            make_unmake(&mut mutable_boards, &mut scratch)
         }),
         measure("threshold SEE", "captures", EXPECTED_OPS[3], || {
-            see_captures(&mut see_boards)
+            see_captures(&mut see_boards, see_values)
         }),
         measure("perft(4) startpos", "nodes", EXPECTED_OPS[4], || {
             perft(&mut perft_board, 4)
         }),
         measure("two-ply simulation", "moves", EXPECTED_OPS[5], || {
-            game_simulation(&mut simulation_boards)
+            game_simulation(&mut simulation_boards, &mut outer, &mut inner)
         }),
     ];
 
@@ -188,6 +206,60 @@ fn main() {
             result.unit
         );
     }
+}
+
+fn arguments() -> (bool, SeeValues) {
+    let mut preflight_only = false;
+    let mut values = CROSS_ENGINE_SEE_VALUES;
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--bench" => {}
+            "--preflight-only" => preflight_only = true,
+            "--see-values" => {
+                let raw = args.next().expect("--see-values requires P,N,B,R,Q,K");
+                let parsed: Vec<i32> = raw
+                    .split(',')
+                    .map(|item| item.parse().expect("SEE values must be integers"))
+                    .collect();
+                assert_eq!(
+                    parsed.len(),
+                    6,
+                    "--see-values requires exactly six integers"
+                );
+                values = SeeValues::new(
+                    parsed[0], parsed[1], parsed[2], parsed[3], parsed[4], parsed[5],
+                );
+            }
+            _ => panic!("usage: board [--preflight-only] [--see-values P,N,B,R,Q,K]"),
+        }
+    }
+    (preflight_only, values)
+}
+
+fn format_values(values: SeeValues) -> String {
+    values.as_array().map(|value| value.to_string()).join("/")
+}
+
+fn see_verdicts(boards: &[Board], values: SeeValues) -> String {
+    let mut verdicts = Vec::new();
+    for (index, original) in boards.iter().enumerate() {
+        let mut board = original.clone();
+        for &mv in &generate_captures(&mut board) {
+            verdicts.push(format!(
+                "{index}:{mv}={}",
+                u8::from(board.see_ge_with_values(mv, 0, values))
+            ));
+        }
+    }
+    verdicts.sort();
+    verdicts.join(",")
+}
+
+fn see_probe(values: SeeValues) -> bool {
+    let board = Board::from_fen("4k3/8/2p5/3p4/8/8/3R4/4K3 w - - 0 1").unwrap();
+    let mv = board.parse_move("d2d5").unwrap();
+    board.see_ge_with_values(mv, 0, values)
 }
 
 /// Pick an inner batch size so the deadline clock is read about once per
@@ -266,37 +338,39 @@ where
     }
 }
 
-// `generate_legal_movelist` writes into a fixed-capacity stack `MoveList`.
-// The convenience wrapper `generate_legal_moves` returns a `Vec<Move>` and so
-// puts a `Vec::with_capacity(48)` malloc/free pair inside the timed region —
-// that allocation was worth 17-43% on the four workloads that used it, and it
-// is allocator throughput, not board throughput. Search itself prefers the
-// movelist form, so this is also the more representative call.
-fn legal_movegen(boards: &[Board]) -> u64 {
+// `generate_legal_into` writes into a fixed-capacity `MoveList` the caller
+// owns. The convenience wrapper `generate_legal_moves` returns a `Vec<Move>`
+// and so puts a `Vec::with_capacity(48)` malloc/free pair inside the timed
+// region — that allocation was worth 17-43% on the four workloads that used
+// it, and it is allocator throughput, not board throughput. The by-value
+// `generate_legal_movelist` has the same defect in smaller print: a 520-byte
+// return copy. Search itself uses the out-parameter form, so this is also the
+// more representative call.
+fn legal_movegen(boards: &[Board], moves: &mut MoveList) -> u64 {
     let mut total = 0u64;
     for board in boards {
-        let moves = generate_legal_movelist(black_box(board));
+        generate_legal_into(black_box(board), moves);
         total += moves.len() as u64;
-        black_box(&moves);
+        black_box(&*moves);
     }
     total
 }
 
-fn capture_gen(boards: &mut [Board]) -> u64 {
+fn capture_gen(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     let mut total = 0u64;
     for board in boards {
-        let moves = generate_captures(black_box(board));
+        generate_captures_into(black_box(board), moves);
         total += moves.len() as u64;
-        black_box(&moves);
+        black_box(&*moves);
     }
     total
 }
 
-fn make_unmake(boards: &mut [Board]) -> u64 {
+fn make_unmake(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     let mut ops = 0u64;
     for board in boards {
-        let moves: MoveList = generate_legal_movelist(board);
-        for &mv in &moves {
+        generate_legal_into(board, moves);
+        for &mv in moves.as_slice() {
             board.make_move(mv);
             black_box(&board);
             board.unmake_move(mv);
@@ -322,27 +396,27 @@ fn make_unmake(boards: &mut [Board]) -> u64 {
 // The two are genuinely different operations, not two spellings of one: the
 // threshold form early-exits as soon as the running balance settles the
 // question, so it is expected to be the faster of the two. Both are pin-aware.
-fn see_captures(boards: &mut [Board]) -> u64 {
+fn see_captures(boards: &mut [Board], values: SeeValues) -> u64 {
     let mut ops = 0u64;
     for board in boards {
         let captures = generate_captures(board);
         for &mv in &captures {
-            black_box(board.see_ge(mv, 0));
+            black_box(board.see_ge_with_values(mv, 0, values));
             ops += 1;
         }
     }
     ops
 }
 
-fn game_simulation(boards: &mut [Board]) -> u64 {
+fn game_simulation(boards: &mut [Board], outer: &mut MoveList, inner: &mut MoveList) -> u64 {
     let mut ops = 0u64;
     for board in boards {
-        let moves: MoveList = generate_legal_movelist(board);
-        for &mv in &moves {
+        generate_legal_into(board, outer);
+        for &mv in outer.as_slice() {
             board.make_move(mv);
-            let replies = generate_legal_movelist(board);
-            ops += replies.len() as u64;
-            black_box(&replies);
+            generate_legal_into(board, inner);
+            ops += inner.len() as u64;
+            black_box(&*inner);
             board.unmake_move(mv);
         }
     }

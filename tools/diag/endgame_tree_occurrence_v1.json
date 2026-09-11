@@ -1,0 +1,261 @@
+{
+  "schema": "rarog-endgame-occurrence-v1",
+  "layer": "occurrence",
+  "layer_note": "gates whether layers 1-3 can ever reach layer 4. PRIORITISES only; never evidence of value (analysis/endgame_measurement_layers.md).",
+  "exe": "D:\\code\\rarog\\target\\release\\rarog.exe",
+  "depth": 13,
+  "nodes": 6901489,
+  "endgame_men_threshold": 7,
+  "roots": {
+    "total": 40,
+    "endgame": 0,
+    "middlegame": 40,
+    "endgame_indices": []
+  },
+  "evaluations": {
+    "all_roots": 80589,
+    "middlegame_roots": 80589
+  },
+  "sensitivity": [
+    {
+      "endgame_men": 7,
+      "endgame_roots": 0,
+      "middlegame_evaluations": 80589,
+      "share_of_evaluations_from_middlegame_roots": 1.0,
+      "families_reached_only_from_endgame_roots": []
+    },
+    {
+      "endgame_men": 8,
+      "endgame_roots": 3,
+      "middlegame_evaluations": 35435,
+      "share_of_evaluations_from_middlegame_roots": 0.4397,
+      "families_reached_only_from_endgame_roots": [
+        "eg_kqkr",
+        "eg_kqkrps"
+      ]
+    },
+    {
+      "endgame_men": 10,
+      "endgame_roots": 8,
+      "middlegame_evaluations": 4494,
+      "share_of_evaluations_from_middlegame_roots": 0.055764,
+      "families_reached_only_from_endgame_roots": [
+        "eg_kbpkb",
+        "eg_kbpkn",
+        "eg_kbppkb",
+        "eg_kpkp",
+        "eg_kqkp",
+        "eg_kqkr",
+        "eg_kqkrps",
+        "eg_kxk"
+      ]
+    },
+    {
+      "endgame_men": 12,
+      "endgame_roots": 10,
+      "middlegame_evaluations": 242,
+      "share_of_evaluations_from_middlegame_roots": 0.003003,
+      "families_reached_only_from_endgame_roots": [
+        "eg_kbpkb",
+        "eg_kbpkn",
+        "eg_kbppkb",
+        "eg_kpk",
+        "eg_kpkp",
+        "eg_kpsk",
+        "eg_kqkp",
+        "eg_kqkr",
+        "eg_kqkrps",
+        "eg_krkb",
+        "eg_krkp",
+        "eg_krpkb",
+        "eg_kxk"
+      ]
+    },
+    {
+      "endgame_men": 14,
+      "endgame_roots": 14,
+      "middlegame_evaluations": 84,
+      "share_of_evaluations_from_middlegame_roots": 0.001042,
+      "families_reached_only_from_endgame_roots": [
+        "eg_kbpkb",
+        "eg_kbpkn",
+        "eg_kbppkb",
+        "eg_kbpsk",
+        "eg_kpk",
+        "eg_kpkp",
+        "eg_kpsk",
+        "eg_kqkp",
+        "eg_kqkr",
+        "eg_kqkrps",
+        "eg_krkb",
+        "eg_krkp",
+        "eg_krpkb",
+        "eg_kxk"
+      ]
+    },
+    {
+      "endgame_men": 16,
+      "endgame_roots": 16,
+      "middlegame_evaluations": 65,
+      "share_of_evaluations_from_middlegame_roots": 0.000807,
+      "families_reached_only_from_endgame_roots": [
+        "eg_kbpkb",
+        "eg_kbpkn",
+        "eg_kbppkb",
+        "eg_kbpsk",
+        "eg_kpk",
+        "eg_kpkp",
+        "eg_kpsk",
+        "eg_kqkp",
+        "eg_kqkr",
+        "eg_kqkrps",
+        "eg_krkb",
+        "eg_krkp",
+        "eg_krpkb",
+        "eg_kxk"
+      ]
+    }
+  ],
+  "families": {
+    "eg_kbnk": {
+      "all_roots": 0,
+      "middlegame_roots": 0,
+      "share_all": 0.0,
+      "share_middlegame": 0.0,
+      "from_endgame_roots_only": false
+    },
+    "eg_kbpkb": {
+      "all_roots": 13,
+      "middlegame_roots": 13,
+      "share_all": 0.000161,
+      "share_middlegame": 0.000161,
+      "from_endgame_roots_only": false
+    },
+    "eg_kbpkn": {
+      "all_roots": 15,
+      "middlegame_roots": 15,
+      "share_all": 0.000186,
+      "share_middlegame": 0.000186,
+      "from_endgame_roots_only": false
+    },
+    "eg_kbppkb": {
+      "all_roots": 12,
+      "middlegame_roots": 12,
+      "share_all": 0.000149,
+      "share_middlegame": 0.000149,
+      "from_endgame_roots_only": false
+    },
+    "eg_kbpsk": {
+      "all_roots": 27,
+      "middlegame_roots": 27,
+      "share_all": 0.000335,
+      "share_middlegame": 0.000335,
+      "from_endgame_roots_only": false
+    },
+    "eg_knnk": {
+      "all_roots": 0,
+      "middlegame_roots": 0,
+      "share_all": 0.0,
+      "share_middlegame": 0.0,
+      "from_endgame_roots_only": false
+    },
+    "eg_knnkp": {
+      "all_roots": 0,
+      "middlegame_roots": 0,
+      "share_all": 0.0,
+      "share_middlegame": 0.0,
+      "from_endgame_roots_only": false
+    },
+    "eg_kpk": {
+      "all_roots": 186,
+      "middlegame_roots": 186,
+      "share_all": 0.002308,
+      "share_middlegame": 0.002308,
+      "from_endgame_roots_only": false
+    },
+    "eg_kpkp": {
+      "all_roots": 185,
+      "middlegame_roots": 185,
+      "share_all": 0.002296,
+      "share_middlegame": 0.002296,
+      "from_endgame_roots_only": false
+    },
+    "eg_kpsk": {
+      "all_roots": 720,
+      "middlegame_roots": 720,
+      "share_all": 0.008934,
+      "share_middlegame": 0.008934,
+      "from_endgame_roots_only": false
+    },
+    "eg_kqkp": {
+      "all_roots": 554,
+      "middlegame_roots": 554,
+      "share_all": 0.006874,
+      "share_middlegame": 0.006874,
+      "from_endgame_roots_only": false
+    },
+    "eg_kqkr": {
+      "all_roots": 39,
+      "middlegame_roots": 39,
+      "share_all": 0.000484,
+      "share_middlegame": 0.000484,
+      "from_endgame_roots_only": false
+    },
+    "eg_kqkrps": {
+      "all_roots": 3554,
+      "middlegame_roots": 3554,
+      "share_all": 0.0441,
+      "share_middlegame": 0.0441,
+      "from_endgame_roots_only": false
+    },
+    "eg_krkb": {
+      "all_roots": 18,
+      "middlegame_roots": 18,
+      "share_all": 0.000223,
+      "share_middlegame": 0.000223,
+      "from_endgame_roots_only": false
+    },
+    "eg_krkn": {
+      "all_roots": 0,
+      "middlegame_roots": 0,
+      "share_all": 0.0,
+      "share_middlegame": 0.0,
+      "from_endgame_roots_only": false
+    },
+    "eg_krkp": {
+      "all_roots": 194,
+      "middlegame_roots": 194,
+      "share_all": 0.002407,
+      "share_middlegame": 0.002407,
+      "from_endgame_roots_only": false
+    },
+    "eg_krpkb": {
+      "all_roots": 33,
+      "middlegame_roots": 33,
+      "share_all": 0.000409,
+      "share_middlegame": 0.000409,
+      "from_endgame_roots_only": false
+    },
+    "eg_krpkr": {
+      "all_roots": 2790,
+      "middlegame_roots": 2790,
+      "share_all": 0.03462,
+      "share_middlegame": 0.03462,
+      "from_endgame_roots_only": false
+    },
+    "eg_krppkrp": {
+      "all_roots": 4739,
+      "middlegame_roots": 4739,
+      "share_all": 0.058805,
+      "share_middlegame": 0.058805,
+      "from_endgame_roots_only": false
+    },
+    "eg_kxk": {
+      "all_roots": 179,
+      "middlegame_roots": 179,
+      "share_all": 0.002221,
+      "share_middlegame": 0.002221,
+      "from_endgame_roots_only": false
+    }
+  }
+}

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """PGN -> phase-balanced FEN;target data for Rarog Texel tuning.
 
-The default contract is an exact 3,000,000-position training set, split evenly
-across five material-phase buckets.  Positions are sampled per phase *inside
-each game* before entering fixed-size reservoirs.  This avoids the old failure
-mode where a uniform 12-ply/game cap discarded nearly all opening positions and
-the phase mix was only discovered after a full extraction.
+The default contract is an exact 3,000,000-position training set plus separate
+validation and frozen-test splits, each balanced across five material phases.
+Whole supplied starts are assigned by stable hash, so a replay cannot leak
+across splits and input order cannot change membership. Positions are sampled
+per phase *inside each game* before entering fixed-size reservoirs.
 
 Examples:
     # Cheap sizing pass; reads only the first 20k games.
     python tools/texel/extract.py tools/texel/data/*.pgn --preflight-games 20000
 
-    # One extraction over any number of archives; produces exactly 3M train
-    # rows when every phase quota is available.
+    # One extraction over any number of archives; publishes train, validation,
+    # frozen test and a hash-complete manifest when every quota is available.
     python tools/texel/extract.py tools/texel/data/*.pgn \
-        --out-dir tools/texel/data --train train.csv --holdout holdout.csv
+        --out-dir tools/texel/data/hce-v1
 
 Output is FEN;target, with the target from White's perspective in [0,1].
 Requires python-chess (``pip install chess``).
@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
+import json
 import math
 import os
 import random
@@ -52,6 +54,8 @@ PHASE_BUCKETS = (
     ("endgame", 3, 7),
     ("deep_endgame", 0, 2),
 )
+BUCKET_NAMES = tuple(item[0] for item in PHASE_BUCKETS)
+SPLITS = ("train", "validation", "test")
 
 PIECE_VAL = {
     chess.PAWN: 1,
@@ -86,8 +90,32 @@ def phase_bucket(phase: int) -> int:
 
 
 def fen_key(fen: str) -> str:
-    """Position, side, castling and EP; clocks are irrelevant to eval."""
-    return " ".join(fen.split()[:4])
+    """Static-eval identity: retain rule-50 clock, discard fullmove number."""
+    return " ".join(fen.split()[:5])
+
+
+def start_key(game: "chess.pgn.Game") -> str:
+    """Every replay of one supplied start belongs to the same data split."""
+    return " ".join(game.board().fen().split()[:4])
+
+
+def start_digest(game: "chess.pgn.Game") -> int:
+    return int.from_bytes(hashlib.sha256(start_key(game).encode("utf-8")).digest()[:8], "big")
+
+
+def split_for_key(key: str, validation_pct: float, test_pct: float) -> str:
+    slot = int.from_bytes(hashlib.sha256(key.encode("utf-8")).digest()[:8], "big") % 1_000_000
+    test_cut = round(test_pct * 10_000)
+    validation_cut = test_cut + round(validation_pct * 10_000)
+    if slot < test_cut:
+        return "test"
+    if slot < validation_cut:
+        return "validation"
+    return "train"
+
+
+def split_for(game: "chess.pgn.Game", validation_pct: float, test_pct: float) -> str:
+    return split_for_key(start_key(game), validation_pct, test_pct)
 
 
 def has_winning_capture(board: "chess.Board") -> bool:
@@ -188,6 +216,7 @@ def process_game(
     max_per_game: int,
     quiet_filter: bool,
     rng: random.Random,
+    audit: dict[str, int | bool] | None = None,
 ) -> tuple[list[tuple[str, int, float | None]], int]:
     """Return phase-stratified candidates and the quiet-filter reject count."""
     if game.headers.get("Result", "*") not in RESULT_MAP:
@@ -210,6 +239,10 @@ def process_game(
             cp = comment_cp_white(node.comment or "", board.turn == chess.WHITE)
             by_phase[bucket].append((board.fen(), bucket, cp))
         board.push(move)
+
+    if audit is not None:
+        audit["plies"] = len(nodes)
+        audit["natural_mate"] = board.is_checkmate()
 
     # Bound expensive quiet checks per phase, rather than sampling uniformly
     # over the whole game and silently starving opening/deep-endgame rows.
@@ -243,6 +276,38 @@ def fmt_target(target: float) -> str:
     return f"{target:.6f}".rstrip("0").rstrip(".")
 
 
+def split_counts(train: int, validation_pct: float, test_pct: float) -> dict[str, int]:
+    train_fraction = 1.0 - (validation_pct + test_pct) / 100.0
+    return {
+        "train": train,
+        "validation": round(train * validation_pct / 100.0 / train_fraction),
+        "test": round(train * test_pct / 100.0 / train_fraction),
+    }
+
+
+def make_reservoirs(counts: dict[str, int], weights: list[float], seed: int):
+    quotas = {split: allocate(counts[split], weights) for split in SPLITS}
+    reservoirs = {
+        split: [
+            Reservoir(
+                quota,
+                random.Random(seed ^ (split_index + 1) * 0x9E3779B1 ^ (phase + 1) * 0x85EBCA77),
+            )
+            for phase, quota in enumerate(quotas[split])
+        ]
+        for split_index, split in enumerate(SPLITS)
+    }
+    return quotas, reservoirs
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest().upper()
+
+
 def stage_rows(path: Path, rows: Iterable[tuple[str, float]]) -> Path:
     tmp = path.with_name(path.name + ".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as out:
@@ -251,185 +316,189 @@ def stage_rows(path: Path, rows: Iterable[tuple[str, float]]) -> Path:
     return tmp
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("pgn", nargs="+", help="PGN files, globs, or directories")
-    parser.add_argument("--out-dir", default="", metavar="DIR")
-    parser.add_argument("--train", default="train.csv", metavar="FILE")
-    parser.add_argument("--holdout", default="holdout.csv", metavar="FILE")
-    parser.add_argument("--target-train", default=3_000_000, type=int, metavar="N")
-    parser.add_argument("--phase-weights", default=parse_phase_weights("1,1,1,1,1"), type=parse_phase_weights,
-                        metavar="A,B,C,D,E", help="target mix for the five phase buckets (default equal)")
-    parser.add_argument("--holdout-pct", default=5.0, type=float, metavar="N")
-    parser.add_argument("--max-per-phase-per-game", default=8, type=int, metavar="N")
-    parser.add_argument("--max-per-game", default=0, type=int, metavar="N",
-                        help="optional total cap after phase sampling; 0 = no extra cap")
-    parser.add_argument("--skip-start", default=2, type=int, metavar="N",
-                        help="plies after the supplied opening FEN to skip (default 2)")
-    parser.add_argument("--skip-end", default=6, type=int, metavar="N")
-    parser.add_argument("--seed", default=42, type=int, metavar="N")
-    parser.add_argument("--preflight-games", default=0, type=int, metavar="N",
-                        help="estimate required games from the first N games; write nothing")
-    parser.add_argument("--preflight-safety", default=1.25, type=float, metavar="X")
-    parser.add_argument("--no-quiet-filter", dest="quiet_filter", action="store_false")
-    parser.add_argument("--blend", default=1.0, type=float, metavar="LAMBDA",
-                        help="train target = lambda*WDL + (1-lambda)*sigmoid(search cp)")
-    args = parser.parse_args()
+def parser() -> argparse.ArgumentParser:
+    command = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    command.add_argument("pgn", nargs="+", help="PGN files, globs, or directories")
+    command.add_argument("--out-dir", default="", metavar="DIR")
+    command.add_argument("--train", default="train.csv", metavar="FILE")
+    command.add_argument("--validation", "--holdout", dest="validation", default="validation.csv", metavar="FILE")
+    command.add_argument("--test", default="test.csv", metavar="FILE")
+    command.add_argument("--target-train", default=3_000_000, type=int, metavar="N")
+    command.add_argument("--phase-weights", default=parse_phase_weights("1,1,1,1,1"), type=parse_phase_weights,
+                         metavar="A,B,C,D,E", help="target mix for the five phase buckets (default equal)")
+    command.add_argument("--validation-pct", "--holdout-pct", dest="validation_pct",
+                         default=5.0, type=float, metavar="N")
+    command.add_argument("--test-pct", default=5.0, type=float, metavar="N")
+    command.add_argument("--max-per-phase-per-game", default=8, type=int, metavar="N")
+    command.add_argument("--max-per-game", default=16, type=int, metavar="N")
+    command.add_argument("--skip-start", default=2, type=int, metavar="N")
+    command.add_argument("--skip-end", default=6, type=int, metavar="N")
+    command.add_argument("--seed", default=42, type=int, metavar="N")
+    command.add_argument("--preflight-games", default=0, type=int, metavar="N")
+    command.add_argument("--preflight-safety", default=1.25, type=float, metavar="X")
+    command.add_argument("--no-quiet-filter", dest="quiet_filter", action="store_false")
+    command.add_argument("--blend", default=1.0, type=float, metavar="LAMBDA",
+                         help="training target = lambda*WDL + (1-lambda)*sigmoid(search cp)")
+    return command
 
-    if args.target_train <= 0:
-        parser.error("--target-train must be positive")
-    if not 0.0 <= args.holdout_pct < 100.0:
-        parser.error("--holdout-pct must be in [0,100)")
+
+def validate_args(args, command: argparse.ArgumentParser) -> None:
+    if args.target_train <= 0 or args.max_per_phase_per_game <= 0 or args.max_per_game <= 0:
+        command.error("targets and per-game caps must be positive")
+    if args.max_per_game < args.max_per_phase_per_game:
+        command.error("max per game cannot be smaller than max per phase")
+    if min(args.validation_pct, args.test_pct) < 0 or args.validation_pct + args.test_pct >= 100:
+        command.error("validation/test percentages must be non-negative and sum below 100")
     if not 0.0 <= args.blend <= 1.0:
-        parser.error("--blend must be in [0,1]")
-    if args.max_per_phase_per_game <= 0:
-        parser.error("--max-per-phase-per-game must be positive")
+        command.error("--blend must be in [0,1]")
     if args.skip_start < 0 or args.skip_end < 0:
-        parser.error("skip counts cannot be negative")
+        command.error("skip counts cannot be negative")
 
+
+def main() -> int:
+    command = parser()
+    args = command.parse_args()
+    validate_args(args, command)
     paths = iter_pgn_paths(args.pgn)
     out_dir = Path(args.out_dir).resolve() if args.out_dir else paths[0].parent
-    quotas = allocate(args.target_train, args.phase_weights)
-    holdout_total = round(args.target_train * args.holdout_pct / max(100.0 - args.holdout_pct, 1.0))
-    holdout_quotas = allocate(holdout_total, args.phase_weights)
-    rng = random.Random(args.seed)
-    train = [Reservoir(quota, rng) for quota in quotas]
-    holdout = [Reservoir(quota, rng) for quota in holdout_quotas]
+    counts = split_counts(args.target_train, args.validation_pct, args.test_pct)
+    quotas, reservoirs = make_reservoirs(counts, args.phase_weights, args.seed)
+    unique = {split: [0] * len(PHASE_BUCKETS) for split in SPLITS}
+    games_by_split = {split: 0 for split in SPLITS}
+    seen_positions: set[str] = set()
+    seen_starts: set[str] = set()
+    independent = recorded = skipped = raw = quiet_rejected = parse_errors = missing_evals = 0
 
-    print(f"PGN inputs: {len(paths)}")
     for path in paths:
-        print(f"  {path}")
-    print(f"Target train: {args.target_train:,} | holdout: {holdout_total:,}")
-    print("Phase quotas: " + ", ".join(f"{PHASE_BUCKETS[i][0]}={quotas[i]:,}" for i in range(len(quotas))))
-    print(f"skip_start={args.skip_start}, skip_end={args.skip_end}, "
-          f"max/phase/game={args.max_per_phase_per_game}, "
-          f"quiet_filter={'on' if args.quiet_filter else 'OFF'}, blend={args.blend}")
-
-    seen: set[str] = set()
-    games_total = games_skipped = raw_candidates = quiet_rejected = missing_evals = 0
-    unique_by_phase = [0] * len(PHASE_BUCKETS)
-    preflight_base, preflight_extra = divmod(args.preflight_games, len(paths))
-
-    for path_index, path in enumerate(paths):
-        path_limit = preflight_base + (1 if path_index < preflight_extra else 0)
-        if args.preflight_games and path_limit == 0:
-            continue
-        path_games = 0
         print(f"Reading {path} ...")
-        with path.open(encoding="utf-8", errors="replace") as pgn_file:
-            while True:
+        with path.open(encoding="utf-8", errors="replace") as stream:
+            while not args.preflight_games or independent < args.preflight_games:
                 try:
-                    game = chess.pgn.read_game(pgn_file)
+                    game = chess.pgn.read_game(stream)
                 except Exception as exc:
-                    print(f"  WARNING: parse error, skipping game: {exc}", file=sys.stderr)
-                    games_skipped += 1
+                    print(f"WARNING: parse error, skipping game: {exc}", file=sys.stderr)
+                    parse_errors += 1
                     continue
                 if game is None:
                     break
-
-                games_total += 1
-                path_games += 1
-                result_str = game.headers.get("Result", "*")
+                recorded += 1
+                opening = start_key(game)
+                if opening in seen_starts:
+                    continue
+                seen_starts.add(opening)
+                independent += 1
+                split = split_for(game, args.validation_pct, args.test_pct)
+                games_by_split[split] += 1
                 candidates, rejected = process_game(
-                    game,
-                    args.skip_start,
-                    args.skip_end,
-                    args.max_per_phase_per_game,
-                    args.max_per_game,
-                    args.quiet_filter,
-                    rng,
+                    game, args.skip_start, args.skip_end, args.max_per_phase_per_game,
+                    args.max_per_game, args.quiet_filter,
+                    random.Random(args.seed ^ start_digest(game)),
                 )
                 quiet_rejected += rejected
                 if not candidates:
-                    games_skipped += 1
-                    if args.preflight_games and path_games >= path_limit:
-                        break
+                    skipped += 1
                     continue
-
-                raw_candidates += len(candidates)
-                result = RESULT_MAP[result_str]
-                is_holdout = rng.random() * 100.0 < args.holdout_pct
-                reservoirs = holdout if is_holdout else train
-
+                raw += len(candidates)
+                result = RESULT_MAP[game.headers["Result"]]
                 for fen, bucket, cp in candidates:
                     key = fen_key(fen)
-                    if key in seen:
+                    if key in seen_positions:
                         continue
-                    seen.add(key)
-                    unique_by_phase[bucket] += 1
-                    if not is_holdout and args.blend < 1.0 and cp is not None:
-                        target = args.blend * result + (1.0 - args.blend) * sigmoid_cp(cp)
-                    else:
-                        target = result
-                        if not is_holdout and args.blend < 1.0 and cp is None:
+                    seen_positions.add(key)
+                    unique[split][bucket] += 1
+                    target = result
+                    if split == "train" and args.blend < 1.0:
+                        if cp is None:
                             missing_evals += 1
-                    reservoirs[bucket].offer((fen, target, cp))
+                        else:
+                            target = args.blend * result + (1.0 - args.blend) * sigmoid_cp(cp)
+                    reservoirs[split][bucket].offer((fen, target, cp))
+        if args.preflight_games and independent >= args.preflight_games:
+            break
 
-                if games_total % 10_000 == 0:
-                    fill = ", ".join(
-                        f"{PHASE_BUCKETS[i][0]}={len(train[i].items):,}/{quotas[i]:,}"
-                        for i in range(len(quotas))
-                    )
-                    print(f"  games={games_total:,} unique={len(seen):,} | {fill}")
-                if args.preflight_games and path_games >= path_limit:
-                    break
-
-    print("\nSummary:")
-    print(f"  Games read       : {games_total:,}")
-    print(f"  Games skipped    : {games_skipped:,}")
-    print(f"  Raw candidates   : {raw_candidates:,}")
-    print(f"  Quiet-rejected   : {quiet_rejected:,}")
-    print(f"  Unique positions : {len(seen):,}")
+    print(f"Independent starts={independent:,} recorded_games={recorded:,} "
+          f"paired_replays={recorded-independent:,} skipped={skipped:,} parse_errors={parse_errors:,} "
+          f"raw={raw:,} unique={len(seen_positions):,} quiet_rejected={quiet_rejected:,}")
     if args.blend < 1.0:
-        print(f"  Missing evals    : {missing_evals:,} (pure-WDL fallback)")
+        print(f"Missing training evals={missing_evals:,} (pure-WDL fallback)")
 
     if args.preflight_games:
-        print("\nPreflight estimate (unique sampled positions/game, with safety margin):")
         required = 0
-        for i, quota in enumerate(quotas):
-            # unique_by_phase includes both splits. Convert to expected train rate.
-            train_rate = unique_by_phase[i] / max(games_total, 1) * (1.0 - args.holdout_pct / 100.0)
-            games = math.ceil(quota / train_rate * args.preflight_safety) if train_rate else math.inf
-            if games != math.inf:
-                required = max(required, int(games))
-            print(f"  {PHASE_BUCKETS[i][0]:13} rate={train_rate:6.3f}  required={games:,}")
-        if required:
-            print(f"Recommended minimum: {required:,} independent games, including "
-                  f"{args.preflight_safety:g}x safety.")
+        incomplete = False
+        print("Preflight by split/phase (safety included):")
+        for split in SPLITS:
+            for phase, name in enumerate(BUCKET_NAMES):
+                rate = unique[split][phase] / max(independent, 1)
+                estimate = math.ceil(quotas[split][phase] / rate * args.preflight_safety) if rate else math.inf
+                if estimate == math.inf:
+                    incomplete = True
+                else:
+                    required = max(required, estimate)
+                print(f"  {split:10}/{name:13} rate={rate:7.4f}/game required={estimate:,}")
+        if incomplete:
+            print("No recommendation: at least one split/phase had zero pilot yield.", file=sys.stderr)
+            return 2
+        print(f"Recommended total independent games: {required:,}")
         return 0
 
-    train_counts = [len(res.items) for res in train]
-    holdout_counts = [len(res.items) for res in holdout]
-    for i, name in enumerate(name for name, _, _ in PHASE_BUCKETS):
-        print(f"  {name:13}: train {train_counts[i]:,}/{quotas[i]:,} "
-              f"holdout {holdout_counts[i]:,}/{holdout_quotas[i]:,} "
-              f"(eligible train stream {train[i].seen:,})")
-
-    short = [i for i in range(len(quotas)) if train_counts[i] < quotas[i] or holdout_counts[i] < holdout_quotas[i]]
+    short = []
+    for split in SPLITS:
+        for phase, name in enumerate(BUCKET_NAMES):
+            have = len(reservoirs[split][phase].items)
+            want = quotas[split][phase]
+            print(f"  {split:10}/{name:13}: {have:,}/{want:,} eligible={reservoirs[split][phase].seen:,}")
+            if have < want:
+                short.append((split, name))
     if short:
-        print("\nERROR: dataset quotas were not met; existing outputs were left untouched.", file=sys.stderr)
-        for i in short:
-            print(f"  {PHASE_BUCKETS[i][0]}: need {quotas[i] - train_counts[i]:,} more train and "
-                  f"{holdout_quotas[i] - holdout_counts[i]:,} more holdout rows", file=sys.stderr)
-        print("Run --preflight-games 20000 on the intended PGN mix before the full pass, "
-              "or add more independent games for the short phase.", file=sys.stderr)
+        print("ERROR: exact quotas not met; existing outputs unchanged.", file=sys.stderr)
         return 2
 
-    train_rows = [(fen, target) for reservoir in train for fen, target, _ in reservoir.items]
-    holdout_rows = [(fen, target) for reservoir in holdout for fen, target, _ in reservoir.items]
-    rng.shuffle(train_rows)
-    rng.shuffle(holdout_rows)
+    names = {"train": args.train, "validation": args.validation, "test": args.test}
+    targets = {split: out_dir / names[split] for split in SPLITS}
+    manifest_path = out_dir / "manifest.json"
+    for target in (*targets.values(), manifest_path):
+        if target.exists():
+            raise FileExistsError(f"refusing to overwrite frozen dataset artifact: {target}")
     out_dir.mkdir(parents=True, exist_ok=True)
-    train_path = out_dir / args.train
-    holdout_path = out_dir / args.holdout
-    print(f"\nWriting {len(train_rows):,} rows -> {train_path}")
-    train_tmp = stage_rows(train_path, train_rows)
-    print(f"Writing {len(holdout_rows):,} rows -> {holdout_path}")
-    holdout_tmp = stage_rows(holdout_path, holdout_rows)
-    # Both complete files exist before either published output is replaced.
-    os.replace(train_tmp, train_path)
-    os.replace(holdout_tmp, holdout_path)
-    print("Target met with the requested phase distribution.")
+    staged: list[tuple[Path, Path]] = []
+    output_hashes = {}
+    shuffle = random.Random(args.seed)
+    for split in SPLITS:
+        rows = [(fen, target) for phase in reservoirs[split]
+                for fen, target, _cp in phase.items]
+        shuffle.shuffle(rows)
+        temporary = stage_rows(targets[split], rows)
+        staged.append((temporary, targets[split]))
+        output_hashes[split] = sha256_file(temporary)
+
+    manifest = {
+        "schema": "rarog-hce-wdl-v2",
+        "inputs": [{"path": str(path), "bytes": path.stat().st_size,
+                    "sha256": sha256_file(path)} for path in paths],
+        "seed": args.seed,
+        "independent_starts": independent,
+        "recorded_games": recorded,
+        "paired_replays_discarded": recorded - independent,
+        "skipped_games": skipped,
+        "parse_errors": parse_errors,
+        "games_by_split": games_by_split,
+        "rows": counts,
+        "phase_quotas": {split: dict(zip(BUCKET_NAMES, quotas[split])) for split in SPLITS},
+        "output_sha256": output_hashes,
+        "dedup_fields": 5,
+        "filters": {"quiet": args.quiet_filter, "skip_start": args.skip_start,
+                    "skip_end": args.skip_end,
+                    "max_per_phase_per_game": args.max_per_phase_per_game,
+                    "max_per_game": args.max_per_game},
+        "label": "white-perspective self-play WDL",
+        "train_blend": args.blend,
+    }
+    manifest_tmp = manifest_path.with_name(manifest_path.name + ".tmp")
+    manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
+    for temporary, target in staged:
+        os.replace(temporary, target)
+    os.replace(manifest_tmp, manifest_path)
+    print(f"Published {sum(counts.values()):,} rows under {out_dir}")
     return 0
 
 

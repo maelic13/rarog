@@ -29,13 +29,30 @@ use crate::infra;
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::with_capacity(48);
     gen_moves::<true, true, _>(board, &mut moves);
+    crate::diag_count!(board_gen_vec_calls);
+    crate::diag_add!(board_gen_vec_moves, moves.len() as u64);
     moves
 }
 
-/// Generate all legal moves into the engine's fixed-capacity move list.
+/// Generate all legal moves into a caller-owned fixed-capacity move list.
+///
+/// The out-parameter form is the primary one. Returning a `MoveList` by value
+/// costs a 520-byte `memcpy` on the normal return path of the fat-LTO build:
+/// RVO does not apply there, and RAR-M44 measured the copy at +11.2% on legal
+/// generation and +40.5% on captures once removed. The list is cleared first,
+/// so a caller may reuse one list across generations.
+pub fn generate_legal_into(board: &Board, moves: &mut MoveList) {
+    moves.clear();
+    gen_moves::<true, true, _>(board, moves);
+    crate::diag_count!(board_gen_full_calls);
+    crate::diag_add!(board_gen_full_moves, moves.len() as u64);
+}
+
+/// [`generate_legal_into`] returning a fresh list, for callers that are not on
+/// a hot path and prefer the value form.
 pub fn generate_legal_movelist(board: &Board) -> MoveList {
     let mut moves = MoveList::new();
-    gen_moves::<true, true, _>(board, &mut moves);
+    generate_legal_into(board, &mut moves);
     moves
 }
 
@@ -46,11 +63,19 @@ pub fn generate_quiets(board: &Board) -> MoveList {
     moves
 }
 
-/// [`generate_quiets`] reusing a pinned set computed earlier at the same node
-/// (10.3 speed pass — see [`gen_moves_pinned`]).
+/// [`generate_quiets`] into a caller-owned list, reusing a pinned set computed
+/// earlier at the same node (10.3 speed pass — see [`gen_moves_pinned`]).
+pub fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves: &mut MoveList) {
+    moves.clear();
+    gen_moves_pinned::<false, true, _>(board, pinned, moves);
+    crate::diag_count!(board_gen_staged_quiet_calls);
+    crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
+}
+
+/// [`generate_quiets_pinned_into`] returning a fresh list.
 pub fn generate_quiets_pinned(board: &Board, pinned: Bitboard) -> MoveList {
     let mut moves = MoveList::new();
-    gen_moves_pinned::<false, true, _>(board, pinned, &mut moves);
+    generate_quiets_pinned_into(board, pinned, &mut moves);
     moves
 }
 
@@ -63,18 +88,27 @@ pub fn generate_quiets_pinned(board: &Board, pinned: Bitboard) -> MoveList {
 /// calls, and the 80.9% that do find a capture exit the scan early (king/pawn
 /// tests come first), so the pre-scan is cheap when it fails and pays a full
 /// generation when it succeeds.
-pub fn generate_captures(board: &mut Board) -> MoveList {
-    let mut moves = MoveList::new();
+pub fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
+    moves.clear();
     let us = board.side_to_move;
     let them = !us;
 
     if !has_pseudo_capture(board, us, them) {
-        return moves;
+        crate::diag_count!(board_gen_capture_calls);
+        return;
     }
 
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
-    gen_captures_with_pin(board, us, them, king_sq, pinned, &mut moves);
+    gen_captures_with_pin(board, us, them, king_sq, pinned, moves);
+    crate::diag_count!(board_gen_capture_calls);
+    crate::diag_add!(board_gen_capture_moves, moves.len() as u64);
+}
+
+/// [`generate_captures_into`] returning a fresh list.
+pub fn generate_captures(board: &mut Board) -> MoveList {
+    let mut moves = MoveList::new();
+    generate_captures_into(board, &mut moves);
     moves
 }
 
@@ -90,14 +124,24 @@ pub fn generate_captures(board: &mut Board) -> MoveList {
 /// it fired then paid for the pins anyway in `generate_quiets`. Computing pins
 /// unconditionally is therefore less work in the common case and lets every
 /// stage at this node share one pinned set.
-pub fn generate_captures_pinned(board: &mut Board) -> (MoveList, Bitboard) {
-    let mut moves = MoveList::new();
+pub fn generate_captures_pinned_into(board: &mut Board, moves: &mut MoveList) -> Bitboard {
+    moves.clear();
     let us = board.side_to_move;
     let them = !us;
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
 
-    gen_captures_with_pin(board, us, them, king_sq, pinned, &mut moves);
+    gen_captures_with_pin(board, us, them, king_sq, pinned, moves);
+    crate::diag_count!(board_gen_staged_capture_calls);
+    crate::diag_add!(board_gen_staged_capture_moves, moves.len() as u64);
+    pinned
+}
+
+/// [`generate_captures_pinned_into`] returning a fresh list beside the pinned
+/// set.
+pub fn generate_captures_pinned(board: &mut Board) -> (MoveList, Bitboard) {
+    let mut moves = MoveList::new();
+    let pinned = generate_captures_pinned_into(board, &mut moves);
     (moves, pinned)
 }
 
@@ -181,7 +225,8 @@ pub fn perft(board: &mut Board, depth: u32) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = generate_legal_movelist(board);
+    let mut moves = MoveList::new();
+    generate_legal_into(board, &mut moves);
     if depth == 1 {
         return moves.len() as u64;
     }
@@ -226,7 +271,7 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
 /// [`gen_moves`] for callers that already hold the pinned set for this
 /// position (10.3 speed pass).
 ///
-/// `compute_pinned` is two slider lookups plus a per-sniper `between` scan, and
+/// `compute_pinned` is four slider lookups plus a per-sniper `between` scan, and
 /// it was being repeated: `generate_captures` computed it and then handed off
 /// to `gen_moves`, which computed the very same thing again; and a staged node
 /// paid for it once more when quiets were finally generated. Pins are a pure
@@ -787,6 +832,7 @@ fn gen_castling<S: MoveSink>(
 
 /// Compute the bitboard of our pieces that are pinned to our king.
 fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bitboard {
+    crate::diag_count!(board_compute_pinned_calls);
     let our_occ = board.color_occ(us);
     let atk = &*ATTACKS;
     let mut pinned = Bitboard::EMPTY;
@@ -883,7 +929,7 @@ const fn aligned(ar: i8, af: i8, br: i8, bf: i8) -> bool {
 
 // Const-evaluated init — helpers are non-const; any out-of-range would fail
 // the compile-time evaluation itself, so plain casts are sound here.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 const fn init_between() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
     let mut a = 0usize;
@@ -919,7 +965,7 @@ const fn init_between() -> [[Bitboard; 64]; 64] {
 
 // Const-evaluated init — helpers are non-const; any out-of-range would fail
 // the compile-time evaluation itself, so plain casts are sound here.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 const fn init_line() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
     let mut a = 0usize;
@@ -991,5 +1037,89 @@ impl Board {
             return true;
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use super::*;
+
+    // Independent mailbox ray walk: no slider tables, BETWEEN or LINE table.
+    fn ray_walk_pins(board: &Board, us: Color) -> Bitboard {
+        let king = board.king_sq(us);
+        let mut result = Bitboard::EMPTY;
+        for (df, dr) in [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ] {
+            let mut file = i16::from(king.0 % 8) + df;
+            let mut rank = i16::from(king.0 / 8) + dr;
+            let mut blocker = None;
+            while (0..8).contains(&file) && (0..8).contains(&rank) {
+                let sq = Square(u8::try_from(rank * 8 + file).unwrap());
+                if let Some((color, piece)) = board.piece_at(sq) {
+                    if color == us && blocker.is_none() {
+                        blocker = Some(sq);
+                    } else {
+                        if color != us
+                            && (piece == Piece::Queen
+                                || (df != 0 && dr != 0 && piece == Piece::Bishop)
+                                || ((df == 0 || dr == 0) && piece == Piece::Rook))
+                            && let Some(pinned) = blocker
+                        {
+                            result |= Bitboard::from(pinned);
+                        }
+                        break;
+                    }
+                }
+                file += df;
+                rank += dr;
+            }
+        }
+        result
+    }
+
+    #[test]
+    fn sniper_pins_match_independent_ray_walk() {
+        let profile = include_str!("../../tests/data/board-v2.tsv");
+        let mut rng = 0x9e37_79b9_7f4a_7c15u64;
+        let mut checked = 0;
+        for row in profile
+            .lines()
+            .filter(|row| !row.starts_with('#') && !row.is_empty())
+        {
+            let fields: Vec<_> = row.split('|').collect();
+            let mut board = Board::from_fen(fields[2]).unwrap();
+            for _ in 0..100 {
+                for us in [Color::White, Color::Black] {
+                    assert_eq!(
+                        compute_pinned(&board, board.king_sq(us), us, !us),
+                        ray_walk_pins(&board, us),
+                        "pins for {us:?} in {}",
+                        board.to_fen()
+                    );
+                    checked += 1;
+                }
+                let moves = board.generate_legal_movelist();
+                if moves.is_empty() {
+                    break;
+                }
+                rng ^= rng << 13;
+                rng ^= rng >> 7;
+                rng ^= rng << 17;
+                let index = usize::try_from(rng % u64::try_from(moves.len()).unwrap()).unwrap();
+                board.make_move(moves.as_slice()[index]);
+            }
+        }
+        assert!(
+            checked >= 1000,
+            "pin oracle walk unexpectedly thin: {checked}"
+        );
     }
 }

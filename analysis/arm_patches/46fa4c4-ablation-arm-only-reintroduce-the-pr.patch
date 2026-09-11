@@ -1,0 +1,22 @@
+Arm 46fa4c4  (Ablation arm ONLY: reintroduce the ProbCut piece desync. NEVER MERGE.)
+Author-date: 2026-08-19 06:35:08 +0200
+Applies to: db19aef  (reachable from dev)
+Command:    git diff <base> <arm>
+
+diff --git a/src/search.rs b/src/search.rs
+index 8bcb8ea..759c4e8 100644
+--- a/src/search.rs
++++ b/src/search.rs
+@@ -2690,8 +2690,10 @@ impl Searcher {
+                     if diag_sample {
+                         crate::diag_count!(probcut_attempt);
+                     }
+-                    let probcut_piece = board.moving_piece(mv);
+-                    self.push_move(ply, mv, probcut_piece);
++                    // ABLATION ARM ONLY — deliberately reintroduces the 4.5.3
++                    // desync: writes the move without its piece, leaving piece
++                    // and cont_key stale from a sibling subtree. NEVER MERGE.
++                    self.stack[ply].mv = mv;
+                     board.make_move_unchecked(mv);
+                     self.tt.prefetch(board.hash);
+                     let score =

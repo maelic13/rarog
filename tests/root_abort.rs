@@ -37,10 +37,25 @@ fn search_aborted(fen: &str, budget: u32) -> (rarog::board::Move, i32, usize) {
     let board = Board::from_fen(fen).expect("valid FEN");
     let mut options = SearchOptions::default();
     options.position.board = board.clone();
-    // Deep enough that the BUDGET ends the search, but not so deep that a large
-    // budget makes the suite slow: an abort is a mid-iteration property, so small
-    // budgets carry the coverage and a 40-ply limit only added runtime.
-    options.limits.depth = Some(16);
+    // Deep enough that the BUDGET ends the search. That is a PRECONDITION of
+    // this suite, not a convenience: every assertion below reads "the search was
+    // interrupted", so a limit the search can actually reach inside the swept
+    // budgets turns a legitimate completed iteration into a false failure.
+    //
+    // 16 was too shallow, and the dependence stayed invisible until a
+    // selectivity change moved node cost. On
+    // `8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1` the 4.7c ProbCut move filter
+    // cut the cost of reaching depth 16 from 343,416 nodes to 183,954 -- it
+    // stops spending speculative searches on captures that cannot bridge the
+    // margin, which in a locked endgame is nearly all of them. Sixteen
+    // iterations then fit inside budget 100, and the assertion below read
+    // "depth 16 was unreachable" rather than "no depth was fabricated".
+    //
+    // With a 64-ply limit the reported depth is unambiguously the last
+    // COMPLETED iteration rather than possibly the limit itself, and the bound
+    // is genuinely out of reach. Runtime is unchanged: the budget, not the
+    // limit, is what stops these searches.
+    options.limits.depth = Some(64);
     let mut searcher = Searcher::default();
     let mut polls = 0u32;
     let result = searcher.search(board, &options, false, || {
@@ -110,9 +125,9 @@ fn reported_depth_never_exceeds_a_completed_iteration() {
             // 0; what it may never do is report a depth it never completed, and
             // the depth limit above means any value at it would be fabricated.
             assert!(
-                depth < 16,
+                depth < 64,
                 "{fen} at budget {budget} reported depth {depth}, at or beyond the \
-                 16-ply limit it cannot have completed"
+                 64-ply limit it cannot have completed"
             );
         }
     }

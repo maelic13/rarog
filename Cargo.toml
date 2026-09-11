@@ -1,12 +1,12 @@
 [package]
 name = "rarog"
 authors = ["Miloslav Macurek"]
-version = "2.3.2"
+version = "2.4.0"
 edition = "2024"
 # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
 # stale local toolchain fails with a clear cargo message, not a confusing
 # mid-compile error about an unstable feature.
-rust-version = "1.97"
+rust-version = "1.98"
 description = "A UCI-compatible chess engine written in Rust"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/maelic13/rarog"
@@ -26,6 +26,14 @@ resolver = "3"
 # Build: cargo xtask build --arch pext --pgo (+ add --features tune to the xtask or
 # pass CARGO_ENCODED_RUSTFLAGS directly if needed).
 tune = []
+
+# Paired-ablation instrument (analysis/ablation_design.md). Exposes
+# `AblationMask`, one bit per search mechanism, mirroring the bit assignment of
+# the oracle's own AblationMask so the SAME number ablates the SAME mechanism on
+# both engines. Behaviour-changing by design, so it is NOT `diag`: never in a
+# shipped binary, and never in a strength gate except as the arm under test.
+# Production compiles every guard out entirely -- `ablated()` is a const `false`.
+ablate = []
 # Phase 4.1 search diagnostics: exact legacy events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
@@ -89,7 +97,12 @@ cast_possible_wrap = "deny"
 [dependencies]
 
 [build-dependencies]
-cc = "1.3"
+# A.4.1: the floor tracks what has actually been verified against `vendor/fathom`,
+# not merely what resolves. `cc` compiles `tbprobe.c`, and `build.rs` hands it a
+# tier-dependent `TB_NO_HW_POP_COUNT`; a `cc` that mis-handles that is how the
+# 2.3.0/2.3.1 baseline assets shipped 15 illegal `popcntq`. Raise this line only
+# together with a `verify-isa` pass on every tier.
+cc = "1.4"
 
 [profile.release]
 opt-level = 3
@@ -99,4 +112,8 @@ panic = "abort"
 
 [[bench]]
 name = "board"
+harness = false
+
+[[bench]]
+name = "board_v2"
 harness = false

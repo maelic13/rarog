@@ -1,0 +1,12 @@
+# board-v2 coverage profile. Fields: name | tags | FEN | perft depth.
+# The independent generator/validator is tools/diag/board_v2_oracle.py.
+startpos|baseline|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1|3
+kiwipete|castle-white-king,castle-white-queen|r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1|2
+castle-black|castle-black-king,castle-black-queen|r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1|2
+single-check-evasion|single-check,evasion|4k3/8/8/8/8/8/4r3/4K3 w - - 0 1|2
+double-check-evasion|double-check,evasion|4k3/8/8/8/8/2b5/4r3/4K3 w - - 0 1|2
+ep-legal|ep-legal|8/8/8/3pP3/8/8/8/4K2k w - d6 0 1|2
+ep-illegal-pin|ep-illegal|8/8/3p4/KPp4r/8/8/8/7k w - c6 0 1|2
+quiet-underpromotion|quiet-promotion,underpromotion|4k3/P7/8/8/8/8/8/4K3 w - - 0 1|2
+capture-underpromotion|capture-promotion,underpromotion|1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1|2
+sparse-endgame-long-clock|sparse-endgame,long-history|8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 97 143|3

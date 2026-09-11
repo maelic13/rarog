@@ -30,6 +30,13 @@
     Planned total iterations (sets A = Iterations / 10 in spsa.json).
     Default 5000. State is saved every 10 iterations to tuner\state.json.
 
+.PARAMETER StopAfter
+    Absolute iteration at which this invocation stops. Zero means the full
+    horizon. A staged pilot stop does not alter the registered schedule.
+
+.PARAMETER GamesPerIteration
+    Games per SPSA mini-match. Default 32; must be positive and even.
+
 .PARAMETER REnd
 Learning rate at the END of the planned run (fishtest's `r_end`). The gain
 `a` is DERIVED from this and -Iterations, so the schedule always lands on
@@ -56,7 +63,8 @@ is 0.002, the same order. Larger = hotter = more late wander.
 
 .PARAMETER LaunchOnly
     Skip setup and just launch (tuner must already be populated). EngineSuffix
-    and Resume are ignored. Iterations is the session stop target.
+    and Resume are ignored. Iterations must remain the original horizon;
+    StopAfter is the session stop target.
 
 .PARAMETER LogFile
     Override the full-log path. Default tools\results\spsa_<ConfigGroup>.log.
@@ -76,10 +84,11 @@ is 0.002, the same order. Larger = hotter = more late wander.
     ./tools/spsa.ps1 -ConfigGroup history -LaunchOnly
 #>
 param(
-    [ValidateSet("aspiration","selectivity","pruning","lmr","histcov","corr","probcut","futility","tm","lazymargin","history","see")]
     [string]$ConfigGroup = "lmr",
     [int]$Iterations = 5000,
+    [int]$StopAfter = 0,
     [double]$REnd = 0.0031,
+    [int]$GamesPerIteration = 32,
     [int]$Concurrency = 0,
     [string]$EngineSuffix = "",
     [switch]$Resume,
@@ -93,6 +102,15 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
 if ($SetupOnly -and $LaunchOnly) { throw "-SetupOnly and -LaunchOnly are mutually exclusive." }
+if ($Iterations -le 0) { throw "-Iterations must be positive." }
+if ($StopAfter -eq 0) { $StopAfter = $Iterations }
+if ($StopAfter -le 0 -or $StopAfter -gt $Iterations) {
+    throw "-StopAfter must be between 1 and the planned -Iterations horizon ($Iterations)."
+}
+if ($REnd -le 0) { throw "-REnd must be positive." }
+if ($GamesPerIteration -lt 2 -or ($GamesPerIteration % 2) -ne 0) {
+    throw "-GamesPerIteration must be a positive even number."
+}
 
 # -ShowValues: print the current tuned values from tuner\state.json and exit.
 # weather-factory saves state every ~10 iterations, so after a Ctrl-C (which
@@ -130,7 +148,6 @@ $watch     = Join-Path $PSScriptRoot "watch.ps1"
 # extension (cutechess.py: format={book.split('.')[-1]}), so the EPD works
 # unmodified — and keeps SPSA on the same book as sprt.ps1 (PLAN principle #7).
 $book      = Join-Path $PSScriptRoot "books\UHO_Lichess_4852_v1.epd"
-$gamesPerIteration = 32
 if ($LogFile -eq "") { $LogFile = Join-Path $PSScriptRoot "results\spsa_$ConfigGroup.log" }
 
 # ─── Setup ────────────────────────────────────────────────────────────────
@@ -149,6 +166,9 @@ if (-not $LaunchOnly) {
             "lazymargin" { "phase5-lazymargin" }
             "history" { "p81-history" }
             "see" { "p72-see" }
+        }
+        if (-not $EngineSuffix) {
+            throw "-EngineSuffix is required for unregistered config group '$ConfigGroup'."
         }
     }
 
@@ -171,6 +191,64 @@ if (-not $LaunchOnly) {
     }
     Assert-AffinityFastchess -Path $fastchess | Out-Null
 
+    $engineManifestPath = [IO.Path]::ChangeExtension($engine, ".json")
+    if (-not (Test-Path -LiteralPath $engineManifestPath -PathType Leaf)) {
+        throw "Missing engine manifest: $engineManifestPath. Rebuild with tools/build_test.ps1 -Tune."
+    }
+    $engineManifest = Get-Content -LiteralPath $engineManifestPath -Raw | ConvertFrom-Json
+    $engineHash = Get-HarnessSha256 $engine
+    if (-not $engineManifest.binary_sha256 -or $engineManifest.binary_sha256 -ne $engineHash) {
+        throw "Tune binary SHA-256 does not match its engine manifest."
+    }
+    if ($engineManifest.verification -ne "bench") {
+        throw "Tune binary manifest does not record bench verification."
+    }
+    if ($engineManifest.flavor -notlike "*-tune") {
+        throw "SPSA requires a tune build manifest; selected flavor is '$($engineManifest.flavor)'."
+    }
+    if ($engineManifest.git_dirty) {
+        throw "Tune binary was built from a dirty source tree."
+    }
+
+    $srcConfig = Join-Path $configs "config_$ConfigGroup.json"
+    if (-not (Test-Path $srcConfig)) { throw "Config not found: $srcConfig" }
+    $advertisedDetails = @(Get-EngineUciOptions -Path $engine -Detailed)
+    $advertised = @($advertisedDetails.Name)
+    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
+    $advertisedNormalized = @($advertised | ForEach-Object { & $normalize $_ })
+    $sourceConfig = Get-Content $srcConfig -Raw | ConvertFrom-Json
+    $tunedNames = @($sourceConfig.PSObject.Properties.Name)
+    if ($tunedNames.Count -eq 0) { throw "$srcConfig declares no parameters." }
+    $missing = @($tunedNames | Where-Object { $advertisedNormalized -notcontains (& $normalize $_) })
+    if ($missing.Count -gt 0) {
+        throw ("$engineFile does not advertise: $($missing -join ', '). " +
+               "SPSA cannot tune an option the selected binary does not expose.")
+    }
+    foreach ($parameter in $sourceConfig.PSObject.Properties) {
+        $declaration = $advertisedDetails | Where-Object {
+            (& $normalize $_.Name) -eq (& $normalize $parameter.Name)
+        } | Select-Object -First 1
+        if ($declaration.Type -ne 'spin') {
+            throw "$($parameter.Name) is advertised as '$($declaration.Type)', not a spin option."
+        }
+        $value = [int64]$parameter.Value.value
+        $minimum = [int64]$parameter.Value.min_value
+        $maximum = [int64]$parameter.Value.max_value
+        $step = [double]$parameter.Value.step
+        if ($value -ne [int64]$declaration.Default -or $minimum -lt $declaration.Min -or
+            $maximum -gt $declaration.Max -or $minimum -ge $maximum -or
+            $value -lt $minimum -or $value -gt $maximum -or $step -le 0) {
+            throw ("Invalid SPSA declaration for $($parameter.Name): config value=$value " +
+                   "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
+                   "range=[$($declaration.Min),$($declaration.Max)].")
+        }
+        $endPerturbation = $step / [Math]::Pow($Iterations, 0.102)
+        if ($endPerturbation -lt 0.5) {
+            throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
+        }
+    }
+    Write-Host "Tunable options verified: $($tunedNames -join ', ')" -ForegroundColor Green
+
     $wfCute = Join-Path $wfRoot "cutechess.py"
     $expectedAffinityCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
     $wfCuteContent = if (Test-Path $wfCute) { Get-Content $wfCute -Raw } else { "" }
@@ -190,9 +268,9 @@ if (-not $LaunchOnly) {
     if ($wfCuteContent -notmatch 'RAROG_FIXED_OPTIONS_V1') {
         throw "weather-factory cannot apply fixed architecture options; run tools/setup_tools.ps1."
     }
-    if ($wfCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V2') {
-        throw ("weather-factory is not carrying the strength-v1 adjudication alignment (resign 600/3 one-sided, " +
-            "matching sprt.ps1); run tools/setup_tools.ps1.")
+    if ($wfCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V4') {
+        throw ("weather-factory is still passing adjudication; the tuner must run with none, like every other " +
+            "instrument here (RAR-M17). Run tools/setup_tools.ps1.")
     }
 
     Write-Host "Installing matplotlib (weather-factory dependency)..."
@@ -238,6 +316,9 @@ if (-not $LaunchOnly) {
     if (Test-Path $fixedConfigPath) {
         $fixedConfig = Get-Content $fixedConfigPath -Raw | ConvertFrom-Json
         foreach ($option in $fixedConfig.PSObject.Properties) {
+            if ($advertisedNormalized -notcontains (& $normalize $option.Name)) {
+                throw "$engineFile does not advertise fixed option '$($option.Name)'."
+            }
             $fixedOptions[$option.Name] = [int]$option.Value
         }
     }
@@ -245,7 +326,7 @@ if (-not $LaunchOnly) {
     $cutechessJson = @{
         engine        = $engineName
         book          = (Split-Path $book -Leaf)
-        games         = $gamesPerIteration
+        games         = $GamesPerIteration
         tc            = 3      # 3+0.03 (weather-factory auto inc = tc/100); UNIFIED
                                # with sprt.ps1's default so SPSA optima transfer to
                                # the confirming SPRT (PLAN.md guiding principle #7).
@@ -307,6 +388,7 @@ if (-not $LaunchOnly) {
     # FIRST tune this parameterization would ever have driven, so no fit was
     # contaminated. The assertion below is what makes it un-shippable again.
     $dampingA = [int]([Math]::Floor($Iterations / 10))
+    if ($dampingA -le 0) { throw "-Iterations $Iterations is too small: damping A would be zero." }
     $gainA = $REnd * [Math]::Pow($dampingA + $Iterations, $alpha) / [Math]::Pow($Iterations, 2 * $gamma)
     $gainFmt = [Math]::Round($gainA, 5)
     $spsaPath = Join-Path $wfRoot "spsa.json"
@@ -335,8 +417,6 @@ if (-not $LaunchOnly) {
     Write-Host "  (a is DERIVED from r_end and the horizon — change -Iterations and it re-solves.)"
     Write-Host "  Verified: A = $($written['A']) (10% of horizon), a = $($written['a'])." -ForegroundColor Green
 
-    $srcConfig = Join-Path $configs "config_$ConfigGroup.json"
-    if (-not (Test-Path $srcConfig)) { throw "Config not found: $srcConfig" }
     Copy-Item $srcConfig (Join-Path $wfRoot "config.json") -Force
     Write-Host "Wrote config.json (group: $ConfigGroup)"
 
@@ -346,17 +426,23 @@ if (-not $LaunchOnly) {
     # SPSA configuration, architecture, runner and opening source.
     $weatherRevision = (git -C $wfRoot rev-parse HEAD).Trim()
     $runManifest = [ordered]@{
-        schema_version       = 2
+        schema_version       = 3
         created_utc          = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         config_group         = $ConfigGroup
         iterations           = $Iterations
-        games_per_iteration  = $gamesPerIteration
+        initial_stop_after   = $StopAfter
+        games_per_iteration  = $GamesPerIteration
         estimator            = "complete final theta"
         r_end                = $REnd
         repo_revision        = (git rev-parse HEAD).Trim()
         repo_dirty           = [bool](git status --porcelain)
         engine               = $engineName
-        engine_sha256        = (Get-FileHash $engine -Algorithm SHA256).Hash
+        engine_sha256        = $engineHash
+        engine_manifest_sha256 = Get-HarnessSha256 $engineManifestPath
+        engine_git_sha       = $engineManifest.git_sha
+        engine_git_tree      = $engineManifest.git_tree
+        tuned_options        = $tunedNames
+        advertised_options   = $advertised
         config_sha256        = (Get-FileHash $srcConfig -Algorithm SHA256).Hash
         fixed_options        = $fixedOptions
         fixed_config_sha256  = if (Test-Path $fixedConfigPath) { (Get-FileHash $fixedConfigPath -Algorithm SHA256).Hash } else { $null }
@@ -373,7 +459,7 @@ if (-not $LaunchOnly) {
         runner_config_sha256 = (Get-FileHash (Join-Path $wfRoot "cutechess.json") -Algorithm SHA256).Hash
     }
     $runManifestPath = Join-Path $tuner "run_manifest.json"
-    $runManifest | ConvertTo-Json -Depth 6 | Out-File $runManifestPath -Encoding utf8 -NoNewline
+    Write-JsonAtomic -Path $runManifestPath -Value $runManifest
     Write-Host "Wrote run_manifest.json (binary/config/fixed-options/book/runner provenance)"
     if ($runManifest.repo_dirty) {
         Write-Warning "SPSA setup was made from a dirty repository. Commit the prepared workflow and rebuild before the real launch."
@@ -381,9 +467,10 @@ if (-not $LaunchOnly) {
     Write-Host ""
 
     if ($SetupOnly) {
+        $stopArgument = if ($StopAfter -lt $Iterations) { " -StopAfter $StopAfter" } else { "" }
         Write-Host "============================================================"
         Write-Host "  Setup complete (SetupOnly). Launch when ready:"
-        Write-Host "    ./tools/spsa.ps1 -ConfigGroup $ConfigGroup -LaunchOnly"
+        Write-Host "    ./tools/spsa.ps1 -ConfigGroup $ConfigGroup -LaunchOnly -Iterations $Iterations$stopArgument"
         Write-Host "============================================================"
         return
     }
@@ -418,15 +505,17 @@ if ((Get-Content $launchSpsaPy -Raw) -notmatch 'RAROG_TRANSACTIONAL_STEP_V2') {
 if ($launchCuteContent -notmatch 'RAROG_FIXED_OPTIONS_V1') {
     throw "weather-factory cannot apply fixed architecture options; run tools/setup_tools.ps1."
 }
-# Adjudication alignment is required to START a tune, but NEVER blocks a RESUME.
-# A run that began under the old resign rule must finish under it: switching
+# The adjudication rule is required to START a tune, but NEVER blocks a RESUME.
+# A run that began under an older rule must finish under it: switching
 # game-termination rules mid-tune makes the early iterations incomparable with
 # the late ones, which is strictly worse than completing under the old rule.
-# So the check keys on whether this is a fresh run, not on -LaunchOnly.
+# So the check keys on whether this is a fresh run, not on -LaunchOnly. That
+# exemption is what makes the 2026-09-01 move to V4 (no adjudication) safe to
+# land while a tune could in principle be in flight.
 if (-not (Test-Path (Join-Path $wfRoot "tuner\state.json")) -and
-    $launchCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V2') {
-    throw ("weather-factory is not carrying the strength-v1 adjudication alignment (resign 600/3 one-sided, " +
-        "matching sprt.ps1); run tools/setup_tools.ps1 before starting a new tune.")
+    $launchCuteContent -notmatch 'RAROG_ADJUDICATION_PATCH_V4') {
+    throw ("weather-factory is still passing adjudication; the tuner must run with none, like every other " +
+        "instrument here (RAR-M17). Run tools/setup_tools.ps1 before starting a new tune.")
 }
 
 $launchConfigPath = Join-Path $wfRoot "cutechess.json"
@@ -434,6 +523,19 @@ $launchConfig = Get-Content $launchConfigPath -Raw | ConvertFrom-Json
 if ([int]$launchConfig.threads -ne $Concurrency) {
     throw "cutechess.json concurrency is $($launchConfig.threads), but this launch resolved to $Concurrency. " +
           "Run setup again, or pass -Concurrency $($launchConfig.threads) explicitly to resume that run."
+}
+
+$launchManifestPath = Join-Path $wfRoot "tuner\run_manifest.json"
+if (-not (Test-Path -LiteralPath $launchManifestPath -PathType Leaf)) {
+    throw "Missing run_manifest.json; run setup before launching this tune."
+}
+$launchManifest = Get-Content $launchManifestPath -Raw | ConvertFrom-Json -AsHashtable
+if ([int]$launchManifest['iterations'] -ne $Iterations) {
+    throw ("This tune was prepared for $($launchManifest['iterations']) iterations, but launch requested " +
+           "$Iterations. Keep the original horizon so A and a remain valid.")
+}
+if ([int]$launchManifest['games_per_iteration'] -ne [int]$launchConfig.games) {
+    throw "run_manifest.json and cutechess.json disagree on games per iteration."
 }
 
 # ─── Multi-session bookkeeping ────────────────────────────────────────────
@@ -459,24 +561,21 @@ if (Test-Path $statePathLaunch) {
             "A comes from state.json. To change it, archive and start fresh.") -ForegroundColor Yellow
     }
 }
-$env:RAROG_MAX_ITERS = "$Iterations"
+$env:RAROG_MAX_ITERS = "$StopAfter"
 
 Write-Host "SPSA ($ConfigGroup): python main.py | watch.ps1"
 Write-Host "  Log: $LogFile$(if ($resuming) { '  (APPENDING — previous sessions preserved)' })"
 Write-Host "  State saved every 10 iterations -> tuner\state.json"
 if ($doneIters -gt 0) {
-    $remain = [Math]::Max(0, $Iterations - $doneIters)
-    $eta = [TimeSpan]::FromSeconds($remain * 28.57)
+    $remain = [Math]::Max(0, $StopAfter - $doneIters)
     Write-Host ("  Progress: iteration $doneIters / $Iterations " +
-        "($([Math]::Round(100.0 * $doneIters / $Iterations, 1))%) — " +
-        "$remain to go, ETA $([int]$eta.TotalHours) h $($eta.Minutes) m") -ForegroundColor Cyan
+        "($([Math]::Round(100.0 * $doneIters / $Iterations, 1))% of horizon) - " +
+        "$remain to this stop.") -ForegroundColor Cyan
 } else {
-    $eta = [TimeSpan]::FromSeconds($Iterations * 28.57)
-    Write-Host ("  Target: $Iterations iterations, ETA $([int]$eta.TotalHours) h " +
-        "at 28.57 s/iter — expect to resume across sessions:") -ForegroundColor Cyan
-    Write-Host "    ./tools/spsa.ps1 -ConfigGroup $ConfigGroup -LaunchOnly -Iterations $Iterations"
+    Write-Host "  Planned horizon: $Iterations iterations; this session stops after $StopAfter." -ForegroundColor Cyan
 }
-Write-Host "  Stops itself at the target; Ctrl-C any time (state is saved, then resume)."
+Write-Host "  Resume: ./tools/spsa.ps1 -ConfigGroup $ConfigGroup -LaunchOnly -Iterations $Iterations -StopAfter $StopAfter"
+Write-Host "  Stops itself at the session target; Ctrl-C any time (state is saved, then resume)."
 Write-Host ""
 
 # weather-factory launches fastchess as a bare "fastchess" command, but on

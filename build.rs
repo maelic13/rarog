@@ -3,6 +3,43 @@ fn main() {
 
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
+    // A.4.1 / RAR-P21 — the macOS PGO warning below is EXPECTED. Do not "fix"
+    // it by silencing warnings.
+    //
+    // A PGO build on macOS prints:
+    //
+    //     warning: rarog@x.y.z: Inherited flag "-fprofile-use=<...>.profdata"
+    //              is not supported by the currently used CC
+    //
+    // What it means: `cc` inherits a subset of rustc codegen flags, and PGO
+    // flags are inherited for CLANG ONLY, by design — GCC and clang use
+    // incompatible profile formats, and rustc is LLVM like clang. So on macOS
+    // `cc` translates `-C profile-use` into `-fprofile-use=`, probes whether
+    // the compiler accepts it, and Apple clang refuses: its LLVM is older than
+    // the one whose `llvm-profdata` wrote the file. `cc` then drops the flag
+    // and says so.
+    //
+    // What it does NOT mean: that macOS is the odd one out. On MSVC the PGO
+    // flags are never inherited at all — verified by capturing the invocation,
+    // which is plain `cl.exe -nologo -MD -O2 -Brepro -I vendor/fathom/src -W0
+    // /TP /std:c++17 -DTB_NO_HELPER_API ...` with no profile flag of any form.
+    // **No platform compiles this file with PGO.** macOS is only the one that
+    // mentions it. Reading Windows' silence as "it works there" is precisely
+    // the mistake RAR-P21 corrects.
+    //
+    // Why it is left alone: tablebases work normally — this is about how
+    // `tbprobe.c` is optimised, never about whether probing runs or is
+    // correct. `SyzygyPath` is empty by default, no gate harness sets it, and
+    // datagen hands its tablebase flags to fastchess rather than to the
+    // engine, so no measurement can be affected. The exposure is a little
+    // probe speed for users who configure tablebases.
+    //
+    // If the noise ever needs to go, `.inherit_rustflags(false)` is the switch,
+    // and it is ISA-safe: `cc` never inherits `-C target-cpu`/`target-feature`
+    // and emits no `-march`/`-mcpu`/`-mtune`, so it cannot move this file's
+    // instruction set. It is blunt, though — it also stops inheriting
+    // `stack-protector`, `dwarf-version` and `control-flow-guard`, none of
+    // which we set today but any of which a future flag might rely on.
     let mut build = cc::Build::new();
     build
         .file("vendor/fathom/src/tbprobe.c")
