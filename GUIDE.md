@@ -90,8 +90,8 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Search deficit | **247.97 ± 10.89 Elo** equal time against the frozen oracle on the 2.4.0 head, evaluation proved constant (RAR-O03); depth gap only 0.97 ply, so most of it is decision quality; selectivity explains 272 ± 18 |
 | Evaluation deficit | **about 329 Elo** against Stockfish's classical HCE with the same search |
 | Speed | **3.19 MNPS** pooled median, bench 13, PGO pext 1T, instrument ±0.2% (best-of 3.21 = the old 3.22); Basilisk 3.71 (RAR-M48) |
-| Conversion | 57 draws + 12 losses after a persistent piece-up in 2,400 games vs the six HCE-era engines — **2026-09-04 pool, `2.4.0-dev` binary; the one meter not yet re-read on the release head** (RAR-M47 can, at zero game cost) |
-| Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
+| Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
+| Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read resolved 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
 | Current step | **B.0 — the search programme investigation**. Phase A is closed; 2.4.0 is released |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
@@ -122,10 +122,11 @@ against Reckless and Stockfish. **E.2's binding arm is 1T, not 4T**, by 26 to
 column. The universal binary stays **optional and unscheduled** under G.2, its
 design in `analysis/universal_binary_2026-09.md`.
 
-One meter is owed rather than blocked: **conversion has not been re-read on the
-released binary**. Every other figure in the checkpoint is; A.5's PGN
-instrument (RAR-M47) can re-read it from the RAR-M45 games at zero game cost,
-and it is a PLAN rule 10 meter, so it should land before B's first checkpoint.
+Every checkpoint figure is now read on the released binary. The conversion
+re-read (RAR-M49, 2026-09-13, zero games) held Rarog's rate but **retired
+RAR-M47's "worse than Basilisk" reading**: on the same games the two engines
+throw away 107 and 106, so C.5 rests on Rarog's own stable rate, four fifths
+of it fifty-move or repetition with material in hand.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|

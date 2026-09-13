@@ -45,7 +45,7 @@ top 100, established by CCRL's own testing after a public release.
 | Where the search deficit lives | LMR plus shallow-depth pruning explain **272 ± 18** of it, near-additively; everything else about 30 | matched ablation, mask 160 |
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's HCE by **about 329 Elo** | RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
-| Conversion | 57 draws and 12 losses after holding a piece-up advantage for 12+ plies, in 2,400 games against the six HCE-era engines; Basilisk 40 and 12. **Measured on the 2026-09-04 pool and the pre-release `2.4.0-dev` binary — it is the one meter in this table not yet re-read on the release head**, and A.5's PGN instrument (RAR-M47) can do so from the RAR-M45 games at zero game cost | replay of the 2026-09-04 tournament; instrument RAR-M47 |
+| Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand | RAR-M49 (release re-read, tournament `5e539523`); instrument RAR-M47 |
 | Fingerprint | `bench 13` **7,601,220 / EBF 2.474**; engine source unchanged since `c80df74`, accepted by RAR-E15, and reproduced by every 2.4.0 build in A.7, A.8.3 and A.8.4 | GUIDE checkpoint; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
@@ -559,9 +559,12 @@ being played and can still make this release if it passes its checks.
   reports draws and losses after a persistent material advantage (12 plies,
   at least a minor piece, lone-minor exclusions by material signature), by
   termination and by phase, plus saves from persistent deficits. Baseline:
-  Rarog 57/12, Basilisk 40/12 on tournament `41768fe9`. The tool is re-run at
-  every programme checkpoint; it is a diagnostic layer, never an acceptance
-  layer.
+  Rarog 57/12, Basilisk 40/12 on tournament `41768fe9`. **Re-read on the
+  release games 2026-09-13 (RAR-M49, tournament `5e539523`): Rarog 88/19 in
+  3,600, the same rate; Basilisk 94/12 — the surplus-over-Basilisk reading is
+  retired, Rarog's own stable rate is what C.5 works from.** The tool is
+  re-run at every programme checkpoint; it is a diagnostic layer, never an
+  acceptance layer.
 - **A.6 Codebase consolidation analysis — DONE 2026-09-10, `NO_CHANGE` to
   source.** `analysis/consolidation_2026-09-10.md` inventories the crate at
   `7cffce5` (24,641 lines; `search.rs` 6,319 with a 1,684-line `negamax`
