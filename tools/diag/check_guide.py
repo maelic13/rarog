@@ -150,6 +150,40 @@ def parse_workflow_rows(lines):
     return rows, problems
 
 
+AGENTS = ROOT / "AGENTS.md"
+# A bench fingerprint as the documents write it: "7,601,220 / EBF 2.474".
+FINGERPRINT = re.compile(r"(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})")
+
+
+def fingerprint_problems(guide_text, agents_text, plan_text):
+    """The fingerprint GUIDE's checkpoint declares must be the one AGENTS and
+    PLAN's checkpoint row quote. Manta's GUIDE carried two different
+    production fingerprints on the day it froze; nothing checked."""
+    problems = []
+    head = [l for l in guide_text.splitlines() if l.startswith("| Development head")]
+    if not head:
+        return ["GUIDE.md: no '| Development head' checkpoint row to read the fingerprint from"]
+    m = FINGERPRINT.search(head[0])
+    if not m:
+        return ["GUIDE.md: the Development head row carries no 'N / EBF x.xxx' fingerprint"]
+    canonical = m.group(0)
+    for n, line in enumerate(agents_text.splitlines(), 1):
+        if "currently" in line:
+            for found in FINGERPRINT.finditer(line):
+                if found.group(0) != canonical:
+                    problems.append(
+                        "AGENTS.md:%d: fingerprint %s disagrees with GUIDE's %s"
+                        % (n, found.group(0), canonical))
+    rows = [l for l in plan_text.splitlines() if l.startswith("| Fingerprint |")]
+    for row in rows:
+        found = FINGERPRINT.search(row)
+        if found and found.group(0) != canonical:
+            problems.append(
+                "PLAN.md checkpoint row: fingerprint %s disagrees with GUIDE's %s"
+                % (found.group(0), canonical))
+    return problems
+
+
 def self_test():
     """Prove the workflow guard rejects intentionally malformed input."""
     sample = [
@@ -163,6 +197,15 @@ def self_test():
         sys.stdout.write("FAIL: workflow self-test missed: %s\n" % ", ".join(missing))
         return 1
     sys.stdout.write("workflow metadata negative self-test: PASS (3 failures detected)\n")
+    fp = fingerprint_problems(
+        "| Development head | fingerprint **7,601,220 / EBF 2.474** |",
+        "baseline (currently 7,000,000 / EBF 2.400) and\n  (currently **7,601,220 / EBF 2.474**)",
+        "| Fingerprint | `bench 13` **7,601,221 / EBF 2.474** |",
+    )
+    if len(fp) != 2:
+        sys.stdout.write("FAIL: fingerprint self-test expected 2 disagreements, got %d\n" % len(fp))
+        return 1
+    sys.stdout.write("fingerprint negative self-test: PASS (2 disagreements detected)\n")
     return 0
 
 
@@ -295,6 +338,8 @@ def main():
     if not plan_text:
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
+        agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
+        problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
         absent = [s for s in step_numbers
                   if not re.search(STEP_IN_PLAN.pattern % re.escape(s), plan_text)]
         if absent:

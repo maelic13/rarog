@@ -813,6 +813,20 @@ diagnostics; two rejections stop B.
   `store_kind_*` counters; the `NodeType` set; whether `Searcher` stays one
   struct or splits into per-thread state plus shared context; and the
   counter re-keying map from today's 286 `diag` names to the new modules.
+  **Manta's record is a second worked example, not a donor** (frozen at
+  1.1.0, 2026-09-13; `D:/code/manta/docs/adr/0070`, `0071`,
+  `EXPERIMENTS.md` MAN-S36). It reached the same cluster cut independently
+  after five isolated selectivity gates lost or stalled, and its core cut
+  depth-12 nodes 8.5x with about +115 Elo in local matches. Two of its
+  findings answer B.0 questions directly: typed TT provenance may govern
+  the storage of speculative results (it stopped storing unverified null
+  cutoffs) but must never govern the consumption of ordinary bounds
+  (downgrading omitted-sibling fail-lows made its TT refuse most non-PV
+  upper bounds, and was reverted) — so `evidence.rs` survives only as a
+  diagnostics field, if at all; and a proposed history or correction relation
+  is measured first as a **shadow producer** (trained, never read, admission
+  profile counted under `diag`) before any consumer is written, which is how
+  B.2.1 should introduce the continuation-correction tables.
 - **B.1 Search restructure, behaviour-neutral — `I1`.** Split `search.rs`
   into the target modules; introduce the `NodeType` constants, the
   `StackEntry`, `PlyArray` and shared-context types; move params into
@@ -846,15 +860,46 @@ diagnostics; two rejections stop B.
   separately. Sub-steps:
     - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
       bounds and gravity; picker exhaustiveness tests; TT store/probe tests
-      including age and replacement; deterministic unwind tests.
+      including age and replacement; deterministic unwind tests. **Delivery
+      shape (from Manta's 6.5.10):** the cluster lands as ordered tickets
+      behind one umbrella switch, each ticket keeping the umbrella-off arm at
+      the exact B.1 fingerprint; **canaries are anchored to the reference**,
+      meaning a tactical position must be solved at the depth classical
+      Stockfish `9587eeeb` solves it, not at whatever depth the current build
+      manages, and a changed canary is recorded with its cause, never
+      re-blessed; and a **decision trace** (`diag`-only, bounded to plies one
+      and two under `searchmoves`, printing every prune, reduction and proof
+      decision with its inputs) exists before the first ticket, because
+      Manta's two seed defects — a static margin overriding a mate in one, a
+      count-based skip dropping an unmade mating quiet — were found by that
+      trace and are invisible to counters. Implementer and reviewer are
+      separate roles; the reviewer's acceptance is recorded before B.2.2.
     - **B.2.2** Diagnostics: oracle differential at stride 1, depth at 300k
       nodes, EBF, tactical suite at fixed depth and equal nodes, 2,000-game
-      unfitted paired run. Registered as explanation.
+      unfitted paired run. Registered as explanation. **Screen thresholds are
+      frozen at registration, before implementation**, so a weak candidate is
+      turned back before it spends a maintainer SPRT: the reference-anchored
+      geometric branching factor (`tools/branching_profile.ps1`, depths 4 to
+      12, fresh process per depth, the phase-4 suite with ordinary and mate
+      cohorts reported separately, against classical Stockfish `9587eeeb` on
+      the same corpus) must reach a registered ceiling; nodes at a fixed
+      depth a registered fraction of B.1's; pooled NPS at least a registered
+      floor; the unfitted paired run at least a registered Elo. Below the
+      floor the cluster is ablated by component switch once, in a registered
+      order, then re-planned; between floor and target the review decides;
+      above target B.2.3 proceeds. B.0 sets the numbers from its scale
+      comparison; the shape of the ladder is fixed here.
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
       sized from RAR-M10; then ledger row and calibration. Accepted head
-      becomes the base for B.3.
+      becomes the base for B.3. **Precondition: a null calibration on the
+      adjudication-free harness.** RAR-M17 removed adjudication on
+      2026-09-01, which PROCESS classes as a harness change owing an
+      identical-binary null pair, and no calibration row follows it in the
+      ledger; every gate since has run on an unvalidated boundary. One
+      `tools/sprt.ps1 -Mode calibrate` run of the B.1 head against itself,
+      maintainer-run, recorded as a RAR-M row, before this SPRT starts.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** NMP
   with adaptive reduction and verification, ProbCut with reduced-depth
   verification and the TT-served shortcut, singular extensions with
@@ -868,7 +913,18 @@ diagnostics; two rejections stop B.
   moves, SEE pruning by margin, TT write on exit, check evasions only when
   in check. Target: Rarog's qsearch share (62% larger than the oracle's per
   interior node) without losing tactical suite results at equal nodes. SPRT
-  `[0,3]`.
+  `[0,3]`. **Dependency on B.2, recorded from Manta's MAN-S36 review:**
+  count-based late-move skipping, low-depth unverified null cutoffs and
+  zero-depth reduced probes all assume that a mate threat by a *quiet* move
+  stays visible one ply later; a captures-only quiescence makes that false,
+  and Manta's core was blind to WAC.001's mate in two through depth nine
+  until direct quiet checks were generated at the first quiescence ply.
+  Rarog's quiescence today generates captures only unless in check, and B.2
+  makes pruning aggressive before B.4 touches quiescence. Therefore B.2's
+  canaries include mate threats by quiet moves, B.4 may not remove any
+  first-ply check generation B.2 turned out to rely on, and "check evasions
+  only when in check" is measured against those canaries, not assumed from
+  the donor.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   Aspiration delta from eval and PV stability, optimism, root move node
   accounting, forgotten-mate and aborted-loss guards, PV table, multi-PV.
@@ -893,7 +949,10 @@ diagnostics; two rejections stop B.
   `#[expect]` must still fire (the lint wall reports unfulfilled ones);
   `search_options.rs`'s single `#[allow]` keeps its written reason or goes.
 - **B.9 Checkpoint — `V`.** Re-measure the deficit meters: RAR-O-series
-  equal-time G(0) against the oracle, fixed-node depth and EBF, pooled-PGO
+  equal-time G(0) against the oracle, fixed-node depth and EBF, the
+  reference-anchored geometric branching factor from B.2.2 (the durable
+  tree-shape number; node ratios at one depth overstate the gap because
+  nominal depths are not equal coverage across engines), pooled-PGO
   NPS, conversion instrument, and a pool gauntlet against the four target
   engines and Basilisk at 1T (400 games each). Record attributed Elo per
   accepted cluster from the SPRTs, and the checkpoint against the budget
@@ -978,7 +1037,15 @@ loss).
   programme's corpus with the B.9 search under the adjudication-off datagen
   profile; audit labels against tablebase truth (existing tool); freeze
   splits and manifests under a new corpus name. Records the label-contradiction
-  rate and the corpus hash. Maintainer-run generation.
+  rate and the corpus hash. Maintainer-run generation. Also produces the
+  programme's **fitting manifest**: every evaluation coefficient named with a
+  status of *free* (receives gradient), *fixed* (structure: phase divisors,
+  caps, sentinels) or *excluded* (nonlinear blocks such as king danger, whose
+  caps and truncation a linear model would misrepresent), each exclusion with
+  its reason and its contribution carried as a fixed residual per sample. The
+  tuner reads the manifest; the hand-kept frozen list in
+  `tools/texel-tuner` is replaced by it. Adopted from Manta's
+  `manta-hce-fit-v3` (1,109 free, 17 fixed, 103 excluded).
 - **C.3 King safety cluster — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and
@@ -1045,7 +1112,10 @@ loss).
 - **C.8 Refit cycles — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
-  start against accepted start) in the first cycle.
+  start against accepted start) in the first cycle. Each cycle records the
+  C.2 manifest it fitted from, so every refit states what was and was not
+  fitted; a coefficient's status changes only by a recorded decision, never
+  by a cycle quietly widening the free set.
 - **C.9 HCE SPSA of nonlinear residue — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
@@ -1065,12 +1135,29 @@ loss).
   shape; implement the soft/hard bound model with the
   node-fraction and stability multiplier if B.5 has not already; forfeit
   margin sized on a null pair; one registered SPRT `[0,3]` at STC and a
-  direction check at `10+0.1`.
+  direction check at `10+0.1`. **Audit checklist**, taken from Manta's
+  ADR-0065, whose integrated clock passed inside a cumulative gate where
+  Rarog's own root-confidence attempt at the same idea stayed inert: distinct
+  optimum and immutable maximum budgets; the maximum rooted at `go` receipt
+  and never extended by root or ponder evidence; ponder credit consumed once
+  at a discounted rate; the optimum adjusted only by completed exact root
+  iterations, from stability, best-move change, score trend and effort
+  concentration as bounded factors; an easy root defined as stable
+  concentrated effort that spends *less*; no early stop below a minimum
+  completed depth; helper threads contributing at most a best-move-change
+  count normalised by helper count, so worker count cannot multiply wall
+  time. Each item is ticked as present, absent or different in Rarog before
+  the donor shape is chosen; the list is a checklist, not a design to copy.
 - **D.2 Lazy SMP quality — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
   helper depth-skip policy is designed fresh from the donor; B.1 deleted the
-  inert `smp_iteration_skip` tables and they are not a seed. Gate:
+  inert `smp_iteration_skip` tables and they are not a seed. Competing
+  hypothesis to carry into the investigation: Manta's main-authoritative lazy
+  SMP (ADR-0064: worker zero alone owns the result, helpers contribute only TT
+  evidence from staggered depths, no per-node shared atomics) against Rarog's
+  current weighted helper voting. RAR-M46 found no 4T defect, so the question
+  is which shape scales to G.1, not which repairs a deficit. Gate:
   4T SPRT `[0,5]` against the 1T-accepted head at 4T, no affinity, null pair
   first. High-thread and NUMA remain G.1.
   **PREMISE CONTRADICTED, RAR-M46, 2026-09-11 — re-scope before spending work
@@ -1141,7 +1228,15 @@ loss).
 - **E.3 Release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.4.0.
+  is 3.0.0 if E.2 is met, else 2.5.0. **Two workflow checks are added before
+  this release, as tooling work that may land any time earlier:** (1) the
+  release job fails when the tag does not equal the manifest version — today
+  `build.yml` names the built file from `Cargo.toml` and the uploaded asset
+  from the tag, so the two can disagree silently, which is the shape of the
+  RAR-E16 baseline confusion; (2) every asset in the matrix runs `bench 13`
+  and the job **asserts** one fingerprint across all of them, replacing the
+  comment that tells the operator to read the node count in the log. Manta's
+  release workflow already does both and rejects the tag otherwise.
 ## Phase F — NNUE
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its

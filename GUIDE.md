@@ -131,6 +131,7 @@ and it is a PLAN rule 10 meter, so it should land before B's first checkpoint.
 |---|---|---|
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
+| Harness null calibration owed since adjudication removal (RAR-M17, 2026-09-01; none recorded) | One maintainer-run `-Mode calibrate` pair of the B.1 head against itself, recorded as a RAR-M row | B.2.4's SPRT starts |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 
@@ -170,11 +171,11 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **B.1** Search restructure, behaviour-neutral: modules, `NodeType`, `StackEntry`; A.6 dead code removed; exact fingerprint — **RESEARCH / I1**
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **RESEARCH / I2**
     - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **RESEARCH / I2**
-    - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, tactical suite, 2,000-game unfitted run — **RESEARCH / V**
+    - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds frozen at registration — **RESEARCH / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
-    - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**
+    - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head, after the owed null calibration; ledger row and calibration — **RESEARCH / V**
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **RESEARCH / I2**
-- [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; SPRT `[0,3]` — **RESEARCH / I2**
+- [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV/multi-PV; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
 - [ ] **B.7** Search speed pass on the new modules; pooled-PGO floor +0.5% per change — **RESEARCH / I1**
@@ -185,7 +186,7 @@ is the numbering: release first, baselines on the released binary.
 
 - [ ] **C.0** Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — **R3**
 - [ ] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — **I1**
-- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name — **V**
+- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **V**
 - [ ] **C.3** King safety cluster: danger units, safe/unsafe checks, weak ring, flank, shelter/storm; refit; gate — **I2**
 - [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **I2**
 - [ ] **C.5** Endgame handling and winnability cluster — **R3**
@@ -206,7 +207,7 @@ is the numbering: release first, baselines on the released binary.
 
 ## Phase D — Clock, threads, robustness
 
-- [ ] **D.1** Time management: audit, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
+- [ ] **D.1** Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]` — **R2**
 - [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` move; zero crashes over pool tournaments — **R2**
 - [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **R2**
@@ -215,7 +216,7 @@ is the numbering: release first, baselines on the released binary.
 
 - [ ] **E.1** Attribution checkpoint: STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4 and Fritz 16 at 1T and 4T — **V**
-- [ ] **E.3** Release 3.0.0 (gate met) or 2.4.0: changelog, suites, PGO assets, ISA, CI, tag on instruction — **M**
+- [ ] **E.3** Release 3.0.0 (gate met) or 2.5.0: changelog, suites, PGO assets, ISA, CI with tag-equals-version and cross-matrix fingerprint assertions, tag on instruction — **M**
 
 ## Phase F — NNUE (own data only)
 

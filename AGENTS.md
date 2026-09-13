@@ -200,6 +200,17 @@ did what its name suggests.**
   (RAR-S25, and twice inside the matched-ablation instrumentation itself). A passing
   invariant does not prove comparability — `probcut_cut <= probcut_attempt`
   held for two phases while the two counters counted different things.
+- **A binary in a rated pool is a release or says what it is.** Colosseum's
+  Super Rating Tournament rated a Manta build whose version string read
+  `1.1.0-dev` while its bench fingerprint proved it was the unfinished
+  selective-core candidate; the number entered the list under a name that
+  looked like production. Enter only tagged releases under a bare version;
+  anything else carries its bench fingerprint or feature flag in the version
+  string (`2.5.0-dev+b2core`), and the ledger row names the fingerprint.
+- **One fingerprint, three documents, checked mechanically.** The current
+  fingerprint is declared in GUIDE's checkpoint; `check_guide.py` fails when
+  AGENTS' "currently" values or PLAN's checkpoint row disagree with it. Manta's
+  GUIDE carried two different production fingerprints on the day it froze.
 
 ## Verification
 
