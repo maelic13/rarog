@@ -798,8 +798,36 @@ smaller clusters, sized from RAR-M10 at the expected value; (6) the ledger
 row with calibration. Reject returns the cluster to `RESEARCH` with its
 diagnostics; two rejections stop B.
 
-- **B.0 Investigation: current search against the donor, cluster boundaries,
-  seeds and instruments — `R3`.** Produce `analysis/search_programme_2026-xx.md`:
+- **B.0 Investigation — DONE 2026-09-13, `NO_CHANGE` to source.**
+  `analysis/search_programme_2026-09-13.md` (RAR-M50 for the artifacts).
+  **Findings that change the programme:** (1) the tree-shape target was
+  wrong — over depths 4–14 Rarog's geometric branching is **1.630** against
+  the oracle's **1.736** and Reckless's **1.697**; its excess is a
+  shallow-depth constant factor (3.5x the oracle's nodes at depth 4, 1.9x at
+  depth 14; 1.02 quiescence nodes per interior node), so B.2.2's branching
+  screen is a window, not a ceiling; (2) the deficit is decision quality at a
+  fixed budget — on WAC at 100k nodes the oracle solves **242**, Reckless 224,
+  Rarog **200** (400k: 267/247/237) while the three are level at nominal depth
+  10; median depth at 300k nodes on the phase-4 suite 16 against the oracle's
+  19; (3) the scale ratio is **0.457** (evaluation units, against the
+  search-facing Reckless eval; 0.406 raw) and **0.75** (SEE units), but one
+  scalar cannot seed margins sized for NNUE accuracy on an HCE whose
+  search-minus-static residual averages 128 cp — seeds use a three-column
+  rule (Reckless converted, the classical oracle converted at 0.485/0.40,
+  Rarog fitted); (4) two contract shapes carry the gap and were invisible to
+  every constant candidate: **46.7% of LMR reductions land in quiescence**
+  (both donors floor the reduced depth at one ply) and **1.3% of reductions
+  are re-searched** (oracle ~4%) at a mean reduction of 3.05 plies. **Decisions:**
+  `NodeType {Root, PV, NonPV}` with runtime `cut_node`; `ThreadData` plus
+  `SharedContext` without changing table ownership; `evidence.rs` deleted
+  (no consumer changes a decision at default; both donors let singular read
+  ProbCut-depth entries); killers, countermove and low-ply history dropped
+  with B.2; IIR kept in B.2 beside hindsight, decided in B.3; NMP entry margin
+  above beta, ProbCut's 4.7c filter shown to be the donor's own; the counter
+  families to delete and keep are mapped; AblationMask bits re-declared in
+  B.2.1. **Handoffs frozen** for B.1, B.2 and B.3; B.2's prediction is
+  frozen (+35 Elo after fitting, 90% [+5, +70]; unfitted −10 ± 30). Original
+  scope: Produce `analysis/search_programme_2026-xx.md`:
   the mechanism-by-mechanism map of Rarog's `negamax`/`quiescence`/picker/
   histories/TT/TM/SMP against Reckless (and Stockfish 19 where Reckless is
   silent), with each difference classified as adopt / keep ours with evidence
@@ -830,7 +858,14 @@ diagnostics; two rejections stop B.
   is measured first as a **shadow producer** (trained, never read, admission
   profile counted under `diag`) before any consumer is written, which is how
   B.2.1 should introduce the continuation-correction tables.
-- **B.1 Search restructure, behaviour-neutral — `I1`.** Split `search.rs`
+- **B.1 Search restructure, behaviour-neutral — `I1`.** **B.0 handoff frozen
+  2026-09-13 (`analysis/search_programme_2026-09-13.md` §6, §13.1):
+  `NodeType {Root, PV, NonPV}` with runtime `cut_node`; `ThreadData` plus
+  `SharedContext` without changing table ownership; `Stack` with a sentinel
+  entry and signed indexing; `evidence.rs`, `tests/tt_provenance.rs` and
+  the dead counter families deleted (the freed TT flag bit stays unused);
+  killers, countermove and low-ply history stay until B.2; the §11
+  baselines re-measured on the B.1 binary.** Split `search.rs`
   into the target modules; introduce the `NodeType` constants, the
   `StackEntry`, `PlyArray` and shared-context types; move params into
   `search/params.rs`; remove parameters classified dead in A.2.3; keep every
@@ -850,7 +885,19 @@ diagnostics; two rejections stop B.
   their tests. Tooling commit: regenerate or delete `tools/spsa_configs`,
   re-run the oracle differential once under the new counter names and
   archive it, record RAR-S65–S69 as superseded.
-- **B.2 Cluster 1 — the selectivity core — `I2`, then `V`.** One cluster:
+- **B.2 Cluster 1 — the selectivity core — `I2`, then `V`.** **B.0 handoff
+  frozen 2026-09-13 (analysis §3, §5, §8, §13.2). Changes to the list
+  below: the LMR reduced depth is floored at one ply and may extend by up
+  to two; killers, countermove and low-ply history are dropped; the history
+  update policy (TT-cutoff bonus, eval-difference training, fail-low parent
+  bonus, post-LMR bonus, index-scaled malus, no ageing) is part of the
+  cluster; `cutoff_count`, `laterality`, `last_critical_ply` and the applied
+  reduction are stack producers; IIR stays as is beside hindsight; move-loop
+  pruning uses raw depth with quadratic terms as the donor does, not a
+  prospective depth; the continuation-correction tables land as shadow
+  producers first; a per-node `threats()` board producer is added; seeds
+  follow the three-column rule of analysis §8.2 with 0.457 (evaluation
+  units) and 0.75 (SEE units) as the Reckless conversion.** One cluster:
   TT entry format with stored raw eval and tt-pv and the estimated-score rule;
   the correction histories and corrected-eval formula (including optimism
   and rule-50 damping in the search, replacing the evaluator's damping if B.0
@@ -885,13 +932,21 @@ diagnostics; two rejections stop B.
       geometric branching factor (`tools/branching_profile.ps1`, depths 4 to
       12, fresh process per depth, the phase-4 suite with ordinary and mate
       cohorts reported separately, against classical Stockfish `9587eeeb` on
-      the same corpus) must reach a registered ceiling; nodes at a fixed
+      the same corpus) must stay inside the registered window — B.0 found
+      Rarog's 1.630 already below the oracle's 1.736; nodes at a fixed
       depth a registered fraction of B.1's; pooled NPS at least a registered
       floor; the unfitted paired run at least a registered Elo. Below the
       floor the cluster is ablated by component switch once, in a registered
       order, then re-planned; between floor and target the review decides;
-      above target B.2.3 proceeds. B.0 sets the numbers from its scale
-      comparison; the shape of the ladder is fixed here.
+      above target B.2.3 proceeds. **Numbers registered by B.0, 2026-09-13
+      (analysis §11): branching window [1.55, 1.85]; WAC solved at 100k
+      nodes floor 205 / target 220 (baseline 200, oracle 242) and at 400k
+      floor 240 / target 250; oracle best-move agreement at 300k nodes floor
+      38 of 50; pooled NPS floor 0.90x of the B.1 head; the unfitted paired
+      run floor −40 Elo, target +10; 116 oracle-anchored WAC canaries at
+      ≤ anchor + 2 plies and 100k nodes, 47 of them quiet key moves, WAC.001
+      at ≤ depth 11. Instrument: `tools/diag/fixed_budget_probe.py`.** The
+      shape of the ladder is fixed here.
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -903,7 +958,17 @@ diagnostics; two rejections stop B.
       ledger; every gate since has run on an unvalidated boundary. One
       `tools/sprt.ps1 -Mode calibrate` run of the B.1 head against itself,
       maintainer-run, recorded as a RAR-M row, before this SPRT starts.
-- **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** NMP
+- **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
+  handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
+  donor's entry margin above beta (both donors demand about 150 Rarog
+  units; Rarog demands none and converts 24% of attempts), the adaptive
+  reduction, the TT-bound shortcut and the `nmp_min_ply` verification
+  region; ProbCut keeps the 4.7c filter, which is the donor's own
+  `probcut_beta − eval` threshold, and adopts the donor's depth and return
+  shape with the oracle's TT-served shortcut as a measured switch; singular
+  adopts the double/triple margins, multi-cut lerp, −3 negative extension,
+  LDSE and the LMR margin term; IIR versus hindsight is decided here on
+  B.2.2's numbers.** NMP
   with adaptive reduction and verification, ProbCut with reduced-depth
   verification and the TT-served shortcut, singular extensions with
   double/triple margins, multi-cut, negative extension, low-depth singular
@@ -970,13 +1035,12 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.0 | RESEARCH | R3 | Opens after A.6 (done 2026-09-10); ends with frozen handoffs for B.1–B.3 and the scale ratio |
-| B.1 | RESEARCH | I1 | Waits for the B.0 handoff; exact fingerprint required |
-| B.2.1 | RESEARCH | I2 | Waits for B.1 |
-| B.2.2 | RESEARCH | V | Waits for B.2.1 |
+| B.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by B.0 (2026-09-13); exact fingerprint required |
+| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for B.1 |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
-| B.3 | RESEARCH | I2 | Waits for the accepted B.2 head |
+| B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |

@@ -87,12 +87,12 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Development head | `dev`, version **2.4.0**, identical in content to the released `master`; fingerprint **7,601,220 / EBF 2.474**, re-verified on Windows x86-64, Windows ARM64 and macOS ARM64 at this head (RAR-P19); accepted by RAR-E15 (+12.12 ± 10.17 Elo); pinned `rustc 1.98.1` since A.3.1 |
 | Pool position, `3+0.03` 1T | Houdini 3 −224, Critter 1.6a −184, Houdini 1.5a −179, Fritz 16 −147, Rybka 4 −99, Basilisk 1.10.0 −23, Basilisk 1.9.3 −9, Rarog 2.3.2 +70 (RAR-M45, 2026-09-11, 600 games/pair, 2.4.0 release) |
 | Pool position, `3+0.03` **4T** | Houdini 3 −169, Fritz 16 −149, Critter 1.6a −109, Rybka 4 −73, Basilisk 1.10.0 **+25**, Rarog 2.3.2 +45, Rybka 3 +79; Perf 3034 vs frozen 3003 (RAR-M46, 2026-09-11) |
-| Search deficit | **247.97 ± 10.89 Elo** equal time against the frozen oracle on the 2.4.0 head, evaluation proved constant (RAR-O03); depth gap only 0.97 ply, so most of it is decision quality; selectivity explains 272 ± 18 |
+| Search deficit | **247.97 ± 10.89 Elo** equal time against the frozen oracle on the 2.4.0 head, evaluation proved constant (RAR-O03); depth gap only 0.97 ply, so most of it is decision quality; selectivity explains 272 ± 18. At equal nodes: WAC **200 vs 242** solved at 100k, median depth **16 vs 19** at 300k; Rarog's branching factor 1.630 is already below the oracle's 1.736 (RAR-M50) |
 | Evaluation deficit | **about 329 Elo** against Stockfish's classical HCE with the same search |
 | Speed | **3.19 MNPS** pooled median, bench 13, PGO pext 1T, instrument ±0.2% (best-of 3.21 = the old 3.22); Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
-| Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read resolved 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.0 — the search programme investigation**. Phase A is closed; 2.4.0 is released |
+| Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
+| Current step | **B.1 — the behaviour-neutral search restructure**, to the B.0 handoff. B.0 closed 2026-09-13 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -104,14 +104,15 @@ A.4, the conversion instrument, the consolidation analysis that decided Phase A
 refactors nothing, the version bump, and four baselines measured on the
 released binary.
 
-**B.0 is the next executable leaf** — the search programme investigation, and a
-`RESEARCH / R3` one, so it produces frozen handoffs rather than code. It owns
-the question Phase A sized: **−247.97 ± 10.89 Elo** of equal-time search
-deficit against the frozen oracle, of which the matched ablation attributes
-**272 ± 18** to LMR plus shallow-depth pruning. A.8.3 added the sharpest clue —
-the oracle leads by only **0.97 ply**, so this is decision quality at nearly
-equal depth, not depth. B.0 ends with cluster boundaries, the scale ratio,
-seeds and instruments frozen for B.1 to B.3.
+**B.0 is closed and B.1 is the next executable leaf**: the behaviour-neutral
+search restructure, `READY_FOR_IMPLEMENTATION / I1`, to the handoff in
+`analysis/search_programme_2026-09-13.md` §13.1 (exact fingerprint
+7,601,220 / EBF 2.474, pooled NPS within ±0.5%). B.0 found the deficit is
+decision quality at a fixed budget, not per-ply growth: Rarog already
+branches slower than the oracle but solves 42 fewer WAC positions at 100k
+nodes, reduces 47% of late moves straight into quiescence and re-searches
+1.3% of reductions. B.2's handoff, seeds, screens, canaries and frozen
+prediction (+35 Elo after fitting, 90% [+5, +70]) are in that document.
 
 Two Phase A findings bind later work, recorded in PLAN at the leaves that own
 them. **D.2's premise is contradicted** — at 4T Rarog beats this reference
@@ -168,14 +169,14 @@ is the numbering: release first, baselines on the released binary.
 
 ## Phase B — Search programme (evaluation frozen)
 
-- [ ] **B.0** Investigation: current search vs donor, cluster boundaries, scale ratio, seeds, instruments — **RESEARCH / R3**
-- [ ] **B.1** Search restructure, behaviour-neutral: modules, `NodeType`, `StackEntry`; A.6 dead code removed; exact fingerprint — **RESEARCH / I1**
-- [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **RESEARCH / I2**
-    - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **RESEARCH / I2**
-    - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds frozen at registration — **RESEARCH / V**
+- [x] **B.0** Investigation: mechanism map, cluster contents, scale ratio 0.457 (eval) / 0.75 (SEE), B.2.2 screens registered as a branching window plus fixed-node quality, 116 oracle-anchored canaries, B.1–B.3 handoffs frozen (`analysis/search_programme_2026-09-13.md`, RAR-M50) — DONE 2026-09-13
+- [ ] **B.1** Search restructure, behaviour-neutral: modules, `NodeType`, `StackEntry`; A.6 dead code removed; exact fingerprint — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
+    - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **READY_FOR_IMPLEMENTATION / I2**
+    - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
     - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head, after the owed null calibration; ledger row and calibration — **RESEARCH / V**
-- [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **RESEARCH / I2**
+- [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **READY_FOR_IMPLEMENTATION / I2**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV/multi-PV; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
