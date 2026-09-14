@@ -26,7 +26,6 @@ impl Default for SyzygyOptions {
 pub struct EngineOptions {
     pub move_overhead: f64,
     pub hash_mb: usize,
-    pub clear_hash: bool,
     pub ponder: bool,
     pub threads: usize,
     pub syzygy: SyzygyOptions,
@@ -38,18 +37,12 @@ impl Default for EngineOptions {
         Self {
             move_overhead: 10.0,
             hash_mb: 64,
-            clear_hash: false,
             ponder: false,
             threads: 1,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
         }
     }
-}
-
-#[derive(Clone, Default)]
-pub struct PositionState {
-    pub board: Board,
 }
 
 // 9.0: derivable now that `depth` is `Option<u32>` — the old
@@ -70,7 +63,6 @@ pub struct SearchLimits {
     pub depth: Option<u32>,
     pub movestogo: usize,
     pub nodes: u64,
-    pub perft: u32,
     pub infinite: bool,
     pub ponder: bool,
     pub search_moves: Vec<Move>,
@@ -87,9 +79,69 @@ pub struct SearchLimits {
     pub(crate) issued: Option<std::time::Instant>,
 }
 
+/// What a `setoption` changed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OptionUpdate {
+    /// An engine option; the engine thread must be reconfigured.
+    Engine,
+    /// The `Clear Hash` button: nothing to store, one action to run.
+    ClearHash,
+    /// Not an option this engine has. A notice has been printed.
+    Unknown,
+}
+
+/// What a `go` asks for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GoRequest {
+    Search,
+    /// `go perft N`: count leaf nodes on the protocol thread; no search runs.
+    Perft(u32),
+}
+
+/// The keywords of `go`. A `searchmoves` list ends at the next one.
+#[derive(Clone, Copy)]
+enum GoKeyword {
+    SearchMoves,
+    Ponder,
+    WTime,
+    BTime,
+    WInc,
+    BInc,
+    MovesToGo,
+    Depth,
+    Nodes,
+    Perft,
+    Mate,
+    MoveTime,
+    Infinite,
+}
+
+impl GoKeyword {
+    const COUNT: usize = Self::Infinite as usize + 1;
+
+    fn parse(token: &str) -> Option<Self> {
+        Some(match token {
+            "searchmoves" => Self::SearchMoves,
+            "ponder" => Self::Ponder,
+            "wtime" => Self::WTime,
+            "btime" => Self::BTime,
+            "winc" => Self::WInc,
+            "binc" => Self::BInc,
+            "movestogo" => Self::MovesToGo,
+            "depth" => Self::Depth,
+            "nodes" => Self::Nodes,
+            "perft" => Self::Perft,
+            "mate" => Self::Mate,
+            "movetime" => Self::MoveTime,
+            "infinite" => Self::Infinite,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct SearchOptions {
-    pub position: PositionState,
+    pub board: Board,
     pub engine: EngineOptions,
     pub limits: SearchLimits,
 }
@@ -125,7 +177,7 @@ impl SearchOptions {
     }
 
     pub fn reset(&mut self) {
-        self.position = PositionState::default();
+        self.board = Board::default();
         self.limits = SearchLimits::default();
     }
 
@@ -167,54 +219,46 @@ impl SearchOptions {
             }
         }
 
-        self.position.board = board;
+        self.board = board;
         Ok(())
     }
 
-    pub fn set_search_parameters(&mut self, args: &[String]) {
-        self.limits = SearchLimits::default();
-        self.limits.issued = Some(std::time::Instant::now());
+    /// Parse the arguments of `go` into fresh limits. Only the first
+    /// occurrence of a keyword counts, and values are applied in a fixed order,
+    /// so `mate` overrides `depth` wherever either appears.
+    pub fn set_search_parameters(&mut self, args: &[String]) -> GoRequest {
+        self.limits = SearchLimits {
+            issued: Some(std::time::Instant::now()),
+            ..SearchLimits::default()
+        };
 
-        self.limits.ponder = args.iter().any(|r| r == "ponder");
-
-        let infinite_index = args.iter().position(|r| r == "infinite");
-        if infinite_index.is_some() {
-            self.limits.depth = None;
-            self.limits.infinite = true;
+        let mut first = [None; GoKeyword::COUNT];
+        for (index, token) in args.iter().enumerate() {
+            if let Some(keyword) = GoKeyword::parse(token) {
+                first[keyword as usize].get_or_insert(index);
+            }
         }
+        let at = |keyword: GoKeyword| first[keyword as usize];
 
-        let move_time_index = args.iter().position(|r| r == "movetime");
-        let white_time_index = args.iter().position(|r| r == "wtime");
-        let white_increment_index = args.iter().position(|r| r == "winc");
-        let black_time_index = args.iter().position(|r| r == "btime");
-        let black_increment_index = args.iter().position(|r| r == "binc");
-        let depth_index = args.iter().position(|r| r == "depth");
-        let mate_index = args.iter().position(|r| r == "mate");
-        let movestogo_index = args.iter().position(|r| r == "movestogo");
-        let nodes_index = args.iter().position(|r| r == "nodes");
-        let perft_index = args.iter().position(|r| r == "perft");
-        let searchmoves_index = args.iter().position(|r| r == "searchmoves");
-
-        if let Some(index) = move_time_index {
+        self.limits.ponder = at(GoKeyword::Ponder).is_some();
+        self.limits.infinite = at(GoKeyword::Infinite).is_some();
+        if let Some(index) = at(GoKeyword::MoveTime) {
             self.limits.move_time = Self::parse_or_notice(args, index, "movetime");
         }
-
-        if let Some(index) = white_time_index {
+        if let Some(index) = at(GoKeyword::WTime) {
             self.limits.white_time = Self::parse_or_notice(args, index, "wtime");
         }
-        if let Some(index) = white_increment_index {
+        if let Some(index) = at(GoKeyword::WInc) {
             self.limits.white_increment = Self::parse_or_notice(args, index, "winc");
         }
-        if let Some(index) = black_time_index {
+        if let Some(index) = at(GoKeyword::BTime) {
             self.limits.black_time = Self::parse_or_notice(args, index, "btime");
         }
-        if let Some(index) = black_increment_index {
+        if let Some(index) = at(GoKeyword::BInc) {
             self.limits.black_increment = Self::parse_or_notice(args, index, "binc");
         }
-        if let Some(index) = depth_index {
-            // 9.0: preserves the historical fallback exactly — the previous
-            // `parse_f64` returned 2.0 for an unparseable depth, so an invalid
-            // `go depth x` still yields 2, not the generic 0.
+        if let Some(index) = at(GoKeyword::Depth) {
+            // An unparseable depth searches 2 plies, not the generic zero.
             let parsed = args
                 .get(index + 1)
                 .and_then(|value| value.parse::<u32>().ok())
@@ -224,7 +268,7 @@ impl SearchOptions {
                 });
             self.limits.depth = Some(parsed.max(1));
         }
-        if let Some(index) = mate_index {
+        if let Some(index) = at(GoKeyword::Mate) {
             let mate: usize = Self::parse_or_notice(args, index, "mate");
             if mate > 0 {
                 // Mate in N -> search 2N-1 plies.
@@ -232,18 +276,22 @@ impl SearchOptions {
                 self.limits.depth = Some(u32::try_from(plies).unwrap_or(u32::MAX).max(1));
             }
         }
-        if let Some(index) = movestogo_index {
+        if let Some(index) = at(GoKeyword::MovesToGo) {
             self.limits.movestogo = Self::parse_or_notice(args, index, "movestogo");
         }
-        if let Some(index) = nodes_index {
+        if let Some(index) = at(GoKeyword::Nodes) {
             self.limits.nodes = Self::parse_or_notice(args, index, "nodes");
         }
-        if let Some(index) = perft_index {
-            self.limits.perft = Self::parse_or_notice(args, index, "perft");
+        let mut request = GoRequest::Search;
+        if let Some(index) = at(GoKeyword::Perft) {
+            let depth: u32 = Self::parse_or_notice(args, index, "perft");
+            if depth > 0 {
+                request = GoRequest::Perft(depth);
+            }
         }
-        if let Some(index) = searchmoves_index {
+        if let Some(index) = at(GoKeyword::SearchMoves) {
             for token in args.iter().skip(index + 1) {
-                if Self::is_go_parameter(token) {
+                if GoKeyword::parse(token).is_some() {
                     break;
                 }
                 if let Some(mv) = Move::from_uci(token) {
@@ -254,9 +302,12 @@ impl SearchOptions {
                 }
             }
         }
+        request
     }
 
-    pub fn set_option(&mut self, args: &[String]) -> bool {
+    /// Apply one `setoption`. An invalid value keeps the previous setting,
+    /// with a notice, and still counts as a recognised option.
+    pub fn set_option(&mut self, args: &[String]) -> OptionUpdate {
         let mut index = 0;
         if index < args.len() {
             index += 1; // Consume the leading "name" token unconditionally.
@@ -289,24 +340,21 @@ impl SearchOptions {
                 } else {
                     crate::info_string!("Invalid Hash value.");
                 }
-                true
+                OptionUpdate::Engine
             }
-            "clear hash" => {
-                self.engine.clear_hash = true;
-                true
-            }
+            "clear hash" => OptionUpdate::ClearHash,
             "ponder" => match value.as_str() {
                 "true" => {
                     self.engine.ponder = true;
-                    true
+                    OptionUpdate::Engine
                 }
                 "false" => {
                     self.engine.ponder = false;
-                    true
+                    OptionUpdate::Engine
                 }
                 _ => {
                     crate::info_string!("Invalid Ponder value.");
-                    true
+                    OptionUpdate::Engine
                 }
             },
             "move overhead" => {
@@ -318,7 +366,7 @@ impl SearchOptions {
                 } else {
                     crate::info_string!("Invalid Move Overhead value.");
                 }
-                true
+                OptionUpdate::Engine
             }
             "threads" => {
                 if let Ok(threads) = value.parse::<usize>() {
@@ -326,11 +374,11 @@ impl SearchOptions {
                 } else {
                     crate::info_string!("Invalid Threads value.");
                 }
-                true
+                OptionUpdate::Engine
             }
             "syzygypath" => {
                 self.engine.syzygy.path = value_raw;
-                true
+                OptionUpdate::Engine
             }
             "syzygyprobedepth" => {
                 if let Ok(depth) = value.parse::<i32>() {
@@ -338,7 +386,7 @@ impl SearchOptions {
                 } else {
                     crate::info_string!("Invalid SyzygyProbeDepth value.");
                 }
-                true
+                OptionUpdate::Engine
             }
             "syzygyprobelimit" => {
                 if let Ok(limit) = value.parse::<usize>() {
@@ -346,20 +394,20 @@ impl SearchOptions {
                 } else {
                     crate::info_string!("Invalid SyzygyProbeLimit value.");
                 }
-                true
+                OptionUpdate::Engine
             }
             "syzygy50moverule" => match value.as_str() {
                 "true" => {
                     self.engine.syzygy.fifty_move_rule = true;
-                    true
+                    OptionUpdate::Engine
                 }
                 "false" => {
                     self.engine.syzygy.fifty_move_rule = false;
-                    true
+                    OptionUpdate::Engine
                 }
                 _ => {
                     crate::info_string!("Invalid Syzygy50MoveRule value.");
-                    true
+                    OptionUpdate::Engine
                 }
             },
             // Tunable search parameters — only active when compiled with --features tune.
@@ -373,10 +421,10 @@ impl SearchOptions {
                     .search_params
                     .set_uci_option(&option_name, &value)
                 {
-                    return true;
+                    return OptionUpdate::Engine;
                 }
                 println!("No such option: {option_name_raw}");
-                false
+                OptionUpdate::Unknown
             }
         }
     }
@@ -395,24 +443,5 @@ impl SearchOptions {
                 T::default()
             }
         }
-    }
-
-    fn is_go_parameter(token: &str) -> bool {
-        matches!(
-            token,
-            "searchmoves"
-                | "ponder"
-                | "wtime"
-                | "btime"
-                | "winc"
-                | "binc"
-                | "movestogo"
-                | "depth"
-                | "nodes"
-                | "perft"
-                | "mate"
-                | "movetime"
-                | "infinite"
-        )
     }
 }

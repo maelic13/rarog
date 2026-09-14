@@ -5,7 +5,7 @@ use std::sync::{
     mpsc::Sender,
 };
 
-use crate::search_options::SearchOptions;
+use crate::search_options::{EngineOptions, SearchOptions};
 
 #[derive(Default)]
 pub struct EngineControl {
@@ -138,167 +138,39 @@ impl EngineCommandQueue {
     }
 }
 
-pub struct EngineCommand {
-    pub search_options: SearchOptions,
-    pub stop: bool,
-    pub quit: bool,
-    pub bench_depth: Option<u16>,
-    /// Number of times to repeat the whole bench suite (best-of-N NPS). Only
-    /// meaningful when `bench_depth` is `Some`; defaults to 1.
-    pub bench_repeats: u16,
-    /// Fixed depth for the WAC tactical suite (`wac [depth]`).
-    pub(crate) wac_depth: Option<u16>,
-    pub configure: Option<SearchOptions>,
-    pub new_game: bool,
-    pub ponderhit: bool,
-    pub(crate) ready: Option<Sender<()>>,
-    pub epoch: u64,
-}
-
-impl EngineCommand {
-    pub fn go(options: SearchOptions, epoch: u64) -> EngineCommand {
-        EngineCommand {
-            search_options: options,
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch,
-        }
-    }
-
-    pub fn stop(epoch: u64) -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: true,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch,
-        }
-    }
-
-    pub fn quit(epoch: u64) -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: true,
-            quit: true,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch,
-        }
-    }
-
-    pub fn bench(depth: u16, repeats: u16, options: SearchOptions, epoch: u64) -> EngineCommand {
-        EngineCommand {
-            search_options: options,
-            stop: false,
-            quit: false,
-            bench_depth: Some(depth),
-            bench_repeats: repeats,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch,
-        }
-    }
-
-    pub fn wac(depth: u16, options: SearchOptions, epoch: u64) -> EngineCommand {
-        EngineCommand {
-            search_options: options,
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: Some(depth),
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch,
-        }
-    }
-
-    pub fn configure(options: SearchOptions) -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: Some(options),
-            new_game: false,
-            ponderhit: false,
-            ready: None,
-            epoch: 0,
-        }
-    }
-
-    pub fn new_game() -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: true,
-            ponderhit: false,
-            ready: None,
-            epoch: 0,
-        }
-    }
-
-    pub fn ponderhit() -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: true,
-            ready: None,
-            epoch: 0,
-        }
-    }
-
-    pub(crate) fn ready(ready: Sender<()>) -> EngineCommand {
-        EngineCommand {
-            search_options: SearchOptions::default(),
-            stop: false,
-            quit: false,
-            bench_depth: None,
-            bench_repeats: 1,
-            wac_depth: None,
-            configure: None,
-            new_game: false,
-            ponderhit: false,
-            ready: Some(ready),
-            epoch: 0,
-        }
-    }
+/// One unit of work for the engine thread, in queue order.
+pub enum EngineCommand {
+    Go {
+        options: SearchOptions,
+        epoch: u64,
+    },
+    Stop {
+        epoch: u64,
+    },
+    Quit {
+        epoch: u64,
+    },
+    /// Search the bench suite `repeats` times at a fixed depth.
+    Bench {
+        depth: u16,
+        repeats: u16,
+        options: SearchOptions,
+        epoch: u64,
+    },
+    /// Search the WAC suite at a fixed depth.
+    Wac {
+        depth: u16,
+        options: SearchOptions,
+        epoch: u64,
+    },
+    Configure(EngineOptions),
+    ClearHash,
+    NewGame,
+    /// The protocol thread has already raised the ponderhit flag; the queued
+    /// command keeps the engine's view of the queue in UCI order.
+    PonderHit,
+    /// Answered once every earlier command has run.
+    Ready(Sender<()>),
 }
 
 #[cfg(test)]

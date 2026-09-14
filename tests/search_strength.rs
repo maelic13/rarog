@@ -140,11 +140,11 @@ fn searcher_handles_thread_count_changes() {
     let mut options = SearchOptions::default();
     options.limits.depth = Some(4);
 
-    options.position.board = board.clone();
+    options.board = board.clone();
     options.engine.threads = 4;
     let threaded = searcher.search(board.clone(), &options, false, || SearchEvent::None);
 
-    options.position.board = board.clone();
+    options.board = board.clone();
     options.engine.threads = 1;
     let single = searcher.search(board, &options, false, || SearchEvent::None);
 
@@ -158,8 +158,10 @@ fn search_at_depth(board: Board, depth: u32) -> Move {
 
 fn search_result_at_depth_with_threads(board: Board, depth: u32, threads: usize) -> SearchResult {
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(depth);
     options.engine.threads = threads;
     searcher.search(board, &options, false, || SearchEvent::None)
@@ -167,8 +169,10 @@ fn search_result_at_depth_with_threads(board: Board, depth: u32, threads: usize)
 
 fn search_at_depth_with_threads(board: Board, depth: u32, threads: usize) -> Move {
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(depth);
     options.engine.threads = threads;
     let result = searcher.search(board, &options, false, || SearchEvent::None);

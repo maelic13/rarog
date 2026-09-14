@@ -66,8 +66,10 @@ fn aspiration_terminates_on_sudden_mate_scores() {
     // this invariant: termination by construction on mate-magnitude scores.
     let board = Board::from_fen("5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1").unwrap();
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(8);
     options.limits.nodes = 2_000_000;
     let result = searcher.search(board, &options, false, || SearchEvent::None);
@@ -93,11 +95,13 @@ fn wac_solved_count_stays_above_floor() {
     for pos in &positions {
         let board = Board::from_fen(&pos.fen).expect("suite FENs are legal");
         searcher.new_game();
-        let mut options = SearchOptions::default();
-        options.position.board = board.clone();
+        let mut options = SearchOptions {
+            board: board.clone(),
+            ..SearchOptions::default()
+        };
         options.limits.depth = Some(TEST_DEPTH);
         let result = searcher.search(board, &options, false, || SearchEvent::None);
-        if move_matches_any(&options.position.board, result.bestmove, &pos.best_moves) {
+        if move_matches_any(&options.board, result.bestmove, &pos.best_moves) {
             solved += 1;
         }
     }

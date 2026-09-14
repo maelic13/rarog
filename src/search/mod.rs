@@ -231,11 +231,7 @@ fn format_score(score: i32) -> String {
 }
 
 impl Searcher {
-    pub fn configure(&mut self, options: &SearchOptions) {
-        self.configure_engine(&options.engine);
-    }
-
-    fn configure_engine(&mut self, options: &EngineOptions) {
+    pub fn configure(&mut self, options: &EngineOptions) {
         if options.hash_mb != self.hash_mb {
             if self.tt.resize(options.hash_mb) {
                 self.hash_mb = options.hash_mb;
@@ -246,9 +242,6 @@ impl Searcher {
                     self.hash_mb
                 );
             }
-        }
-        if options.clear_hash {
-            self.tt.clear();
         }
         let old_path = syzygy::current_path();
         let largest = syzygy::initialize(&options.syzygy.path);
@@ -264,6 +257,10 @@ impl Searcher {
         }
         self.worker_pool
             .set_helper_count(options.threads.saturating_sub(1));
+    }
+
+    pub fn clear_hash(&mut self) {
+        self.tt.clear();
     }
 
     pub fn new_game(&mut self) {

@@ -26,99 +26,91 @@ impl Engine {
     }
 
     pub fn start(&mut self) {
-        loop {
-            let command = self.commands.wait_pop();
+        while self.handle(self.commands.wait_pop()) == SearchExit::Stop {}
+    }
 
-            if self.handle_control_command(&command) {
-                break;
+    /// Run one command. `Quit` from here ends the engine thread.
+    fn handle(&mut self, command: EngineCommand) -> SearchExit {
+        match command {
+            EngineCommand::Go { options, epoch } => self.run_go(&options, epoch),
+            EngineCommand::Bench {
+                depth,
+                repeats,
+                options,
+                epoch,
+            } => self.run_bench(depth, repeats, &options, epoch),
+            EngineCommand::Wac {
+                depth,
+                options,
+                epoch,
+            } => self.run_wac(depth, &options, epoch),
+            EngineCommand::Stop { epoch } => {
+                self.control.finish_search_if_current(epoch);
+                SearchExit::Stop
             }
-            if command.configure.is_some()
-                || command.new_game
-                || command.ponderhit
-                || command.ready.is_some()
-            {
-                continue;
-            }
-            if command.stop {
-                continue;
-            }
-            if let Some(depth) = command.bench_depth {
-                if self.run_bench(
-                    depth,
-                    command.bench_repeats,
-                    &command.search_options,
-                    command.epoch,
-                ) == SearchExit::Quit
-                {
-                    break;
-                }
-                continue;
-            }
-            if let Some(depth) = command.wac_depth {
-                if self.run_wac(depth, &command.search_options, command.epoch) == SearchExit::Quit {
-                    break;
-                }
-                continue;
-            }
-
-            if command.epoch != 0 && self.control.current_epoch() != command.epoch {
-                continue;
-            }
-            if !self.control.prepare_search(command.epoch) {
-                continue;
-            }
-            // 9.0a: `search` takes `&SearchOptions` now, so this no longer clones
-            // a whole SearchOptions (Board + SearchParams) per `go`.
-            let result = self.search(&command.search_options, true, command.epoch);
-            let delayed_exit = if result.exit == SearchExit::Quit {
+            EngineCommand::Quit { epoch } => {
+                self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
-            } else {
-                self.wait_until_bestmove_allowed(
-                    &command.search_options,
-                    command.epoch,
-                    result.ponderhit,
-                )
-            };
-            self.control.finish_search_if_current(command.epoch);
-            print_bestmove(&result);
-            if result.exit == SearchExit::Quit || delayed_exit == SearchExit::Quit {
-                break;
+            }
+            EngineCommand::Configure(options) => {
+                self.searcher.configure(&options);
+                SearchExit::Stop
+            }
+            EngineCommand::ClearHash => {
+                self.searcher.clear_hash();
+                SearchExit::Stop
+            }
+            EngineCommand::NewGame => {
+                self.searcher.new_game();
+                SearchExit::Stop
+            }
+            EngineCommand::PonderHit => SearchExit::Stop,
+            EngineCommand::Ready(ready) => {
+                let _ = ready.send(());
+                SearchExit::Stop
             }
         }
     }
 
-    fn handle_control_command(&mut self, command: &EngineCommand) -> bool {
-        if let Some(options) = &command.configure {
-            self.searcher.configure(options);
+    fn run_go(&mut self, options: &SearchOptions, epoch: u64) -> SearchExit {
+        if epoch != 0 && self.control.current_epoch() != epoch {
+            return SearchExit::Stop;
         }
-        if command.new_game {
-            self.searcher.new_game();
+        if !self.control.prepare_search(epoch) {
+            return SearchExit::Stop;
         }
-        if command.stop && (command.epoch == 0 || self.control.current_epoch() == command.epoch) {
-            self.control.finish_search_if_current(command.epoch);
+        let result = self.search(options, true, epoch);
+        let delayed_exit = if result.exit == SearchExit::Quit {
+            SearchExit::Quit
+        } else {
+            self.wait_until_bestmove_allowed(options, epoch, result.ponderhit)
+        };
+        self.control.finish_search_if_current(epoch);
+        print_bestmove(&result);
+        if result.exit == SearchExit::Quit || delayed_exit == SearchExit::Quit {
+            SearchExit::Quit
+        } else {
+            SearchExit::Stop
         }
-        if let Some(ready) = &command.ready {
-            let _ = ready.send(());
-        }
-        command.quit
     }
 
     fn search(&mut self, options: &SearchOptions, emit_info: bool, epoch: u64) -> SearchResult {
         let control = Arc::clone(&self.control);
-        self.searcher.search(
-            options.position.board.clone(),
-            options,
-            emit_info,
-            || match control.poll_search() {
-                SearchControl::Quit => SearchEvent::Quit,
-                SearchControl::Stop if epoch == 0 || control.current_epoch() != epoch => {
-                    SearchEvent::Stop
-                }
-                SearchControl::Stop => SearchEvent::Stop,
-                SearchControl::PonderHit => SearchEvent::PonderHit,
-                SearchControl::None => SearchEvent::None,
-            },
-        )
+        self.searcher
+            .search(
+                options.board.clone(),
+                options,
+                emit_info,
+                || match control.poll_search() {
+                    SearchControl::Quit => SearchEvent::Quit,
+                    SearchControl::Stop if epoch == 0 || control.current_epoch() != epoch => {
+                        SearchEvent::Stop
+                    }
+                    SearchControl::Stop => SearchEvent::Stop,
+                    SearchControl::PonderHit => SearchEvent::PonderHit,
+                    SearchControl::None => SearchEvent::None,
+                },
+            )
     }
 
     fn wait_until_bestmove_allowed(
@@ -201,8 +193,10 @@ impl Engine {
                         return SearchExit::Stop;
                     }
                 };
-                let mut options = SearchOptions::default();
-                options.position.board = board;
+                let mut options = SearchOptions {
+                    board,
+                    ..SearchOptions::default()
+                };
                 options.limits.depth = Some(u32::from(depth));
                 options.engine = base_options.engine.clone();
 
@@ -350,8 +344,10 @@ impl Engine {
                 }
             };
             self.searcher.new_game();
-            let mut options = SearchOptions::default();
-            options.position.board = board.clone();
+            let mut options = SearchOptions {
+                board: board.clone(),
+                ..SearchOptions::default()
+            };
             options.limits.depth = Some(u32::from(depth));
             options.engine = base_options.engine.clone();
 
@@ -419,6 +415,7 @@ fn print_bestmove(result: &SearchResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::search_options::EngineOptions;
     use std::sync::mpsc;
     use std::time::Duration;
 
@@ -433,19 +430,30 @@ mod tests {
     }
 
     #[test]
-    fn handle_control_command_returns_true_only_for_quit() {
+    fn only_quit_ends_the_engine_loop() {
         let (mut engine, _commands, control) = engine_fixture();
 
-        assert!(!engine.handle_control_command(&EngineCommand::stop(control.request_stop())));
+        let stop = EngineCommand::Stop {
+            epoch: control.request_stop(),
+        };
+        assert_eq!(engine.handle(stop), SearchExit::Stop);
 
-        let mut options = SearchOptions::default();
-        options.engine.hash_mb = 1;
-        options.engine.clear_hash = true;
-        assert!(!engine.handle_control_command(&EngineCommand::configure(options)));
-        assert!(!engine.handle_control_command(&EngineCommand::new_game()));
-        assert!(!engine.handle_control_command(&EngineCommand::ponderhit()));
+        let options = EngineOptions {
+            hash_mb: 1,
+            ..EngineOptions::default()
+        };
+        assert_eq!(
+            engine.handle(EngineCommand::Configure(options)),
+            SearchExit::Stop
+        );
+        assert_eq!(engine.handle(EngineCommand::ClearHash), SearchExit::Stop);
+        assert_eq!(engine.handle(EngineCommand::NewGame), SearchExit::Stop);
+        assert_eq!(engine.handle(EngineCommand::PonderHit), SearchExit::Stop);
 
-        assert!(engine.handle_control_command(&EngineCommand::quit(control.request_quit())));
+        let quit = EngineCommand::Quit {
+            epoch: control.request_quit(),
+        };
+        assert_eq!(engine.handle(quit), SearchExit::Quit);
     }
 
     #[test]

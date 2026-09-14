@@ -1,8 +1,7 @@
 use rarog::board::{Board, Color, GameResult, Move, Piece, Square};
-use rarog::engine_command::EngineCommand;
 use rarog::eval::{Evaluator, MATE_SCORE, piece_value};
 use rarog::search::{SearchEvent, SearchExit, Searcher};
-use rarog::search_options::SearchOptions;
+use rarog::search_options::{GoRequest, OptionUpdate, SearchOptions};
 use rarog::syzygy;
 use rarog::tt::{Bound, TranspositionTable, TtStore, score_from_tt, score_to_tt};
 
@@ -22,17 +21,17 @@ fn search_options_parse_startpos_moves_and_go_limits() {
         .set_position(&args(&["startpos", "moves", "e2e4", "e7e5", "g1f3"]))
         .expect("valid startpos moves");
 
-    assert_eq!(options.position.board.side_to_move(), Color::Black);
+    assert_eq!(options.board.side_to_move(), Color::Black);
     assert_eq!(
-        piece_at(&options.position.board, Square::E4),
+        piece_at(&options.board, Square::E4),
         Some((Color::White, Piece::Pawn))
     );
     assert_eq!(
-        piece_at(&options.position.board, Square::E5),
+        piece_at(&options.board, Square::E5),
         Some((Color::Black, Piece::Pawn))
     );
     assert_eq!(
-        piece_at(&options.position.board, Square::F3),
+        piece_at(&options.board, Square::F3),
         Some((Color::White, Piece::Knight))
     );
 
@@ -88,9 +87,9 @@ fn search_options_accept_uppercase_uci_move_text() {
         .set_position(&args(&["startpos", "moves", "E2E4"]))
         .expect("uppercase UCI move text should be normalized");
 
-    assert_eq!(options.position.board.side_to_move(), Color::Black);
+    assert_eq!(options.board.side_to_move(), Color::Black);
     assert_eq!(
-        piece_at(&options.position.board, Square::E4),
+        piece_at(&options.board, Square::E4),
         Some((Color::White, Piece::Pawn))
     );
 }
@@ -99,15 +98,14 @@ fn search_options_accept_uppercase_uci_move_text() {
 fn search_options_default_go_and_invalid_limits_are_bounded() {
     let mut options = SearchOptions::default();
 
-    options.set_search_parameters(&[]);
+    assert_eq!(options.set_search_parameters(&[]), GoRequest::Search);
 
     assert_eq!(options.limits.depth, None);
     assert_eq!(options.limits.nodes, 0);
-    assert_eq!(options.limits.perft, 0);
     assert!(!options.limits.infinite);
     assert!(!options.limits.ponder);
 
-    options.set_search_parameters(&args(&[
+    let request = options.set_search_parameters(&args(&[
         "depth",
         "not-a-number",
         "nodes",
@@ -122,9 +120,9 @@ fn search_options_default_go_and_invalid_limits_are_bounded() {
         "oops",
     ]));
 
+    assert_eq!(request, GoRequest::Search);
     assert_eq!(options.limits.depth, Some(2));
     assert_eq!(options.limits.nodes, 0);
-    assert_eq!(options.limits.perft, 0);
     assert_eq!(options.limits.move_time, 0);
     assert_eq!(options.limits.white_time, 0);
     assert_eq!(options.limits.black_time, 0);
@@ -135,9 +133,10 @@ fn search_options_default_go_and_invalid_limits_are_bounded() {
 fn search_options_parse_uci_go_perft() {
     let mut options = SearchOptions::default();
 
-    options.set_search_parameters(&args(&["perft", "3"]));
-
-    assert_eq!(options.limits.perft, 3);
+    assert_eq!(
+        options.set_search_parameters(&args(&["perft", "3"])),
+        GoRequest::Perft(3)
+    );
     assert_eq!(options.limits.depth, None);
 }
 
@@ -145,15 +144,42 @@ fn search_options_parse_uci_go_perft() {
 fn search_options_setoption_and_reset_cover_engine_configuration() {
     let mut options = SearchOptions::default();
 
-    assert!(options.set_option(&args(&["name", "Hash", "value", "256"])));
-    assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "25"])));
-    assert!(options.set_option(&args(&["name", "Threads", "value", "99"])));
-    assert!(options.set_option(&args(&["name", "Ponder", "value", "true"])));
-    assert!(options.set_option(&args(&["name", "SyzygyPath", "value", "C:\\TB\\WDL"])));
-    assert!(options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "6"])));
-    assert!(options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "5"])));
-    assert!(options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "false"])));
-    assert!(options.set_option(&args(&["name", "Clear", "Hash"])));
+    assert_eq!(
+        options.set_option(&args(&["name", "Hash", "value", "256"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Move", "Overhead", "value", "25"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Threads", "value", "99"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Ponder", "value", "true"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyPath", "value", "C:\\TB\\WDL"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "6"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "5"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "false"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Clear", "Hash"])),
+        OptionUpdate::ClearHash
+    );
 
     assert_eq!(options.engine.hash_mb, 256);
     assert_eq!(options.engine.move_overhead, 25.0);
@@ -163,9 +189,11 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert_eq!(options.engine.syzygy.probe_depth, 6);
     assert_eq!(options.engine.syzygy.probe_limit, 5);
     assert!(!options.engine.syzygy.fifty_move_rule);
-    assert!(options.engine.clear_hash);
 
-    assert!(options.set_option(&args(&["name", "Threads", "value", "9999"])));
+    assert_eq!(
+        options.set_option(&args(&["name", "Threads", "value", "9999"])),
+        OptionUpdate::Engine
+    );
     assert_eq!(options.engine.threads, 1024);
 
     options.set_search_parameters(&args(&[
@@ -206,14 +234,38 @@ fn search_options_invalid_setoption_values_preserve_previous_values() {
     options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "5"]));
     options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "false"]));
 
-    assert!(options.set_option(&args(&["name", "Hash", "value", "bad"])));
-    assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "nan"])));
-    assert!(options.set_option(&args(&["name", "Move", "Overhead", "value", "5001"])));
-    assert!(options.set_option(&args(&["name", "Threads", "value", "bad"])));
-    assert!(options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "bad"])));
-    assert!(options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "bad"])));
-    assert!(options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "maybe"])));
-    assert!(!options.set_option(&args(&["name", "Unknown", "Option", "value", "1"])));
+    assert_eq!(
+        options.set_option(&args(&["name", "Hash", "value", "bad"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Move", "Overhead", "value", "nan"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Move", "Overhead", "value", "5001"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Threads", "value", "bad"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyProbeDepth", "value", "bad"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyProbeLimit", "value", "bad"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Syzygy50MoveRule", "value", "maybe"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.set_option(&args(&["name", "Unknown", "Option", "value", "1"])),
+        OptionUpdate::Unknown
+    );
 
     assert_eq!(options.engine.hash_mb, 128);
     assert_eq!(options.engine.move_overhead, 35.0);
@@ -266,15 +318,15 @@ fn search_options_reject_illegal_position_move_without_losing_current_board() {
     options
         .set_position(&args(&["startpos", "moves", "e2e4"]))
         .expect("valid startpos move");
-    let expected = options.position.board.clone();
+    let expected = options.board.clone();
 
     let err = options
         .set_position(&args(&["startpos", "moves", "e2e5"]))
         .expect_err("illegal position move should be reported");
 
     assert_eq!(err, "Illegal move: e2e5");
-    assert_eq!(options.position.board.hash(), expected.hash());
-    assert_eq!(options.position.board.to_fen(), expected.to_fen());
+    assert_eq!(options.board.hash(), expected.hash());
+    assert_eq!(options.board.to_fen(), expected.to_fen());
 }
 
 #[test]
@@ -295,50 +347,12 @@ fn search_options_accept_little_blitzer_fullmove_zero_fen() {
         ]))
         .expect("compatible fullmove-zero FEN");
 
-    assert_eq!(options.position.board.side_to_move(), Color::Black);
+    assert_eq!(options.board.side_to_move(), Color::Black);
     assert_eq!(
-        options.position.board.piece_at(Square::D5),
+        options.board.piece_at(Square::D5),
         Some((Color::White, Piece::Pawn))
     );
-    assert_eq!(options.position.board.fullmove(), 1);
-}
-
-#[test]
-fn engine_command_constructors_set_expected_flags() {
-    let options = SearchOptions::default();
-
-    let go = EngineCommand::go(options, 11);
-    assert!(!go.stop);
-    assert!(!go.quit);
-    assert!(go.bench_depth.is_none());
-    assert!(go.configure.is_none());
-    assert!(!go.new_game);
-    assert!(!go.ponderhit);
-    assert_eq!(go.epoch, 11);
-
-    let stop = EngineCommand::stop(12);
-    assert!(stop.stop);
-    assert!(!stop.quit);
-    assert_eq!(stop.epoch, 12);
-
-    let quit = EngineCommand::quit(13);
-    assert!(quit.quit);
-    assert!(quit.stop);
-    assert_eq!(quit.epoch, 13);
-
-    let bench = EngineCommand::bench(7, 3, SearchOptions::default(), 14);
-    assert_eq!(bench.bench_depth, Some(7));
-    assert_eq!(bench.bench_repeats, 3);
-    assert_eq!(bench.epoch, 14);
-
-    let configure = EngineCommand::configure(SearchOptions::default());
-    assert!(configure.configure.is_some());
-
-    let new_game = EngineCommand::new_game();
-    assert!(new_game.new_game);
-
-    let ponderhit = EngineCommand::ponderhit();
-    assert!(ponderhit.ponderhit);
+    assert_eq!(options.board.fullmove(), 1);
 }
 
 #[test]
@@ -770,9 +784,7 @@ fn search_respects_node_limit() {
     options.limits.depth = Some(99);
     options.limits.nodes = 512;
 
-    let result = searcher.search(options.position.board.clone(), &options, false, || {
-        SearchEvent::None
-    });
+    let result = searcher.search(options.board.clone(), &options, false, || SearchEvent::None);
 
     assert_eq!(result.exit, SearchExit::Stop);
     assert!(result.nodes >= 512, "nodes: {}", result.nodes);
@@ -788,9 +800,7 @@ fn threaded_search_uses_aggregate_node_limit() {
     options.limits.nodes = 512;
     options.engine.threads = 8;
 
-    let result = searcher.search(options.position.board.clone(), &options, false, || {
-        SearchEvent::None
-    });
+    let result = searcher.search(options.board.clone(), &options, false, || SearchEvent::None);
 
     assert_eq!(result.exit, SearchExit::Stop);
     assert!(result.nodes >= 512, "nodes: {}", result.nodes);
@@ -809,7 +819,7 @@ fn search_quit_event_exits_search() {
     options.limits.depth = Some(99);
 
     let mut polls = 0;
-    let result = searcher.search(options.position.board.clone(), &options, false, || {
+    let result = searcher.search(options.board.clone(), &options, false, || {
         polls += 1;
         SearchEvent::Quit
     });
@@ -829,7 +839,7 @@ fn search_result_records_ponderhit_conversion() {
     options.limits.ponder = true;
 
     let mut polls = 0;
-    let result = searcher.search(options.position.board.clone(), &options, false, || {
+    let result = searcher.search(options.board.clone(), &options, false, || {
         polls += 1;
         if polls == 1 {
             SearchEvent::PonderHit

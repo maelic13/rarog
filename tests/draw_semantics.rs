@@ -28,8 +28,10 @@ fn mv(board: &Board, uci: &str) -> Move {
 
 fn search_to_depth(board: Board, depth: u32) -> (i32, String) {
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(depth);
     let result = searcher.search(board, &options, false, || SearchEvent::None);
     (result.score, result.bestmove.to_string())

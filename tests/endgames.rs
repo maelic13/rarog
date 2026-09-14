@@ -91,8 +91,10 @@ const MATE_THRESHOLD: i32 = MATE_SCORE - 256;
 
 fn search_score(board: Board, depth: u32) -> i32 {
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(depth);
     options.engine.threads = 1;
     searcher
@@ -103,8 +105,10 @@ fn search_score(board: Board, depth: u32) -> i32 {
 /// One move from a searcher that PERSISTS across the game, under a node
 /// budget. See `KBNK_NODE_BUDGET` for why both properties matter.
 fn search_bestmove_nodes(searcher: &mut Searcher, board: Board, nodes: u64) -> Move {
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.nodes = nodes;
     options.engine.threads = 1;
     searcher

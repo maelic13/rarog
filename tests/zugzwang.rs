@@ -48,8 +48,10 @@ fn search_with(
 ) -> (Move, i32) {
     let board = Board::from_fen(fen).expect("valid FEN");
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     options.limits.depth = Some(depth);
     configure(&mut options.engine.search_params);
     let result = searcher.search(board, &options, false, || SearchEvent::None);
