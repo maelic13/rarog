@@ -163,16 +163,16 @@ named `datagen-v1` adjudication profile in `*.manifest.json`.
 
 ## The Rust tuner
 
-The tuner is built: `tools/texel-tuner` (binary `rarog-texel`), a workspace
-member depending on the rarog lib with `features = ["texel"]`. Run it from the
-repo root:
+The tuner is built: `tools/texel-tuner` (binary `rarog-texel`), its own Cargo
+workspace depending on the rarog lib with `features = ["texel"]`, so the feature
+never unifies into engine builds. Run it from the repo root:
 
 ```powershell
 # Reconstruction acceptance gate (run before any tuning):
-cargo run --release -p texel-tuner -- --verify tools\texel\data\hce-v2\validation.csv
-cargo run --release -p texel-tuner -- --audit-coverage
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --verify tools\texel\data\hce-v2\validation.csv
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage
 # Complete vectors can be chained without resetting a previous stage:
-cargo run --release -p texel-tuner -- --tune complete `
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --tune complete `
     tools\texel\data\hce-v2\train.csv tools\texel\data\hce-v2\validation.csv `
     tools\texel\out\complete.txt --initial tools\texel\out\prior.txt
 # Options include --initial FILE, --epochs N, --lr X, --l2 X,

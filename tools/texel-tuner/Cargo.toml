@@ -8,6 +8,10 @@ publish = false
 # `texel` feature so it can read the per-position EvalTrace and reconstruct the
 # linear eval. Never linked into the engine; pure dev tooling. Parallelism uses
 # std::thread::scope (no external crates) to keep the engine dependency-free.
+# Its own workspace, so `texel` never unifies into the engine's workspace builds:
+#   cargo build --release --manifest-path tools/texel-tuner/Cargo.toml
+[workspace]
+
 [[bin]]
 name = "rarog-texel"
 path = "src/main.rs"

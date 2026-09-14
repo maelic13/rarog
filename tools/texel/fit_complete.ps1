@@ -377,8 +377,8 @@ try {
     }
     $settings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "settings.json") -Encoding utf8
 
-    [void](Invoke-Logged "build-tuner" "cargo" @("build", "--release", "-p", "texel-tuner"))
-    $tuner = Join-Path $repo "target/release/rarog-texel.exe"
+    [void](Invoke-Logged "build-tuner" "cargo" @("build", "--release", "--manifest-path", "tools/texel-tuner/Cargo.toml"))
+    $tuner = Join-Path $repo "tools/texel-tuner/target/release/rarog-texel.exe"
     $baselineVector = Join-Path $runDir "00-source-defaults.txt"
     [void](Invoke-Logged "write-source-defaults" $tuner @("--write-defaults", $baselineVector))
     [void](Invoke-Logged "instrument-coverage" $tuner @("--audit-coverage"))

@@ -416,15 +416,10 @@ becomes a product goal, 8.1 may add a Stockfish-style baseline dispatcher.
 
 ```powershell
 cargo fmt --check
-# `-p rarog`, NEVER `--workspace`, for the engine suite: texel-tuner depends on
-# rarog with `features = ["texel"]`, so a workspace test run unifies features
-# and silently tests an engine with the eval and pawn caches bypassed. At the
-# current head that also FAILS -- the LazyMargin regression test asserts that
-# two lazy margins give different evals, and under `texel` lazy eval is off,
-# so both give the same one. ci.yml has split these since it was written.
-cargo test -p rarog --all-targets
-cargo test -p rarog --all-targets --release
-cargo test -p xtask -p texel-tuner
+cargo test --workspace --all-targets
+cargo test --workspace --all-targets --release
+# The texel tuner is its own workspace, so `texel` never unifies into the engine.
+cargo test --manifest-path tools/texel-tuner/Cargo.toml
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo build --release
 "bench" | ./target/release/rarog.exe

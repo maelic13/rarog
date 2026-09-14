@@ -53,13 +53,9 @@ jobs:
       # The 9.0a/9.0b lint wall (deny on unsafe_op_in_unsafe_fn, the three cast
       # lints, and eight more) only binds where it is actually run. This is what
       # makes it structural rather than a local habit.
-      # Run per feature set on purpose. A single `--workspace` run compiles
-      # rarog ONCE with `texel` unified in (texel-tuner depends on it that
-      # way), so `#[cfg(not(feature = "texel"))]` paths would never be linted
-      # — and conversely, default-only runs never lint the texel code at all.
-      # That blind spot was real: writing this workflow surfaced five
-      # violations (4 casts + a needless Box allocation) that had been sitting
-      # unlinted in texel-gated code through the entire 9.0 clean-up.
+      # Run per feature set on purpose: `cfg(feature = ...)` code is linted
+      # only in a configuration that enables it, and not-enabled paths only in
+      # one that does not.
       - name: cargo clippy (default features)
         run: cargo clippy --all-targets -- -D warnings
 
@@ -69,8 +65,14 @@ jobs:
       - name: cargo clippy (--features diag)
         run: cargo clippy --all-targets --features diag -- -D warnings
 
-      - name: cargo clippy (workspace — covers texel, xtask, texel-tuner)
+      - name: cargo clippy (--features texel)
+        run: cargo clippy --all-targets --features texel -- -D warnings
+
+      - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo clippy (texel tuner, its own workspace)
+        run: cargo clippy --manifest-path tools/texel-tuner/Cargo.toml --all-targets -- -D warnings
 
   test:
     name: test ${{ matrix.os }} / ${{ matrix.profile }}
@@ -106,13 +108,6 @@ jobs:
       # infra's checked conversions, cont_index and piece_to_index compiles out
       # of release entirely. That suite was silently DEAD until 9.0a revived it
       # (stack overflow — no assert had ever executed), so it gets a real job.
-      # `-p rarog`, NOT `--workspace`: a workspace test run unifies features
-      # and silently switches the engine to `texel`, which bypasses the
-      # whole-eval cache and therefore changes the search path. The strength
-      # tests assert PRODUCTION behaviour, so they must run on production
-      # features. (Discovered building this workflow — `cargo test --workspace`
-      # fails at HEAD for exactly this reason, and did so before any of
-      # today's changes.)
       - name: cargo test — engine, default features (${{ matrix.profile }})
         shell: bash
         run: |
@@ -124,7 +119,9 @@ jobs:
 
       - name: cargo test — tooling crates
         shell: bash
-        run: cargo test -p xtask -p texel-tuner
+        run: |
+          cargo test -p xtask
+          cargo test --manifest-path tools/texel-tuner/Cargo.toml
 
   bench-fingerprint:
     name: bench ${{ matrix.label }}
@@ -281,7 +278,7 @@ jobs:
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)
-        run: cargo build --release -p texel-tuner
+        run: cargo build --release --manifest-path tools/texel-tuner/Cargo.toml
 
       - name: Build xtask and benches
         run: cargo build --release -p xtask --all-targets
