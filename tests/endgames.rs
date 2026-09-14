@@ -18,6 +18,7 @@
 
 use rarog::board::{Board, Color, Move, Piece};
 use rarog::eval::{Evaluator, MATE_SCORE};
+use rarog::infra::THREAD_STACK_SIZE;
 use rarog::search::{SearchEvent, Searcher};
 use rarog::search_options::SearchOptions;
 
@@ -46,9 +47,17 @@ const KBNK_MOVE_BUDGET: usize = 90;
 ///   correctly (BAS-E39).
 ///
 /// So the playout now matches the instrument: a node budget, and one searcher
-/// for the whole game. 60,000 is the instrument's figure; the suite runs a
-/// handful of positions, so the cost is small.
-const KBNK_NODE_BUDGET: u64 = 60_000;
+/// for the whole game. 60,000 is the instrument's figure.
+///
+/// One budget is not enough, though. Replayed at 40k, 50k, 60k, 80k and 120k
+/// nodes, the accepted engine mates `7N/8/7B/8/8/8/8/2K2k2 w` at three of the
+/// five and a selectivity-core candidate misses `8/8/K3B3/8/5N2/8/7k/8 w` at
+/// exactly 60k while mating at the other four: whether a single playout lands
+/// inside 90 plies is chaotic in the node budget. So each position is played
+/// at these five budgets, one searcher per budget, and must mate at a
+/// majority. The discrimination survives: with the corner drive scaled to
+/// 1/24 the three discriminator positions mate at 2, 2 and 0 of the five.
+const KBNK_NODE_BUDGETS: [u64; 5] = [40_000, 50_000, 60_000, 80_000, 120_000];
 
 struct Case {
     fen: String,
@@ -116,10 +125,10 @@ fn search_bestmove_nodes(searcher: &mut Searcher, board: Board, nodes: u64) -> M
         .bestmove
 }
 
-/// Plays the position out at a fixed depth and asserts the bare king is
-/// checkmated (not stalemated) within the budget, by the side holding the
-/// bishop+knight.
-fn assert_kbnk_mates(fen: &str, comment: &str) {
+/// Plays the position out at one node budget. `true` when the bare king is
+/// checkmated within the move budget; panics on a stalemate, a mated winner or
+/// a null move, which are defects at any budget.
+fn kbnk_playout_mates(fen: &str, comment: &str, nodes: u64) -> bool {
     let mut board = Board::from_fen(fen).unwrap_or_else(|e| panic!("bad FEN {fen}: {e}"));
     let winner = if board.pieces(Color::White, Piece::Bishop).any() {
         Color::White
@@ -136,26 +145,56 @@ fn assert_kbnk_mates(fen: &str, comment: &str) {
         if board.generate_legal_moves().is_empty() {
             assert!(
                 board.is_in_check(),
-                "[{comment}] expected checkmate but found stalemate: {}",
+                "[{comment}] expected checkmate but found stalemate at {nodes} nodes: {}",
                 board.to_fen()
             );
             assert_ne!(
                 board.side_to_move(),
                 winner,
-                "[{comment}] the winning side was mated: {}",
+                "[{comment}] the winning side was mated at {nodes} nodes: {}",
                 board.to_fen()
             );
-            return;
+            return true;
         }
-        let mv = search_bestmove_nodes(&mut searcher, board.clone(), KBNK_NODE_BUDGET);
+        let mv = search_bestmove_nodes(&mut searcher, board.clone(), nodes);
         assert!(
             !mv.is_null(),
-            "[{comment}] search returned a null move: {}",
+            "[{comment}] search returned a null move at {nodes} nodes: {}",
             board.to_fen()
         );
         board.make_move(mv);
     }
-    panic!("[{comment}] KBNK did not mate within {KBNK_MOVE_BUDGET} plies from {fen}");
+    false
+}
+
+/// Plays the position at every budget in [`KBNK_NODE_BUDGETS`], in parallel,
+/// and asserts it is mated at a strict majority of them.
+fn assert_kbnk_mates(fen: &str, comment: &str) {
+    let mates = std::thread::scope(|scope| {
+        let playouts = KBNK_NODE_BUDGETS.map(|nodes| {
+            std::thread::Builder::new()
+                .stack_size(THREAD_STACK_SIZE)
+                .spawn_scoped(scope, move || {
+                    (nodes, kbnk_playout_mates(fen, comment, nodes))
+                })
+                .expect("spawn a KBNK playout thread")
+        });
+        playouts
+            .into_iter()
+            .map(|playout| {
+                playout
+                    .join()
+                    .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+            })
+            .collect::<Vec<_>>()
+    });
+    let mated = mates.iter().filter(|(_, mated)| *mated).count();
+    assert!(
+        mated * 2 > KBNK_NODE_BUDGETS.len(),
+        "[{comment}] KBNK mated within {KBNK_MOVE_BUDGET} plies at only {mated} of {} budgets \
+         from {fen}: {mates:?}",
+        KBNK_NODE_BUDGETS.len()
+    );
 }
 
 #[test]
