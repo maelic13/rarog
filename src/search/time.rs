@@ -123,7 +123,7 @@ pub(super) fn compute_runtime_limits(
             // remaining time that slack is just a few ms. The clock is polled
             // (and the iteration aborted) within ~1 ms of `maximum_ms`, but the
             // wall time the GUI actually charges also includes the latency
-            // *before* our clock starts (`go` received → `self.start`) and the
+            // *before* our clock starts (`go` received → `self.cfg.start`) and the
             // latency for `bestmove` to reach the GUI. Under a loaded gauntlet
             // those spike well past the thin low-time slack and forfeit games.
             //

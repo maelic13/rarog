@@ -139,10 +139,10 @@ impl Searcher {
             | board.pieces(color, Piece::Queen);
         // `count()` only when the threshold actually needs it; `any()` is the
         // cheap baseline path and keeps the seeded behaviour free.
-        if self.params.nmp_min_non_pawn_pieces <= 1 {
+        if self.cfg.params.nmp_min_non_pawn_pieces <= 1 {
             non_pawn.any()
         } else {
-            infra::to_i32(non_pawn.count() as usize) >= self.params.nmp_min_non_pawn_pieces
+            infra::to_i32(non_pawn.count() as usize) >= self.cfg.params.nmp_min_non_pawn_pieces
         }
     }
 
@@ -170,9 +170,9 @@ impl Searcher {
             improving,
             is_root,
         } = i;
-        let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
+        let mut r = self.cfg.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
         if tt_pv {
-            r -= self.params.lmr_tt_pv_adj;
+            r -= self.cfg.params.lmr_tt_pv_adj;
         } else if is_quiet {
             r += 1024;
         }
@@ -180,15 +180,15 @@ impl Searcher {
             r -= 1024;
         }
         if ev_is_exact {
-            r += self.params.lmr_exact_bound;
+            r += self.cfg.params.lmr_exact_bound;
         }
         // `lmr_shallow_tt` is a misnomer: it fires on TT-move PRESENCE and was
         // SPSA'd as such. See the `search/params.rs` note.
         if !tt_move_is_null && searched >= 4 {
-            r += self.params.lmr_shallow_tt;
+            r += self.cfg.params.lmr_shallow_tt;
         }
         if cut_node {
-            r += self.params.lmr_cut_node;
+            r += self.cfg.params.lmr_cut_node;
         }
         if !is_quiet && see < 0 {
             r += 1024;
@@ -196,13 +196,13 @@ impl Searcher {
         if !tt_pv && !cut_node && quiet_hist > 4_000 {
             r -= 1024;
         }
-        r -= quiet_hist * 1024 / self.params.lmr_hist_div;
+        r -= quiet_hist * 1024 / self.cfg.params.lmr_hist_div;
         // 8.5(b): reduce less when the static eval is heavily corrected.
-        r -= corr_abs * self.params.corr_lmr_scale / 128;
+        r -= corr_abs * self.cfg.params.corr_lmr_scale / 128;
         // 4.6.7: the root is where the answer is chosen, and it was the
         // one node type the reduction could not see.
         if is_root {
-            r -= self.params.lmr_root_relief;
+            r -= self.cfg.params.lmr_root_relief;
         }
         r
     }
@@ -272,7 +272,7 @@ impl Searcher {
             crate::diag_count!(sampled_main_nodes);
         }
         if let Some(score) = self.syzygy_wdl_score(board, depth, ply, excluded) {
-            self.tt.store(TtStore {
+            self.shared.tt.store(TtStore {
                 key: hash,
                 depth,
                 score,
@@ -284,7 +284,7 @@ impl Searcher {
             });
             return score;
         }
-        let tt_entry = self.tt.probe(hash);
+        let tt_entry = self.shared.tt.probe(hash);
         // 9.7.5(b): main thread only. If helper work is reaching the thread
         // that owns the answer, this hit rate must RISE with thread count; a
         // flat rate means the helpers are filling a table nobody reads.
@@ -457,17 +457,17 @@ impl Searcher {
             crate::diag_count!(tt_pv_veto);
         }
         if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (self.params.futility_base
-                + self.params.futility_not_improving * not_improving_i)
+            let futility_margin = (self.cfg.params.futility_base
+                + self.cfg.params.futility_not_improving * not_improving_i)
                 * depth
-                + corr_abs * self.params.corr_rfp_scale / 128; // 8.5(b)
+                + corr_abs * self.cfg.params.corr_rfp_scale / 128; // 8.5(b)
             if !self.ablated(1) && depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 crate::diag_count!(rfp_cut);
                 return eval_for_pruning;
             }
             if !self.ablated(0)
                 && depth <= 3
-                && eval_for_pruning + self.params.razoring_coeff * depth < alpha
+                && eval_for_pruning + self.cfg.params.razoring_coeff * depth < alpha
             {
                 crate::diag_count!(razor_drop);
                 return if NODE::PV {
@@ -481,8 +481,8 @@ impl Searcher {
                 && depth >= 3
                 && eval_for_pruning
                     >= beta
-                        - self.params.nm_depth_coeff * depth
-                        - self.params.nm_improving_bonus * improving_i
+                        - self.cfg.params.nm_depth_coeff * depth
+                        - self.cfg.params.nm_improving_bonus * improving_i
                 && self.nmp_material_ok(board)
             {
                 #[cfg(feature = "diag")]
@@ -491,7 +491,7 @@ impl Searcher {
                 }
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
-                self.tt.prefetch(board.hash());
+                self.shared.tt.prefetch(board.hash());
                 let score = -self.negamax::<NonPv, _>(
                     board,
                     depth - reduction,
@@ -504,7 +504,7 @@ impl Searcher {
                     poll,
                 );
                 board.unmake_null_move();
-                if self.stopped || self.quit {
+                if self.td.stopped || self.td.quit {
                     return 0;
                 }
                 if score >= beta {
@@ -552,7 +552,7 @@ impl Searcher {
                             false,
                             poll,
                         );
-                        if self.stopped || self.quit {
+                        if self.td.stopped || self.td.quit {
                             return 0;
                         }
                         if verified < beta {
@@ -580,7 +580,7 @@ impl Searcher {
                 if diag_sample {
                     crate::diag_count!(probcut_nodes);
                 }
-                let probcut_beta = beta + self.params.probcut_margin;
+                let probcut_beta = beta + self.cfg.params.probcut_margin;
                 // 4.7c PROBCUT MOVE FILTER. The entry contract for the
                 // speculative capture search moves from "this capture does not
                 // lose material" to "this capture can plausibly bridge the gap
@@ -605,13 +605,14 @@ impl Searcher {
                 // i32 throughout: the gap is bounded by the mate range, so
                 // gap * 100 cannot approach i32's limit.
                 let see_threshold =
-                    ((probcut_beta - static_eval) * self.params.probcut_see_gap_scale / 100).max(0);
+                    ((probcut_beta - static_eval) * self.cfg.params.probcut_see_gap_scale / 100)
+                        .max(0);
                 // The flat cap of 8 had no stated derivation. Scale it by the
                 // node's own prediction instead: a cut node is where a fail-high
                 // is expected and the speculative search is likeliest to pay.
-                let move_cap = self.params.probcut_move_cap_base
+                let move_cap = self.cfg.params.probcut_move_cap_base
                     + if cut_node {
-                        self.params.probcut_move_cap_cut_bonus
+                        self.cfg.params.probcut_move_cap_cut_bonus
                     } else {
                         0
                     };
@@ -644,7 +645,7 @@ impl Searcher {
                     // input. Written explicitly rather than left stale.
                     self.push_move(ply, mv, probcut_piece);
                     board.make_move(mv);
-                    self.tt.prefetch(board.hash());
+                    self.shared.tt.prefetch(board.hash());
                     let score = -self.quiescence::<NonPv, _>(
                         board,
                         -probcut_beta,
@@ -674,7 +675,7 @@ impl Searcher {
                     };
                     board.unmake_move(mv);
                     self.clear_move(ply);
-                    if self.stopped || self.quit {
+                    if self.td.stopped || self.td.quit {
                         return 0;
                     }
                     if score >= probcut_beta {
@@ -688,7 +689,7 @@ impl Searcher {
                         // default stride.
                         crate::diag_count!(probcut_cut);
                         let cutoff_score = score - (probcut_beta - beta);
-                        self.tt.store(TtStore {
+                        self.shared.tt.store(TtStore {
                             key: hash,
                             depth: depth - 3,
                             // The margin-shifted value, not the actual
@@ -827,8 +828,8 @@ impl Searcher {
                 if diag_order_sample {
                     crate::diag_count!(prune_shadow_moves);
                     if is_quiet {
-                        let lmp_margin = (self.params.lmp_base
-                            + self.params.lmp_not_improving * not_improving_i)
+                        let lmp_margin = (self.cfg.params.lmp_base
+                            + self.cfg.params.lmp_not_improving * not_improving_i)
                             * depth;
                         let lmp = (depth <= 3 && eval_for_pruning + lmp_margin <= alpha)
                             || (depth <= 8
@@ -836,16 +837,16 @@ impl Searcher {
                                     > late_move_prune_count(
                                         depth,
                                         improving,
-                                        self.params.lmp_count_base,
+                                        self.cfg.params.lmp_count_base,
                                     ))
                             || (depth <= 4 && quiet_hist < -10_000)
                             || (depth <= 7
-                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth));
+                                && quiet_hist < -(self.cfg.params.quiet_hist_prune_coeff * depth));
                         let futility = depth <= 8
                             && eval_for_pruning
-                                + self.params.fp_base
-                                + self.params.fp_coeff * depth
-                                + corr_abs * self.params.corr_fut_scale / 128
+                                + self.cfg.params.fp_base
+                                + self.cfg.params.fp_coeff * depth
+                                + corr_abs * self.cfg.params.corr_fut_scale / 128
                                 <= alpha;
                         let checking = (lmp || futility)
                             && move_gives_check(board, &mut node_ci, mv, &mut gives_check);
@@ -866,8 +867,8 @@ impl Searcher {
                             self.td.cap_history[moving_piece as usize][mv.to_sq().index()]
                                 [cap as usize] as i32
                         });
-                        let threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
-                            .max(-self.params.see_pruning_max);
+                        let threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
+                            .max(-self.cfg.params.see_pruning_max);
                         let see_shadow = depth <= 8 && !board.see_ge(mv, threshold);
                         if see_shadow {
                             crate::diag_count!(prune_shadow_see);
@@ -878,21 +879,25 @@ impl Searcher {
                     }
                 }
                 if is_quiet {
-                    let prune_margin = (self.params.lmp_base
-                        + self.params.lmp_not_improving * not_improving_i)
+                    let prune_margin = (self.cfg.params.lmp_base
+                        + self.cfg.params.lmp_not_improving * not_improving_i)
                         * depth;
                     // 4.6.5: the move-count component ALONE, so it can be fed
                     // back to the picker the way the reference feeds its
                     // `moveCountPruning` flag into `next_move`.
                     let move_count_pruning = depth <= 8
                         && searched
-                            > late_move_prune_count(depth, improving, self.params.lmp_count_base);
+                            > late_move_prune_count(
+                                depth,
+                                improving,
+                                self.cfg.params.lmp_count_base,
+                            );
                     let prune_candidate = !self.ablated(5)
                         && ((depth <= 3 && eval_for_pruning + prune_margin <= alpha)
                             || move_count_pruning
                             || (depth <= 4 && quiet_hist < -10_000)
                             || (depth <= 7
-                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth)));
+                                && quiet_hist < -(self.cfg.params.quiet_hist_prune_coeff * depth)));
                     if prune_candidate
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -910,9 +915,9 @@ impl Searcher {
                     // match the existing LMP/SEE prunes in this loop.
                     if depth <= 8
                         && eval_for_pruning
-                            + self.params.fp_base
-                            + self.params.fp_coeff * depth
-                            + corr_abs * self.params.corr_fut_scale / 128 // 8.5(b)
+                            + self.cfg.params.fp_base
+                            + self.cfg.params.fp_coeff * depth
+                            + corr_abs * self.cfg.params.corr_fut_scale / 128 // 8.5(b)
                             <= alpha
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -924,8 +929,8 @@ impl Searcher {
                         self.td.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
-                        .max(-self.params.see_pruning_max);
+                    let see_threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
+                        .max(-self.cfg.params.see_pruning_max);
                     if depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
@@ -944,13 +949,13 @@ impl Searcher {
                 && excluded.is_null()
                 && depth >= 4;
             if singular_move_candidate
-                && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
+                && ev.allows_singular(depth, self.cfg.params.singular_tt_depth_margin)
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_attempt);
                 }
-                let singular_beta = ev.score - self.params.singular_beta_mult * depth;
+                let singular_beta = ev.score - self.cfg.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
                 let singular_score = self.negamax::<NonPv, _>(
                     board,
@@ -963,12 +968,12 @@ impl Searcher {
                     false,
                     poll,
                 );
-                if self.stopped || self.quit {
+                if self.td.stopped || self.td.quit {
                     return 0;
                 }
                 if singular_score < singular_beta {
                     extension = if !NODE::PV
-                        && singular_score < singular_beta - self.params.singular_double_margin
+                        && singular_score < singular_beta - self.cfg.params.singular_double_margin
                     {
                         #[cfg(feature = "diag")]
                         if diag_sample {
@@ -1011,7 +1016,7 @@ impl Searcher {
             // for the overwhelmingly common non-checking move.
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
-            self.tt.prefetch(board.hash());
+            self.shared.tt.prefetch(board.hash());
             let new_depth = depth - 1 + extension;
             #[cfg(feature = "diag")]
             if diag_sample {
@@ -1076,11 +1081,11 @@ impl Searcher {
                     // 9.7.5(k): a real per-thread PRNG (see `next_jitter`),
                     // replacing a node-counter modulo that was both correlated
                     // with the counter and biased +4.5/1024. Only in a parallel
-                    // search — `shared_state` is None at Threads=1, which is
-                    // what keeps bench identical.
+                    // search: the thread count gates it, which is what keeps
+                    // bench identical.
                     // SMP diversification, unchanged: magnitude 64 reproduces
                     // the original expression exactly.
-                    if self.shared_state.is_some() {
+                    if self.shared.threads > 1 {
                         r += self.next_jitter(64);
                     }
                     // 10.2.5 candidate: strong late moves may escape the old
@@ -1167,7 +1172,7 @@ impl Searcher {
             board.unmake_move(mv);
             self.clear_move(ply);
 
-            if self.stopped || self.quit {
+            if self.td.stopped || self.td.quit {
                 return 0;
             }
 
@@ -1232,7 +1237,7 @@ impl Searcher {
                         // move the eval did not credit. 100 = neutral; maluses
                         // stay unscaled.
                         let bonus_pct = if static_eval != VALUE_NONE && static_eval < beta {
-                            self.params.surprise_bonus_pct
+                            self.cfg.params.surprise_bonus_pct
                         } else {
                             100
                         };
@@ -1274,8 +1279,8 @@ impl Searcher {
                             // = skip. Good-SEE captures keep the existing malus
                             // only (the all-capture form was bench-vetoed in the
                             // Basilisk cross-review).
-                            if self.params.capture_malus_pct != 0 {
-                                let xmalus = malus * self.params.capture_malus_pct / 100;
+                            if self.cfg.params.capture_malus_pct != 0 {
+                                let xmalus = malus * self.cfg.params.capture_malus_pct / 100;
                                 let color = board.side_to_move();
                                 let pawn_key = board.pawn_key();
                                 for &quiet in quiets.as_slice() {
@@ -1298,7 +1303,7 @@ impl Searcher {
                                 }
                             }
                         }
-                        self.tt.store(TtStore {
+                        self.shared.tt.store(TtStore {
                             key: hash,
                             depth,
                             score,
@@ -1386,12 +1391,12 @@ impl Searcher {
             // capture reward (Basilisk cross-review: reward-only +4.90, the
             // sibling-malus form -84.21). Seed 0 = skip.
             if bound == Bound::Exact
-                && self.params.exact_bonus_pct != 0
+                && self.cfg.params.exact_bonus_pct != 0
                 && !best_move.is_null()
                 && !best_move.is_capture()
                 && !best_move.is_promo()
             {
-                let bonus = self.history_bonus(depth) * self.params.exact_bonus_pct / 100;
+                let bonus = self.history_bonus(depth) * self.cfg.params.exact_bonus_pct / 100;
                 self.update_quiet_history(
                     board.side_to_move(),
                     best_move,
@@ -1401,7 +1406,7 @@ impl Searcher {
                     bonus,
                 );
             }
-            self.tt.store(TtStore {
+            self.shared.tt.store(TtStore {
                 key: hash,
                 depth,
                 score: best_score,
@@ -1462,7 +1467,7 @@ impl Searcher {
             }
         }
         let original_alpha = alpha;
-        let tt_entry = self.tt.probe(hash);
+        let tt_entry = self.shared.tt.probe(hash);
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
         #[cfg(feature = "diag")]
         if diag_q_sample && ev.hit {
@@ -1544,7 +1549,7 @@ impl Searcher {
                 // fall 10.3% against a 7.5% smaller tree — cutoffs dropping
                 // faster than nodes, which is the RAR-S59 signature of a bad
                 // change. These entries earn their slot. Do not re-derive.
-                self.tt.store(TtStore {
+                self.shared.tt.store(TtStore {
                     key: hash,
                     depth: 0,
                     score: stand_pat,
@@ -1626,24 +1631,27 @@ impl Searcher {
                     continue;
                 }
                 if !mv.is_promo() {
-                    let see_threshold = (alpha - stand_pat_for_pruning - self.params.qs_see_margin)
-                        .clamp(self.params.qs_see_clamp_lo, self.params.qs_see_clamp_hi);
+                    let see_threshold =
+                        (alpha - stand_pat_for_pruning - self.cfg.params.qs_see_margin).clamp(
+                            self.cfg.params.qs_see_clamp_lo,
+                            self.cfg.params.qs_see_clamp_hi,
+                        );
                     if !board.see_ge(mv, see_threshold) {
                         continue;
                     }
                 }
-                if picked.see < 0 && !board.see_ge(mv, self.params.qs_see_bad_floor) {
+                if picked.see < 0 && !board.see_ge(mv, self.cfg.params.qs_see_bad_floor) {
                     continue;
                 }
             }
             let moving_piece = board.moving_piece(mv);
             self.push_move(ply, mv, moving_piece);
             board.make_move(mv);
-            self.tt.prefetch(board.hash());
+            self.shared.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);
-            if self.stopped || self.quit {
+            if self.td.stopped || self.td.quit {
                 return 0;
             }
             if score >= beta {
@@ -1652,7 +1660,7 @@ impl Searcher {
                     crate::diag_count!(q_move_cut);
                     crate::diag_count!(q_move_store);
                 }
-                self.tt.store(TtStore {
+                self.shared.tt.store(TtStore {
                     key: hash,
                     depth: 0,
                     score,
@@ -1692,7 +1700,7 @@ impl Searcher {
                 Bound::Lower => {}
             }
         }
-        self.tt.store(TtStore {
+        self.shared.tt.store(TtStore {
             key: hash,
             depth: 0,
             score: alpha,

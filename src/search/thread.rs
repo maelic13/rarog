@@ -1,6 +1,7 @@
 //! Per-thread search state.
 
 use crate::board::Move;
+use crate::eval::Evaluator;
 
 use super::correction::CORR_SIZE;
 use super::history::{
@@ -8,12 +9,22 @@ use super::history::{
     boxed_cont_tables,
 };
 use super::stack::{PlyArray, StackEntry};
-use super::{JITTER_SEED, MAX_PLY, RootMove};
+use super::{InfoSink, JITTER_SEED, MAX_PLY, RootMove, SilentSink};
 
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,
-/// the root-move records and the node counters. Every table is per thread.
+/// the root-move records, the node counters, the evaluator, the stop flags and
+/// the output sink. Every table is per thread.
 pub(super) struct ThreadData {
+    pub(super) evaluator: Evaluator,
+    /// The search must unwind: a limit, a stop request or a quit.
+    pub(super) stopped: bool,
+    pub(super) quit: bool,
+    pub(super) pondering: bool,
+    pub(super) ponderhit: bool,
+    /// The soft target expired while pondering: stop at `ponderhit`.
+    pub(super) stop_on_ponderhit: bool,
+    pub(super) sink: Box<dyn InfoSink>,
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
     pub(super) seldepth: usize,
@@ -58,6 +69,13 @@ pub(super) struct ThreadData {
 impl Default for ThreadData {
     fn default() -> Self {
         Self {
+            evaluator: Evaluator::default(),
+            stopped: false,
+            quit: false,
+            pondering: false,
+            ponderhit: false,
+            stop_on_ponderhit: false,
+            sink: Box::new(SilentSink),
             nodes: 0,
             tb_hits: 0,
             seldepth: 0,

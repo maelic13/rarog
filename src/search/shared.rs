@@ -1,7 +1,74 @@
-//! State every search thread shares: stop requests, pooled node and
-//! tablebase counters, root-move scores and soft-stop votes.
+//! State every search thread shares: the transposition table, the tablebase
+//! settings, and at `Threads > 1` the pool's stop requests, node and tablebase
+//! counters, root-move scores and soft-stop votes.
 
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, AtomicUsize, Ordering};
+
+use crate::tt::TranspositionTable;
+
+/// Tablebase probing limits for the current search.
+pub(super) struct SyzygySettings {
+    pub(super) probe_depth: i32,
+    pub(super) probe_limit: usize,
+    pub(super) fifty_move_rule: bool,
+    /// Largest usable piece count: the loaded tables capped by `probe_limit`.
+    pub(super) largest: usize,
+}
+
+impl Default for SyzygySettings {
+    fn default() -> Self {
+        Self {
+            probe_depth: 1,
+            probe_limit: 7,
+            fifty_move_rule: true,
+            largest: 0,
+        }
+    }
+}
+
+/// What every thread of one search reads in common. Each thread holds its own
+/// handle; the table and the pool context behind them are the same objects.
+pub(super) struct SearchShared {
+    pub(super) tt: TranspositionTable,
+    pub(super) hash_mb: usize,
+    pub(super) syzygy: SyzygySettings,
+    /// Threads in the current search. At `1` every pool gate is closed, which
+    /// is what keeps a single-thread search deterministic.
+    pub(super) threads: usize,
+    context: Arc<SharedContext>,
+}
+
+impl Default for SearchShared {
+    fn default() -> Self {
+        Self {
+            tt: TranspositionTable::default(),
+            hash_mb: 64,
+            syzygy: SyzygySettings::default(),
+            threads: 1,
+            context: Arc::new(SharedContext::new(0, 0, 1)),
+        }
+    }
+}
+
+impl SearchShared {
+    /// The pool context, or `None` in a single-thread search.
+    #[inline(always)]
+    pub(super) fn pool(&self) -> Option<&SharedContext> {
+        (self.threads > 1).then_some(&*self.context)
+    }
+
+    /// Join a parallel search's pool.
+    pub(super) fn join_pool(&mut self, context: Arc<SharedContext>) {
+        self.threads = context.thread_count;
+        self.context = context;
+    }
+
+    /// Close every pool gate after a parallel search.
+    pub(super) fn leave_pool(&mut self) {
+        self.threads = 1;
+    }
+}
 
 pub(super) const STOP_NONE: u8 = 0;
 pub(super) const STOP_SEARCH: u8 = 1;

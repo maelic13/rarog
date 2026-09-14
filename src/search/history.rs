@@ -127,7 +127,7 @@ impl Searcher {
         let direct_check = if board.gives_check_with(mv, check_info) {
             // 4.6c: a safe/losing split was measured non-functional (RAR-S44:
             // `see_ge(mv, 0)` is trivially true for a non-capture) and reverted.
-            self.params.check_bonus_safe
+            self.cfg.params.check_bonus_safe
         } else {
             0
         };
@@ -137,15 +137,15 @@ impl Searcher {
     /// Reward for the move that produced a beta cutoff (Phase 8.1: linear
     /// SF-shaped formula, split from the malus so SPSA can tune them apart).
     pub(super) fn history_bonus(&self, depth: i32) -> i32 {
-        (self.params.hist_bonus_mul * depth - self.params.hist_bonus_sub)
-            .clamp(0, self.params.hist_bonus_max)
+        (self.cfg.params.hist_bonus_mul * depth - self.cfg.params.hist_bonus_sub)
+            .clamp(0, self.cfg.params.hist_bonus_max)
     }
 
     /// Penalty magnitude for searched moves that failed to cut (applied
     /// negated). Stored positive.
     pub(super) fn history_malus(&self, depth: i32) -> i32 {
-        (self.params.hist_malus_mul * depth - self.params.hist_malus_sub)
-            .clamp(0, self.params.hist_malus_max)
+        (self.cfg.params.hist_malus_mul * depth - self.cfg.params.hist_malus_sub)
+            .clamp(0, self.cfg.params.hist_malus_max)
     }
 
     pub(super) fn update_cutoff_tables(

@@ -15,7 +15,7 @@ impl Searcher {
     }
 
     pub(super) fn raw_eval(&mut self, board: &Board) -> i32 {
-        self.evaluator.evaluate(board)
+        self.td.evaluator.evaluate(board)
     }
 
     pub(super) fn corrected_eval_from_raw(&self, board: &Board, raw: i32, ply: usize) -> i32 {
@@ -46,11 +46,11 @@ impl Searcher {
         // continuation term keeps its inherent `/2`). `Σ src·W / 16384`
         // reproduces the old `(pawn+minor+own_np+their_np+cont/2)/128` bit-for-
         // bit at seed, since `Σsrc·128/16384 == Σsrc/128` in integer division.
-        (pawn * self.params.corr_w_pawn
-            + minor * self.params.corr_w_minor
-            + own_non_pawn * self.params.corr_w_own_np
-            + their_non_pawn * self.params.corr_w_their_np
-            + (continuation / 2) * self.params.corr_w_cont)
+        (pawn * self.cfg.params.corr_w_pawn
+            + minor * self.cfg.params.corr_w_minor
+            + own_non_pawn * self.cfg.params.corr_w_own_np
+            + their_non_pawn * self.cfg.params.corr_w_their_np
+            + (continuation / 2) * self.cfg.params.corr_w_cont)
             / 16384
     }
 
@@ -105,8 +105,8 @@ impl Searcher {
         {
             let _ = halfmove;
         }
-        if from_capture && self.params.corr_capture_weight_pct != 100 {
-            diff * self.params.corr_capture_weight_pct / 100
+        if from_capture && self.cfg.params.corr_capture_weight_pct != 100 {
+            diff * self.cfg.params.corr_capture_weight_pct / 100
         } else {
             diff
         }

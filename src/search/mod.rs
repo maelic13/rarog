@@ -14,21 +14,20 @@ mod thread;
 mod threads;
 mod time;
 
-use std::sync::{Arc, atomic::Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use crate::board::{Board, Color, GameResult, Move, MoveList};
-use crate::eval::{Evaluator, INF_SCORE, MATE_SCORE};
+use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
-use crate::tt::TranspositionTable;
 
 use correction::CORR_SIZE;
 use history::{LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE};
 use node::{Root, build_lmr_table};
 use params::SearchParams;
-use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SharedContext};
+use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
 use stack::{PlyArray, StackEntry};
 use thread::ThreadData;
 use threads::WorkerPool;
@@ -178,59 +177,41 @@ impl RootMove {
     }
 }
 
-pub struct Searcher {
-    tt: TranspositionTable,
-    hash_mb: usize,
-    worker_pool: WorkerPool,
-    evaluator: Evaluator,
-    shared_state: Option<Arc<SharedContext>>,
-    stopped: bool,
-    quit: bool,
-    pondering: bool,
-    ponderhit: bool,
-    stop_on_ponderhit: bool,
-    start: Instant,
-    limits: RuntimeLimits,
-    lmr_table: Box<[[i32; 64]; 64]>,
-    lmr_table_key: (i32, i32),
-    syzygy_probe_depth: i32,
-    syzygy_probe_limit: usize,
-    syzygy_50_move_rule: bool,
-    syzygy_largest: usize,
+/// Configuration fixed for one `go`: the parameters, the reduction table built
+/// from them, the resolved limits and the instant the clock started.
+struct SearchConfig {
     params: SearchParams,
-    /// Per-thread search state: the stack, PV, histories, correction tables,
-    /// root-move records and counters.
-    td: ThreadData,
-    sink: Box<dyn InfoSink>,
+    lmr_table: Box<[[i32; 64]; 64]>,
+    /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
+    /// it only when the parameters change.
+    lmr_table_key: (i32, i32),
+    limits: RuntimeLimits,
+    start: Instant,
 }
 
-impl Default for Searcher {
+impl Default for SearchConfig {
     fn default() -> Self {
         let params = SearchParams::default();
         Self {
-            tt: TranspositionTable::default(),
-            hash_mb: 64,
-            worker_pool: WorkerPool::default(),
-            evaluator: Evaluator::default(),
-            shared_state: None,
-            stopped: false,
-            quit: false,
-            pondering: false,
-            ponderhit: false,
-            stop_on_ponderhit: false,
-            start: Instant::now(),
-            limits: RuntimeLimits::default(),
             lmr_table: build_lmr_table(params.lmr_table_base, params.lmr_table_div),
             lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
-            syzygy_probe_depth: 1,
-            syzygy_probe_limit: 7,
-            syzygy_50_move_rule: true,
-            syzygy_largest: 0,
             params,
-            td: ThreadData::default(),
-            sink: Box::new(SilentSink),
+            limits: RuntimeLimits::default(),
+            start: Instant::now(),
         }
     }
+}
+
+/// One search thread: what every thread shares, the configuration of the
+/// current search and the state only this thread mutates. The engine owns the
+/// main thread's `Searcher`, which also owns the helper pool; each helper owns
+/// its own with an empty pool.
+#[derive(Default)]
+pub struct Searcher {
+    worker_pool: WorkerPool,
+    shared: SearchShared,
+    cfg: SearchConfig,
+    td: ThreadData,
 }
 
 fn format_score(score: i32) -> String {
@@ -246,24 +227,23 @@ fn format_score(score: i32) -> String {
 impl Searcher {
     /// A searcher that writes its output to `sink`.
     pub fn with_sink(sink: Box<dyn InfoSink>) -> Self {
-        Self {
-            sink,
-            ..Self::default()
-        }
+        let mut searcher = Self::default();
+        searcher.td.sink = sink;
+        searcher
     }
 
     fn notice(&self, message: std::fmt::Arguments<'_>) {
-        self.sink.line(&format!("info string {message}"));
+        self.td.sink.line(&format!("info string {message}"));
     }
 
     pub fn configure(&mut self, options: &EngineOptions) {
-        if options.hash_mb != self.hash_mb {
-            if self.tt.resize(options.hash_mb) {
-                self.hash_mb = options.hash_mb;
+        if options.hash_mb != self.shared.hash_mb {
+            if self.shared.tt.resize(options.hash_mb) {
+                self.shared.hash_mb = options.hash_mb;
             } else {
                 self.notice(format_args!(
                     "Unable to allocate Hash value {}; keeping {} MiB.",
-                    options.hash_mb, self.hash_mb
+                    options.hash_mb, self.shared.hash_mb
                 ));
             }
         }
@@ -291,13 +271,13 @@ impl Searcher {
     }
 
     pub fn clear_hash(&mut self) {
-        self.tt.clear();
+        self.shared.tt.clear();
     }
 
     pub fn new_game(&mut self) {
-        self.tt.clear();
+        self.shared.tt.clear();
         self.clear_history();
-        self.evaluator.clear_pawn_table();
+        self.td.evaluator.clear_pawn_table();
         self.worker_pool.new_game();
     }
 
@@ -318,7 +298,7 @@ impl Searcher {
     }
 
     pub fn hashfull(&self) -> usize {
-        self.tt.hashfull()
+        self.shared.tt.hashfull()
     }
 
     pub fn search(
@@ -339,13 +319,16 @@ impl Searcher {
         emit_info: bool,
         poll: &mut P,
     ) -> SearchResult {
-        if ALLOW_PARALLEL && engine_options.threads <= 1 && !self.tt.ensure_local(self.hash_mb) {
+        if ALLOW_PARALLEL
+            && engine_options.threads <= 1
+            && !self.shared.tt.ensure_local(self.shared.hash_mb)
+        {
             self.notice(format_args!(
                 "Unable to restore local transposition table at {} MiB.",
-                self.hash_mb
+                self.shared.hash_mb
             ));
         }
-        self.shared_state = None;
+        self.shared.leave_pool();
         self.td.root_move_offset = 0;
         self.td.thread_id = 0;
 
@@ -400,7 +383,7 @@ impl Searcher {
 
         if ALLOW_PARALLEL {
             let threads = engine_options.threads.clamp(1, MAX_THREADS);
-            if threads > 1 && self.limits.depth.min(MAX_DEPTH - 1) >= MIN_PARALLEL_DEPTH {
+            if threads > 1 && self.cfg.limits.depth.min(MAX_DEPTH - 1) >= MIN_PARALLEL_DEPTH {
                 return self.search_parallel(
                     board,
                     root_moves,
@@ -432,41 +415,45 @@ impl Searcher {
         // their private evaluator cache; clearing shared storage here would
         // race with helpers or main already searching.
         let lazy_margin_changed = self
+            .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
         if lazy_margin_changed && age_tt {
-            self.tt.clear();
+            self.shared.tt.clear();
         }
 
         // The clock starts when `go` was parsed, as the harness measures it;
         // configuration invalidation and thread hand-off are on the clock
         // because they are on the harness's clock.
-        self.start = limits.issued.unwrap_or_else(Instant::now);
+        self.cfg.start = limits.issued.unwrap_or_else(Instant::now);
         self.td.nodes = 0;
         self.td.tb_hits = 0;
         self.td.seldepth = 0;
-        self.stopped = false;
-        self.quit = false;
-        self.pondering = limits.ponder;
-        self.ponderhit = false;
-        self.stop_on_ponderhit = false;
-        self.limits =
+        self.td.stopped = false;
+        self.td.quit = false;
+        self.td.pondering = limits.ponder;
+        self.td.ponderhit = false;
+        self.td.stop_on_ponderhit = false;
+        self.cfg.limits =
             compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
-        self.syzygy_probe_depth = engine_options.syzygy.probe_depth;
-        self.syzygy_probe_limit = engine_options.syzygy.probe_limit;
-        self.syzygy_50_move_rule = engine_options.syzygy.fifty_move_rule;
-        self.params = engine_options.search_params.clone();
-        let table_key = (self.params.lmr_table_base, self.params.lmr_table_div);
-        if table_key != self.lmr_table_key {
-            self.lmr_table = build_lmr_table(table_key.0, table_key.1);
-            self.lmr_table_key = table_key;
+        self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
+        self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
+        self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
+        self.cfg.params = engine_options.search_params.clone();
+        let table_key = (
+            self.cfg.params.lmr_table_base,
+            self.cfg.params.lmr_table_div,
+        );
+        if table_key != self.cfg.lmr_table_key {
+            self.cfg.lmr_table = build_lmr_table(table_key.0, table_key.1);
+            self.cfg.lmr_table_key = table_key;
         }
-        self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
+        self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.root_iteration_nodes = 0;
         self.td.root_best_nodes = 0;
         self.td.root_best_effort = 0.0;
         if age_tt {
-            self.tt.new_search();
+            self.shared.tt.new_search();
         }
         if age_history {
             self.age_history();
@@ -489,25 +476,29 @@ impl Searcher {
             bestmove: Move::NULL,
             pondermove: Move::NULL,
             score: self
+                .td
                 .evaluator
                 .evaluate_result(result, board.side_to_move(), 0),
             depth: 0,
             nodes: 0,
             tb_hits: self.td.tb_hits,
-            elapsed_ms: self.start.elapsed().as_millis(),
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
             exit: SearchExit::Stop,
-            ponderhit: self.ponderhit,
+            ponderhit: self.td.ponderhit,
         }
     }
 
     fn syzygy_root_moves(&mut self, board: &Board, legal_moves: &[Move]) -> Option<Vec<Move>> {
-        if !self.can_probe_syzygy_root(board) || board.can_declare_draw() || self.limits.nodes > 0 {
+        if !self.can_probe_syzygy_root(board)
+            || board.can_declare_draw()
+            || self.cfg.limits.nodes > 0
+        {
             return None;
         }
 
         let probe = syzygy::probe_root_moves(
             board,
-            self.syzygy_50_move_rule,
+            self.shared.syzygy.fifty_move_rule,
             board.has_repeated_position(),
         )?;
         self.record_tb_hit();
@@ -524,7 +515,7 @@ impl Searcher {
 
         let best_rank = tb_moves.iter().map(|(_, rank, _)| *rank).max()?;
         let preferred_move = if probe.used_dtz && best_rank != 0 {
-            syzygy::probe_root(board, self.syzygy_50_move_rule)
+            syzygy::probe_root(board, self.shared.syzygy.fifty_move_rule)
                 .and_then(|probe| probe.best_move)
                 .and_then(|root_move| syzygy::legal_move_from_root_probe(board, root_move))
         } else {
@@ -570,7 +561,7 @@ impl Searcher {
         // joining — helpers reach this function too, so a reset/dump left
         // unconditional would run once PER THREAD, wiping earlier threads'
         // counts on the way in and emitting N competing dumps on the way out.
-        if self.shared_state.is_none() {
+        if self.shared.threads == 1 {
             crate::diag::reset();
         }
         self.td.root_moves.clear();
@@ -583,7 +574,7 @@ impl Searcher {
         let mut pondermove = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
-        let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
+        let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
         let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
         let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
         // This thread's soft-stop vote is cast at most ONCE per search.
@@ -607,7 +598,7 @@ impl Searcher {
             // when joining the pool's view). Serial searches have no shared
             // state and keep `best_score` bit-for-bit.
             let mut window_center = best_score;
-            if let Some(shared) = &self.shared_state
+            if let Some(shared) = self.shared.pool()
                 && let Some((pool_depth, pool_score)) = shared.pool_best_exact()
                 && pool_depth > infra::to_i32(completed_depth)
             {
@@ -615,8 +606,8 @@ impl Searcher {
             }
             let use_aspiration =
                 depth >= 4 && window_center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-            let mut alpha_delta = self.params.aspiration_delta;
-            let mut beta_delta = self.params.aspiration_delta;
+            let mut alpha_delta = self.cfg.params.aspiration_delta;
+            let mut beta_delta = self.cfg.params.aspiration_delta;
             let mut alpha = if use_aspiration {
                 (window_center - alpha_delta).max(-INF_SCORE)
             } else {
@@ -646,7 +637,7 @@ impl Searcher {
                     false,
                     poll,
                 );
-                if self.stopped || self.quit {
+                if self.td.stopped || self.td.quit {
                     break;
                 }
                 // Termination guard. The widened window re-centers
@@ -666,10 +657,10 @@ impl Searcher {
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     fail_low_count += 1;
-                    alpha_delta = (alpha_delta * self.params.asp_growth_pct / 100
-                        + self.params.asp_growth_add)
+                    alpha_delta = (alpha_delta * self.cfg.params.asp_growth_pct / 100
+                        + self.cfg.params.asp_growth_add)
                         .min(INF_SCORE);
-                    alpha = if fail_low_count >= self.params.asp_max_fails
+                    alpha = if fail_low_count >= self.cfg.params.asp_max_fails
                         || alpha_delta >= INF_SCORE
                         || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
                     {
@@ -683,10 +674,10 @@ impl Searcher {
                 if score >= beta {
                     crate::diag_count!(asp_fail_high);
                     fail_high_count += 1;
-                    beta_delta = (beta_delta * self.params.asp_growth_high_pct / 100
-                        + self.params.asp_growth_add)
+                    beta_delta = (beta_delta * self.cfg.params.asp_growth_high_pct / 100
+                        + self.cfg.params.asp_growth_add)
                         .min(INF_SCORE);
-                    beta = if fail_high_count >= self.params.asp_max_fails
+                    beta = if fail_high_count >= self.cfg.params.asp_max_fails
                         || beta_delta >= INF_SCORE
                         || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
                     {
@@ -728,7 +719,7 @@ impl Searcher {
                 break;
             }
 
-            if self.stopped || self.quit {
+            if self.td.stopped || self.td.quit {
                 break;
             }
 
@@ -746,7 +737,7 @@ impl Searcher {
             // a clock but keeps searching under `go infinite`. Fixed-depth and
             // fixed-node searches keep the shortcut (bench relies on it, and
             // `go depth N` on a forced move is still a move request).
-            if legal_moves.len() == 1 && depth >= 2 && !self.limits.analysis_mode {
+            if legal_moves.len() == 1 && depth >= 2 && !self.cfg.limits.analysis_mode {
                 break;
             }
 
@@ -784,33 +775,34 @@ impl Searcher {
             // movetime mode: no soft stop — check_stop (every 2048 nodes) fires at maximum_ms.
             // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
             let elapsed_ms = self.elapsed_ms();
-            if elapsed_ms >= self.limits.maximum_ms {
+            if elapsed_ms >= self.cfg.limits.maximum_ms {
                 break;
             }
-            if !self.limits.movetime_mode {
+            if !self.cfg.limits.movetime_mode {
                 // TM dynamic multipliers, stored ×10000 in SearchParams;
                 // `/ 10000.0` reconstructs the Stockfish seeds bit-exactly.
-                let opt_scale = self.params.tm_opt_scale as f64 / 10_000.0;
-                let fall_base = self.params.tm_fall_base as f64 / 10_000.0;
-                let fall_slope = self.params.tm_fall_slope as f64 / 10_000.0;
+                let opt_scale = self.cfg.params.tm_opt_scale as f64 / 10_000.0;
+                let fall_base = self.cfg.params.tm_fall_base as f64 / 10_000.0;
+                let fall_slope = self.cfg.params.tm_fall_slope as f64 / 10_000.0;
                 // fallingEval: ↑ when score is falling (want more time); seeds from SF.
                 let falling_eval = (fall_base
                     + fall_slope * (falling_baseline - best_score as f64))
                     .clamp(0.572, 1.708);
                 // bestMoveInstab: ↑ when best move changed recently.
-                let best_move_instab = tm_instability_factor(&self.params, tot_best_move_changes);
+                let best_move_instab =
+                    tm_instability_factor(&self.cfg.params, tot_best_move_changes);
                 // effortFactor: linear interp — at effort≤0.79 → effort_high; at effort≥1.0 → effort_low.
-                let effort_factor = tm_effort_factor(&self.params, self.td.root_best_effort);
-                let total_time = self.limits.optimum_ms
+                let effort_factor = tm_effort_factor(&self.cfg.params, self.td.root_best_effort);
+                let total_time = self.cfg.limits.optimum_ms
                     * opt_scale
                     * falling_eval
                     * best_move_instab
                     * effort_factor;
-                let soft_target = total_time.min(self.limits.maximum_ms);
-                if self.pondering {
+                let soft_target = total_time.min(self.cfg.limits.maximum_ms);
+                if self.td.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
                     if elapsed_ms >= soft_target {
-                        self.stop_on_ponderhit = true;
+                        self.td.stop_on_ponderhit = true;
                     }
                 } else if elapsed_ms >= soft_target {
                     // In a parallel search the soft stop is a SYMMETRIC
@@ -826,7 +818,7 @@ impl Searcher {
                     // poll), which the SMP-aware time reserve keeps
                     // forfeit-safe (measured 0 forfeits). Serial searches have
                     // no shared state and break at their own target.
-                    if let Some(shared) = &self.shared_state {
+                    if let Some(shared) = self.shared.pool() {
                         if !cast_stop_vote {
                             cast_stop_vote = true;
                             if shared.vote_to_stop() {
@@ -857,7 +849,7 @@ impl Searcher {
         }
 
         #[cfg(feature = "diag")]
-        if (self.stopped || self.quit)
+        if (self.td.stopped || self.td.quit)
             && self
                 .td
                 .root_move_records
@@ -870,7 +862,7 @@ impl Searcher {
         // Dump per-search counters (no-op without `--features diag`).
         // Serial path only — see the reset note above. The parallel
         // dump lives in `search_parallel`, after the helpers are joined.
-        if self.shared_state.is_none() {
+        if self.shared.threads == 1 {
             crate::diag::dump();
         }
 
@@ -881,13 +873,13 @@ impl Searcher {
             depth: completed_depth,
             nodes: self.td.nodes,
             tb_hits: self.td.tb_hits,
-            elapsed_ms: self.start.elapsed().as_millis(),
-            exit: if self.quit {
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            exit: if self.td.quit {
                 SearchExit::Quit
             } else {
                 SearchExit::Stop
             },
-            ponderhit: self.ponderhit,
+            ponderhit: self.td.ponderhit,
         }
     }
 
@@ -901,30 +893,34 @@ impl Searcher {
         if ply == 0 || !excluded.is_null() || !self.can_probe_syzygy(board, depth) {
             return None;
         }
-        let wdl = syzygy::probe_wdl(board, self.syzygy_50_move_rule)?;
+        let wdl = syzygy::probe_wdl(board, self.shared.syzygy.fifty_move_rule)?;
         self.record_tb_hit();
         Some(self.score_from_syzygy_wdl(wdl, ply))
     }
 
     fn can_probe_syzygy(&self, board: &Board, depth: i32) -> bool {
-        self.syzygy_largest > 0
-            && depth >= self.syzygy_probe_depth
+        self.shared.syzygy.largest > 0
+            && depth >= self.shared.syzygy.probe_depth
             && board.castling().0 == 0
-            && board.occupied_count() as usize <= self.syzygy_largest
+            && board.occupied_count() as usize <= self.shared.syzygy.largest
     }
 
     fn can_probe_syzygy_root(&self, board: &Board) -> bool {
-        self.syzygy_largest > 0
+        self.shared.syzygy.largest > 0
             && board.castling().0 == 0
-            && board.occupied_count() as usize <= self.syzygy_largest
+            && board.occupied_count() as usize <= self.shared.syzygy.largest
     }
 
     fn score_from_syzygy_wdl(&self, wdl: Wdl, ply: usize) -> i32 {
         match wdl {
             Wdl::Win => TB_WIN_SCORE - infra::to_i32(ply),
-            Wdl::CursedWin if !self.syzygy_50_move_rule => TB_WIN_SCORE - infra::to_i32(ply),
+            Wdl::CursedWin if !self.shared.syzygy.fifty_move_rule => {
+                TB_WIN_SCORE - infra::to_i32(ply)
+            }
             Wdl::Loss => -TB_WIN_SCORE + infra::to_i32(ply),
-            Wdl::BlessedLoss if !self.syzygy_50_move_rule => -TB_WIN_SCORE + infra::to_i32(ply),
+            Wdl::BlessedLoss if !self.shared.syzygy.fifty_move_rule => {
+                -TB_WIN_SCORE + infra::to_i32(ply)
+            }
             Wdl::BlessedLoss | Wdl::Draw | Wdl::CursedWin => 0,
         }
     }
@@ -934,7 +930,7 @@ impl Searcher {
     #[cfg(feature = "ablate")]
     #[inline]
     fn ablated(&self, bit: u32) -> bool {
-        (self.params.ablation_mask >> bit) & 1 == 1
+        (self.cfg.params.ablation_mask >> bit) & 1 == 1
     }
 
     #[cfg(not(feature = "ablate"))]
@@ -946,25 +942,25 @@ impl Searcher {
 
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
         let total_nodes = self.record_node();
-        if let Some(shared_state) = &self.shared_state
-            && (self.limits.nodes > 0 || self.td.nodes & SHARED_NODE_BATCH_MASK == 0)
+        if let Some(shared_state) = self.shared.pool()
+            && (self.cfg.limits.nodes > 0 || self.td.nodes & SHARED_NODE_BATCH_MASK == 0)
         {
             match shared_state.stop_state.load(Ordering::Relaxed) {
                 STOP_QUIT => {
-                    self.quit = true;
-                    self.stopped = true;
+                    self.td.quit = true;
+                    self.td.stopped = true;
                     return true;
                 }
                 STOP_SEARCH => {
-                    self.stopped = true;
+                    self.td.stopped = true;
                     return true;
                 }
                 _ => {}
             }
         }
-        if self.limits.nodes > 0 && total_nodes >= self.limits.nodes {
-            self.stopped = true;
-            if let Some(shared_state) = &self.shared_state {
+        if self.cfg.limits.nodes > 0 && total_nodes >= self.cfg.limits.nodes {
+            self.td.stopped = true;
+            if let Some(shared_state) = self.shared.pool() {
                 shared_state.request_stop();
             }
             return true;
@@ -972,41 +968,41 @@ impl Searcher {
         if self.td.nodes & 2047 == 0 {
             match poll() {
                 SearchEvent::Quit => {
-                    self.quit = true;
-                    self.stopped = true;
+                    self.td.quit = true;
+                    self.td.stopped = true;
                 }
                 SearchEvent::Stop => {
-                    self.stopped = true;
+                    self.td.stopped = true;
                 }
                 SearchEvent::PonderHit => {
-                    self.pondering = false;
-                    self.ponderhit = true;
-                    if self.stop_on_ponderhit {
-                        self.stopped = true;
+                    self.td.pondering = false;
+                    self.td.ponderhit = true;
+                    if self.td.stop_on_ponderhit {
+                        self.td.stopped = true;
                     }
-                    if let Some(shared_state) = &self.shared_state {
+                    if let Some(shared_state) = self.shared.pool() {
                         shared_state.ponderhit.store(true, Ordering::Relaxed);
                     }
                 }
                 SearchEvent::None => {}
             }
-            if !self.pondering && self.elapsed_ms() >= self.limits.maximum_ms {
-                self.stopped = true;
+            if !self.td.pondering && self.elapsed_ms() >= self.cfg.limits.maximum_ms {
+                self.td.stopped = true;
             }
         }
-        self.stopped
+        self.td.stopped
     }
 
     fn record_node(&mut self) -> u64 {
         self.td.nodes += 1;
-        if let Some(shared_state) = &self.shared_state {
+        if let Some(shared_state) = self.shared.pool() {
             let pending = self.td.nodes & SHARED_NODE_BATCH_MASK;
             if pending == 0 {
                 shared_state
                     .nodes
                     .fetch_add(SHARED_NODE_BATCH, Ordering::Relaxed)
                     + SHARED_NODE_BATCH
-            } else if self.limits.nodes > 0 {
+            } else if self.cfg.limits.nodes > 0 {
                 shared_state.nodes.load(Ordering::Relaxed) + pending
             } else {
                 self.td.nodes
@@ -1018,30 +1014,25 @@ impl Searcher {
 
     fn record_tb_hit(&mut self) {
         self.td.tb_hits += 1;
-        if let Some(shared_state) = &self.shared_state {
+        if let Some(shared_state) = self.shared.pool() {
             shared_state.tb_hits.fetch_add(1, Ordering::Relaxed);
         }
     }
 
     fn reported_nodes(&self) -> u64 {
-        self.shared_state
-            .as_ref()
-            .map_or(self.td.nodes, |shared_state| {
-                shared_state.nodes.load(Ordering::Relaxed)
-                    + (self.td.nodes & SHARED_NODE_BATCH_MASK)
-            })
+        self.shared.pool().map_or(self.td.nodes, |shared_state| {
+            shared_state.nodes.load(Ordering::Relaxed) + (self.td.nodes & SHARED_NODE_BATCH_MASK)
+        })
     }
 
     fn reported_tb_hits(&self) -> u64 {
-        self.shared_state
-            .as_ref()
-            .map_or(self.td.tb_hits, |shared_state| {
-                shared_state.tb_hits.load(Ordering::Relaxed)
-            })
+        self.shared.pool().map_or(self.td.tb_hits, |shared_state| {
+            shared_state.tb_hits.load(Ordering::Relaxed)
+        })
     }
 
     fn elapsed_ms(&self) -> f64 {
-        self.start.elapsed().as_secs_f64() * 1000.0
+        self.cfg.start.elapsed().as_secs_f64() * 1000.0
     }
 
     fn send_info(&self, depth: usize, score: i32) {
@@ -1054,7 +1045,7 @@ impl Searcher {
     }
 
     fn send_info_line(&self, depth: usize, score: i32, pv: &[Move]) {
-        let elapsed_ms = self.start.elapsed().as_millis();
+        let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
         let nps = (nodes as u128 * 1000)
@@ -1065,7 +1056,7 @@ impl Searcher {
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(" ");
-        self.sink.line(&format!(
+        self.td.sink.line(&format!(
             "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
             self.td.seldepth,
@@ -1088,7 +1079,8 @@ impl Searcher {
         };
         let mut child = root.clone();
         child.make_move(bestmove);
-        self.tt
+        self.shared
+            .tt
             .probe(child.hash())
             .and_then(super::tt::TtEntry::best_move)
             .and_then(|mv| child.legal_move(mv))
@@ -1129,7 +1121,7 @@ mod tests {
     use crate::eval::VALUE_NONE;
     use crate::tt::{Bound, TtStore};
 
-    use std::sync::Mutex;
+    use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
     const LAZY_MARGIN_REGRESSION_FEN: &str = "5k2/5p1p/p3B1p1/Pp6/1P6/5P1P/4K1P1/8 b - - 0 1";
@@ -1221,7 +1213,7 @@ mod tests {
             .into_iter()
             .next()
             .expect("regression position has a legal move");
-        searcher.tt.store(TtStore {
+        searcher.shared.tt.store(TtStore {
             key: board.hash(),
             depth: 1,
             score: static_eval,
@@ -1249,12 +1241,13 @@ mod tests {
             let low_margin_score = searcher.raw_eval(&board);
 
             if shared {
-                searcher.tt.make_shared(searcher.hash_mb);
+                searcher.shared.tt.make_shared(searcher.shared.hash_mb);
             }
             store_static_eval(&mut searcher, &board, low_margin_score);
             assert_eq!(
                 i32::from(
                     searcher
+                        .shared
                         .tt
                         .probe(board.hash())
                         .expect("stored TT entry")
@@ -1266,7 +1259,7 @@ mod tests {
             options.search_params.lazy_margin = HIGH_MARGIN;
             searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
             assert!(
-                searcher.tt.probe(board.hash()).is_none(),
+                searcher.shared.tt.probe(board.hash()).is_none(),
                 "LazyMargin change retained a {} TT evaluation",
                 if shared { "shared" } else { "local" }
             );
@@ -1279,13 +1272,11 @@ mod tests {
         let board =
             Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).expect("valid lazy-eval regression FEN");
         let mut main = Searcher::default();
-        main.tt.make_shared(main.hash_mb);
+        main.shared.tt.make_shared(main.shared.hash_mb);
         store_static_eval(&mut main, &board, 123);
 
-        let mut helper = Searcher {
-            tt: main.tt.clone(),
-            ..Searcher::default()
-        };
+        let mut helper = Searcher::default();
+        helper.shared.tt = main.shared.tt.clone();
         let mut options = EngineOptions::default();
         options.search_params.lazy_margin = 2_000;
         helper.reset_search_state(
@@ -1298,7 +1289,7 @@ mod tests {
         );
 
         assert!(
-            main.tt.probe(board.hash()).is_some(),
+            main.shared.tt.probe(board.hash()).is_some(),
             "helper startup cleared the shared TT after another thread made it live"
         );
     }
@@ -1414,10 +1405,10 @@ mod tests {
     /// The SMP machinery (pool root scores, stop voting, reduction
     /// jitter, pool-seeded aspiration) must be INERT at Threads=1.
     ///
-    /// Every SMP feature gates on `shared_state`, which only a parallel
-    /// search sets — this guards the property every 1-thread gate and the
-    /// bench fingerprint rely on: a serial search must be deterministic and
-    /// free of any pool machinery. If a gate ever leaks into the serial
+    /// Every SMP feature gates on the thread count, which only a parallel
+    /// search raises above one. This guards the property every 1-thread gate
+    /// and the bench fingerprint rely on: a serial search must be
+    /// deterministic and free of any pool machinery. If a gate ever leaks into the serial
     /// path, the run-to-run identity below breaks.
     #[test]
     fn smp_machinery_is_inert_on_a_single_thread() {
@@ -1439,8 +1430,8 @@ mod tests {
                 true,
             );
             assert!(
-                searcher.shared_state.is_none(),
-                "a serial search must have no shared state"
+                searcher.shared.pool().is_none(),
+                "a serial search must have every pool gate closed"
             );
             let result =
                 searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
@@ -1500,24 +1491,22 @@ mod tests {
 
     #[test]
     fn ponderhit_preserves_elapsed_time_budget() {
-        let mut searcher = Searcher {
-            pondering: true,
-            start: Instant::now() - Duration::from_millis(10),
-            limits: RuntimeLimits {
-                depth: 64,
-                optimum_ms: 1.0,
-                maximum_ms: 1.0,
-                ..RuntimeLimits::default()
-            },
-            ..Searcher::default()
+        let mut searcher = Searcher::default();
+        searcher.td.pondering = true;
+        searcher.cfg.start = Instant::now() - Duration::from_millis(10);
+        searcher.cfg.limits = RuntimeLimits {
+            depth: 64,
+            optimum_ms: 1.0,
+            maximum_ms: 1.0,
+            ..RuntimeLimits::default()
         };
         searcher.td.nodes = 2047;
 
         let stopped = searcher.check_stop(&mut || SearchEvent::PonderHit);
 
         assert!(stopped);
-        assert!(searcher.ponderhit);
-        assert!(!searcher.pondering);
+        assert!(searcher.td.ponderhit);
+        assert!(!searcher.td.pondering);
     }
 
     #[test]
@@ -1542,7 +1531,7 @@ mod tests {
             true,
             true,
         );
-        searcher.tt.store(TtStore {
+        searcher.shared.tt.store(TtStore {
             key: board.hash(),
             depth: 8,
             score: 0,
@@ -1587,7 +1576,7 @@ mod tests {
         let mut child = root.clone();
         child.make_move(bestmove);
         let ponder = child.parse_move("a7a6").expect("legal child move");
-        searcher.tt.store(TtStore {
+        searcher.shared.tt.store(TtStore {
             key: child.hash(),
             depth: 4,
             score: 0,

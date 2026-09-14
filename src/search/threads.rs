@@ -201,7 +201,7 @@ fn parallel_result_key(
 impl Searcher {
     fn reset_worker_state_for_new_game(&mut self) {
         self.clear_history();
-        self.evaluator.clear_pawn_table();
+        self.td.evaluator.clear_pawn_table();
     }
 
     fn run_worker_job<P: FnMut() -> SearchEvent + ?Sized>(
@@ -209,9 +209,9 @@ impl Searcher {
         job: WorkerJob,
         poll: &mut P,
     ) -> SearchResult {
-        self.tt = job.tt;
-        self.hash_mb = job.hash_mb;
-        self.shared_state = Some(Arc::clone(&job.shared_state));
+        self.shared.tt = job.tt;
+        self.shared.hash_mb = job.hash_mb;
+        self.shared.join_pool(Arc::clone(&job.shared_state));
         self.td.root_move_offset = job.root_move_offset;
         self.td.thread_id = job.thread_id;
         let result = self.search_worker(
@@ -221,7 +221,7 @@ impl Searcher {
             job.root_moves.as_ref(),
             poll,
         );
-        self.shared_state = None;
+        self.shared.leave_pool();
         result
     }
 
@@ -294,7 +294,7 @@ impl Searcher {
         // Reset BEFORE any helper exists, so nothing already counted
         // gets wiped by a late-starting thread.
         crate::diag::reset();
-        self.tt.make_shared(self.hash_mb);
+        self.shared.tt.make_shared(self.shared.hash_mb);
         let helper_count = threads.saturating_sub(1);
         let root_len = root_moves.len();
         let shared_state = Arc::new(SharedContext::new(self.td.tb_hits, root_len, threads));
@@ -320,8 +320,8 @@ impl Searcher {
                 root_moves: Arc::clone(&root_moves_shared),
                 limits: limits.clone(),
                 engine_options: worker_engine_options.clone(),
-                tt: self.tt.clone(),
-                hash_mb: self.hash_mb,
+                tt: self.shared.tt.clone(),
+                hash_mb: self.shared.hash_mb,
                 root_move_offset: offset,
                 thread_id: index + 1,
                 shared_state: Arc::clone(&shared_state),
@@ -335,7 +335,7 @@ impl Searcher {
 
         self.td.root_move_offset = 0;
         self.td.thread_id = 0;
-        self.shared_state = Some(Arc::clone(&shared_state));
+        self.shared.join_pool(Arc::clone(&shared_state));
         let root_for_ponder = root.clone();
         let mut main_poll = || match shared_state.stop_state.load(Ordering::Relaxed) {
             STOP_QUIT => SearchEvent::Quit,
@@ -426,27 +426,27 @@ impl Searcher {
                 depth: 0,
                 nodes: 0,
                 tb_hits: 0,
-                elapsed_ms: self.start.elapsed().as_millis(),
+                elapsed_ms: self.cfg.start.elapsed().as_millis(),
                 exit: SearchExit::Stop,
-                ponderhit: self.ponderhit,
+                ponderhit: self.td.ponderhit,
             });
         self.td.nodes = total_nodes;
         self.td.tb_hits = total_tb_hits;
-        self.quit = quit;
-        self.stopped = true;
+        self.td.quit = quit;
+        self.td.stopped = true;
         best.nodes = total_nodes;
         best.tb_hits = total_tb_hits;
-        best.elapsed_ms = self.start.elapsed().as_millis();
+        best.elapsed_ms = self.cfg.start.elapsed().as_millis();
         if best.pondermove.is_null() {
             best.pondermove = self.ponder_from_tt(&root_for_ponder, best.bestmove);
         }
-        best.ponderhit = self.ponderhit || helper_results.iter().any(|result| result.ponderhit);
+        best.ponderhit = self.td.ponderhit || helper_results.iter().any(|result| result.ponderhit);
         best.exit = if quit {
             SearchExit::Quit
         } else {
             SearchExit::Stop
         };
-        self.shared_state = None;
+        self.shared.leave_pool();
         best
     }
 
@@ -463,7 +463,7 @@ impl Searcher {
         legal_moves: &[Move],
         scored: &mut ScoredMoveList,
     ) {
-        let Some(shared) = &self.shared_state else {
+        let Some(shared) = self.shared.pool() else {
             return;
         };
         for entry in scored.as_mut_slice() {
@@ -516,7 +516,7 @@ impl Searcher {
         } else {
             RootBound::Upper
         };
-        if let Some(shared) = &self.shared_state {
+        if let Some(shared) = self.shared.pool() {
             shared.publish_root_score(index, depth, score, bound);
         }
 
