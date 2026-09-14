@@ -93,12 +93,10 @@ function Invoke-Bench {
     }
 }
 
-# The accepted head's `bench 13` fingerprint. Bumped again 2026-09-02 when
-# RAR-E08 accepted the tablebase-corrected label fit: 7,226,051 / 2.460 became
-# 7,165,683 / 2.462. Bumped 2026-09-01 when RAR-E06's
-# complete HCE refit was accepted: 6,977,070 / 2.466 (RAR-S70) became
-# 7,226,051 / 2.460. It was NOT bumped at acceptance and the first fit run
-# afterwards failed here -- correctly, but for a stale reason.
+# The accepted head's `bench 13` fingerprint, read from GUIDE.md's
+# `| Development head` row: the one place the documents declare it, which
+# tools/diag/check_guide.py holds AGENTS and PLAN to. A literal copied here went
+# stale at every accepted change.
 #
 # WHAT THIS CANNOT PROVE. A fingerprint identifies the SEARCH, and a change
 # confined to positions the bench suite never reaches is invisible to it. The
@@ -107,8 +105,20 @@ function Invoke-Bench {
 # bare-king minor-piece mate. So this guard will happily pass a tree carrying
 # an unaccepted eval change. Check `git rev-parse HEAD` against the commit the
 # fit is supposed to start from; the run manifest records it for that purpose.
-$script:AcceptedBenchNodes = 6901489
-$script:AcceptedBenchEbf = 2.458
+function Get-AcceptedFingerprint {
+    $guide = Join-Path $repo "GUIDE.md"
+    $row = Select-String -LiteralPath $guide -Pattern '^\| Development head' | Select-Object -First 1
+    if (-not $row) { throw "GUIDE.md has no '| Development head' row to read the accepted fingerprint from" }
+    $m = [regex]::Match($row.Line, '(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})')
+    if (-not $m.Success) { throw "GUIDE.md's Development head row carries no 'N / EBF x.xxx' fingerprint" }
+    [pscustomobject]@{
+        Nodes = [long]($m.Groups[1].Value -replace ',', '')
+        Ebf   = [double]::Parse($m.Groups[2].Value, [Globalization.CultureInfo]::InvariantCulture)
+    }
+}
+$accepted = Get-AcceptedFingerprint
+$script:AcceptedBenchNodes = $accepted.Nodes
+$script:AcceptedBenchEbf = $accepted.Ebf
 
 function Assert-BaselineFingerprint {
     param($Bench, [string]$Label)
