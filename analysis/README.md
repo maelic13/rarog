@@ -21,11 +21,13 @@ analysis or EXPERIMENTS ledger. Do not force-add a raw bundle to make its link
 work on another machine. Arrange local evidence backups separately from Git.
 
 Required fixtures under `tests/data/`, frozen ranking/floor inputs consumed by
-diagnostic tools, reusable scripts, vendor source/licenses and the README logo
-remain tracked, as do `logo/rarog_light.png` and `logo/rarog_dark.png` for a
-themed README. A generated origin alone does not make a required test input
-disposable. The unused `logo/*_alternative*.png` variants are kept on disk
-under an explicit ignore rule.
+diagnostic tools, reusable scripts and vendor source/licenses remain tracked. A
+generated origin alone does not make a required test input disposable.
+
+**Every file in `logo/` stays tracked, used by the README or not.** The logos
+are for users, not for code, so "unreferenced" is not a reason to remove one.
+Never untrack, ignore or delete a logo file (maintainer decision, restated
+2026-09-14 after B.2.0.1 untracked six variants and they were restored).
 
 The storage cleanup removes files from the current Git index only. It preserves
 their bytes and paths on disk and leaves earlier commits unchanged; old blobs

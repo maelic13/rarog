@@ -76,5 +76,3 @@ tools/profile/butterfly.txt
 # The frozen oracle package (PLAN A.2.2): local binaries, never tracked
 /hybrid/
 
-# Unused logo variants stay on disk; the README logo and the light/dark pair are tracked
-/logo/*_alternative*.png
