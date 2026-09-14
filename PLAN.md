@@ -505,7 +505,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.0.1 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M52); nine tickets frozen in `analysis/repository_review_2026-09.md` §5; B.2.0 closed 2026-09-14 (RAR-P25), next executable leaf |
+| B.2.0.1 | IMPLEMENTED | I2 | Eight of nine tickets landed 2026-09-14 (U1–U3, U5–U9); U4, the AGENTS rewrite, is drafted and held for the maintainer's review before it is committed; closes when U4 lands |
 | B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 and B.2.0.1 |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
