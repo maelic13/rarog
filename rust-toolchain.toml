@@ -1,4 +1,4 @@
-# Pinned toolchain — 9.1 reproducible-build gate.
+# Pinned toolchain — the reproducible-build gate.
 #
 # WHY PIN: a released binary must be rebuildable from its commit SHA, and —
 # more sharply for our methodology — an unnoticed `rustup update` landing

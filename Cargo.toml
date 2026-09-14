@@ -38,34 +38,33 @@ tune = []
 # shipped binary, and never in a strength gate except as the arm under test.
 # Production compiles every guard out entirely -- `ablated()` is a const `false`.
 ablate = []
-# Phase 4.1 search diagnostics: exact legacy events plus deterministic sampled
+# Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
 # but must not change nodes or best moves; production compiles it out entirely.
 diag = []
 
 # Exposes the Texel trace machinery (EvalTrace, reconstruct, flat-param helpers)
-# used by the offline tuner in tools/texel-tuner (Phase 3.3). Never enabled in
+# used by the offline tuner in tools/texel-tuner. Never enabled in
 # production or `tune` builds; bypasses the eval/pawn caches and records a
 # per-position feature trace, so it must NOT be used for playing strength.
 texel = []
 
-# ─── Lint wall (Phase 9.0a, 2026-07-19) ──────────────────────────────────────
-# PLAN.md guiding principle #8: clean, idiomatic Rust only — no new violations,
-# real or spirit-level. This section makes that a BUILD property rather than a
-# habit; the 9.2 CI job runs clippy with `-D warnings` so a violation fails the
-# build. Every entry below is either already at zero (kept there by `deny`) or
-# carries a written burn-down plan.
+# ─── Lint wall ───────────────────────────────────────────────────────────────
+# Clean, idiomatic Rust only — no new violations. This section makes that a
+# BUILD property rather than a habit; CI runs clippy with `-D warnings` so a
+# violation fails the build. Every entry below is at zero, kept there by
+# `deny`, or is a written decision.
 [lints.rust]
 # Unsafe inside an `unsafe fn` must still be an explicit `unsafe {}` block.
 unsafe_op_in_unsafe_fn = "deny"
 
 [lints.clippy]
-# Baseline: the whole `clippy::all` set is at zero as of 9.0f and stays there.
+# Baseline: the whole `clippy::all` set is at zero and stays there.
 all = { level = "warn", priority = -1 }
 
-# Principle-#8 hard rules. All currently zero — `deny` keeps them that way.
-undocumented_unsafe_blocks = "deny"   # every unsafe carries a SAFETY: note (9.0a)
+# Hard rules. All at zero — `deny` keeps them that way.
+undocumented_unsafe_blocks = "deny"   # every unsafe carries a SAFETY: note
 todo = "deny"
 unimplemented = "deny"
 dbg_macro = "deny"
@@ -74,7 +73,7 @@ redundant_clone = "deny"
 uninlined_format_args = "deny"
 semicolon_if_nothing_returned = "deny"
 
-# ACCEPTED, permanently (user decision 2026-07-19): search kernels legitimately
+# ACCEPTED, permanently (maintainer decision): search kernels legitimately
 # take many parameters. The cohesive groups were already extracted -- `TtStore`
 # carries the nine TT-store fields, which was a real fix (six were i32/usize,
 # so a swapped pair compiled silently). What remains is search CONTROL FLOW:
@@ -83,13 +82,11 @@ semicolon_if_nothing_returned = "deny"
 # means either `&mut Ctx` aliasing in the hottest recursion in the engine or a
 # per-call copy -- real risk for a style lint whose default threshold of 7 is
 # calibrated for application code, not search kernels. Top Rust engines carry
-# the same suppression. Revisit only if 8.9's unified lmr_depth model creates a
-# genuinely cohesive group.
+# the same suppression. Revisit only if a genuinely cohesive group appears.
 too_many_arguments = "allow"
 
-# 9.0b COMPLETE (2026-07-19): the 245 measured cast warnings are at ZERO.
-# Every numeric narrowing now goes through `infra`'s checked conversions
-# (`index`, `to_i32`, `to_usize`, `to_u8`, `to_i8`, `saturating_i16/i8` —
+# Cast lints at ZERO. Every numeric narrowing goes through `infra`'s checked
+# conversions (`index`, `to_i32`, `to_usize`, `to_u8`, `saturating_i16/i8` —
 # debug-asserted, tested, 64-bit-guarded), or sits under a scoped fn-level
 # `#[allow]` with its reason written down (const-evaluated init tables, the
 # TT entry's bit-exact pack/unpack where truncation IS the design, the LMR
@@ -101,7 +98,7 @@ cast_possible_wrap = "deny"
 [dependencies]
 
 [build-dependencies]
-# A.4.1: the floor tracks what has actually been verified against `vendor/fathom`,
+# The floor tracks what has actually been verified against `vendor/fathom`,
 # not merely what resolves. `cc` compiles `tbprobe.c`, and `build.rs` hands it a
 # tier-dependent `TB_NO_HW_POP_COUNT`; a `cc` that mis-handles that is how the
 # 2.3.0/2.3.1 baseline assets shipped 15 illegal `popcntq`. Raise this line only

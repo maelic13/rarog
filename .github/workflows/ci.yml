@@ -1,4 +1,4 @@
-# Development CI (Phase 9.2).
+# Development CI.
 #
 # TRIGGERS: push to master (the release gate — master is what becomes a
 # release) and manual dispatch on any branch. Deliberately NOT on push to
@@ -11,7 +11,7 @@
 # gate. A subset would hand out false confidence.
 #
 # The toolchain is NOT specified here — rustup reads rust-toolchain.toml and
-# installs the pinned compiler (9.1). CI therefore builds with the exact same
+# installs the pinned compiler. CI therefore builds with the exact same
 # rustc the developer does, which is the whole point of the pin.
 name: CI
 
@@ -50,7 +50,7 @@ jobs:
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
-      # The 9.0a/9.0b lint wall (deny on unsafe_op_in_unsafe_fn, the three cast
+      # The lint wall (deny on unsafe_op_in_unsafe_fn, the three cast
       # lints, and eight more) only binds where it is actually run. This is what
       # makes it structural rather than a local habit.
       # Run per feature set on purpose: `cfg(feature = ...)` code is linted
@@ -106,8 +106,7 @@ jobs:
 
       # The debug run is not redundant with release: every debug_assert! in
       # infra's checked conversions, cont_index and piece_to_index compiles out
-      # of release entirely. That suite was silently DEAD until 9.0a revived it
-      # (stack overflow — no assert had ever executed), so it gets a real job.
+      # of release entirely, so the debug suite gets a real job.
       - name: cargo test — engine, default features (${{ matrix.profile }})
         shell: bash
         run: |
@@ -166,9 +165,7 @@ jobs:
       - name: Build release
         run: cargo build --release
 
-      # 4.8a — catch an ISA-contract break at PR time, not at release time.
-      # This is the check that would have caught the 15 baseline POPCNT
-      # instructions the 2.3.0/2.3.1 assets shipped, three steps earlier.
+      # Catch an ISA-contract break at PR time, not at release time.
       - name: Install llvm-tools
         run: rustup component add llvm-tools
 
@@ -264,7 +261,7 @@ jobs:
       - name: Build --features ablate
         run: cargo build --release --features ablate
 
-      # 4.10.12: single features are not enough. Which items arrive under a
+      # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
       # `diag` and under `tune` and fail under both. This enumerates all 16
       # subsets with `cargo check --all-targets`, which catches the same

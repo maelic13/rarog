@@ -3,8 +3,8 @@ fn main() {
 
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
-    // A.4.1 / RAR-P21 — the macOS PGO warning below is EXPECTED. Do not "fix"
-    // it by silencing warnings.
+    // The macOS PGO warning below is EXPECTED. Do not "fix" it by silencing
+    // warnings.
     //
     // A PGO build on macOS prints:
     //
@@ -24,8 +24,7 @@ fn main() {
     // which is plain `cl.exe -nologo -MD -O2 -Brepro -I vendor/fathom/src -W0
     // /TP /std:c++17 -DTB_NO_HELPER_API ...` with no profile flag of any form.
     // **No platform compiles this file with PGO.** macOS is only the one that
-    // mentions it. Reading Windows' silence as "it works there" is precisely
-    // the mistake RAR-P21 corrects.
+    // mentions it. Windows' silence does not mean "it works there".
     //
     // Why it is left alone: tablebases work normally — this is about how
     // `tbprobe.c` is optimised, never about whether probing runs or is
@@ -48,7 +47,7 @@ fn main() {
         .warnings(false);
 
     if !target_has_feature("popcnt") {
-        // 4.8a — the ISA tier must reach the VENDORED C, not only the Rust.
+        // The ISA tier must reach the VENDORED C, not only the Rust.
         //
         // `-C target-cpu=...` is a rustc flag; `cc` never sees it and compiles
         // `tbprobe.c` with the toolchain's own defaults. Fathom then picks its

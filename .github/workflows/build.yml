@@ -104,7 +104,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # No toolchain action: rustup reads rust-toolchain.toml (9.1) and
+      # No toolchain action: rustup reads rust-toolchain.toml and
       # installs the PINNED compiler plus llvm-tools-preview, which PGO needs.
       # A `@stable` action here would download a second toolchain that the pin
       # then overrides anyway, so the workflow would claim stable while
@@ -118,12 +118,12 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
-      # 4.8a: `verify-isa` disassembles the finished asset, so the release job
+      # `verify-isa` disassembles the finished asset, so the release job
       # needs llvm-objdump. It ships with the toolchain as a rustup component.
       - name: Install llvm-tools
         run: rustup component add llvm-tools
 
-      # 9.3: ship what we actually measure. Every cell above is a NATIVE
+      # Ship what we actually measure. Every cell above is a NATIVE
       # runner (host triple == matrix.target), which is what PGO requires —
       # the instrumented binary has to run its training bench locally — so
       # every shipped asset is profile-guided.
@@ -153,7 +153,7 @@ jobs:
           mv "$built" "target/dist/${asset_name}"
           echo "asset_name=${asset_name}" >> "$GITHUB_OUTPUT"
 
-      # 4.8a — the ISA contract, checked on the ASSET that is about to be
+      # The ISA contract, checked on the ASSET that is about to be
       # uploaded. Node agreement across cells cannot see this class of defect:
       # a binary that emits POPCNT on the baseline tier still produces the right
       # node count on every machine that can run it at all, and dies with an

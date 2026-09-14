@@ -1,7 +1,7 @@
 # NO `[build] rustflags` HERE — deliberately.
 #
-# This file carried `rustflags = ["-C", "target-cpu=native"]` from 1.0.0 until
-# 2.3.0, when it was removed as both redundant and actively harmful:
+# A `rustflags = ["-C", "target-cpu=native"]` here would be both redundant and
+# actively harmful:
 #
 #   REDUNDANT — every build path that matters sets its own flags, and an
 #   explicit `CARGO_ENCODED_RUSTFLAGS`/`RUSTFLAGS` overrides this file anyway:
@@ -16,9 +16,8 @@
 #   and those run on the HOST. CI caches `target/` (Swatinem/rust-cache), so a
 #   build script compiled with native codegen on one runner CPU is restored
 #   onto a runner with a different CPU and dies with STATUS_ILLEGAL_INSTRUCTION
-#   (0xc000001d). That is exactly what failed `bench windows-x86-64` during the
-#   2.3.0 release, having passed on identical code one run earlier — the
-#   intermittency IS the tell. It was also a portability trap generally: a
+#   (0xc000001d), intermittently, depending on which runner restored the
+#   cache. It would also be a portability trap generally: a
 #   plain `cargo build --release` produced a machine-specific binary.
 #
 # Want a native build? Ask explicitly: `cargo xtask build --arch native`, or
