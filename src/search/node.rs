@@ -25,6 +25,40 @@ pub(super) fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     table
 }
 
+/// A `negamax` frame's node type, resolved at compile time (B.0 section 6.2).
+///
+/// Both donors monomorphise the node kernels this way; it is also what lets
+/// B.4 give quiescence a PV concept without a new parameter. `cut_node` stays
+/// a runtime argument, so an all-node is `!PV && !cut_node`.
+pub(super) trait NodeType {
+    /// On the principal variation: searched with an open window.
+    const PV: bool;
+    /// The root, which is ply 0 and nothing else.
+    const ROOT: bool;
+}
+
+/// The root node: a PV node at ply 0.
+pub(super) struct Root;
+/// A PV node below the root.
+pub(super) struct Pv;
+/// A null-window node.
+pub(super) struct NonPv;
+
+impl NodeType for Root {
+    const PV: bool = true;
+    const ROOT: bool = true;
+}
+
+impl NodeType for Pv {
+    const PV: bool = true;
+    const ROOT: bool = false;
+}
+
+impl NodeType for NonPv {
+    const PV: bool = false;
+    const ROOT: bool = false;
+}
+
 #[inline]
 pub(super) fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
     // 4.8.1: the ceiling is what the reduced search is allowed to consume: the
@@ -173,19 +207,19 @@ impl Searcher {
         r
     }
 
-    pub(super) fn negamax<P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         mut depth: i32,
         mut alpha: i32,
         beta: i32,
         ply: usize,
-        is_pv: bool,
         allow_null: bool,
         excluded: Move,
         cut_node: bool,
         poll: &mut P,
     ) -> i32 {
+        debug_assert_eq!(NODE::ROOT, ply == 0, "the root node type is exactly ply 0");
         if self.check_stop(poll) {
             return 0;
         }
@@ -195,7 +229,7 @@ impl Searcher {
         self.td.pv_len[ply] = ply;
         self.td.seldepth = self.td.seldepth.max(ply);
 
-        if ply > 0 && board.can_declare_draw_in_search() {
+        if !NODE::ROOT && board.can_declare_draw_in_search() {
             return 0;
         }
 
@@ -223,7 +257,11 @@ impl Searcher {
         }
 
         if depth <= 0 {
-            return self.quiescence(board, alpha, beta, ply, 0, poll);
+            return if NODE::PV {
+                self.quiescence::<Pv, _>(board, alpha, beta, ply, 0, poll)
+            } else {
+                self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll)
+            };
         }
 
         // 4.2: counted HERE, after the depth<=0 hand-off, so `nodes` means
@@ -255,7 +293,7 @@ impl Searcher {
                 mv: Move::NULL,
                 ply,
                 static_eval: VALUE_NONE,
-                is_pv,
+                is_pv: NODE::PV,
             });
             return score;
         }
@@ -273,12 +311,12 @@ impl Searcher {
         // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
         // same entry twice, at `tt_score` and again inside the cutoff block.
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock);
-        let tt_pv = ev.pv_line(is_pv);
+        let tt_pv = ev.pv_line(NODE::PV);
         #[cfg(feature = "diag")]
         if diag_sample {
             if ev.hit {
                 crate::diag_count!(tt_sample_hit);
-                if !is_pv && excluded.is_null() && ev.depth >= depth {
+                if !NODE::PV && excluded.is_null() && ev.depth >= depth {
                     match ev.bound {
                         Some(Bound::Exact) => {
                             crate::diag_count!(tt_cut_exact);
@@ -310,7 +348,7 @@ impl Searcher {
                     // PV is attributed before depth on purpose: at a PV node the
                     // entry is refused regardless of how deep it is, so PV is
                     // the binding reason even when the entry is also shallow.
-                    if is_pv {
+                    if NODE::PV {
                         crate::diag_count!(tt_reject_pv);
                     } else if !excluded.is_null() {
                         crate::diag_count!(tt_reject_excluded);
@@ -330,7 +368,7 @@ impl Searcher {
                 crate::diag_count!(tt_sample_miss);
             }
         }
-        if !is_pv
+        if !NODE::PV
             && excluded.is_null()
             && let Some(score) = ev.cutoff_score(depth, alpha, beta)
         {
@@ -340,7 +378,7 @@ impl Searcher {
             .mv
             .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
-        if ply == 0 && !self.td.root_moves.is_empty() && !self.td.root_moves.contains(&tt_move) {
+        if NODE::ROOT && !self.td.root_moves.is_empty() && !self.td.root_moves.contains(&tt_move) {
             tt_move = Move::NULL;
         }
 
@@ -348,12 +386,12 @@ impl Searcher {
         if !self.ablated(4)
             && excluded.is_null()
             && depth >= 4
-            && (tt_move.is_null() || (!is_pv && ev.too_shallow_to_order(depth)))
+            && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)))
         {
             #[cfg(feature = "diag")]
             if diag_sample {
                 crate::diag_count!(iir_applied);
-                if is_pv {
+                if NODE::PV {
                     crate::diag_count!(iir_pv);
                 }
                 if tt_move.is_null() {
@@ -426,9 +464,9 @@ impl Searcher {
             crate::diag_add!(tt_eval_delta_sum, delta);
         }
         // 8.3 diagnostic: a non-PV, non-check node where the *stored* PV bit
-        // (tt_pv true while is_pv false) is what keeps the whole forward-pruning
+        // (tt_pv true on a non-PV node type) is what keeps the whole forward-pruning
         // block below from running.
-        if tt_pv && !is_pv && !in_check && excluded.is_null() {
+        if tt_pv && !NODE::PV && !in_check && excluded.is_null() {
             crate::diag_count!(tt_pv_veto);
         }
         if !tt_pv && !in_check && excluded.is_null() {
@@ -445,7 +483,11 @@ impl Searcher {
                 && eval_for_pruning + self.params.razoring_coeff * depth < alpha
             {
                 crate::diag_count!(razor_drop);
-                return self.quiescence(board, alpha, beta, ply, 0, poll);
+                return if NODE::PV {
+                    self.quiescence::<Pv, _>(board, alpha, beta, ply, 0, poll)
+                } else {
+                    self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll)
+                };
             }
             if !self.ablated(2)
                 && allow_null
@@ -463,13 +505,12 @@ impl Searcher {
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
                 self.tt.prefetch(board.hash);
-                let score = -self.negamax(
+                let score = -self.negamax::<NonPv, _>(
                     board,
                     depth - reduction,
                     -beta,
                     -beta + 1,
                     ply + 1,
-                    false,
                     false,
                     Move::NULL,
                     true,
@@ -513,13 +554,12 @@ impl Searcher {
                     if depth >= 10 {
                         crate::diag_count!(nmp_verify_attempt);
                         let verify_depth = (depth - reduction).max(1);
-                        let verified = self.negamax(
+                        let verified = self.negamax::<NonPv, _>(
                             board,
                             verify_depth,
                             beta - 1,
                             beta,
                             ply,
-                            false,
                             false,
                             Move::NULL,
                             false,
@@ -618,20 +658,25 @@ impl Searcher {
                     self.push_move(ply, mv, probcut_piece);
                     board.make_move_unchecked(mv);
                     self.tt.prefetch(board.hash);
-                    let score =
-                        -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
+                    let score = -self.quiescence::<NonPv, _>(
+                        board,
+                        -probcut_beta,
+                        -probcut_beta + 1,
+                        ply + 1,
+                        0,
+                        poll,
+                    );
                     let score = if score >= probcut_beta {
                         #[cfg(feature = "diag")]
                         if diag_sample {
                             crate::diag_count!(probcut_qpass);
                         }
-                        -self.negamax(
+                        -self.negamax::<NonPv, _>(
                             board,
                             depth - 4,
                             -probcut_beta,
                             -probcut_beta + 1,
                             ply + 1,
-                            false,
                             false,
                             Move::NULL,
                             true,
@@ -679,7 +724,7 @@ impl Searcher {
             }
         }
 
-        let mut move_picker = if in_check || ply == 0 || !excluded.is_null() {
+        let mut move_picker = if in_check || NODE::ROOT || !excluded.is_null() {
             let mut legal_moves = MoveList::new();
             board.generate_legal_movelist_into(&mut legal_moves);
             if legal_moves.is_empty() {
@@ -691,7 +736,7 @@ impl Searcher {
             }
 
             let root_moves;
-            let legal_moves = if ply == 0 && !self.td.root_moves.is_empty() {
+            let legal_moves = if NODE::ROOT && !self.td.root_moves.is_empty() {
                 root_moves = legal_moves
                     .iter()
                     .copied()
@@ -711,7 +756,7 @@ impl Searcher {
             // thread has already proven good at a deeper depth is tried first
             // here too, so threads stop re-deriving each other's refutations.
             // Applied BEFORE the rotation below, which diversifies on top.
-            if ply == 0 && scored.len() > 1 {
+            if NODE::ROOT && scored.len() > 1 {
                 // No-op serially: with no shared state there are no pool
                 // scores to fold in.
                 self.apply_shared_root_scores(legal_moves, &mut scored);
@@ -720,7 +765,7 @@ impl Searcher {
             // the pool's shared view refines the ordering without collapsing
             // every thread onto the same tree.
             let rotate = self.td.root_move_offset > 0;
-            if ply == 0 && rotate && scored.len() > 1 {
+            if NODE::ROOT && rotate && scored.len() > 1 {
                 let offset = self.td.root_move_offset % scored.len();
                 diversify_root_scores(scored.as_mut_slice(), offset);
             }
@@ -788,7 +833,7 @@ impl Searcher {
                 ev_is_exact: ev.is_exact(),
                 tt_move_is_null: tt_move.is_null(),
                 improving,
-                is_root: ply == 0,
+                is_root: NODE::ROOT,
             };
             if !tt_pv && !in_check && searched > 0 {
                 #[cfg(feature = "diag")]
@@ -904,10 +949,13 @@ impl Searcher {
                 }
             }
 
-            let child_is_pv = is_pv && searched == 0;
+            let child_is_pv = NODE::PV && searched == 0;
             let mut extension = 0;
-            let singular_move_candidate =
-                !self.ablated(6) && ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
+            let singular_move_candidate = !self.ablated(6)
+                && !NODE::ROOT
+                && mv == tt_move
+                && excluded.is_null()
+                && depth >= 4;
             if singular_move_candidate
                 && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
             {
@@ -917,13 +965,12 @@ impl Searcher {
                 }
                 let singular_beta = ev.score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
-                let singular_score = self.negamax(
+                let singular_score = self.negamax::<NonPv, _>(
                     board,
                     singular_depth,
                     singular_beta - 1,
                     singular_beta,
                     ply,
-                    false,
                     false,
                     mv,
                     false,
@@ -933,7 +980,7 @@ impl Searcher {
                     return 0;
                 }
                 if singular_score < singular_beta {
-                    extension = if !is_pv
+                    extension = if !NODE::PV
                         && singular_score < singular_beta - self.params.singular_double_margin
                     {
                         #[cfg(feature = "diag")]
@@ -971,7 +1018,7 @@ impl Searcher {
                 };
 
             self.push_move(ply, mv, moving_piece);
-            let nodes_before_move = if ply == 0 { self.td.nodes } else { 0 };
+            let nodes_before_move = if NODE::ROOT { self.td.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
             // bitboard tests) and lets `make_move` skip `calculate_checkers`
             // for the overwhelmingly common non-checking move.
@@ -989,18 +1036,31 @@ impl Searcher {
             let mut score;
 
             if searched == 0 {
-                score = -self.negamax(
-                    board,
-                    new_depth,
-                    -beta,
-                    -alpha,
-                    ply + 1,
-                    child_is_pv,
-                    true,
-                    Move::NULL,
-                    !child_is_pv && !cut_node,
-                    poll,
-                );
+                score = if child_is_pv {
+                    -self.negamax::<Pv, _>(
+                        board,
+                        new_depth,
+                        -beta,
+                        -alpha,
+                        ply + 1,
+                        true,
+                        Move::NULL,
+                        !child_is_pv && !cut_node,
+                        poll,
+                    )
+                } else {
+                    -self.negamax::<NonPv, _>(
+                        board,
+                        new_depth,
+                        -beta,
+                        -alpha,
+                        ply + 1,
+                        true,
+                        Move::NULL,
+                        !child_is_pv && !cut_node,
+                        poll,
+                    )
+                };
             } else {
                 // Late evasions are intentionally not reduced. The alternative
                 // increased the deterministic tree by 14.83% and had no owner.
@@ -1059,13 +1119,12 @@ impl Searcher {
                     } else {
                         crate::diag_count!(lmr_applied);
                     }
-                    score = -self.negamax(
+                    score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth - reduction,
                         -alpha - 1,
                         -alpha,
                         ply + 1,
-                        false,
                         true,
                         Move::NULL,
                         true,
@@ -1079,13 +1138,12 @@ impl Searcher {
                         // its SPRT gate at st=0.1 — -1.38 Elo for ~4% more nodes
                         // (bench 5,612,008 vs 5,401,662), a TC-transfer failure like the
                         // 2.4 LMR tune. See PLAN §5 2.8.)
-                        score = -self.negamax(
+                        score = -self.negamax::<NonPv, _>(
                             board,
                             new_depth,
                             -alpha - 1,
                             -alpha,
                             ply + 1,
-                            false,
                             true,
                             Move::NULL,
                             !cut_node,
@@ -1093,13 +1151,12 @@ impl Searcher {
                         );
                     }
                 } else {
-                    score = -self.negamax(
+                    score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth,
                         -alpha - 1,
                         -alpha,
                         ply + 1,
-                        false,
                         true,
                         Move::NULL,
                         true,
@@ -1107,13 +1164,12 @@ impl Searcher {
                     );
                 }
                 if score > alpha && score < beta {
-                    score = -self.negamax(
+                    score = -self.negamax::<Pv, _>(
                         board,
                         new_depth,
                         -beta,
                         -alpha,
                         ply + 1,
-                        true,
                         true,
                         Move::NULL,
                         false,
@@ -1128,7 +1184,7 @@ impl Searcher {
                 return 0;
             }
 
-            let move_nodes = if ply == 0 {
+            let move_nodes = if NODE::ROOT {
                 self.td.nodes.saturating_sub(nodes_before_move)
             } else {
                 0
@@ -1140,13 +1196,13 @@ impl Searcher {
             // best-move-only summary would lose. `alpha` is still pre-update
             // here, so the classification reads: cutoff = Lower, raised
             // alpha = Exact, else Upper. Serial searches have no shared state.
-            if ply == 0 {
+            if NODE::ROOT {
                 self.record_root_move_search(mv, depth, score, alpha, beta, move_nodes);
             }
             if score > best_score {
                 best_score = score;
                 best_move = mv;
-                if ply == 0 {
+                if NODE::ROOT {
                     self.td.root_best_nodes = move_nodes;
                 }
             }
@@ -1384,7 +1440,7 @@ impl Searcher {
         best_score
     }
 
-    pub(super) fn quiescence<P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn quiescence<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         mut alpha: i32,
@@ -1597,7 +1653,7 @@ impl Searcher {
             self.push_move(ply, mv, moving_piece);
             board.make_move_unchecked(mv);
             self.tt.prefetch(board.hash);
-            let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
+            let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);
             if self.stopped || self.quit {
@@ -1687,9 +1743,10 @@ mod tests {
             Board::from_fen("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3")
                 .expect("valid fool's mate FEN");
 
-        let score = searcher.quiescence(&mut board, -INF_SCORE, INF_SCORE, 0, 1, &mut || {
-            SearchEvent::None
-        });
+        let score =
+            searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 0, 1, &mut || {
+                SearchEvent::None
+            });
 
         assert_eq!(score, -MATE_SCORE);
     }
@@ -1700,7 +1757,7 @@ mod tests {
         let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
         let before = board.to_fen();
 
-        let score = searcher.quiescence(
+        let score = searcher.quiescence::<NonPv, _>(
             &mut board,
             -INF_SCORE,
             INF_SCORE,

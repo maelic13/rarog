@@ -26,7 +26,7 @@ use crate::tt::TranspositionTable;
 
 use correction::CORR_SIZE;
 use history::{LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE};
-use node::build_lmr_table;
+use node::{Root, build_lmr_table};
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SharedContext};
 use stack::{PlyArray, StackEntry};
@@ -624,13 +624,12 @@ impl Searcher {
             let mut fail_high_count = 0i32;
 
             loop {
-                let score = self.negamax(
+                let score = self.negamax::<Root, _>(
                     &mut board,
                     infra::to_i32(depth),
                     alpha,
                     beta,
                     0,
-                    true,
                     true,
                     Move::NULL,
                     false,
@@ -1510,13 +1509,12 @@ mod tests {
             is_pv: false,
         });
 
-        let _ = searcher.negamax(
+        let _ = searcher.negamax::<Root, _>(
             &mut board,
             3,
             -INF_SCORE,
             INF_SCORE,
             0,
-            true,
             true,
             Move::NULL,
             false,
