@@ -180,7 +180,7 @@ The output file loads straight into a `--features tune` engine via
 passes its registered gate. Parallelism uses `std::thread` (no external crates), so the
 engine stays dependency-free.
 
-It was ported from Basilisk's `tools/texel/tuner.cpp` (a copy lived here until `6fa6731`). The reusable, engine-agnostic
+It was ported from Basilisk's C++ tuner (tools/texel/tuner.cpp in the Basilisk repository). The reusable, engine-agnostic
 parts (copied as *structure*, not C++):
 
 - **Objective / Adam / K-fit** (`sigmoid`, `traced_loss`, `cmd_tune`, `fit_K`):

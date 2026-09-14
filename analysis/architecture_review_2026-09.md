@@ -20,7 +20,7 @@ timed after touching `src/lib.rs`; the fingerprint was read from the hashed
 binary that build produced. Prose comments were read, but no finding rests
 on one. Prior reviews are linked, not repeated: `analysis/consolidation_2026-09-10.md`
 (A.6, module dispositions and the B.1/C.1 handoffs, which this review
-confirms held), `analysis/infra_analysis.md` (2026-07-13, board and
+confirms held), `analysis/archive/infra_analysis.md` (2026-07-13, board and
 infrastructure) and `analysis/code_audit_2026_08_19.md` (search state
 audit). The "Clean Architecture" yardstick used is the one the sibling
 engine wrote down for itself in Manta's ADR-0001, -0006, -0007 and -0012: a

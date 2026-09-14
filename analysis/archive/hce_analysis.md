@@ -568,7 +568,7 @@ This is a strong feature for an HCE engine: search learns systematic residual er
 
 Correction history can learn that "this pawn hash is usually underestimated". It cannot reconstruct the exact bishop-attacks-knight relation or king-conditioned piece geometry that the static evaluator never encoded. It is best treated as online residual learning and confidence estimation, not as a substitute for evaluator capacity.
 
-This overlaps with [`analysis/search_analysis.md`](search_analysis.md); HCE experiments should record raw HCE, corrected HCE, qsearch score, and depth-N score separately so the source of each gain is visible.
+This overlaps with [`analysis/archive/search_analysis.md`](search_analysis.md); HCE experiments should record raw HCE, corrected HCE, qsearch score, and depth-N score separately so the source of each gain is visible.
 
 ## 14. Tuning and data pipeline: significant strengths, remaining blind spots
 

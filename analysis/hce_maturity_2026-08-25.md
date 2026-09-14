@@ -37,7 +37,7 @@ not an acceptance criterion.
 
 ## Corrections to the 2026-07-13 audit
 
-The historical `analysis/hce_analysis.md` found four concrete activation
+The historical `analysis/archive/hce_analysis.md` found four concrete activation
 defects. All four are already fixed in current code and must not be scheduled
 again:
 

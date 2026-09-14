@@ -3,7 +3,7 @@
 Status: working document  
 Analysis date: 2026-07-13  
 Rarog revision: `ff21dc1` (`development`)  
-Related review: [`D:/code/basilisk/analysis/search_analysis.md`](../../basilisk/analysis/search_analysis.md)
+Related review: [`D:/code/basilisk/analysis/archive/search_analysis.md`](../../basilisk/analysis/archive/search_analysis.md)
 
 ## Executive summary
 
@@ -494,7 +494,7 @@ This sequence first fixes correctness, then attacks the largest source of unnece
 ## Source baseline
 
 - Rarog: local `development` revision `ff21dc1`, analyzed directly.
-- Basilisk: local [`search_analysis.md`](../../basilisk/analysis/search_analysis.md), used as a checklist; findings were not copied when Rarog already handles them.
+- Basilisk: local [`search_analysis.md`](../../basilisk/analysis/archive/search_analysis.md), used as a checklist; findings were not copied when Rarog already handles them.
 - Stockfish: public master snapshot inspected 2026-07-13; [official repository](https://github.com/official-stockfish/Stockfish).
 - Reckless: public master snapshot inspected 2026-07-13; [repository](https://github.com/codedeliveryservice/Reckless).
 - PlentyChess: public master snapshot inspected 2026-07-13; [repository](https://github.com/Yoshie2000/PlentyChess).

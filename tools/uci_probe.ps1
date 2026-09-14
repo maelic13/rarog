@@ -1,5 +1,5 @@
 # Minimal UCI driver for scaling measurements.
-# Traps honoured (smp_analysis.md): live process (never pipe `go ... quit`),
+# Traps honoured (analysis/archive/smp_analysis.md): live process (never pipe `go ... quit`),
 # `ucinewgame` + `isready` before every `go` so no reading is TT-warmed by the
 # previous one, and read until `bestmove`.
 
