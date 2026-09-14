@@ -92,26 +92,23 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
 | Active experiment | **RAR-S73** registered (B.2 selectivity core; B.2.3 and B.2.4 frozen before any game); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.1 review** — a separate reviewer accepts or returns the `b2core` implementation (RAR-S73), then **B.2.0.2** (MultiPV), then **B.2.2** |
+| Current step | **B.2.0.2** (MultiPV, maintainer decision), then **B.2.2**, which runs the NPS pool first (the B.2.1 review's speed warning, `analysis/b21_review_2026-09-14.md`) |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
 
-**B.2.1 is implemented and waits for its reviewer**: a separate session
-(class `R2`) reviews the `b2core` arm against the handoff in
-`analysis/search_programme_2026-09-13.md` §13.2 and rules on the four
-resolutions RAR-S73 records. After that acceptance comes **B.2.0.2**, MultiPV
-(maintainer decision 2026-09-14, contract frozen in PLAN), and then B.2.2's
-screens. Binding findings sit at their
-leaves in PLAN: D.2's premise is contradicted (RAR-M46) and E.2's binding arm
-is 1T.
+**B.2.0.2 is next**: MultiPV (maintainer decision 2026-09-14, contract
+frozen in PLAN), then B.2.2's screens. B.2.1 was accepted by its reviewer on
+2026-09-14 (`analysis/b21_review_2026-09-14.md`): the four resolutions upheld,
+no defect, and a speed warning that B.2.2 answers first with the pooled NPS
+run. Binding findings sit at their leaves in PLAN: D.2's premise is
+contradicted (RAR-M46) and E.2's binding arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| B.2.1 reviewer acceptance (RAR-S73's four resolutions) | A separate reviewer records acceptance, or returns B.2.1 with defects | B.2.0.2 starts |
-| B.2.0.2 MultiPV (maintainer decision) | B.2.1's acceptance is recorded | B.2.2 starts |
+| B.2.2's NPS floor (0.90x pooled PGO) after the review's 0.71x single-build screen | The pooled run reads at or above 0.90x, or B.7 lands the speed work the profile names | B.2.4's gate |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 
@@ -152,8 +149,8 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
     - [x] **B.2.0** Architecture review of the B.1 head (RAR-M51) and its twelve behaviour-neutral upgrades: narrowed surface, tagged commands, search output port, TT policy factored once, tuner out of the workspace, tools index, comment hygiene; exact fingerprint, NPS +0.21% vs the B.1 pool (RAR-P25) — DONE 2026-09-14
         - [x] **B.2.0.1** Repository and document restructure: archived trackers, one-line closed leaves, one ledger row per experiment, `analysis/` index, dead-path check, rule-first AGENTS; logos stay tracked (RAR-M53) — DONE 2026-09-14
-    - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests; implemented behind `b2core`, awaiting the reviewer's acceptance (RAR-S73) — **IMPLEMENTED / I2**
-        - [ ] **B.2.0.2** MultiPV: UCI option, root lines above 1, identity at `MultiPV = 1` on both arms; runs after B.2.1's acceptance, before B.2.2 — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests; behind `b2core`, 4,706,910 / EBF 2.391 unfitted, off arm exact; reviewer-accepted (RAR-S73, `analysis/b21_review_2026-09-14.md`) — DONE 2026-09-14
+        - [ ] **B.2.0.2** MultiPV: UCI option, root lines above 1, identity at `MultiPV = 1` on both arms; before B.2.2 — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
     - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**

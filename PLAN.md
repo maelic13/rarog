@@ -372,17 +372,24 @@ diagnostics; two rejections stop B.
       count-based skip dropping an unmade mating quiet — were found by that
       trace and are invisible to counters. Implementer and reviewer are
       separate roles; the reviewer's acceptance is recorded before B.2.2.
-      **Implemented 2026-09-14 (RAR-S73), awaiting the reviewer's
-      acceptance.** The umbrella is the `b2core` Cargo feature over
+      **Implemented and reviewer-accepted 2026-09-14 (RAR-S73,
+      `analysis/b21_review_2026-09-14.md`); CLOSED.** The umbrella is the `b2core` Cargo feature over
       `src/search/core/`; off, the engine is the B.1 behaviour exactly
       (7,601,220 / EBF 2.474 at every commit, pooled NPS −0.13% against the
       B.1 pool); on, it reads 4,706,910 / EBF 2.391 unfitted, with 80
-      `CoreParams` coordinates. The review must rule on four resolutions
-      RAR-S73 records: the root, in-check and first-move reduction
-      invariant applied over §3.7's reduction scope; direct checks and
-      promotions kept alive after the quiet skip; rule-50 damping moved
-      from the evaluator into the search; and the KBNK anchor's five-budget
-      majority.
+      `CoreParams` coordinates. The review (class `R2`, a separate session)
+      upheld the four resolutions RAR-S73 records: the root, in-check and
+      first-move reduction invariant over §3.7's reduction scope; direct
+      checks and promotions kept alive after the quiet skip; rule-50 damping
+      moved from the evaluator into the search; the KBNK anchor's
+      five-budget majority. No defect; both fingerprints reproduced from
+      fresh builds. Recorded for their owners: fail-low nodes carry a TT
+      move where the donor stores none (B.3's IIR decision), a dead PVS
+      guard (B.8), per-node threat and check-mask work and a 31 MiB
+      per-thread table footprint (B.7, D.2). **Speed warning for B.2.2:**
+      single-build alternating benches read the candidate at about
+      0.71x of the off arm; P5 predicted 0.93–0.97x and the pooled floor is
+      0.90x, so B.2.2 runs the NPS pool first.
         - **B.2.0.2 MultiPV and the root-line contract — `I1`.** Added by
           maintainer decision 2026-09-14; **executes after B.2.1's reviewer
           acceptance and before B.2.2.** Rarog has no `MultiPV` option, and
@@ -540,9 +547,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.1 | IMPLEMENTED | I2 | Implemented 2026-09-14 behind `b2core` (RAR-S73); next: the separate reviewer's acceptance, class R2 |
-| B.2.0.2 | READY_FOR_IMPLEMENTATION | I1 | Added by maintainer decision 2026-09-14; contract frozen in the leaf; starts after the B.2.1 reviewer acceptance, before B.2.2 |
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for the B.2.1 review and B.2.0.2 |
+| B.2.0.2 | READY_FOR_IMPLEMENTATION | I1 | Added by maintainer decision 2026-09-14; contract frozen in the leaf; B.2.1 accepted, so it is the next executable leaf, before B.2.2 |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for B.2.0.2; runs the NPS pool first (review's speed warning) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |

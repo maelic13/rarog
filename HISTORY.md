@@ -59,6 +59,24 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-14 — PLAN B.2.1 CLOSED, RAR-S73: the selectivity core implemented
+  behind `b2core` and accepted by its reviewer.** Sixteen commits: the
+  `Searcher` split (ticket 0), the diag-only decision trace, the umbrella,
+  then tickets 1–8 in the handoff's order (threats and stack producers; TT
+  eval store, node-typed cutoff, five-bit age and replacement refusal;
+  threat-keyed histories and the staged picker with shadow continuation
+  corrections; correction tables and the corrected-eval formula; razoring,
+  reverse futility and hindsight; move-loop pruning with direct checks
+  surviving the skip; late-move reductions in the donor's shape; the history
+  update policy), tests and CI. Off arm exact at every commit (7,601,220 /
+  EBF 2.474, pooled NPS −0.13%); candidate 4,706,910 / EBF 2.391 unfitted
+  with 80 `CoreParams` coordinates. Three defects found by the cluster's own
+  tests and instruments (rule-50 damping stored with the eval, the quiet skip
+  dropping a late mating check, a budget-chaotic KBNK anchor). A separate
+  reviewer (`analysis/b21_review_2026-09-14.md`) upheld the four resolutions,
+  found no defect, and left a speed warning for B.2.2: a single-build screen
+  read the candidate at about 0.71x of the off arm against a 0.90x pooled floor. B.2.3 and B.2.4 are
+  registered with B.0's predictions verbatim; no game has been played.
 - **2026-09-14 — PLAN B.2.0.1 CLOSED, RAR-M53: the documents restructured, each
   to one purpose.** The two retired trackers were recovered and archived
   (the review had called one lost and the other a duplicate; neither was);
