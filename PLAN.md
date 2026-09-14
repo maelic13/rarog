@@ -965,10 +965,35 @@ diagnostics; two rejections stop B.
       exact fingerprint 7,601,220 / EBF 2.474 on magic and PEXT, debug and
       release suites, fmt, clippy, pooled-PGO NPS within ±0.5% of the B.1
       pool unless a speed change is registered on its own. E.1 re-runs the
-      review on the B.9 and C.11 heads.
+      review on the B.9 and C.11 heads. **Review done 2026-09-14**
+      (`analysis/architecture_review_2026-09.md`, RAR-M51): the layering is
+      inward and sound and no structural rewrite is justified before the
+      clusters; the weight is comments, surface and duplication. Twelve
+      behaviour-neutral tickets are frozen in its §5: dead items and
+      aliases; visibility follows use; one move-generation API; private
+      `Board` fields; one definition each of the duplicated helpers and the
+      LMR seed from the parameters; a tagged `EngineCommand` with a
+      `ClearHash` command; options carry only options; a search output port
+      instead of `println!` in `search/`; the TT policy factored once over
+      its two backends with an NPS read of its own; the tuner out of the
+      workspace; a tools index; comment hygiene in the owned files and,
+      added to the scope, the repository configuration (`Cargo.toml`,
+      `build.rs`, `.cargo/`, `rust-toolchain.toml`, `.github/`). The
+      `Searcher` split into per-thread state, per-search configuration and
+      engine-owned resources is designed there (§4.3) and is B.2.1's ticket
+      0, not this leaf's. State `READY_FOR_IMPLEMENTATION`, class `I2`.
     - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
       bounds and gravity; picker exhaustiveness tests; TT store/probe tests
-      including age and replacement; deterministic unwind tests. **Delivery
+      including age and replacement; deterministic unwind tests. **Ticket 0,
+      from the B.2.0 review (`analysis/architecture_review_2026-09.md`
+      §4.3):** split `Searcher` into per-thread `ThreadData` (tables,
+      stack, evaluator, stop flags, output sink), per-search configuration
+      (parameters, LMR table, limits) and engine-owned shared resources
+      (table, Syzygy settings, `SharedContext`) before the first mechanism
+      ticket, at the exact fingerprint and inside the NPS pool; `Threads =
+      1` stays free of pool machinery by `thread_count == 1` rather than by
+      the absence of a shared context; the table backend is untouched
+      (D.2's). **Delivery
       shape (from Manta's 6.5.10):** the cluster lands as ordered tickets
       behind one umbrella switch, each ticket keeping the umbrella-off arm at
       the exact B.1 fingerprint; **canaries are anchored to the reference**,
@@ -1093,7 +1118,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.0 | RESEARCH | R3 | Added 2026-09-14; runs now on the B.1 head; class becomes I2 when its upgrades reach READY_FOR_IMPLEMENTATION |
+| B.2.0 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M51); twelve upgrade tickets frozen in `analysis/architecture_review_2026-09.md` §5; the `Searcher` split is B.2.1 ticket 0 |
 | B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
