@@ -349,7 +349,7 @@ impl Searcher {
         // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
         // same entry twice, at `tt_score` and again inside the cutoff block.
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
-        let tt_pv = ev.pv_line(NODE::PV);
+        let mut tt_pv = ev.pv_line(NODE::PV);
         #[cfg(feature = "diag")]
         if diag_sample {
             if ev.hit {
@@ -406,9 +406,12 @@ impl Searcher {
                 crate::diag_count!(tt_sample_miss);
             }
         }
+        // Near the fifty-move horizon a stored result may no longer hold, so
+        // the node searches instead of trusting it.
         if !NODE::PV
             && excluded.is_null()
-            && let Some(score) = ev.cutoff_score(depth, alpha, beta)
+            && board.halfmove_clock() < 90
+            && let Some(score) = ev.node_cutoff_score(depth, alpha, beta, cut_node)
         {
             trace_decision!(
                 self,
@@ -462,13 +465,20 @@ impl Searcher {
             (VALUE_NONE, VALUE_NONE)
         } else {
             let raw = if ev.raw_static_eval == VALUE_NONE {
-                self.raw_eval(board)
+                let raw = self.raw_eval(board);
+                // A miss stores the eval at once, so the next visit to this
+                // position skips the evaluation even if this search is cut.
+                if tt_entry.is_none() && excluded.is_null() {
+                    self.shared.tt.store_eval(hash, raw, tt_pv);
+                }
+                raw
             } else {
                 ev.raw_static_eval
             };
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
         self.td.stack[ply].static_eval = static_eval;
+        self.td.stack[ply].tt_pv = tt_pv;
         self.td.stack[ply].reduction = 0;
         self.td.stack[ply].move_count = 0;
         if ply + 2 < MAX_PLY {
@@ -1093,6 +1103,8 @@ impl Searcher {
                     ply,
                     poll,
                 );
+                // The verification search ran at this ply and overwrote it.
+                self.td.stack[ply].tt_pv = tt_pv;
                 if self.td.stopped || self.td.quit {
                     return 0;
                 }
@@ -1520,6 +1532,13 @@ impl Searcher {
         } else {
             Bound::Upper
         };
+        // A fail-low reached through a PV-line parent after several moves is
+        // still on that line: the parent's next iteration will search it with
+        // an open window.
+        tt_pv |= !NODE::ROOT
+            && bound == Bound::Upper
+            && move_count > 2
+            && self.td.stack.back(ply, 1).tt_pv;
         if excluded.is_null()
             && static_eval != VALUE_NONE
             && best_score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)

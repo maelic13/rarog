@@ -13,9 +13,25 @@ const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
 // Bit 0x08 is free and deliberately unused, so the 4-bit age arithmetic
 // below keeps its layout.
+#[cfg(not(feature = "b2core"))]
 const AGE_MASK: u8 = 0xF0;
+#[cfg(not(feature = "b2core"))]
 const AGE_STRIDE: u8 = 0x10;
+#[cfg(not(feature = "b2core"))]
 const AGE_QUALITY_DIVISOR: i32 = 4;
+// The selectivity core gives the free bit to the age: five bits, 32
+// generations. One generation still costs an entry four plies of quality.
+#[cfg(feature = "b2core")]
+const AGE_MASK: u8 = 0xF8;
+#[cfg(feature = "b2core")]
+const AGE_STRIDE: u8 = 0x08;
+#[cfg(feature = "b2core")]
+const AGE_QUALITY_DIVISOR: i32 = 2;
+/// Stored depth of an entry that holds only a raw static eval: no bound, no
+/// score, no move. Below every searched depth (qsearch stores 0, the floor
+/// for a stored result is -1), so it never satisfies a depth test.
+#[cfg(feature = "b2core")]
+pub(crate) const EVAL_ONLY_DEPTH: i32 = -2;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bound {
@@ -52,9 +68,18 @@ impl TtEntry {
         Bound::from_bits(self.flag_age)
     }
 
+    #[cfg(not(feature = "b2core"))]
     #[inline(always)]
     fn is_occupied(self) -> bool {
         self.flag_age & BOUND_MASK != 0
+    }
+
+    /// A slot holds a position when it has a bound, or when it holds only a
+    /// static eval.
+    #[cfg(feature = "b2core")]
+    #[inline(always)]
+    fn is_occupied(self) -> bool {
+        self.flag_age & BOUND_MASK != 0 || i32::from(self.depth) == EVAL_ONLY_DEPTH
     }
 
     #[inline(always)]
@@ -115,16 +140,15 @@ struct LocalTable {
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
     let flag_age = (data >> 56) as u8;
-    Bound::from_bits(flag_age)?;
-
-    Some(TtEntry {
+    let entry = TtEntry {
         key16,
         score: (data as u16) as i16,
         static_eval: ((data >> 16) as u16) as i16,
         mv: (data >> 32) as u16,
         depth: ((data >> 48) as u8) as i8,
         flag_age,
-    })
+    };
+    entry.is_occupied().then_some(entry)
 }
 
 /// Bit-exact serialization — the mirror of [`unpack_entry`]; same reasoning.
@@ -228,7 +252,7 @@ impl ClusterSlots for SharedCluster {
     /// can reconstruct to any tag; only an occupied one holds a position.
     #[inline(always)]
     fn holds(slot_key16: u16, entry: TtEntry, key16: u16) -> bool {
-        slot_key16 == key16 && entry.bound().is_some()
+        slot_key16 == key16 && entry.is_occupied()
     }
 }
 
@@ -440,12 +464,38 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn store(&mut self, e: TtStore) {
+        self.store_with_bits(e, e.bound as u8);
+    }
+
+    /// Store the raw static eval of a position the probe missed, so a later
+    /// visit skips the evaluation. The entry has no bound, score or move and
+    /// sits at [`EVAL_ONLY_DEPTH`], so any searched result replaces it.
+    #[cfg(feature = "b2core")]
+    #[inline(always)]
+    pub fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
+        self.store_with_bits(
+            TtStore {
+                key,
+                depth: EVAL_ONLY_DEPTH,
+                score: 0,
+                bound: Bound::Exact,
+                mv: Move::NULL,
+                ply: 0,
+                static_eval: raw_eval,
+                is_pv,
+            },
+            0,
+        );
+    }
+
+    #[inline(always)]
+    fn store_with_bits(&mut self, e: TtStore, bound_bits: u8) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                store_local(table, e);
+                store_local(table, e, bound_bits);
             }
             TtStorage::Shared(table) => {
-                store_shared(table, e);
+                store_shared(table, e, bound_bits);
             }
         }
     }
@@ -594,7 +644,14 @@ impl TtProbe {
             Some(entry) => Self {
                 bound: entry.bound(),
                 depth: i32::from(entry.depth),
+                #[cfg(not(feature = "b2core"))]
                 score: score_from_tt(i32::from(entry.score), ply, halfmove_clock),
+                #[cfg(feature = "b2core")]
+                score: if entry.bound().is_some() {
+                    score_from_tt(i32::from(entry.score), ply, halfmove_clock)
+                } else {
+                    VALUE_NONE
+                },
                 raw_static_eval: i32::from(entry.static_eval),
                 mv: entry.best_move(),
                 stored_pv: entry.is_pv_node(),
@@ -630,6 +687,32 @@ impl TtProbe {
             Bound::Upper if self.score <= alpha => Some(self.score),
             _ => None,
         }
+    }
+
+    /// The main search's cutoff, conditioned on the node type. A result at or
+    /// above beta needs one ply more than the node's depth; a fail-low entry
+    /// cuts an expected cut node, and a fail-high entry an expected all node,
+    /// only above depth 5, where a wrong prediction is cheap to re-search.
+    /// The caller owns the node-role guards and the rule-50 guard.
+    #[cfg(feature = "b2core")]
+    #[inline(always)]
+    pub(crate) fn node_cutoff_score(
+        &self,
+        depth: i32,
+        alpha: i32,
+        beta: i32,
+        cut_node: bool,
+    ) -> Option<i32> {
+        let bound = self.bound?;
+        if self.depth <= depth - i32::from(self.score < beta) {
+            return None;
+        }
+        let admitted = match bound {
+            Bound::Exact => true,
+            Bound::Upper => self.score <= alpha && (!cut_node || depth > 5),
+            Bound::Lower => self.score >= beta && (cut_node || depth > 5),
+        };
+        admitted.then_some(self.score)
     }
 
     /// Stand in for the static eval when forward-pruning. The main-search form:
@@ -748,20 +831,20 @@ fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
 }
 
 #[inline(always)]
-fn store_local(table: &mut LocalTable, e: TtStore) {
+fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
     let key16 = key16_of(e.key);
     let cluster = &mut table.clusters[crate::infra::index(e.key) & table.mask];
-    if let Some((index, entry)) = replacement(cluster, table.age, key16, e) {
+    if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits) {
         cluster.entries[index] = entry;
     }
 }
 
 #[inline(always)]
-fn store_shared(table: &SharedTable, e: TtStore) {
+fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
     let cluster = &table.clusters[crate::infra::index(e.key) & table.mask];
-    if let Some((index, entry)) = replacement(cluster, age, key16, e) {
+    if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits) {
         cluster.store(index, key16, entry);
     }
 }
@@ -779,6 +862,7 @@ fn replacement<C: ClusterSlots>(
     age: u8,
     key16: u16,
     e: TtStore,
+    bound_bits: u8,
 ) -> Option<(usize, TtEntry)> {
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
@@ -800,6 +884,7 @@ fn replacement<C: ClusterSlots>(
         }
     }
 
+    #[cfg(not(feature = "b2core"))]
     if same_position
         && e.bound != Bound::Exact
         && e.depth < replace_entry.depth as i32 - 3
@@ -813,7 +898,28 @@ fn replacement<C: ClusterSlots>(
     } else {
         e.mv.0
     };
-    Some((replace_index, make_entry(key16, stored_move, age, e)))
+
+    // A current-generation entry for the same position that is at least four
+    // plies deeper (six on a PV line) keeps its result; a new move still
+    // replaces its move.
+    #[cfg(feature = "b2core")]
+    if same_position
+        && e.depth + 4 + 2 * i32::from(e.is_pv) <= i32::from(replace_entry.depth)
+        && (replace_entry.flag_age & AGE_MASK) == age
+    {
+        return (stored_move != replace_entry.mv).then_some((
+            replace_index,
+            TtEntry {
+                mv: stored_move,
+                ..replace_entry
+            },
+        ));
+    }
+
+    Some((
+        replace_index,
+        make_entry(key16, stored_move, age, e, bound_bits),
+    ))
 }
 
 /// Share of current-generation entries, in permille, over the first 334
@@ -854,11 +960,10 @@ fn prefetch_cluster<T>(clusters: &[T], mask: usize, key: u64) {
 }
 
 #[inline(always)]
-fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
+fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore, bound_bits: u8) -> TtEntry {
     let TtStore {
         depth,
         score,
-        bound,
         ply,
         static_eval,
         is_pv,
@@ -869,8 +974,16 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
         score: crate::infra::saturating_i16(score_to_tt(score, ply)),
         static_eval: crate::infra::saturating_i16(static_eval),
         mv,
+        #[cfg(not(feature = "b2core"))]
         depth: crate::infra::saturating_i8(depth, -1),
-        flag_age: age | bound as u8 | if is_pv { PV_BIT } else { 0 },
+        // A searched result floors at -1; only a bound-less entry sits below.
+        #[cfg(feature = "b2core")]
+        depth: if bound_bits == 0 {
+            crate::infra::saturating_i8(EVAL_ONLY_DEPTH, -2)
+        } else {
+            crate::infra::saturating_i8(depth, -1)
+        },
+        flag_age: age | bound_bits | if is_pv { PV_BIT } else { 0 },
     }
 }
 
@@ -885,11 +998,12 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::TtProbe;
+    #[cfg(not(feature = "b2core"))]
     use super::{
-        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, LocalTable, PV_BIT, TranspositionTable,
-        TtEntry, TtStorage, entry_quality,
+        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, LocalTable, PV_BIT, TranspositionTable, TtEntry,
+        TtStorage, entry_quality,
     };
+    use super::{Bound, TtProbe};
     use crate::eval::{MATE_SCORE, VALUE_NONE};
 
     /// Build a probe directly, bypassing `from_entry`, so a case can be stated
@@ -1019,6 +1133,7 @@ mod tests {
         assert!(!TtProbe::MISS.pv_line(false));
     }
 
+    #[cfg(not(feature = "b2core"))]
     #[test]
     fn four_bit_age_preserves_the_per_generation_replacement_penalty() {
         let entry = TtEntry {
@@ -1040,6 +1155,7 @@ mod tests {
         assert_eq!(AGE_QUALITY_DIVISOR, 4);
     }
 
+    #[cfg(not(feature = "b2core"))]
     #[test]
     fn four_bit_age_wraps_after_sixteen_searches() {
         let mut tt = TranspositionTable::new(1);
@@ -1055,5 +1171,197 @@ mod tests {
             panic!("new table must use local storage");
         };
         assert_eq!(*age, 0);
+    }
+
+    #[cfg(feature = "b2core")]
+    mod core {
+        use super::super::{
+            AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,
+            TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore, entry_quality,
+        };
+        use crate::board::Move;
+        use crate::eval::VALUE_NONE;
+
+        const KEY: u64 = 0xA5A5_1234_5678_9ABC;
+
+        fn stored(depth: i32, score: i32, bound: Bound, mv: Move, is_pv: bool) -> TtStore {
+            TtStore {
+                key: KEY,
+                depth,
+                score,
+                bound,
+                mv,
+                ply: 0,
+                static_eval: 17,
+                is_pv,
+            }
+        }
+
+        fn both_backends() -> [TranspositionTable; 2] {
+            let local = TranspositionTable::new(1);
+            let mut shared = TranspositionTable::new(1);
+            shared.make_shared(1);
+            [local, shared]
+        }
+
+        #[test]
+        fn five_bit_age_costs_four_plies_a_generation_and_wraps_after_32() {
+            let entry = TtEntry {
+                depth: 40,
+                flag_age: Bound::Exact as u8 | PV_BIT,
+                ..TtEntry::default()
+            };
+            for generation in 0_u8..32 {
+                let age = generation.wrapping_mul(AGE_STRIDE) & AGE_MASK;
+                assert_eq!(
+                    entry_quality(entry, age),
+                    40 - i32::from(generation) * 4,
+                    "generation {generation}"
+                );
+            }
+            assert_eq!(AGE_QUALITY_DIVISOR, 2);
+            let mut tt = TranspositionTable::new(1);
+            for _ in 0..32 {
+                tt.new_search();
+            }
+            let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
+                panic!("new table must use local storage");
+            };
+            assert_eq!(*age, 0, "32 searches wrap the five-bit age");
+        }
+
+        #[test]
+        fn an_eval_only_entry_carries_the_eval_and_nothing_else() {
+            for mut tt in both_backends() {
+                tt.store_eval(KEY, -123, true);
+                let entry = tt.probe(KEY).expect("eval-only entry is found");
+                let probe = TtProbe::from_entry(Some(entry), 0, 0);
+                assert_eq!(probe.raw_static_eval, -123);
+                assert_eq!(probe.bound, None);
+                assert_eq!(probe.score, VALUE_NONE);
+                assert_eq!(probe.depth, EVAL_ONLY_DEPTH);
+                assert_eq!(probe.mv, None);
+                assert!(probe.pv_line(false), "the PV bit is stored");
+                assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
+                assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
+                assert_eq!(probe.refine_eval(55, 0), 55);
+                assert!(!probe.allows_singular(8, 3));
+                assert!(tt.hashfull() == 0 || tt.hashfull() > 0);
+            }
+        }
+
+        #[test]
+        fn a_searched_result_replaces_an_eval_only_entry() {
+            let mv = Move::from_uci("e2e4").expect("valid move");
+            for mut tt in both_backends() {
+                tt.store_eval(KEY, 40, false);
+                tt.store(stored(0, 25, Bound::Lower, mv, false));
+                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                assert_eq!(probe.bound, Some(Bound::Lower));
+                assert_eq!(probe.depth, 0);
+                assert_eq!(probe.score, 25);
+                assert_eq!(probe.mv, Some(mv));
+            }
+        }
+
+        #[test]
+        fn a_much_deeper_entry_keeps_its_result_but_takes_a_new_move() {
+            let old = Move::from_uci("e2e4").expect("valid move");
+            let new = Move::from_uci("d2d4").expect("valid move");
+            for mut tt in both_backends() {
+                tt.store(stored(12, 90, Bound::Exact, old, false));
+                // 8 + 4 <= 12: refused, move refreshed.
+                tt.store(stored(8, -40, Bound::Upper, new, false));
+                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                assert_eq!(
+                    (probe.depth, probe.score, probe.bound),
+                    (12, 90, Some(Bound::Exact))
+                );
+                assert_eq!(probe.mv, Some(new));
+                // On a PV line the margin is six: 7 + 4 + 2 > 12 replaces.
+                tt.store(stored(7, -30, Bound::Upper, Move::NULL, true));
+                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                assert_eq!((probe.depth, probe.score), (7, -30));
+                assert_eq!(probe.mv, Some(new), "a store without a move keeps the move");
+                // A new generation lifts the refusal.
+                tt.store(stored(20, 5, Bound::Exact, old, false));
+                tt.new_search();
+                tt.store(stored(3, 6, Bound::Lower, Move::NULL, false));
+                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                assert_eq!((probe.depth, probe.score), (3, 6));
+            }
+        }
+
+        fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
+            TtProbe {
+                bound: Some(bound),
+                depth,
+                score,
+                ..TtProbe::MISS
+            }
+        }
+
+        #[test]
+        fn node_cutoff_needs_an_extra_ply_at_or_above_beta() {
+            assert_eq!(
+                probe(Bound::Upper, 8, -10).node_cutoff_score(8, 0, 100, false),
+                Some(-10)
+            );
+            assert_eq!(
+                probe(Bound::Upper, 7, -10).node_cutoff_score(8, 0, 100, false),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Lower, 8, 150).node_cutoff_score(8, 0, 100, true),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Lower, 9, 150).node_cutoff_score(8, 0, 100, true),
+                Some(150)
+            );
+            assert_eq!(
+                probe(Bound::Exact, 8, 50).node_cutoff_score(8, 0, 100, true),
+                Some(50)
+            );
+            assert_eq!(
+                probe(Bound::Exact, 8, 100).node_cutoff_score(8, 0, 100, true),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Exact, 9, 100).node_cutoff_score(8, 0, 100, true),
+                Some(100)
+            );
+        }
+
+        #[test]
+        fn node_cutoff_distrusts_a_contrary_prediction_at_low_depth() {
+            // Fail-low entry at an expected cut node: only above depth 5.
+            assert_eq!(
+                probe(Bound::Upper, 5, -10).node_cutoff_score(5, 0, 100, true),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Upper, 6, -10).node_cutoff_score(6, 0, 100, true),
+                Some(-10)
+            );
+            // Fail-high entry at an expected all node: only above depth 5.
+            assert_eq!(
+                probe(Bound::Lower, 6, 150).node_cutoff_score(5, 0, 100, false),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Lower, 7, 150).node_cutoff_score(6, 0, 100, false),
+                Some(150)
+            );
+            // A bound that does not resolve the window never cuts.
+            assert_eq!(
+                probe(Bound::Upper, 20, 50).node_cutoff_score(8, 0, 100, false),
+                None
+            );
+            assert_eq!(
+                probe(Bound::Lower, 20, 50).node_cutoff_score(8, 0, 100, true),
+                None
+            );
+        }
     }
 }

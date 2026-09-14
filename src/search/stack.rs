@@ -98,6 +98,10 @@ pub(super) struct StackEntry {
     /// Beta cutoffs at this ply since the grandparent reset it on entry.
     #[cfg(feature = "b2core")]
     pub(super) cutoff_count: i32,
+    /// Whether the node at this ply is on a PV line, by node type or by the
+    /// stored bit.
+    #[cfg(feature = "b2core")]
+    pub(super) tt_pv: bool,
 }
 
 impl StackEntry {
@@ -127,6 +131,8 @@ impl Default for StackEntry {
             reduction: 0,
             #[cfg(feature = "b2core")]
             cutoff_count: 0,
+            #[cfg(feature = "b2core")]
+            tt_pv: false,
         }
     }
 }
