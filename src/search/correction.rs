@@ -72,11 +72,11 @@ impl Searcher {
         {
             let magnitude = u64::from(diff.unsigned_abs());
             if from_capture {
-                crate::diag_count!(correction_resid_capture_n);
-                crate::diag_add!(correction_resid_capture_sum, magnitude);
+                crate::diag_count!(corr_resid_capture_n);
+                crate::diag_add!(corr_resid_capture_sum, magnitude);
             } else {
-                crate::diag_count!(correction_resid_quiet_n);
-                crate::diag_add!(correction_resid_quiet_sum, magnitude);
+                crate::diag_count!(corr_resid_quiet_n);
+                crate::diag_add!(corr_resid_quiet_sum, magnitude);
             }
             // 4.5d: halfmove-clock context. PLAN 4.5 permits a new correction
             // context only where held-out UNIQUE signal is shown, so measure the
@@ -85,16 +85,16 @@ impl Searcher {
             // being a function of its structure at all.
             match halfmove {
                 0..=19 => {
-                    crate::diag_count!(correction_resid_hm_low_n);
-                    crate::diag_add!(correction_resid_hm_low_sum, magnitude);
+                    crate::diag_count!(corr_resid_hm_low_n);
+                    crate::diag_add!(corr_resid_hm_low_sum, magnitude);
                 }
                 20..=49 => {
-                    crate::diag_count!(correction_resid_hm_mid_n);
-                    crate::diag_add!(correction_resid_hm_mid_sum, magnitude);
+                    crate::diag_count!(corr_resid_hm_mid_n);
+                    crate::diag_add!(corr_resid_hm_mid_sum, magnitude);
                 }
                 _ => {
-                    crate::diag_count!(correction_resid_hm_high_n);
-                    crate::diag_add!(correction_resid_hm_high_sum, magnitude);
+                    crate::diag_count!(corr_resid_hm_high_n);
+                    crate::diag_add!(corr_resid_hm_high_sum, magnitude);
                 }
             }
         }
@@ -119,8 +119,8 @@ impl Searcher {
         let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
         #[cfg(feature = "diag")]
         if crate::diag::sampled(board.hash, ply, crate::diag::SAMPLE_CORRECTION) {
-            crate::diag_count!(correction_sample_updates);
-            crate::diag_add!(correction_sample_abs_sum, u64::from(diff.unsigned_abs()));
+            crate::diag_count!(corr_sample_updates);
+            crate::diag_add!(corr_sample_abs_sum, u64::from(diff.unsigned_abs()));
             let pawn_key = board.pawn_key();
             let minor_key = board.minor_key();
             let own_key = board.non_pawn_key(color);

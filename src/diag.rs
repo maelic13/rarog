@@ -74,15 +74,15 @@ pub mod counters {
         lmr_applied,
         // 10.2.5 — late moves whose confidence estimate removes the old
         // mandatory one-ply reduction.
-        lmr_zero_reduction,
+        node_lmr_zero_reduction,
         // 4.8.1 AUDIT of the reduction floor, which 4.5.4 named and never
         // measured. `lmr_reduction` is `(r >> 10).clamp(0, new_depth)`, so
         // both ends silently discard information:
-        //   lmr_qs_clamped -- reduction reached new_depth, so the "reduced
+        //   node_lmr_qs_clamped -- reduction reached new_depth, so the "reduced
         //     search" ran at depth 0 and was answered by quiescence. That
         //     is a prune wearing a reduction's name, and it is counted
         //     nowhere in the pruning family.
-        lmr_qs_clamped,
+        node_lmr_qs_clamped,
         lmr_research,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)
@@ -110,7 +110,7 @@ pub mod counters {
         // numerator and denominator always cover the same node set.
         cutoff_first_move,
         correction_updates,
-        correction_on_capture,
+        corr_on_capture,
         // 4.5 — residual MAGNITUDE by attribution class, exact.
         //
         // The premise behind capture-weighted correction updates is that a
@@ -118,10 +118,10 @@ pub mod counters {
         // positional correction. Nobody has measured that. These give the mean
         // |residual| for each class; if the two means are close, the premise is
         // wrong and neither knob should move off its baseline.
-        correction_resid_capture_n,
-        correction_resid_capture_sum,
-        correction_resid_quiet_n,
-        correction_resid_quiet_sum,
+        corr_resid_capture_n,
+        corr_resid_capture_sum,
+        corr_resid_quiet_n,
+        corr_resid_quiet_sum,
         // 4.5d — residual by HALFMOVE-CLOCK context. PLAN 4.5 allows a new
         // correction context only where held-out unique signal is shown, so the
         // measurement comes before any proposal. Rule-50 proximity is the
@@ -132,12 +132,12 @@ pub mod counters {
         // it is structurally unreachable: correction only trains where
         // `static_eval != VALUE_NONE`, which IS the not-in-check condition, so
         // its population is zero by construction rather than by observation.
-        correction_resid_hm_low_n,
-        correction_resid_hm_low_sum,
-        correction_resid_hm_mid_n,
-        correction_resid_hm_mid_sum,
-        correction_resid_hm_high_n,
-        correction_resid_hm_high_sum,
+        corr_resid_hm_low_n,
+        corr_resid_hm_low_sum,
+        corr_resid_hm_mid_n,
+        corr_resid_hm_mid_sum,
+        corr_resid_hm_high_n,
+        corr_resid_hm_high_sum,
         // 9.7.5(b) — SMP quality. The question these answer: 16 threads give
         // 13x the nodes but +0 depth and +2 seldepth, so where does the work
         // go? Four hypotheses imply opposite fixes, hence measure first.
@@ -292,12 +292,12 @@ pub mod counters {
         prospective_depth_sum,
         reduction_depth_sum,
         // Correction attribution and hashed-table quality.
-        correction_sample_updates,
-        correction_sample_abs_sum,
-        correction_slot_first,
-        correction_slot_repeat,
-        correction_slot_collision,
-        correction_slot_near_saturation,
+        corr_sample_updates,
+        corr_sample_abs_sum,
+        corr_slot_first,
+        corr_slot_repeat,
+        corr_slot_collision,
+        corr_slot_near_saturation,
         // Root iteration census.
         root_iterations,
         root_best_changes,
@@ -558,14 +558,12 @@ mod correction_probe {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         match owners.insert((source, index), key) {
-            None => counters::correction_slot_first.fetch_add(1, Ordering::Relaxed),
-            Some(old) if old == key => {
-                counters::correction_slot_repeat.fetch_add(1, Ordering::Relaxed)
-            }
-            Some(_) => counters::correction_slot_collision.fetch_add(1, Ordering::Relaxed),
+            None => counters::corr_slot_first.fetch_add(1, Ordering::Relaxed),
+            Some(old) if old == key => counters::corr_slot_repeat.fetch_add(1, Ordering::Relaxed),
+            Some(_) => counters::corr_slot_collision.fetch_add(1, Ordering::Relaxed),
         };
         if value.unsigned_abs() >= 15_000 {
-            counters::correction_slot_near_saturation.fetch_add(1, Ordering::Relaxed);
+            counters::corr_slot_near_saturation.fetch_add(1, Ordering::Relaxed);
         }
     }
 }

@@ -1104,7 +1104,7 @@ impl Searcher {
                     #[cfg(feature = "diag")]
                     {
                         if new_depth > 0 && reduction == new_depth {
-                            crate::diag_count!(lmr_qs_clamped);
+                            crate::diag_count!(node_lmr_qs_clamped);
                         }
                         // 4.2: EXACT, because its denominator `lmr_applied` is
                         // exact. Sampling only the numerator made the mean
@@ -1115,7 +1115,7 @@ impl Searcher {
                         );
                     }
                     if reduction == 0 {
-                        crate::diag_count!(lmr_zero_reduction);
+                        crate::diag_count!(node_lmr_zero_reduction);
                     } else {
                         crate::diag_count!(lmr_applied);
                     }
@@ -1334,7 +1334,7 @@ impl Searcher {
                             // beta cutoff — the eval learning to absorb search
                             // tactics that then feed back into pruning.
                             if is_capture {
-                                crate::diag_count!(correction_on_capture);
+                                crate::diag_count!(corr_on_capture);
                             }
                             let residual = self.attributed_residual(
                                 score - static_eval,
@@ -1384,7 +1384,7 @@ impl Searcher {
             if bound == Bound::Exact || (bound == Bound::Upper && diff < 0) {
                 crate::diag_count!(correction_updates);
                 if best_move.is_capture() {
-                    crate::diag_count!(correction_on_capture);
+                    crate::diag_count!(corr_on_capture);
                 }
                 let residual =
                     self.attributed_residual(diff, best_move.is_capture(), board.halfmove_clock);
