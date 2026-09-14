@@ -138,8 +138,18 @@ needed for a valid profile; no separate LLVM installation is required.
 
 ### Tests
 
+The same commands CI runs, in both profiles:
+
 ```bash
-cargo test --workspace --all-targets
+cargo test -p rarog
+cargo test -p rarog --release
+cargo test -p xtask
+```
+
+The Texel tuner is its own Cargo workspace:
+
+```bash
+cargo test --manifest-path tools/texel-tuner/Cargo.toml
 ```
 
 ---
