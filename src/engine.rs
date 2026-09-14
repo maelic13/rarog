@@ -6,7 +6,7 @@ use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
 use crate::infra::flush_stdout;
-use crate::search::{SearchEvent, SearchExit, SearchResult, Searcher};
+use crate::search::{InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
 use crate::search_options::SearchOptions;
 use crate::wac::{move_matches_any, wac_positions};
 
@@ -16,12 +16,22 @@ pub struct Engine {
     searcher: Searcher,
 }
 
+/// The protocol's output: stdout, which is line-buffered, so each line
+/// reaches the GUI as it is written.
+struct StdoutSink;
+
+impl InfoSink for StdoutSink {
+    fn line(&self, line: &str) {
+        println!("{line}");
+    }
+}
+
 impl Engine {
     pub fn new(commands: EngineCommandQueue, control: Arc<EngineControl>) -> Engine {
         Engine {
             commands,
             control,
-            searcher: Searcher::default(),
+            searcher: Searcher::with_sink(Box::new(StdoutSink)),
         }
     }
 

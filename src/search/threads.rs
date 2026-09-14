@@ -49,7 +49,9 @@ pub(super) struct WorkerPool {
 }
 
 impl WorkerPool {
-    pub(super) fn set_helper_count(&mut self, helper_count: usize) {
+    /// Grow or shrink the pool to `helper_count` threads and return how many
+    /// it holds, which is fewer when the operating system refuses a thread.
+    pub(super) fn set_helper_count(&mut self, helper_count: usize) -> usize {
         while self.workers.len() > helper_count {
             if let Some(mut worker) = self.workers.pop() {
                 let _ = worker.sender.send(WorkerMessage::Shutdown);
@@ -62,14 +64,10 @@ impl WorkerPool {
             if let Some(worker) = spawn_search_worker(self.workers.len()) {
                 self.workers.push(worker);
             } else {
-                crate::info_string!(
-                    "Unable to create helper search thread {}; using {} search threads.",
-                    self.workers.len() + 1,
-                    self.workers.len() + 1
-                );
                 break;
             }
         }
+        self.workers.len()
     }
 
     pub(crate) fn new_game(&self) {

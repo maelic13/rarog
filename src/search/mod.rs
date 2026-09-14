@@ -48,6 +48,21 @@ const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // const-evaluated; MAX_PLY = 128
 const TB_WIN_SCORE: i32 = MATE_SCORE - (MAX_PLY as i32) * 2;
+/// Where a searcher writes its protocol output: the `info` line of each
+/// completed iteration and `info string` notices. The search formats lines and
+/// never touches stdout itself; the engine layer decides where they go.
+pub trait InfoSink: Send {
+    /// One complete line, without the trailing newline.
+    fn line(&self, line: &str);
+}
+
+/// Discards every line. The default, and what helper threads use.
+struct SilentSink;
+
+impl InfoSink for SilentSink {
+    fn line(&self, _line: &str) {}
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
     None,
@@ -190,6 +205,7 @@ pub struct Searcher {
     /// Per-thread search state: the stack, PV, histories, correction tables,
     /// root-move records and counters.
     td: ThreadData,
+    sink: Box<dyn InfoSink>,
 }
 
 impl Default for Searcher {
@@ -216,6 +232,7 @@ impl Default for Searcher {
             syzygy_largest: 0,
             params,
             td: ThreadData::default(),
+            sink: Box::new(SilentSink),
         }
     }
 }
@@ -231,32 +248,50 @@ fn format_score(score: i32) -> String {
 }
 
 impl Searcher {
+    /// A searcher that writes its output to `sink`.
+    pub fn with_sink(sink: Box<dyn InfoSink>) -> Self {
+        Self {
+            sink,
+            ..Self::default()
+        }
+    }
+
+    fn notice(&self, message: std::fmt::Arguments<'_>) {
+        self.sink.line(&format!("info string {message}"));
+    }
+
     pub fn configure(&mut self, options: &EngineOptions) {
         if options.hash_mb != self.hash_mb {
             if self.tt.resize(options.hash_mb) {
                 self.hash_mb = options.hash_mb;
             } else {
-                crate::info_string!(
+                self.notice(format_args!(
                     "Unable to allocate Hash value {}; keeping {} MiB.",
-                    options.hash_mb,
-                    self.hash_mb
-                );
+                    options.hash_mb, self.hash_mb
+                ));
             }
         }
         let old_path = syzygy::current_path();
         let largest = syzygy::initialize(&options.syzygy.path);
         if old_path != options.syzygy.path && !options.syzygy.path.is_empty() {
             if largest == 0 {
-                crate::info_string!("SyzygyPath loaded no usable tablebases.");
+                self.notice(format_args!("SyzygyPath loaded no usable tablebases."));
             } else {
                 let (wdl, dtz) = syzygy::tablebase_file_counts(&options.syzygy.path);
-                crate::info_string!(
+                self.notice(format_args!(
                     "Found {wdl} WDL and {dtz} DTZ tablebase files (up to {largest}-man)."
-                );
+                ));
             }
         }
-        self.worker_pool
-            .set_helper_count(options.threads.saturating_sub(1));
+        let wanted = options.threads.saturating_sub(1);
+        let helpers = self.worker_pool.set_helper_count(wanted);
+        if helpers < wanted {
+            self.notice(format_args!(
+                "Unable to create helper search thread {}; using {} search threads.",
+                helpers + 1,
+                helpers + 1
+            ));
+        }
     }
 
     pub fn clear_hash(&mut self) {
@@ -317,10 +352,10 @@ impl Searcher {
         poll: &mut P,
     ) -> SearchResult {
         if ALLOW_PARALLEL && engine_options.threads <= 1 && !self.tt.ensure_local(self.hash_mb) {
-            crate::info_string!(
+            self.notice(format_args!(
                 "Unable to restore local transposition table at {} MiB.",
                 self.hash_mb
-            );
+            ));
         }
         self.shared_state = None;
         self.td.root_move_offset = 0;
@@ -1050,7 +1085,7 @@ impl Searcher {
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(" ");
-        println!(
+        self.sink.line(&format!(
             "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
             self.td.seldepth,
@@ -1061,7 +1096,7 @@ impl Searcher {
             tb_hits,
             elapsed_ms,
             pv
-        );
+        ));
     }
 
     fn ponder_from_tt(&self, root: &Board, bestmove: Move) -> Move {
@@ -1114,9 +1149,49 @@ mod tests {
     use crate::eval::VALUE_NONE;
     use crate::tt::{Bound, TtStore};
 
+    use std::sync::Mutex;
     use std::time::{Duration, Instant};
 
     const LAZY_MARGIN_REGRESSION_FEN: &str = "5k2/5p1p/p3B1p1/Pp6/1P6/5P1P/4K1P1/8 b - - 0 1";
+
+    struct Recorder(Arc<Mutex<Vec<String>>>);
+
+    impl InfoSink for Recorder {
+        fn line(&self, line: &str) {
+            self.0.lock().unwrap().push(line.to_string());
+        }
+    }
+
+    #[test]
+    fn search_writes_one_info_line_per_iteration_through_its_sink() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let mut options = SearchOptions::default();
+        options.limits.depth = Some(3);
+
+        let result = searcher.search(options.board.clone(), &options, true, || SearchEvent::None);
+
+        let lines = lines.lock().unwrap();
+        assert_eq!(result.depth, 3);
+        assert_eq!(lines.len(), 3, "{lines:?}");
+        for (index, line) in lines.iter().enumerate() {
+            assert!(
+                line.starts_with(&format!("info depth {} ", index + 1)),
+                "{line}"
+            );
+            assert!(line.contains(" pv "), "{line}");
+        }
+
+        drop(lines);
+
+        let quiet_lines = Arc::new(Mutex::new(Vec::new()));
+        let mut quiet = Searcher::with_sink(Box::new(Recorder(Arc::clone(&quiet_lines))));
+        quiet.search(options.board.clone(), &options, false, || SearchEvent::None);
+        assert!(
+            quiet_lines.lock().unwrap().is_empty(),
+            "emit_info = false writes nothing"
+        );
+    }
 
     /// A.3.3 (RAR-R11): the budget is measured from the instant `go` was
     /// parsed, not from the engine thread's start. A `go movetime 200`

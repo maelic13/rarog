@@ -423,7 +423,7 @@ impl SearchOptions {
                 {
                     return OptionUpdate::Engine;
                 }
-                println!("No such option: {option_name_raw}");
+                crate::info_string!("No such option: {option_name_raw}");
                 OptionUpdate::Unknown
             }
         }
