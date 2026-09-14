@@ -156,7 +156,7 @@ pub fn capitalize_first_letter(input: &str) -> String {
 }
 
 #[cfg(test)]
-mod narrow_tests {
+mod tests {
     use super::{saturating_i8, saturating_i16, saturating_i32};
 
     #[test]

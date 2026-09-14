@@ -2359,7 +2359,7 @@ impl fmt::Display for Board {
 }
 
 #[cfg(test)]
-mod history_contract_tests {
+mod tests {
     use super::*;
 
     /// Shuffle both knights out and back: four plies that always exist from the
