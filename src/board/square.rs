@@ -127,7 +127,7 @@ impl Square {
 
     #[inline(always)]
     pub fn index(self) -> usize {
-        // 9.0: mask to the valid 0..=63 range. Identity for every legal
+        // Mask to the valid 0..=63 range. Identity for every legal
         // square (move encoding only produces 6-bit squares), and it lets
         // LLVM elide the bounds check on EVERY `[_; 64]` table indexed with
         // `sq.index()` across the codebase — the type now carries the
@@ -192,9 +192,9 @@ impl fmt::Display for Square {
 impl File {
     #[inline(always)]
     fn from_u8(v: u8) -> Self {
-        // 9.0: total function instead of transmute — the match compiles to the
-        // same instruction as the old transmute (LLVM sees v & 7 exhaustively)
-        // but an out-of-range v can no longer be UB.
+        // Total function instead of transmute — the match compiles to the
+        // same instruction (LLVM sees v & 7 exhaustively) and an out-of-range v
+        // cannot be UB.
         match v & 7 {
             0 => File::A,
             1 => File::B,
@@ -215,7 +215,7 @@ impl File {
 impl Rank {
     #[inline(always)]
     fn from_u8(v: u8) -> Self {
-        // 9.0: total function instead of transmute (see File::from_u8).
+        // Total function instead of transmute (see File::from_u8).
         match v & 7 {
             0 => Rank::R1,
             1 => Rank::R2,

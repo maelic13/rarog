@@ -23,14 +23,14 @@ struct WorkerJob {
     pub tt: TranspositionTable,
     pub hash_mb: usize,
     pub(super) root_move_offset: usize,
-    /// 8.13: helper index (1-based); seeds the per-thread reduction jitter.
+    /// Helper index (1-based); seeds the per-thread reduction jitter.
     pub(super) thread_id: usize,
     pub(super) shared_state: Arc<SharedContext>,
     result_tx: Sender<SearchResult>,
 }
 
 enum WorkerMessage {
-    // 9.0: boxed — WorkerJob is ~712 B while the other variants are unit, so
+    // Boxed — WorkerJob is ~712 B while the other variants are unit, so
     // every queued message paid the largest size. This is a per-search thread
     // handoff (not a hot path), so the indirection is free here.
     Search(Box<WorkerJob>),
@@ -227,13 +227,10 @@ impl Searcher {
 
     /// One xorshift64 step, mapped to LMR-reduction jitter in 1024ths of a ply.
     ///
-    /// 9.7.5(k) replaces `(nodes + id·27) % 128 − 59`, which had two defects a
-    /// PRNG does not: it was **correlated with the node counter** (consecutive
-    /// nodes got consecutive jitter, so "random" perturbation moved in ramps),
-    /// and it was **biased +4.5/1024**, quietly raising every thread's mean
-    /// reduction rather than only spreading it. The range here is [−64, 63], the
-    /// same amplitude as before, with mean −0.5/1024 — nine times closer to
-    /// zero, so the jitter now diversifies without also pruning harder.
+    /// A PRNG rather than a function of the node counter, so consecutive nodes
+    /// do not get consecutive jitter. At magnitude 64 the range is [−64, 63]
+    /// with mean −0.5/1024, so the jitter diversifies the threads without
+    /// raising their mean reduction.
     #[inline(always)]
     pub(super) fn next_jitter(&mut self, magnitude: i32) -> i32 {
         let mut x = self.td.jitter_state;
@@ -245,9 +242,8 @@ impl Searcher {
         // weakest (they carry the least mixing), and taking them measurably
         // skewed the mean. `>> 57` yields 0..=127, so the result is [−64, 63].
         // `magnitude` in 1024ths of a ply; the result is [−magnitude,
-        // +magnitude]. At magnitude 64 this is EXACTLY the pre-4.5 expression
-        // `(x >> 57) - 64`, since `bits * 64 / 64 - 64 == bits - 64`, so the
-        // SMP path is unchanged by construction rather than by measurement.
+        // +magnitude]. At magnitude 64 this is exactly `(x >> 57) - 64`, since
+        // `bits * 64 / 64 - 64 == bits - 64`.
         let bits = i32::try_from(x >> 57).expect("7-bit shift fits i32");
         bits * magnitude / 64 - magnitude
     }
@@ -262,7 +258,7 @@ impl Searcher {
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        // 8.13(a): helpers must NOT inherit the main thread's fixed depth.
+        // Helpers must NOT inherit the main thread's fixed depth.
         //
         // Under a clock this is invisible — every thread runs until the main
         // thread's time manager stops the pool. But under `go depth N` a helper
@@ -295,7 +291,7 @@ impl Searcher {
         emit_info: bool,
         poll: &mut P,
     ) -> SearchResult {
-        // 9.7.5(b): reset BEFORE any helper exists, so nothing already counted
+        // Reset BEFORE any helper exists, so nothing already counted
         // gets wiped by a late-starting thread.
         crate::diag::reset();
         self.tt.make_shared(self.hash_mb);
@@ -310,13 +306,10 @@ impl Searcher {
         let (result_tx, result_rx) = mpsc::channel();
         let mut launched_helpers = 0usize;
         for index in 0..helper_count {
-            // 8.13: stagger each helper's starting point in the root list so
-            // the pool does not pile onto move 1. 9.7.5(e) tested removing this
-            // (`RootRotation=false`, same binary both arms) and stopped at
-            // −3.31 ± 10.62 over 1,682 games — inside the `[−5,0]` indifference
-            // zone, i.e. unresolved but leaning toward rotation earning its
-            // keep. Kept as the shipped behaviour; the switch was deleted
-            // rather than shipped as a user-facing option.
+            // Stagger each helper's starting point in the root list so
+            // the pool does not pile onto move 1. Removing the stagger measured
+            // −3.31 ± 10.62 over 1,682 games: unresolved, leaning toward the
+            // rotation earning its keep.
             let offset = if threads <= root_len {
                 ((index + 1) * root_len / threads).max(1) % root_len
             } else {
@@ -415,7 +408,7 @@ impl Searcher {
             );
         }
 
-        // 9.7.5(b): every helper has been joined above, so the counters are now
+        // Every helper has been joined above, so the counters are now
         // complete and this is the one legitimate dump point for a parallel go.
         crate::diag::dump();
 
@@ -457,7 +450,7 @@ impl Searcher {
         best
     }
 
-    /// 8.13: fold the pool's per-root-move knowledge into this thread's root
+    /// Fold the pool's per-root-move knowledge into this thread's root
     /// ordering.
     ///
     /// A move that another thread has already searched deeper gets lifted
@@ -492,9 +485,8 @@ impl Searcher {
     }
 
     /// Publish and retain one completed root-move visit outside the hot node
-    /// kernel. The single cold call replaces several root-only branches that
-    /// the first 10.1 implementation placed directly in `negamax` and that
-    /// measured about -0.8% best-of NPS despite running only at the root.
+    /// kernel: root-only branches placed in `negamax` measured about -0.8%
+    /// best-of NPS despite running only at the root.
     #[cold]
     #[inline(never)]
     pub(super) fn record_root_move_search(
@@ -533,7 +525,7 @@ impl Searcher {
         // completes (the same low-cost shape used by Basilisk), so a later move
         // may inherit a deeper earlier move's maximum. Exact per-move tracking
         // required extra branches in every recursive move loop and measured a
-        // real speed loss; 10.2 should treat this field as a conservative max.
+        // real speed loss, so consumers treat this field as a conservative max.
         root_move.record_search(
             infra::to_usize(depth),
             score,

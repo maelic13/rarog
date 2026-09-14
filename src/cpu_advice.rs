@@ -1,8 +1,8 @@
 //! Startup advice about which released asset this CPU should be running.
 //!
-//! A.4.2. Two user-visible problems motivate this, both measured:
+//! Two user-visible problems motivate this, both measured:
 //!
-//! 1. **Too conservative.** RAR-P20 measured `avx2` at **+4.59%** over `base`
+//! 1. **Too conservative.** `avx2` measured **+4.59%** over `base`
 //!    and `pext` at **+2.45%** over `avx2` on an idle 5950X. A user who picks
 //!    `base` on a capable CPU gives up real strength for nothing.
 //! 2. **Too ambitious.** AMD Excavator (family 15h) and Zen/Zen+/Zen2 (17h)
@@ -132,7 +132,7 @@ fn advice_for(built: Tier, recommended: Tier, slow_pext: bool) -> Option<String>
             recommended.asset()
         ),
         // Leaving measured speed unclaimed. No figure here on purpose: the
-        // README (A.4.4) owns the numbers, so they can be revised without
+        // README owns the numbers, so they can be revised without
         // rebuilding the engine, and base-to-pext is not directly measured yet.
         _ => format!(
             "CPU advisory: this CPU supports the `{}` build, which is faster than \

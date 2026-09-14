@@ -80,12 +80,11 @@ struct UnmakeInfo {
     checkers: Bitboard,
 }
 
-/// Hot-struct footprint, measured for RAR-M39 / 4.11b.14 and pinned here.
+/// Hot-struct footprint, pinned.
 ///
-/// 4.11b.14 decided against replacing the 12 colour-piece bitboards with six
-/// type boards plus colours, and against copying per-ply state instead of the
-/// compact `UnmakeInfo`. Both arms of that decision are footprint arguments, so
-/// the footprint is guarded rather than left to drift:
+/// The 12 colour-piece bitboards were kept over six type boards plus colours,
+/// and the compact `UnmakeInfo` over copying per-ply state. Both decisions are
+/// footprint arguments, so the footprint is guarded rather than left to drift:
 ///
 /// - `Board` is 264 bytes. The six-board variant would save 48 and neither
 ///   figure is near any cache boundary that matters, while the extra mask would
@@ -106,7 +105,7 @@ const _: () = assert!(
 );
 
 const NO_PIECE: u8 = 255;
-// 9.0: padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
+// Padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
 // bounds check elides and no unsafe is needed. Entries 12–15 are unreachable
 // filler (the mailbox only stores 0..=11 for occupied squares; callers assert
 // occupancy), kept as Pawn so even a broken input stays defined, never UB.
@@ -170,7 +169,7 @@ pub struct Board {
 }
 
 /// Per-node masks for O(1) "does this move give check?" tests — see
-/// [`Board::check_info`] / [`Board::gives_check_with`] (10.3 speed pass).
+/// [`Board::check_info`] / [`Board::gives_check_with`].
 pub(crate) struct CheckInfo {
     /// The opposing king's square at computation time.
     their_king: Square,
@@ -708,8 +707,7 @@ impl Board {
     }
 
     /// [`Board::generate_legal_movelist`] into a caller-owned list, which is
-    /// the form the search uses: the value form pays a 520-byte return copy
-    /// (RAR-M44).
+    /// the form the search uses: the value form pays a 520-byte return copy.
     pub fn generate_legal_movelist_into(&self, moves: &mut MoveList) {
         super::movegen::generate_legal_into(self, moves);
     }
@@ -755,12 +753,11 @@ impl Board {
         }
     }
 
-    /// Per-node check-detection masks (10.3 speed pass).
+    /// Per-node check-detection masks.
     ///
-    /// Move scoring used to call [`Board::gives_check`] for EVERY scored
-    /// quiet at every node — an occupancy-xor plus up to two slider lookups
-    /// per move. These masks are computed once per node; a normal move's
-    /// check test then collapses to two bitboard membership tests
+    /// [`Board::gives_check`] costs an occupancy-xor plus up to two slider
+    /// lookups per move. These masks are computed once per node, so a normal
+    /// move's check test collapses to two bitboard membership tests
     /// ([`Board::gives_check_with`]).
     pub(crate) fn check_info(&self) -> CheckInfo {
         crate::diag_count!(board_check_info_calls);
@@ -1055,7 +1052,7 @@ impl Board {
         false
     }
 
-    /// Rule-50 draw with mate precedence (Phase 7.1a, FIDE 9.6b analogue):
+    /// Rule-50 draw with mate precedence (the FIDE Laws' mate-first rule):
     /// at clock >= 100 the game is drawn UNLESS the position is checkmate —
     /// a mate delivered by the 100th-clock move wins. Stalemate at the
     /// boundary is a draw either way, so only the mated case needs the
@@ -1079,10 +1076,9 @@ impl Board {
         // scores the position as a draw in search. This is a deliberate
         // strength heuristic, NOT the arbiter's threefold rule — if a side can
         // force one repetition it can usually force the claimable second, and
-        // pruning the repetition subtree early is worth Elo. Phase 7.1d tried
-        // to make this root-aware (a single *pre-root* twofold no longer
-        // draws, matching Stockfish's `repetition < ply`); that SPRT'd at
-        // −7.21 ± 6.03 (H0), so the aggressive form is kept (lesson 14).
+        // pruning the repetition subtree early is worth Elo. A root-aware form
+        // (a single *pre-root* twofold no longer draws, as Stockfish's
+        // `repetition < ply`) measured −7.21 ± 6.03 Elo, so this one stays.
         self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
     }
 
@@ -1098,7 +1094,7 @@ impl Board {
         .any()
     }
 
-    /// 9.5: rebuild every derived field from the mailbox and compare against
+    /// Rebuild every derived field from the mailbox and compare against
     /// what make/unmake has been maintaining incrementally.
     ///
     /// `Board` keeps five redundant representations of the same position —
@@ -1229,7 +1225,7 @@ impl Board {
             & occ
     }
 
-    /// Short-circuiting `attackers_to_color(sq, occ, color).any()` (10.3(8b)).
+    /// Short-circuiting `attackers_to_color(sq, occ, color).any()`.
     ///
     /// Exactly equivalent — each piece set is intersected with `occ` the same
     /// way — but it returns on the first attacker found instead of building the
@@ -1556,8 +1552,7 @@ impl Board {
         self.make_move_inner(mv, None);
     }
 
-    /// Play `mv` when the caller ALREADY knows whether it gives check
-    /// (10.3 speed pass).
+    /// Play `mv` when the caller ALREADY knows whether it gives check.
     ///
     /// `make_move` otherwise runs [`Board::calculate_checkers`] — four attack
     /// lookups, two of them slider lookups — on every single move, and the
@@ -1962,7 +1957,7 @@ impl Board {
     #[inline(always)]
     fn piece_type_at_unchecked(&self, sq: Square) -> Piece {
         debug_assert!(self.mailbox[sq.index()] < 12);
-        // 9.0: `& 15` into the padded 16-entry table — check elided, no unsafe.
+        // `& 15` into the padded 16-entry table — check elided, no unsafe.
         PIECE_FROM_ENCODED[self.mailbox[sq.index()] as usize & 15]
     }
 

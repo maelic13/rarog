@@ -1,12 +1,8 @@
 /// Emits a UCI `info string` diagnostic.
 ///
-/// 9.0a: the single choke point for engine-side diagnostics (option-parse
-/// errors, tablebase status, search notices). Previously ~15 bare `println!`
-/// calls were scattered through search and option parsing, which made engine
-/// output untestable and uncontrollable — a GUI received `info string` lines
-/// emitted from deep inside a parser. Routing them through one macro means the
-/// destination can change (suppressed under test, mirrored to a log, gated by
-/// a verbosity level) without touching the call sites.
+/// The single choke point for protocol-layer notices (option-parse errors,
+/// bench and WAC setup, diagnostics), so their destination can change without
+/// touching the call sites. The search writes its notices through `InfoSink`.
 ///
 /// UCI *protocol* output (`bestmove`, `info depth …`) deliberately stays in
 /// the protocol layer, and the `bench`/`wac` console reports stay plain

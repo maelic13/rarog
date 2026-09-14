@@ -11,9 +11,8 @@ use crate::infra;
 const MAX_PLY: i32 = 128;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
-// Bit 0x08 is free. It carried the 4.3c speculative-producer class until B.1
-// removed provenance (no shipped consumer read it); it stays unused so the
-// 4-bit age arithmetic below is untouched. Widening the age is B.2's.
+// Bit 0x08 is free and deliberately unused, so the 4-bit age arithmetic
+// below keeps its layout.
 const AGE_MASK: u8 = 0xF0;
 const AGE_STRIDE: u8 = 0x10;
 const AGE_QUALITY_DIVISOR: i32 = 4;
@@ -74,8 +73,8 @@ impl TtEntry {
 const LOCAL_CLUSTER_ENTRIES: usize = 3;
 /// Entries per cluster in the shared table. A slot costs 8 B of payload + 2 B
 /// of verification tag, so six of them fill a 64 B cache line — the same 10 B
-/// per position the single-threaded table has always used, i.e. going
-/// multi-threaded no longer costs capacity at all.
+/// per position as the single-threaded table, so going multi-threaded costs
+/// no capacity.
 const SHARED_CLUSTER_ENTRIES: usize = 6;
 
 #[repr(align(32))]
@@ -156,17 +155,14 @@ fn fold16(data: u64) -> u16 {
 /// AtomicU16 }` would be padded back up to 16 B by alignment, which is exactly
 /// the waste this layout exists to avoid. Splitting the two into their own
 /// arrays packs a slot into 10 B, so six fit one 64 B line: the same density
-/// the single-threaded table has always had.
+/// as the single-threaded table.
 ///
-/// The old layout stored `(key ^ data, data)` — 16 B — which bought 64-bit key
-/// verification AND torn-read immunity. A 16-bit tag alone would keep neither,
-/// so the tag stores `key16 ^ fold16(data)`: a reader recomputes the fold from
-/// the payload it actually observed, so any mismatched (tag, data) pair
-/// reconstructs a garbage key16 and is rejected. Detection strength is 16 bits
-/// — precisely the strength the single-threaded table has always had from its
-/// plain `key16`, so a shared probe is no more collision-prone than a serial
-/// one, and it is no longer paying 60% more memory for a guarantee the serial
-/// engine never had.
+/// A 16-bit tag alone would give neither key verification nor torn-read
+/// immunity, so the tag stores `key16 ^ fold16(data)`: a reader recomputes the
+/// fold from the payload it actually observed, so any mismatched (tag, data)
+/// pair reconstructs a garbage key16 and is rejected. Detection strength is 16
+/// bits, the same as the single-threaded table's plain `key16`, so a shared
+/// probe is no more collision-prone than a serial one.
 #[repr(align(64))]
 struct SharedCluster {
     data: [AtomicU64; SHARED_CLUSTER_ENTRIES],
@@ -255,23 +251,20 @@ trait ClusterSlots {
 // same density as the local one. Both were violated silently before — asserting
 // them at compile time is free.
 //
-// ⚠ 4.8c — "64 bytes" IS "one cache line" on x86-64 and is NOT on Apple
-// Silicon. Measured on an M4 (RAR-P11): `hw.cachelinesize` is **128**, so two
+// ⚠ "64 bytes" IS "one cache line" on x86-64 and is NOT on Apple
+// Silicon. Measured on an M4: `hw.cachelinesize` is **128**, so two
 // independent `SharedCluster`s share one line there and two threads touching
 // unrelated TT entries can contend. Neither cluster type can ever STRADDLE a
 // 128 B line — 32 and 64 both divide 128 and both are aligned to their own size
 // — so the 128 B block wrapper this project twice considered was aimed at a
 // hazard that cannot occur; this is the real one.
 //
-// Both halves are now settled, so this is a CLOSED question, not an open TODO.
-// RAR-P12 measured the Threads>1 exposure and found none (3.89x at 4T against a
-// pre-registered >=3.8x bar). RAR-P16 then measured the wrapper itself on an M4:
-// -0.12% median, 4/12 paired wins, inside the noise floor — and showed why, by
-// probing the allocator, which already returns 128 B-aligned TT bases at every
-// Hash size, so the wrapper cannot move a single address. Do not reintroduce it
-// without a Threads>1 ARM result that contradicts RAR-P12; RAR-P16 carries the
-// recipe if one is ever needed. Naive padding to 128 B would additionally halve
-// the density this second assert exists to hold.
+// Both halves are measured. Threads>1 scaling shows no exposure (3.89x at 4T
+// against a >=3.8x bar), and a 128 B wrapper measured -0.12% on an M4, inside
+// the noise floor, because the allocator already returns 128 B-aligned table
+// bases at every Hash size. Do not reintroduce the wrapper without a
+// Threads>1 ARM result that contradicts the scaling measurement. Naive padding
+// to 128 B would also halve the density this second assert exists to hold.
 const _: () = assert!(size_of::<SharedCluster>() == 64);
 const _: () = assert!(
     SHARED_CLUSTER_ENTRIES * size_of::<LocalCluster>()
@@ -303,11 +296,9 @@ impl Default for TranspositionTable {
 
 /// Payload of a transposition-table store.
 ///
-/// Grouped into a struct because the four store paths (`store`, the
-/// local/shared backends, and `make_entry`) previously took the same nine
-/// positional parameters — six of them `i32`/`usize`. A swapped `depth`/
-/// `score` or `ply`/`static_eval` pair compiled silently; named fields make
-/// that class of bug impossible. All fields are `Copy` scalars, so passing
+/// Named fields rather than nine positional parameters, six of them
+/// `i32`/`usize`: a swapped `depth`/`score` or `ply`/`static_eval` pair would
+/// compile silently. All fields are `Copy` scalars, so passing
 /// this by value costs nothing over the loose arguments.
 #[derive(Clone, Copy)]
 pub struct TtStore {
@@ -352,17 +343,15 @@ impl TranspositionTable {
 
     /// Convert to the atomic shared table used when `Threads > 1`.
     ///
-    /// 9.4: takes the byte budget rather than inheriting the local cluster
-    /// COUNT. `SharedCluster` is 64 B against `LocalCluster`'s 32 B, so
-    /// reusing the count silently allocated **twice the `Hash` the user
-    /// asked for** the moment a search went multi-threaded — invisible, and
-    /// in a tournament it surfaces as swapping and time losses rather than
-    /// as a memory bug. `Hash` is a contract; this keeps it.
+    /// Takes the byte budget rather than inheriting the local cluster COUNT:
+    /// `SharedCluster` is 64 B against `LocalCluster`'s 32 B, so reusing the
+    /// count would allocate **twice the `Hash` the user asked for**, which in
+    /// a tournament surfaces as swapping and time losses. `Hash` is a
+    /// contract.
     ///
-    /// The local table is dropped BEFORE the shared one is allocated. It
-    /// carries no entries across (the shared table has always started empty),
-    /// so nothing is lost, and the old order peaked at local + shared held
-    /// simultaneously — at `go` time, mid-game.
+    /// The local table is dropped BEFORE the shared one is allocated, so the
+    /// two are never held at once. The shared table starts empty, so nothing
+    /// is lost.
     pub fn make_shared(&mut self, mb: usize) {
         if matches!(self.storage, TtStorage::Shared(_)) {
             return;
@@ -380,7 +369,7 @@ impl TranspositionTable {
     }
 
     /// Bytes actually handed to the allocator for the table itself.
-    /// The 9.4 regression tests assert this against the `Hash` budget.
+    /// The sizing tests assert this against the `Hash` budget.
     pub fn allocated_bytes(&self) -> usize {
         match &self.storage {
             TtStorage::Local(table) => table.clusters.len() * size_of::<LocalCluster>(),
@@ -482,23 +471,19 @@ fn prefetch_ptr<T>(ptr: *const T) {
         core::arch::x86_64::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86_64::_MM_HINT_T0);
     }
 
-    // 4.8b — the ARM64 spelling of the SAME hint. Until now this function had
-    // an x86 body and, for every other target, `let _ = ptr;` — so all three
-    // shipped ARM64 assets did NO TT prefetching at all while the x86 assets
-    // did, an ISA-specific search-speed difference nobody chose. Rarog issues
-    // the hint after making the child move, so there is useful work between it
-    // and the child's TT probe, which is what makes a prefetch worth issuing.
+    // The ARM64 spelling of the SAME hint, so the ARM64 assets prefetch as the
+    // x86 ones do. Rarog issues the hint after making the child move, so there
+    // is useful work between it and the child's TT probe, which is what makes a
+    // prefetch worth issuing.
     //
     // `pldl1keep` is the ARM analogue of `_MM_HINT_T0`: prefetch for load, into
     // L1, temporal (keep). Written as inline `asm!` because
     // `core::arch::aarch64::_prefetch` is still unstable, and stable AArch64
-    // inline assembly is exactly what PLAN 4.8 pins as available.
+    // inline assembly is available on the pinned toolchain.
     //
-    // ⚠ This does NOT raise the unsafe floor that principle #8 froze at 19. The
-    // two arms are `cfg`-exclusive, so any single compiled target contains the
-    // same number of unsafe blocks as before — on ARM64 this replaces a no-op
-    // with the same intrinsic-class cache hint x86 already had, rather than
-    // adding a new mechanism.
+    // The two arms are `cfg`-exclusive, so any single compiled target contains
+    // one unsafe block here: an intrinsic-class cache hint, not a new
+    // mechanism, and no rise in the frozen unsafe floor.
     //
     // SAFETY: `prfm` is an architectural cache hint. It does not dereference
     // `ptr` as a Rust memory access, so any address is sound — and this one is
@@ -566,9 +551,6 @@ pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
 /// consumer can forget them or apply them twice. Node-local context (`depth`,
 /// `alpha`, `beta`, `is_pv`) is passed to the predicates rather than stored:
 /// IIR mutates `depth` after the cutoff test and the move loop raises `alpha`.
-///
-/// B.1 kept this discipline from 4.2's `NodeEvidence` and removed its producer
-/// field: no shipped search decision consumed provenance (B.0 section 6.1).
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct TtProbe {
     /// Bound kind, or `None` for a probe miss.
@@ -662,7 +644,7 @@ impl TtProbe {
     }
 
     /// The same refinement with NO depth or `VALUE_NONE` guard: the qsearch
-    /// stand-pat form (RAR-S02). At `min_depth == 0` the two agree on every
+    /// stand-pat form. At `min_depth == 0` the two agree on every
     /// storable state, which a test below pins.
     #[inline(always)]
     fn refine_eval_bound_only(&self, base: i32) -> i32 {

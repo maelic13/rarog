@@ -12,7 +12,7 @@ pub(super) struct SharedContext {
     pub ponderhit: AtomicBool,
     pub nodes: AtomicU64,
     pub tb_hits: AtomicU64,
-    /// 8.13 — pooled per-root-move knowledge, indexed by the move's position
+    /// Pooled per-root-move knowledge, indexed by the move's position
     /// in the root list. Packed `(bound << 56) | (depth << 32) | score_bits`
     /// so a single relaxed load/CAS carries a consistent triple;
     /// `NO_ROOT_SCORE` = unset.
@@ -24,7 +24,7 @@ pub(super) struct SharedContext {
     /// entries for root moves get overwritten under pressure while these do
     /// not.
     root_scores: Vec<AtomicI64>,
-    /// 8.13 — symmetric soft-stop votes. Each thread whose own soft target
+    /// Symmetric soft-stop votes. Each thread whose own soft target
     /// expires casts one vote and keeps searching; the pool stops once a
     /// strict majority agrees, so the decision uses N clamped opinions
     /// rather than the main thread's single noisy estimate. Threshold and
@@ -33,7 +33,7 @@ pub(super) struct SharedContext {
     thread_count: usize,
 }
 
-/// Sentinel for an unpublished root score (8.13).
+/// Sentinel for an unpublished root score.
 const NO_ROOT_SCORE: i64 = i64::MIN;
 /// Keeps the packed score non-negative in its 32-bit field.
 const SCORE_BIAS: i64 = 1 << 31;
@@ -44,7 +44,7 @@ const DEPTH_MASK: i64 = 0xFF_FFFF;
 const DEPTH_SHIFT: u32 = 32;
 const BOUND_SHIFT: u32 = 56;
 
-/// 8.13: what a published root score means. Declaration order is the
+/// What a published root score means. Declaration order is the
 /// replacement rank at equal depth — an Exact score beats a Lower bound beats
 /// an Upper bound (a fail-low only proves `true <= score`, the weakest fact).
 /// Every searched root move is published with its real bound.
@@ -72,7 +72,7 @@ fn pack_root_score(depth: i32, score: i32, bound: RootBound) -> i64 {
 }
 
 fn unpack_root_score(packed: i64) -> (i32, i32, RootBound) {
-    // 9.7.5(g): `expect`, not `unwrap_or(0)`. Both conversions are infallible
+    // `expect`, not `unwrap_or(0)`. Both conversions are infallible
     // by construction and provably so — `pack_root_score` masks depth with
     // `DEPTH_MASK` (24 bits, so 0..=16_777_215) and the score field with
     // `LOW32`, which after subtracting `SCORE_BIAS` (2^31) spans exactly
@@ -105,7 +105,7 @@ impl SharedContext {
     }
 
     /// Publish `(depth, score, bound)` for root move `index` if it improves on
-    /// what the pool already knows (8.13).
+    /// what the pool already knows.
     ///
     /// Packed into one atomic so a reader always sees a consistent triple:
     /// bound tag in the top byte, depth below it, score offset-encoded into
@@ -146,8 +146,8 @@ impl SharedContext {
         Some(unpack_root_score(packed))
     }
 
-    /// The pool's best Exact root score at its deepest published depth
-    /// (8.13): the pool-wide PV estimate a thread can center its aspiration
+    /// The pool's best Exact root score at its deepest published depth:
+    /// the pool-wide PV estimate a thread can center its aspiration
     /// window on when the pool has searched deeper than the thread itself.
     /// Root lists are tiny, so the linear scan (once per iteration per thread)
     /// is free.
@@ -172,18 +172,15 @@ impl SharedContext {
     /// Votes needed to end the search: a strict majority, `floor(N/2)+1`.
     ///
     /// The vote is an order statistic over the threads' independent soft
-    /// targets, so this stops the pool at the **median** expiry — 8.13's "N
-    /// clamped opinions rather than one noisy estimate".
+    /// targets, so this stops the pool at the **median** expiry: N clamped
+    /// opinions rather than one noisy estimate.
     ///
-    /// **`N = 2` really does mean unanimity, and that is CORRECT — measured,
-    /// not assumed (9.7.5(f), 2026-07-27).** A strict majority of two is two,
-    /// so a 2-thread pool waits for the *later* thread. That looks like the
-    /// wrong tail of the distribution, and 9.7.5(f) changed it to stop on the
-    /// first vote. **The gate rejected that at −15.85 ± 6.12 Elo** (nElo
-    /// −24.44, LOS 0.00%, 5,222 games at Threads=2), so the change was
-    /// reverted and this is now a measured invariant rather than a default.
+    /// **`N = 2` means unanimity, and that is measured.** A strict majority of
+    /// two is two, so a 2-thread pool waits for the *later* thread. Stopping on
+    /// the first vote instead measured **−15.85 ± 6.12 Elo** (5,222 games at
+    /// Threads=2).
     ///
-    /// Why the "fix" was wrong: stopping on the first vote takes `min` of the
+    /// Why: stopping on the first vote takes `min` of the
     /// two expiry times, and the minimum of two draws is a **downward-biased**
     /// estimator — it is the opposite wrong tail, not a correction. Two
     /// opinions have no median, and the honest summary of two numbers is
@@ -200,7 +197,7 @@ impl SharedContext {
 
     /// Register one thread's "I would stop now" vote; returns true once
     /// enough of the pool agrees, at which point the caller stops the whole
-    /// search (8.13; threshold refined by 9.7.5(f)).
+    /// search.
     pub(super) fn vote_to_stop(&self) -> bool {
         let votes = self.stop_votes.fetch_add(1, Ordering::Relaxed) + 1;
         votes >= Self::votes_needed(self.thread_count)
@@ -233,15 +230,14 @@ mod tests {
     }
 
     /// The threshold is a strict majority at EVERY pool size, including the
-    /// two-thread case where that means unanimity. 9.7.5(f) tried exempting
-    /// N=2 and lost its gate by −15.85 ± 6.12, so this is a MEASURED
-    /// invariant — see [`SharedContext::votes_needed`].
+    /// two-thread case where that means unanimity. Exempting N=2 measured
+    /// −15.85 ± 6.12 Elo — see [`SharedContext::votes_needed`].
     #[test]
     fn stop_vote_threshold_is_a_strict_majority_at_every_pool_size() {
         assert_eq!(
             SharedContext::votes_needed(2),
             2,
-            "N=2 needs BOTH votes: exempting it measured -15.85 Elo (9.7.5(f))"
+            "N=2 needs BOTH votes: exempting it measured -15.85 Elo"
         );
         for n in [1usize, 2, 3, 4, 5, 6, 8, 16] {
             assert_eq!(
@@ -306,7 +302,7 @@ mod tests {
         assert_eq!(state.pool_best_exact(), Some((9, 120)));
     }
 
-    /// 9.7.5(g): the extremes the `expect`s in `unpack_root_score` rely on.
+    /// The extremes the `expect`s in `unpack_root_score` rely on.
     /// `i32::MIN`/`i32::MAX` sit exactly at the ends of the biased score field
     /// and the depth mask is 24 bits, so if either invariant is ever broken by
     /// a repacking these round-trips fail here rather than silently degrading a

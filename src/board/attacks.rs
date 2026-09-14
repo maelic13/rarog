@@ -93,7 +93,7 @@ impl AttackTables {
 
     #[inline(always)]
     pub fn bishop(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        // 9.0: safe — `Square::index()` is masked to 0..=63, so the bounds
+        // Safe — `Square::index()` is masked to 0..=63, so the bounds
         // check on this `[_; 64]` elides.
         let e = &self.bishop[sq.index()];
         #[cfg(all(rarog_pext, target_arch = "x86_64"))]
@@ -102,7 +102,7 @@ impl AttackTables {
             // SAFETY: `pext_index` yields < 2^popcount(e.mask) by construction
             // and init fills exactly that many entries from `e.offset`, so
             // `idx` is always in bounds.
-            // 9.0 KEEP-UNSAFE: safe indexing measured −0.5% NPS here (pext) and
+            // KEEP-UNSAFE: safe indexing measured −0.5% NPS here (pext) and
             // −1.5% on the magic path — the index is occupancy-derived, so the
             // bounds check cannot elide, in the hottest load in the engine.
             return unsafe { *self.bishop_table.get_unchecked(idx) };
@@ -114,7 +114,7 @@ impl AttackTables {
             // SAFETY: `idx` is in bounds — the magic index is masked to the
             // per-square table width by `e.shift`, and init fills exactly
             // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
-            // 9.0 KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
+            // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
             // (the index is occupancy-derived, so the check cannot elide).
             unsafe { *self.bishop_table.get_unchecked(idx) }
         }
@@ -122,7 +122,7 @@ impl AttackTables {
 
     #[inline(always)]
     pub fn rook(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        // 9.0: safe — see `bishop()`.
+        // Safe — see `bishop()`.
         let e = &self.rook[sq.index()];
         #[cfg(all(rarog_pext, target_arch = "x86_64"))]
         {
@@ -138,7 +138,7 @@ impl AttackTables {
             // SAFETY: `idx` is in bounds — the magic index is masked to the
             // per-square table width by `e.shift`, and init fills exactly
             // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
-            // 9.0 KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
+            // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
             // (the index is occupancy-derived, so the check cannot elide).
             unsafe { *self.rook_table.get_unchecked(idx) }
         }
@@ -476,7 +476,7 @@ fn find_magic(
         }
     }
 
-    // 10.3(9): try the baked magic for this square first. It is exactly what
+    // Try the baked magic for this square first. It is exactly what
     // this search produces — the RNG is seeded to a constant and is
     // deterministic — so the fast path is the overwhelming case and the search
     // below is a fallback that never runs in a stock build. Keeping the
@@ -552,7 +552,7 @@ impl Rng {
     }
 }
 
-// 10.3(9): magics baked at build time. The runtime search that produced them
+// Magics baked at build time. The runtime search that produced them
 // is deterministic (fixed RNG seed), so these ARE what `find_magic` computes --
 // baking them removes the ~170 ms magic search from startup on the generic /
 // AVX2 build without changing a single table entry. `find_magic` verifies each
@@ -700,7 +700,7 @@ const ROOK_MAGICS: [u64; 64] = [
 mod magic_tests {
     use super::*;
 
-    /// 10.3(9): every square must be served by its BAKED magic, i.e. the
+    /// Every square must be served by its BAKED magic, i.e. the
     /// `find_magic` fallback never ran. If this fails the engine is still
     /// correct (the fallback searched a fresh magic) but startup silently
     /// regressed by ~170 ms, which is exactly what baking was meant to remove.

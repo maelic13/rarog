@@ -59,26 +59,14 @@ impl<T> IndexMut<usize> for PlyArray<T> {
     }
 }
 
-/// 4.5.1 PER-PLY SEARCH CONTEXT.
+/// Per-ply search context: one record per ply.
 ///
-/// Replaces three parallel `[_; MAX_PLY]` arrays with one record per ply.
-///
-/// The move and the piece that made it were never independent: every
-/// continuation-history lookup read both at the same ply, so the split cost
-/// two cache lines to answer one question. The static eval joins them because
-/// it is written at the same node and read at `ply - 2` by the improving test.
-///
-/// That locality argument did NOT pay, and the record should say so: a pooled
-/// three-build-per-arm PGO A/B measured **+0.11%, CI −0.14%..+0.48%** — a null
-/// inside this machine's ±0.5% floor (RAR-P17). The justification for this
-/// change is that it is the substrate 4.5.2–4.5.4 consume, not that it is
-/// faster. It is not faster.
-///
-/// This is a REPRESENTATION change and nothing else. PLAN 4.5.1 also lists
-/// TT/PV evidence, previous reduction, statistical score, cutoff count,
-/// previous-PV following and continuation keys — none are added here, because
-/// nothing consumes them yet and rule 2 forbids landing speculative state.
-/// They arrive with 4.5.2–4.5.4, which is where their consumers are.
+/// The move and the piece that made it are read together by every
+/// continuation-history lookup, and the static eval is written at the same
+/// node and read at `ply - 2` by the improving test. The record is a
+/// representation, not a speed choice: against parallel arrays it measured
+/// **+0.11%, CI −0.14%..+0.48%**, a null inside the ±0.5% floor. A field joins
+/// it only with a consumer.
 #[derive(Copy, Clone)]
 pub(super) struct StackEntry {
     /// The move made AT this ply. `Move::NULL` when the ply holds no move.
@@ -87,16 +75,13 @@ pub(super) struct StackEntry {
     pub(super) piece: Piece,
     /// Static eval of the position at this ply, or `VALUE_NONE` in check.
     pub(super) static_eval: i32,
-    /// 4.5.3 CONTINUATION KEY: `piece_to_index(piece, mv.to)`, derived once
-    /// when the move is pushed. Meaningless when `mv` is null; every consumer
+    /// Continuation key: `piece_to_index(piece, mv.to)`, derived once when
+    /// the move is pushed. Meaningless when `mv` is null; every consumer
     /// checks that first.
     ///
-    /// This exists to make a class of bug unrepresentable, not to save the
-    /// multiply. `mv` and `piece` used to be written by hand at four sites and
-    /// ProbCut wrote only `mv`, so continuation history inside a ProbCut child
-    /// search was indexed by the ProbCut move's destination paired with a piece
-    /// left over from a sibling subtree. Deriving the key at push time means
-    /// the three can no longer disagree.
+    /// Deriving the key at push time keeps `mv`, `piece` and the key from
+    /// disagreeing: a push that wrote only `mv` would index continuation
+    /// history with a piece left over from a sibling subtree.
     pub(super) cont_key: usize,
 }
 

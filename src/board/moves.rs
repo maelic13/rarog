@@ -11,7 +11,7 @@ use super::square::Square;
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Debug)]
 pub struct Move(pub u16);
 
-// 9.0 KEEP-UNSAFE (measured): a plain `[Move; 256]` with `Move::NULL` init
+// KEEP-UNSAFE (measured): a plain `[Move; 256]` with `Move::NULL` init
 // (and the analogous ScoredMove/BadCapture lists) was tried on 2026-07-19 and
 // cost −10% NPS on both the pext and magic builds — the per-node
 // initialization of ~5 KB of list memory is exactly what the MaybeUninit
@@ -43,7 +43,7 @@ impl MoveList {
     ///
     /// Only `len` moves; the `MaybeUninit` prefix contract is preserved
     /// because nothing below the new `len` is ever read. This is what makes a
-    /// caller-owned list reusable across generations at no cost (RAR-M44).
+    /// caller-owned list reusable across generations at no cost.
     #[inline(always)]
     pub fn clear(&mut self) {
         self.len = 0;

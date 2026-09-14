@@ -1,13 +1,12 @@
-//! Checked numeric conversions (Phase 9.0b).
+//! Checked numeric conversions.
 //!
 //! Rarog is 64-bit-only (compile-guarded in `lib.rs`/`main.rs`), and its
 //! quantities are domain-bounded: plies ≤ 128, depths ≤ 100, move counts
-//! ≤ 256, piece counts ≤ 10, squares < 64. The ~240 bare `as` casts this
-//! module replaces were each individually harmless, but nothing *checked*
-//! that, and cast #241 would have been on its own. Every narrowing in the
-//! crate now goes through one of these functions: the conversion is named,
-//! `debug_assert!`ed (exercised — the debug suite runs since 9.0a revived
-//! it), and the only `as` casts live in this one annotated block.
+//! ≤ 256, piece counts ≤ 10, squares < 64. A bare `as` cast would be harmless
+//! for each of them, but nothing would check that. Every narrowing in the
+//! crate goes through one of these functions instead: the conversion is named,
+//! `debug_assert!`ed (the debug suite exercises it), and the only `as` casts
+//! live in this one annotated block.
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
@@ -116,9 +115,8 @@ impl SmallInt for u8 {
 
 /// Narrows an `i32` to `i16`, saturating at the bounds.
 ///
-/// 9.0b: replaces the `v.clamp(i16::MIN as i32, i16::MAX as i32) as i16`
-/// idiom that appeared verbatim in four hot places (SEE scoring, history
-/// updates, TT score and static-eval packing). Expressed with `try_from` so
+/// Used in hot places (SEE scoring, history updates, TT score and static-eval
+/// packing). Expressed with `try_from` so
 /// there is **no cast at all** — the saturation is explicit and the compiler
 /// Clamp an `i64` into `i32` range.
 ///
@@ -141,7 +139,7 @@ pub(crate) fn saturating_i16(value: i32) -> i16 {
 
 /// Narrows an `i32` to `i8`, saturating at `lo`/`i8::MAX`.
 ///
-/// 9.0b: used for TT depth packing, where `-1` is the meaningful floor.
+/// Used for TT depth packing, where `-1` is the meaningful floor.
 #[inline(always)]
 pub(crate) fn saturating_i8(value: i32, lo: i8) -> i8 {
     i8::try_from(value)

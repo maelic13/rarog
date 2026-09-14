@@ -53,7 +53,7 @@ pub(super) fn compute_runtime_limits(
     game_ply: u32,
     max_depth: usize,
 ) -> RuntimeLimits {
-    // 9.0: `None` = no depth limit (was the f64::INFINITY sentinel).
+    // `None` = no depth limit.
     let depth = options
         .depth
         .map_or(max_depth, |d| (d as usize).clamp(1, max_depth));
@@ -64,15 +64,12 @@ pub(super) fn compute_runtime_limits(
 
     if options.move_time > 0 {
         // Fixed movetime: use the full budget as the hard limit (the
-        // SF/Reckless default). 2.9.1 originally reserved
-        // `min(MoveOverhead, T/10)` here, but that was a misattribution: the
-        // 28 time forfeits that motivated 2.9.1 were all in the *clock* path
-        // (tc=3+0.03 → wtime/btime/winc/binc), fixed by the `2*overhead`
-        // reserve in the else-branch below. Movetime mode never forfeited
-        // (`t=0` over a full 100 ms/move gauntlet), yet the reserve cost ~10 %
-        // of thinking time: at 100 ms/move Rarog measured `tpm=92.9` (90 ms
-        // budget + ~3 ms GUI latency) while Stockfish used `tpm=110.2` with
-        // `t=0` — proving the harness tolerates ~10 % past the nominal time.
+        // SF/Reckless default). Time forfeits come from the *clock* path,
+        // which the `2*overhead` reserve in the else-branch covers; movetime
+        // never forfeited (`t=0` over a full 100 ms/move gauntlet), and a
+        // reserve here cost ~10 % of thinking time. Stockfish measured
+        // `tpm=110.2` with `t=0` at 100 ms/move, so the harness tolerates ~10 %
+        // past the nominal time.
         // check_stop (every 2048 nodes) aborts within ~1 ms of `maximum_ms`
         // and the pre/post latency is only ~3 ms, so the full budget lands
         // ~3 % over nominal — comfortably inside that tolerance.
@@ -121,25 +118,22 @@ pub(super) fn compute_runtime_limits(
             maximum_ms =
                 ((0.8097 * time as f64 - overhead).min(max_scale * optimum_ms)).max(optimum_ms);
 
-            // Time-safety reserve (Phase 2.9.1). The SF maximum above leaves
+            // Time-safety reserve. The SF maximum above leaves
             // only ~19% of the clock plus one Move Overhead unused; at low
             // remaining time that slack is just a few ms. The clock is polled
             // (and the iteration aborted) within ~1 ms of `maximum_ms`, but the
             // wall time the GUI actually charges also includes the latency
             // *before* our clock starts (`go` received → `self.start`) and the
             // latency for `bestmove` to reach the GUI. Under a loaded gauntlet
-            // those spike well past the thin low-time slack, which is why the
-            // 2.2 SF-style TM rewrite introduced time forfeits (Rarog 2.0.2's
-            // old, more conservative TM forfeited 0) that the SF formula's thin
-            // low-time slack does not cover.
+            // those spike well past the thin low-time slack and forfeit games.
             //
             // Guarantee an absolute reserve of `2*overhead` on top of the
             // percentage reserve: never schedule a hard limit past
             // `time - 2*overhead`. This only binds when `time < ~52*overhead`
             // (≈520 ms at the default 10 ms overhead) — i.e. only in genuine
             // time scrambles, where playing a hair faster costs ~no Elo — and
-            // leaves normal-time allocation (the +81 Elo from 2.2) untouched.
-            // 8.13(e): the reserve must also cover SCHEDULER STARVATION when
+            // leaves normal-time allocation untouched.
+            // The reserve must also cover SCHEDULER STARVATION when
             // running multi-threaded. Measured in real Threads=4 games
             // (latency sidecar over an instrumented null match): the search's
             // own 2048-node time poll, normally ≤1 ms apart, stretches to
@@ -148,8 +142,7 @@ pub(super) fn compute_runtime_limits(
             // reserve that is a time forfeit whenever the clock is low —
             // ~1.3% of Threads=4 games, vs 0/3,460 at Threads=1. Reserve an
             // extra 30 ms in multi-threaded searches only: Threads=1 keeps
-            // the exact tuned behaviour (the +81 Elo TM and its 2.9.1
-            // reserve), and the extra only binds below ~250 ms of clock,
+            // the tuned behaviour, and the extra only binds below ~250 ms of clock,
             // where SMP strength is irrelevant next to not forfeiting.
             let smp_reserve = if engine_options.threads > 1 {
                 30.0
@@ -192,10 +185,10 @@ fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
 
 /// Baseline effort factor: the shipped clock's own confidence proxy.
 ///
-/// ⚠ Measured near-CONSTANT (RAR-S47). The band starts at
+/// ⚠ Measured near-CONSTANT. The band starts at
 /// [`EFFORT_TERM_FLOOR`], and effort averages 37.9% of the iteration, so this
 /// reads its `TmEffortHigh` endpoint on 473 of 520 bench iterations (91.0%):
-/// a function on 9% of iterations and a constant on the rest. D.1 owns it.
+/// a function on 9% of iterations and a constant on the rest.
 pub(super) fn tm_effort_factor(params: &SearchParams, effort: f64) -> f64 {
     tm_interpolate(
         f64::from(params.tm_effort_high) / 10_000.0,
@@ -227,8 +220,8 @@ mod tests {
     #[test]
     fn movetime_uses_full_budget_as_hard_limit() {
         // Fixed movetime uses the entire budget (SF/Reckless default); the
-        // MoveOverhead is NOT subtracted in movetime mode (the 2.9.1 forfeit
-        // fix lives in the clock path, not here).
+        // MoveOverhead is NOT subtracted in movetime mode (the forfeit
+        // reserve lives in the clock path, not here).
         let engine = EngineOptions {
             move_overhead: 25.0,
             ..EngineOptions::default()
@@ -405,7 +398,7 @@ mod tests {
         let shallow = limits(
             0,
             &SearchLimits {
-                // 9.0: a fractional depth is now unrepresentable (Option<u32>);
+                // A fractional depth is now unrepresentable (Option<u32>);
                 // Some(0) exercises the same lower clamp this test was written for.
                 depth: Some(0),
                 ..SearchLimits::default()

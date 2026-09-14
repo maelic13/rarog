@@ -12,9 +12,7 @@ use super::{JITTER_SEED, MAX_PLY, RootMove};
 
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,
-/// the root-move records and the node counters. B.1 moved these fields out of
-/// `Searcher` without changing their ownership: every table stays per thread
-/// (sharing correction tables is a D.2 decision).
+/// the root-move records and the node counters. Every table is per thread.
 pub(super) struct ThreadData {
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
@@ -25,38 +23,31 @@ pub(super) struct ThreadData {
     /// `StackEntry`.
     pub(super) stack: PlyArray<StackEntry>,
     pub(super) killers: PlyArray<[Move; 2]>,
-    /// Compact root-order/index backbone. Keep this separate from the larger
-    /// records below so existing move-membership and SMP hot reads retain
-    /// their pre-10.1 cache layout.
+    /// Compact root-order/index backbone, kept separate from the larger
+    /// records below so move-membership and SMP hot reads stay cache-compact.
     pub(super) root_moves: Vec<Move>,
     pub(super) root_move_records: Vec<RootMove>,
     pub(super) main_history: Box<[[[i16; 64]; 64]; 2]>,
     pub(super) cap_history: Box<[[[i16; 6]; 64]; 6]>,
     pub(super) low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
-    /// 10.3(8a): boxed const-size, NOT `Vec<i16>` — see [`ThreadData::cont_history`].
+    /// Boxed const-size, NOT `Vec<i16>` — see [`ThreadData::cont_history`].
     pub(super) pawn_history: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
     /// Continuation history, one table per look-back distance. Indexed by
     /// [`CONT_PLY_BACK`] position, NOT by ply distance — see that table.
     ///
-    /// KEEP-PERF (10.3, 2026-07-22): `Box<[[i16; CONT_SIZE]; N]>`, NOT
-    /// `[Vec<i16>; N]`. The Vec form was bisected to a −2.1% NPS regression
-    /// (commit 886916b, isolated by a 7-waypoint compiler-fixed bisect): four
-    /// separate Vec headers with *runtime* lengths defeat bounds-check
-    /// elision in the hottest loops in the engine. With a boxed array the
-    /// inner length is a compile-time constant, so `cont_index`'s
-    /// `.min(CONT_SIZE − 1)` lets LLVM prove both index bounds and drop the
-    /// checks, and there is one base pointer instead of four.
+    /// Boxed fixed-size arrays, not `Vec`s: the `Vec` form cost −2.1% NPS
+    /// because runtime lengths defeat bounds-check elision in the hot loops.
     pub(super) cont_history: Box<[[i16; CONT_SIZE]; CONT_TABLES]>,
     pub(super) correction_history: Box<[[i16; CORR_SIZE]; 2]>,
     pub(super) minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
     pub(super) non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
-    /// 10.3(8a): boxed const-size, see [`ThreadData::pawn_history`].
+    /// Boxed const-size, see [`ThreadData::pawn_history`].
     pub(super) continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
     pub(super) countermove: Box<[[Move; 64]; 64]>,
     pub(super) root_move_offset: usize,
-    /// 8.13: 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
+    /// 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
     pub(super) thread_id: usize,
-    /// 9.7.5(k) xorshift64 state for the per-thread LMR jitter. Re-seeded from
+    /// Xorshift64 state for the per-thread LMR jitter. Re-seeded from
     /// `thread_id` on every `reset_search_state`; never zero.
     pub(super) jitter_state: u64,
     pub(super) root_iteration_nodes: u64,

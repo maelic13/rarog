@@ -39,7 +39,7 @@ const MAX_DEPTH: usize = 100;
 const MAX_PLY: usize = 128;
 const MAX_QPLY: usize = 16;
 const MIN_PARALLEL_DEPTH: usize = 4;
-/// 9.7.5(k) jitter-PRNG seeding. Two odd 64-bit constants (SplitMix64's
+/// Jitter-PRNG seeding. Two odd 64-bit constants (SplitMix64's
 /// increment and Xorshift*'s multiplier); the `| 1` at the use site guarantees
 /// the state is never zero, xorshift's fixed point.
 const JITTER_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
@@ -91,10 +91,6 @@ pub struct SearchResult {
 }
 
 /// Persistent state for one legal root move across iterative-deepening passes.
-///
-/// Phase 10.1 deliberately only PRODUCES this information. Aspiration, time
-/// management, interrupted-iteration fallback, MultiPV, and SMP consumers land
-/// later, after the bookkeeping substrate is proven bench-identical.
 #[derive(Debug, Clone)]
 struct RootMove {
     mv: Move,
@@ -147,7 +143,7 @@ impl RootMove {
     /// Root-only bookkeeping must not be inlined into the node kernel. Besides
     /// executing only a few hundred times per search, keeping the floating
     /// point/statistics block cold prevents it from perturbing `negamax`'s hot
-    /// code layout (the first 10.1 implementation measured a real NPS loss).
+    /// code layout (inlining it measured a real NPS loss).
     #[cold]
     #[inline(never)]
     fn record_search(
@@ -332,15 +328,7 @@ impl Searcher {
         emit_info: bool,
         mut poll: impl FnMut() -> SearchEvent,
     ) -> SearchResult {
-        self.search_impl::<true, _>(
-            root,
-            // 9.0a: both by reference — this used to clone a SearchLimits AND
-            // a whole EngineOptions (SearchParams included) per search entry.
-            &options.limits,
-            &options.engine,
-            emit_info,
-            &mut poll,
-        )
+        self.search_impl::<true, _>(root, &options.limits, &options.engine, emit_info, &mut poll)
     }
 
     fn search_impl<const ALLOW_PARALLEL: bool, P: FnMut() -> SearchEvent + ?Sized>(
@@ -452,7 +440,7 @@ impl Searcher {
 
         // The clock starts when `go` was parsed, as the harness measures it;
         // configuration invalidation and thread hand-off are on the clock
-        // because they are on the harness's clock (A.3.3, RAR-R11).
+        // because they are on the harness's clock.
         self.start = limits.issued.unwrap_or_else(Instant::now);
         self.td.nodes = 0;
         self.td.tb_hits = 0;
@@ -486,7 +474,7 @@ impl Searcher {
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);
         self.td.stack = PlyArray::new(StackEntry::default());
-        // 9.7.5(k): re-seed the LMR-jitter PRNG per search, per thread, so each
+        // Re-seed the LMR-jitter PRNG per search, per thread, so each
         // thread walks a different sequence and a given thread's sequence does
         // not depend on how the previous search happened to end. `thread_id` is
         // bounded by MAX_THREADS so the conversion always succeeds; a fallback
@@ -577,12 +565,11 @@ impl Searcher {
         emit_info: bool,
         poll: &mut P,
     ) -> SearchResult {
-        // 9.7.5(b): the SERIAL path owns the diag lifecycle here. In a parallel
+        // The SERIAL path owns the diag lifecycle here. In a parallel
         // search `search_parallel` resets before spawning and dumps after
         // joining — helpers reach this function too, so a reset/dump left
-        // unconditional ran once PER THREAD, wiping earlier threads' counts on
-        // the way in and emitting N competing dumps on the way out. Every
-        // multi-thread diag figure produced before this fix was junk.
+        // unconditional would run once PER THREAD, wiping earlier threads'
+        // counts on the way in and emitting N competing dumps on the way out.
         if self.shared_state.is_none() {
             crate::diag::reset();
         }
@@ -599,7 +586,7 @@ impl Searcher {
         let max_depth = self.limits.depth.min(MAX_DEPTH - 1);
         let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
         let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
-        // 8.13: this thread's soft-stop vote is cast at most ONCE per search.
+        // This thread's soft-stop vote is cast at most ONCE per search.
         // Without the latch a thread that keeps iterating past its own soft
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
@@ -613,7 +600,7 @@ impl Searcher {
             self.td.root_iteration_nodes = self.td.nodes;
             self.td.root_best_nodes = 0;
             self.td.root_best_effort = 0.0;
-            // 8.13: the aspiration window centers on this thread's own last
+            // The aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
             // centers on the pool's estimate (fewer fail-high/low re-searches
@@ -640,12 +627,10 @@ impl Searcher {
             } else {
                 INF_SCORE
             };
-            // 10.2(a) TERMINATION BY CONSTRUCTION: once a side has failed
+            // TERMINATION BY CONSTRUCTION: once a side has failed
             // `asp_max_fails` times it is opened to ±INF and cannot fail again,
             // so this loop runs at most `2 * asp_max_fails` times whatever the
-            // scores do. That is the property the old 7.0b guard bought with
-            // mate-magnitude and saturation special cases; the counter makes it
-            // structural instead of case-based.
+            // scores do.
             let mut fail_low_count = 0i32;
             let mut fail_high_count = 0i32;
 
@@ -664,7 +649,7 @@ impl Searcher {
                 if self.stopped || self.quit {
                     break;
                 }
-                // Termination guard (Phase 7.0b). The widened window re-centers
+                // Termination guard. The widened window re-centers
                 // on the previous iteration's best_score; with the delta
                 // clamped to INF_SCORE that caps the reachable bound at
                 // best_score ± INF_SCORE, which can never contain a mate score
@@ -673,11 +658,11 @@ impl Searcher {
                 // terminates (WAC.005 hung every fixed-depth search ≥ 4; games
                 // masked it because the clock aborts the iteration). Force the
                 // failing side fully open once a mate-magnitude score appears
-                // or the delta saturates; every other re-search keeps the old
-                // best_score-centered dynamics exactly — the SF-style
-                // "re-center on the failing score" variant was SPRT-rejected
-                // (H0, −4.52 ± 4.80): AspirationDelta and the pruning group
-                // were tuned around the old window dynamics (lesson 13).
+                // or the delta saturates; every other re-search keeps the
+                // best_score-centered dynamics — the SF-style "re-center on the
+                // failing score" variant measured −4.52 ± 4.80 Elo, because
+                // AspirationDelta and the pruning group were tuned around these
+                // dynamics.
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     fail_low_count += 1;
@@ -767,9 +752,8 @@ impl Searcher {
 
             // Update best-move instability and score EWMA for the soft-stop
             // formula. **This thread's own** best-move flips, deliberately:
-            // 9.7.5(j) replaced this with the POOL's deepest-Exact move and
-            // LOST at −5.54 ± 8.15 over 2,760 games at 4T. See PLAN 9.7.5(j)
-            // for why the pool view is the noisier signal, not the better one.
+            // the POOL's deepest-Exact move measured −5.54 ± 8.15 Elo over
+            // 2,760 games at 4T, the noisier signal rather than the better one.
             tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
                 tot_best_move_changes += 1.0;
@@ -777,16 +761,13 @@ impl Searcher {
             }
             crate::diag_count!(root_iterations);
 
-            // Phase 7.5 fix: `falling_eval` must compare this iteration's score
-            // against the average of the *prior* iterations. At this point
-            // `prev_avg_score` is still that prior average, so capture it here as
-            // the baseline BEFORE folding the current score in below. The old
-            // code read `prev_avg_score` only after the update, which made the
-            // difference `(2/3)·(prior_avg − best_score)` — attenuating the
-            // "score is falling → spend more time" signal to two-thirds and
-            // contradicting the "feeds fallingEval next iteration" intent. On
-            // the first iteration there is no prior average, so the baseline is
-            // the current score → a neutral (zero) falling signal.
+            // `falling_eval` compares this iteration's score against the
+            // average of the *prior* iterations. At this point `prev_avg_score`
+            // is still that prior average, so capture it here as the baseline
+            // BEFORE folding the current score in below; reading it after the
+            // update would attenuate the signal to two-thirds. On the first
+            // iteration there is no prior average, so the baseline is the
+            // current score → a neutral (zero) falling signal.
             let falling_baseline = if completed_depth <= 1 {
                 best_score as f64
             } else {
@@ -807,8 +788,8 @@ impl Searcher {
                 break;
             }
             if !self.limits.movetime_mode {
-                // TM dynamic multipliers (Phase 5.1 TM group). Stored ×10000 in
-                // SearchParams; `/ 10000.0` reconstructs the 2.2 SF seeds bit-exactly.
+                // TM dynamic multipliers, stored ×10000 in SearchParams;
+                // `/ 10000.0` reconstructs the Stockfish seeds bit-exactly.
                 let opt_scale = self.params.tm_opt_scale as f64 / 10_000.0;
                 let fall_base = self.params.tm_fall_base as f64 / 10_000.0;
                 let fall_slope = self.params.tm_fall_slope as f64 / 10_000.0;
@@ -832,7 +813,7 @@ impl Searcher {
                         self.stop_on_ponderhit = true;
                     }
                 } else if elapsed_ms >= soft_target {
-                    // 8.13: in a parallel search the soft stop is a SYMMETRIC
+                    // In a parallel search the soft stop is a SYMMETRIC
                     // pool decision. A thread whose own soft target expires
                     // casts one vote (latched — re-voting each iteration would
                     // let a single thread reach the majority alone) and keeps
@@ -843,9 +824,8 @@ impl Searcher {
                     // opinions instead of 1. Bounded above by `maximum_ms`
                     // (checked before this block and inside the tree every
                     // poll), which the SMP-aware time reserve keeps
-                    // forfeit-safe; measured 0 forfeits across every 8.13 run.
-                    // Serial searches have no shared state and break at their
-                    // own target exactly as before.
+                    // forfeit-safe (measured 0 forfeits). Serial searches have
+                    // no shared state and break at their own target.
                     if let Some(shared) = &self.shared_state {
                         if !cast_stop_vote {
                             cast_stop_vote = true;
@@ -887,8 +867,8 @@ impl Searcher {
             crate::diag_count!(root_interrupted_fallback);
         }
 
-        // Phase 4.1: dump per-search counters (no-op without `--features diag`).
-        // 9.7.5(b): serial path only — see the reset note above. The parallel
+        // Dump per-search counters (no-op without `--features diag`).
+        // Serial path only — see the reset note above. The parallel
         // dump lives in `search_parallel`, after the helpers are joined.
         if self.shared_state.is_none() {
             crate::diag::dump();
@@ -1133,7 +1113,7 @@ mod tests {
     /// The evaluator mirrors `MAX_PLY` to bound its mop-up drive below the mate
     /// band without taking a dependency on the search. This is the assertion
     /// that keeps the mirror honest, and it lives here because this module is
-    /// the one that legitimately sees both constants (PLAN 4.10.11).
+    /// the one that legitimately sees both constants.
     #[test]
     fn mopup_mirror_matches_the_real_ply_horizon() {
         assert_eq!(
@@ -1193,7 +1173,7 @@ mod tests {
         );
     }
 
-    /// A.3.3 (RAR-R11): the budget is measured from the instant `go` was
+    /// The budget is measured from the instant `go` was
     /// parsed, not from the engine thread's start. A `go movetime 200`
     /// parsed 300 ms ago has already spent its budget and must return at
     /// once with a legal move from the first completed iteration.
@@ -1425,15 +1405,13 @@ mod tests {
     /// The single-legal-move shortcut must save clock time WITHOUT truncating
     /// an analysis search.
     ///
-    /// Regression for 2026-07-23: on `1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b`
-    /// the queen checks along the 8th rank and only `Rxf8` is legal (perft 1 =
-    /// 1). `search_root` breaks after depth 2 on a single root move — correct
-    /// under a clock, since that move gets played regardless of score, but it
-    /// also fired for `go infinite`/`go ponder`, freezing a GUI's analysis at
-    /// depth 2 on a meaningless score. Both halves are asserted: the shortcut
-    /// still fires for a move request, and no longer fires in analysis mode.
-    /// Verified to FAIL against the pre-fix condition.
-    /// The 8.13 SMP machinery (pool root scores, stop voting, reduction
+    /// On `1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b` only `Rxf8` is legal.
+    /// `search_root` breaks after depth 2 on a single root move — correct under
+    /// a clock, since that move gets played regardless of score, but under
+    /// `go infinite`/`go ponder` it would freeze a GUI's analysis at depth 2 on
+    /// a meaningless score. Both halves are asserted: the shortcut fires for a
+    /// move request and not in analysis mode.
+    /// The SMP machinery (pool root scores, stop voting, reduction
     /// jitter, pool-seeded aspiration) must be INERT at Threads=1.
     ///
     /// Every SMP feature gates on `shared_state`, which only a parallel

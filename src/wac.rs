@@ -4,10 +4,9 @@
 //! best moves in SAN). The `wac [depth]` engine command searches each position
 //! to a fixed depth and reports how many found an accepted best move, plus the
 //! ids of the failures. The solved count is a *tactical-regression telltale*
-//! for search-selectivity work (Phase 8.2 removes categorical check/PV
-//! protections; a sudden drop here localizes a tactical regression long before
-//! an SPRT can) — it is NOT a strength metric and never gates a change by
-//! itself (SPRT remains the only verdict).
+//! for search-selectivity work (a sudden drop here localizes a tactical
+//! regression long before an SPRT can) — it is NOT a strength metric and never
+//! gates a change by itself (SPRT remains the only verdict).
 //!
 //! Like `bench`, runs are deterministic: state is reset per position, so the
 //! solved set is reproducible at a given depth and safe to compare across
@@ -143,8 +142,7 @@ fn san_matches(board: &Board, mv: Move, san: &str) -> bool {
     // (for pawns, the file of a capturing pawn, e.g. "exd5").
     let (from_file, from_rank) = {
         // `square_name` always yields exactly two ASCII chars (file, rank), so
-        // this cannot fail; 9.0a names the invariant instead of two bare
-        // `unwrap()`s — the only ones left in production code.
+        // this cannot fail; the `expect`s name that invariant.
         let name = square_name(mv.from_sq());
         let mut it = name.chars();
         let file = it.next().expect("square_name yields a file char");

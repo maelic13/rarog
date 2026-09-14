@@ -38,8 +38,8 @@ pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
 ///
 /// The out-parameter form is the primary one. Returning a `MoveList` by value
 /// costs a 520-byte `memcpy` on the normal return path of the fat-LTO build:
-/// RVO does not apply there, and RAR-M44 measured the copy at +11.2% on legal
-/// generation and +40.5% on captures once removed. The list is cleared first,
+/// RVO does not apply there, and removing the copy measured +11.2% on legal
+/// generation and +40.5% on captures. The list is cleared first,
 /// so a caller may reuse one list across generations.
 pub(super) fn generate_legal_into(board: &Board, moves: &mut MoveList) {
     moves.clear();
@@ -64,7 +64,7 @@ pub(super) fn generate_quiets(board: &Board) -> MoveList {
 }
 
 /// [`generate_quiets`] into a caller-owned list, reusing a pinned set computed
-/// earlier at the same node (10.3 speed pass — see [`gen_moves_pinned`]).
+/// earlier at the same node (see [`gen_moves_pinned`]).
 pub(super) fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves: &mut MoveList) {
     moves.clear();
     gen_moves_pinned::<false, true, _>(board, pinned, moves);
@@ -77,7 +77,7 @@ pub(super) fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves
 /// Captures-only terminal callers (qsearch, ProbCut) keep the
 /// [`has_pseudo_capture`] pre-scan: nothing else runs at this node, so a
 /// negative answer really does save the pin computation and the whole
-/// generation pass. 10.3(7) measured the pre-scan firing on **19.1%** of these
+/// generation pass. The pre-scan measured firing on **19.1%** of these
 /// calls, and the 80.9% that do find a capture exit the scan early (king/pawn
 /// tests come first), so the pre-scan is cheap when it fails and pays a full
 /// generation when it succeeds.
@@ -107,10 +107,10 @@ pub(super) fn generate_captures(board: &mut Board) -> MoveList {
 
 /// [`generate_captures`], also handing back the pinned set it computed so a
 /// staged move picker can feed it to [`generate_quiets_pinned`] later at the
-/// same node (10.3 speed pass).
+/// same node.
 ///
 /// Deliberately does NOT run the [`has_pseudo_capture`] pre-scan, unlike its
-/// captures-only sibling (10.3(7)). A staged node usually goes on to generate
+/// captures-only sibling. A staged node usually goes on to generate
 /// quiets, and the pre-scan's saving is then illusory: `compute_pinned` is four
 /// slider lookups plus a short sniper walk, while a *failing* pre-scan is a
 /// full attack pass over every one of our pieces — and 78.5% of the nodes where
@@ -254,7 +254,7 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
 }
 
 /// [`gen_moves`] for callers that already hold the pinned set for this
-/// position (10.3 speed pass).
+/// position.
 ///
 /// `compute_pinned` is four slider lookups plus a per-sniper `between` scan, and
 /// it was being repeated: `generate_captures` computed it and then handed off

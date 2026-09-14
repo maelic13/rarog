@@ -45,9 +45,6 @@ impl Default for EngineOptions {
     }
 }
 
-// 9.0: derivable now that `depth` is `Option<u32>` — the old
-// `f64::INFINITY` sentinel was the only field whose default differed from
-// `Default::default()`, which is precisely the smell that motivated the change.
 #[derive(Clone, Default)]
 pub struct SearchLimits {
     pub move_time: usize,
@@ -56,10 +53,7 @@ pub struct SearchLimits {
     pub black_time: usize,
     pub black_increment: usize,
     /// Fixed-depth limit from `go depth N` / `go mate N`. `None` = no depth
-    /// limit (the search runs to the internal MAX_DEPTH ceiling). 9.0: was
-    /// `f64` with `f64::INFINITY` as the no-limit sentinel — an integer
-    /// quantity in a float, where the "unlimited" case was a magic value the
-    /// type system could not enforce a check for.
+    /// limit (the search runs to the internal MAX_DEPTH ceiling).
     pub depth: Option<u32>,
     pub movestogo: usize,
     pub nodes: u64,
@@ -68,14 +62,12 @@ pub struct SearchLimits {
     pub search_moves: Vec<Move>,
     /// The instant the `go` command was parsed on the UCI thread.
     ///
-    /// A.3.3 (RAR-R11): the harness charges the clock from the moment it
-    /// writes `go`, so the search budget must start there too. Stockfish
-    /// stamps `limits.startTime` while parsing `go` ("the search starts as
-    /// early as possible") and Reckless builds its `TimeManager` at parse;
-    /// Rarog stamped its clock on the engine thread after the command
-    /// hand-off, so any wake-up or setup latency under a loaded host was
-    /// invisible to its budget and came straight off the harness margin.
-    /// `None` (tests, bench) means the search stamps its own start.
+    /// The harness charges the clock from the moment it writes `go`, so the
+    /// search budget starts there too, as Stockfish's `limits.startTime` and
+    /// Reckless's parse-time `TimeManager` do. Stamping on the engine thread
+    /// instead would take any hand-off latency under a loaded host straight
+    /// off the harness margin. `None` (tests, bench) means the search stamps
+    /// its own start.
     pub(crate) issued: Option<std::time::Instant>,
 }
 
@@ -168,9 +160,8 @@ impl SearchOptions {
         // Tunable search parameters — only exposed when compiled with --features tune.
         // weather-factory sets these via UCI setoption; production builds omit them
         // so they don't pollute the option list shown to GUIs.
-        // 9.0a: generated from the single `search_params!` declaration in
-        // params.rs — the strings can no longer drift from the defaults and
-        // clamps (12 of them had, before this).
+        // Generated from the single `search_params!` declaration in
+        // params.rs, so the strings cannot drift from the defaults and clamps.
         #[cfg(feature = "tune")]
         opts.extend(SearchParams::uci_option_strings());
         opts
@@ -412,7 +403,7 @@ impl SearchOptions {
             },
             // Tunable search parameters — only active when compiled with --features tune.
             _ => {
-                // 9.0a: tunables are matched by the generated
+                // Tunables are matched by the generated
                 // `SearchParams::set_uci_option` (one declaration per param in
                 // params.rs) instead of ~47 hand-written arms.
                 #[cfg(feature = "tune")]

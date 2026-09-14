@@ -1,5 +1,5 @@
 //! KPK (king + pawn vs king) bitbase, generated once via the standard iterative
-//! (retrograde) classification used by Stockfish. Lets the Phase 3.11 endgame
+//! (retrograde) classification used by Stockfish. Lets the endgame
 //! scale-factor framework score KPK draws exactly without tablebases.
 //!
 //! The pawn is always treated as **White's**, advancing toward rank 8. A caller

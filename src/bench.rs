@@ -9,7 +9,7 @@ pub(crate) const DEFAULT_BENCH_DEPTH: u16 = 13;
 // self-play positions sampled across piece counts (30 down to 8) so that no
 // single bushy middlegame dominates the node total — the 16-position suite had
 // one position at ~35% of all nodes, which made the fingerprint lurch ~15% on
-// sub-1-Elo parameter changes (Phase 5.1 finding). See PLAN.md §9.
+// sub-1-Elo parameter changes.
 pub const BENCH_FENS: [&str; 40] = [
     // --- 1-16: original curated suite -----------------------------------------
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",

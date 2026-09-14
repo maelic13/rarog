@@ -38,7 +38,7 @@ impl UciProtocol {
     pub fn uci_loop(&mut self) {
         loop {
             let mut input = String::new();
-            // 9.0a: a read error means stdin is gone (pipe closed / GUI
+            // A read error means stdin is gone (pipe closed / GUI
             // exited) — treated exactly like EOF, which the next branch
             // already handles, rather than panicking.
             let bytes_read = io::stdin().read_line(&mut input).unwrap_or_default();
@@ -54,7 +54,7 @@ impl UciProtocol {
 
     /// Run one command line and shut down, as `rarog bench 13` does.
     ///
-    /// A.4.5. The shutdown deliberately mirrors **stdin EOF** and not the
+    /// The shutdown deliberately mirrors **stdin EOF** and not the
     /// interactive `quit`, and the difference is not cosmetic: `quit` calls
     /// `control.request_quit()` and `push_priority`, which jumps the queue and
     /// cuts short work already dispatched to the engine thread, while EOF
@@ -343,11 +343,10 @@ mod tests {
 
     #[test]
     fn run_once_queues_the_eof_style_quit_not_the_interactive_one() {
-        // A.4.5's load-bearing detail. `quit` from the keyboard uses
-        // `push_priority`, which jumps ahead of a dispatched `bench` and cuts
-        // it short; EOF uses an ordinary push that the bench completes before.
-        // `run_once` must use the latter, or `rarog bench 13` benches nothing -
-        // which is the exact bug this leaf exists to fix.
+        // `quit` from the keyboard uses `push_priority`, which jumps ahead of
+        // a dispatched `bench` and cuts it short; EOF uses an ordinary push
+        // that the bench completes before. `run_once` must use the latter, or
+        // `rarog bench 13` benches nothing.
         let (mut protocol, commands) = protocol_fixture();
         assert_eq!(protocol.run_once("bench 1"), CommandOutcome::Handled);
 
@@ -367,8 +366,8 @@ mod tests {
     #[test]
     fn help_is_recognised_under_every_alias() {
         let (mut protocol, _commands) = protocol_fixture();
-        // `unknown_command` has always told users to "Type help"; before this
-        // existed, doing so answered "Unknown command: 'help'".
+        // `unknown_command` tells users to "Type help", so every alias must be
+        // a command.
         for alias in ["help", "--help", "-h", "license", "--license"] {
             assert_eq!(
                 protocol.handle_command(alias),
