@@ -25,6 +25,9 @@ pub(super) struct ThreadData {
     /// The soft target expired while pondering: stop at `ponderhit`.
     pub(super) stop_on_ponderhit: bool,
     pub(super) sink: Box<dyn InfoSink>,
+    /// Print search decisions at plies one and two; see `trace_decision!`.
+    #[cfg(feature = "diag")]
+    pub(super) trace_decisions: bool,
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
     pub(super) seldepth: usize,
@@ -76,6 +79,8 @@ impl Default for ThreadData {
             ponderhit: false,
             stop_on_ponderhit: false,
             sink: Box::new(SilentSink),
+            #[cfg(feature = "diag")]
+            trace_decisions: false,
             nodes: 0,
             tb_hits: 0,
             seldepth: 0,

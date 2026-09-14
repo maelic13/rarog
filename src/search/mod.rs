@@ -3,6 +3,22 @@
 
 // `clippy::too_many_arguments` is accepted crate-wide for search kernels —
 // see the rationale in Cargo.toml's [lints.clippy] section.
+
+/// Print one search decision with its inputs. In a `diag` build, under
+/// `go searchmoves`, on the main thread and at plies one and two only, every
+/// prune, reduction, extension and proof decision is written to the output
+/// sink as `info string trace ply <n> line <moves> <decision>`. Counters say
+/// how often a decision fires; only a trace says which move it dropped and on
+/// what inputs. Expands to nothing without the feature.
+macro_rules! trace_decision {
+    ($searcher:expr, $ply:expr, $($arg:tt)*) => {
+        #[cfg(feature = "diag")]
+        if $searcher.td.trace_decisions && matches!($ply, 1 | 2) {
+            $searcher.trace_line($ply, format_args!($($arg)*));
+        }
+    };
+}
+
 mod correction;
 mod history;
 mod movepick;
@@ -461,6 +477,10 @@ impl Searcher {
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);
         self.td.stack = PlyArray::new(StackEntry::default());
+        #[cfg(feature = "diag")]
+        {
+            self.td.trace_decisions = self.td.thread_id == 0 && !limits.search_moves.is_empty();
+        }
         // Re-seed the LMR-jitter PRNG per search, per thread, so each
         // thread walks a different sequence and a given thread's sequence does
         // not depend on how the previous search happened to end. `thread_id` is
@@ -1031,6 +1051,20 @@ impl Searcher {
         })
     }
 
+    /// Write one decision-trace line; see `trace_decision!`.
+    #[cfg(feature = "diag")]
+    #[cold]
+    #[inline(never)]
+    fn trace_line(&self, ply: usize, decision: std::fmt::Arguments<'_>) {
+        let line = (0..ply)
+            .map(|p| self.td.stack[p].mv.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        self.td.sink.line(&format!(
+            "info string trace ply {ply} line {line} {decision}"
+        ));
+    }
+
     fn elapsed_ms(&self) -> f64 {
         self.cfg.start.elapsed().as_secs_f64() * 1000.0
     }
@@ -1163,6 +1197,43 @@ mod tests {
             quiet_lines.lock().unwrap().is_empty(),
             "emit_info = false writes nothing"
         );
+    }
+
+    /// The decision trace fires only under `searchmoves`, and only at plies one
+    /// and two.
+    #[cfg(feature = "diag")]
+    #[test]
+    fn decision_trace_is_bounded_to_searchmoves_and_plies_one_and_two() {
+        let run = |search_moves: Vec<Move>| {
+            let lines = Arc::new(Mutex::new(Vec::new()));
+            let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+            let mut options = SearchOptions::default();
+            options.limits.depth = Some(6);
+            options.limits.search_moves = search_moves;
+            searcher.search(options.board.clone(), &options, false, || SearchEvent::None);
+            let lines = lines.lock().unwrap();
+            lines
+                .iter()
+                .filter(|line| line.starts_with("info string trace "))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        assert!(run(Vec::new()).is_empty(), "no searchmoves, no trace");
+        let traced = run(vec![
+            Move::from_uci("e2e4").expect("valid move"),
+            Move::from_uci("d2d4").expect("valid move"),
+        ]);
+        assert!(!traced.is_empty(), "searchmoves must produce a trace");
+        for line in &traced {
+            let (ply, rest) = line
+                .strip_prefix("info string trace ply ")
+                .and_then(|rest| rest.split_once(" line "))
+                .unwrap_or_else(|| panic!("malformed trace line: {line}"));
+            let path = rest.split_whitespace().take(2).collect::<Vec<_>>();
+            assert!(matches!(ply, "1" | "2"), "{line}");
+            assert!(matches!(path[0], "e2e4" | "d2d4"), "{line}");
+        }
     }
 
     /// The budget is measured from the instant `go` was

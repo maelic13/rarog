@@ -359,6 +359,13 @@ impl Searcher {
             && excluded.is_null()
             && let Some(score) = ev.cutoff_score(depth, alpha, beta)
         {
+            trace_decision!(
+                self,
+                ply,
+                "tt_cut depth {depth} tt_depth {} bound {:?} score {score} window {alpha} {beta}",
+                ev.depth,
+                ev.bound
+            );
             return score;
         }
         let mut tt_move = ev
@@ -387,6 +394,12 @@ impl Searcher {
                     crate::diag_count!(iir_shallow_tt);
                 }
             }
+            trace_decision!(
+                self,
+                ply,
+                "iir depth {depth} tt_move {tt_move} tt_depth {}",
+                ev.depth
+            );
             depth -= 1;
         }
 
@@ -463,6 +476,12 @@ impl Searcher {
                 + corr_abs * self.cfg.params.corr_rfp_scale / 128; // 8.5(b)
             if !self.ablated(1) && depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 crate::diag_count!(rfp_cut);
+                trace_decision!(
+                    self,
+                    ply,
+                    "rfp depth {depth} eval {eval_for_pruning} static {static_eval} corr {corr_abs} \
+                     improving {improving} margin {futility_margin} beta {beta}"
+                );
                 return eval_for_pruning;
             }
             if !self.ablated(0)
@@ -470,6 +489,12 @@ impl Searcher {
                 && eval_for_pruning + self.cfg.params.razoring_coeff * depth < alpha
             {
                 crate::diag_count!(razor_drop);
+                trace_decision!(
+                    self,
+                    ply,
+                    "razor depth {depth} eval {eval_for_pruning} margin {} alpha {alpha}",
+                    self.cfg.params.razoring_coeff * depth
+                );
                 return if NODE::PV {
                     self.quiescence::<Pv, _>(board, alpha, beta, ply, 0, poll)
                 } else {
@@ -534,6 +559,12 @@ impl Searcher {
                     } else {
                         score
                     };
+                    trace_decision!(
+                        self,
+                        ply,
+                        "nmp_cut depth {depth} reduction {reduction} eval {eval_for_pruning} \
+                         score {score} beta {beta}"
+                    );
                     #[cfg(feature = "diag")]
                     if diag_sample {
                         crate::diag_count!(nmp_sample_cut);
@@ -555,6 +586,11 @@ impl Searcher {
                         if self.td.stopped || self.td.quit {
                             return 0;
                         }
+                        trace_decision!(
+                            self,
+                            ply,
+                            "nmp_verify depth {verify_depth} score {verified} beta {beta}"
+                        );
                         if verified < beta {
                             crate::diag_count!(nmp_verify_fail);
                             // Continue normally when the null cutoff is not stable
@@ -689,6 +725,12 @@ impl Searcher {
                         // default stride.
                         crate::diag_count!(probcut_cut);
                         let cutoff_score = score - (probcut_beta - beta);
+                        trace_decision!(
+                            self,
+                            ply,
+                            "probcut depth {depth} move {mv} score {score} probcut_beta {probcut_beta} \
+                             static {static_eval} returns {cutoff_score}"
+                        );
                         self.shared.tt.store(TtStore {
                             key: hash,
                             depth: depth - 3,
@@ -902,6 +944,13 @@ impl Searcher {
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
                         crate::diag_count!(lmp_prune);
+                        trace_decision!(
+                            self,
+                            ply,
+                            "lmp depth {depth} move {mv} searched {searched} history {quiet_hist} \
+                             eval {eval_for_pruning} margin {prune_margin} count_prune {move_count_pruning} \
+                             alpha {alpha}"
+                        );
                         #[cfg(feature = "diag")]
                         if !diag_node_lmp_seen {
                             diag_node_lmp_seen = true;
@@ -922,6 +971,12 @@ impl Searcher {
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
                         crate::diag_count!(quiet_futility_prune);
+                        trace_decision!(
+                            self,
+                            ply,
+                            "futility depth {depth} move {mv} searched {searched} eval {eval_for_pruning} \
+                             corr {corr_abs} alpha {alpha}"
+                        );
                         continue;
                     }
                 } else if is_capture && see < 0 {
@@ -936,6 +991,11 @@ impl Searcher {
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
                         crate::diag_count!(see_prune);
+                        trace_decision!(
+                            self,
+                            ply,
+                            "see_prune depth {depth} move {mv} searched {searched} threshold {see_threshold}"
+                        );
                         continue;
                     }
                 }
@@ -971,6 +1031,13 @@ impl Searcher {
                 if self.td.stopped || self.td.quit {
                     return 0;
                 }
+                trace_decision!(
+                    self,
+                    ply,
+                    "singular depth {depth} move {mv} tt_score {} singular_beta {singular_beta} \
+                     score {singular_score} beta {beta}",
+                    ev.score
+                );
                 if singular_score < singular_beta {
                     extension = if !NODE::PV
                         && singular_score < singular_beta - self.cfg.params.singular_double_margin
@@ -1093,6 +1160,12 @@ impl Searcher {
                     // full-depth PVS search and must not trigger a redundant
                     // verification search at the same depth.
                     let reduction = lmr_reduction(r, new_depth);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "lmr depth {depth} move {mv} searched {searched} history {quiet_hist} \
+                         units {r} reduction {reduction} new_depth {new_depth} window {alpha} {beta}"
+                    );
                     #[cfg(feature = "diag")]
                     {
                         if new_depth > 0 && reduction == new_depth {
@@ -1124,6 +1197,11 @@ impl Searcher {
                     );
                     if reduction > 0 && score > alpha {
                         crate::diag_count!(lmr_research);
+                        trace_decision!(
+                            self,
+                            ply,
+                            "lmr_research move {mv} reduced_score {score} alpha {alpha}"
+                        );
                         // Full-depth verification re-search. (A do-deeper / do-shallower
                         // LMR re-search adjustment was tried as Phase 2.8 and dropped:
                         // do_shallower was proven dead, and SPSA-tuned do_deeper failed
