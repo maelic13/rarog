@@ -52,6 +52,13 @@ pub mod counters {
         tt_pv_veto,
         // Forward-pruning families (successful cutoffs / skips).
         rfp_cut,
+        // Reverse-futility cutoffs by depth band (selectivity core).
+        rfp_cut_d1_3,
+        rfp_cut_d4_7,
+        rfp_cut_d8_plus,
+        // Hindsight reductions: a reduced child searched deeper or shallower.
+        hindsight_up,
+        hindsight_down,
         razor_drop,
         nmp_cut,
         probcut_cut,

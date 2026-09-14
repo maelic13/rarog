@@ -10,7 +10,10 @@ use super::history::cont_context;
 use super::movepick::{
     BadCaptureList, MovePicker, SEE_UNKNOWN, diversify_root_scores, is_noisy, pick_next,
 };
-use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher};
+use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
+
+/// Razoring stays away from decisive windows: alpha must be below this.
+const RAZOR_ALPHA_LIMIT: i32 = 936;
 
 // Float→int truncation IS the intended rounding of the LMR table formula
 // (kept bit-exact with the pre-9.0b table), hence the scoped cast allow.
@@ -453,7 +456,7 @@ impl Searcher {
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
         if !self.ablated(4)
             && excluded.is_null()
-            && depth >= 4
+            && depth >= self.cfg.core.iir_min_depth
             && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)))
         {
             #[cfg(feature = "diag")]
@@ -510,18 +513,27 @@ impl Searcher {
         // an eval the search has repeatedly found wrong, so margins widen and
         // reductions shrink with it. Zero in check.
         let corr_abs = correction.abs();
-        // A `ply - 4` fallback for an unusable `ply - 2` was measured and
-        // rejected: RAR-S66 stopped at 13,882 games with the LLR receding from
-        // a +2.44 peak. `improving = false` after a check is a conservative
-        // default, not a defect — there is genuinely no comparable static eval
-        // two plies back when that node was in check.
-        let two_back = self.td.stack.back(ply, 2).static_eval;
-        let improving = !in_check && two_back != VALUE_NONE && static_eval > two_back;
-        let improving_i = if improving { 1 } else { 0 };
+        // Improvement: this eval against the side to move's eval two plies
+        // back, or four plies back when that node was in check; zero when
+        // neither exists. Its sign is `improving`; its size moves margins.
+        let improvement = if in_check {
+            0
+        } else {
+            let two_back = self.td.stack.back(ply, 2).static_eval;
+            let four_back = self.td.stack.back(ply, 4).static_eval;
+            if two_back != VALUE_NONE {
+                static_eval - two_back
+            } else if four_back != VALUE_NONE {
+                static_eval - four_back
+            } else {
+                0
+            }
+        };
+        let improving = improvement > 0;
+        let improving_i = i32::from(improving);
         let not_improving_i = 1 - improving_i;
-        // 9.7.5 lead: the TT may only stand in for the static eval here if its
-        // entry is deep enough to be worth trusting — see the param doc. At the
-        // seeded 0 this admits everything, exactly as before.
+        // The estimated score: the corrected eval, replaced by a stored bound
+        // that tightens it.
         let eval_for_pruning = if in_check {
             static_eval
         } else {
@@ -537,44 +549,108 @@ impl Searcher {
             let delta = u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs());
             crate::diag_add!(tt_eval_delta_sum, delta);
         }
-        // 8.3 diagnostic: a non-PV, non-check node where the *stored* PV bit
-        // (tt_pv true on a non-PV node type) is what keeps the whole forward-pruning
-        // block below from running.
+        // A non-PV, non-check node where the stored PV bit alone vetoes the
+        // null-move and ProbCut searches below.
         if tt_pv && !NODE::PV && !in_check && excluded.is_null() {
             crate::diag_count!(tt_pv_veto);
         }
-        if !tt_pv && !in_check && excluded.is_null() {
-            let futility_margin = (self.cfg.params.futility_base
-                + self.cfg.params.futility_not_improving * not_improving_i)
-                * depth
-                + corr_abs * self.cfg.params.corr_rfp_scale / 128; // 8.5(b)
-            if !self.ablated(1) && depth <= 8 && eval_for_pruning - futility_margin >= beta {
-                crate::diag_count!(rfp_cut);
-                trace_decision!(
-                    self,
-                    ply,
-                    "rfp depth {depth} eval {eval_for_pruning} static {static_eval} corr {corr_abs} \
-                     improving {improving} margin {futility_margin} beta {beta}"
-                );
-                return eval_for_pruning;
+
+        // Hindsight: the parent reduced the move that led here. If both evals
+        // say the position got worse for the parent's opponent after a large
+        // reduction, search one ply deeper; if both say it got better for the
+        // side that was reduced against, one ply shallower.
+        if !self.ablated(4) && !NODE::ROOT && !in_check && excluded.is_null() {
+            let parent = *self.td.stack.back(ply, 1);
+            if parent.static_eval != VALUE_NONE {
+                let eval_delta = static_eval + parent.static_eval;
+                if parent.reduction >= self.cfg.core.hindsight_deepen_reduction && eval_delta < 0 {
+                    crate::diag_count!(hindsight_up);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "hindsight_up depth {depth} parent_reduction {} eval_delta {eval_delta}",
+                        parent.reduction
+                    );
+                    depth += 1;
+                }
+                if !tt_pv
+                    && depth >= 2
+                    && parent.reduction > 0
+                    && eval_delta > self.cfg.core.hindsight_reduce_margin
+                {
+                    crate::diag_count!(hindsight_down);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "hindsight_down depth {depth} parent_reduction {} eval_delta {eval_delta}",
+                        parent.reduction
+                    );
+                    depth -= 1;
+                }
             }
-            if !self.ablated(0)
-                && depth <= 3
-                && eval_for_pruning + self.cfg.params.razoring_coeff * depth < alpha
+        }
+
+        // Razoring: far enough below alpha that only a tactic can help, so
+        // the node asks quiescence. Not on a PV line, not when alpha is
+        // already a decisive-looking score, not when a quiet TT move or a
+        // fail-high entry says there is more here.
+        if !self.ablated(0)
+            && !NODE::PV
+            && !in_check
+            && eval_for_pruning
+                < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
+            && alpha < RAZOR_ALPHA_LIMIT
+            && (tt_move.is_null() || is_noisy(tt_move))
+            && ev.bound != Some(Bound::Lower)
+        {
+            crate::diag_count!(razor_drop);
+            trace_decision!(
+                self,
+                ply,
+                "razor depth {depth} estimated {eval_for_pruning} margin {} alpha {alpha}",
+                self.cfg.core.razor_base + self.cfg.core.razor_square * depth * depth
+            );
+            return self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll);
+        }
+
+        // Reverse futility: far enough above beta that the node is expected
+        // to hold. The margin grows with the square of the depth, shrinks as
+        // the position improves, widens with the correction's size (an eval
+        // the tables keep moving is less trusted) and relaxes when no piece
+        // of ours stands attacked. Returns a score pulled toward beta.
+        if !self.ablated(1) && !tt_pv && !in_check && excluded.is_null() {
+            let core = &self.cfg.core;
+            let unthreatened = (threats.all & board.color_occ(board.side_to_move())).is_empty();
+            let margin = (core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
+                - core.rfp_improvement * improvement / 1024
+                + core.rfp_correction * corr_abs / 1024
+                - core.rfp_threat * i32::from(unthreatened)
+                + core.rfp_constant)
+                .max(2);
+            if eval_for_pruning >= beta + margin
+                && beta > -TB_WIN_SCORE
+                && eval_for_pruning < TB_WIN_SCORE
             {
-                crate::diag_count!(razor_drop);
+                crate::diag_count!(rfp_cut);
+                #[cfg(feature = "diag")]
+                match depth {
+                    ..=3 => crate::diag_count!(rfp_cut_d1_3),
+                    4..=7 => crate::diag_count!(rfp_cut_d4_7),
+                    _ => crate::diag_count!(rfp_cut_d8_plus),
+                }
+                let score = eval_for_pruning + (beta - eval_for_pruning) * core.rfp_lerp / 1024;
                 trace_decision!(
                     self,
                     ply,
-                    "razor depth {depth} eval {eval_for_pruning} margin {} alpha {alpha}",
-                    self.cfg.params.razoring_coeff * depth
+                    "rfp depth {depth} estimated {eval_for_pruning} static {static_eval} \
+                     improvement {improvement} corr {corr_abs} unthreatened {unthreatened} \
+                     margin {margin} beta {beta} returns {score}"
                 );
-                return if NODE::PV {
-                    self.quiescence::<Pv, _>(board, alpha, beta, ply, 0, poll)
-                } else {
-                    self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll)
-                };
+                return score;
             }
+        }
+
+        if !tt_pv && !in_check && excluded.is_null() {
             if !self.ablated(2)
                 && allow_null
                 && depth >= 3

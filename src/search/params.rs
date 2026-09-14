@@ -479,6 +479,30 @@ search_params! {
     /// evaluator's own damping is compiled out under the core, so the eval the
     /// table stores does not depend on the clock and the search damps it here.
     eval_rule50_damping = 100, "CoreEvalRule50Damping", 0..=150;
+
+    // Node-level pruning.
+    /// Razoring margin `base + square * depth^2`, evaluation units.
+    razor_base = 260, "CoreRazorBase", 50..=800;
+    razor_square = 116, "CoreRazorSquare", 20..=400;
+    /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
+    /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
+    /// unthreatened + constant`, floored at 2.
+    rfp_square = 96, "CoreRfpSquare", 0..=320;
+    rfp_linear = 50, "CoreRfpLinear", 0..=200;
+    rfp_improvement = 55, "CoreRfpImprovement", 0..=512;
+    rfp_correction = 307, "CoreRfpCorrection", 0..=2048;
+    rfp_threat = 25, "CoreRfpThreat", 0..=120;
+    rfp_constant = 0, "CoreRfpConstant", -100..=100;
+    /// Reverse-futility return, in 1024ths of the way from the estimate to beta.
+    rfp_lerp = 711, "CoreRfpLerp", 0..=1024;
+    /// Hindsight: a parent reduction (1024ths of a ply) at or above this
+    /// deepens a child whose eval says the parent's opponent got worse.
+    hindsight_deepen_reduction = 2_249, "CoreHindsightDeepenReduction", 512..=6144;
+    /// Hindsight: an eval swing above this reduces a reduced child one ply.
+    hindsight_reduce_margin = 26, "CoreHindsightReduceMargin", 0..=200;
+    /// Internal iterative reduction: the least depth at which a missing or
+    /// shallow TT move costs a ply.
+    iir_min_depth = 4, "CoreIirMinDepth", 2..=10;
 }
 
 #[cfg(test)]
