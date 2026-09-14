@@ -937,7 +937,34 @@ diagnostics; two rejections stop B.
   separately. Sub-steps:
     - **B.2.0 Architecture and design review of the whole engine on the B.1
       head, then its accepted upgrades — `R3` for the review, `I2` for the
-      upgrades.** Added 2026-09-14 by maintainer decision; runs before B.2.1.
+      upgrades. CLOSED 2026-09-14 (RAR-P25).** All twelve tickets landed in
+      twelve commits (`687a8bf`..`0493283`), every engine commit at the exact
+      **7,601,220 / EBF 2.474** on magic and PEXT with all 40 positions
+      identical; fmt, clippy on default, diag, tune, ablate, texel,
+      all-features and the workspace; 284 release / 283 debug tests. Pooled
+      PGO NPS against the B.1 pool, interleaved: **+0.21%, 95% [−0.34%,
+      +0.68%]**; T6 alone against the T5 head **+0.04% [−0.47%, +0.51%]**, so
+      the table-policy refactor stays. The diag build at stride 1 reproduces
+      the B.1 counter set except the three never-incremented counters T1
+      deleted. Retired phase, step and ledger numbers in the owned `src/`
+      files, the repository configuration and the tools: zero (316 remain in
+      `eval.rs` and the five search mechanism files, owned by C.1 and
+      B.2–B.5). **Deviations, each recorded in RAR-P25:** `benches/board.rs`
+      imported four free generators the review missed, so it moved to the
+      `Board` methods; 15 public types stay `pub` because the integration
+      tests reach them through public fields and signatures; narrowing exposed
+      13 dead items, deleted, and three feature-only items, gated; `go perft`
+      reaches the handler as `GoRequest::Perft` and `setoption` reports an
+      `OptionUpdate`; the helper-spawn notice moved to `Searcher::configure`;
+      the tuner has its own lockfile and CI a `texel` clippy step;
+      `engine_coverage.rs` split into four files, not three; the
+      comment-only tickets T7, T8, T10 and T11 were verified on their combined
+      state and then committed separately. `src/` shrank 379 lines, not the
+      predicted 700–1,200, because rewritten comments replaced prose rather
+      than deleting it and the command enum and go keyword table added
+      lines. Found in passing: `tools/texel/fit_complete.ps1` still pins the
+      fingerprint 6,901,489, so the next HCE fit must update it first.
+      Original scope follows. Added 2026-09-14 by maintainer decision; runs before B.2.1.
       Numbered inside B.2 because the status board has two levels, not
       because it belongs to the cluster: it is behaviour-neutral and earns no
       strength credit. **Review** (`analysis/architecture_review_2026-09.md`):
@@ -1146,8 +1173,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.0 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M51); twelve upgrade tickets frozen in `analysis/architecture_review_2026-09.md` §5; the `Searcher` split is B.2.1 ticket 0 |
-| B.2.0.1 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M52); nine tickets frozen in `analysis/repository_review_2026-09.md` §5; starts when B.2.0 is CLOSED |
+| B.2.0.1 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M52); nine tickets frozen in `analysis/repository_review_2026-09.md` §5; B.2.0 closed 2026-09-14 (RAR-P25), next executable leaf |
 | B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 and B.2.0.1 |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
