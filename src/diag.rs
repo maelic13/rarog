@@ -1,4 +1,4 @@
-//! Phase 4.1 search diagnostics — compile-time gated counters and sampled traces.
+//! Search diagnostics — compile-time gated counters and sampled traces.
 //!
 //! Enabled only with `--features diag`. The default build contains **no**
 //! counter code at all (`diag_count!` expands to nothing), so `bench` stays a
@@ -7,8 +7,8 @@
 //! several worker threads), reset at each `go`, and dumped as `info string diag
 //! <name> <value>` lines when the search completes.
 //!
-//! The legacy event counters remain exact. Phase 4 adds a deterministic 1/1024
-//! position sample for the wider interaction map; this bounds diagnostic cost
+//! Event counters are exact. A deterministic 1/1024 position sample feeds the
+//! wider interaction map; this bounds diagnostic cost
 //! while making repeated runs on the same tree directly comparable. Sampled
 //! counters are observational only and may never steer search.
 
@@ -41,14 +41,14 @@ pub mod counters {
 
     declare!(
         // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
-        // Phase-4 differential needs a qsearch denominator collected the same
+        // oracle differential needs a qsearch denominator collected the same
         // way the oracle collects it, and a 1/1024 sample cannot be joined
         // against an exact count (analysis/phase4_counter_spec.md).
         nodes,
         qnodes,
-        // 8.2 — check-node cost.
+        // Check-node cost.
         nodes_in_check,
-        // 8.3 — stale PV bit vetoes pruning at a non-PV node.
+        // A stale PV bit vetoes pruning at a non-PV node.
         tt_pv_veto,
         // Forward-pruning families (successful cutoffs / skips).
         rfp_cut,
@@ -66,12 +66,11 @@ pub mod counters {
         see_prune,
         // LMR reduction and its verification re-search.
         lmr_applied,
-        // 10.2.5 — late moves whose confidence estimate removes the old
-        // mandatory one-ply reduction.
+        // Late moves whose reduction rounds to zero plies.
         node_lmr_zero_reduction,
-        // 4.8.1 AUDIT of the reduction floor, which 4.5.4 named and never
-        // measured. `lmr_reduction` is `(r >> 10).clamp(0, new_depth)`, so
-        // both ends silently discard information:
+        // Audit of the reduction floor. `lmr_reduction` is
+        // `(r >> 10).clamp(0, new_depth)`, so both ends silently discard
+        // information:
         //   node_lmr_qs_clamped -- reduction reached new_depth, so the "reduced
         //     search" ran at depth 0 and was answered by quiescence. That
         //     is a prune wearing a reduction's name, and it is counted
@@ -83,19 +82,15 @@ pub mod counters {
         // interior node, i.e. the DENOMINATOR of the ordering metric below.
         cutoff_quiet,
         cutoff_capture,
-        // 10.0(a) — FIRST-MOVE CUTOFF RATE, the standard move-ordering readout:
+        // FIRST-MOVE CUTOFF RATE, the standard move-ordering readout:
         // `cutoff_first_move / (cutoff_quiet + cutoff_capture)`. Counted where
         // the move that failed high was the FIRST move the node searched.
         //
-        // Why it is the missing metric: 10.0 established that Rarog's eval and
-        // NPS match Basilisk 1.9.1 while it plays ~38-55 Elo weaker at 1T, at
-        // any time control, so the deficit is in how the search converts nodes
-        // into decisions. Two sub-causes remain, and they imply opposite fixes.
         // The over-reduction ratio (`lmr_research / lmr_applied`) reads the
-        // PRUNING-DEPTH side; this counter reads the ORDERING side. Healthy
-        // engines sit ~90%+; materially below implicates ordering, in which
-        // case re-tuning the selectivity surface (10.4.6) is aimed at the wrong
-        // half of the problem.
+        // PRUNING-DEPTH side of how the search converts nodes into decisions;
+        // this counter reads the ORDERING side, and the two imply opposite
+        // fixes. Healthy engines sit ~90%+; materially below implicates
+        // ordering rather than the selectivity surface.
         //
         // Excluded-move (singular-verification) searches do NOT count: their
         // best move is deliberately withheld, so a first-move cutoff there
@@ -105,24 +100,24 @@ pub mod counters {
         cutoff_first_move,
         correction_updates,
         corr_on_capture,
-        // 4.5 — residual MAGNITUDE by attribution class, exact.
+        // Residual MAGNITUDE by attribution class, exact.
         //
         // The premise behind capture-weighted correction updates is that a
         // capture-caused residual is less trustworthy evidence for a
-        // positional correction. Nobody has measured that. These give the mean
+        // positional correction. These give the mean
         // |residual| for each class; if the two means are close, the premise is
         // wrong and neither knob should move off its baseline.
         corr_resid_capture_n,
         corr_resid_capture_sum,
         corr_resid_quiet_n,
         corr_resid_quiet_sum,
-        // 4.5d — residual by HALFMOVE-CLOCK context. PLAN 4.5 allows a new
-        // correction context only where held-out unique signal is shown, so the
-        // measurement comes before any proposal. Rule-50 proximity is the
+        // Residual by HALFMOVE-CLOCK context. A new correction context needs
+        // held-out unique signal, so the measurement comes before any proposal.
+        // Rule-50 proximity is the
         // plausible mechanism: near the horizon a position's value stops being a
         // function of its structure.
         //
-        // The check/evasion context the plan also lists is NOT measured, because
+        // A check/evasion context is NOT measured, because
         // it is structurally unreachable: correction only trains where
         // `static_eval != VALUE_NONE`, which IS the not-in-check condition, so
         // its population is zero by construction rather than by observation.
@@ -132,11 +127,10 @@ pub mod counters {
         corr_resid_hm_mid_sum,
         corr_resid_hm_high_n,
         corr_resid_hm_high_sum,
-        // 9.7.5(b) — SMP quality. The question these answer: 16 threads give
-        // 13x the nodes but +0 depth and +2 seldepth, so where does the work
-        // go? Four hypotheses imply opposite fixes, hence measure first.
+        // SMP quality: where does helper work go when more threads buy nodes
+        // but little depth?
         //
-        // Aspiration churn. 8.13 made a thread re-centre its window on the
+        // Aspiration churn. A thread re-centres its window on the
         // POOL's deepest Exact score; if the pool disagrees with what the
         // thread then finds, it pays fail-high/low re-searches. A re-search
         // rate that climbs with thread count indicts pool-seeded windows.
@@ -147,7 +141,7 @@ pub mod counters {
         // with thread count; if it is flat, the helpers are searching in vain.
         main_tt_probes,
         main_tt_hits,
-        // 9.6(b) — lazy-eval safety audit. On every lazy skip the full eval is
+        // Lazy-eval safety audit. On every lazy skip the full eval is
         // ALSO computed (served score unchanged) and the two are compared.
         // `lazy_delta_sum / lazy_fires` = mean |full − cheap| in internal cp;
         // `lazy_delta_max` is a running maximum (fetch_max, not fetch_add).
@@ -180,7 +174,7 @@ pub mod counters {
         lazy_cross_phase_q2,
         lazy_cross_phase_q3,
         lazy_cross_phase_q4,
-        // 4.1 sampled node/TT provenance and contradiction map.
+        // Sampled node and TT outcome map.
         sampled_main_nodes,
         sampled_qnodes,
         tt_sample_hit,
@@ -191,7 +185,7 @@ pub mod counters {
         // Deep enough at an eligible node, but the stored bound resolves some
         // OTHER window — a store/window question.
         tt_bound_not_usable,
-        // 4.9b — why an entry that HIT could not be used, split by cause,
+        // Why an entry that HIT could not be used, split by cause,
         // because the three imply different fixes and only one of them can
         // grow with thread count.
         //
@@ -222,7 +216,7 @@ pub mod counters {
         q_move_store,
         q_tail_exact_store,
         q_tail_upper_store,
-        // 4.9d — SIZING the in-check qsearch staging that 4.6 deferred here.
+        // SIZING a staged in-check qsearch.
         //
         // An in-check qnode generates every evasion and scores ALL of them
         // before picking any, so a node that cuts on its first move paid for
@@ -241,17 +235,15 @@ pub mod counters {
         nmp_verify_attempt,
         nmp_verify_pass,
         nmp_verify_fail,
-        // 4.10a: an NMP cutoff whose RETURNED SCORE is mate-range, i.e. a mate
+        // An NMP cutoff whose RETURNED SCORE is mate-range, i.e. a mate
         // this node never proved by a real line. The search clamps it to beta
         // (as Stockfish does); this counts how often the clamp fires.
         nmp_cut_unproven_mate,
         // Per-NODE: nodes passing the ProbCut entry gate, counted before
         // capture generation, so nodes with no eligible capture are included.
         // Per-MOVE: `probcut_attempt` -- a ProbCut search was actually started,
-        // which is what the spec says and what the oracle counts. Until 4.7c
-        // prep the per-node figure carried the `probcut_attempt` name and was
-        // differenced against the oracle's per-move one; see the RAR-S55
-        // correction in EXPERIMENTS.md.
+        // which is what the spec says and what the oracle counts. The two are
+        // different units; never difference one against the other.
         probcut_nodes,
         probcut_attempt,
         probcut_qpass,
@@ -299,13 +291,11 @@ pub mod counters {
         worker_best_disagreement,
         worker_depth_spread_sum,
         worker_score_spread_sum,
-        // 4.9a search-tree occurrence. RAR-M15 measured how often each
-        // reference endgame family occurs ON THE BOARD in real games, and 4.9a
-        // is ordered on that. These count how often each family is reached in
-        // the SEARCH TREE, which is a different quantity: 4.9a.4's mate drive
-        // left `bench 13` byte-identical (no bench tree reaches a bare-king
-        // minor mate at depth 13) while 4.9a.7's rook-ending scale moved it
-        // 14%. EXACT, not sampled -- these are cheap and a ratio against
+        // Endgame-family occurrence in the SEARCH TREE, which differs from
+        // occurrence on the board in real games: a bare-king minor mate drive
+        // can leave `bench 13` byte-identical (no bench tree reaches one at
+        // depth 13) while a rook-ending scale moves it by 14%. EXACT, not
+        // sampled -- these are cheap and a ratio against
         // `nodes` must be joinable (analysis/phase4_counter_spec.md).
         eg_krpkr,
         eg_krpkb,
@@ -362,14 +352,14 @@ pub mod counters {
     );
 }
 
-/// Count one evaluation against the 4.9a reference-family table.
+/// Count one evaluation against the reference-family table.
 ///
 /// Called from `evaluate()` and compiled out entirely without `--features
 /// diag`, so the production fingerprint is untouched -- which is this feature's
 /// own acceptance gate.
 ///
 /// The table is the 20 families of the final pre-NNUE Stockfish dispatcher, in
-/// the order 4.9a works them. `counts` is (pawns, knights, bishops, rooks,
+/// the order the dispatcher tries them. `counts` is (pawns, knights, bishops, rooks,
 /// queens) per side; each family is tried in both orientations, so a Black
 /// strong side counts the same as a White one.
 #[cfg(feature = "diag")]
@@ -485,7 +475,7 @@ pub(crate) const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
 
 /// Sampling stride mask, read once from `RAROG_DIAG_SAMPLE_STRIDE`.
 ///
-/// Phase 4.2: the differential suite needs the CORE counters exact, because the
+/// The differential suite needs the CORE counters exact, because the
 /// oracle collects them exactly and a 1/1024 sample cannot be joined against an
 /// exact count — the ratio reads 1024x off while looking plausible. Rather than
 /// lift seventeen counters out of their sampling guards in the hottest file in
@@ -493,8 +483,8 @@ pub(crate) const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
 /// makes every sampled counter exact in one place.
 ///
 /// The stride must be a power of two; anything else falls back to the 1024
-/// default, which keeps every historical reading (RAR-S21/S22/S24) reproducible
-/// by simply not setting the variable.
+/// default, which keeps every historical reading reproducible by simply not
+/// setting the variable.
 #[cfg(feature = "diag")]
 fn sample_mask() -> u64 {
     use std::sync::OnceLock;
@@ -513,7 +503,7 @@ fn sample_mask() -> u64 {
 /// the mix nor a branch.
 ///
 /// With a stride of 1 the mask is 0, so the test is always true and every
-/// position is sampled — the exact mode the Phase-4 differential requires.
+/// position is sampled — the exact mode the oracle differential requires.
 #[cfg(feature = "diag")]
 #[inline]
 pub fn sampled(hash: u64, ply: usize, domain: u64) -> bool {
@@ -568,7 +558,7 @@ pub(crate) fn record_correction_slot(source: u8, index: usize, key: u64, value: 
     correction_probe::record(source, index, key, value);
 }
 
-/// 9.6(b) side-channel: `eval_king_safety` records the danger-table index it
+/// Side-channel: `eval_king_safety` records the danger-table index it
 /// reads, so the dual-eval comparison can bucket its findings by king danger
 /// without threading a return value through the whole eval stack. A
 /// thread-local (not an atomic) because each `Evaluator` runs on one thread —
@@ -629,9 +619,8 @@ macro_rules! diag_count {
 /// Reset all counters (no-op without the `diag` feature).
 ///
 /// ⚠ Must be called ONCE per `go`, by the main thread, BEFORE any helper is
-/// spawned. Helpers reach `search_root` too, so a reset left there ran once per
-/// thread and wiped whatever the earlier-starting threads had already counted —
-/// every multi-thread diag number before 9.7.5(b) was junk for this reason.
+/// spawned. Helpers reach `search_root` too, so a reset there would run once
+/// per thread and wipe whatever the earlier-starting threads had counted.
 #[inline(always)]
 pub fn reset() {
     #[cfg(feature = "diag")]
