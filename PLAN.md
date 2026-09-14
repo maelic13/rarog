@@ -347,6 +347,49 @@ diagnostics; two rejections stop B.
           procedures-only PROCESS, the `analysis/` index and archive, a
           dead-path check, a shorter GUIDE and the rule-first AGENTS. Logos
           stay tracked (U8's untracking was reverted). Record in HISTORY.
+        - **B.2.0.2 MultiPV and the root-line contract — `I1`.** Added by
+          maintainer decision 2026-09-14; **executes after B.2.1's reviewer
+          acceptance and before B.2.2.** Rarog has no `MultiPV` option, and
+          GUI analysis needs one. It is a protocol feature, not a strength
+          change, so it is gated by identity at the default instead of by
+          games. The root already keeps what it needs: `RootMove` records with
+          score, previous score, PV and nodes, and a `td.root_moves`
+          restriction that `searchmoves` uses. **Contract, frozen:**
+          (1) `option name MultiPV type spin default 1 min 1 max 256`; the
+          effective count is clamped to the root set the search actually uses
+          after `searchmoves` and Syzygy root filtering. (2) **Identity at
+          `MultiPV = 1`:** exact fingerprint on both arms (7,601,220 / EBF
+          2.474 by default, the accepted `b2core` fingerprint with that
+          feature); an identical `info` stream apart from `time`, `nps` and
+          `hashfull` at fixed depth over the bench positions, so `multipv` is
+          printed only when the count exceeds 1; pooled-PGO NPS inside the
+          neutral-change noise, because root bookkeeping is layout-sensitive
+          (`RootMove::record_search` is kept cold for a measured reason).
+          (3) **Search for k > 1**, in `search_root` only: per depth, for line
+          i = 0..k−1, search the root with the moves already ranked in this
+          iteration excluded through the existing root restriction (verified
+          in each arm, including the root's TT-move check), the aspiration
+          window centred on that move's previous score; after each line,
+          stable-sort the remaining records by score. Lines not yet searched
+          at the current depth report their previous-depth score and PV;
+          fail-high and fail-low lines carry `lowerbound` or `upperbound`.
+          (4) `bestmove` and the ponder move come from line 1; best-move
+          instability, effort and the soft-stop vote read line 1 only.
+          (5) **Threads:** helpers keep searching at MultiPV 1 and contribute
+          only through the table; with a count above 1 the reported lines and
+          `bestmove` come from the main thread, and helper result voting is
+          bypassed. (6) The single-legal-move shortcut, the decision trace
+          under `searchmoves` and the search output port keep their
+          behaviour. **Checks:** unit tests for k = 3 (distinct first moves,
+          scores non-increasing at a completed depth, every PV legal through
+          `assert_legal_pv`), k above the legal-move count, k combined with
+          `searchmoves`, `bestmove` equal to line 1's first move, Threads 4
+          with MultiPV 3 (distinct legal lines, no panic), and a Syzygy clamp
+          test that skips when no tables are present; debug and release
+          suites, `cargo fmt --check`, clippy at zero warnings; a 60-second
+          `go infinite` session at MultiPV 4 ended by `stop`. No SPRT, because
+          the default is unchanged. README option list and CHANGELOG updated
+          in the same leaf. B.5 inherits this contract.
     - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
       bounds and gravity; picker exhaustiveness tests; TT store/probe tests
       including age and replacement; deterministic unwind tests. **Ticket 0,
@@ -455,7 +498,9 @@ diagnostics; two rejections stop B.
   the donor.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   Aspiration delta from eval and PV stability, optimism, root move node
-  accounting, forgotten-mate and aborted-loss guards, PV table, multi-PV.
+  accounting, forgotten-mate and aborted-loss guards, PV table. Multi-PV is
+  delivered earlier by B.2.0.2; B.5 keeps its contract (identity at
+  `MultiPV = 1`, line semantics above 1).
   SPRT `[0,3]`. Root-only LMR relief keeps its accepted place unless B.2's
   formula subsumes it, which B.0 decides.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
@@ -496,7 +541,8 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.1 | IMPLEMENTED | I2 | Implemented 2026-09-14 behind `b2core` (RAR-S73); next: the separate reviewer's acceptance, class R2 |
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for the B.2.1 review |
+| B.2.0.2 | READY_FOR_IMPLEMENTATION | I1 | Added by maintainer decision 2026-09-14; contract frozen in the leaf; starts after the B.2.1 reviewer acceptance, before B.2.2 |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for the B.2.1 review and B.2.0.2 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
