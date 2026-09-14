@@ -982,6 +982,34 @@ diagnostics; two rejections stop B.
       `Searcher` split into per-thread state, per-search configuration and
       engine-owned resources is designed there (§4.3) and is B.2.1's ticket
       0, not this leaf's. State `READY_FOR_IMPLEMENTATION`, class `I2`.
+        - **B.2.0.1 Repository and document restructure, reformat and
+          clean-up — `R3` review done 2026-09-14, `I2` for the work.**
+          Added 2026-09-14 by maintainer decision: everything B.2.0 does
+          not touch — the nine top-level documents, `analysis/`, `docs/`,
+          the tool READMEs and the repository root. Standard: one
+          document, one purpose, stated in its first paragraph; no content
+          another document owns; nothing a reader can no longer act on;
+          every tracked file reachable from an index or a citation.
+          **Review** (`analysis/repository_review_2026-09.md`, RAR-M52):
+          PLAN carries 734 lines of closed-leaf narrative; HISTORY holds a
+          second copy of the archived Phase-4 tracker while its
+          legacy-tracker section, which the resolution table points at, is
+          empty; EXPERIMENTS holds essays and two row formats; PROCESS and
+          AGENTS hold each other's material; README's test command is the
+          one CI forbids; 44 dangling repository paths; seven of nine logo
+          files unused against the storage policy; 13 superseded analyses
+          beside live contracts with no index. **Nine tickets** in its §5:
+          U1 HISTORY and the recovered legacy archive; U2 PLAN collapsed to
+          open work, the number map to HISTORY, a dead-path check in
+          `check_guide.py`; U3 one ledger row format; U4 AGENTS rule-first,
+          drafted and shown before commit; U5 PROCESS procedures only; U6
+          README; U7 the `analysis/` index and archive; U8 logo files and
+          the storage policy; U9 GUIDE prose. Documents only, no engine
+          input, every ticket its own commit; archive, never delete; no
+          number, date, ID or verdict changes while it moves. Done criteria
+          and the frozen size prediction are in the review. **Starts when
+          B.2.0 is CLOSED**, because B.2.0's T7, T9 and T11 edit PROCESS,
+          AGENTS, CI and `tools/`.
     - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
       bounds and gravity; picker exhaustiveness tests; TT store/probe tests
       including age and replacement; deterministic unwind tests. **Ticket 0,
@@ -1119,7 +1147,8 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.0 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M51); twelve upgrade tickets frozen in `analysis/architecture_review_2026-09.md` §5; the `Searcher` split is B.2.1 ticket 0 |
-| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 |
+| B.2.0.1 | READY_FOR_IMPLEMENTATION | I2 | Review done 2026-09-14 (RAR-M52); nine tickets frozen in `analysis/repository_review_2026-09.md` §5; starts when B.2.0 is CLOSED |
+| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 and B.2.0.1 |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |

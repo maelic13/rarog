@@ -92,7 +92,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool measured interleaved (RAR-P24; the 2.4.0 pool read 3.07 on that day against 3.19 in RAR-M48, a host shift, so compare pools interleaved); Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
 | Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.0 — the review's twelve behaviour-neutral upgrade tickets** (review done 2026-09-14, RAR-M51), then B.2.1 |
+| Current step | **B.2.0 — the review's twelve behaviour-neutral upgrade tickets** (review done 2026-09-14, RAR-M51), then B.2.0.1 (documents and repository, review done 2026-09-14, RAR-M52), then B.2.1 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -110,7 +110,11 @@ executable leaf**: twelve behaviour-neutral tickets frozen in
 one generator API, tagged commands, a search output port, the TT policy
 factored once, the tuner out of the workspace, comment hygiene),
 `READY_FOR_IMPLEMENTATION / I2`, at the exact fingerprint and inside ±0.5% of
-the B.1 NPS pool; the `Searcher` split it designed is B.2.1's ticket 0. Then
+the B.1 NPS pool; the `Searcher` split it designed is B.2.1's ticket 0.
+**B.2.0.1 follows once B.2.0 is closed**: the repository and document
+restructure, nine documents-only tickets in
+`analysis/repository_review_2026-09.md` §5 (RAR-M52), so that every
+document has one purpose and every tracked file one owner. Then
 B.2.1, cluster 1, the selectivity core, `READY_FOR_IMPLEMENTATION / I2`, to
 the handoff in
 `analysis/search_programme_2026-09-13.md` §13.2 (ticket order 0–8, the
@@ -180,6 +184,7 @@ is the numbering: release first, baselines on the released binary.
 - [x] **B.1** Search restructure: `search/` modules, `NodeType`, `ThreadData`, sentinel `PlyArray` stack; 44 inert parameters, root confidence, SMP skip and `evidence.rs` removed; exact fingerprint, pooled-PGO NPS +6.30% (RAR-P24) — DONE 2026-09-14
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.0** Architecture and design review of the whole engine on the B.1 head (review DONE 2026-09-14, RAR-M51, `analysis/architecture_review_2026-09.md`), then its twelve behaviour-neutral upgrade tickets and comment hygiene in modules no B/C cluster rewrites; exact fingerprint, NPS inside ±0.5% of the B.1 pool — **READY_FOR_IMPLEMENTATION / I2**
+        - [ ] **B.2.0.1** Repository and document restructure, reformat and clean-up: nine documents-only tickets in `analysis/repository_review_2026-09.md` §5 (review DONE 2026-09-14, RAR-M52); starts when B.2.0 is closed — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
