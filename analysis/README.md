@@ -11,6 +11,8 @@ summaries needed to develop Rarog. The following are local-only and ignored:
 - `analysis/*.txt`: standalone generated measurement reports.
 - `tools/results/` and the existing ignored build/data directories: run outputs,
   executables, profiling traces and other generated material.
+- `hybrid/`: the frozen oracle package the ledger's oracle rows ran (its
+  executable and evaluation DLL, identified by hash in PLAN A.2.2's record).
 
 Paths to those files in older analyses deliberately refer to local evidence;
 they will not be populated by a fresh clone. Preserve them on this machine.
@@ -20,8 +22,10 @@ work on another machine. Arrange local evidence backups separately from Git.
 
 Required fixtures under `tests/data/`, frozen ranking/floor inputs consumed by
 diagnostic tools, reusable scripts, vendor source/licenses and the README logo
-remain tracked. A generated origin alone does not make a required test input
-disposable. Unused logo variants are kept locally under explicit ignore rules.
+remain tracked, as do `logo/rarog_light.png` and `logo/rarog_dark.png` for a
+themed README. A generated origin alone does not make a required test input
+disposable. The unused `logo/*_alternative*.png` variants are kept on disk
+under an explicit ignore rule.
 
 The storage cleanup removes files from the current Git index only. It preserves
 their bytes and paths on disk and leaves earlier commits unchanged; old blobs
