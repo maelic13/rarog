@@ -858,7 +858,34 @@ diagnostics; two rejections stop B.
   is measured first as a **shadow producer** (trained, never read, admission
   profile counted under `diag`) before any consumer is written, which is how
   B.2.1 should introduce the continuation-correction tables.
-- **B.1 Search restructure, behaviour-neutral — `I1`.** **B.0 handoff frozen
+- **B.1 Search restructure, behaviour-neutral — `I1`. CLOSED 2026-09-14
+  (RAR-P24).** Seven engine commits (`866cf9b`..`fcf8a2a`) plus a tooling
+  commit (`c35260d`), every one at the exact **7,601,220 / EBF 2.474** on
+  magic and PEXT with all 40 positions identical; fmt, clippy in every CI
+  feature set plus `--all-features`, 284 release / 283 debug tests. Layout:
+  `src/search/{mod,node,movepick,history,correction,stack,thread,threads,
+  shared,time,params}.rs`; `evidence.rs`, `move_ordering.rs`,
+  `search_threads.rs` and `time_manager.rs` are gone. **Deviations from the
+  handoff, each recorded:** 44 parameters removed, not 42 (A.2.3's count of
+  99 missed 11 declarations; the extra two, `TmConfHigh`/`TmConfLow`, fed only
+  the root-confidence clock); `SharedContext` is the renamed
+  `SharedSearchState`, and the TT handle stays on `Searcher` because moving it
+  would change its access path, not its ownership; the sentinel stack is read
+  through `PlyArray::back(ply, n)` rather than a signed index type, so `ply`
+  stays `usize`; the node types are `Root`/`Pv`/`NonPv` (clippy's acronym
+  lint); the oracle differential was re-run as a paired pre-/post-B.1 control
+  because the oracle's DLL no longer reproduces the 47c file's oracle column
+  (the two reports are identical); the MoveEvidence stage classification is
+  inline in the `move_seen_*` census. **Speed is outside the ±0.5% window in
+  the favourable direction: +6.30%, 95% [+5.78%, +6.84%]** against the
+  RAR-M48 pool, interleaved on the same host — the per-move reduction
+  estimate the prospective-depth switch computed for every move, the
+  root-confidence snapshot and the per-node branches of the removed
+  switches. The §11 baselines reproduced exactly (branching 1.630, WAC 200
+  and 237, median depth 16, agreement 40/50). **B.2.2's NPS floor (0.90x)
+  is read against the B.1 pool `tools/results/nps-b1-20260914/`, measured
+  interleaved, not against 3.19 M**: this host read the RAR-M48 pool 3.6%
+  slower on 2026-09-14 than on 2026-09-11. Original scope follows. **B.0 handoff frozen
   2026-09-13 (`analysis/search_programme_2026-09-13.md` §6, §13.1):
   `NodeType {Root, PV, NonPV}` with runtime `cut_node`; `ThreadData` plus
   `SharedContext` without changing table ownership; `Stack` with a sentinel
@@ -1035,8 +1062,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by B.0 (2026-09-13); exact fingerprint required |
-| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for B.1 |
+| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14, next executable leaf |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |

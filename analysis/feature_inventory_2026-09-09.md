@@ -32,6 +32,14 @@ Nine production options: `Hash`, `Clear Hash`, `Ponder`, `Move Overhead`,
 
 ### Dead: inert at default, remove in B.1 (42 parameters, grouped below)
 
+**Correction, B.1 (2026-09-14, RAR-P24):** the `search_params!` macro declared
+**110** parameters, not 99. The eleven this inventory missed are
+`quiet_hist_prune_coeff`, `hist_bonus_max`, `hist_malus_max`, `tm_opt_scale`,
+`tm_fall_base`, `tm_instab_base`, `tm_instab_slope`, `tm_effort_high`,
+`tm_effort_low`, `tm_conf_high` and `tm_conf_low`. The last two fed only the
+root-confidence clock factor and were removed with it, so B.1 removed 44; the
+other nine are live and stay. 66 remain.
+
 Each is a switch or an additive term whose default (0) leaves the code path
 unreachable or the term zero. The mechanism the switch would have enabled is
 either a rejected experiment, an unrun registration that B.2 supersedes, or a

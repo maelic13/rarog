@@ -84,15 +84,15 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Item | Value |
 |---|---|
 | Released baseline | **2.4.0** on `master`, the `Version 2.4.0` squash of this `dev` state; fingerprint **7,601,220 / EBF 2.474**, `rustc 1.98.1`, per-tier PGO assets. Accepted by RAR-E16 at **+54.77 ± 17.04 Elo** over 2.3.2 |
-| Development head | `dev`, version **2.4.0**, identical in content to the released `master`; fingerprint **7,601,220 / EBF 2.474**, re-verified on Windows x86-64, Windows ARM64 and macOS ARM64 at this head (RAR-P19); accepted by RAR-E15 (+12.12 ± 10.17 Elo); pinned `rustc 1.98.1` since A.3.1 |
+| Development head | `dev` after B.1, version **2.4.0**; fingerprint **7,601,220 / EBF 2.474** unchanged on magic and PEXT (B.1 is behaviour-neutral, RAR-P24); last verified on Windows ARM64 and macOS ARM64 at the 2.4.0 head (RAR-P19); pinned `rustc 1.98.1` |
 | Pool position, `3+0.03` 1T | Houdini 3 −224, Critter 1.6a −184, Houdini 1.5a −179, Fritz 16 −147, Rybka 4 −99, Basilisk 1.10.0 −23, Basilisk 1.9.3 −9, Rarog 2.3.2 +70 (RAR-M45, 2026-09-11, 600 games/pair, 2.4.0 release) |
 | Pool position, `3+0.03` **4T** | Houdini 3 −169, Fritz 16 −149, Critter 1.6a −109, Rybka 4 −73, Basilisk 1.10.0 **+25**, Rarog 2.3.2 +45, Rybka 3 +79; Perf 3034 vs frozen 3003 (RAR-M46, 2026-09-11) |
 | Search deficit | **247.97 ± 10.89 Elo** equal time against the frozen oracle on the 2.4.0 head, evaluation proved constant (RAR-O03); depth gap only 0.97 ply, so most of it is decision quality; selectivity explains 272 ± 18. At equal nodes: WAC **200 vs 242** solved at 100k, median depth **16 vs 19** at 300k; Rarog's branching factor 1.630 is already below the oracle's 1.736 (RAR-M50) |
 | Evaluation deficit | **about 329 Elo** against Stockfish's classical HCE with the same search |
-| Speed | **3.19 MNPS** pooled median, bench 13, PGO pext 1T, instrument ±0.2% (best-of 3.21 = the old 3.22); Basilisk 3.71 (RAR-M48) |
+| Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool measured interleaved (RAR-P24; the 2.4.0 pool read 3.07 on that day against 3.19 in RAR-M48, a host shift, so compare pools interleaved); Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
 | Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.1 — the behaviour-neutral search restructure**, to the B.0 handoff. B.0 closed 2026-09-13 |
+| Current step | **B.2.1 — implement cluster 1 (the selectivity core)** to the B.0 handoff. B.1 closed 2026-09-14 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -104,15 +104,15 @@ A.4, the conversion instrument, the consolidation analysis that decided Phase A
 refactors nothing, the version bump, and four baselines measured on the
 released binary.
 
-**B.0 is closed and B.1 is the next executable leaf**: the behaviour-neutral
-search restructure, `READY_FOR_IMPLEMENTATION / I1`, to the handoff in
-`analysis/search_programme_2026-09-13.md` §13.1 (exact fingerprint
-7,601,220 / EBF 2.474, pooled NPS within ±0.5%). B.0 found the deficit is
-decision quality at a fixed budget, not per-ply growth: Rarog already
-branches slower than the oracle but solves 42 fewer WAC positions at 100k
-nodes, reduces 47% of late moves straight into quiescence and re-searches
-1.3% of reductions. B.2's handoff, seeds, screens, canaries and frozen
-prediction (+35 Elo after fitting, 90% [+5, +70]) are in that document.
+**B.1 is closed and B.2.1 is the next executable leaf**: cluster 1, the
+selectivity core, `READY_FOR_IMPLEMENTATION / I2`, to the handoff in
+`analysis/search_programme_2026-09-13.md` §13.2 (ticket order 0–8, the
+umbrella-off arm reproducing 7,601,220 at every ticket). B.1 landed the
+scaffold behaviour-neutral at the exact fingerprint and made the engine
+**6.30% faster** (pooled PGO, RAR-P24), so B.2.2's 0.90x NPS floor is read
+interleaved against the B.1 pool. B.0 found the deficit is decision quality
+at a fixed budget, not per-ply growth; B.2's prediction (+35 Elo after
+fitting, 90% [+5, +70]) is frozen in that document.
 
 Two Phase A findings bind later work, recorded in PLAN at the leaves that own
 them. **D.2's premise is contradicted** — at 4T Rarog beats this reference
@@ -170,7 +170,7 @@ is the numbering: release first, baselines on the released binary.
 ## Phase B — Search programme (evaluation frozen)
 
 - [x] **B.0** Investigation: mechanism map, cluster contents, scale ratio 0.457 (eval) / 0.75 (SEE), B.2.2 screens registered as a branching window plus fixed-node quality, 116 oracle-anchored canaries, B.1–B.3 handoffs frozen (`analysis/search_programme_2026-09-13.md`, RAR-M50) — DONE 2026-09-13
-- [ ] **B.1** Search restructure, behaviour-neutral: modules, `NodeType`, `StackEntry`; A.6 dead code removed; exact fingerprint — **READY_FOR_IMPLEMENTATION / I1**
+- [x] **B.1** Search restructure: `search/` modules, `NodeType`, `ThreadData`, sentinel `PlyArray` stack; 44 inert parameters, root confidence, SMP skip and `evidence.rs` removed; exact fingerprint, pooled-PGO NPS +6.30% (RAR-P24) — DONE 2026-09-14
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
