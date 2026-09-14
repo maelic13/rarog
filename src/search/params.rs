@@ -475,9 +475,10 @@ search_params! {
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
     eval_material_scale = 0, "CoreEvalMaterialScale", -64..=64;
-    /// Search-side rule-50 damping in percent of `(200 - clock) / 200`; the
-    /// evaluator damps rule-50 itself, so this stays off unless that changes.
-    eval_rule50_damping = 0, "CoreEvalRule50Damping", 0..=100;
+    /// Rule-50 damping, in percent of `eval * min(clock, 100) / 199`. The
+    /// evaluator's own damping is compiled out under the core, so the eval the
+    /// table stores does not depend on the clock and the search damps it here.
+    eval_rule50_damping = 100, "CoreEvalRule50Damping", 0..=150;
 }
 
 #[cfg(test)]

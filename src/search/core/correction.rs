@@ -159,10 +159,11 @@ impl Searcher {
     }
 
     /// The corrected eval and the correction it includes. The raw eval is
-    /// scaled by the material on the board and damped toward the fifty-move
-    /// horizon, each by a coordinate that is neutral at zero (the evaluator
-    /// already damps rule-50 itself), then corrected and kept out of the
-    /// tablebase-win band.
+    /// scaled by the material on the board (a coordinate neutral at zero) and
+    /// damped toward the fifty-move horizon with the current clock, then
+    /// corrected and kept out of the tablebase-win band. The damping lives
+    /// here, not in the evaluator, because the raw eval is stored in the
+    /// transposition table without the clock.
     pub(super) fn corrected_eval_parts(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
         let p = &self.cfg.core;
         let mut eval = i64::from(raw);
@@ -172,9 +173,8 @@ impl Searcher {
                 / (64 * MATERIAL_REFERENCE);
         }
         if p.eval_rule50_damping != 0 {
-            eval = eval
-                * (20_000 - i64::from(p.eval_rule50_damping) * i64::from(board.halfmove_clock()))
-                / 20_000;
+            let clock = i64::from(board.halfmove_clock().min(100));
+            eval -= eval * i64::from(p.eval_rule50_damping) * clock / (100 * 199);
         }
         let correction = self.correction_value(board, ply);
         let eval = (eval + i64::from(correction))
@@ -278,6 +278,35 @@ mod tests {
 
     const FEN: &str = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
 
+    /// The table stores the raw eval under a key that ignores the halfmove
+    /// clock, so the raw eval must not depend on the clock: a value stored at
+    /// clock 0 and read at clock 80 corrects to exactly what a fresh
+    /// evaluation at clock 80 does, and that is damped toward the draw.
+    #[test]
+    fn a_stored_raw_eval_serves_any_halfmove_clock() {
+        let mut searcher = Searcher::default();
+        let early = Board::from_fen("4k3/8/8/8/8/8/3Q4/4K3 w - - 0 60").expect("valid FEN");
+        let late = Board::from_fen("4k3/8/8/8/8/8/3Q4/4K3 w - - 80 60").expect("valid FEN");
+        assert_eq!(early.hash(), late.hash(), "the table key ignores the clock");
+        let raw = searcher.raw_eval(&early);
+        searcher.shared.tt.store_eval(early.hash(), raw, false);
+        let stored = crate::tt::TtProbe::from_entry(
+            searcher.shared.tt.probe(late.hash()),
+            0,
+            late.halfmove_clock(),
+        )
+        .raw_static_eval;
+        let fresh = searcher.raw_eval(&late);
+        assert_eq!(stored, fresh);
+        let (late_eval, _) = searcher.corrected_eval_parts(&late, stored, 0);
+        assert_eq!(late_eval, searcher.corrected_eval_parts(&late, fresh, 0).0);
+        let (early_eval, _) = searcher.corrected_eval_parts(&early, raw, 0);
+        assert!(
+            late_eval.abs() < early_eval.abs(),
+            "{late_eval} vs {early_eval}"
+        );
+    }
+
     #[test]
     fn rule50_buckets_cover_the_clock() {
         let bucket = |clock: u8| {
@@ -360,16 +389,16 @@ mod tests {
     }
 
     #[test]
-    fn material_and_rule50_terms_are_neutral_at_zero_and_act_when_set() {
+    fn rule50_damping_is_the_evaluators_and_material_is_neutral_at_zero() {
         let mut searcher = Searcher::default();
         let board = Board::from_fen("4k3/8/8/8/8/8/3Q4/4K3 w - - 90 60").expect("valid FEN");
-        assert_eq!(searcher.corrected_eval_parts(&board, 500, 0).0, 500);
-        searcher.cfg.core.eval_rule50_damping = 100;
         assert_eq!(
             searcher.corrected_eval_parts(&board, 500, 0).0,
-            500 * 110 / 200
+            500 - 500 * 90 / 199,
+            "the default damping is the evaluator's former rule-50 line"
         );
         searcher.cfg.core.eval_rule50_damping = 0;
+        assert_eq!(searcher.corrected_eval_parts(&board, 500, 0).0, 500);
         searcher.cfg.core.eval_material_scale = 64;
         let expected = 500 + 500 * (900 - 8_000) / 8_000;
         assert_eq!(searcher.corrected_eval_parts(&board, 500, 0).0, expected);

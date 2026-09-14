@@ -13,6 +13,7 @@ fn evaluator_scores_material_from_side_to_move_perspective() {
     assert!(evaluator.evaluate(&black_to_move) < -piece_value(Piece::Queen) + 100);
 }
 
+#[cfg(not(feature = "b2core"))]
 #[test]
 fn evaluator_dampens_static_advantage_near_fifty_move_draw() {
     let mut evaluator = Evaluator::default();
@@ -20,6 +21,19 @@ fn evaluator_dampens_static_advantage_near_fifty_move_draw() {
     let stale = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 90 46").expect("valid FEN");
 
     assert!(evaluator.evaluate(&stale).abs() < evaluator.evaluate(&fresh).abs());
+}
+
+/// Under the selectivity core the search stores the raw eval in a table keyed
+/// without the halfmove clock, so the evaluator must not read the clock; the
+/// search applies the rule-50 damping itself (`search/core/correction.rs`).
+#[cfg(feature = "b2core")]
+#[test]
+fn evaluator_raw_eval_does_not_depend_on_the_halfmove_clock() {
+    let mut evaluator = Evaluator::default();
+    let fresh = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 0 1").expect("valid FEN");
+    let stale = Board::from_fen("4k3/8/8/8/8/8/8/Q3K3 w - - 90 46").expect("valid FEN");
+
+    assert_eq!(evaluator.evaluate(&stale), evaluator.evaluate(&fresh));
 }
 
 #[test]

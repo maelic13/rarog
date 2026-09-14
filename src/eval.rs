@@ -1360,8 +1360,14 @@ impl Evaluator {
             self.trace.borrow_mut().raw = lin;
         }
         score = scale_endgame(board, score);
-        let rule50 = board.halfmove_clock().min(100) as i32;
-        score -= score * rule50 / 199;
+        // Rule-50 damping. The selectivity core stores this eval in the
+        // transposition table, which is keyed without the clock, so there the
+        // search applies the damping with the current clock instead.
+        #[cfg(not(feature = "b2core"))]
+        {
+            let rule50 = board.halfmove_clock().min(100) as i32;
+            score -= score * rule50 / 199;
+        }
         let value = if board.side_to_move() == Color::White {
             score
         } else {
