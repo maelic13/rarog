@@ -151,6 +151,36 @@ leaf continues here, this is the mapping; everything else is history.
   reproduced its seed exactly (RAR-M47); **A.6** concluded that **Phase A
   refactors nothing**, handing its findings to B.1 and C.1.
 
+- **2026-09-10 — Deleted-branch arms preserved.**
+  An audit of every SHA cited in
+  this file found 122 tokens: 84 reachable, 9 not our commits or already gone,
+  and **29 dangling** — cited by a row but reachable from no branch or tag. Six
+  were experiment arms with a tight, meaningful diff; their patches now live in
+  `analysis/arm_patches/`, each verified to apply to a reachable baseline and to
+  depend only on blobs that survive a prune. Thirteen touched no `src/` file and
+  needed nothing: their content is already in the documents they edited. Nine sit
+  deep on a 113-commit line that forked from `a5fd288` and was never merged, so a
+  diff to any reachable base is a whole-branch snapshot rather than a recipe;
+  those rows are closed findings, and `ba3170b` (RAR-S20), the only one with a
+  parameter recipe, already carries its seven values and both fingerprints inline.
+  That line is unreachable from refs but still held by the reflog, so `git gc`
+  does not remove it. `analysis/arm_patches/README.md` has the detail.
+
+  **Three cited SHAs were already gone before this audit** — `0ddc8e5` and
+  `3ee4660` (RAR-P16) and `7693010` (RAR-S54). All three rows anticipated it and
+  carry their recipes, which is why nothing was lost.
+- **2026-09-09 — Test-engine store cleared.**
+  `tools/test_engines/` held 183
+  executables, 181 of them built on the retired 1.97.1 pin and 73 of those with
+  no manifest at all, so they could not be used in a gate anyway — `sprt.ps1`
+  refuses a pair whose compilers differ and warns when equality is not
+  checkable. All of them were deleted on maintainer instruction after the A.3.1
+  bump; rows that cite a path under `tools/test_engines/` now rest on their
+  recorded recipe and fingerprint, which is what the ledger's own rule requires
+  of them. Rebuild from the row when a binary is needed again. **Kept:** the two
+  RAR-E16 gate arms, `tools/test_engines/ablate/` (the frozen matched-ablation
+  oracle and its HCE glue, which B.9 still needs and which is not cheaply
+  rebuilt), and `rarog-43b-cand.diff`, a recipe rather than an artifact.
 - **2026-09-09 — PLAN A.1 to A.3.2 CLOSED: the reset itself.** New PLAN, GUIDE
   and HISTORY with the Phase-4 line archived and a mechanical checker
   (`check_guide.py`); twelve superseded tracked files removed; seven branches

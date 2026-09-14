@@ -47,6 +47,50 @@ distinguish independence from masking; do not require it for every small change.
 Freeze predictions in EXPERIMENTS before exposure. A later explanation is
 calibration, never proof that the outcome was predicted.
 
+### Experiment registration
+
+Register an experiment as one row in the `EXPERIMENTS.md` section that owns
+it, before any games. When the registration is longer than a row, write it in
+an `analysis/` packet with the fields below and cite the packet from the row;
+append the result and calibration there without rewriting the prediction.
+
+```markdown
+### RAR-<area><number> — <short name>
+
+- Date / owner:
+- Baseline SHA / candidate SHA / dirty-diff hash:
+- Binary / compiler / PGO identity:
+- Research question:
+- Hypothesis / proposed mechanism:
+- Competing hypotheses:
+- Interacting mechanisms / consumers:
+- **PRE-REGISTERED PREDICTION (freeze before exposure):**
+  - Expected diagnostic movement:
+  - Expected Elo sign/range, if defensible:
+  - Probability positive/useful and confidence basis:
+  - Most likely failure mode:
+- Falsification criteria:
+- Cheapest prior falsifier: test / result / implementation still justified?:
+- Registered gate and stop rule:
+- Full conditions / provenance: flags, manifests and hashes; book/hash, TC,
+  threads, Hash, concurrency, affinity, adjudication, node budget and cohort:
+- Result:
+  - Diagnostics: nodes, EBF, NPS, depth, counters, suites (not the verdict):
+  - Games/verdict: games, W-D-L, Elo/nElo and CI, LLR:
+- Disposition: accepted / retained / rejected / neutral/inconclusive /
+  observation / no-change / deferred:
+- **PREDICTION CALIBRATION (append after exposure):**
+  - Original prediction (do not rewrite):
+  - Observed result; sign and magnitude reasonable?:
+  - Proposed causal mechanism supported?:
+  - Missed interaction or instrument failure?:
+  - Confidence over/under-calibrated?:
+- Postmortem: changed causal assumption / what did not change / alternatives:
+- Conditional lesson:
+- Retry trigger or `closed`:
+- Artifacts / commits:
+```
+
 ### Step lifecycle and audit handoff
 
 Before selecting a leaf, review GUIDE's current/held overview and PLAN's
