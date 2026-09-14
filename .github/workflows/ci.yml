@@ -68,6 +68,14 @@ jobs:
       - name: cargo clippy (--features texel)
         run: cargo clippy --all-targets --features texel -- -D warnings
 
+      # The selectivity-core candidate replaces the node kernel under the
+      # `b2core` umbrella, so its code is linted only when the feature is on.
+      - name: cargo clippy (--features b2core)
+        run: cargo clippy --all-targets --features b2core -- -D warnings
+
+      - name: cargo clippy (--features b2core,diag,tune)
+        run: cargo clippy --all-targets --features b2core,diag,tune -- -D warnings
+
       - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -114,6 +122,15 @@ jobs:
             cargo test -p rarog --release
           else
             cargo test -p rarog
+          fi
+
+      - name: cargo test — engine, b2core candidate (${{ matrix.profile }})
+        shell: bash
+        run: |
+          if [ "${{ matrix.profile }}" = "release" ]; then
+            cargo test -p rarog --release --features b2core
+          else
+            cargo test -p rarog --features b2core
           fi
 
       - name: cargo test — tooling crates
@@ -187,17 +204,28 @@ jobs:
       # commit, and a hardcoded constant would need editing constantly until
       # somebody just deleted the check. Cross-platform agreement, by contrast,
       # must hold forever regardless of what we change.
-      - name: Run bench and record node count
+      # The candidate arm must agree across platforms too; it builds into its
+      # own target directory so the release binary above is untouched.
+      - name: Build release, b2core candidate
+        run: cargo build --release --features b2core --target-dir target/b2core
+
+      - name: Run bench and record node counts
         shell: bash
         run: |
-          echo bench | ./target/release/rarog${{ matrix.ext }} | tee bench.log
-          nodes=$(sed -n 's/.*Nodes searched *: *\([0-9][0-9]*\).*/\1/p' bench.log | head -1)
-          if [ -z "$nodes" ]; then
-            echo "::error::could not parse a node count out of bench output"
-            exit 1
-          fi
-          echo "${{ matrix.label }} $nodes" > "nodes-${{ matrix.label }}.txt"
-          echo "$nodes nodes on ${{ matrix.label }}"
+          count() {
+            echo bench | "$1" | tee "$2"
+            nodes=$(sed -n 's/.*Nodes searched *: *\([0-9][0-9]*\).*/\1/p' "$2" | head -1)
+            if [ -z "$nodes" ]; then
+              echo "::error::could not parse a node count out of $2"
+              exit 1
+            fi
+          }
+          count "./target/release/rarog${{ matrix.ext }}" bench.log
+          accepted=$nodes
+          count "./target/b2core/release/rarog${{ matrix.ext }}" bench-b2core.log
+          candidate=$nodes
+          echo "${{ matrix.label }} $accepted $candidate" > "nodes-${{ matrix.label }}.txt"
+          echo "$accepted nodes (b2core $candidate) on ${{ matrix.label }}"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -219,15 +247,17 @@ jobs:
       # architecture must reach the identical number. A disagreement is a real
       # bug — an unsound unsafe block (17 remain), a data race in lazy SMP, or
       # float non-determinism — never a benign platform quirk.
-      - name: All platforms must report the same node count
+      - name: All platforms must report the same node counts
         run: |
           cat nodes-*.txt
-          counts=$(awk '{print $2}' nodes-*.txt | sort -u | wc -l)
-          if [ "$counts" -ne 1 ]; then
-            echo "::error::platforms disagree on bench node count — see the table above"
-            exit 1
-          fi
-          echo "all platforms agree: $(awk '{print $2}' nodes-*.txt | sort -u)"
+          for column in 2 3; do
+            counts=$(awk -v c=$column '{print $c}' nodes-*.txt | sort -u | wc -l)
+            if [ "$counts" -ne 1 ]; then
+              echo "::error::platforms disagree on bench node count (column $column) — see the table above"
+              exit 1
+            fi
+          done
+          echo "all platforms agree: $(awk '{print $2, "b2core", $3}' nodes-*.txt | sort -u)"
 
   features:
     name: feature builds
@@ -252,6 +282,9 @@ jobs:
 
       - name: Build --features diag
         run: cargo build --release --features diag
+
+      - name: Build --features b2core,tune,ablate
+        run: cargo build --release --features b2core,tune,ablate
 
       # `ablate` was the fourth declared feature and the only one CI never
       # built, so it could rot unnoticed exactly like the other three would
