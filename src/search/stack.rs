@@ -103,6 +103,17 @@ pub(super) struct StackEntry {
     /// stored bit.
     #[cfg(feature = "b2core")]
     pub(super) tt_pv: bool,
+    /// The node's validated TT move, or null.
+    #[cfg(feature = "b2core")]
+    pub(super) tt_move: Move,
+    /// Squares the side not to move attacks at this node, once the node has
+    /// computed them; a child updates the histories of the move made here
+    /// under these threats.
+    #[cfg(feature = "b2core")]
+    pub(super) threats: crate::board::Bitboard,
+    /// The piece `mv` captured, if any.
+    #[cfg(feature = "b2core")]
+    pub(super) captured: Option<Piece>,
 }
 
 #[cfg(not(feature = "b2core"))]
@@ -135,6 +146,12 @@ impl Default for StackEntry {
             cutoff_count: 0,
             #[cfg(feature = "b2core")]
             tt_pv: false,
+            #[cfg(feature = "b2core")]
+            tt_move: Move::NULL,
+            #[cfg(feature = "b2core")]
+            threats: crate::board::Bitboard::EMPTY,
+            #[cfg(feature = "b2core")]
+            captured: None,
         }
     }
 }

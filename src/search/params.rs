@@ -568,6 +568,23 @@ search_params! {
     /// by more than this, one ply shallower when by less than this.
     lmr_research_deeper = 26, "CoreLmrResearchDeeper", 0..=200;
     lmr_research_shallower = 4, "CoreLmrResearchShallower", -50..=50;
+
+    // History update policy, history units.
+    /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.
+    hist_quiet_bonus_slope = 184, "CoreHistQuietBonusSlope", 32..=512;
+    hist_quiet_bonus_cap = 1_742, "CoreHistQuietBonusCap", 256..=4096;
+    /// Quiet malus `min(slope * depth, cap) - 46 - 31 * quiets searched`.
+    hist_quiet_malus_slope = 171, "CoreHistQuietMalusSlope", 32..=512;
+    hist_quiet_malus_cap = 1_099, "CoreHistQuietMalusCap", 256..=4096;
+    /// Search-order fade of the quiet malus: the i-th quiet gets
+    /// `1024^2 / (1024 + scale * i)^2` of it.
+    hist_malus_index_scale = 45, "CoreHistMalusIndexScale", 0..=256;
+    hist_cont_bonus_cap = 1_098, "CoreHistContBonusCap", 256..=4096;
+    hist_noisy_bonus_cap = 885, "CoreHistNoisyBonusCap", 256..=4096;
+    /// Quiet bonus to a TT move that cuts: `min(190 * depth - 81, cap)`.
+    hist_tt_cutoff_bonus_cap = 1_691, "CoreHistTtCutoffBonusCap", 256..=4096;
+    /// Base of the fail-low reward factor for the parent's quiet move.
+    hist_fail_low_base = 88, "CoreHistFailLowBase", 0..=400;
 }
 
 #[cfg(test)]

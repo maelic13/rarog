@@ -3,8 +3,10 @@
 
 use crate::board::{Bitboard, Board, Color, Move, Piece, Square};
 
+use crate::infra;
+
 use super::Searcher;
-use super::movepick::BadCaptureList;
+use super::movepick::is_noisy;
 
 /// `(colour, piece type, square)` slots: the second index of every
 /// piece-to table.
@@ -237,98 +239,212 @@ impl Searcher {
         history
     }
 
-    /// Reward for the move that produced a beta cutoff.
-    pub(super) fn history_bonus(&self, depth: i32) -> i32 {
-        (self.cfg.params.hist_bonus_mul * depth - self.cfg.params.hist_bonus_sub)
-            .clamp(0, self.cfg.params.hist_bonus_max)
-    }
-
-    /// Penalty magnitude for searched moves that failed to cut (applied
-    /// negated). Stored positive.
-    pub(super) fn history_malus(&self, depth: i32) -> i32 {
-        (self.cfg.params.hist_malus_mul * depth - self.cfg.params.hist_malus_sub)
-            .clamp(0, self.cfg.params.hist_malus_max)
-    }
-
-    /// Quiet and pawn tables for one quiet move, plus the continuation terms
-    /// when `with_continuation` is set.
-    pub(super) fn update_quiet_history(
+    /// Update the continuation histories of the move `piece` to `to`, made
+    /// at `ply` by `color`, in every context it follows.
+    pub(super) fn update_continuations(
         &mut self,
-        board: &Board,
-        threats: Bitboard,
         ply: usize,
-        mv: Move,
+        color: Color,
+        piece: Piece,
+        to: Square,
         bonus: i32,
-        with_continuation: bool,
     ) {
-        let stm = board.side_to_move();
-        let piece = board.moving_piece(mv);
-        let to = mv.to_sq();
-        self.td.hist.update_quiet(threats, stm, mv, bonus);
-        self.td.hist.update_pawn(
-            HistoryTables::pawn_row(board.pawn_key()),
-            stm,
-            piece,
-            to,
-            bonus,
-        );
-        if with_continuation {
-            for (index, back) in CONT_PLY_BACK.into_iter().enumerate() {
-                if let Some(context) = self.cont_context_back(ply, back) {
-                    // Interim divisors 1, 1, 2, 3 by look-back distance.
-                    let divisor = [1, 1, 2, 3][index];
-                    self.td
-                        .hist
-                        .update_cont(context, stm, piece, to, bonus / divisor);
-                }
+        for back in CONT_PLY_BACK {
+            if let Some(context) = self.cont_context_back(ply, back) {
+                self.td.hist.update_cont(context, color, piece, to, bonus);
             }
         }
     }
 
-    pub(super) fn update_noisy_history(
-        &mut self,
-        board: &Board,
-        threats: Bitboard,
-        attacker: Piece,
-        to: Square,
-        captured: Option<Piece>,
-        bonus: i32,
-    ) {
-        self.td
-            .hist
-            .update_noisy(threats, board.side_to_move(), attacker, to, captured, bonus);
-    }
+    /// The update when a node's best move raised alpha: a bonus to that move,
+    /// a malus to the moves searched before it without raising alpha (quiet
+    /// maluses fade with their position in the search order), a continuation
+    /// malus to the parent's quiet move when it was among the parent's first
+    /// two, and a continuation bonus to a quiet best move that failed high
+    /// only after a re-search.
+    pub(super) fn update_best_move_histories(&mut self, board: &Board, u: &BestMoveUpdate<'_>) {
+        let p = &self.cfg.core;
+        let depth = u.depth;
+        let cut = i32::from(u.cut_node);
+        let quiet_count = infra::to_i32(u.quiets.len());
+        let noisy_count = infra::to_i32(u.noisies.len());
+        let noisy_bonus = (96 * depth).min(p.hist_noisy_bonus_cap) - 43 - 87 * cut;
+        let noisy_malus = (175 * depth).min(1_252) - 58 - 16 * noisy_count;
+        let quiet_bonus =
+            (p.hist_quiet_bonus_slope * depth).min(p.hist_quiet_bonus_cap) - 72 - 42 * cut;
+        let quiet_malus =
+            (p.hist_quiet_malus_slope * depth).min(p.hist_quiet_malus_cap) - 46 - 31 * quiet_count;
+        let cont_bonus = (97 * depth).min(p.hist_cont_bonus_cap) - 74 - 48 * cut;
+        let cont_malus = (414 * depth).min(949) - 49 - 17 * quiet_count;
+        let index_scale = p.hist_malus_index_scale;
+        let stm = board.side_to_move();
+        let threats = u.threats;
+        let pawn_row = HistoryTables::pawn_row(board.pawn_key());
+        let best = u.best;
+        let best_piece = board.moving_piece(best);
 
-    /// The interim update at a quiet beta cutoff: bonus to the move, malus to
-    /// the quiets and captures searched before it.
-    pub(super) fn update_cutoff_tables(
-        &mut self,
-        board: &Board,
-        threats: Bitboard,
-        best: Move,
-        ply: usize,
-        depth: i32,
-        bonus_pct: i32,
-        quiets: &[Move],
-        good_caps: &BadCaptureList,
-        bad_caps: &BadCaptureList,
-    ) {
-        let bonus = self.history_bonus(depth) * bonus_pct / 100;
-        let malus = self.history_malus(depth);
-        self.update_quiet_history(board, threats, ply, best, bonus, true);
-        for &quiet in quiets {
-            self.update_quiet_history(board, threats, ply, quiet, -malus, false);
-        }
-        for capture in good_caps.as_slice().iter().chain(bad_caps.as_slice()) {
-            self.update_noisy_history(
-                board,
+        if is_noisy(best) {
+            self.td.hist.update_noisy(
                 threats,
-                capture.attacker,
-                Square(capture.to),
-                capture.captured,
-                -malus,
+                stm,
+                best_piece,
+                best.to_sq(),
+                board.captured_piece(best),
+                noisy_bonus,
+            );
+        } else {
+            self.td.hist.update_quiet(threats, stm, best, quiet_bonus);
+            self.td
+                .hist
+                .update_pawn(pawn_row, stm, best_piece, best.to_sq(), quiet_bonus);
+            self.update_continuations(u.ply, stm, best_piece, best.to_sq(), cont_bonus);
+            for (index, &mv) in u.quiets.iter().enumerate() {
+                let denominator = 1024 + index_scale * infra::to_i32(index);
+                let scale = 1024 * 1024 / (denominator * denominator / 1024);
+                let piece = board.moving_piece(mv);
+                self.td
+                    .hist
+                    .update_quiet(threats, stm, mv, -quiet_malus * scale / 1024);
+                self.td.hist.update_pawn(
+                    pawn_row,
+                    stm,
+                    piece,
+                    mv.to_sq(),
+                    -quiet_malus * scale / 1024,
+                );
+                self.update_continuations(
+                    u.ply,
+                    stm,
+                    piece,
+                    mv.to_sq(),
+                    -cont_malus * scale / 1024,
+                );
+            }
+        }
+        for &mv in u.noisies {
+            self.td.hist.update_noisy(
+                threats,
+                stm,
+                board.moving_piece(mv),
+                mv.to_sq(),
+                board.captured_piece(mv),
+                -noisy_malus,
             );
         }
+
+        if u.ply > 0 {
+            let parent = *self.td.stack.back(u.ply, 1);
+            if !parent.mv.is_null() && !is_noisy(parent.mv) && parent.move_count < 2 {
+                let malus = (93 * depth - 52).min(935);
+                self.update_continuations(u.ply - 1, !stm, parent.piece, parent.mv.to_sq(), -malus);
+            }
+        }
+        if u.search_count > 1 && u.fail_high && !is_noisy(best) {
+            let bonus = (233 * depth - 86).min(1_550);
+            self.update_continuations(u.ply, stm, best_piece, best.to_sq(), bonus);
+        }
+    }
+
+    /// A node that failed low was a refutation of its parent's move: reward
+    /// that move. A quiet one gets a quiet bonus scaled by how late the parent
+    /// tried it, whether it was the parent's TT move, and how far this node
+    /// fell below its own eval and the parent's, plus a continuation bonus;
+    /// a noisy one gets a noisy bonus.
+    pub(super) fn reward_parent_after_fail_low(
+        &mut self,
+        board: &Board,
+        ply: usize,
+        depth: i32,
+        best_score: i32,
+        static_eval: i32,
+        in_check: bool,
+    ) {
+        let parent = *self.td.stack.back(ply, 1);
+        if parent.mv.is_null() {
+            return;
+        }
+        let mover = !board.side_to_move();
+        let p = &self.cfg.core;
+        if is_noisy(parent.mv) {
+            let piece = if parent.mv.is_promo() {
+                parent.mv.promo_piece()
+            } else {
+                parent.piece
+            };
+            let bonus = (50 * depth).min(654);
+            self.td.hist.update_noisy(
+                parent.threats,
+                mover,
+                piece,
+                parent.mv.to_sq(),
+                parent.captured,
+                bonus,
+            );
+            return;
+        }
+        let factor = p.hist_fail_low_base
+            + (17 * parent.move_count).min(229)
+            + 110 * i32::from(parent.mv == parent.tt_move)
+            + 144 * i32::from(!in_check && best_score <= static_eval - 44)
+            + 306
+                * i32::from(
+                    parent.static_eval != crate::eval::VALUE_NONE
+                        && best_score <= -parent.static_eval - 62,
+                );
+        let bonus = factor * (180 * depth - 37).min(2_414) / 128;
+        self.td
+            .hist
+            .update_quiet(parent.threats, mover, parent.mv, bonus);
+        if let Some(context) = self.cont_context_back(ply, 2) {
+            let bonus = (152 * depth - 47).min(1_379);
+            self.td
+                .hist
+                .update_cont(context, mover, parent.piece, parent.mv.to_sq(), bonus);
+        }
+    }
+}
+
+/// A node's best-move history update: see
+/// [`Searcher::update_best_move_histories`].
+pub(super) struct BestMoveUpdate<'a> {
+    pub(super) threats: Bitboard,
+    pub(super) ply: usize,
+    pub(super) depth: i32,
+    pub(super) cut_node: bool,
+    pub(super) best: Move,
+    /// Quiet and noisy moves searched before the best move without raising
+    /// alpha.
+    pub(super) quiets: &'a [Move],
+    pub(super) noisies: &'a [Move],
+    /// Searches of the best move: more than one means a reduced search or a
+    /// scout was followed by a re-search.
+    pub(super) search_count: u32,
+    pub(super) fail_high: bool,
+}
+
+/// Up to 32 moves of one class a node searched without raising alpha.
+pub(super) struct SearchedMoves {
+    moves: [Move; 32],
+    len: usize,
+}
+
+impl SearchedMoves {
+    pub(super) const fn new() -> Self {
+        Self {
+            moves: [Move::NULL; 32],
+            len: 0,
+        }
+    }
+
+    pub(super) fn push(&mut self, mv: Move) {
+        if self.len < self.moves.len() {
+            self.moves[self.len] = mv;
+            self.len += 1;
+        }
+    }
+
+    pub(super) fn as_slice(&self) -> &[Move] {
+        &self.moves[..self.len]
     }
 }
 
@@ -438,6 +554,80 @@ mod tests {
         assert_eq!(tables.quiet(threatened_to, Color::White, mv), 0);
         assert_eq!(
             tables.cont(context, Color::White, Piece::Knight, Square::F3),
+            0
+        );
+    }
+
+    /// The best move is rewarded; the quiets searched before it are penalised,
+    /// the earliest most; nothing else moves.
+    #[test]
+    fn a_best_quiet_is_rewarded_and_earlier_quiets_fade() {
+        let mut searcher = Searcher::default();
+        let board = Board::default();
+        let threats = board.threats().all;
+        let mv = |uci: &str| board.parse_move(uci).expect("legal move");
+        let best = mv("g1f3");
+        let quiets = [mv("a2a3"), mv("b2b3"), mv("c2c3"), mv("d2d3")];
+        searcher.update_best_move_histories(
+            &board,
+            &BestMoveUpdate {
+                threats,
+                ply: 0,
+                depth: 8,
+                cut_node: false,
+                best,
+                quiets: &quiets,
+                noisies: &[],
+                search_count: 1,
+                fail_high: true,
+            },
+        );
+        let quiet = |m: Move| searcher.td.hist.quiet(threats, Color::White, m);
+        assert!(quiet(best) > 0);
+        let maluses = quiets.map(quiet);
+        assert!(maluses.iter().all(|&v| v < 0), "{maluses:?}");
+        assert!(
+            maluses.windows(2).all(|w| w[0] <= w[1]),
+            "fades: {maluses:?}"
+        );
+        assert_eq!(quiet(mv("h2h3")), 0, "an unsearched move is untouched");
+        let pawn_row = HistoryTables::pawn_row(board.pawn_key());
+        assert!(
+            searcher
+                .td
+                .hist
+                .pawn(pawn_row, Color::White, Piece::Knight, Square::F3)
+                > 0
+        );
+    }
+
+    /// A fail-low child rewards the parent's quiet move under the parent's
+    /// threats, from the parent side's perspective.
+    #[test]
+    fn a_fail_low_rewards_the_parents_quiet_move() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::default();
+        let parent_threats = board.threats().all;
+        let parent_move = board.parse_move("e2e4").expect("legal move");
+        searcher.td.stack[0].mv = parent_move;
+        searcher.td.stack[0].piece = Piece::Pawn;
+        searcher.td.stack[0].move_count = 12;
+        searcher.td.stack[0].threats = parent_threats;
+        searcher.td.stack[0].static_eval = 30;
+        board.make_move(parent_move);
+        searcher.reward_parent_after_fail_low(&board, 1, 6, -250, -40, false);
+        assert!(
+            searcher
+                .td
+                .hist
+                .quiet(parent_threats, Color::White, parent_move)
+                > 0
+        );
+        assert_eq!(
+            searcher
+                .td
+                .hist
+                .quiet(parent_threats, Color::Black, parent_move),
             0
         );
     }

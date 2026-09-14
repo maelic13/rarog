@@ -74,6 +74,8 @@ pub mod counters {
         // Selectivity core: nodes whose quiets were skipped by late-move or
         // quiet-futility pruning, and the per-move prunes it adds.
         skip_quiets_nodes,
+        // Quiet TT moves rewarded at a TT cutoff (selectivity core).
+        tt_cutoff_quiet_bonus,
         quiet_see_prune,
         history_pruned,
         bad_noisy_futility,

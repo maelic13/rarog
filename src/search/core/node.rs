@@ -1,15 +1,13 @@
 //! The node kernels: `negamax`, `quiescence`, and the per-move reduction and
 //! pruning helpers they share.
 
-use crate::board::{Board, CheckInfo, Move, MoveList, Piece, Square};
+use crate::board::{Board, CheckInfo, Move, MoveList, Piece};
 use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::infra;
 use crate::tt::{Bound, TtProbe, TtStore};
 
-use super::history::cont_context;
-use super::movepick::{
-    BadCaptureList, MovePicker, SEE_UNKNOWN, Stage, diversify_root_scores, is_noisy, pick_next,
-};
+use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
+use super::movepick::{MovePicker, Stage, diversify_root_scores, is_noisy, pick_next};
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
 /// Razoring stays away from decisive windows: alpha must be below this.
@@ -191,9 +189,11 @@ impl Searcher {
     /// is noisy, and the coloured piece and destination.
     #[inline]
     fn push_move(&mut self, board: &Board, ply: usize, mv: Move, piece: Piece) {
+        let captured = board.captured_piece(mv);
         let entry = &mut self.td.stack[ply];
         entry.mv = mv;
         entry.piece = piece;
+        entry.captured = captured;
         entry.cont_key = cont_context(
             board.is_in_check(),
             is_noisy(mv),
@@ -419,17 +419,35 @@ impl Searcher {
         // the node searches instead of trusting it.
         if !NODE::PV
             && excluded.is_null()
-            && board.halfmove_clock() < 90
             && let Some(score) = ev.node_cutoff_score(depth, alpha, beta, cut_node)
         {
-            trace_decision!(
-                self,
-                ply,
-                "tt_cut depth {depth} tt_depth {} bound {:?} score {score} window {alpha} {beta}",
-                ev.depth,
-                ev.bound
-            );
-            return score;
+            // A quiet TT move that cuts again, reached through one of the
+            // parent's first few moves, is confirmed as a refutation.
+            if score >= beta
+                && self.td.stack.back(ply, 1).move_count < 4
+                && let Some(mv) = ev.mv.and_then(|mv| board.legal_move(mv))
+                && !is_noisy(mv)
+            {
+                crate::diag_count!(tt_cutoff_quiet_bonus);
+                let stm = board.side_to_move();
+                let piece = board.moving_piece(mv);
+                let quiet_bonus = (190 * depth - 81).min(self.cfg.core.hist_tt_cutoff_bonus_cap);
+                let cont_bonus = (96 * depth - 73).min(1_206);
+                self.td
+                    .hist
+                    .update_quiet(board.threats().all, stm, mv, quiet_bonus);
+                self.update_continuations(ply, stm, piece, mv.to_sq(), cont_bonus);
+            }
+            if board.halfmove_clock() < 90 {
+                trace_decision!(
+                    self,
+                    ply,
+                    "tt_cut depth {depth} tt_depth {} bound {:?} score {score} window {alpha} {beta}",
+                    ev.depth,
+                    ev.bound
+                );
+                return score;
+            }
         }
         let mut tt_move = ev
             .mv
@@ -489,7 +507,21 @@ impl Searcher {
         };
         self.td.stack[ply].static_eval = static_eval;
         self.td.stack[ply].tt_pv = tt_pv;
+        self.td.stack[ply].tt_move = tt_move;
         let threats = board.threats();
+        self.td.stack[ply].threats = threats.all;
+        // The eval swing across the parent's quiet move trains that move's
+        // history: a move after which the side to move stands worse than the
+        // parent stood was a good one for the parent.
+        if !NODE::ROOT && !in_check && excluded.is_null() && (depth < 6 || tt_entry.is_none()) {
+            let parent = *self.td.stack.back(ply, 1);
+            if !parent.mv.is_null() && !is_noisy(parent.mv) && parent.static_eval != VALUE_NONE {
+                let bonus = (812 * -(static_eval + parent.static_eval) / 128).clamp(-144, 324);
+                self.td
+                    .hist
+                    .update_quiet(parent.threats, !board.side_to_move(), parent.mv, bonus);
+            }
+        }
         self.td.stack[ply].reduction = 0;
         self.td.stack[ply].move_count = 0;
         if ply + 2 < MAX_PLY {
@@ -957,9 +989,8 @@ impl Searcher {
         // and for the `make_move` check hint below. `board` is restored by
         // `unmake_move` each iteration, so these stay valid for the whole loop.
         let mut node_ci: Option<CheckInfo> = None;
-        let mut quiets = MoveList::new();
-        let mut good_caps = BadCaptureList::new();
-        let mut bad_caps = BadCaptureList::new();
+        let mut quiet_moves = SearchedMoves::new();
+        let mut noisy_moves = SearchedMoves::new();
         // Set by late-move or quiet-futility pruning: the picker hands over no
         // more quiets.
         let mut skip_quiets = false;
@@ -972,7 +1003,7 @@ impl Searcher {
             move_count += 1;
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
-            let mut see = if is_capture { picked.see as i32 } else { 0 };
+            let mut search_count = 0u32;
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
             // The TT move is emitted before quiets are scored, so its history
@@ -991,7 +1022,7 @@ impl Searcher {
             if diag_order_sample {
                 if mv == tt_move {
                     crate::diag_count!(move_seen_tt);
-                } else if is_capture && see >= 0 {
+                } else if is_capture && picked.see >= 0 {
                     crate::diag_count!(move_seen_good_capture);
                 } else if is_quiet {
                     crate::diag_count!(move_seen_quiet);
@@ -1239,6 +1270,7 @@ impl Searcher {
             let mut score;
 
             if searched == 0 {
+                search_count += 1;
                 score = if child_is_pv {
                     -self.negamax::<Pv, _>(
                         board,
@@ -1333,6 +1365,7 @@ impl Searcher {
                         self.td.stack[ply].laterality
                     );
                     self.td.stack[ply].reduction = reduction;
+                    search_count += 1;
                     score = -self.negamax::<NonPv, _>(
                         board,
                         reduced_depth,
@@ -1367,6 +1400,7 @@ impl Searcher {
                                 "lmr_research move {mv} reduced_score {score} alpha {alpha} \
                                  new_depth {new_depth}"
                             );
+                            search_count += 1;
                             score = -self.negamax::<NonPv, _>(
                                 board,
                                 new_depth,
@@ -1382,6 +1416,7 @@ impl Searcher {
                         }
                     }
                 } else {
+                    search_count += 1;
                     score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth,
@@ -1401,6 +1436,7 @@ impl Searcher {
                     if mv == tt_move && ev.depth > 1 {
                         new_depth = new_depth.max(1);
                     }
+                    search_count += 1;
                     score = -self.negamax::<Pv, _>(
                         board,
                         new_depth,
@@ -1444,7 +1480,8 @@ impl Searcher {
                     self.td.root_best_nodes = move_nodes;
                 }
             }
-            if score > alpha {
+            let raised_alpha = score > alpha;
+            if raised_alpha {
                 alpha = score;
                 self.td.pv_table[ply][ply] = mv;
                 let child_len = self.td.pv_len[ply + 1].max(ply + 1);
@@ -1479,79 +1516,10 @@ impl Searcher {
                             4..=7 => crate::diag_count!(best_rank_4_7),
                             _ => crate::diag_count!(best_rank_8_plus),
                         }
-                        // 8.4(e): the cutoff REWARD is scaled when the node
-                        // static eval sat below beta - the search found a good
-                        // move the eval did not credit. 100 = neutral; maluses
-                        // stay unscaled.
-                        let bonus_pct = if static_eval != VALUE_NONE && static_eval < beta {
-                            self.cfg.params.surprise_bonus_pct
-                        } else {
-                            100
-                        };
-                        if !is_capture {
-                            crate::diag_count!(cutoff_quiet);
-                            self.update_cutoff_tables(
-                                board,
-                                threats.all,
-                                mv,
-                                ply,
-                                depth,
-                                bonus_pct,
-                                quiets.as_slice(),
-                                &good_caps,
-                                &bad_caps,
-                            );
-                        } else {
+                        if is_capture {
                             crate::diag_count!(cutoff_capture);
-                            self.update_noisy_history(
-                                board,
-                                threats.all,
-                                moving_piece,
-                                mv.to_sq(),
-                                captured_piece,
-                                self.history_bonus(depth) * bonus_pct / 100,
-                            );
-                            let malus = self.history_malus(depth);
-                            for gc in good_caps.as_slice() {
-                                self.update_noisy_history(
-                                    board,
-                                    threats.all,
-                                    gc.attacker,
-                                    Square(gc.to),
-                                    gc.captured,
-                                    -malus,
-                                );
-                            }
-                            // 8.4(c): a capture cutoff today penalizes only the
-                            // earlier good captures - the searched quiets and
-                            // bad captures that failed to cut escape unscathed.
-                            // Cross-category malus at a tunable fraction; seed 0
-                            // = skip. Good-SEE captures keep the existing malus
-                            // only (the all-capture form was bench-vetoed in the
-                            // Basilisk cross-review).
-                            if self.cfg.params.capture_malus_pct != 0 {
-                                let xmalus = malus * self.cfg.params.capture_malus_pct / 100;
-                                for &quiet in quiets.as_slice() {
-                                    self.update_quiet_history(
-                                        board,
-                                        threats.all,
-                                        ply,
-                                        quiet,
-                                        -xmalus,
-                                        false,
-                                    );
-                                }
-                                for bc in bad_caps.as_slice() {
-                                    self.update_noisy_history(
-                                        board,
-                                        threats.all,
-                                        bc.attacker,
-                                        Square(bc.to),
-                                        bc.captured,
-                                        -xmalus,
-                                    );
-                                }
-                            }
+                        } else {
+                            crate::diag_count!(cutoff_quiet);
                         }
                         self.shared.tt.store(TtStore {
                             key: hash,
@@ -1568,6 +1536,20 @@ impl Searcher {
                             crate::diag_count!(main_store_lower);
                         }
                     }
+                    self.update_best_move_histories(
+                        board,
+                        &BestMoveUpdate {
+                            threats: threats.all,
+                            ply,
+                            depth,
+                            cut_node,
+                            best: mv,
+                            quiets: quiet_moves.as_slice(),
+                            noisies: noisy_moves.as_slice(),
+                            search_count,
+                            fail_high: true,
+                        },
+                    );
                     // A fail-high above the static eval with a quiet move
                     // trains the correction; see the node's end.
                     if !in_check && !is_noisy(mv) && score > static_eval {
@@ -1577,16 +1559,11 @@ impl Searcher {
                 }
             }
 
-            if is_quiet {
-                quiets.push(mv);
-            } else if is_capture {
-                if see == SEE_UNKNOWN as i32 {
-                    see = if board.see_ge(mv, 0) { 0 } else { -1 };
-                }
-                if see >= 0 {
-                    good_caps.push(moving_piece, mv.to_sq().0, captured_piece);
+            if !raised_alpha && move_count < 32 {
+                if is_quiet {
+                    quiet_moves.push(mv);
                 } else {
-                    bad_caps.push(moving_piece, mv.to_sq().0, captured_piece);
+                    noisy_moves.push(mv);
                 }
             }
         }
@@ -1622,22 +1599,25 @@ impl Searcher {
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
         }
+        if bound == Bound::Exact {
+            self.update_best_move_histories(
+                board,
+                &BestMoveUpdate {
+                    threats: threats.all,
+                    ply,
+                    depth,
+                    cut_node,
+                    best: best_move,
+                    quiets: quiet_moves.as_slice(),
+                    noisies: noisy_moves.as_slice(),
+                    search_count: 0,
+                    fail_high: false,
+                },
+            );
+        } else if !NODE::ROOT && (cut_node || NODE::PV) {
+            self.reward_parent_after_fail_low(board, ply, depth, best_score, static_eval, in_check);
+        }
         if excluded.is_null() {
-            // 8.4(b): an Exact (PV) node best move improved alpha without
-            // cutting - today it gets zero feedback. Reward the QUIET best
-            // move at a tunable fraction of the cutoff bonus. REWARD-ONLY by
-            // design: no sibling malus, no killer/countermove write, no
-            // capture reward (Basilisk cross-review: reward-only +4.90, the
-            // sibling-malus form -84.21). Seed 0 = skip.
-            if bound == Bound::Exact
-                && self.cfg.params.exact_bonus_pct != 0
-                && !best_move.is_null()
-                && !best_move.is_capture()
-                && !best_move.is_promo()
-            {
-                let bonus = self.history_bonus(depth) * self.cfg.params.exact_bonus_pct / 100;
-                self.update_quiet_history(board, threats.all, ply, best_move, bonus, false);
-            }
             self.shared.tt.store(TtStore {
                 key: hash,
                 depth,

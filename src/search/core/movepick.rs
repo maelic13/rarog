@@ -111,45 +111,6 @@ impl ScoredMoveList {
     }
 }
 
-#[derive(Copy, Clone)]
-pub(crate) struct BadCapture {
-    pub(crate) attacker: Piece,
-    pub to: u8,
-    pub captured: Option<Piece>,
-}
-
-pub(super) struct BadCaptureList {
-    items: [MaybeUninit<BadCapture>; 256],
-    len: usize,
-}
-
-impl BadCaptureList {
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self {
-            items: [const { MaybeUninit::uninit() }; 256],
-            len: 0,
-        }
-    }
-
-    #[inline(always)]
-    pub fn push(&mut self, attacker: Piece, to: u8, captured: Option<Piece>) {
-        debug_assert!(self.len < self.items.len());
-        self.items[self.len].write(BadCapture {
-            attacker,
-            to,
-            captured,
-        });
-        self.len += 1;
-    }
-
-    #[inline(always)]
-    pub fn as_slice(&self) -> &[BadCapture] {
-        // SAFETY: only the initialized prefix below `len` is exposed.
-        unsafe { slice::from_raw_parts(self.items.as_ptr().cast::<BadCapture>(), self.len) }
-    }
-}
-
 /// Selection step: move the highest-scored entry of `moves[index..]` into
 /// `moves[index]` and return it. Ties resolve to the earliest entry.
 pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
@@ -867,10 +828,5 @@ mod tests {
         let idle = score_of("a1b1", &mut scored);
         assert!(check >= idle + CHECK_SQUARE_BONUS, "{check} vs {idle}");
         assert!(escape >= idle + ESCAPE_BONUS[Piece::Knight as usize] - THREATENED_TO_MALUS);
-    }
-
-    #[test]
-    fn bad_capture_struct_stays_shrunk() {
-        assert!(std::mem::size_of::<BadCapture>() <= 4);
     }
 }
