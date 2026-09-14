@@ -139,292 +139,67 @@ Write-Host ("      TT hit / sampled main nodes : {0,7:N2} %   usable cutoffs {1:
 Write-Host ("      qsearch producers           : stand-pat {0:N0}; searched qmove {1:N0}; tail exact/upper {2:N0}/{3:N0}" -f `
     (Value 'q_stand_pat_store'), (Value 'q_move_store'), `
     (Value 'q_tail_exact_store'), (Value 'q_tail_upper_store'))
-Write-Host ("      NMP sampled cut / attempt   : {0,7:N2} %   verification pass/fail {1:N0}/{2:N0}; nested {3:N0}" -f `
+Write-Host ("      NMP sampled cut / attempt   : {0,7:N2} %   verification pass/fail {1:N0}/{2:N0}" -f `
     (Ratio (Value 'nmp_sample_cut') (Value 'nmp_attempt')), `
-    (Value 'nmp_verify_pass'), (Value 'nmp_verify_fail'), (Value 'nmp_nested_attempt'))
-Write-Host ("      best move first in picker   : {0,7:N2} %   reduced winners {1:N0}" -f `
-    (Ratio (Value 'best_rank_1') $bestSamples), (Value 'best_was_reduced'))
+    (Value 'nmp_verify_pass'), (Value 'nmp_verify_fail'))
+Write-Host ("      best move first in picker   : {0,7:N2} %" -f `
+    (Ratio (Value 'best_rank_1') $bestSamples))
 Write-Host ("      pruning overlap / candidates: {0,7:N2} %   check exemptions {1:N0}" -f `
     (Ratio (Value 'prune_shadow_overlap_two_plus') (Value 'prune_shadow_moves')), `
     (Value 'prune_shadow_check_exempt'))
 Write-Host ("      correction slot collisions : {0:N0} of {1:N0} sampled observations; near rail {2:N0}" -f `
-    (Value 'correction_slot_collision'), `
-    ((Value 'correction_slot_first') + (Value 'correction_slot_repeat') + (Value 'correction_slot_collision')), `
-    (Value 'correction_slot_near_saturation'))
-Write-Host ("      root mean gap / effort      : {0:N2} cp / {1:N2} % over {2:N0} iterations" -f `
-    ((Value 'root_gap_sum') / [Math]::Max(1.0, $rootIterations)), `
-    ((Value 'root_effort_ppm_sum') / [Math]::Max(1.0, $rootIterations) / 10000.0), `
-    $rootIterations)
+    (Value 'corr_slot_collision'), `
+    ((Value 'corr_slot_first') + (Value 'corr_slot_repeat') + (Value 'corr_slot_collision')), `
+    (Value 'corr_slot_near_saturation'))
+Write-Host ("      root iterations / best-move changes : {0:N0} / {1:N0}" -f `
+    $rootIterations, (Value 'root_best_changes'))
 Write-Host ""
 
-# 4.7b root confidence. EXACT, one observation per COMPLETED root iteration, so
-# `root_iterations` is the shared denominator for every line here.
-#
-# Read the three input lines before the scalar. A term is only worth its weight
-# if it has a POPULATION as well as a mean (4.5d), and two of these do not:
-#   * separation is exactly 0 on ~82% of iterations, nearly all of it a rival
-#     scoring level because non-best root moves are searched on a null window -
-#     which is why root gap is diagnostic-only and absent from the scalar;
-#   * the effort term is above its floor on ~9%, i.e. the SHIPPED clock's effort
-#     factor is a constant on the rest.
-#
-# The TM shadow is the only way to size RootConfTime at all: bench is
-# depth-limited, so the soft target never binds and the arm cannot move a node
-# count. A sum ratio near 1.00 with a mixed longer/shorter split means the arm
-# REDISTRIBUTES the clock; a ratio away from 1.00 means it is re-scaling the
-# budget, which TmOptScale already does and which would confound its gate.
-if ($rootIterations -gt 0) {
-    $tmBase = Value 'rootconf_tm_baseline_sum'
-    $tmCand = Value 'rootconf_tm_candidate_sum'
-    Write-Host "  4.7b ROOT CONFIDENCE (exact, per completed root iteration)"
-    Write-Host ("      scalar mean / quartiles     : {0:N1} of 1000   q1-q4 {1:N0}/{2:N0}/{3:N0}/{4:N0}" -f `
-        ((Value 'rootconf_scalar_sum') / $rootIterations), `
-        (Value 'rootconf_scalar_q1'), (Value 'rootconf_scalar_q2'), `
-        (Value 'rootconf_scalar_q3'), (Value 'rootconf_scalar_q4'))
-    Write-Host ("      separation gap 0/1-7/8+/128+: {0:N0}/{1:N0}/{2:N0}/{3:N0}   of the zeros, {4:N0} had no rival searched" -f `
-        (Value 'rootconf_gap_0'), (Value 'rootconf_gap_1_7'), `
-        (Value 'rootconf_gap_8_127'), (Value 'rootconf_gap_128_plus'), `
-        (Value 'rootconf_gap_no_rival'))
-    Write-Host ("      steadiness dev <8/8/32/128+ : {0:N0}/{1:N0}/{2:N0}/{3:N0}" -f `
-        (Value 'rootconf_dev_lt_8'), (Value 'rootconf_dev_8_31'), `
-        (Value 'rootconf_dev_32_127'), (Value 'rootconf_dev_128_plus'))
-    Write-Host ("      effort term live / window   : {0:N2} % above floor / {1:N2} % of iterations re-searched" -f `
-        (Ratio (Value 'rootconf_effort_term_live') $rootIterations), `
-        (Ratio (Value 'rootconf_window_fail_iters') $rootIterations))
-    Write-Host ("      age vs instability          : {0:N2} iters vs {1:N3}   truncated PV {2:N0}" -f `
-        ((Value 'rootconf_best_age_sum') / $rootIterations), `
-        ((Value 'rootconf_instab_milli_sum') / $rootIterations / 1000.0), `
-        (Value 'rootconf_pv_truncated'))
-    Write-Host ("      TM shadow cand/base         : {0:N4}x   longer {1:N0}, shorter {2:N0}, within 1% {3:N0}" -f `
-        ($tmCand / [Math]::Max(1.0, $tmBase)), `
-        (Value 'rootconf_tm_longer'), (Value 'rootconf_tm_shorter'), `
-        ($rootIterations - (Value 'rootconf_tm_longer') - (Value 'rootconf_tm_shorter')))
-    if ((Value 'rootconf_pool_instab_milli_sum') -gt 0) {
-        Write-Host ("      pooled instability          : {0:N3} versus own {1:N3} (multi-thread only)" -f `
-            ((Value 'rootconf_pool_instab_milli_sum') / $rootIterations / 1000.0), `
-            ((Value 'rootconf_instab_milli_sum') / $rootIterations / 1000.0))
-    }
+# B.1 removed the root-confidence model, TT provenance, the 4.2b contradiction
+# shadow, the 4.3 refinement shadow and the 4.4a switch sizing together with
+# their counters (analysis/search_programme_2026-09-13.md section 6.4).
+
+# 4.5: IS a capture-caused residual actually noisier? Capture weighting
+# assumes it is; the all-or-nothing guard was rejected and removed.
+$rcN = Value 'corr_resid_capture_n'
+$rqN = Value 'corr_resid_quiet_n'
+if (($rcN + $rqN) -gt 0) {
+    $rcMean = if ($rcN -gt 0) { (Value 'corr_resid_capture_sum') / $rcN } else { 0 }
+    $rqMean = if ($rqN -gt 0) { (Value 'corr_resid_quiet_sum') / $rqN } else { 0 }
+    Write-Host "  4.5 CORRECTION RESIDUAL BY ATTRIBUTION (exact)"
+    Write-Host ("      capture-caused : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rcN, $rcMean)
+    Write-Host ("      quiet-caused   : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rqN, $rqMean)
+    Write-Host ("      capture share  : {0,7:N2} %   ratio of means {1:N3}" -f `
+        (Ratio $rcN ($rcN + $rqN)), $(if ($rqMean -gt 0) { $rcMean / $rqMean } else { 0 }))
+    Write-Host "      (ratio near 1.0 means the down-weighting premise is unsupported)"
     Write-Host ""
 }
 
-# 4.2 producer census. EXACT, not sampled - this block is the reason the
-# sampled producer lines above must not be read as shares. Sampled counters at
-# different node classes do not share a denominator, which understated ProbCut
-# by 2.4x in the first 4.2 reading (RAR-S22).
-$kinds = [ordered]@{
-    'full'             = 'store_kind_full'
-    'verified reduced' = 'store_kind_verified_reduced'
-    'qsearch move'     = 'store_kind_qsearch_move'
-    'qsearch tail'     = 'store_kind_qsearch_tail'
-    'stand pat'        = 'store_kind_stand_pat'
-    'ProbCut'          = 'store_kind_probcut'
-    'tablebase'        = 'store_kind_tablebase'
-}
-$kindTotal = 0.0
-foreach ($counter in $kinds.Values) { $kindTotal += Value $counter }
-if ($kindTotal -gt 0) {
-    Write-Host "  TT PRODUCER CENSUS (exact, by declared OutcomeKind)"
-    foreach ($label in $kinds.Keys) {
-        $count = Value $kinds[$label]
-        Write-Host ("      {0,-16} {1,14:N0}   {2,6:N2} %" -f $label, $count, (Ratio $count $kindTotal))
+# 4.5d: does a halfmove-clock context carry usable signal? PLAN 4.5 permits a
+# new correction context only where held-out UNIQUE signal is shown, so the
+# POPULATION matters as much as the mean - a context nothing lands in cannot
+# be learned however distinct its residuals look.
+$hmTotal = 0
+foreach ($b in @("low","mid","high")) { $hmTotal += Value "corr_resid_hm_${b}_n" }
+if ($hmTotal -gt 0) {
+    Write-Host "  4.5d CORRECTION RESIDUAL BY HALFMOVE CLOCK (exact)"
+    foreach ($b in @(@("low","0-19"), @("mid","20-49"), @("high","50+"))) {
+        $n = Value "corr_resid_hm_$($b[0])_n"
+        $sum = Value "corr_resid_hm_$($b[0])_sum"
+        $mean = if ($n -gt 0) { $sum / $n } else { 0 }
+        Write-Host ("      clock {0,-6} : {1,9:N0} updates ({2,6:N2} %)  mean |residual| {3,7:N1} cp" -f $b[1], $n, (Ratio $n $hmTotal), $mean)
     }
-    $horizon = (Value 'store_kind_qsearch_move') + (Value 'store_kind_qsearch_tail') +
-               (Value 'store_kind_stand_pat')
-    Write-Host ("      {0,-16} {1,14:N0}   {2,6:N2} %" -f '-> depth-0 total', $horizon,
-        (Ratio $horizon $kindTotal))
-    # The census must account for every store. `fresh + same_key` is counted on
-    # a different code path, so a mismatch means a store site bypassed the
-    # census or a kind is being miscounted into a neighbouring bucket.
-    $storeTotal = (Value 'tt_store_fresh') + (Value 'tt_store_same_key')
-    if ([Math]::Abs($kindTotal - $storeTotal) -lt 0.5) {
-        Write-Host ("      reconciles with tt_store_fresh + same_key: {0:N0} OK" -f $storeTotal)
+    $updates = Value "correction_updates"
+    if ([Math]::Abs($hmTotal - $updates) -lt 0.5) {
+        Write-Host ("      reconciles with correction_updates: {0:N0} OK" -f $updates)
     } else {
-        Write-Host ("      *** CENSUS MISMATCH: kinds {0:N0} vs stores {1:N0} ***" -f `
-            $kindTotal, $storeTotal) -ForegroundColor Red
+        Write-Host ("      *** MISMATCH: buckets {0:N0} vs correction_updates {1:N0} ***" -f $hmTotal, $updates) -ForegroundColor Red
     }
-
-    # 4.3 provenance hazards.
-    #
-    # ⚠ DENOMINATORS. `store_kind_*` counts ATTEMPTS (it runs before the backend
-    # dispatch, hence the reconciliation above); the hazard counters run after
-    # the depth-preservation `return` and count COMMITTED stores. Every rate
-    # below therefore uses `store_committed_*`, never the census. Mixing them
-    # was the original error in these figures and it biased them LOW.
-    $skipped = Value 'store_skipped_depth_rule'
-    $spCommitted = Value 'store_committed_stand_pat'
-    $qmvCommitted = Value 'store_committed_qsearch_move'
-    $horizonCommitted = Value 'store_committed_horizon'
-    $inheritedSp = Value 'tt_move_inherited_stand_pat'
-    Write-Host ""
-    Write-Host "  4.3 PROVENANCE HAZARDS (exact, committed-store denominators)"
-    Write-Host ("      attempted / skipped by depth rule / committed : {0:N0} / {1:N0} / {2:N0}" -f `
-        $kindTotal, $skipped, ($kindTotal - $skipped))
-    # attempted - skipped == committed must hold on both backends. If it does
-    # not, a store path is bypassing one of the two counters.
-    $horizonAttempted = (Value 'store_kind_qsearch_move') + (Value 'store_kind_qsearch_tail') +
-                        (Value 'store_kind_stand_pat')
-    if ($horizonCommitted -gt $horizonAttempted) {
-        Write-Host "      *** COMMITTED EXCEEDS ATTEMPTED - counter placement is wrong ***" -ForegroundColor Red
-    }
-    Write-Host ("      stand pat: committed {0:N0} of {1:N0} attempted  ({2:N2} % skipped)" -f `
-        $spCommitted, (Value 'store_kind_stand_pat'), `
-        (100.0 - (Ratio $spCommitted (Value 'store_kind_stand_pat'))))
-    Write-Host ("      stand-pat stores that inherited a move : {0,10:N0}   {1,6:N2} % of COMMITTED stand pat" -f `
-        $inheritedSp, (Ratio $inheritedSp $spCommitted))
-    Write-Host ("      all moveless stores that inherited     : {0,10:N0}" -f (Value 'tt_move_inherited'))
-    Write-Host ("      horizon store overwrote deeper entry   : {0,10:N0}   {1,6:N2} % of committed horizon" -f `
-        (Value 'tt_horizon_overwrote_searched'), (Ratio (Value 'tt_horizon_overwrote_searched') $horizonCommitted))
-    # A shape test for "searched qmove" is `depth 0 + Lower + has a move`. Stand
-    # pat with an inherited move satisfies it too, so this is the false-positive
-    # rate a provenance-free 4.3 inference would carry. Both terms are committed.
-    Write-Host ("      => shape test 'depth 0 + Lower + move' leak rate : {0,6:N2} %   ({1:N0} of {2:N0})" -f `
-        (Ratio $inheritedSp ($qmvCommitted + $inheritedSp)), $inheritedSp, ($qmvCommitted + $inheritedSp))
+    Write-Host "      check/evasion context is structurally unreachable: correction trains"
+    Write-Host "      only where static_eval != VALUE_NONE, i.e. only when NOT in check."
     Write-Host ""
 }
 
-$speculativeSingularBlocked = Value 'singular_speculative_seed_blocked'
-Write-Host "  4.3c SPECULATIVE-EVIDENCE CONTRACT (exact blocked-consumer count)"
-Write-Host ("      ProbCut/speculative singular seeds blocked : {0:N0}" -f $speculativeSingularBlocked)
-Write-Host "      cutoff/eval/move/IIR consumers retain their prior contracts"
-Write-Host ""
-
-# 4.2b shadow test. A contradicting entry cannot cut off (unit-tested in
-# evidence.rs), so everything here is a NON-cutoff consumer admitting evidence
-# that told this node nothing. Sampled, so read shares, not absolute volumes.
-$contradictHits = Value 'contradict_hits'
-if ($contradictHits -gt 0) {
-    Write-Host "  4.2b CONTRADICTING INEXACT BOUNDS (sampled; nothing branches on these)"
-    Write-Host ("      contradicting hits          : {0,7:N2} %   ({1:N0} of {2:N0} sampled hits)" -f `
-        (Ratio $contradictHits (Value 'tt_sample_hit')), $contradictHits, (Value 'tt_sample_hit'))
-
-    $refined = Value 'contradict_refined_eval'
-    $meanDelta = if ($refined -gt 0) { (Value 'contradict_refine_delta_sum') / $refined } else { 0 }
-    Write-Host ("      moved eval_for_pruning      : {0,7:N2} %   ({1:N0} of {2:N0}); mean shift {3:N1} cp" -f `
-        (Ratio $refined $contradictHits), $refined, $contradictHits, $meanDelta)
-    # Slack = ev.depth relative to the accepted zero floor. A penalty of P plies blocks every
-    # bucket below P, so this row IS the answer for each candidate P.
-    Write-Host ("        slack 0 / 1 / 2-3 / 4-7 / 8+ : {0:N0} / {1:N0} / {2:N0} / {3:N0} / {4:N0}" -f `
-        (Value 'contradict_refine_slack_0'), (Value 'contradict_refine_slack_1'), `
-        (Value 'contradict_refine_slack_2_3'), (Value 'contradict_refine_slack_4_7'), `
-        (Value 'contradict_refine_slack_8_plus'))
-
-    $csa = Value 'contradict_singular_attempt'
-    # Extensions and multi-cuts are counted at separate sites (the multi-cut arm
-    # returns), so total tree effect is their sum.
-    $csChanged = Value 'contradict_singular_changed_depth'
-    $csMulticut = Value 'contradict_singular_multicut'
-    Write-Host ("      seeded a singular window    : {0:N0} of {1:N0} attempts" -f `
-        $csa, (Value 'singular_attempt'))
-    Write-Host ("        -> changed depth {0:N0}, multi-cut {1:N0}, total effect {2:N0} ({3:N1} % of seeded)" -f `
-        $csChanged, $csMulticut, ($csChanged + $csMulticut), (Ratio ($csChanged + $csMulticut) $csa))
-    Write-Host ("      suppressed IIR              : {0:N0}" -f (Value 'contradict_iir_suppressed'))
-
-    # 4.5: IS a capture-caused residual actually noisier? Capture weighting
-    # assumes it is; the all-or-nothing guard was rejected and removed.
-    $rcN = Value 'correction_resid_capture_n'
-    $rqN = Value 'correction_resid_quiet_n'
-    if (($rcN + $rqN) -gt 0) {
-        $rcMean = if ($rcN -gt 0) { (Value 'correction_resid_capture_sum') / $rcN } else { 0 }
-        $rqMean = if ($rqN -gt 0) { (Value 'correction_resid_quiet_sum') / $rqN } else { 0 }
-        Write-Host ""
-        Write-Host "  4.5 CORRECTION RESIDUAL BY ATTRIBUTION (exact)"
-        Write-Host ("      capture-caused : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rcN, $rcMean)
-        Write-Host ("      quiet-caused   : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rqN, $rqMean)
-        Write-Host ("      capture share  : {0,7:N2} %   ratio of means {1:N3}" -f `
-            (Ratio $rcN ($rcN + $rqN)), $(if ($rqMean -gt 0) { $rcMean / $rqMean } else { 0 }))
-        Write-Host "      (ratio near 1.0 means the down-weighting premise is unsupported)"
-    }
-
-    # 4.5d: does a halfmove-clock context carry usable signal? PLAN 4.5 permits a
-    # new correction context only where held-out UNIQUE signal is shown, so the
-    # POPULATION matters as much as the mean - a context nothing lands in cannot
-    # be learned however distinct its residuals look.
-    $hmTotal = 0
-    foreach ($b in @("low","mid","high")) { $hmTotal += Value "correction_resid_hm_${b}_n" }
-    if ($hmTotal -gt 0) {
-        Write-Host ""
-        Write-Host "  4.5d CORRECTION RESIDUAL BY HALFMOVE CLOCK (exact)"
-        foreach ($b in @(@("low","0-19"), @("mid","20-49"), @("high","50+"))) {
-            $n = Value "correction_resid_hm_$($b[0])_n"
-            $sum = Value "correction_resid_hm_$($b[0])_sum"
-            $mean = if ($n -gt 0) { $sum / $n } else { 0 }
-            Write-Host ("      clock {0,-6} : {1,9:N0} updates ({2,6:N2} %)  mean |residual| {3,7:N1} cp" -f $b[1], $n, (Ratio $n $hmTotal), $mean)
-        }
-        $updates = Value "correction_updates"
-        if ([Math]::Abs($hmTotal - $updates) -lt 0.5) {
-            Write-Host ("      reconciles with correction_updates: {0:N0} OK" -f $updates)
-        } else {
-            Write-Host ("      *** MISMATCH: buckets {0:N0} vs correction_updates {1:N0} ***" -f $hmTotal, $updates) -ForegroundColor Red
-        }
-        Write-Host "      check/evasion context is structurally unreachable: correction trains"
-        Write-Host "      only where static_eval != VALUE_NONE, i.e. only when NOT in check."
-    }
-
-    # 4.4a sizing. Measured with every 4.4a switch OFF, so these size the arms
-    # BEFORE a gate is spent rather than explaining one afterwards.
-    $veto = Value 'tt_pv_veto'
-    if ($veto -gt 0) {
-        Write-Host ""
-        Write-Host "  4.4a SWITCH SIZING (exact, all switches OFF)"
-        Write-Host ("      shared tt_pv veto blocks all four at : {0,10:N0} nodes" -f $veto)
-        foreach ($m in @(@('rfp','RfpAllowTtPv'), @('razor','RazorAllowTtPv'),
-                         @('nmp','NmpAllowTtPv'), @('probcut','ProbCutAllowTtPv'))) {
-            $e = Value "tt_pv_veto_$($m[0])_eligible"
-            Write-Host ("        {0,-8} would reach {1,10:N0}  ({2,6:N2} % of vetoed)  via {3}" -f `
-                $m[0], $e, (Ratio $e $veto), $m[1])
-        }
-        Write-Host ("      nested nulls inside verification    : {0,10:N0}  (NmpSuppressNullInVerification refuses these)" -f `
-            (Value 'nmp_nested_attempt'))
-        Write-Host ("      IIR at a PV node                    : {0,10:N0}  (sampled; ~zero population, so PV-safe IIR is not a strength arm)" -f `
-            (Value 'iir_pv'))
-    }
-
-    # 4.3: is TT eval refinement self-cancelling? Two arms of
-    # TT-refinement depth floors measured ~0 Elo while moving 15-44% of the tree; the
-    # margins-absorb-it and helps-as-often-as-it-hurts explanations imply
-    # opposite fixes.
-    $flipNodes = Value 'refine_flip_nodes'
-    if ($flipNodes -gt 0) {
-        Write-Host ""
-        Write-Host "  4.3 IS EVAL REFINEMENT SELF-CANCELLING? (sampled)"
-        Write-Host ("      nodes where refinement moved the eval : {0:N0}" -f $flipNodes)
-        # Unbiased half: counted before any consumer can return.
-        $onTotal = 0; $offTotal = 0
-        foreach ($c in @('rfp','razor','nmp')) {
-            $on = Value "refine_flip_${c}_on"; $off = Value "refine_flip_${c}_off"
-            $onTotal += $on; $offTotal += $off
-            Write-Host ("        {0,-6} caused {1,6:N0} / prevented {2,6:N0}   net {3,7:N0}" -f `
-                $c, $on, $off, ($on - $off))
-        }
-        Write-Host ("        TOTAL  caused {0,6:N0} / prevented {1,6:N0}   net {2,7:N0}  ({3:N1} % of moved nodes flipped a decision)" -f `
-            $onTotal, $offTotal, ($onTotal - $offTotal), (Ratio ($onTotal + $offTotal) $flipNodes))
-        # Biased half - a pruned node never reaches the tail, so the cases where
-        # refinement mattered most are absent. Read with the flip counts above.
-        $rn = Value 'refine_report_nodes'
-        if ($rn -gt 0) {
-            $closer = Value 'refine_report_closer'; $farther = Value 'refine_report_farther'
-            Write-Host ("      agreed with the reported score : closer {0:N0} / farther {1:N0} of {2:N0}  ({3:N1} % closer)" -f `
-                $closer, $farther, $rn, (Ratio $closer $rn))
-            $gainSum = Value 'refine_report_gain_sum'
-            $lossSum = Value 'refine_report_loss_sum'
-            Write-Host ("        mean cp gained when closer {0,7:N1} / lost when farther {1,7:N1}   net {2,8:N0} cp" -f `
-                ($gainSum / [Math]::Max(1, $closer)), `
-                ($lossSum / [Math]::Max(1, $farther)), `
-                ($gainSum - $lossSum))
-            Write-Host "        (biased: excludes every node refinement pruned - see the flip counts)"
-        }
-    }
-
-    # THE decision row. If these two rates are close, a depth/confidence penalty
-    # belongs on the SCORE consumers only and must leave ordering and IIR alone.
-    $cPresent = Value 'contradict_move_present'
-    $aPresent = Value 'agree_move_present'
-    Write-Host ("      TT move best - contradicting: {0,7:N2} %   ({1:N0} of {2:N0})" -f `
-        (Ratio (Value 'contradict_move_was_best') $cPresent), (Value 'contradict_move_was_best'), $cPresent)
-    Write-Host ("      TT move best - agreeing     : {0,7:N2} %   ({1:N0} of {2:N0})" -f `
-        (Ratio (Value 'agree_move_was_best') $aPresent), (Value 'agree_move_was_best'), $aPresent)
-    Write-Host ""
-}
 Write-Host "  Raw counters:"
 foreach ($k in ($totals.Keys | Sort-Object)) {
     Write-Host ("      {0,-28} {1,14:N0}" -f $k, $totals[$k])

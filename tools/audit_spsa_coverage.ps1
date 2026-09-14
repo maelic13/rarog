@@ -12,7 +12,7 @@ $gamma = 0.102
 
 $defaults = @{}
 $declared = @{}
-foreach ($m in (Select-String -Path (Join-Path $repo "src\params.rs") `
+foreach ($m in (Select-String -Path (Join-Path $repo "src\search\params.rs") `
             -Pattern '^\s+\w+ = (-?[\d_]+), "(\w+)", (-?[\d_]+)\.\.=(-?[\d_]+)').Matches) {
     $name = $m.Groups[2].Value
     $defaults[$name] = [int]($m.Groups[1].Value -replace '_', '')

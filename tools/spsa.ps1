@@ -22,9 +22,9 @@
       - Build the tune binary: ./tools/build_test.ps1 -Suffix <s> -Tune
 
 .PARAMETER ConfigGroup
-    Which parameter group to tune (selects tools\spsa_configs\config_<g>.json):
-    pruning · lmr · histcov · corr · probcut · futility · tm ·
-    lazymargin · history · see (plus archived aspiration/selectivity groups).
+    Which registered parameter group to tune (selects
+    tools\spsa_configs\config_<g>.json). B.1 retired every historical
+    surface; a group exists only once PLAN registers its tune.
 
 .PARAMETER Iterations
     Planned total iterations (sets A = Iterations / 10 in spsa.json).
@@ -50,9 +50,9 @@ is 0.002, the same order. Larger = hotter = more late wander.
     and leaves two free. Engines remain single-threaded.
 
 .PARAMETER EngineSuffix
-    Suffix of the tune binary in tools\test_engines. If omitted, a per-group
-    default is used (e.g. history -> p81-history). Accepts a bare suffix
-    (rarog-<s>-tune.exe), a "-tune"/"-pext-pgo" suffix, or a full "*.exe".
+    Suffix of the tune binary in tools\test_engines. Required for setup.
+    Accepts a bare suffix (rarog-<s>-tune.exe), a "-tune"/"-pext-pgo" suffix,
+    or a full "*.exe".
 
 .PARAMETER Resume
     Preserve the existing tuner state (state.json/games/graph) instead of
@@ -71,20 +71,20 @@ is 0.002, the same order. Larger = hotter = more late wander.
 
 .EXAMPLE
     # Fresh setup + run, one command:
-    ./tools/build_test.ps1 -Suffix p81-history -Tune
-    ./tools/spsa.ps1 -ConfigGroup history -Iterations 2500
+    ./tools/build_test.ps1 -Suffix <name> -Tune
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -Iterations <registered-N>
 
 .EXAMPLE
     # Continue an interrupted run:
-    ./tools/spsa.ps1 -ConfigGroup history -Resume
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -Resume
 
 .EXAMPLE
     # Set up now, launch later:
-    ./tools/spsa.ps1 -ConfigGroup history -SetupOnly
-    ./tools/spsa.ps1 -ConfigGroup history -LaunchOnly
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -SetupOnly
+    ./tools/spsa.ps1 -ConfigGroup <group> -LaunchOnly
 #>
 param(
-    [string]$ConfigGroup = "lmr",
+    [string]$ConfigGroup = "",
     [int]$Iterations = 5000,
     [int]$StopAfter = 0,
     [double]$REnd = 0.0031,
@@ -102,6 +102,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
 if ($SetupOnly -and $LaunchOnly) { throw "-SetupOnly and -LaunchOnly are mutually exclusive." }
+if (-not $ShowValues -and $ConfigGroup -eq "") { throw "-ConfigGroup is required: name a registered group in tools\spsa_configs." }
 if ($Iterations -le 0) { throw "-Iterations must be positive." }
 if ($StopAfter -eq 0) { $StopAfter = $Iterations }
 if ($StopAfter -le 0 -or $StopAfter -gt $Iterations) {
@@ -153,23 +154,7 @@ if ($LogFile -eq "") { $LogFile = Join-Path $PSScriptRoot "results\spsa_$ConfigG
 # ─── Setup ────────────────────────────────────────────────────────────────
 if (-not $LaunchOnly) {
     if ($EngineSuffix -eq "") {
-        $EngineSuffix = switch ($ConfigGroup) {
-            "aspiration" { "p102a" }
-            "selectivity" { "p1046a" }
-            "lmr" { "p86-lmr" }
-            "histcov" { "p84-histcov" }
-            "corr" { "p85-corr" }
-            "pruning" { "phase1-pruning" }
-            "probcut" { "phase2-probcut" }
-            "futility" { "phase2-futility" }
-            "tm" { "phase5-tm" }
-            "lazymargin" { "phase5-lazymargin" }
-            "history" { "p81-history" }
-            "see" { "p72-see" }
-        }
-        if (-not $EngineSuffix) {
-            throw "-EngineSuffix is required for unregistered config group '$ConfigGroup'."
-        }
+        throw "-EngineSuffix is required: name the tune binary built by tools/build_test.ps1 -Tune."
     }
 
     if ($EngineSuffix.EndsWith(".exe")) {
