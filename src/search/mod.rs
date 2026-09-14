@@ -46,7 +46,7 @@ use crate::infra;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
 
-use node::{Root, build_lmr_table};
+use node::build_lmr_table;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
 use stack::{PlyArray, StackEntry};
@@ -641,17 +641,8 @@ impl Searcher {
             let mut fail_high_count = 0i32;
 
             loop {
-                let score = self.negamax::<Root, _>(
-                    &mut board,
-                    infra::to_i32(depth),
-                    alpha,
-                    beta,
-                    0,
-                    true,
-                    Move::NULL,
-                    false,
-                    poll,
-                );
+                let score =
+                    self.search_root_window(&mut board, infra::to_i32(depth), alpha, beta, poll);
                 if self.td.stopped || self.td.quit {
                     break;
                 }
@@ -1608,17 +1599,9 @@ mod tests {
             is_pv: false,
         });
 
-        let _ = searcher.negamax::<Root, _>(
-            &mut board,
-            3,
-            -INF_SCORE,
-            INF_SCORE,
-            0,
-            true,
-            Move::NULL,
-            false,
-            &mut || SearchEvent::None,
-        );
+        let _ = searcher.search_root_window(&mut board, 3, -INF_SCORE, INF_SCORE, &mut || {
+            SearchEvent::None
+        });
 
         assert_eq!(board.to_fen(), before_fen);
         assert_eq!(board.hash(), before_hash);

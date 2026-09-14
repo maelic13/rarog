@@ -91,6 +91,16 @@ pub(super) struct ReductionInputs {
     is_root: bool,
 }
 
+/// How much later than the first few moves the move at `move_count` is:
+/// `max(ilog2(move_count) - 1, 0)`, zero for the first three moves.
+fn laterality_step(move_count: i32) -> i32 {
+    if move_count > 0 {
+        (move_count.ilog2().cast_signed() - 1).max(0)
+    } else {
+        0
+    }
+}
+
 fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
     let base = count_base + 2 * depth * depth / 3;
     if improving {
@@ -207,6 +217,46 @@ impl Searcher {
         r
     }
 
+    /// Search the root position at `depth` inside the window: the entry the
+    /// iterative-deepening loop calls, so it never depends on the kernel's
+    /// argument list.
+    pub(super) fn search_root_window<P: FnMut() -> SearchEvent + ?Sized>(
+        &mut self,
+        board: &mut Board,
+        depth: i32,
+        alpha: i32,
+        beta: i32,
+        poll: &mut P,
+    ) -> i32 {
+        self.negamax::<Root, _>(
+            board,
+            depth,
+            alpha,
+            beta,
+            0,
+            true,
+            Move::NULL,
+            false,
+            0,
+            poll,
+        )
+    }
+
+    /// Record the order index of the move about to be searched at `ply` and
+    /// the line's accumulated lateness: the parent's laterality plus
+    /// [`laterality_step`] of this move's index.
+    #[inline]
+    fn record_move_order(&mut self, ply: usize, move_count: i32) {
+        let parent = self.td.stack.back(ply, 1).laterality;
+        let entry = &mut self.td.stack[ply];
+        entry.move_count = move_count;
+        entry.laterality = parent + laterality_step(move_count);
+    }
+
+    #[expect(
+        clippy::only_used_in_recursion,
+        reason = "last_critical_ply is produced ahead of its consumer, the reduction formula"
+    )]
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -217,6 +267,7 @@ impl Searcher {
         allow_null: bool,
         excluded: Move,
         cut_node: bool,
+        last_critical_ply: usize,
         poll: &mut P,
     ) -> i32 {
         debug_assert_eq!(NODE::ROOT, ply == 0, "the root node type is exactly ply 0");
@@ -418,6 +469,11 @@ impl Searcher {
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
         self.td.stack[ply].static_eval = static_eval;
+        self.td.stack[ply].reduction = 0;
+        self.td.stack[ply].move_count = 0;
+        if ply + 2 < MAX_PLY {
+            self.td.stack[ply + 2].cutoff_count = 0;
+        }
         // 8.5(b): magnitude of the correction applied to this node's static
         // eval. A large |corr| means the raw eval is being heavily adjusted and
         // is less trustworthy, so the margin/reduction knobs below prune and
@@ -515,6 +571,7 @@ impl Searcher {
                     crate::diag_count!(nmp_attempt);
                 }
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
+                self.td.stack[ply].laterality = 0;
                 board.make_null_move();
                 self.shared.tt.prefetch(board.hash());
                 let score = -self.negamax::<NonPv, _>(
@@ -526,6 +583,7 @@ impl Searcher {
                     false,
                     Move::NULL,
                     true,
+                    ply + 1,
                     poll,
                 );
                 board.unmake_null_move();
@@ -581,6 +639,7 @@ impl Searcher {
                             false,
                             Move::NULL,
                             false,
+                            last_critical_ply,
                             poll,
                         );
                         if self.td.stopped || self.td.quit {
@@ -680,6 +739,7 @@ impl Searcher {
                     // reduced sibling, so it consumes neither selectivity
                     // input. Written explicitly rather than left stale.
                     self.push_move(ply, mv, probcut_piece);
+                    self.record_move_order(ply, 0);
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
                     let score = -self.quiescence::<NonPv, _>(
@@ -704,6 +764,7 @@ impl Searcher {
                             false,
                             Move::NULL,
                             true,
+                            last_critical_ply,
                             poll,
                         )
                     } else {
@@ -806,6 +867,8 @@ impl Searcher {
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut searched = 0usize;
+        // Every move the picker hands over, pruned ones included.
+        let mut move_count = 0i32;
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
         let mut legal_move_seen = false;
@@ -828,6 +891,7 @@ impl Searcher {
                 continue;
             }
             legal_move_seen = true;
+            move_count += 1;
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut see = if is_capture { picked.see as i32 } else { 0 };
@@ -1026,6 +1090,7 @@ impl Searcher {
                     false,
                     mv,
                     false,
+                    ply,
                     poll,
                 );
                 if self.td.stopped || self.td.quit {
@@ -1077,6 +1142,7 @@ impl Searcher {
                 };
 
             self.push_move(ply, mv, moving_piece);
+            self.record_move_order(ply, move_count);
             let nodes_before_move = if NODE::ROOT { self.td.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
             // bitboard tests) and lets `make_move` skip `calculate_checkers`
@@ -1105,6 +1171,7 @@ impl Searcher {
                         true,
                         Move::NULL,
                         !child_is_pv && !cut_node,
+                        last_critical_ply,
                         poll,
                     )
                 } else {
@@ -1117,6 +1184,7 @@ impl Searcher {
                         true,
                         Move::NULL,
                         !child_is_pv && !cut_node,
+                        last_critical_ply,
                         poll,
                     )
                 };
@@ -1184,6 +1252,7 @@ impl Searcher {
                     } else {
                         crate::diag_count!(lmr_applied);
                     }
+                    self.td.stack[ply].reduction = r;
                     score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth - reduction,
@@ -1193,8 +1262,10 @@ impl Searcher {
                         true,
                         Move::NULL,
                         true,
+                        ply + 1,
                         poll,
                     );
+                    self.td.stack[ply].reduction = 0;
                     if reduction > 0 && score > alpha {
                         crate::diag_count!(lmr_research);
                         trace_decision!(
@@ -1217,6 +1288,7 @@ impl Searcher {
                             true,
                             Move::NULL,
                             !cut_node,
+                            last_critical_ply,
                             poll,
                         );
                     }
@@ -1230,6 +1302,7 @@ impl Searcher {
                         true,
                         Move::NULL,
                         true,
+                        ply + 1,
                         poll,
                     );
                 }
@@ -1243,6 +1316,7 @@ impl Searcher {
                         true,
                         Move::NULL,
                         false,
+                        last_critical_ply,
                         poll,
                     );
                 }
@@ -1286,6 +1360,7 @@ impl Searcher {
                 self.td.pv_len[ply] = child_len;
 
                 if score >= beta {
+                    self.td.stack[ply].cutoff_count += 1;
                     if excluded.is_null() {
                         // 10.0(a): `searched` was incremented for this move
                         // above, so `== 1` means the node's FIRST move failed
@@ -1795,6 +1870,65 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn laterality_grows_by_the_log_of_the_move_index() {
+        let steps = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+        for (move_count, &expected) in steps.iter().enumerate() {
+            assert_eq!(
+                laterality_step(infra::to_i32(move_count)),
+                expected,
+                "move {move_count}"
+            );
+        }
+        assert_eq!(laterality_step(16), 3);
+        assert_eq!(laterality_step(255), 6);
+    }
+
+    /// After a search unwinds, no ply still carries an LMR reduction: the
+    /// field is non-zero only while the reduced child is being searched, and
+    /// a child reads its parent's entry.
+    #[test]
+    fn stack_reductions_unwind_to_zero() {
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .expect("valid FEN");
+        let score = searcher.search_root_window(&mut board, 7, -INF_SCORE, INF_SCORE, &mut || {
+            SearchEvent::None
+        });
+        assert!(score.abs() < INF_SCORE);
+        assert!(
+            searcher.td.nodes > 1_000,
+            "the search must reach reductions"
+        );
+        for ply in 0..MAX_PLY {
+            assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
+        }
+    }
+
+    /// The grandchild cutoff reset stays inside the stack at the deepest node
+    /// that reaches it.
+    #[test]
+    fn cutoff_count_reset_is_bounded_at_the_ply_cap() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
+        for ply in [MAX_PLY - 3, MAX_PLY - 2] {
+            let score = searcher.negamax::<NonPv, _>(
+                &mut board,
+                2,
+                -1,
+                0,
+                ply,
+                false,
+                Move::NULL,
+                false,
+                0,
+                &mut || SearchEvent::None,
+            );
+            assert!(score.abs() < INF_SCORE, "ply {ply}");
+        }
+    }
 
     #[test]
     fn lmr_reduction_allows_strong_late_moves_to_reach_zero() {

@@ -83,6 +83,21 @@ pub(super) struct StackEntry {
     /// disagreeing: a push that wrote only `mv` would index continuation
     /// history with a piece left over from a sibling subtree.
     pub(super) cont_key: usize,
+    /// Order index of `mv` among the moves its node's picker handed over,
+    /// pruned moves included; zero for a ProbCut or null move.
+    #[cfg(feature = "b2core")]
+    pub(super) move_count: i32,
+    /// Accumulated lateness of the line to this ply: the parent's laterality
+    /// plus `max(ilog2(move_count) - 1, 0)`; zero after a null move.
+    #[cfg(feature = "b2core")]
+    pub(super) laterality: i32,
+    /// The LMR reduction, in 1024ths of a ply, of the move being searched at
+    /// this ply; zero outside that reduced search. The child reads it.
+    #[cfg(feature = "b2core")]
+    pub(super) reduction: i32,
+    /// Beta cutoffs at this ply since the grandparent reset it on entry.
+    #[cfg(feature = "b2core")]
+    pub(super) cutoff_count: i32,
 }
 
 impl StackEntry {
@@ -104,6 +119,14 @@ impl Default for StackEntry {
             piece: Piece::Pawn,
             static_eval: VALUE_NONE,
             cont_key: 0,
+            #[cfg(feature = "b2core")]
+            move_count: 0,
+            #[cfg(feature = "b2core")]
+            laterality: 0,
+            #[cfg(feature = "b2core")]
+            reduction: 0,
+            #[cfg(feature = "b2core")]
+            cutoff_count: 0,
         }
     }
 }

@@ -42,6 +42,12 @@ impl Bitboard {
         self.0 != 0
     }
 
+    /// Whether `sq` is in the set.
+    #[inline(always)]
+    pub const fn contains(self, sq: Square) -> bool {
+        self.0 & (1u64 << sq.0) != 0
+    }
+
     #[inline(always)]
     pub fn count(self) -> u32 {
         self.0.count_ones()

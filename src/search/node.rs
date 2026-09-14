@@ -207,6 +207,20 @@ impl Searcher {
         r
     }
 
+    /// Search the root position at `depth` inside the window: the entry the
+    /// iterative-deepening loop calls, so it never depends on the kernel's
+    /// argument list.
+    pub(super) fn search_root_window<P: FnMut() -> SearchEvent + ?Sized>(
+        &mut self,
+        board: &mut Board,
+        depth: i32,
+        alpha: i32,
+        beta: i32,
+        poll: &mut P,
+    ) -> i32 {
+        self.negamax::<Root, _>(board, depth, alpha, beta, 0, true, Move::NULL, false, poll)
+    }
+
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,

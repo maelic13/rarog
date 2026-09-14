@@ -168,6 +168,16 @@ pub struct Board {
     history: Vec<UnmakeInfo>,
 }
 
+/// The squares the side not to move attacks, by attacking piece type and in
+/// total. See [`Board::threats`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Threats {
+    /// Every square at least one enemy piece attacks.
+    pub all: Bitboard,
+    /// `by_piece[piece]`: the squares enemy pieces of that type attack.
+    pub by_piece: [Bitboard; 6],
+}
+
 /// Per-node masks for O(1) "does this move give check?" tests — see
 /// [`Board::check_info`] / [`Board::gives_check_with`].
 pub(crate) struct CheckInfo {
@@ -797,6 +807,41 @@ impl Board {
             check_squares,
             blockers,
         }
+    }
+
+    /// The squares the side not to move attacks, by piece type and in total.
+    ///
+    /// The side to move's king is removed from the occupancy first, so a
+    /// slider attacking the king also attacks the squares behind it on the
+    /// same line. A threat set answers "would a piece of ours stand attacked
+    /// there", and for the king stepping back along the checking line the
+    /// answer is yes.
+    pub fn threats(&self) -> Threats {
+        let us = self.side_to_move;
+        let them = !us;
+        let atk = &*ATTACKS;
+        let occ = self.all_occ ^ self.pieces(us, Piece::King);
+        let mut by_piece = [Bitboard::EMPTY; 6];
+        for sq in self.pieces(them, Piece::Pawn) {
+            by_piece[Piece::Pawn as usize] |= atk.pawn(them, sq);
+        }
+        for sq in self.pieces(them, Piece::Knight) {
+            by_piece[Piece::Knight as usize] |= atk.knight(sq);
+        }
+        for sq in self.pieces(them, Piece::Bishop) {
+            by_piece[Piece::Bishop as usize] |= atk.bishop(sq, occ);
+        }
+        for sq in self.pieces(them, Piece::Rook) {
+            by_piece[Piece::Rook as usize] |= atk.rook(sq, occ);
+        }
+        for sq in self.pieces(them, Piece::Queen) {
+            by_piece[Piece::Queen as usize] |= atk.queen(sq, occ);
+        }
+        by_piece[Piece::King as usize] = atk.king(self.king_sq(them));
+        let all = by_piece
+            .iter()
+            .fold(Bitboard::EMPTY, |all, &attacks| all | attacks);
+        Threats { all, by_piece }
     }
 
     /// Fast path of [`Board::gives_check`], faithful by construction and
@@ -2361,6 +2406,77 @@ impl fmt::Display for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `threats()` agrees with the attacker query on every square of positions
+    /// reached by a perft walk, piece type by piece type, with the side to
+    /// move's king lifted from the occupancy.
+    #[test]
+    fn threats_match_the_attacker_query_on_every_square() {
+        fn check(board: &Board) {
+            let us = board.side_to_move();
+            let them = !us;
+            let occ = board.occupied() ^ board.pieces(us, Piece::King);
+            let threats = board.threats();
+            let mut union = Bitboard::EMPTY;
+            for piece in Piece::ALL {
+                let mut expected = Bitboard::EMPTY;
+                for sq in (0..64).map(Square) {
+                    let attackers =
+                        board.attackers_to_color(sq, occ, them) & board.pieces(them, piece);
+                    if attackers.any() {
+                        expected |= Bitboard::from(sq);
+                    }
+                }
+                assert_eq!(
+                    threats.by_piece[piece as usize],
+                    expected,
+                    "{piece:?} threats in {}",
+                    board.to_fen()
+                );
+                union |= expected;
+            }
+            assert_eq!(threats.all, union, "all threats in {}", board.to_fen());
+            for sq in (0..64).map(Square) {
+                assert_eq!(threats.all.contains(sq), union.contains(sq));
+            }
+        }
+        fn walk(board: &mut Board, depth: u32) {
+            check(board);
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                board.make_move(mv);
+                walk(board, depth - 1);
+                board.unmake_move(mv);
+            }
+        }
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 2);
+        }
+    }
+
+    /// The king is lifted from the occupancy: a rook checking along a file
+    /// also attacks the square behind the king, which it could not reach if
+    /// the king blocked the line.
+    #[test]
+    fn threats_see_through_the_side_to_move_king() {
+        let board = Board::from_fen("4k3/8/8/8/4r3/8/4K3/8 w - - 0 1").expect("valid FEN");
+        let rook = board.threats().by_piece[Piece::Rook as usize];
+        assert!(rook.contains(Square::E2), "the checked king's square");
+        assert!(rook.contains(Square::E1), "the square behind the king");
+        let attackers = board.attackers_to_color(Square::E1, board.occupied(), Color::Black);
+        assert!(
+            attackers.is_empty(),
+            "with the king in place e1 is shielded"
+        );
+    }
 
     /// Shuffle both knights out and back: four plies that always exist from the
     /// starting position, so a walk of any even length can be built from them.
