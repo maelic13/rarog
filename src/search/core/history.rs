@@ -1,57 +1,90 @@
-//! Move-ordering histories: the tables' index math, their update rules and
-//! ageing.
+//! Move-ordering histories: threat-aware quiet and noisy tables, pawn-structure
+//! and continuation tables, their gravity update and the interim update rules.
 
-use crate::board::{Board, CheckInfo, Color, Move, Piece};
-use crate::infra;
+use crate::board::{Bitboard, Board, Color, Move, Piece, Square};
 
 use super::Searcher;
 use super::movepick::BadCaptureList;
-use super::stack::PlyArray;
 
-pub(super) const HISTORY_MAX: i32 = 16_384;
-const CAP_HISTORY_MAX: i32 = 16_384;
-pub(super) const CONT_SIZE: usize = 6 * 64 * 6 * 64;
-pub(super) const LOW_PLY_HISTORY_SIZE: usize = 8;
-pub(super) const PAWN_HISTORY_SIZE: usize = 4_096;
-pub(super) const PIECE_TO_SIZE: usize = 6 * 64;
+/// `(colour, piece type, square)` slots: the second index of every
+/// piece-to table.
+pub(super) const PIECE_TO_SIZE: usize = 12 * 64;
+/// Continuation contexts: whether the earlier node was in check, whether its
+/// move was noisy, and that move's coloured piece and destination.
+pub(super) const CONT_CONTEXTS: usize = 2 * 2 * PIECE_TO_SIZE;
+pub(super) const CONT_SIZE: usize = CONT_CONTEXTS * PIECE_TO_SIZE;
+/// How many plies back each continuation term looks.
+pub(super) const CONT_PLY_BACK: [usize; 4] = [1, 2, 4, 6];
 
-/// Continuation-history look-back distances and their bonus divisors.
-///
-/// 9.0a: replaces four parallel `cont_history_N` fields and four copy-pasted
-/// blocks in each of the read / update / age paths (twelve near-identical
-/// stanzas). `(plies_back, bonus_divisor)` — slot order is the array order in
-/// [`ThreadData::cont_history`], so adding a look-back distance is one entry
-/// here rather than a field plus three new blocks.
-pub(super) const CONT_PLY_BACK: [(usize, i32); 4] = [(1, 1), (2, 1), (4, 2), (6, 3)];
-pub(super) const CONT_TABLES: usize = CONT_PLY_BACK.len();
+const QUIET_MAX: i32 = 8_192;
+const NOISY_MAX: i32 = 12_800;
+const PAWN_MAX: i32 = 8_192;
+const CONT_MAX: i32 = 15_320;
+const PAWN_HISTORY_SIZE: usize = 512;
+/// Captured-type slots of the noisy table: the six piece types and "none",
+/// for a non-capturing promotion.
+const CAPTURED_SLOTS: usize = 7;
 
-/// One thread's move-ordering tables.
+/// Index of a coloured piece standing on `sq`.
+#[inline(always)]
+pub(super) fn piece_to(color: Color, piece: Piece, sq: Square) -> usize {
+    (color as usize * 6 + piece as usize) * 64 + sq.index()
+}
+
+/// The continuation context a move made at a node selects, as a row base
+/// into a `CONT_SIZE` table.
+#[inline(always)]
+pub(super) fn cont_context(
+    in_check: bool,
+    noisy: bool,
+    color: Color,
+    piece: Piece,
+    to: Square,
+) -> usize {
+    ((usize::from(in_check) * 2 + usize::from(noisy)) * PIECE_TO_SIZE + piece_to(color, piece, to))
+        * PIECE_TO_SIZE
+}
+
+/// Gravity update. The bonus is clamped to `±max` and the entry moves toward
+/// its sign by `bonus - |bonus| * entry / max`, so an entry never leaves
+/// `[-max, max]` and a saturated entry moves little.
+#[inline(always)]
+pub(super) fn apply_bonus(entry: &mut i16, bonus: i32, max: i32) {
+    let bonus = bonus.clamp(-max, max);
+    let current = i32::from(*entry);
+    *entry = crate::infra::saturating_i16(current + bonus - bonus.abs() * current / max);
+}
+
+/// Heap-allocate a zeroed table without building it on the stack first.
+fn zeroed<const N: usize>() -> Box<[i16; N]> {
+    vec![0i16; N]
+        .into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|_| unreachable!("length is N by construction"))
+}
+
+/// `[side to move][from threatened][to threatened][from][to]`.
+type QuietTable = [[[[[i16; 64]; 64]; 2]; 2]; 2];
+
+/// One thread's move-ordering tables. None of them age between searches.
 pub(super) struct HistoryTables {
-    pub(super) main_history: Box<[[[i16; 64]; 64]; 2]>,
-    pub(super) cap_history: Box<[[[i16; 6]; 64]; 6]>,
-    pub(super) low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
-    /// Boxed const-size, NOT `Vec<i16>` — see [`HistoryTables::cont_history`].
-    pub(super) pawn_history: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
-    /// Continuation history, one table per look-back distance. Indexed by
-    /// [`CONT_PLY_BACK`] position, NOT by ply distance — see that table.
-    ///
-    /// Boxed fixed-size arrays, not `Vec`s: the `Vec` form cost −2.1% NPS
-    /// because runtime lengths defeat bounds-check elision in the hot loops.
-    pub(super) cont_history: Box<[[i16; CONT_SIZE]; CONT_TABLES]>,
-    pub(super) countermove: Box<[[Move; 64]; 64]>,
-    pub(super) killers: PlyArray<[Move; 2]>,
+    quiet: Box<QuietTable>,
+    /// `[coloured piece and destination][captured type][destination threatened]`.
+    noisy: Box<[[[i16; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]>,
+    /// `[pawn-key slot][coloured piece and destination]`, flat.
+    pawn: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
+    /// `[context][coloured piece and destination]`, flat; a context is a row
+    /// base from [`cont_context`].
+    cont: Box<[i16; CONT_SIZE]>,
 }
 
 impl Default for HistoryTables {
     fn default() -> Self {
         Self {
-            main_history: Box::new([[[0; 64]; 64]; 2]),
-            cap_history: Box::new([[[0; 6]; 64]; 6]),
-            low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
-            pawn_history: Box::new([0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]),
-            cont_history: boxed_cont_tables(),
-            countermove: Box::new([[Move::NULL; 64]; 64]),
-            killers: PlyArray::new([Move::NULL; 2]),
+            quiet: Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]),
+            noisy: Box::new([[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]),
+            pawn: zeroed(),
+            cont: zeroed(),
         }
     }
 }
@@ -59,164 +92,132 @@ impl Default for HistoryTables {
 impl HistoryTables {
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
-        *self.main_history = [[[0; 64]; 64]; 2];
-        *self.cap_history = [[[0; 6]; 64]; 6];
-        *self.low_ply_history = [[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE];
-        *self.pawn_history = [0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE];
-        for table in self.cont_history.iter_mut() {
-            table.fill(0);
-        }
-        *self.countermove = [[Move::NULL; 64]; 64];
-        self.killers = PlyArray::new([Move::NULL; 2]);
+        *self.quiet = [[[[[0; 64]; 64]; 2]; 2]; 2];
+        *self.noisy = [[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE];
+        self.pawn.fill(0);
+        self.cont.fill(0);
     }
 
-    /// Halve every table between searches.
-    pub(super) fn age(&mut self) {
-        for color in self.main_history.iter_mut() {
-            for from in color.iter_mut() {
-                for value in from.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for attacker in self.cap_history.iter_mut() {
-            for to in attacker.iter_mut() {
-                for value in to.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for ply in self.low_ply_history.iter_mut() {
-            for from in ply.iter_mut() {
-                for value in from.iter_mut() {
-                    *value /= 2;
-                }
-            }
-        }
-        for value in self.pawn_history.iter_mut() {
-            *value /= 2;
-        }
-        for table in self.cont_history.iter_mut() {
-            for value in table.iter_mut() {
-                *value /= 2;
-            }
-        }
+    /// Between searches the tables keep their values: gravity alone bounds
+    /// them.
+    #[expect(
+        clippy::unused_self,
+        reason = "the search calls age() on either arm's tables"
+    )]
+    pub(super) fn age(&mut self) {}
+
+    #[inline(always)]
+    pub(super) fn quiet(&self, threats: Bitboard, stm: Color, mv: Move) -> i32 {
+        let (from, to) = (mv.from_sq(), mv.to_sq());
+        i32::from(
+            self.quiet[stm as usize][usize::from(threats.contains(from))]
+                [usize::from(threats.contains(to))][from.index()][to.index()],
+        )
     }
-}
 
-/// Node-invariant half of quiet-history scoring, resolved once per node by
-/// [`Searcher::quiet_history_ctx`] (8.12(g2)): the continuation rows that
-/// apply at this ply (`None` = a null previous move, which is what a sentinel
-/// below the root holds) and the pawn-history row for this pawn structure. Per move, scoring
-/// adds only `piece_to_index(piece, to)` to each base.
-pub(super) struct QuietHistoryCtx {
-    cont_bases: [Option<usize>; CONT_TABLES],
-    pawn_base: usize,
-}
-/// Heap-allocate the continuation tables without a ~1.1 MB stack temporary
-/// (`Box::new([[0; CONT_SIZE]; N])` would materialize the array on the stack
-/// first). Startup-only.
-pub(super) fn boxed_cont_tables() -> Box<[[i16; CONT_SIZE]; CONT_TABLES]> {
-    let tables: Box<[[i16; CONT_SIZE]]> = vec![[0; CONT_SIZE]; CONT_TABLES].into_boxed_slice();
-    tables
-        .try_into()
-        .unwrap_or_else(|_| unreachable!("length is CONT_TABLES by construction"))
-}
+    #[inline(always)]
+    pub(super) fn update_quiet(&mut self, threats: Bitboard, stm: Color, mv: Move, bonus: i32) {
+        let (from, to) = (mv.from_sq(), mv.to_sq());
+        apply_bonus(
+            &mut self.quiet[stm as usize][usize::from(threats.contains(from))]
+                [usize::from(threats.contains(to))][from.index()][to.index()],
+            bonus,
+            QUIET_MAX,
+        );
+    }
 
-pub(super) fn update_hist_entry(entry: &mut i16, bonus: i32, max_value: i32) {
-    let current = *entry as i32;
-    let updated = current + bonus - current * bonus.abs() / max_value;
-    *entry = crate::infra::saturating_i16(updated);
-}
+    #[inline(always)]
+    pub(super) fn noisy(
+        &self,
+        threats: Bitboard,
+        color: Color,
+        piece: Piece,
+        to: Square,
+        captured: Option<Piece>,
+    ) -> i32 {
+        i32::from(
+            self.noisy[piece_to(color, piece, to)][captured.map_or(6, |p| p as usize)]
+                [usize::from(threats.contains(to))],
+        )
+    }
 
-/// Node-invariant prefix of [`pawn_history_index`]: the pawn-key row base,
-/// same per-node hoist as [`cont_row_base`].
-fn pawn_row_base(pawn_key: u64) -> usize {
-    (infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1)) * PIECE_TO_SIZE
-}
+    #[inline(always)]
+    pub(super) fn update_noisy(
+        &mut self,
+        threats: Bitboard,
+        color: Color,
+        piece: Piece,
+        to: Square,
+        captured: Option<Piece>,
+        bonus: i32,
+    ) {
+        apply_bonus(
+            &mut self.noisy[piece_to(color, piece, to)][captured.map_or(6, |p| p as usize)]
+                [usize::from(threats.contains(to))],
+            bonus,
+            NOISY_MAX,
+        );
+    }
 
-/// Flat `(piece, square)` index. Same reasoning as [`cont_index`].
-pub(super) fn piece_to_index(piece: usize, to: usize) -> usize {
-    debug_assert!(piece < 6, "piece index out of range");
-    debug_assert!(to < 64, "square index out of range");
-    (piece * 64 + to).min(PIECE_TO_SIZE - 1)
-}
+    /// Row base of the pawn table for this pawn structure.
+    #[inline(always)]
+    pub(super) fn pawn_row(pawn_key: u64) -> usize {
+        (crate::infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1)) * PIECE_TO_SIZE
+    }
 
-fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usize {
-    let slot = infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1);
-    slot * PIECE_TO_SIZE + piece_to_index(piece, to)
+    #[inline(always)]
+    pub(super) fn pawn(&self, pawn_row: usize, color: Color, piece: Piece, to: Square) -> i32 {
+        i32::from(self.pawn[pawn_row + piece_to(color, piece, to)])
+    }
+
+    #[inline(always)]
+    pub(super) fn update_pawn(
+        &mut self,
+        pawn_row: usize,
+        color: Color,
+        piece: Piece,
+        to: Square,
+        bonus: i32,
+    ) {
+        apply_bonus(
+            &mut self.pawn[pawn_row + piece_to(color, piece, to)],
+            bonus,
+            PAWN_MAX,
+        );
+    }
+
+    #[inline(always)]
+    pub(super) fn cont(&self, context: usize, color: Color, piece: Piece, to: Square) -> i32 {
+        i32::from(self.cont[context + piece_to(color, piece, to)])
+    }
+
+    #[inline(always)]
+    pub(super) fn update_cont(
+        &mut self,
+        context: usize,
+        color: Color,
+        piece: Piece,
+        to: Square,
+        bonus: i32,
+    ) {
+        apply_bonus(
+            &mut self.cont[context + piece_to(color, piece, to)],
+            bonus,
+            CONT_MAX,
+        );
+    }
 }
 
 impl Searcher {
-    /// Resolve the node-invariant half of quiet-history indexing once per
-    /// node (8.12(g2), from the Basilisk cross-review — its 8.7.6(b+d) hoist,
-    /// +3.03% NPS there). The continuation guards (a null previous
-    /// move), the previous piece/square loads, and the pawn-key row
-    /// lookup do not depend on the move being scored, yet `cont_score` used
-    /// to redo all of them for every quiet in the list. 8.12(g) refuted the
-    /// PREFETCH angle for these tables (all quiets share one row window per
-    /// node) but never isolated the duplicated arithmetic; this removes it.
-    /// Only `piece_to_index(piece, to)` remains per-move.
-    pub(super) fn quiet_history_ctx(&self, board: &Board, ply: usize) -> QuietHistoryCtx {
-        let mut cont_bases = [None; CONT_TABLES];
-        for (slot, &(back, _)) in CONT_PLY_BACK.iter().enumerate() {
-            let entry = self.td.stack.back(ply, back);
-            if entry.mv.is_null() {
-                continue;
-            }
-            cont_bases[slot] = Some(entry.cont_row_base());
-        }
-        QuietHistoryCtx {
-            cont_bases,
-            pawn_base: pawn_row_base(board.pawn_key()),
-        }
+    /// The continuation context `back` plies before `ply`, or `None` when no
+    /// move was made there.
+    #[inline(always)]
+    pub(super) fn cont_context_back(&self, ply: usize, back: usize) -> Option<usize> {
+        let entry = self.td.stack.back(ply, back);
+        (!entry.mv.is_null()).then_some(entry.cont_key)
     }
 
-    pub(super) fn quiet_history_score(
-        &self,
-        board: &Board,
-        check_info: &CheckInfo,
-        ctx: &QuietHistoryCtx,
-        color: Color,
-        mv: Move,
-        ply: usize,
-    ) -> i32 {
-        let from = mv.from_sq().index();
-        let to = mv.to_sq().index();
-        let main = self.td.hist.main_history[color as usize][from][to] as i32;
-        let piece = board.moving_piece(mv) as usize;
-        // The shared per-move offset into every (piece, to)-shaped row.
-        let piece_to = piece_to_index(piece, to);
-        let pawn = self.td.hist.pawn_history[ctx.pawn_base + piece_to] as i32;
-        let low_ply = if ply < LOW_PLY_HISTORY_SIZE {
-            self.td.hist.low_ply_history[ply][from][to] as i32 / (1 + infra::to_i32(ply))
-        } else {
-            0
-        };
-        let mut cont = 0;
-        for (slot, base) in ctx.cont_bases.iter().enumerate() {
-            if let Some(base) = base {
-                cont +=
-                    self.td.hist.cont_history[slot][(base + piece_to).min(CONT_SIZE - 1)] as i32;
-            }
-        }
-        // 4.6c: safe versus losing check classes. A check whose checker can be
-        // taken at a material loss is usually refuted by taking it, so it does
-        // not deserve the same enormous bonus as a safe one. When the two
-        // bonuses are equal (the seeded state) the SEE probe is SKIPPED, so
-        // ordering pays nothing for a distinction it is not making.
-        let direct_check = if board.gives_check_with(mv, check_info) {
-            // 4.6c: a safe/losing split was measured non-functional (RAR-S44:
-            // `see_ge(mv, 0)` is trivially true for a non-capture) and reverted.
-            self.cfg.params.check_bonus_safe
-        } else {
-            0
-        };
-        2 * main + pawn + low_ply + cont + direct_check
-    }
-
-    /// Reward for the move that produced a beta cutoff (Phase 8.1: linear
-    /// SF-shaped formula, split from the malus so SPSA can tune them apart).
+    /// Reward for the move that produced a beta cutoff.
     pub(super) fn history_bonus(&self, depth: i32) -> i32 {
         (self.cfg.params.hist_bonus_mul * depth - self.cfg.params.hist_bonus_sub)
             .clamp(0, self.cfg.params.hist_bonus_max)
@@ -229,12 +230,62 @@ impl Searcher {
             .clamp(0, self.cfg.params.hist_malus_max)
     }
 
+    /// Quiet and pawn tables for one quiet move, plus the continuation terms
+    /// when `with_continuation` is set.
+    pub(super) fn update_quiet_history(
+        &mut self,
+        board: &Board,
+        threats: Bitboard,
+        ply: usize,
+        mv: Move,
+        bonus: i32,
+        with_continuation: bool,
+    ) {
+        let stm = board.side_to_move();
+        let piece = board.moving_piece(mv);
+        let to = mv.to_sq();
+        self.td.hist.update_quiet(threats, stm, mv, bonus);
+        self.td.hist.update_pawn(
+            HistoryTables::pawn_row(board.pawn_key()),
+            stm,
+            piece,
+            to,
+            bonus,
+        );
+        if with_continuation {
+            for (index, back) in CONT_PLY_BACK.into_iter().enumerate() {
+                if let Some(context) = self.cont_context_back(ply, back) {
+                    // Interim divisors 1, 1, 2, 3 by look-back distance.
+                    let divisor = [1, 1, 2, 3][index];
+                    self.td
+                        .hist
+                        .update_cont(context, stm, piece, to, bonus / divisor);
+                }
+            }
+        }
+    }
+
+    pub(super) fn update_noisy_history(
+        &mut self,
+        board: &Board,
+        threats: Bitboard,
+        attacker: Piece,
+        to: Square,
+        captured: Option<Piece>,
+        bonus: i32,
+    ) {
+        self.td
+            .hist
+            .update_noisy(threats, board.side_to_move(), attacker, to, captured, bonus);
+    }
+
+    /// The interim update at a quiet beta cutoff: bonus to the move, malus to
+    /// the quiets and captures searched before it.
     pub(super) fn update_cutoff_tables(
         &mut self,
         board: &Board,
+        threats: Bitboard,
         best: Move,
-        best_piece: Piece,
-        previous: Move,
         ply: usize,
         depth: i32,
         bonus_pct: i32,
@@ -242,113 +293,20 @@ impl Searcher {
         good_caps: &BadCaptureList,
         bad_caps: &BadCaptureList,
     ) {
-        if self.td.hist.killers[ply][0] != best {
-            self.td.hist.killers[ply][1] = self.td.hist.killers[ply][0];
-            self.td.hist.killers[ply][0] = best;
-        }
-
-        let color = board.side_to_move();
-        let pawn_key = board.pawn_key();
-        // 8.4(e): `bonus_pct` carries the surprise scale (100 = neutral); it
-        // applies to every REWARD for the best move (main/pawn/low-ply and the
-        // continuation entries below) but never to a malus.
         let bonus = self.history_bonus(depth) * bonus_pct / 100;
         let malus = self.history_malus(depth);
-        self.update_quiet_history(color, best, best_piece, pawn_key, ply, bonus);
-        // NOTE, 4.5.3: these quiets get a malus in main, low-ply and pawn
-        // history but deliberately NOT in continuation history. That asymmetry
-        // looks like an omission and was measured as a candidate: adding the
-        // continuation malus leaves ordering flat (first-move cutoff 88.04% ->
-        // 88.09%) while cutting the tree 7.5% and total cutoffs 9.6%. Cutoffs
-        // fall FASTER than nodes, so it is not an ordering gain — continuation
-        // history feeds `quiet_hist`, which drives two of LMP's four disjuncts
-        // and the LMR reduction, so a broad negative push simply prunes more.
-        // That is the one direction four independent readings say is wrong for
-        // this engine (RAR-S53/S54/S55, and 4.7 paying +15.56 for pruning
-        // LESS). Rejected on measurement, not left undone.
+        self.update_quiet_history(board, threats, ply, best, bonus, true);
         for &quiet in quiets {
-            let quiet_piece = board.moving_piece(quiet);
-            self.update_quiet_history(color, quiet, quiet_piece, pawn_key, ply, -malus);
+            self.update_quiet_history(board, threats, ply, quiet, -malus, false);
         }
-        for good_cap in good_caps.as_slice() {
-            self.update_capture_history(
-                good_cap.attacker,
-                good_cap.to as usize,
-                good_cap.captured,
+        for capture in good_caps.as_slice().iter().chain(bad_caps.as_slice()) {
+            self.update_noisy_history(
+                board,
+                threats,
+                capture.attacker,
+                Square(capture.to),
+                capture.captured,
                 -malus,
-            );
-        }
-        for bad_cap in bad_caps.as_slice() {
-            self.update_capture_history(
-                bad_cap.attacker,
-                bad_cap.to as usize,
-                bad_cap.captured,
-                -malus,
-            );
-        }
-
-        if !previous.is_null() {
-            self.td.hist.countermove[previous.from_sq().index()][previous.to_sq().index()] = best;
-        }
-
-        let piece = best_piece as usize;
-        let to = best.to_sq().index();
-        for (slot, &(back, divisor)) in CONT_PLY_BACK.iter().enumerate() {
-            let entry = *self.td.stack.back(ply, back);
-            if entry.mv.is_null() {
-                continue;
-            }
-            let index = entry.cont_row_base() + piece_to_index(piece, to);
-            update_hist_entry(
-                &mut self.td.hist.cont_history[slot][index],
-                bonus / divisor,
-                HISTORY_MAX,
-            );
-        }
-    }
-
-    pub(super) fn update_quiet_history(
-        &mut self,
-        color: Color,
-        mv: Move,
-        piece: Piece,
-        pawn_key: u64,
-        ply: usize,
-        bonus: i32,
-    ) {
-        update_hist_entry(
-            &mut self.td.hist.main_history[color as usize][mv.from_sq().index()]
-                [mv.to_sq().index()],
-            bonus,
-            HISTORY_MAX,
-        );
-        if ply < LOW_PLY_HISTORY_SIZE {
-            update_hist_entry(
-                &mut self.td.hist.low_ply_history[ply][mv.from_sq().index()][mv.to_sq().index()],
-                bonus,
-                HISTORY_MAX,
-            );
-        }
-        update_hist_entry(
-            &mut self.td.hist.pawn_history
-                [pawn_history_index(pawn_key, piece as usize, mv.to_sq().index())],
-            bonus,
-            HISTORY_MAX,
-        );
-    }
-
-    pub(super) fn update_capture_history(
-        &mut self,
-        attacker: Piece,
-        to: usize,
-        captured: Option<Piece>,
-        bonus: i32,
-    ) {
-        if let Some(captured) = captured {
-            update_hist_entry(
-                &mut self.td.hist.cap_history[attacker as usize][to][captured as usize],
-                bonus,
-                CAP_HISTORY_MAX,
             );
         }
     }
@@ -357,130 +315,122 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::Square;
 
-    /// The continuation index SPECIFICATION: the search reads a per-ply
-    /// `cont_key` instead, and the test below proves the identity
-    /// `StackEntry::cont_row_base` depends on. Test-only since B.1.
-    /// Flat index into a continuation-history table.
-    ///
-    /// 9.0a: the inputs are structurally bounded — `piece`/`prev_piece` come from
-    /// a 6-variant `Piece` cast and the squares from `Square::index()` (masked to
-    /// 0..=63), so the result is always < `CONT_SIZE`. The `.min()` remains as the
-    /// release-mode backstop (it keeps the function total), but it used to be the
-    /// ONLY thing here: an out-of-range index was silently folded into the last
-    /// bucket, so a logic bug would quietly corrupt one history cell instead of
-    /// surfacing. The `debug_assert!`s now state the invariant and fail loudly in
-    /// debug and under `cargo test`.
-    ///
-    /// NB `CONT_SIZE` (147,456) and `PIECE_TO_SIZE` (384) are NOT powers of two,
-    /// so `& (SIZE - 1)` is *not* a valid substitute for `.min()` here — masking
-    /// would remap valid in-range indices (65,536 would fold to 0). Only
-    /// `pawn_history_index`'s 4,096-entry slot table may use a mask.
-    fn cont_index(prev_piece: usize, prev_to: usize, piece: usize, to: usize) -> usize {
-        debug_assert!(prev_piece < 6 && piece < 6, "piece index out of range");
-        debug_assert!(prev_to < 64 && to < 64, "square index out of range");
-        (((prev_piece * 64 + prev_to) * 6 + piece) * 64 + to).min(CONT_SIZE - 1)
-    }
-
-    /// Node-invariant prefix of [`cont_index`]: the row base for a
-    /// `(prev_piece, prev_to)` pair, such that
-    /// `cont_index(pp, pt, piece, to) == (cont_row_base(pp, pt) + piece_to_index(piece, to)).min(CONT_SIZE - 1)`
-    /// (equivalence pinned by a test below). Move scoring resolves this once per
-    /// node instead of once per quiet move — the 8.12(g2) hoist from the Basilisk
-    /// cross-review (its 8.7.6(b+d), +3.03% NPS there).
-    fn cont_row_base(prev_piece: usize, prev_to: usize) -> usize {
-        debug_assert!(prev_piece < 6, "piece index out of range");
-        debug_assert!(prev_to < 64, "square index out of range");
-        (prev_piece * 64 + prev_to) * PIECE_TO_SIZE
-    }
-
-    /// The hoisted row-base + per-move offset decomposition must agree with
-    /// the original single-shot index everywhere — this is what makes the
-    /// 8.12(g2) scoring hoist a pure refactor.
+    /// Each table's entries stay inside `±max` under any sequence of
+    /// clamped bonuses, and the update is gravity: repeated identical bonuses
+    /// converge on the bound without crossing it, and a saturated entry moves
+    /// less than an empty one.
     #[test]
-    fn row_base_decomposition_matches_cont_and_pawn_indexes() {
-        for prev_piece in 0..6 {
-            for prev_to in (0..64).step_by(7) {
-                for piece in 0..6 {
-                    for to in (0..64).step_by(5) {
-                        assert_eq!(
-                            (cont_row_base(prev_piece, prev_to) + piece_to_index(piece, to))
-                                .min(CONT_SIZE - 1),
-                            cont_index(prev_piece, prev_to, piece, to),
-                        );
-                    }
-                }
+    fn every_table_is_bounded_and_updates_by_gravity() {
+        for max in [QUIET_MAX, NOISY_MAX, PAWN_MAX, CONT_MAX] {
+            let mut entry = 0i16;
+            let mut previous = 0;
+            for _ in 0..200 {
+                apply_bonus(&mut entry, 3 * max, max);
+                let value = i32::from(entry);
+                assert!(value <= max && value >= previous, "max {max}: {value}");
+                previous = value;
             }
-        }
-        for key in [0u64, 1, 0xFFFF, 0xDEAD_BEEF_CAFE_F00D, u64::MAX] {
-            for piece in 0..6 {
-                for to in (0..64).step_by(9) {
-                    assert_eq!(
-                        pawn_row_base(key) + piece_to_index(piece, to),
-                        pawn_history_index(key, piece, to),
-                    );
-                }
+            assert!(i32::from(entry) >= max - max / 64, "max {max} converges");
+            for _ in 0..200 {
+                apply_bonus(&mut entry, -3 * max, max);
+                assert!(i32::from(entry) >= -max, "max {max}: {entry}");
             }
+            let mut empty = 0i16;
+            let mut high = i16::try_from(max * 3 / 4).expect("fits");
+            apply_bonus(&mut empty, 1_000, max);
+            let before = high;
+            apply_bonus(&mut high, 1_000, max);
+            assert!(high - before < empty, "saturated entry moves less");
         }
     }
 
     #[test]
-    fn quiet_history_uses_low_ply_slots_through_ply_seven() {
-        let mut searcher = Searcher::default();
-        let board = Board::default();
-        let mv = board.parse_move("a2a3").expect("legal quiet move");
-        let from = Square::A2.index();
-        let to = Square::A3.index();
+    fn tables_index_by_threat_and_colour() {
+        let mut tables = HistoryTables::default();
+        let mv = Move::from_uci("g1f3").expect("valid move");
+        let threatened_to = Bitboard::from(Square::F3);
+        tables.update_quiet(threatened_to, Color::White, mv, 500);
+        assert_eq!(tables.quiet(threatened_to, Color::White, mv), 500);
+        assert_eq!(tables.quiet(Bitboard::EMPTY, Color::White, mv), 0);
+        assert_eq!(tables.quiet(threatened_to, Color::Black, mv), 0);
 
-        searcher.td.hist.low_ply_history[7][from][to] = 800;
-
-        let ci = board.check_info();
-        let ctx7 = searcher.quiet_history_ctx(&board, 7);
-        assert_eq!(
-            searcher.quiet_history_score(&board, &ci, &ctx7, Color::White, mv, 7),
-            100
+        tables.update_noisy(
+            Bitboard::EMPTY,
+            Color::Black,
+            Piece::Queen,
+            Square::D4,
+            None,
+            700,
         );
-        let ctx8 = searcher.quiet_history_ctx(&board, 8);
         assert_eq!(
-            searcher.quiet_history_score(&board, &ci, &ctx8, Color::White, mv, 8),
+            tables.noisy(
+                Bitboard::EMPTY,
+                Color::Black,
+                Piece::Queen,
+                Square::D4,
+                None
+            ),
+            700
+        );
+        assert_eq!(
+            tables.noisy(
+                Bitboard::EMPTY,
+                Color::Black,
+                Piece::Queen,
+                Square::D4,
+                Some(Piece::Pawn)
+            ),
+            0
+        );
+        assert_eq!(
+            tables.noisy(
+                Bitboard::from(Square::D4),
+                Color::Black,
+                Piece::Queen,
+                Square::D4,
+                None
+            ),
+            0
+        );
+
+        let row = HistoryTables::pawn_row(0xDEAD_BEEF);
+        tables.update_pawn(row, Color::White, Piece::Knight, Square::F3, -300);
+        assert_eq!(
+            tables.pawn(row, Color::White, Piece::Knight, Square::F3),
+            -300
+        );
+        assert_eq!(tables.pawn(row, Color::Black, Piece::Knight, Square::F3), 0);
+
+        let context = cont_context(true, false, Color::Black, Piece::Pawn, Square::E5);
+        tables.update_cont(context, Color::White, Piece::Knight, Square::F3, 900);
+        assert_eq!(
+            tables.cont(context, Color::White, Piece::Knight, Square::F3),
+            900
+        );
+        let other = cont_context(false, false, Color::Black, Piece::Pawn, Square::E5);
+        assert_eq!(
+            tables.cont(other, Color::White, Piece::Knight, Square::F3),
+            0
+        );
+
+        tables.clear();
+        assert_eq!(tables.quiet(threatened_to, Color::White, mv), 0);
+        assert_eq!(
+            tables.cont(context, Color::White, Piece::Knight, Square::F3),
             0
         );
     }
 
+    /// The largest context plus the largest piece-to slot is the last entry.
     #[test]
-    fn quiet_history_updates_only_configured_low_ply_window() {
-        let mut searcher = Searcher::default();
-        let board = Board::default();
-        let in_window = board.parse_move("a2a3").expect("legal quiet move");
-        let outside_window = board.parse_move("h2h3").expect("legal quiet move");
-
-        searcher.update_quiet_history(
-            Color::White,
-            in_window,
-            Piece::Pawn,
-            board.pawn_key(),
-            LOW_PLY_HISTORY_SIZE - 1,
-            400,
-        );
-        searcher.update_quiet_history(
-            Color::White,
-            outside_window,
-            Piece::Pawn,
-            board.pawn_key(),
-            LOW_PLY_HISTORY_SIZE,
-            400,
-        );
-
-        assert!(
-            searcher.td.hist.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::A2.index()]
-                [Square::A3.index()]
-                > 0
-        );
+    fn continuation_indexes_cover_the_table_exactly() {
+        let last = cont_context(true, true, Color::Black, Piece::King, Square::H8)
+            + piece_to(Color::Black, Piece::King, Square::H8);
+        assert_eq!(last, CONT_SIZE - 1);
         assert_eq!(
-            searcher.td.hist.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::H2.index()]
-                [Square::H3.index()],
-            0
+            HistoryTables::pawn_row(u64::MAX) + piece_to(Color::Black, Piece::King, Square::H8),
+            PAWN_HISTORY_SIZE * PIECE_TO_SIZE - 1
         );
     }
 }

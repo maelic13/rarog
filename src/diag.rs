@@ -100,6 +100,10 @@ pub mod counters {
         cutoff_first_move,
         correction_updates,
         corr_on_capture,
+        // Continuation-correction training admitted at the context two and
+        // four plies back (selectivity core; trained before it is read).
+        corr_cont2_admitted,
+        corr_cont4_admitted,
         // Residual MAGNITUDE by attribution class, exact.
         //
         // The premise behind capture-weighted correction updates is that a

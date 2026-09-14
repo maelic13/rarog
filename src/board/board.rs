@@ -190,6 +190,20 @@ pub(crate) struct CheckInfo {
     blockers: Bitboard,
 }
 
+impl CheckInfo {
+    /// Squares from which the side to move's `piece` gives direct check.
+    #[cfg_attr(
+        not(feature = "b2core"),
+        allow(
+            dead_code,
+            reason = "only the selectivity core orders by check squares"
+        )
+    )]
+    pub(crate) fn direct_check_squares(&self, piece: Piece) -> Bitboard {
+        self.check_squares[piece as usize]
+    }
+}
+
 impl Clone for Board {
     /// Clones preserve history CAPACITY, not just contents.
     ///

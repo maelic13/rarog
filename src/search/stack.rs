@@ -5,6 +5,7 @@ use std::ops::{Index, IndexMut};
 use crate::board::{Move, Piece};
 use crate::eval::VALUE_NONE;
 
+#[cfg(not(feature = "b2core"))]
 use super::history::{PIECE_TO_SIZE, piece_to_index};
 use super::{MAX_PLY, Searcher};
 
@@ -104,6 +105,7 @@ pub(super) struct StackEntry {
     pub(super) tt_pv: bool,
 }
 
+#[cfg(not(feature = "b2core"))]
 impl StackEntry {
     /// Row base for continuation tables at this ply.
     ///
@@ -142,6 +144,7 @@ impl Searcher {
     ///
     /// The ONLY way to put a move on the stack. Writing `mv` and `piece`
     /// separately is what let ProbCut desynchronise them (see `StackEntry`).
+    #[cfg(not(feature = "b2core"))]
     #[inline]
     pub(super) fn push_move(&mut self, ply: usize, mv: Move, piece: Piece) {
         self.td.stack[ply].mv = mv;

@@ -4,9 +4,22 @@ use crate::board::Board;
 use crate::infra;
 
 use super::Searcher;
-use super::history::{HISTORY_MAX, PIECE_TO_SIZE, update_hist_entry};
+use super::history::{CONT_SIZE, PIECE_TO_SIZE, apply_bonus, piece_to};
 
 pub(super) const CORR_SIZE: usize = 65_536;
+const HISTORY_MAX: i32 = 16_384;
+const CONT_CORRECTION_MAX: i32 = 16_418;
+
+fn update_hist_entry(entry: &mut i16, bonus: i32, max: i32) {
+    apply_bonus(entry, bonus, max);
+}
+
+fn zeroed_cont() -> Box<[i16; CONT_SIZE]> {
+    vec![0i16; CONT_SIZE]
+        .into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|_| unreachable!("length is CONT_SIZE by construction"))
+}
 
 /// One thread's static-evaluation correction tables.
 pub(super) struct CorrectionTables {
@@ -15,6 +28,10 @@ pub(super) struct CorrectionTables {
     pub(super) non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
     /// Boxed const-size, like the continuation history.
     pub(super) continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
+    /// Continuation corrections keyed by the context two and four plies back
+    /// and the previous move: trained, not yet read.
+    pub(super) continuation_2: Box<[i16; CONT_SIZE]>,
+    pub(super) continuation_4: Box<[i16; CONT_SIZE]>,
 }
 
 impl Default for CorrectionTables {
@@ -24,6 +41,8 @@ impl Default for CorrectionTables {
             minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
             non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
             continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
+            continuation_2: zeroed_cont(),
+            continuation_4: zeroed_cont(),
         }
     }
 }
@@ -35,6 +54,8 @@ impl CorrectionTables {
         *self.minor_correction_history = [[0; CORR_SIZE]; 2];
         *self.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
         *self.continuation_correction_history = [0; PIECE_TO_SIZE];
+        self.continuation_2.fill(0);
+        self.continuation_4.fill(0);
     }
 
     /// Halve every table between searches.
@@ -94,7 +115,8 @@ impl Searcher {
         let continuation = if previous.mv.is_null() {
             0
         } else {
-            self.td.corr.continuation_correction_history[previous.cont_key] as i32
+            self.td.corr.continuation_correction_history
+                [piece_to(!color, previous.piece, previous.mv.to_sq())] as i32
         };
         // 8.5(c): per-source weights (seed 128 = the old unit weight; the
         // continuation term keeps its inherent `/2`). `Σ src·W / 16384`
@@ -235,9 +257,44 @@ impl Searcher {
         let previous = *self.td.stack.back(ply, 1);
         if !previous.mv.is_null() {
             update_hist_entry(
-                &mut self.td.corr.continuation_correction_history[previous.cont_key],
+                &mut self.td.corr.continuation_correction_history
+                    [piece_to(!color, previous.piece, previous.mv.to_sq())],
                 scaled / 2,
                 HISTORY_MAX,
+            );
+        }
+    }
+
+    /// Train the continuation corrections for the node at `ply` without
+    /// reading them: the context two and four plies back, keyed by the
+    /// previous move. The caller applies the admission rule.
+    pub(super) fn train_continuation_correction(
+        &mut self,
+        board: &Board,
+        depth: i32,
+        diff: i32,
+        ply: usize,
+    ) {
+        let previous = *self.td.stack.back(ply, 1);
+        if previous.mv.is_null() {
+            return;
+        }
+        let slot = piece_to(!board.side_to_move(), previous.piece, previous.mv.to_sq());
+        let bonus = (148 * depth * diff / 128).clamp(-2_138, 1_141);
+        if let Some(context) = self.cont_context_back(ply, 2) {
+            crate::diag_count!(corr_cont2_admitted);
+            apply_bonus(
+                &mut self.td.corr.continuation_2[context + slot],
+                bonus,
+                CONT_CORRECTION_MAX,
+            );
+        }
+        if let Some(context) = self.cont_context_back(ply, 4) {
+            crate::diag_count!(corr_cont4_admitted);
+            apply_bonus(
+                &mut self.td.corr.continuation_4[context + slot],
+                bonus,
+                CONT_CORRECTION_MAX,
             );
         }
     }

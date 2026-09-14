@@ -1,12 +1,15 @@
 //! The node kernels: `negamax`, `quiescence`, and the per-move reduction and
 //! pruning helpers they share.
 
-use crate::board::{Board, CheckInfo, Move, MoveList, Piece};
+use crate::board::{Board, CheckInfo, Move, MoveList, Piece, Square};
 use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::infra;
 use crate::tt::{Bound, TtProbe, TtStore};
 
-use super::movepick::{BadCaptureList, MovePicker, SEE_UNKNOWN, diversify_root_scores, pick_next};
+use super::history::cont_context;
+use super::movepick::{
+    BadCaptureList, MovePicker, SEE_UNKNOWN, diversify_root_scores, is_noisy, pick_next,
+};
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher};
 
 // Float→int truncation IS the intended rounding of the LMR table formula
@@ -240,6 +243,23 @@ impl Searcher {
             0,
             poll,
         )
+    }
+
+    /// Put the move about to be searched at `ply` on the stack with its
+    /// continuation context: whether this node is in check, whether the move
+    /// is noisy, and the coloured piece and destination.
+    #[inline]
+    fn push_move(&mut self, board: &Board, ply: usize, mv: Move, piece: Piece) {
+        let entry = &mut self.td.stack[ply];
+        entry.mv = mv;
+        entry.piece = piece;
+        entry.cont_key = cont_context(
+            board.is_in_check(),
+            is_noisy(mv),
+            board.side_to_move(),
+            piece,
+            mv.to_sq(),
+        );
     }
 
     /// Record the order index of the move about to be searched at `ply` and
@@ -479,6 +499,7 @@ impl Searcher {
         };
         self.td.stack[ply].static_eval = static_eval;
         self.td.stack[ply].tt_pv = tt_pv;
+        let threats = board.threats();
         self.td.stack[ply].reduction = 0;
         self.td.stack[ply].move_count = 0;
         if ply + 2 < MAX_PLY {
@@ -723,7 +744,8 @@ impl Searcher {
                     };
                 let mut captures = MoveList::new();
                 board.generate_legal_captures_into(&mut captures);
-                let mut scored = self.score_tactical_moves(board, captures.as_slice(), tt_move);
+                let mut scored =
+                    self.score_tactical_moves(board, &threats, captures.as_slice(), tt_move);
                 let mut searched_here = 0i32;
                 for index in 0..scored.len() {
                     if searched_here >= move_cap {
@@ -748,7 +770,7 @@ impl Searcher {
                     // ProbCut's child is a verification search, not a
                     // reduced sibling, so it consumes neither selectivity
                     // input. Written explicitly rather than left stale.
-                    self.push_move(ply, mv, probcut_piece);
+                    self.push_move(board, ply, mv, probcut_piece);
                     self.record_move_order(ply, 0);
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
@@ -825,7 +847,7 @@ impl Searcher {
             }
         }
 
-        let mut move_picker = if in_check || NODE::ROOT || !excluded.is_null() {
+        let mut move_picker = if NODE::ROOT {
             let mut legal_moves = MoveList::new();
             board.generate_legal_movelist_into(&mut legal_moves);
             if legal_moves.is_empty() {
@@ -852,7 +874,7 @@ impl Searcher {
                 legal_moves.as_slice()
             };
 
-            let mut scored = self.score_moves(board, legal_moves, tt_move, ply);
+            let mut scored = self.score_moves(board, &threats, legal_moves, tt_move, ply);
             // 8.13: order the root list from the POOL's view. A move another
             // thread has already proven good at a deeper depth is tried first
             // here too, so threads stop re-deriving each other's refutations.
@@ -872,7 +894,7 @@ impl Searcher {
             }
             MovePicker::full(scored, tt_move)
         } else {
-            MovePicker::staged(self, board, tt_move, ply)
+            MovePicker::staged(self, board, &threats, tt_move, ply)
         };
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
@@ -894,8 +916,7 @@ impl Searcher {
         let mut quiets = MoveList::new();
         let mut good_caps = BadCaptureList::new();
         let mut bad_caps = BadCaptureList::new();
-        let previous_move = self.td.stack.back(ply, 1).mv;
-        while let Some(picked) = move_picker.next(self, board) {
+        while let Some(picked) = move_picker.next(self, board, &threats, false) {
             let mv = picked.mv;
             if mv == excluded {
                 continue;
@@ -979,10 +1000,13 @@ impl Searcher {
                             crate::diag_count!(prune_shadow_check_exempt);
                         }
                     } else if is_capture && see < 0 {
-                        let cap_hist = captured_piece.map_or(0, |cap| {
-                            self.td.hist.cap_history[moving_piece as usize][mv.to_sq().index()]
-                                [cap as usize] as i32
-                        });
+                        let cap_hist = self.td.hist.noisy(
+                            threats.all,
+                            board.side_to_move(),
+                            moving_piece,
+                            mv.to_sq(),
+                            captured_piece,
+                        );
                         let threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
                             .max(-self.cfg.params.see_pruning_max);
                         let see_shadow = depth <= 8 && !board.see_ge(mv, threshold);
@@ -1054,10 +1078,13 @@ impl Searcher {
                         continue;
                     }
                 } else if is_capture && see < 0 {
-                    let cap_hist = captured_piece.map_or(0, |cap| {
-                        self.td.hist.cap_history[moving_piece as usize][mv.to_sq().index()]
-                            [cap as usize] as i32
-                    });
+                    let cap_hist = self.td.hist.noisy(
+                        threats.all,
+                        board.side_to_move(),
+                        moving_piece,
+                        mv.to_sq(),
+                        captured_piece,
+                    );
                     let see_threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
                         .max(-self.cfg.params.see_pruning_max);
                     if depth <= 8
@@ -1153,7 +1180,7 @@ impl Searcher {
                     gives_check.unwrap_or(false)
                 };
 
-            self.push_move(ply, mv, moving_piece);
+            self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
             let nodes_before_move = if NODE::ROOT { self.td.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
@@ -1410,9 +1437,8 @@ impl Searcher {
                             crate::diag_count!(cutoff_quiet);
                             self.update_cutoff_tables(
                                 board,
+                                threats.all,
                                 mv,
-                                moving_piece,
-                                previous_move,
                                 ply,
                                 depth,
                                 bonus_pct,
@@ -1422,17 +1448,21 @@ impl Searcher {
                             );
                         } else {
                             crate::diag_count!(cutoff_capture);
-                            self.update_capture_history(
+                            self.update_noisy_history(
+                                board,
+                                threats.all,
                                 moving_piece,
-                                mv.to_sq().index(),
+                                mv.to_sq(),
                                 captured_piece,
                                 self.history_bonus(depth) * bonus_pct / 100,
                             );
                             let malus = self.history_malus(depth);
                             for gc in good_caps.as_slice() {
-                                self.update_capture_history(
+                                self.update_noisy_history(
+                                    board,
+                                    threats.all,
                                     gc.attacker,
-                                    gc.to as usize,
+                                    Square(gc.to),
                                     gc.captured,
                                     -malus,
                                 );
@@ -1446,22 +1476,22 @@ impl Searcher {
                             // Basilisk cross-review).
                             if self.cfg.params.capture_malus_pct != 0 {
                                 let xmalus = malus * self.cfg.params.capture_malus_pct / 100;
-                                let color = board.side_to_move();
-                                let pawn_key = board.pawn_key();
                                 for &quiet in quiets.as_slice() {
                                     self.update_quiet_history(
-                                        color,
-                                        quiet,
-                                        board.moving_piece(quiet),
-                                        pawn_key,
+                                        board,
+                                        threats.all,
                                         ply,
+                                        quiet,
                                         -xmalus,
+                                        false,
                                     );
                                 }
                                 for bc in bad_caps.as_slice() {
-                                    self.update_capture_history(
+                                    self.update_noisy_history(
+                                        board,
+                                        threats.all,
                                         bc.attacker,
-                                        bc.to as usize,
+                                        Square(bc.to),
                                         bc.captured,
                                         -xmalus,
                                     );
@@ -1481,6 +1511,14 @@ impl Searcher {
                         #[cfg(feature = "diag")]
                         if diag_sample {
                             crate::diag_count!(main_store_lower);
+                        }
+                        if !in_check && !is_noisy(mv) && score > static_eval {
+                            self.train_continuation_correction(
+                                board,
+                                depth,
+                                score - static_eval,
+                                ply,
+                            );
                         }
                         if static_eval != VALUE_NONE
                             && score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
@@ -1539,6 +1577,15 @@ impl Searcher {
             && bound == Bound::Upper
             && move_count > 2
             && self.td.stack.back(ply, 1).tt_pv;
+        // Continuation corrections train where the bound agrees with the
+        // residual's sign and the best move is quiet.
+        if excluded.is_null()
+            && !in_check
+            && !(bound == Bound::Exact && is_noisy(best_move))
+            && !(bound == Bound::Upper && best_score >= static_eval)
+        {
+            self.train_continuation_correction(board, depth, best_score - static_eval, ply);
+        }
         if excluded.is_null()
             && static_eval != VALUE_NONE
             && best_score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
@@ -1569,14 +1616,7 @@ impl Searcher {
                 && !best_move.is_promo()
             {
                 let bonus = self.history_bonus(depth) * self.cfg.params.exact_bonus_pct / 100;
-                self.update_quiet_history(
-                    board.side_to_move(),
-                    best_move,
-                    board.moving_piece(best_move),
-                    board.pawn_key(),
-                    ply,
-                    bonus,
-                );
+                self.update_quiet_history(board, threats.all, ply, best_move, bonus, false);
             }
             self.shared.tt.store(TtStore {
                 key: hash,
@@ -1758,10 +1798,11 @@ impl Searcher {
         }
 
         let mut best_move = Move::NULL;
+        let threats = board.threats();
         let mut scored = if in_check {
-            self.score_moves(board, moves.as_slice(), tt_move, ply)
+            self.score_moves(board, &threats, moves.as_slice(), tt_move, ply)
         } else {
-            self.score_tactical_moves(board, moves.as_slice(), tt_move)
+            self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move)
         };
         // 4.9d sizing: what did scoring every evasion buy at this node?
         #[cfg(feature = "diag")]
@@ -1817,7 +1858,7 @@ impl Searcher {
                 }
             }
             let moving_piece = board.moving_piece(mv);
-            self.push_move(ply, mv, moving_piece);
+            self.push_move(board, ply, mv, moving_piece);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
