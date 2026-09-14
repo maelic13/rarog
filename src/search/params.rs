@@ -287,6 +287,11 @@ search_params! {
     /// Paired-ablation mask. Bit per mechanism, matching the oracle's:
     /// 0 razoring, 1 futility-child, 2 nullmove, 3 probcut, 4 iir,
     /// 5 shallow-pruning, 6 extensions, 7 lmr. 0 = shipped behaviour.
+    /// Under `b2core` the bits name the selectivity core's mechanisms: 0
+    /// razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
+    /// hindsight reductions, 5 move-loop pruning (late-move, quiet and
+    /// bad-noisy futility, history and SEE pruning), 6 singular extensions,
+    /// 7 late-move reductions.
     /// Only consulted when built with `--features ablate`.
     ablation_mask = 0, "AblationMask", 0..=255;
     /// 4.6.7 ROOT REDUCTION RELIEF, in 1024ths of a ply. 0 = off = accepted

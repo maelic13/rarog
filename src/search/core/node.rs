@@ -13,8 +13,9 @@ use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 /// Razoring stays away from decisive windows: alpha must be below this.
 const RAZOR_ALPHA_LIMIT: i32 = 936;
 
-// Float→int truncation IS the intended rounding of the LMR table formula
-// (kept bit-exact with the pre-9.0b table), hence the scoped cast allow.
+// Float-to-int truncation is the table formula's rounding, hence the scoped
+// cast allow. The root loop builds the table for either arm; this arm's
+// reductions do not read it.
 #[expect(clippy::cast_possible_truncation)]
 pub(super) fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     let base_f = base as f64 / 1024.0;
@@ -29,11 +30,9 @@ pub(super) fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     table
 }
 
-/// A `negamax` frame's node type, resolved at compile time (B.0 section 6.2).
-///
-/// Both donors monomorphise the node kernels this way; it is also what lets
-/// B.4 give quiescence a PV concept without a new parameter. `cut_node` stays
-/// a runtime argument, so an all-node is `!PV && !cut_node`.
+/// A `negamax` frame's node type, resolved at compile time, so quiescence can
+/// know it is on a PV line without a new parameter. `cut_node` stays a runtime
+/// argument, so an all-node is `!PV && !cut_node`.
 pub(super) trait NodeType {
     /// On the principal variation: searched with an open window.
     const PV: bool;
@@ -112,9 +111,9 @@ fn laterality_step(move_count: i32) -> i32 {
     }
 }
 
-/// Per-move check test, memoized twice: `cache` holds the answer for THIS
-/// move, `node_ci` holds the per-node masks shared by every move at the node
-/// (10.3 — see [`Board::check_info`]).
+/// Per-move check test, memoized twice: `cache` holds the answer for this
+/// move, `node_ci` the per-node masks every move at the node shares (see
+/// [`Board::check_info`]).
 fn move_gives_check(
     board: &Board,
     node_ci: &mut Option<CheckInfo>,
@@ -133,15 +132,10 @@ fn move_gives_check(
 }
 
 impl Searcher {
-    /// 4.4c: does the side to move hold enough non-pawn material to trust a
-    /// null move?
-    ///
-    /// At the seeded `NmpMinNonPawnPieces = 1` this is exactly the historical
-    /// `has_non_pawn_material` test — one piece suffices — so the default is
-    /// inert. Higher values demand more before a pass is believed, because
-    /// zugzwang risk concentrates where the mover has almost nothing left to
-    /// move: with a single minor and pawns, "pass" and "move" can differ by the
-    /// whole game.
+    /// Does the side to move hold enough non-pawn material to trust a null
+    /// move? At `NmpMinNonPawnPieces = 1` one piece suffices; more demands
+    /// more, because zugzwang risk concentrates where the mover has almost
+    /// nothing left to move.
     #[inline(always)]
     fn nmp_material_ok(&self, board: &Board) -> bool {
         let color = board.side_to_move();
@@ -311,12 +305,8 @@ impl Searcher {
             };
         }
 
-        // 4.2: counted HERE, after the depth<=0 hand-off, so `nodes` means
-        // interior nodes actually searched — which is the oracle's population.
-        // Counting at function entry inflated it by every node that
-        // immediately became a qnode, and that same node was then counted a
-        // second time as `qnodes`. That double count silently deflated every
-        // rate taken against `nodes`.
+        // Counted after the hand-off to quiescence, so `nodes` means interior
+        // nodes and no node is also counted as a qnode.
         crate::diag_count!(nodes);
         #[cfg(feature = "diag")]
         if in_check {
@@ -345,78 +335,55 @@ impl Searcher {
             return score;
         }
         let tt_entry = self.shared.tt.probe(hash);
-        // 9.7.5(b): main thread only. If helper work is reaching the thread
-        // that owns the answer, this hit rate must RISE with thread count; a
-        // flat rate means the helpers are filling a table nobody reads.
+        // Main thread only: if helpers' work reaches the thread that owns the
+        // answer, this hit rate rises with the thread count.
         if self.td.thread_id == 0 {
             crate::diag_count!(main_tt_probes);
             if tt_entry.is_some() {
                 crate::diag_count!(main_tt_hits);
             }
         }
-        // 4.2: one decode of the probe for the whole node. Mate distance and
-        // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
-        // same entry twice, at `tt_score` and again inside the cutoff block.
+        // One decode of the probe for the whole node: mate distance and rule-50
+        // are resolved exactly once.
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
         let mut tt_pv = ev.pv_line(NODE::PV);
+        // Sampled census of what the probe allows, by the admission rule this
+        // node applies. PV and excluded-move nodes never cut, so they are
+        // attributed first; an entry that fails the depth test is "shallow",
+        // one that passes it but does not resolve the window or the node-type
+        // test is "not usable".
         #[cfg(feature = "diag")]
         if diag_sample {
             if ev.hit {
                 crate::diag_count!(tt_sample_hit);
-                if !NODE::PV && excluded.is_null() && ev.depth >= depth {
-                    match ev.bound {
-                        Some(Bound::Exact) => {
-                            crate::diag_count!(tt_cut_exact);
-                        }
-                        Some(Bound::Lower) if ev.score >= beta => {
-                            crate::diag_count!(tt_cut_lower);
-                        }
-                        Some(Bound::Upper) if ev.score <= alpha => {
-                            crate::diag_count!(tt_cut_upper);
-                        }
-                        Some(_) => {
-                            crate::diag_count!(tt_bound_not_usable);
-                        }
-                        None => {}
-                    }
-                    if ev.contradicts_window(alpha, beta) {
-                        crate::diag_count!(tt_bound_contradicts_window);
-                    }
-                } else if ev.bound.is_some() {
-                    // 4.9b: this `else` used to add to `tt_bound_not_usable`
-                    // as well, which made one counter answer three unrelated
-                    // questions — and the one 4.9 needs is the third. A PV node
-                    // and an excluded-move search can never cut whatever the
-                    // entry says, and neither population moves with thread
-                    // count; a SHALLOW entry is the only cause the "helpers add
-                    // entries that cannot cut" hypothesis predicts should grow.
-                    // Lumped together they cannot be told apart.
-                    //
-                    // PV is attributed before depth on purpose: at a PV node the
-                    // entry is refused regardless of how deep it is, so PV is
-                    // the binding reason even when the entry is also shallow.
+                if let Some(bound) = ev.bound {
                     if NODE::PV {
                         crate::diag_count!(tt_reject_pv);
                     } else if !excluded.is_null() {
                         crate::diag_count!(tt_reject_excluded);
-                    } else {
+                    } else if ev.node_cutoff_score(depth, alpha, beta, cut_node).is_some() {
+                        match bound {
+                            Bound::Exact => crate::diag_count!(tt_cut_exact),
+                            Bound::Lower => crate::diag_count!(tt_cut_lower),
+                            Bound::Upper => crate::diag_count!(tt_cut_upper),
+                        }
+                    } else if ev.depth <= depth - i32::from(ev.score < beta) {
                         crate::diag_count!(tt_reject_shallow);
-                        // How far short, so "marginally too shallow" and
-                        // "hopelessly too shallow" are distinguishable: the
-                        // first is a replacement-policy question, the second is
-                        // not worth chasing at all.
                         crate::diag_add!(
                             tt_reject_shallow_deficit,
                             u64::try_from(depth - ev.depth).unwrap_or(0)
                         );
+                    } else {
+                        crate::diag_count!(tt_bound_not_usable);
+                    }
+                    if !NODE::PV && ev.contradicts_window(alpha, beta) {
+                        crate::diag_count!(tt_bound_contradicts_window);
                     }
                 }
             } else {
                 crate::diag_count!(tt_sample_miss);
             }
         }
-        // Near the fifty-move horizon a stored result may no longer hold, so
-        // the node searches instead of trusting it.
         if !NODE::PV
             && excluded.is_null()
             && let Some(score) = ev.node_cutoff_score(depth, alpha, beta, cut_node)
@@ -438,6 +405,8 @@ impl Searcher {
                     .update_quiet(board.threats().all, stm, mv, quiet_bonus);
                 self.update_continuations(ply, stm, piece, mv.to_sq(), cont_bonus);
             }
+            // Near the fifty-move horizon a stored result may no longer hold,
+            // so the node searches instead of trusting it.
             if board.halfmove_clock() < 90 {
                 trace_decision!(
                     self,
@@ -484,10 +453,8 @@ impl Searcher {
             depth -= 1;
         }
 
-        // 4.2: the pre-4.2 form spelled out three branches whose two `else`
-        // arms were identical, because a probe MISS and a hit carrying no
-        // stored eval both fall back to a fresh raw eval. `TtProbe::MISS`
-        // already reports `VALUE_NONE`, so one test covers both.
+        // A probe miss and a hit without a stored eval both evaluate afresh;
+        // `TtProbe::MISS` reports `VALUE_NONE`, so one test covers both.
         let (static_eval, raw_static_eval, correction) = if in_check {
             (VALUE_NONE, VALUE_NONE, 0)
         } else {
@@ -703,25 +670,9 @@ impl Searcher {
                 }
                 if score >= beta {
                     crate::diag_count!(nmp_cut);
-                    // 4.10a CORRECTNESS REPAIR. A null-move cutoff
-                    // establishes only "at least beta"; when the reduced null
-                    // search comes back in mate range, Rarog returns that mate
-                    // score, claiming a forced mate no real line demonstrated.
-                    // It then travels through the TT as a Lower bound.
-                    // Stockfish clamps this to beta
-                    // (`if (nullValue >= VALUE_MATE_IN_MAX_PLY) nullValue = beta;`).
-                    //
-                    // Measured: 11 such returns at `bench 13`, 195 at `bench 18`.
-                    // The removed `NmpDecisiveGuard` did NOT cover it — its
-                    // predicate was on the WINDOW, and its population at depth 13
-                    // is ZERO while these 11 still occurred.
-                    // CLAMPED: a fail-high asserts only "at least beta", so
-                    // that is what is returned. The cutoff is preserved exactly
-                    // — the value is still >= beta — while the unproven mate is
-                    // refused. Measured cost: bench 13 6,502,902 -> 6,519,711
-                    // (+0.26%), bench 18 +22.9%, because a weaker fail-high
-                    // cuts less higher up in mate-heavy subtrees. That cost is
-                    // what the registered non-inferiority gate is deciding.
+                    // A null-move fail-high proves only "at least beta". A mate
+                    // score from the reduced null search is no demonstrated
+                    // mate, so the cutoff returns beta instead.
                     let score = if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
                         crate::diag_count!(nmp_cut_unproven_mate);
                         beta
@@ -776,40 +727,18 @@ impl Searcher {
             }
 
             if !self.ablated(3) && depth >= 4 {
-                // Per NODE entering the block, before capture generation, so
-                // nodes with no eligible capture are counted here too. This
-                // carried the `probcut_attempt` name until 4.7c prep, and was
-                // differenced against the oracle's per-MOVE counter of the same
-                // name -- the RAR-S25 denominator shape. See the RAR-S55
-                // correction.
+                // Per node entering the block, before capture generation, so
+                // nodes with no eligible capture count too.
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(probcut_nodes);
                 }
                 let probcut_beta = beta + self.cfg.params.probcut_margin;
-                // 4.7c PROBCUT MOVE FILTER. The entry contract for the
-                // speculative capture search moves from "this capture does not
-                // lose material" to "this capture can plausibly bridge the gap
-                // to probcut_beta".
-                //
-                // RAR-S55 v3 measured what the old contract costs. Per node the
-                // two engines convert alike -- 22.7% against the reference's
-                // 25.2% -- so the yield was never the divergence. The PRICE was:
-                // Rarog searched 5.17x the normalised ProbCut moves and
-                // converted 32.6% of them against 71.9%. Two in three of its
-                // ProbCut move-searches produced nothing.
-                //
-                // `see_ge(mv, 0)` admits any capture that is not outright
-                // losing, which is unrelated to the question this search asks.
-                // The gap `probcut_beta - static_eval` IS that question in
-                // material terms, and it is floored at 0 so the filter can only
-                // tighten the old contract, never loosen it -- a negative
-                // threshold would admit losing captures at nodes already above
-                // probcut_beta, which is de-selectivity nothing here motivates.
-                //
-                // `static_eval` is real: the whole block is under `!in_check`.
-                // i32 throughout: the gap is bounded by the mate range, so
-                // gap * 100 cannot approach i32's limit.
+                // A ProbCut capture must plausibly bridge the gap to
+                // probcut_beta by SEE. The gap is floored at zero, so at a
+                // node already above probcut_beta a capture still may not
+                // lose material. The static eval is real: the block runs only
+                // out of check.
                 let see_threshold =
                     ((probcut_beta - static_eval) * self.cfg.params.probcut_see_gap_scale / 100)
                         .max(0);
@@ -907,9 +836,8 @@ impl Searcher {
                         self.shared.tt.store(TtStore {
                             key: hash,
                             depth: depth - 3,
-                            // The margin-shifted value, not the actual
-                            // fail-high: storing that costs +5.55% time-to-depth
-                            // on its own (RAR-S34).
+                            // The margin-shifted value: storing the raw
+                            // fail-high measured 5.55% slower to depth.
                             score: cutoff_score,
                             bound: Bound::Lower,
                             mv,
@@ -955,10 +883,9 @@ impl Searcher {
             };
 
             let mut scored = self.score_moves(board, &threats, legal_moves, tt_move, ply);
-            // 8.13: order the root list from the POOL's view. A move another
-            // thread has already proven good at a deeper depth is tried first
-            // here too, so threads stop re-deriving each other's refutations.
-            // Applied BEFORE the rotation below, which diversifies on top.
+            // Order the root list from the pool's view: a move another thread
+            // already proved at a deeper depth goes first. The rotation below
+            // diversifies on top of it.
             if NODE::ROOT && scored.len() > 1 {
                 // No-op serially: with no shared state there are no pool
                 // scores to fold in.
@@ -984,10 +911,9 @@ impl Searcher {
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
         let mut legal_move_seen = false;
-        // 10.3: per-node check masks, built at most once and reused by every
-        // move at this node — for the pruning-side `move_gives_check` calls
-        // and for the `make_move` check hint below. `board` is restored by
-        // `unmake_move` each iteration, so these stay valid for the whole loop.
+        // Per-node check masks, built at most once and shared by every move's
+        // check test and the make-move hint; unmaking restores the board each
+        // iteration, so they stay valid for the whole loop.
         let mut node_ci: Option<CheckInfo> = None;
         let mut quiet_moves = SearchedMoves::new();
         let mut noisy_moves = SearchedMoves::new();
@@ -1464,12 +1390,9 @@ impl Searcher {
                 0
             };
             searched += 1;
-            // 8.13: publish EVERY searched root move to the pool with its
-            // real bound — a fail-low ("true <= score", Upper) is exactly the
-            // "stop re-deriving each other's refutations" knowledge a
-            // best-move-only summary would lose. `alpha` is still pre-update
-            // here, so the classification reads: cutoff = Lower, raised
-            // alpha = Exact, else Upper. Serial searches have no shared state.
+            // Publish every searched root move to the pool with its bound: a
+            // cutoff is Lower, a raised alpha Exact, a fail-low Upper (alpha is
+            // not yet updated here).
             if NODE::ROOT {
                 self.record_root_move_search(mv, depth, score, alpha, beta, move_nodes);
             }
@@ -1493,22 +1416,15 @@ impl Searcher {
                 if score >= beta {
                     self.td.stack[ply].cutoff_count += 1;
                     if excluded.is_null() {
-                        // 10.0(a): `searched` was incremented for this move
-                        // above, so `== 1` means the node's FIRST move failed
-                        // high. Denominator is cutoff_quiet + cutoff_capture,
-                        // both counted in this same block. `cfg`-gated rather
-                        // than relying on `diag_count!` expanding to nothing,
-                        // because the condition would leave an empty `if` in
-                        // the default build.
+                        // `searched` already counts this move, so 1 means the
+                        // first move failed high; the denominator is
+                        // cutoff_quiet + cutoff_capture from this block.
                         #[cfg(feature = "diag")]
                         if searched == 1 {
                             crate::diag_count!(cutoff_first_move);
                         }
-                        // 4.2 core: cutoff rank, exact, same block and same
-                        // denominator as cutoff_quiet + cutoff_capture. The
-                        // buckets must sum to that total and best_rank_1 must
-                        // equal cutoff_first_move; both are cross-checks the
-                        // oracle satisfies too.
+                        // Cutoff rank over the same denominator: the buckets
+                        // sum to it and best_rank_1 equals cutoff_first_move.
                         #[cfg(feature = "diag")]
                         match searched {
                             1 => crate::diag_count!(best_rank_1),
@@ -1700,33 +1616,11 @@ impl Searcher {
 
         let mut q_raw_static_eval = VALUE_NONE;
         let mut stand_pat_for_pruning = VALUE_NONE;
-        // 8.11 RE-APPLIED for 10.4.6(a) (was rejected standalone at −5.96 ±
-        // 7.33, LOS 5.56%, 3,558 games). The two prune exits below are
-        // fail-soft: they report the stand pat, which is genuinely BELOW the
-        // window, instead of a bare `alpha` that overstates what this node
-        // proved. `negamax` has always been fail-soft; this makes qsearch agree.
-        //
-        // Why it is back, and why only bundled: its −5.96 was mechanically
-        // traced to the pruning group having been SPSA-fitted against
-        // fail-hard's inflated bounds, so a standalone gate against the tuned
-        // head is rigged to fail (lesson 15, same shape as 7.2's SEE bundle).
-        // 10.4.6(a) re-tunes that exact group, so this rides its gate and 8.11
-        // closes either way: if the bundle loses, the registered fallback is one
-        // re-gate at the fitted values WITHOUT this change, no new tune.
-        //
-        // ⚠ This is 8.11 as GATED (the commit's "variant B", prune exits only,
-        // +2.8% nodes). The full form that also made the tail store/return
-        // fail-soft measured +17.2% nodes and was explicitly ruled out — do not
-        // widen to it here. The tail deliberately still stores `alpha`, so the
-        // depth-0 Upper bound that `eval_for_pruning` consumes is UNCHANGED by
-        // this edit. Restricting that coupling was tested separately and did not
-        // earn its complexity, so the accepted zero-depth floor is hardwired.
-        //
-        // Written without the original's `best_score` accumulator: both exits
-        // return `stand_pat`, so the variable and its in-loop update were dead
-        // weight (nothing after the move loop reads it in this variant). The
-        // node behaviour is identical — bench must land on 5,320,596, the figure
-        // the gated candidate measured.
+        // The two prune exits below are fail-soft: they report the stand pat,
+        // which is below the window, rather than alpha. The tail still stores
+        // alpha, so the depth-0 upper bound the main search refines its
+        // estimate with is unchanged; a fully fail-soft tail measured 17.2%
+        // more nodes.
         if !in_check {
             // Same three-branch collapse as the main search — see there.
             let (stand_pat, raw_stand_pat) = {
@@ -1738,12 +1632,8 @@ impl Searcher {
                 (self.corrected_eval_from_raw(board, raw, ply), raw)
             };
             q_raw_static_eval = raw_stand_pat;
-            // Mirror the main search's eval_for_pruning TT-bound refinement.
-            // If the TT score is bounded (Exact, or a one-sided bound that
-            // agrees with the bound direction), use it as the stand_pat instead
-            // of the raw static eval — cheap cutoffs we would otherwise miss.
-            // Preserve the accepted depth-0 refinement behavior. Restricting it
-            // would remove much of RAR-S02's accepted mechanism.
+            // Refine the stand pat with a bound-consistent TT score, as the
+            // main search refines its estimate.
             let stand_pat = ev.refine_eval(stand_pat, 0);
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
@@ -1752,15 +1642,9 @@ impl Searcher {
                     crate::diag_count!(q_stand_pat_cut);
                     crate::diag_count!(q_stand_pat_store);
                 }
-                // 4.6.1 MEASURED AND KEPT. A bare stand-pat is a Lower bound
-                // at depth 0 that searched no move and carries none, and it is
-                // 35.87% of all stores (RAR-S23), so the audit suspected it of
-                // causing `tt_bound_not_usable` 2.13x. Suppressing it makes
-                // that metric WORSE, not better: not-usable per hit rises
-                // 9.5% -> 14.9%, hit rate falls 20.6pp, and total TT cutoffs
-                // fall 10.3% against a 7.5% smaller tree — cutoffs dropping
-                // faster than nodes, which is the RAR-S59 signature of a bad
-                // change. These entries earn their slot. Do not re-derive.
+                // A stand-pat fail-high is stored as a depth-0 lower bound.
+                // Suppressing these stores measured worse: TT cutoffs fell
+                // faster than the tree shrank.
                 self.shared.tt.store(TtStore {
                     key: hash,
                     depth: 0,
@@ -1804,7 +1688,7 @@ impl Searcher {
         } else {
             self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move)
         };
-        // 4.9d sizing: what did scoring every evasion buy at this node?
+        // How many evasions each in-check qnode scores.
         #[cfg(feature = "diag")]
         if in_check {
             crate::diag_count!(q_check_nodes);
@@ -1813,9 +1697,8 @@ impl Searcher {
                 u64::try_from(scored.len()).unwrap_or(u64::MAX)
             );
         }
-        // 10.3: per-node check masks, built lazily and shared by every move at
-        // this qnode (see negamax for the same pattern). Capture-only qnodes
-        // that never test for check never build it.
+        // Per-node check masks, built lazily as in the main search; a
+        // capture-only qnode that never tests for check never builds them.
         let mut node_ci: Option<CheckInfo> = None;
         let mut tactical_count = 0usize;
         for index in 0..scored.len() {
