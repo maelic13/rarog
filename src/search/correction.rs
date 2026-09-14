@@ -36,15 +36,11 @@ impl Searcher {
         let their_non_pawn = self.td.non_pawn_correction_history[us][them]
             [infra::index(board.non_pawn_key(!color)) & (CORR_SIZE - 1)]
             as i32;
-        let continuation = if ply >= 1 {
-            let prev = self.td.stack[ply - 1].mv;
-            if prev.is_null() {
-                0
-            } else {
-                self.td.continuation_correction_history[self.td.stack[ply - 1].cont_key] as i32
-            }
-        } else {
+        let previous = self.td.stack.back(ply, 1);
+        let continuation = if previous.mv.is_null() {
             0
+        } else {
+            self.td.continuation_correction_history[previous.cont_key] as i32
         };
         // 8.5(c): per-source weights (seed 128 = the old unit weight; the
         // continuation term keeps its inherent `/2`). `Σ src·W / 16384`
@@ -181,15 +177,13 @@ impl Searcher {
             scaled,
             HISTORY_MAX,
         );
-        if ply >= 1 {
-            let prev = self.td.stack[ply - 1].mv;
-            if !prev.is_null() {
-                update_hist_entry(
-                    &mut self.td.continuation_correction_history[self.td.stack[ply - 1].cont_key],
-                    scaled / 2,
-                    HISTORY_MAX,
-                );
-            }
+        let previous = *self.td.stack.back(ply, 1);
+        if !previous.mv.is_null() {
+            update_hist_entry(
+                &mut self.td.continuation_correction_history[previous.cont_key],
+                scaled / 2,
+                HISTORY_MAX,
+            );
         }
     }
 }

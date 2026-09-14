@@ -29,7 +29,7 @@ use history::{LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE};
 use node::build_lmr_table;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SharedContext};
-use stack::NodeContext;
+use stack::{PlyArray, StackEntry};
 use thread::ThreadData;
 use threads::WorkerPool;
 use time::{RuntimeLimits, compute_runtime_limits, tm_effort_factor, tm_instability_factor};
@@ -292,7 +292,7 @@ impl Searcher {
         *self.td.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
         *self.td.continuation_correction_history = [0; PIECE_TO_SIZE];
         *self.td.countermove = [[Move::NULL; 64]; 64];
-        self.td.killers = [[Move::NULL; 2]; MAX_PLY];
+        self.td.killers = PlyArray::new([Move::NULL; 2]);
     }
 
     pub fn hashfull(&self) -> usize {
@@ -457,9 +457,9 @@ impl Searcher {
         if age_history {
             self.age_history();
         }
-        self.td.pv_table = [[Move::NULL; MAX_PLY]; MAX_PLY];
-        self.td.pv_len = [0; MAX_PLY];
-        self.td.stack = [NodeContext::default(); MAX_PLY];
+        self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
+        self.td.pv_len = PlyArray::new(0);
+        self.td.stack = PlyArray::new(StackEntry::default());
         // 9.7.5(k): re-seed the LMR-jitter PRNG per search, per thread, so each
         // thread walks a different sequence and a given thread's sequence does
         // not depend on how the previous search happened to end. `thread_id` is

@@ -395,11 +395,7 @@ impl Searcher {
         ply: usize,
         scored: &mut ScoredMoveList,
     ) {
-        let previous = if ply > 0 {
-            self.td.stack[ply - 1].mv
-        } else {
-            Move::NULL
-        };
+        let previous = self.td.stack.back(ply, 1).mv;
         let counter = if !previous.is_null() {
             self.td.countermove[previous.from_sq().index()][previous.to_sq().index()]
         } else {

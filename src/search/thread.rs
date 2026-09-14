@@ -7,7 +7,7 @@ use super::history::{
     CONT_SIZE, CONT_TABLES, LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE,
     boxed_cont_tables,
 };
-use super::stack::NodeContext;
+use super::stack::{PlyArray, StackEntry};
 use super::{JITTER_SEED, MAX_PLY, RootMove};
 
 /// Everything one search thread owns and mutates while it searches: the
@@ -19,11 +19,12 @@ pub(super) struct ThreadData {
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
     pub(super) seldepth: usize,
-    pub(super) pv_table: [[Move; MAX_PLY]; MAX_PLY],
-    pub(super) pv_len: [usize; MAX_PLY],
-    /// 4.5.1 per-ply search context. See `NodeContext`.
-    pub(super) stack: [NodeContext; MAX_PLY],
-    pub(super) killers: [[Move; 2]; MAX_PLY],
+    pub(super) pv_table: PlyArray<[Move; MAX_PLY]>,
+    pub(super) pv_len: PlyArray<usize>,
+    /// Per-ply search context with sentinel entries below the root. See
+    /// `StackEntry`.
+    pub(super) stack: PlyArray<StackEntry>,
+    pub(super) killers: PlyArray<[Move; 2]>,
     /// Compact root-order/index backbone. Keep this separate from the larger
     /// records below so existing move-membership and SMP hot reads retain
     /// their pre-10.1 cache layout.
@@ -69,10 +70,10 @@ impl Default for ThreadData {
             nodes: 0,
             tb_hits: 0,
             seldepth: 0,
-            pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
-            pv_len: [0; MAX_PLY],
-            stack: [NodeContext::default(); MAX_PLY],
-            killers: [[Move::NULL; 2]; MAX_PLY],
+            pv_table: PlyArray::new([Move::NULL; MAX_PLY]),
+            pv_len: PlyArray::new(0),
+            stack: PlyArray::new(StackEntry::default()),
+            killers: PlyArray::new([Move::NULL; 2]),
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
             main_history: Box::new([[[0; 64]; 64]; 2]),

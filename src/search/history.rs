@@ -26,8 +26,8 @@ pub(super) const CONT_TABLES: usize = CONT_PLY_BACK.len();
 
 /// Node-invariant half of quiet-history scoring, resolved once per node by
 /// [`Searcher::quiet_history_ctx`] (8.12(g2)): the continuation rows that
-/// apply at this ply (`None` = guard failed — too shallow or null previous
-/// move) and the pawn-history row for this pawn structure. Per move, scoring
+/// apply at this ply (`None` = a null previous move, which is what a sentinel
+/// below the root holds) and the pawn-history row for this pawn structure. Per move, scoring
 /// adds only `piece_to_index(piece, to)` to each base.
 pub(super) struct QuietHistoryCtx {
     cont_bases: [Option<usize>; CONT_TABLES],
@@ -70,8 +70,8 @@ pub(crate) fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usiz
 impl Searcher {
     /// Resolve the node-invariant half of quiet-history indexing once per
     /// node (8.12(g2), from the Basilisk cross-review — its 8.7.6(b+d) hoist,
-    /// +3.03% NPS there). The continuation guards (`ply < back`, null
-    /// previous move), the previous piece/square loads, and the pawn-key row
+    /// +3.03% NPS there). The continuation guards (a null previous
+    /// move), the previous piece/square loads, and the pawn-key row
     /// lookup do not depend on the move being scored, yet `cont_score` used
     /// to redo all of them for every quiet in the list. 8.12(g) refuted the
     /// PREFETCH angle for these tables (all quiets share one row window per
@@ -80,14 +80,11 @@ impl Searcher {
     pub(super) fn quiet_history_ctx(&self, board: &Board, ply: usize) -> QuietHistoryCtx {
         let mut cont_bases = [None; CONT_TABLES];
         for (slot, &(back, _)) in CONT_PLY_BACK.iter().enumerate() {
-            if ply < back {
+            let entry = self.td.stack.back(ply, back);
+            if entry.mv.is_null() {
                 continue;
             }
-            let prev = self.td.stack[ply - back].mv;
-            if prev.is_null() {
-                continue;
-            }
-            cont_bases[slot] = Some(self.td.stack[ply - back].cont_row_base());
+            cont_bases[slot] = Some(entry.cont_row_base());
         }
         QuietHistoryCtx {
             cont_bases,
@@ -216,14 +213,11 @@ impl Searcher {
         let piece = best_piece as usize;
         let to = best.to_sq().index();
         for (slot, &(back, divisor)) in CONT_PLY_BACK.iter().enumerate() {
-            if ply < back {
+            let entry = *self.td.stack.back(ply, back);
+            if entry.mv.is_null() {
                 continue;
             }
-            let prev = self.td.stack[ply - back].mv;
-            if prev.is_null() {
-                continue;
-            }
-            let index = self.td.stack[ply - back].cont_row_base() + piece_to_index(piece, to);
+            let index = entry.cont_row_base() + piece_to_index(piece, to);
             update_hist_entry(
                 &mut self.td.cont_history[slot][index],
                 bonus / divisor,

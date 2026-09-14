@@ -32,35 +32,12 @@ pub(super) fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
     // ceiling non-negative, so a shallow move is left unreduced, not extended.
     (r >> 10).clamp(0, new_depth.max(0))
 }
-/// 4.5.1 PER-PLY SEARCH CONTEXT.
-///
-/// Replaces three parallel `[_; MAX_PLY]` arrays with one record per ply.
-///
-/// The move and the piece that made it were never independent: every
-/// continuation-history lookup read both at the same ply, so the split cost
-/// two cache lines to answer one question. The static eval joins them because
-/// it is written at the same node and read at `ply - 2` by the improving test.
-///
-/// That locality argument did NOT pay, and the record should say so: a pooled
-/// three-build-per-arm PGO A/B measured **+0.11%, CI −0.14%..+0.48%** — a null
-/// inside this machine's ±0.5% floor (RAR-P17). The justification for this
-/// change is that it is the substrate 4.5.2–4.5.4 consume, not that it is
-/// faster. It is not faster.
-///
-/// This is a REPRESENTATION change and nothing else. PLAN 4.5.1 also lists
-/// TT/PV evidence, previous reduction, statistical score, cutoff count,
-/// previous-PV following and continuation keys — none are added here, because
-/// nothing consumes them yet and rule 2 forbids landing speculative state.
-/// They arrive with 4.5.2–4.5.4, which is where their consumers are.
 /// 4.5.1 THE REDUCTION CONTRACT'S INPUTS.
 ///
 /// `lmr_reduction_units` took thirteen positional arguments and PLAN 4.5.1
 /// named that as the defect: it was a pile of parameters rather than a
 /// contract over the per-ply context, and adding an input meant editing three
-/// signatures and hoping the two call sites stayed in step. They must, because
-/// one computes the PROSPECTIVE depth the pruning consumers read and the other
-/// computes the reduction actually applied; a `debug_assert_eq!` between them
-/// is what keeps 4.6b's "ONE formula" rule honest.
+/// signatures and hoping the call sites stayed in step.
 ///
 /// Naming the inputs also removes the whole class of bug where two `bool`s or
 /// two `i32`s are passed in the wrong order and still compile.
@@ -426,10 +403,8 @@ impl Searcher {
         // a +2.44 peak. `improving = false` after a check is a conservative
         // default, not a defect — there is genuinely no comparable static eval
         // two plies back when that node was in check.
-        let improving = !in_check
-            && ply >= 2
-            && self.td.stack[ply - 2].static_eval != VALUE_NONE
-            && static_eval > self.td.stack[ply - 2].static_eval;
+        let two_back = self.td.stack.back(ply, 2).static_eval;
+        let improving = !in_check && two_back != VALUE_NONE && static_eval > two_back;
         let improving_i = if improving { 1 } else { 0 };
         let not_improving_i = 1 - improving_i;
         // 9.7.5 lead: the TT may only stand in for the static eval here if its
@@ -771,11 +746,7 @@ impl Searcher {
         let mut quiets = MoveList::new();
         let mut good_caps = BadCaptureList::new();
         let mut bad_caps = BadCaptureList::new();
-        let previous_move = if ply > 0 {
-            self.td.stack[ply - 1].mv
-        } else {
-            Move::NULL
-        };
+        let previous_move = self.td.stack.back(ply, 1).mv;
         while let Some(picked) = move_picker.next(self, board) {
             let mv = picked.mv;
             if mv == excluded {
