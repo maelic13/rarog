@@ -11,8 +11,8 @@ use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, GameResult, 
 use crate::infra;
 
 pub const MATE_SCORE: i32 = 32_000;
-pub const INF_SCORE: i32 = 32_001;
-pub const VALUE_NONE: i32 = 32_002;
+pub(crate) const INF_SCORE: i32 = 32_001;
+pub(crate) const VALUE_NONE: i32 = 32_002;
 
 const PAWN_TABLE_SIZE: usize = 16_384;
 const EVAL_TABLE_SIZE: usize = 32_768;
@@ -532,7 +532,7 @@ macro_rules! tr_eg {
 /// that omits some fields is valid (those fields keep their default).
 #[cfg(feature = "tune")]
 impl EvalParams {
-    pub fn load_from_str(text: &str) -> Self {
+    fn load_from_str(text: &str) -> Self {
         let mut params = Self::default();
         for (line_no, line) in text.lines().enumerate() {
             let line = line.trim();
@@ -562,7 +562,7 @@ impl EvalParams {
         params
     }
 
-    pub fn load_from_env() -> Self {
+    pub(crate) fn load_from_env() -> Self {
         match std::env::var("RAROG_EVAL_FILE") {
             Ok(path) => {
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|err| {
@@ -574,7 +574,7 @@ impl EvalParams {
         }
     }
 
-    pub fn dump(&self) -> String {
+    pub(crate) fn dump(&self) -> String {
         let mut out = String::new();
         for &(name, len) in EVAL_PARAM_NAMES {
             for idx in 0..len {
@@ -1057,7 +1057,7 @@ const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
 /// `const`-baked `MG_TABLE`/`EG_TABLE`; now `params.mg_val`/`params.pst_mg`
 /// are tunable data, so the table must be a runtime-built `Evaluator` field).
 #[derive(Clone)]
-pub struct EvalTables {
+struct EvalTables {
     mg: [[[i32; 64]; 6]; 2],
     eg: [[[i32; 64]; 6]; 2],
 }
@@ -1208,7 +1208,7 @@ impl Evaluator {
         }
     }
 
-    pub fn clear_pawn_table(&mut self) {
+    pub(crate) fn clear_pawn_table(&mut self) {
         self.pawn_table.fill(PawnEntry::default());
         self.eval_table.fill(EvalEntry::default());
     }
@@ -1245,13 +1245,13 @@ impl Evaluator {
         // The whole-eval cache must be bypassed under `texel`: a cache hit
         // returns without re-emitting trace counts, which would poison the
         // per-position trace the tuner records.
-        let eval_slot = infra::index(board.hash) & (EVAL_TABLE_SIZE - 1);
+        let eval_slot = infra::index(board.hash()) & (EVAL_TABLE_SIZE - 1);
         #[cfg(not(feature = "texel"))]
         {
             let cached = self.eval_table[eval_slot];
             if cached.occupied
-                && cached.key == board.hash
-                && cached.halfmove_clock == board.halfmove_clock
+                && cached.key == board.hash()
+                && cached.halfmove_clock == board.halfmove_clock()
             {
                 return cached.value;
             }
@@ -1360,7 +1360,7 @@ impl Evaluator {
             self.trace.borrow_mut().raw = lin;
         }
         score = scale_endgame(board, score);
-        let rule50 = board.halfmove_clock.min(100) as i32;
+        let rule50 = board.halfmove_clock().min(100) as i32;
         score -= score * rule50 / 199;
         let value = if board.side_to_move() == Color::White {
             score
@@ -1368,8 +1368,8 @@ impl Evaluator {
             -score
         };
         self.eval_table[eval_slot] = EvalEntry {
-            key: board.hash,
-            halfmove_clock: board.halfmove_clock,
+            key: board.hash(),
+            halfmove_clock: board.halfmove_clock(),
             value,
             occupied: true,
         };
@@ -1795,7 +1795,7 @@ impl Evaluator {
                 Color::White => CastlingRights::WHITE_ALL,
                 Color::Black => CastlingRights::BLACK_ALL,
             };
-            let own_lost_castling = !board.castling.has(own_castling_all);
+            let own_lost_castling = !board.castling().has(own_castling_all);
             let home_rank_corner = match color {
                 Color::White => [Square(0), Square(7)],
                 Color::Black => [Square(56), Square(63)],
@@ -2993,7 +2993,7 @@ impl Evaluator {
                 Color::White => CastlingRights::WHITE_ALL,
                 Color::Black => CastlingRights::BLACK_ALL,
             };
-            if ksq == home_sq && !board.castling.has(own_castling_all) {
+            if ksq == home_sq && !board.castling().has(own_castling_all) {
                 *mg -= sign * self.params.king_centrality_danger_mg[0];
                 tr_mg!(self, king_centrality_danger_mg, 0, -sign);
             }
@@ -3407,7 +3407,7 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
         let r = rank(wp);
         let queening = 56 + file(wp);
         // The reference's `tempo` is 1 when the strong side is to move.
-        let tempo = i32::from(board.side_to_move == strong);
+        let tempo = i32::from(board.side_to_move() == strong);
 
         // Third-rank defence: pawn not far advanced, defending king on the
         // queening square, defending rook cutting on the 6th.
@@ -3585,7 +3585,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
     // Specialised endgame scale factors (Phase 3.11) apply first, mirroring
     // `scale_endgame`. A dead-draw pattern zeroes the delta scale.
     if let Some(sf) = specialized_endgame_scale(board) {
-        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock.min(100) as f64)
+        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock().min(100) as f64)
             / 199.0;
     }
 
@@ -3601,7 +3601,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
         return 0.0;
     }
 
-    let rule50 = board.halfmove_clock.min(100) as f64;
+    let rule50 = board.halfmove_clock().min(100) as f64;
     scale *= (199.0 - rule50) / 199.0;
     scale
 }

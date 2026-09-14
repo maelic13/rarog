@@ -143,25 +143,25 @@ pub enum Wdl {
 pub struct RootMove {
     pub from: u8,
     pub to: u8,
-    pub promotes: Option<Piece>,
+    promotes: Option<Piece>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct RootProbe {
-    pub wdl: Wdl,
+    pub(crate) wdl: Wdl,
     pub best_move: Option<RootMove>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct RootMoveProbe {
-    pub root_move: RootMove,
+    pub(crate) root_move: RootMove,
     pub rank: i32,
     pub score: i32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RootMoveProbes {
-    pub used_dtz: bool,
+    pub(crate) used_dtz: bool,
     pub moves: Vec<RootMoveProbe>,
 }
 
@@ -221,7 +221,7 @@ pub fn initialize(path: &str) -> usize {
     largest
 }
 
-pub fn current_path() -> String {
+pub(crate) fn current_path() -> String {
     SYZYGY_PATH
         .lock()
         .expect("syzygy path mutex poisoned")
@@ -233,7 +233,7 @@ pub fn largest() -> usize {
     LARGEST.load(Ordering::Relaxed)
 }
 
-pub fn tablebase_file_counts(path: &str) -> (usize, usize) {
+pub(crate) fn tablebase_file_counts(path: &str) -> (usize, usize) {
     let mut wdl = 0usize;
     let mut dtz = 0usize;
     for part in path
@@ -318,7 +318,7 @@ pub fn probe_root(board: &Board, use_rule50: bool) -> Option<RootProbe> {
     })
 }
 
-pub fn probe_root_moves(
+pub(crate) fn probe_root_moves(
     board: &Board,
     use_rule50: bool,
     has_repeated: bool,
@@ -394,7 +394,7 @@ pub fn probe_root_moves(
     }
 }
 
-pub fn legal_move_from_root_probe(board: &Board, root_move: RootMove) -> Option<Move> {
+pub(crate) fn legal_move_from_root_probe(board: &Board, root_move: RootMove) -> Option<Move> {
     board.generate_legal_movelist().iter().copied().find(|mv| {
         mv.from_sq().0 == root_move.from
             && mv.to_sq().0 == root_move.to
@@ -403,10 +403,10 @@ pub fn legal_move_from_root_probe(board: &Board, root_move: RootMove) -> Option<
 }
 
 fn can_probe(board: &Board, use_rule50: bool, root: bool) -> bool {
-    if largest() == 0 || board.castling.0 != 0 {
+    if largest() == 0 || board.castling().0 != 0 {
         return false;
     }
-    if use_rule50 && !root && board.halfmove_clock != 0 {
+    if use_rule50 && !root && board.halfmove_clock() != 0 {
         return false;
     }
     board.occupied_count() as usize <= largest()
@@ -431,7 +431,7 @@ fn tb_position(board: &Board) -> TbPosition {
         .0,
         pawns: (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn))
             .0,
-        rule50: board.halfmove_clock as u32,
+        rule50: board.halfmove_clock() as u32,
         ep: board.ep_square().map_or(0, |sq| sq.0 as u32),
         turn: board.side_to_move() == Color::White,
     }

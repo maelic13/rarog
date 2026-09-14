@@ -8,7 +8,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::hint::black_box;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use rarog::board::Board;
+use rarog::board::{Board, MoveList};
 
 struct CountingAllocator;
 
@@ -90,8 +90,11 @@ fn board_v2_isolated_primitives_do_not_allocate_after_warmup() {
         black_box(board.generate_legal_captures());
     }
     for board in &mut staged_boards {
-        let (captures, pinned) = board.generate_legal_captures_pinned();
-        black_box((captures, board.generate_legal_quiets_pinned(pinned)));
+        let mut captures = MoveList::new();
+        let pinned = board.generate_legal_captures_pinned_into(&mut captures);
+        let mut quiets = MoveList::new();
+        board.generate_legal_quiets_pinned_into(pinned, &mut quiets);
+        black_box((captures, quiets));
     }
     for (board, mv) in &mut mutations {
         board.make_move(*mv);
@@ -110,8 +113,11 @@ fn board_v2_isolated_primitives_do_not_allocate_after_warmup() {
                 black_box(board.generate_legal_captures());
             }
             for board in &mut staged_boards {
-                let (captures, pinned) = board.generate_legal_captures_pinned();
-                black_box((captures, board.generate_legal_quiets_pinned(pinned)));
+                let mut captures = MoveList::new();
+                let pinned = board.generate_legal_captures_pinned_into(&mut captures);
+                let mut quiets = MoveList::new();
+                board.generate_legal_quiets_pinned_into(pinned, &mut quiets);
+                black_box((captures, quiets));
             }
             for (board, mv) in &mut mutations {
                 board.make_move(*mv);

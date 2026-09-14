@@ -139,7 +139,7 @@ impl State {
         }
         Self {
             fen: board.to_fen(),
-            hash: board.hash,
+            hash: board.hash(),
             pawn_key: board.pawn_key(),
             minor_key: board.minor_key(),
             non_pawn_keys: [
@@ -147,7 +147,7 @@ impl State {
                 board.non_pawn_key(Color::Black),
             ],
             checkers: board.checkers().0,
-            all_occ: board.all_occ.0,
+            all_occ: board.occupied().0,
             pieces,
         }
     }
@@ -249,11 +249,15 @@ fn assert_tags(case: &Case, board: &Board) {
         }
     }
     if case.tags.contains("sparse-endgame") {
-        assert!(board.all_occ.count() <= 10, "{} is not sparse", case.name);
+        assert!(
+            board.occupied().count() <= 10,
+            "{} is not sparse",
+            case.name
+        );
     }
     if case.tags.contains("long-history") {
         assert!(
-            board.halfmove_clock >= 90 && board.fullmove >= 100,
+            board.halfmove_clock() >= 90 && board.fullmove() >= 100,
             "{} lacks long counters",
             case.name
         );
@@ -350,8 +354,10 @@ fn board_v2_normal_hinted_staged_and_null_paths_restore_every_field() {
         let all = generated_set(&board.generate_legal_movelist());
 
         let mut staged = board.clone();
-        let (captures, pinned) = staged.generate_legal_captures_pinned();
-        let quiets = staged.generate_legal_quiets_pinned(pinned);
+        let mut captures = MoveList::new();
+        let pinned = staged.generate_legal_captures_pinned_into(&mut captures);
+        let mut quiets = MoveList::new();
+        staged.generate_legal_quiets_pinned_into(pinned, &mut quiets);
         let staged_moves: BTreeSet<String> = generated_set(&captures)
             .union(&generated_set(&quiets))
             .cloned()

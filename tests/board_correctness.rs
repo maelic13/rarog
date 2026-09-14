@@ -271,22 +271,22 @@ fn threshold_see_handles_promotion_edge_cases() {
 #[test]
 fn gives_check_detects_direct_and_discovered_checks_without_mutating_board() {
     let direct = Board::from_fen("7k/8/8/8/8/8/K7/R7 w - - 0 1").unwrap();
-    let direct_hash = direct.hash;
+    let direct_hash = direct.hash();
     let rook_check = direct.parse_move("a1h1").unwrap();
     assert!(direct.gives_check(rook_check));
-    assert_eq!(direct.hash, direct_hash);
+    assert_eq!(direct.hash(), direct_hash);
 
     let discovered = Board::from_fen("4k3/8/8/8/8/8/K3N3/4R3 w - - 0 1").unwrap();
-    let discovered_hash = discovered.hash;
+    let discovered_hash = discovered.hash();
     let discovered_check = discovered.parse_move("e2c1").unwrap();
     assert!(discovered.gives_check(discovered_check));
-    assert_eq!(discovered.hash, discovered_hash);
+    assert_eq!(discovered.hash(), discovered_hash);
 
     let quiet = Board::from_fen(STARTING_FEN).unwrap();
-    let quiet_hash = quiet.hash;
+    let quiet_hash = quiet.hash();
     let non_check = quiet.parse_move("e2e4").unwrap();
     assert!(!quiet.gives_check(non_check));
-    assert_eq!(quiet.hash, quiet_hash);
+    assert_eq!(quiet.hash(), quiet_hash);
 }
 
 #[test]
@@ -361,7 +361,8 @@ fn fen_round_trip_preserves_state() {
 
         assert_eq!(board.to_fen(), reparsed.to_fen(), "FEN round-trip failed");
         assert_eq!(
-            board.hash, reparsed.hash,
+            board.hash(),
+            reparsed.hash(),
             "hash round-trip failed for {fen}"
         );
         assert_eq!(
@@ -377,7 +378,7 @@ fn fen_fullmove_zero_is_normalized_to_first_fullmove() {
     let board =
         Board::from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 0").expect("compatible fullmove-zero FEN");
 
-    assert_eq!(board.fullmove, 1);
+    assert_eq!(board.fullmove(), 1);
     assert_eq!(board.to_fen(), "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
 }
 
@@ -654,7 +655,7 @@ impl Snapshot {
     fn from(board: &Board) -> Self {
         Self {
             fen: board.to_fen(),
-            hash: board.hash,
+            hash: board.hash(),
             in_check: board.is_in_check(),
             checkers: board.checkers(),
             // 9.5: these four are incrementally maintained CACHE KEYS (pawn
@@ -671,7 +672,7 @@ impl Snapshot {
 
     fn assert_same(&self, board: &Board, context: &str) {
         assert_eq!(board.to_fen(), self.fen, "{context} changed FEN");
-        assert_eq!(board.hash, self.hash, "{context} changed hash");
+        assert_eq!(board.hash(), self.hash, "{context} changed hash");
         assert_eq!(
             board.is_in_check(),
             self.in_check,
@@ -954,7 +955,7 @@ fn fifty_move_rule_triggers_can_declare_draw() {
         assert!(board.play_uci("a2a1"), "Ra1 must be legal");
         assert!(board.play_uci("e7e8"), "Ke8 must be legal");
     }
-    assert_eq!(board.halfmove_clock, 100, "halfmove clock must reach 100");
+    assert_eq!(board.halfmove_clock(), 100, "halfmove clock must reach 100");
     assert!(board.can_declare_draw(), "50-move rule must trigger");
 }
 
@@ -978,62 +979,73 @@ fn board_history_grows_past_long_reversible_game() {
 #[test]
 fn halfmove_clock_tracking() {
     let mut board = Board::starting_position();
-    assert_eq!(board.halfmove_clock, 0);
+    assert_eq!(board.halfmove_clock(), 0);
 
     // Knight move: increments clock
     board.play_uci("g1f3");
     assert_eq!(
-        board.halfmove_clock, 1,
+        board.halfmove_clock(),
+        1,
         "quiet knight move must increment clock"
     );
 
     board.play_uci("g8f6");
     assert_eq!(
-        board.halfmove_clock, 2,
+        board.halfmove_clock(),
+        2,
         "quiet knight move must increment clock"
     );
 
     // Pawn move: resets clock
     board.play_uci("e2e4");
     assert_eq!(
-        board.halfmove_clock, 0,
+        board.halfmove_clock(),
+        0,
         "pawn move must reset halfmove clock"
     );
 
     board.play_uci("d7d5");
     assert_eq!(
-        board.halfmove_clock, 0,
+        board.halfmove_clock(),
+        0,
         "pawn move must reset halfmove clock"
     );
 
     // Capture: resets clock (e4 captures d5)
     board.play_uci("e4d5");
-    assert_eq!(board.halfmove_clock, 0, "capture must reset halfmove clock");
+    assert_eq!(
+        board.halfmove_clock(),
+        0,
+        "capture must reset halfmove clock"
+    );
 }
 
 #[test]
 fn fullmove_counter_tracking() {
     let mut board = Board::starting_position();
-    assert_eq!(board.fullmove, 1);
+    assert_eq!(board.fullmove(), 1);
 
     board.play_uci("e2e4"); // white's move — still move 1
     assert_eq!(
-        board.fullmove, 1,
+        board.fullmove(),
+        1,
         "fullmove must not change after white's move"
     );
 
     board.play_uci("e7e5"); // black's move — now move 2
     assert_eq!(
-        board.fullmove, 2,
+        board.fullmove(),
+        2,
         "fullmove must increment after black's move"
     );
 
     board.play_uci("g1f3");
-    assert_eq!(board.fullmove, 2);
+    assert_eq!(board.fullmove(), 2);
 
     board.play_uci("g8f6");
     assert_eq!(
-        board.fullmove, 3,
+        board.fullmove(),
+        3,
         "fullmove must increment after each black move"
     );
 }
@@ -1051,7 +1063,7 @@ fn fullmove_boundary_saturates_and_unmakes_for_real_and_null_moves() {
         let original = board.to_fen();
         let mv = board.parse_move(uci).expect("boundary move is legal");
         board.make_move(mv);
-        assert_eq!(board.fullmove, MAX, "real {color} move must saturate");
+        assert_eq!(board.fullmove(), MAX, "real {color} move must saturate");
         board
             .check_consistency()
             .expect("real move stays consistent");
@@ -1059,7 +1071,7 @@ fn fullmove_boundary_saturates_and_unmakes_for_real_and_null_moves() {
         assert_eq!(board.to_fen(), original, "real {color} move must unmake");
 
         board.make_null_move();
-        assert_eq!(board.fullmove, MAX, "null {color} move must saturate");
+        assert_eq!(board.fullmove(), MAX, "null {color} move must saturate");
         board
             .check_consistency()
             .expect("null move stays consistent");
@@ -1096,22 +1108,22 @@ fn castling_rights_cleared_by_king_move() {
     let mut board = Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
     use rarog::board::CastlingRights;
 
-    assert!(board.castling.has(CastlingRights::WHITE_KINGSIDE));
-    assert!(board.castling.has(CastlingRights::WHITE_QUEENSIDE));
+    assert!(board.castling().has(CastlingRights::WHITE_KINGSIDE));
+    assert!(board.castling().has(CastlingRights::WHITE_QUEENSIDE));
 
     // White king moves to d1 — both white castling rights must be cleared
     board.play_uci("e1d1");
     assert!(
-        !board.castling.has(CastlingRights::WHITE_KINGSIDE),
+        !board.castling().has(CastlingRights::WHITE_KINGSIDE),
         "WK right must be cleared after king move"
     );
     assert!(
-        !board.castling.has(CastlingRights::WHITE_QUEENSIDE),
+        !board.castling().has(CastlingRights::WHITE_QUEENSIDE),
         "WQ right must be cleared after king move"
     );
     // Black rights must be untouched
-    assert!(board.castling.has(CastlingRights::BLACK_KINGSIDE));
-    assert!(board.castling.has(CastlingRights::BLACK_QUEENSIDE));
+    assert!(board.castling().has(CastlingRights::BLACK_KINGSIDE));
+    assert!(board.castling().has(CastlingRights::BLACK_QUEENSIDE));
 }
 
 #[test]
@@ -1122,15 +1134,15 @@ fn castling_rights_cleared_by_rook_move() {
     // White h1 rook moves — only WHITE_KINGSIDE should be cleared
     board.play_uci("h1h2");
     assert!(
-        !board.castling.has(CastlingRights::WHITE_KINGSIDE),
+        !board.castling().has(CastlingRights::WHITE_KINGSIDE),
         "WK right must be cleared when h1 rook moves"
     );
     assert!(
-        board.castling.has(CastlingRights::WHITE_QUEENSIDE),
+        board.castling().has(CastlingRights::WHITE_QUEENSIDE),
         "WQ right must be intact"
     );
-    assert!(board.castling.has(CastlingRights::BLACK_KINGSIDE));
-    assert!(board.castling.has(CastlingRights::BLACK_QUEENSIDE));
+    assert!(board.castling().has(CastlingRights::BLACK_KINGSIDE));
+    assert!(board.castling().has(CastlingRights::BLACK_QUEENSIDE));
 }
 
 #[test]
@@ -1141,7 +1153,7 @@ fn castling_rights_cleared_when_rook_is_captured() {
 
     board.play_uci("a8a1");
     assert!(
-        !board.castling.has(CastlingRights::WHITE_QUEENSIDE),
+        !board.castling().has(CastlingRights::WHITE_QUEENSIDE),
         "WQ right must be cleared when a1 rook is captured"
     );
 }
@@ -1173,7 +1185,8 @@ fn zobrist_transposition_same_position_same_hash() {
         "both paths must yield the same FEN"
     );
     assert_eq!(
-        path_a.hash, path_b.hash,
+        path_a.hash(),
+        path_b.hash(),
         "both paths must yield the same Zobrist hash"
     );
 }
@@ -1186,9 +1199,9 @@ fn zobrist_different_positions_have_different_hashes() {
     let mut after_d4 = Board::starting_position();
     after_d4.play_uci("d2d4");
 
-    assert_ne!(start.hash, after_e4.hash, "start vs 1.e4 must differ");
-    assert_ne!(start.hash, after_d4.hash, "start vs 1.d4 must differ");
-    assert_ne!(after_e4.hash, after_d4.hash, "1.e4 vs 1.d4 must differ");
+    assert_ne!(start.hash(), after_e4.hash(), "start vs 1.e4 must differ");
+    assert_ne!(start.hash(), after_d4.hash(), "start vs 1.d4 must differ");
+    assert_ne!(after_e4.hash(), after_d4.hash(), "1.e4 vs 1.d4 must differ");
 }
 
 #[test]

@@ -70,7 +70,7 @@ pub struct SearchResult {
     pub depth: usize,
     pub nodes: u64,
     pub tb_hits: u64,
-    pub elapsed_ms: u128,
+    pub(crate) elapsed_ms: u128,
     pub exit: SearchExit,
     pub ponderhit: bool,
 }
@@ -279,7 +279,7 @@ impl Searcher {
         self.worker_pool.new_game();
     }
 
-    pub fn clear_history(&mut self) {
+    pub(crate) fn clear_history(&mut self) {
         *self.td.main_history = [[[0; 64]; 64]; 2];
         *self.td.cap_history = [[[0; 6]; 64]; 6];
         *self.td.low_ply_history = [[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE];
@@ -342,7 +342,7 @@ impl Searcher {
         // root.clone() inherits this and no thread reallocates while searching.
         root.reserve_history(MAX_PLY);
 
-        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+        let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
         self.reset_search_state(
             limits,
@@ -903,13 +903,13 @@ impl Searcher {
     fn can_probe_syzygy(&self, board: &Board, depth: i32) -> bool {
         self.syzygy_largest > 0
             && depth >= self.syzygy_probe_depth
-            && board.castling.0 == 0
+            && board.castling().0 == 0
             && board.occupied_count() as usize <= self.syzygy_largest
     }
 
     fn can_probe_syzygy_root(&self, board: &Board) -> bool {
         self.syzygy_largest > 0
-            && board.castling.0 == 0
+            && board.castling().0 == 0
             && board.occupied_count() as usize <= self.syzygy_largest
     }
 
@@ -1083,7 +1083,7 @@ impl Searcher {
         let mut child = root.clone();
         child.make_move(bestmove);
         self.tt
-            .probe(child.hash)
+            .probe(child.hash())
             .and_then(super::tt::TtEntry::best_move)
             .and_then(|mv| child.legal_move(mv))
             .unwrap_or(Move::NULL)
@@ -1176,7 +1176,7 @@ mod tests {
             .next()
             .expect("regression position has a legal move");
         searcher.tt.store(TtStore {
-            key: board.hash,
+            key: board.hash(),
             depth: 1,
             score: static_eval,
             bound: Bound::Exact,
@@ -1210,7 +1210,7 @@ mod tests {
                 i32::from(
                     searcher
                         .tt
-                        .probe(board.hash)
+                        .probe(board.hash())
                         .expect("stored TT entry")
                         .static_eval
                 ),
@@ -1220,7 +1220,7 @@ mod tests {
             options.search_params.lazy_margin = HIGH_MARGIN;
             searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
             assert!(
-                searcher.tt.probe(board.hash).is_none(),
+                searcher.tt.probe(board.hash()).is_none(),
                 "LazyMargin change retained a {} TT evaluation",
                 if shared { "shared" } else { "local" }
             );
@@ -1252,7 +1252,7 @@ mod tests {
         );
 
         assert!(
-            main.tt.probe(board.hash).is_some(),
+            main.tt.probe(board.hash()).is_some(),
             "helper startup cleared the shared TT after another thread made it live"
         );
     }
@@ -1485,7 +1485,7 @@ mod tests {
         let illegal = Move::from_uci("e3f4").expect("valid UCI move shape");
         let mut board = root.clone();
         let before_fen = board.to_fen();
-        let before_hash = board.hash;
+        let before_hash = board.hash();
         let mut searcher = Searcher::default();
         let engine_options = EngineOptions::default();
         let limits = SearchLimits {
@@ -1501,7 +1501,7 @@ mod tests {
             true,
         );
         searcher.tt.store(TtStore {
-            key: board.hash,
+            key: board.hash(),
             depth: 8,
             score: 0,
             bound: Bound::Exact,
@@ -1524,7 +1524,7 @@ mod tests {
         );
 
         assert_eq!(board.to_fen(), before_fen);
-        assert_eq!(board.hash, before_hash);
+        assert_eq!(board.hash(), before_hash);
         assert!(
             !searcher.td.pv_table[0][..searcher.td.pv_len[0].min(MAX_PLY)]
                 .iter()
@@ -1546,7 +1546,7 @@ mod tests {
         child.make_move(bestmove);
         let ponder = child.parse_move("a7a6").expect("legal child move");
         searcher.tt.store(TtStore {
-            key: child.hash,
+            key: child.hash(),
             depth: 4,
             score: 0,
             bound: Bound::Exact,

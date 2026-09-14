@@ -40,9 +40,9 @@ pub(super) trait NodeType {
 /// The root node: a PV node at ply 0.
 pub(super) struct Root;
 /// A PV node below the root.
-pub(super) struct Pv;
+struct Pv;
 /// A null-window node.
-pub(super) struct NonPv;
+struct NonPv;
 
 impl NodeType for Root {
     const PV: bool = true;
@@ -79,19 +79,19 @@ pub(super) fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
 pub(super) struct ReductionInputs {
     pub(super) depth: i32,
     pub(super) searched: usize,
-    pub(super) is_quiet: bool,
+    is_quiet: bool,
     pub(super) see: i32,
-    pub(super) tt_pv: bool,
-    pub(super) cut_node: bool,
+    tt_pv: bool,
+    cut_node: bool,
     pub(super) quiet_hist: i32,
     pub(super) corr_abs: i32,
-    pub(super) ev_is_exact: bool,
-    pub(super) tt_move_is_null: bool,
+    ev_is_exact: bool,
+    tt_move_is_null: bool,
     pub(super) improving: bool,
-    pub(super) is_root: bool,
+    is_root: bool,
 }
 
-pub(super) fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
+fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
     let base = count_base + 2 * depth * depth / 3;
     if improving {
         infra::to_usize(base + depth)
@@ -103,7 +103,7 @@ pub(super) fn late_move_prune_count(depth: i32, improving: bool, count_base: i32
 /// Per-move check test, memoized twice: `cache` holds the answer for THIS
 /// move, `node_ci` holds the per-node masks shared by every move at the node
 /// (10.3 — see [`Board::check_info`]).
-pub(super) fn move_gives_check(
+fn move_gives_check(
     board: &Board,
     node_ci: &mut Option<CheckInfo>,
     mv: Move,
@@ -131,7 +131,7 @@ impl Searcher {
     /// move: with a single minor and pawns, "pass" and "move" can differ by the
     /// whole game.
     #[inline(always)]
-    pub(super) fn nmp_material_ok(&self, board: &Board) -> bool {
+    fn nmp_material_ok(&self, board: &Board) -> bool {
         let color = board.side_to_move();
         let non_pawn = board.pieces(color, Piece::Knight)
             | board.pieces(color, Piece::Bishop)
@@ -264,7 +264,7 @@ impl Searcher {
         }
 
         let original_alpha = alpha;
-        let hash = board.hash;
+        let hash = board.hash();
         #[cfg(feature = "diag")]
         let diag_sample = crate::diag::sampled(hash, ply, crate::diag::SAMPLE_MAIN);
         #[cfg(feature = "diag")]
@@ -297,7 +297,7 @@ impl Searcher {
         // 4.2: one decode of the probe for the whole node. Mate distance and
         // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
         // same entry twice, at `tt_score` and again inside the cutoff block.
-        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock);
+        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
         let tt_pv = ev.pv_line(NODE::PV);
         #[cfg(feature = "diag")]
         if diag_sample {
@@ -491,7 +491,7 @@ impl Searcher {
                 }
                 let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
-                self.tt.prefetch(board.hash);
+                self.tt.prefetch(board.hash());
                 let score = -self.negamax::<NonPv, _>(
                     board,
                     depth - reduction,
@@ -644,7 +644,7 @@ impl Searcher {
                     // input. Written explicitly rather than left stale.
                     self.push_move(ply, mv, probcut_piece);
                     board.make_move(mv);
-                    self.tt.prefetch(board.hash);
+                    self.tt.prefetch(board.hash());
                     let score = -self.quiescence::<NonPv, _>(
                         board,
                         -probcut_beta,
@@ -1011,7 +1011,7 @@ impl Searcher {
             // for the overwhelmingly common non-checking move.
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
-            self.tt.prefetch(board.hash);
+            self.tt.prefetch(board.hash());
             let new_depth = depth - 1 + extension;
             #[cfg(feature = "diag")]
             if diag_sample {
@@ -1326,7 +1326,7 @@ impl Searcher {
                             let residual = self.attributed_residual(
                                 score - static_eval,
                                 is_capture,
-                                board.halfmove_clock,
+                                board.halfmove_clock(),
                             );
                             self.update_correction(board, residual, depth, ply);
                         }
@@ -1374,7 +1374,7 @@ impl Searcher {
                     crate::diag_count!(corr_on_capture);
                 }
                 let residual =
-                    self.attributed_residual(diff, best_move.is_capture(), board.halfmove_clock);
+                    self.attributed_residual(diff, best_move.is_capture(), board.halfmove_clock());
                 self.update_correction(board, residual, depth, ply);
             }
         }
@@ -1451,7 +1451,7 @@ impl Searcher {
 
         let in_check = board.is_in_check();
         crate::diag_count!(qnodes);
-        let hash = board.hash;
+        let hash = board.hash();
         #[cfg(feature = "diag")]
         let diag_q_sample = crate::diag::sampled(hash, ply + qply, crate::diag::SAMPLE_QSEARCH);
         #[cfg(feature = "diag")]
@@ -1463,7 +1463,7 @@ impl Searcher {
         }
         let original_alpha = alpha;
         let tt_entry = self.tt.probe(hash);
-        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock);
+        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
         #[cfg(feature = "diag")]
         if diag_q_sample && ev.hit {
             crate::diag_count!(q_tt_hit);
@@ -1639,7 +1639,7 @@ impl Searcher {
             let moving_piece = board.moving_piece(mv);
             self.push_move(ply, mv, moving_piece);
             board.make_move(mv);
-            self.tt.prefetch(board.hash);
+            self.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);

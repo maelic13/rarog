@@ -291,7 +291,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn ensure_local(&mut self, mb: usize) -> bool {
+    pub(crate) fn ensure_local(&mut self, mb: usize) -> bool {
         if !matches!(self.storage, TtStorage::Local(_)) {
             if let Some(table) = new_local_table(mb) {
                 self.storage = TtStorage::Local(table);
@@ -578,7 +578,7 @@ pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
 /// B.1 kept this discipline from 4.2's `NodeEvidence` and removed its producer
 /// field: no shipped search decision consumed provenance (B.0 section 6.1).
 #[derive(Copy, Clone, Debug)]
-pub struct TtProbe {
+pub(crate) struct TtProbe {
     /// Bound kind, or `None` for a probe miss.
     pub bound: Option<Bound>,
     /// Stored depth; `-1` on a miss.
@@ -587,32 +587,34 @@ pub struct TtProbe {
     /// `VALUE_NONE` on a miss.
     pub score: i32,
     /// Raw (uncorrected) static eval as stored, or `VALUE_NONE`.
-    pub raw_static_eval: i32,
+    pub(crate) raw_static_eval: i32,
     /// Stored best move, unvalidated — callers must still check legality.
     pub mv: Option<Move>,
     /// The entry's own PV bit. Combine with the node's `is_pv` via
     /// [`Self::pv_line`].
-    pub stored_pv: bool,
-    /// Whether the probe hit at all.
-    pub hit: bool,
+    stored_pv: bool,
+    /// Whether the probe hit at all. Only the diagnostic census reads it.
+    #[cfg(feature = "diag")]
+    pub(crate) hit: bool,
 }
 
 impl TtProbe {
     /// A probe that missed.
-    pub const MISS: Self = Self {
+    pub(crate) const MISS: Self = Self {
         bound: None,
         depth: -1,
         score: VALUE_NONE,
         raw_static_eval: VALUE_NONE,
         mv: None,
         stored_pv: false,
+        #[cfg(feature = "diag")]
         hit: false,
     };
 
     /// Decode a probe result. `halfmove_clock` is the node's, and is what makes
     /// a mate score rule-50-safe.
     #[inline(always)]
-    pub fn from_entry(entry: Option<TtEntry>, ply: usize, halfmove_clock: u8) -> Self {
+    pub(crate) fn from_entry(entry: Option<TtEntry>, ply: usize, halfmove_clock: u8) -> Self {
         match entry {
             None => Self::MISS,
             Some(entry) => Self {
@@ -622,6 +624,7 @@ impl TtProbe {
                 raw_static_eval: i32::from(entry.static_eval),
                 mv: entry.best_move(),
                 stored_pv: entry.is_pv_node(),
+                #[cfg(feature = "diag")]
                 hit: true,
             },
         }
@@ -629,13 +632,13 @@ impl TtProbe {
 
     /// Does this node sit on a PV line, either currently or per the stored bit?
     #[inline(always)]
-    pub fn pv_line(&self, is_pv: bool) -> bool {
+    pub(crate) fn pv_line(&self, is_pv: bool) -> bool {
         is_pv || self.stored_pv
     }
 
     /// An exact score is stored. Consumed by the LMR reduction adjustment.
     #[inline(always)]
-    pub fn is_exact(&self) -> bool {
+    pub(crate) fn is_exact(&self) -> bool {
         matches!(self.bound, Some(Bound::Exact))
     }
 
@@ -643,7 +646,7 @@ impl TtProbe {
     /// owns the node-role guards (`!is_pv`, no excluded move); this covers only
     /// deep enough plus a bound that resolves the window.
     #[inline(always)]
-    pub fn cutoff_score(&self, depth: i32, alpha: i32, beta: i32) -> Option<i32> {
+    pub(crate) fn cutoff_score(&self, depth: i32, alpha: i32, beta: i32) -> Option<i32> {
         if self.depth < depth {
             return None;
         }
@@ -659,7 +662,7 @@ impl TtProbe {
     /// requires a real score and `min_depth` plies of stored depth. The
     /// accepted callers pass 0, admitting depth-0 qsearch entries.
     #[inline(always)]
-    pub fn refine_eval(&self, static_eval: i32, min_depth: i32) -> i32 {
+    pub(crate) fn refine_eval(&self, static_eval: i32, min_depth: i32) -> i32 {
         if self.score == VALUE_NONE || self.depth < min_depth {
             return static_eval;
         }
@@ -670,7 +673,7 @@ impl TtProbe {
     /// stand-pat form (RAR-S02). At `min_depth == 0` the two agree on every
     /// storable state, which a test below pins.
     #[inline(always)]
-    pub fn refine_eval_bound_only(&self, base: i32) -> i32 {
+    fn refine_eval_bound_only(&self, base: i32) -> i32 {
         match self.bound {
             Some(Bound::Exact) => self.score,
             Some(Bound::Lower) if self.score > base => self.score,
@@ -682,7 +685,7 @@ impl TtProbe {
     /// Seed a singular-extension verification window: a lower-or-exact bound
     /// within `depth_margin` plies and a non-mate score.
     #[inline(always)]
-    pub fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
+    pub(crate) fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
         self.depth >= depth - depth_margin
             && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
             && self.score.abs() < MATE_SCORE - MAX_PLY
@@ -691,15 +694,16 @@ impl TtProbe {
     /// Is the stored depth too shallow to guide move ordering? The evidence
     /// half of the IIR predicate; the caller owns the node-role half.
     #[inline(always)]
-    pub fn too_shallow_to_order(&self, depth: i32) -> bool {
+    pub(crate) fn too_shallow_to_order(&self, depth: i32) -> bool {
         self.depth < depth - 3
     }
 
     /// An inexact bound that points the wrong way for the current window: a
     /// `Lower` at or below `alpha`, or an `Upper` at or above `beta`. Such an
     /// entry is admissible but told the node nothing. Diagnostic only.
+    #[cfg(any(test, feature = "diag"))]
     #[inline(always)]
-    pub fn contradicts_window(&self, alpha: i32, beta: i32) -> bool {
+    pub(crate) fn contradicts_window(&self, alpha: i32, beta: i32) -> bool {
         matches!(self.bound, Some(Bound::Lower)) && self.score <= alpha
             || matches!(self.bound, Some(Bound::Upper)) && self.score >= beta
     }

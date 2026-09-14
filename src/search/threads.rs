@@ -17,18 +17,18 @@ use super::{MAX_PLY, SearchEvent, SearchExit, SearchResult, Searcher, TB_WIN_SCO
 
 const SEARCH_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 
-pub(crate) struct WorkerJob {
+struct WorkerJob {
     pub root: Board,
-    pub root_moves: Arc<[Move]>,
+    pub(super) root_moves: Arc<[Move]>,
     pub limits: SearchLimits,
-    pub engine_options: EngineOptions,
+    pub(super) engine_options: EngineOptions,
     pub tt: TranspositionTable,
     pub hash_mb: usize,
-    pub root_move_offset: usize,
+    pub(super) root_move_offset: usize,
     /// 8.13: helper index (1-based); seeds the per-thread reduction jitter.
-    pub thread_id: usize,
-    pub shared_state: Arc<SharedContext>,
-    pub result_tx: Sender<SearchResult>,
+    pub(super) thread_id: usize,
+    pub(super) shared_state: Arc<SharedContext>,
+    result_tx: Sender<SearchResult>,
 }
 
 enum WorkerMessage {
@@ -46,12 +46,12 @@ struct SearchWorkerHandle {
 }
 
 #[derive(Default)]
-pub(crate) struct WorkerPool {
+pub(super) struct WorkerPool {
     workers: Vec<SearchWorkerHandle>,
 }
 
 impl WorkerPool {
-    pub(crate) fn set_helper_count(&mut self, helper_count: usize) {
+    pub(super) fn set_helper_count(&mut self, helper_count: usize) {
         while self.workers.len() > helper_count {
             if let Some(mut worker) = self.workers.pop() {
                 let _ = worker.sender.send(WorkerMessage::Shutdown);
@@ -80,7 +80,7 @@ impl WorkerPool {
         }
     }
 
-    pub(crate) fn send_search(&self, index: usize, job: WorkerJob) -> bool {
+    fn send_search(&self, index: usize, job: WorkerJob) -> bool {
         self.workers.get(index).is_some_and(|worker| {
             worker
                 .sender
@@ -132,10 +132,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
     })
 }
 
-pub(super) fn select_parallel_result(
-    results: &[SearchResult],
-    root_moves: &[Move],
-) -> Option<SearchResult> {
+fn select_parallel_result(results: &[SearchResult], root_moves: &[Move]) -> Option<SearchResult> {
     let root_results = results
         .iter()
         .enumerate()
@@ -167,23 +164,23 @@ pub(super) fn select_parallel_result(
         .map(|(_, result)| result.clone())
 }
 
-pub(super) fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
+fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
     result.depth > 0 && root_moves.contains(&result.bestmove)
 }
 
-pub(super) fn parallel_vote_value(result: &SearchResult, min_score: i32) -> i64 {
+fn parallel_vote_value(result: &SearchResult, min_score: i32) -> i64 {
     let score_weight = (result.score as i64 - min_score as i64 + 14).max(1);
     score_weight * i64::try_from(result.depth.max(1)).unwrap_or(i64::MAX)
 }
 
-pub(super) fn vote_for_move(votes: &[(Move, i64)], mv: Move) -> i64 {
+fn vote_for_move(votes: &[(Move, i64)], mv: Move) -> i64 {
     votes
         .iter()
         .find_map(|(vote_move, vote)| (*vote_move == mv).then_some(*vote))
         .unwrap_or(0)
 }
 
-pub(super) fn parallel_result_key(
+fn parallel_result_key(
     result: &SearchResult,
     vote: i64,
     main_thread: bool,
@@ -206,12 +203,12 @@ pub(super) fn parallel_result_key(
 }
 
 impl Searcher {
-    pub(crate) fn reset_worker_state_for_new_game(&mut self) {
+    fn reset_worker_state_for_new_game(&mut self) {
         self.clear_history();
         self.evaluator.clear_pawn_table();
     }
 
-    pub(crate) fn run_worker_job<P: FnMut() -> SearchEvent + ?Sized>(
+    fn run_worker_job<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         job: WorkerJob,
         poll: &mut P,
@@ -259,7 +256,7 @@ impl Searcher {
         bits * magnitude / 64 - magnitude
     }
 
-    pub(super) fn search_worker<P: FnMut() -> SearchEvent + ?Sized>(
+    fn search_worker<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         root: Board,
         limits: &SearchLimits,
@@ -267,7 +264,7 @@ impl Searcher {
         legal_moves: &[Move],
         poll: &mut P,
     ) -> SearchResult {
-        let game_ply = 2 * root.fullmove.saturating_sub(1) as u32
+        let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
         // 8.13(a): helpers must NOT inherit the main thread's fixed depth.
         //

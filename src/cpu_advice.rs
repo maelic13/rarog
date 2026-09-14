@@ -35,7 +35,7 @@
 
 /// The ISA tier this binary was compiled for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Tier {
+enum Tier {
     /// Portable `x86-64` baseline.
     Base,
     /// `x86-64-v3`: AVX2, BMI1, BMI2, POPCNT, LZCNT.
@@ -59,7 +59,7 @@ impl Tier {
 ///
 /// `rarog_pext` is checked first because the PEXT build also enables every
 /// `avx2` feature; asking about `target_feature` first would misreport it.
-pub const fn built_tier() -> Tier {
+const fn built_tier() -> Tier {
     if cfg!(all(rarog_pext, target_arch = "x86_64")) {
         Tier::Pext
     } else if cfg!(target_feature = "avx2") {

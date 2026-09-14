@@ -49,7 +49,7 @@ use std::panic::{self, PanicHookInfo};
 /// Where a formatted report goes. A plain `fn` pointer, not a closure: the
 /// hook must not own captured state that a panicking thread might already be
 /// borrowing.
-pub type ReportSink = fn(&str);
+type ReportSink = fn(&str);
 
 /// The `info string` a panic is reported as.
 ///
@@ -57,7 +57,7 @@ pub type ReportSink = fn(&str);
 /// Newlines and carriage returns in `message` fold to ` | ` — a payload
 /// formatted over several lines (an `assert_eq!`, typically) would otherwise
 /// emit fragments that a UCI parser reads as separate commands.
-pub fn panic_line(thread: &str, message: &str, location: &str) -> String {
+fn panic_line(thread: &str, message: &str, location: &str) -> String {
     format!(
         "info string PANIC thread={} at {}: {}",
         one_line(thread),
@@ -110,7 +110,7 @@ fn stdout_sink(line: &str) {
 /// Public so the wire itself can be proved live in a test, per the standing
 /// rule that a harness wire is not trusted until it has been shown to fire;
 /// the binary calls [`install_stdout_reporter`].
-pub fn install_with(sink: ReportSink) {
+fn install_with(sink: ReportSink) {
     let previous = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
         sink(&describe(info));

@@ -26,7 +26,7 @@ use crate::infra;
 // -----------------------------------------------------------------------
 
 /// Generate all legal moves for the current position.
-pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
+pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut moves = Vec::with_capacity(48);
     gen_moves::<true, true, _>(board, &mut moves);
     crate::diag_count!(board_gen_vec_calls);
@@ -41,7 +41,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
 /// RVO does not apply there, and RAR-M44 measured the copy at +11.2% on legal
 /// generation and +40.5% on captures once removed. The list is cleared first,
 /// so a caller may reuse one list across generations.
-pub fn generate_legal_into(board: &Board, moves: &mut MoveList) {
+pub(super) fn generate_legal_into(board: &Board, moves: &mut MoveList) {
     moves.clear();
     gen_moves::<true, true, _>(board, moves);
     crate::diag_count!(board_gen_full_calls);
@@ -50,14 +50,14 @@ pub fn generate_legal_into(board: &Board, moves: &mut MoveList) {
 
 /// [`generate_legal_into`] returning a fresh list, for callers that are not on
 /// a hot path and prefer the value form.
-pub fn generate_legal_movelist(board: &Board) -> MoveList {
+pub(crate) fn generate_legal_movelist(board: &Board) -> MoveList {
     let mut moves = MoveList::new();
     generate_legal_into(board, &mut moves);
     moves
 }
 
 /// Generate only legal quiet moves.
-pub fn generate_quiets(board: &Board) -> MoveList {
+pub(super) fn generate_quiets(board: &Board) -> MoveList {
     let mut moves = MoveList::new();
     gen_moves::<false, true, _>(board, &mut moves);
     moves
@@ -65,18 +65,11 @@ pub fn generate_quiets(board: &Board) -> MoveList {
 
 /// [`generate_quiets`] into a caller-owned list, reusing a pinned set computed
 /// earlier at the same node (10.3 speed pass — see [`gen_moves_pinned`]).
-pub fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves: &mut MoveList) {
+pub(super) fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves: &mut MoveList) {
     moves.clear();
     gen_moves_pinned::<false, true, _>(board, pinned, moves);
     crate::diag_count!(board_gen_staged_quiet_calls);
     crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
-}
-
-/// [`generate_quiets_pinned_into`] returning a fresh list.
-pub fn generate_quiets_pinned(board: &Board, pinned: Bitboard) -> MoveList {
-    let mut moves = MoveList::new();
-    generate_quiets_pinned_into(board, pinned, &mut moves);
-    moves
 }
 
 /// Generate only legal captures (for quiescence search).
@@ -88,9 +81,9 @@ pub fn generate_quiets_pinned(board: &Board, pinned: Bitboard) -> MoveList {
 /// calls, and the 80.9% that do find a capture exit the scan early (king/pawn
 /// tests come first), so the pre-scan is cheap when it fails and pays a full
 /// generation when it succeeds.
-pub fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
+pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
     moves.clear();
-    let us = board.side_to_move;
+    let us = board.side_to_move();
     let them = !us;
 
     if !has_pseudo_capture(board, us, them) {
@@ -106,7 +99,7 @@ pub fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
 }
 
 /// [`generate_captures_into`] returning a fresh list.
-pub fn generate_captures(board: &mut Board) -> MoveList {
+pub(super) fn generate_captures(board: &mut Board) -> MoveList {
     let mut moves = MoveList::new();
     generate_captures_into(board, &mut moves);
     moves
@@ -124,9 +117,9 @@ pub fn generate_captures(board: &mut Board) -> MoveList {
 /// it fired then paid for the pins anyway in `generate_quiets`. Computing pins
 /// unconditionally is therefore less work in the common case and lets every
 /// stage at this node share one pinned set.
-pub fn generate_captures_pinned_into(board: &mut Board, moves: &mut MoveList) -> Bitboard {
+pub(super) fn generate_captures_pinned_into(board: &mut Board, moves: &mut MoveList) -> Bitboard {
     moves.clear();
-    let us = board.side_to_move;
+    let us = board.side_to_move();
     let them = !us;
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
@@ -135,14 +128,6 @@ pub fn generate_captures_pinned_into(board: &mut Board, moves: &mut MoveList) ->
     crate::diag_count!(board_gen_staged_capture_calls);
     crate::diag_add!(board_gen_staged_capture_moves, moves.len() as u64);
     pinned
-}
-
-/// [`generate_captures_pinned_into`] returning a fresh list beside the pinned
-/// set.
-pub fn generate_captures_pinned(board: &mut Board) -> (MoveList, Bitboard) {
-    let mut moves = MoveList::new();
-    let pinned = generate_captures_pinned_into(board, &mut moves);
-    (moves, pinned)
 }
 
 fn gen_captures_with_pin(
@@ -195,7 +180,7 @@ fn has_pseudo_capture(board: &Board, us: Color, them: Color) -> bool {
         }
     }
 
-    let all_occ = board.all_occ;
+    let all_occ = board.occupied();
     let mut bishops = board.pieces(us, Piece::Bishop);
     while bishops.any() {
         if (atk.bishop(bishops.pop_lsb(), all_occ) & their_occ).any() {
@@ -221,7 +206,7 @@ fn has_pseudo_capture(board: &Board, us: Color, them: Color) -> bool {
 }
 
 /// Recursive perft — counts leaf nodes at depth `depth`.
-pub fn perft(board: &mut Board, depth: u32) -> u64 {
+pub(crate) fn perft(board: &mut Board, depth: u32) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -262,7 +247,7 @@ impl MoveSink for MoveList {
 }
 
 fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Board, moves: &mut S) {
-    let us = board.side_to_move;
+    let us = board.side_to_move();
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, !us);
     gen_moves_pinned::<CAPTURES, QUIETS, S>(board, pinned, moves);
@@ -285,19 +270,19 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         pinned,
         compute_pinned(
             board,
-            board.king_sq(board.side_to_move),
-            board.side_to_move,
-            !board.side_to_move
+            board.king_sq(board.side_to_move()),
+            board.side_to_move(),
+            !board.side_to_move()
         ),
         "stale pinned set handed to gen_moves_pinned"
     );
-    let us = board.side_to_move;
+    let us = board.side_to_move();
     let them = !us;
     let atk = &*ATTACKS;
 
     let our_occ = board.color_occ(us);
     let their_occ = board.color_occ(them);
-    let all_occ = board.all_occ;
+    let all_occ = board.occupied();
 
     let king_sq = board.king_sq(us);
 
@@ -420,7 +405,7 @@ fn gen_unpinned_captures(
 ) {
     let atk = &*ATTACKS;
     let their_occ = board.color_occ(them) & !board.pieces(them, Piece::King);
-    let all_occ = board.all_occ;
+    let all_occ = board.occupied();
     let king_bb = Bitboard::from(king_sq);
 
     let mut targets = atk.king(king_sq) & their_occ;
@@ -516,7 +501,7 @@ fn ep_capture_is_legal(
     let atk = &*ATTACKS;
     let king_sq = board.king_sq(us);
     let occ_after =
-        board.all_occ ^ Bitboard::from(from) ^ Bitboard::from(ep_sq) ^ Bitboard::from(ep_cap_sq);
+        board.occupied() ^ Bitboard::from(from) ^ Bitboard::from(ep_sq) ^ Bitboard::from(ep_cap_sq);
     let exposed_rook = (board.pieces(them, Piece::Rook) | board.pieces(them, Piece::Queen))
         & atk.rook(king_sq, occ_after);
     let exposed_diag = (board.pieces(them, Piece::Bishop) | board.pieces(them, Piece::Queen))
@@ -807,7 +792,7 @@ fn gen_castling<S: MoveSink>(
     };
 
     // Verify the rook is actually present (handles FEN edge cases)
-    if board.castling.has(ks_flag)
+    if board.castling().has(ks_flag)
         && (all_occ & ks_empty).is_empty()
         && (board.pieces(us, Piece::Rook) & Bitboard::from(ks_rook)).any()
         && !board.is_attacked(ks_safe[0], them)
@@ -816,7 +801,7 @@ fn gen_castling<S: MoveSink>(
         moves.push_move(Move::new(king_sq, ks_safe[1], CASTLE_KINGSIDE));
     }
 
-    if board.castling.has(qs_flag)
+    if board.castling().has(qs_flag)
         && (all_occ & qs_empty).is_empty()
         && (board.pieces(us, Piece::Rook) & Bitboard::from(qs_rook)).any()
         && !board.is_attacked(qs_safe[0], them)
@@ -838,8 +823,8 @@ fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bit
     let mut pinned = Bitboard::EMPTY;
 
     // X-ray diagonal: see through our own pieces to find diagonal pinners
-    let bishop_vision = atk.bishop(king_sq, board.all_occ);
-    let xray_bishop = atk.bishop(king_sq, board.all_occ ^ (bishop_vision & our_occ));
+    let bishop_vision = atk.bishop(king_sq, board.occupied());
+    let xray_bishop = atk.bishop(king_sq, board.occupied() ^ (bishop_vision & our_occ));
     let diag_pinners =
         (board.pieces(them, Piece::Bishop) | board.pieces(them, Piece::Queen)) & xray_bishop;
     let mut diag_pinners = diag_pinners;
@@ -853,8 +838,8 @@ fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bit
     }
 
     // X-ray orthogonal: see through our own pieces to find orthogonal pinners
-    let rook_vision = atk.rook(king_sq, board.all_occ);
-    let xray_rook = atk.rook(king_sq, board.all_occ ^ (rook_vision & our_occ));
+    let rook_vision = atk.rook(king_sq, board.occupied());
+    let xray_rook = atk.rook(king_sq, board.occupied() ^ (rook_vision & our_occ));
     let ortho_pinners =
         (board.pieces(them, Piece::Rook) | board.pieces(them, Piece::Queen)) & xray_rook;
     let mut ortho_pinners = ortho_pinners;
@@ -892,13 +877,13 @@ pub fn between(a: Square, b: Square) -> Bitboard {
 }
 
 /// Full ray through both `a` and `b` (including both endpoints).
-pub fn ray_through(a: Square, b: Square) -> Bitboard {
+fn ray_through(a: Square, b: Square) -> Bitboard {
     LINE[a.index()][b.index()]
 }
 
 /// Returns true if `from`, `to`, and `king` are all on the same rank/file/diagonal.
 #[inline]
-pub fn on_same_ray(from: Square, to: Square, king: Square) -> bool {
+pub(super) fn on_same_ray(from: Square, to: Square, king: Square) -> bool {
     (ray_through(from, to) & Bitboard::from(king)).any()
 }
 
@@ -1013,7 +998,7 @@ const fn init_line() -> [[Bitboard; 64]; 64] {
 // -----------------------------------------------------------------------
 
 impl Board {
-    pub fn is_attacked_with_occ(&self, sq: Square, attacker: Color, occ: Bitboard) -> bool {
+    fn is_attacked_with_occ(&self, sq: Square, attacker: Color, occ: Bitboard) -> bool {
         let atk = &*ATTACKS;
         if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
             return true;

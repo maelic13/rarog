@@ -23,20 +23,20 @@ pub fn index(x: u64) -> usize {
 
 /// Domain-bounded narrowing to `i32` (plies, depths, counts, bit indices).
 #[inline(always)]
-pub fn to_i32<T: SmallInt>(x: T) -> i32 {
+pub(crate) fn to_i32<T: SmallInt>(x: T) -> i32 {
     x.to_i32()
 }
 
 /// Non-negative, domain-bounded `i32 → usize` (table indices).
 #[inline(always)]
-pub fn to_usize(x: i32) -> usize {
+pub(crate) fn to_usize(x: i32) -> usize {
     debug_assert!(x >= 0, "negative value used as an index: {x}");
     x as usize
 }
 
 /// Domain-bounded narrowing to `u8` (squares, files, ranks).
 #[inline(always)]
-pub fn to_u8<T: SmallInt>(x: T) -> u8 {
+pub(crate) fn to_u8<T: SmallInt>(x: T) -> u8 {
     let v = x.to_i32();
     debug_assert!((0..=255).contains(&v), "value out of u8 range: {v}");
     v as u8
@@ -114,14 +114,15 @@ impl SmallInt for u8 {
 /// score. Real positions land nowhere near the boundary, but saturating is
 /// the honest narrowing: a runaway weight during a fit should peg the score,
 /// not wrap it to the opposite sign and silently teach the tuner nonsense.
+#[cfg(any(test, feature = "texel"))]
 #[inline(always)]
-pub fn saturating_i32(value: i64) -> i32 {
+pub(crate) fn saturating_i32(value: i64) -> i32 {
     i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
 }
 
 /// still emits the same compare-and-select.
 #[inline(always)]
-pub fn saturating_i16(value: i32) -> i16 {
+pub(crate) fn saturating_i16(value: i32) -> i16 {
     i16::try_from(value).unwrap_or(if value < 0 { i16::MIN } else { i16::MAX })
 }
 
@@ -129,7 +130,7 @@ pub fn saturating_i16(value: i32) -> i16 {
 ///
 /// 9.0b: used for TT depth packing, where `-1` is the meaningful floor.
 #[inline(always)]
-pub fn saturating_i8(value: i32, lo: i8) -> i8 {
+pub(crate) fn saturating_i8(value: i32, lo: i8) -> i8 {
     i8::try_from(value)
         .unwrap_or(if value < 0 { lo } else { i8::MAX })
         .max(lo)

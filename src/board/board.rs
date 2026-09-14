@@ -149,19 +149,19 @@ pub struct Board {
     /// `occupancy[color]`
     occupancy: [Bitboard; 2],
     /// Union of both occupancy bitboards.
-    pub all_occ: Bitboard,
+    all_occ: Bitboard,
     /// Encoded piece on each square, or 255 for empty.
     mailbox: [u8; 64],
     /// Side to move.
-    pub side_to_move: Color,
-    pub castling: CastlingRights,
+    side_to_move: Color,
+    castling: CastlingRights,
     /// En passant target square (the square a capturing pawn moves *to*).
     /// `255` encodes "no EP".
     ep_sq: u8,
-    pub halfmove_clock: u8,
-    pub fullmove: u16,
+    halfmove_clock: u8,
+    fullmove: u16,
     /// Incrementally updated Zobrist hash.
-    pub hash: u64,
+    hash: u64,
     pawn_hash: u64,
     minor_hash: u64,
     non_pawn_hash: [u64; 2],
@@ -171,7 +171,7 @@ pub struct Board {
 
 /// Per-node masks for O(1) "does this move give check?" tests — see
 /// [`Board::check_info`] / [`Board::gives_check_with`] (10.3 speed pass).
-pub struct CheckInfo {
+pub(crate) struct CheckInfo {
     /// The opposing king's square at computation time.
     their_king: Square,
     /// `check_squares[piece]`: squares from which OUR `piece` delivers a
@@ -445,7 +445,7 @@ impl Board {
 
     /// Piece type only at a given square.
     #[inline(always)]
-    pub fn piece_type_at(&self, sq: Square) -> Option<Piece> {
+    pub(crate) fn piece_type_at(&self, sq: Square) -> Option<Piece> {
         decode_piece_type(self.mailbox[sq.index()])
     }
 
@@ -471,6 +471,28 @@ impl Board {
     }
 
     #[inline(always)]
+    pub fn castling(&self) -> CastlingRights {
+        self.castling
+    }
+
+    /// Plies since the last capture or pawn move.
+    #[inline(always)]
+    pub fn halfmove_clock(&self) -> u8 {
+        self.halfmove_clock
+    }
+
+    #[inline(always)]
+    pub fn fullmove(&self) -> u16 {
+        self.fullmove
+    }
+
+    /// Incrementally updated Zobrist key of the position.
+    #[inline(always)]
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+
+    #[inline(always)]
     pub fn occupied_count(&self) -> u32 {
         self.all_occ.count()
     }
@@ -481,7 +503,7 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn color_on(&self, sq: Square) -> Option<Color> {
+    fn color_on(&self, sq: Square) -> Option<Color> {
         self.piece_at(sq).map(|(color, _)| color)
     }
 
@@ -492,7 +514,7 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn is_quiet_move(&self, mv: Move) -> bool {
+    pub(crate) fn is_quiet_move(&self, mv: Move) -> bool {
         mv.flags() <= DOUBLE_PUSH
     }
 
@@ -500,7 +522,7 @@ impl Board {
         self.legal_move(Move::from_uci(input)?)
     }
 
-    pub fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
+    fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
         if mv.is_null() {
             return None;
         }
@@ -705,25 +727,14 @@ impl Board {
         super::movegen::generate_quiets(self)
     }
 
-    /// Capture generation that also yields the pinned set, for a staged picker
-    /// that will generate quiets at the same node (10.3 speed pass).
-    pub fn generate_legal_captures_pinned(&mut self) -> (MoveList, Bitboard) {
-        super::movegen::generate_captures_pinned(self)
-    }
-
-    /// [`Board::generate_legal_captures_pinned`] into a caller-owned list,
-    /// handing back only the pinned set.
+    /// Capture generation into a caller-owned list that also yields the pinned
+    /// set, for a staged picker that will generate quiets at the same node.
     pub fn generate_legal_captures_pinned_into(&mut self, moves: &mut MoveList) -> Bitboard {
         super::movegen::generate_captures_pinned_into(self, moves)
     }
 
-    /// Quiet generation reusing a pinned set from
-    /// [`Board::generate_legal_captures_pinned`] at the same node.
-    pub fn generate_legal_quiets_pinned(&self, pinned: Bitboard) -> MoveList {
-        super::movegen::generate_quiets_pinned(self, pinned)
-    }
-
-    /// [`Board::generate_legal_quiets_pinned`] into a caller-owned list.
+    /// Quiet generation into a caller-owned list, reusing the pinned set from
+    /// [`Board::generate_legal_captures_pinned_into`] at the same node.
     pub fn generate_legal_quiets_pinned_into(&self, pinned: Bitboard, moves: &mut MoveList) {
         super::movegen::generate_quiets_pinned_into(self, pinned, moves);
     }
@@ -751,7 +762,7 @@ impl Board {
     /// per move. These masks are computed once per node; a normal move's
     /// check test then collapses to two bitboard membership tests
     /// ([`Board::gives_check_with`]).
-    pub fn check_info(&self) -> CheckInfo {
+    pub(crate) fn check_info(&self) -> CheckInfo {
         crate::diag_count!(board_check_info_calls);
         let us = self.side_to_move;
         let them = !us;
@@ -807,7 +818,7 @@ impl Board {
     /// blocker must exist on that segment, and it still blocks after the
     /// move. (Promotions break this argument, which is one reason they fall
     /// back.)
-    pub fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
+    pub(crate) fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
         crate::diag_count!(board_gives_check_fast_calls);
         if mv.is_promo() || mv.is_en_passant() || mv.is_castling() {
             return self.gives_check(mv);
@@ -1100,8 +1111,7 @@ impl Board {
     /// another position's cached evaluation rather than crashing.
     ///
     /// Returns `Err` with the first mismatch rather than panicking, so tests
-    /// can report instead of aborting. Not on any hot path — `assert_ok()`
-    /// compiles to nothing in release.
+    /// can report instead of aborting. Not on any hot path.
     pub fn check_consistency(&self) -> Result<(), String> {
         let mut pieces = [Bitboard::EMPTY; 12];
         let mut occupancy = [Bitboard::EMPTY; 2];
@@ -1190,20 +1200,6 @@ impl Board {
         Ok(())
     }
 
-    /// Debug-only invariant assertion. Compiles to nothing in release, so it
-    /// can be called from hot code without an NPS cost.
-    #[inline(always)]
-    pub fn assert_ok(&self) {
-        #[cfg(debug_assertions)]
-        if let Err(err) = self.check_consistency() {
-            panic!(
-                "board invariant violated: {err}
-FEN: {}",
-                self.to_fen()
-            );
-        }
-    }
-
     #[inline(always)]
     pub fn pawn_key(&self) -> u64 {
         self.pawn_hash
@@ -1241,7 +1237,7 @@ FEN: {}",
     /// need the boolean (the passed-pawn stop/path scans in eval) skip both
     /// slider lookups whenever a pawn, knight or king already answers it.
     #[inline(always)]
-    pub fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
+    pub(crate) fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
         let atk = &*ATTACKS;
         if (atk.pawn(!color, sq) & self.pieces(color, Piece::Pawn) & occ).any() {
             return true;
@@ -1481,7 +1477,7 @@ FEN: {}",
 
     /// Is the given square attacked by any piece of `attacker_color`?
     #[inline(always)]
-    pub fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
+    pub(crate) fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
         let occ = self.all_occ;
         let atk = &*ATTACKS;
 

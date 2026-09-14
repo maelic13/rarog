@@ -15,26 +15,22 @@ impl Bitboard {
     pub const FULL: Self = Self(u64::MAX);
 
     // Rank masks
-    pub const RANK_1: Self = Self(0x0000_0000_0000_00FF);
-    pub const RANK_2: Self = Self(0x0000_0000_0000_FF00);
-    pub const RANK_3: Self = Self(0x0000_0000_00FF_0000);
-    pub const RANK_4: Self = Self(0x0000_0000_FF00_0000);
-    pub const RANK_5: Self = Self(0x0000_00FF_0000_0000);
-    pub const RANK_6: Self = Self(0x0000_FF00_0000_0000);
-    pub const RANK_7: Self = Self(0x00FF_0000_0000_0000);
-    pub const RANK_8: Self = Self(0xFF00_0000_0000_0000);
+    pub(crate) const RANK_2: Self = Self(0x0000_0000_0000_FF00);
+    pub(crate) const RANK_3: Self = Self(0x0000_0000_00FF_0000);
+    pub(crate) const RANK_4: Self = Self(0x0000_0000_FF00_0000);
+    pub(crate) const RANK_5: Self = Self(0x0000_00FF_0000_0000);
+    pub(crate) const RANK_6: Self = Self(0x0000_FF00_0000_0000);
+    pub(crate) const RANK_7: Self = Self(0x00FF_0000_0000_0000);
 
     // File masks
-    pub const FILE_A: Self = Self(0x0101_0101_0101_0101);
-    pub const FILE_B: Self = Self(0x0202_0202_0202_0202);
-    pub const FILE_G: Self = Self(0x4040_4040_4040_4040);
-    pub const FILE_H: Self = Self(0x8080_8080_8080_8080);
-    pub const NOT_FILE_A: Self = Self(!0x0101_0101_0101_0101);
-    pub const NOT_FILE_H: Self = Self(!0x8080_8080_8080_8080);
+    pub(crate) const FILE_A: Self = Self(0x0101_0101_0101_0101);
+    pub(crate) const FILE_B: Self = Self(0x0202_0202_0202_0202);
+    pub(crate) const FILE_G: Self = Self(0x4040_4040_4040_4040);
+    pub(crate) const FILE_H: Self = Self(0x8080_8080_8080_8080);
 
     /// Light squares (a1 is dark, b1 is light in standard orientation)
-    pub const LIGHT_SQUARES: Self = Self(0xAA55_AA55_AA55_AA55);
-    pub const DARK_SQUARES: Self = Self(0x55AA_55AA_55AA_55AA);
+    pub(crate) const LIGHT_SQUARES: Self = Self(0xAA55_AA55_AA55_AA55);
+    pub(crate) const DARK_SQUARES: Self = Self(0x55AA_55AA_55AA_55AA);
 
     #[inline(always)]
     pub const fn is_empty(self) -> bool {
@@ -53,7 +49,7 @@ impl Bitboard {
 
     /// Returns true if more than one bit is set.
     #[inline(always)]
-    pub const fn more_than_one(self) -> bool {
+    pub(crate) const fn more_than_one(self) -> bool {
         (self.0 & self.0.wrapping_sub(1)) != 0
     }
 
@@ -66,14 +62,14 @@ impl Bitboard {
 
     /// Index of the most significant set bit (square index).
     #[inline(always)]
-    pub fn msb(self) -> Square {
+    pub(crate) fn msb(self) -> Square {
         debug_assert!(self.0 != 0);
         Square(63 - infra::to_u8(self.0.leading_zeros()))
     }
 
     /// Remove and return the LSB square (used in iteration).
     #[inline(always)]
-    pub fn pop_lsb(&mut self) -> Square {
+    pub(crate) fn pop_lsb(&mut self) -> Square {
         let sq = self.lsb();
         self.0 &= self.0 - 1;
         sq
@@ -84,44 +80,44 @@ impl Bitboard {
     // -----------------------------------------------------------------------
 
     #[inline(always)]
-    pub const fn north(self) -> Self {
+    pub(crate) const fn north(self) -> Self {
         Self(self.0 << 8)
     }
 
     #[inline(always)]
-    pub const fn south(self) -> Self {
+    pub(crate) const fn south(self) -> Self {
         Self(self.0 >> 8)
     }
 
     #[inline(always)]
-    pub const fn east(self) -> Self {
+    pub(crate) const fn east(self) -> Self {
         // mask off file H to prevent wrapping
         Self((self.0 & !0x8080_8080_8080_8080) << 1)
     }
 
     #[inline(always)]
-    pub const fn west(self) -> Self {
+    pub(crate) const fn west(self) -> Self {
         // mask off file A
         Self((self.0 & !0x0101_0101_0101_0101) >> 1)
     }
 
     #[inline(always)]
-    pub const fn north_east(self) -> Self {
+    pub(crate) const fn north_east(self) -> Self {
         Self((self.0 & !0x8080_8080_8080_8080) << 9)
     }
 
     #[inline(always)]
-    pub const fn north_west(self) -> Self {
+    pub(crate) const fn north_west(self) -> Self {
         Self((self.0 & !0x0101_0101_0101_0101) << 7)
     }
 
     #[inline(always)]
-    pub const fn south_east(self) -> Self {
+    pub(crate) const fn south_east(self) -> Self {
         Self((self.0 & !0x8080_8080_8080_8080) >> 7)
     }
 
     #[inline(always)]
-    pub const fn south_west(self) -> Self {
+    pub(crate) const fn south_west(self) -> Self {
         Self((self.0 & !0x0101_0101_0101_0101) >> 9)
     }
 }

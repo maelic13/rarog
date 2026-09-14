@@ -70,7 +70,7 @@ impl UciProtocol {
     }
 
     /// Dispatch one command line, exactly as the interactive loop does.
-    pub fn handle_command(&mut self, command_line: &str) -> CommandOutcome {
+    fn handle_command(&mut self, command_line: &str) -> CommandOutcome {
         let input: Vec<String> = command_line
             .split_whitespace()
             .map(str::to_string)

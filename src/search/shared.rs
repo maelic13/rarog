@@ -3,12 +3,12 @@
 
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 
-pub(crate) const STOP_NONE: u8 = 0;
-pub(crate) const STOP_SEARCH: u8 = 1;
-pub(crate) const STOP_QUIT: u8 = 2;
+pub(super) const STOP_NONE: u8 = 0;
+pub(super) const STOP_SEARCH: u8 = 1;
+pub(super) const STOP_QUIT: u8 = 2;
 
-pub(crate) struct SharedContext {
-    pub stop_state: AtomicU8,
+pub(super) struct SharedContext {
+    pub(super) stop_state: AtomicU8,
     pub ponderhit: AtomicBool,
     pub nodes: AtomicU64,
     pub tb_hits: AtomicU64,
@@ -23,18 +23,18 @@ pub(crate) struct SharedContext {
     /// most of this implicitly; the explicit channel exists because TT
     /// entries for root moves get overwritten under pressure while these do
     /// not.
-    pub root_scores: Vec<AtomicI64>,
+    root_scores: Vec<AtomicI64>,
     /// 8.13 — symmetric soft-stop votes. Each thread whose own soft target
     /// expires casts one vote and keeps searching; the pool stops once a
     /// strict majority agrees, so the decision uses N clamped opinions
     /// rather than the main thread's single noisy estimate. Threshold and
     /// its measured justification: [`SharedContext::votes_needed`].
-    pub stop_votes: AtomicUsize,
-    pub thread_count: usize,
+    stop_votes: AtomicUsize,
+    thread_count: usize,
 }
 
 /// Sentinel for an unpublished root score (8.13).
-pub(crate) const NO_ROOT_SCORE: i64 = i64::MIN;
+const NO_ROOT_SCORE: i64 = i64::MIN;
 /// Keeps the packed score non-negative in its 32-bit field.
 const SCORE_BIAS: i64 = 1 << 31;
 const LOW32: i64 = 0xFFFF_FFFF;
@@ -49,7 +49,7 @@ const BOUND_SHIFT: u32 = 56;
 /// an Upper bound (a fail-low only proves `true <= score`, the weakest fact).
 /// Every searched root move is published with its real bound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum RootBound {
+pub(super) enum RootBound {
     Upper = 0,
     Lower = 1,
     Exact = 2,
@@ -112,7 +112,7 @@ impl SharedContext {
     /// the low 32 bits so it stays non-negative. Replacement rule: deeper
     /// always wins; at equal depth a stronger bound (Exact > Lower > Upper)
     /// wins, and an equal bound refreshes with the newer score.
-    pub(crate) fn publish_root_score(
+    pub(super) fn publish_root_score(
         &self,
         index: usize,
         depth: i32,
@@ -138,7 +138,7 @@ impl SharedContext {
 
     /// Pooled `(depth, score, bound)` for root move `index`, if any thread has
     /// one.
-    pub(crate) fn root_score(&self, index: usize) -> Option<(i32, i32, RootBound)> {
+    pub(super) fn root_score(&self, index: usize) -> Option<(i32, i32, RootBound)> {
         let packed = self.root_scores.get(index)?.load(Ordering::Relaxed);
         if packed == NO_ROOT_SCORE {
             return None;
@@ -151,7 +151,7 @@ impl SharedContext {
     /// window on when the pool has searched deeper than the thread itself.
     /// Root lists are tiny, so the linear scan (once per iteration per thread)
     /// is free.
-    pub(crate) fn pool_best_exact(&self) -> Option<(i32, i32)> {
+    pub(super) fn pool_best_exact(&self) -> Option<(i32, i32)> {
         let mut best: Option<(i32, i32)> = None;
         for slot in &self.root_scores {
             let packed = slot.load(Ordering::Relaxed);
@@ -201,7 +201,7 @@ impl SharedContext {
     /// Register one thread's "I would stop now" vote; returns true once
     /// enough of the pool agrees, at which point the caller stops the whole
     /// search (8.13; threshold refined by 9.7.5(f)).
-    pub(crate) fn vote_to_stop(&self) -> bool {
+    pub(super) fn vote_to_stop(&self) -> bool {
         let votes = self.stop_votes.fetch_add(1, Ordering::Relaxed) + 1;
         votes >= Self::votes_needed(self.thread_count)
     }

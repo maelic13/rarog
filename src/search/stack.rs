@@ -10,7 +10,7 @@ use super::{MAX_PLY, Searcher};
 
 /// Sentinel plies below the root. Look-backs of up to this many plies read a
 /// sentinel entry instead of needing a `ply >= n` guard.
-pub(super) const STACK_SENTINELS: usize = 8;
+const STACK_SENTINELS: usize = 8;
 
 /// A per-ply array indexed from ply `-STACK_SENTINELS` (Reckless `PlyArray`).
 ///

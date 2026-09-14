@@ -111,7 +111,7 @@ impl Square {
     pub const H8: Self = Self(63);
 
     #[inline(always)]
-    pub fn from_file_rank(file: File, rank: Rank) -> Self {
+    fn from_file_rank(file: File, rank: Rank) -> Self {
         Self(rank as u8 * 8 + file as u8)
     }
 
@@ -135,22 +135,16 @@ impl Square {
         (self.0 & 63) as usize
     }
 
-    /// Flip rank (mirrors the square vertically, e.g. A1 ↔ A8).
-    #[inline(always)]
-    pub fn flip_rank(self) -> Self {
-        Self(self.0 ^ 56)
-    }
-
     /// Chebyshev (king) distance between two squares.
     #[inline(always)]
-    pub fn chebyshev_distance(self, other: Self) -> u8 {
+    pub(super) fn chebyshev_distance(self, other: Self) -> u8 {
         let df = (self.file() as i8 - other.file() as i8).unsigned_abs();
         let dr = (self.rank() as i8 - other.rank() as i8).unsigned_abs();
         df.max(dr)
     }
 
     /// Parse from algebraic notation (e.g. "e4").
-    pub fn from_algebraic(s: &str) -> Option<Self> {
+    pub(super) fn from_algebraic(s: &str) -> Option<Self> {
         let mut chars = s.chars();
         let file_char = chars.next()?;
         let rank_char = chars.next()?;
@@ -197,7 +191,7 @@ impl fmt::Display for Square {
 
 impl File {
     #[inline(always)]
-    pub fn from_u8(v: u8) -> Self {
+    fn from_u8(v: u8) -> Self {
         // 9.0: total function instead of transmute — the match compiles to the
         // same instruction as the old transmute (LLVM sees v & 7 exhaustively)
         // but an out-of-range v can no longer be UB.
@@ -212,20 +206,6 @@ impl File {
             _ => File::H,
         }
     }
-
-    pub fn from_char(c: char) -> Option<Self> {
-        match c {
-            'a' => Some(Self::A),
-            'b' => Some(Self::B),
-            'c' => Some(Self::C),
-            'd' => Some(Self::D),
-            'e' => Some(Self::E),
-            'f' => Some(Self::F),
-            'g' => Some(Self::G),
-            'h' => Some(Self::H),
-            _ => None,
-        }
-    }
 }
 
 // -----------------------------------------------------------------------
@@ -234,7 +214,7 @@ impl File {
 
 impl Rank {
     #[inline(always)]
-    pub fn from_u8(v: u8) -> Self {
+    fn from_u8(v: u8) -> Self {
         // 9.0: total function instead of transmute (see File::from_u8).
         match v & 7 {
             0 => Rank::R1,
@@ -245,20 +225,6 @@ impl Rank {
             5 => Rank::R6,
             6 => Rank::R7,
             _ => Rank::R8,
-        }
-    }
-
-    pub fn from_char(c: char) -> Option<Self> {
-        match c {
-            '1' => Some(Self::R1),
-            '2' => Some(Self::R2),
-            '3' => Some(Self::R3),
-            '4' => Some(Self::R4),
-            '5' => Some(Self::R5),
-            '6' => Some(Self::R6),
-            '7' => Some(Self::R7),
-            '8' => Some(Self::R8),
-            _ => None,
         }
     }
 }

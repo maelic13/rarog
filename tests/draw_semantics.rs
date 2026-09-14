@@ -42,7 +42,7 @@ fn mate_on_the_100th_clock_move_beats_the_rule50_draw() {
     // Ra8# is a quiet rook move: it pushes the clock from 99 to exactly 100.
     let mut board = Board::from_fen("6k1/5ppp/8/8/8/8/8/R5K1 w - - 99 80").unwrap();
     board.make_move(mv(&board, "a1a8"));
-    assert_eq!(board.halfmove_clock, 100);
+    assert_eq!(board.halfmove_clock(), 100);
     assert_eq!(board.game_result(), Some(GameResult::WhiteCheckmates));
     assert!(!board.can_declare_draw());
     assert!(!board.can_declare_draw_in_search());
@@ -54,7 +54,7 @@ fn check_with_an_escape_at_clock_100_is_still_a_draw() {
     // stands (only checkmate outranks it).
     let mut board = Board::from_fen("6k1/5p1p/8/8/8/8/8/R5K1 w - - 99 80").unwrap();
     board.make_move(mv(&board, "a1a8"));
-    assert_eq!(board.halfmove_clock, 100);
+    assert_eq!(board.halfmove_clock(), 100);
     assert_eq!(board.game_result(), Some(GameResult::Draw));
     assert!(board.can_declare_draw_in_search());
 }
@@ -134,11 +134,13 @@ fn the_halfmove_clock_is_not_part_of_the_position_identity() {
         let low_board = Board::from_fen(low).expect("valid FEN");
         let high_board = Board::from_fen(high).expect("valid FEN");
         assert_ne!(
-            low_board.halfmove_clock, high_board.halfmove_clock,
+            low_board.halfmove_clock(),
+            high_board.halfmove_clock(),
             "the two FENs must actually differ in the clock"
         );
         assert_eq!(
-            low_board.hash, high_board.hash,
+            low_board.hash(),
+            high_board.hash(),
             "halfmove clock leaked into the position hash for {low}"
         );
     }
@@ -155,17 +157,19 @@ fn the_halfmove_clock_is_not_part_of_the_position_identity() {
 #[test]
 fn an_irreversible_move_makes_the_earlier_position_hash_unreachable() {
     let mut board = Board::from_fen("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1").expect("valid FEN");
-    let before = board.hash;
+    let before = board.hash();
     board.make_move(mv(&board, "e4d5"));
     assert_ne!(
-        board.hash, before,
+        board.hash(),
+        before,
         "a capture must change the position hash"
     );
     // Shuffle kings back and forth: the pre-capture hash must never reappear.
     for uci in ["e8d8", "e1d1", "d8e8", "d1e1"] {
         board.make_move(mv(&board, uci));
         assert_ne!(
-            board.hash, before,
+            board.hash(),
+            before,
             "pre-capture hash reappeared after {uci}; the rule-50 scan bound \
              would no longer be a pure cost bound"
         );

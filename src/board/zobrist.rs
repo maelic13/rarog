@@ -7,16 +7,16 @@ use super::square::{File, Square};
 
 pub struct ZobristKeys {
     /// `piece_keys[color][piece][square]`
-    pub piece_keys: [[[u64; 64]; 6]; 2],
+    piece_keys: [[[u64; 64]; 6]; 2],
     /// XOR in when it is black's turn to move.
-    pub side_key: u64,
+    side_key: u64,
     /// `castling_keys[rights.0 as usize]` — 16 entries
-    pub castling_keys: [u64; 16],
+    castling_keys: [u64; 16],
     /// `ep_keys[file]` — XOR in when en passant is available on that file
-    pub ep_keys: [u64; 8],
+    ep_keys: [u64; 8],
 }
 
-pub static ZOBRIST: ZobristKeys = ZobristKeys::init();
+pub(super) static ZOBRIST: ZobristKeys = ZobristKeys::init();
 
 impl ZobristKeys {
     const fn init() -> Self {

@@ -7,23 +7,23 @@ use crate::search_options::{EngineOptions, SearchLimits};
 use super::params::SearchParams;
 
 #[derive(Copy, Clone)]
-pub(crate) struct RuntimeLimits {
+pub(super) struct RuntimeLimits {
     pub depth: usize,
     pub nodes: u64,
     /// Soft limit: between-iteration stop threshold (clock mode).
     /// In movetime mode this equals `maximum_ms`; the between-iteration
     /// soft-stop logic is skipped entirely for movetime — only `check_stop`
     /// (every 2048 nodes) fires at `maximum_ms`.
-    pub optimum_ms: f64,
+    pub(super) optimum_ms: f64,
     /// Hard limit: mid-iteration abort threshold.
-    pub maximum_ms: f64,
+    pub(super) maximum_ms: f64,
     /// True when the `go movetime T` command was used.
-    pub movetime_mode: bool,
+    pub(super) movetime_mode: bool,
     /// True for `go infinite` / `go ponder`: the caller wants an EVALUATION,
     /// not a move, so search shortcuts that trade score quality for clock
     /// time must not fire. Set from `SearchLimits`, which the searcher
     /// otherwise never sees.
-    pub analysis_mode: bool,
+    pub(super) analysis_mode: bool,
 }
 
 /// Compute time limits for one search.
@@ -32,7 +32,7 @@ pub(crate) struct RuntimeLimits {
 /// (≈ `2*(fullmove - 1) + (side_to_move == Black) as u32`).
 /// It is used in Stockfish's clock formulas to allocate more time in the
 /// opening (ply 0) and gradually less as the game progresses.
-pub(crate) fn compute_runtime_limits(
+pub(super) fn compute_runtime_limits(
     options: &SearchLimits,
     engine_options: &EngineOptions,
     side_to_move: Color,
@@ -160,11 +160,11 @@ pub(crate) fn compute_runtime_limits(
 }
 
 /// Share of an iteration below which the effort term reads its floor.
-pub(super) const EFFORT_TERM_FLOOR: f64 = 0.79;
+const EFFORT_TERM_FLOOR: f64 = 0.79;
 
 /// Effort normalised to `0.0..=1.0`: 0 at or below [`EFFORT_TERM_FLOOR`] of the
 /// iteration spent on the best move, 1 at the whole iteration.
-pub(super) fn effort_term(effort: f64) -> f64 {
+fn effort_term(effort: f64) -> f64 {
     ((effort - EFFORT_TERM_FLOOR) / (1.0 - EFFORT_TERM_FLOOR)).clamp(0.0, 1.0)
 }
 
@@ -172,7 +172,7 @@ pub(super) fn effort_term(effort: f64) -> f64 {
 ///
 /// Clamped to the ordered pair so an SPSA-crossed (`low > high`) setting cannot
 /// panic `f64::clamp`; for the effort endpoints this is `clamp(0.71, 0.924)`.
-pub(super) fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
+fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
     (high + t * (low - high)).clamp(low.min(high), low.max(high))
 }
 

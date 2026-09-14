@@ -17,24 +17,24 @@ pub struct EngineControl {
 }
 
 impl EngineControl {
-    pub fn request_stop(&self) -> u64 {
+    pub(crate) fn request_stop(&self) -> u64 {
         let epoch = self.next_epoch();
         self.stop.store(true, Ordering::Release);
         epoch
     }
 
-    pub fn request_quit(&self) -> u64 {
+    pub(crate) fn request_quit(&self) -> u64 {
         let epoch = self.next_epoch();
         self.quit.store(true, Ordering::Release);
         self.stop.store(true, Ordering::Release);
         epoch
     }
 
-    pub fn request_ponderhit(&self) {
+    pub(crate) fn request_ponderhit(&self) {
         self.ponderhit.store(true, Ordering::Release);
     }
 
-    pub fn start_replacing_search(&self) -> u64 {
+    pub(crate) fn start_replacing_search(&self) -> u64 {
         let epoch = self.next_epoch();
         if self.searching.swap(true, Ordering::AcqRel) {
             self.stop.store(true, Ordering::Release);
@@ -42,7 +42,7 @@ impl EngineControl {
         epoch
     }
 
-    pub fn prepare_search(&self, epoch: u64) -> bool {
+    pub(crate) fn prepare_search(&self, epoch: u64) -> bool {
         if epoch != 0 && self.current_epoch() != epoch {
             return false;
         }
@@ -57,21 +57,21 @@ impl EngineControl {
         true
     }
 
-    pub fn finish_search_if_current(&self, epoch: u64) {
+    pub(crate) fn finish_search_if_current(&self, epoch: u64) {
         if epoch == 0 || self.current_epoch() == epoch {
             self.searching.store(false, Ordering::Release);
         }
     }
 
-    pub fn current_epoch(&self) -> u64 {
+    pub(crate) fn current_epoch(&self) -> u64 {
         self.epoch.load(Ordering::Acquire)
     }
 
-    pub fn is_searching(&self) -> bool {
+    pub(crate) fn is_searching(&self) -> bool {
         self.searching.load(Ordering::Acquire)
     }
 
-    pub fn poll_search(&self) -> SearchControl {
+    pub(crate) fn poll_search(&self) -> SearchControl {
         if self.quit.load(Ordering::Acquire) {
             SearchControl::Quit
         } else if self.stop.load(Ordering::Acquire) {
@@ -88,7 +88,7 @@ impl EngineControl {
     }
 }
 
-pub enum SearchControl {
+pub(crate) enum SearchControl {
     None,
     Stop,
     Quit,
@@ -115,7 +115,7 @@ impl EngineCommandQueue {
         self.inner.available.notify_one();
     }
 
-    pub fn push_priority(&self, command: EngineCommand) {
+    pub(crate) fn push_priority(&self, command: EngineCommand) {
         {
             let mut commands = self.inner.commands.lock().expect("command queue poisoned");
             commands.push_front(command);
@@ -123,7 +123,7 @@ impl EngineCommandQueue {
         self.inner.available.notify_one();
     }
 
-    pub fn wait_pop(&self) -> EngineCommand {
+    pub(crate) fn wait_pop(&self) -> EngineCommand {
         let mut commands = self.inner.commands.lock().expect("command queue poisoned");
         loop {
             if let Some(command) = commands.pop_front() {
@@ -147,11 +147,11 @@ pub struct EngineCommand {
     /// meaningful when `bench_depth` is `Some`; defaults to 1.
     pub bench_repeats: u16,
     /// Fixed depth for the WAC tactical suite (`wac [depth]`).
-    pub wac_depth: Option<u16>,
+    pub(crate) wac_depth: Option<u16>,
     pub configure: Option<SearchOptions>,
     pub new_game: bool,
     pub ponderhit: bool,
-    pub ready: Option<Sender<()>>,
+    pub(crate) ready: Option<Sender<()>>,
     pub epoch: u64,
 }
 
@@ -284,7 +284,7 @@ impl EngineCommand {
         }
     }
 
-    pub fn ready(ready: Sender<()>) -> EngineCommand {
+    pub(crate) fn ready(ready: Sender<()>) -> EngineCommand {
         EngineCommand {
             search_options: SearchOptions::default(),
             stop: false,

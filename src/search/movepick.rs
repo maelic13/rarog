@@ -16,13 +16,13 @@ pub(crate) struct ScoredMove {
     pub mv: Move,
     pub score: i32,
     pub see: i16,
-    pub quiet_history: i32,
+    pub(super) quiet_history: i32,
 }
 
 // 9.0 KEEP-UNSAFE (measured): see MoveList in board/moves.rs — plain
 // initialized arrays cost −10% NPS (2026-07-19). Unsafe confined to the
 // slice accessors with a local prefix-initialization invariant.
-pub(crate) struct ScoredMoveList {
+pub(super) struct ScoredMoveList {
     moves: [MaybeUninit<ScoredMove>; 256],
     len: usize,
 }
@@ -42,7 +42,7 @@ impl ScoredMoveList {
     }
 
     #[inline(always)]
-    pub fn push_with_history(&mut self, mv: Move, score: i32, see: i32, quiet_history: i32) {
+    fn push_with_history(&mut self, mv: Move, score: i32, see: i32, quiet_history: i32) {
         debug_assert!(self.len < self.moves.len());
         self.moves[self.len].write(ScoredMove {
             mv,
@@ -59,7 +59,7 @@ impl ScoredMoveList {
     }
 
     #[inline(always)]
-    pub fn as_mut_slice(&mut self) -> &mut [ScoredMove] {
+    pub(crate) fn as_mut_slice(&mut self) -> &mut [ScoredMove] {
         // SAFETY: only the initialized prefix below `len` is exposed.
         unsafe { slice::from_raw_parts_mut(self.moves.as_mut_ptr().cast::<ScoredMove>(), self.len) }
     }
@@ -67,12 +67,12 @@ impl ScoredMoveList {
 
 #[derive(Copy, Clone)]
 pub(crate) struct BadCapture {
-    pub attacker: Piece,
+    pub(crate) attacker: Piece,
     pub to: u8,
     pub captured: Option<Piece>,
 }
 
-pub(crate) struct BadCaptureList {
+pub(super) struct BadCaptureList {
     items: [MaybeUninit<BadCapture>; 256],
     len: usize,
 }
@@ -113,7 +113,7 @@ impl BadCaptureList {
 /// LLVM cannot bound-check away (`best` is only provably `< len` by induction
 /// through the loop). Ties still resolve to the earliest entry: the comparison
 /// stays strictly `>`.
-pub(crate) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
+pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
     let tail = &mut moves[index..];
     let mut best = 0;
     let mut best_score = tail[0].score;
@@ -127,7 +127,7 @@ pub(crate) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
     tail[0]
 }
 
-pub(crate) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
+pub(super) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(m.score));
     if offset < moves.len() {
         moves[offset].score = moves[0].score.saturating_add(1_000_000);
@@ -361,7 +361,7 @@ impl MovePicker {
     }
 }
 
-pub(super) fn tt_scored_move(mv: Move) -> ScoredMove {
+fn tt_scored_move(mv: Move) -> ScoredMove {
     let see = if mv.is_capture() { SEE_UNKNOWN } else { 0 };
     ScoredMove {
         mv,
@@ -387,7 +387,7 @@ impl Searcher {
     /// [`Self::score_moves`] writing into a caller-owned buffer, so the
     /// staged picker can append quiets behind the captures already sitting
     /// in its single partitioned list (10.3(4)).
-    pub(super) fn append_scored_moves(
+    fn append_scored_moves(
         &self,
         board: &Board,
         moves: &[Move],
@@ -452,7 +452,7 @@ impl Searcher {
         }
     }
 
-    pub(super) fn score_staged_captures(
+    fn score_staged_captures(
         &self,
         board: &Board,
         moves: &[Move],
@@ -500,7 +500,7 @@ impl Searcher {
         scored
     }
 
-    pub(super) fn score_tactical_move(&self, board: &Board, mv: Move, tt_move: Move) -> ScoredMove {
+    fn score_tactical_move(&self, board: &Board, mv: Move, tt_move: Move) -> ScoredMove {
         let mut see = 0;
         let score = if mv == tt_move {
             if mv.is_capture() && !board.see_ge(mv, 0) {

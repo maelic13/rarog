@@ -273,7 +273,7 @@ fn search_options_reject_illegal_position_move_without_losing_current_board() {
         .expect_err("illegal position move should be reported");
 
     assert_eq!(err, "Illegal move: e2e5");
-    assert_eq!(options.position.board.hash, expected.hash);
+    assert_eq!(options.position.board.hash(), expected.hash());
     assert_eq!(options.position.board.to_fen(), expected.to_fen());
 }
 
@@ -300,7 +300,7 @@ fn search_options_accept_little_blitzer_fullmove_zero_fen() {
         options.position.board.piece_at(Square::D5),
         Some((Color::White, Piece::Pawn))
     );
-    assert_eq!(options.position.board.fullmove, 1);
+    assert_eq!(options.position.board.fullmove(), 1);
 }
 
 #[test]

@@ -7,12 +7,12 @@ use crate::infra;
 use super::Searcher;
 use super::movepick::BadCaptureList;
 
-pub const HISTORY_MAX: i32 = 16_384;
-pub const CAP_HISTORY_MAX: i32 = 16_384;
-pub const CONT_SIZE: usize = 6 * 64 * 6 * 64;
-pub const LOW_PLY_HISTORY_SIZE: usize = 8;
-pub const PAWN_HISTORY_SIZE: usize = 4_096;
-pub const PIECE_TO_SIZE: usize = 6 * 64;
+pub(super) const HISTORY_MAX: i32 = 16_384;
+const CAP_HISTORY_MAX: i32 = 16_384;
+pub(super) const CONT_SIZE: usize = 6 * 64 * 6 * 64;
+pub(super) const LOW_PLY_HISTORY_SIZE: usize = 8;
+pub(super) const PAWN_HISTORY_SIZE: usize = 4_096;
+pub(super) const PIECE_TO_SIZE: usize = 6 * 64;
 
 /// Continuation-history look-back distances and their bonus divisors.
 ///
@@ -43,7 +43,7 @@ pub(super) fn boxed_cont_tables() -> Box<[[i16; CONT_SIZE]; CONT_TABLES]> {
         .unwrap_or_else(|_| unreachable!("length is CONT_TABLES by construction"))
 }
 
-pub(crate) fn update_hist_entry(entry: &mut i16, bonus: i32, max_value: i32) {
+pub(super) fn update_hist_entry(entry: &mut i16, bonus: i32, max_value: i32) {
     let current = *entry as i32;
     let updated = current + bonus - current * bonus.abs() / max_value;
     *entry = crate::infra::saturating_i16(updated);
@@ -51,18 +51,18 @@ pub(crate) fn update_hist_entry(entry: &mut i16, bonus: i32, max_value: i32) {
 
 /// Node-invariant prefix of [`pawn_history_index`]: the pawn-key row base,
 /// same per-node hoist as [`cont_row_base`].
-pub(crate) fn pawn_row_base(pawn_key: u64) -> usize {
+fn pawn_row_base(pawn_key: u64) -> usize {
     (infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1)) * PIECE_TO_SIZE
 }
 
 /// Flat `(piece, square)` index. Same reasoning as [`cont_index`].
-pub(crate) fn piece_to_index(piece: usize, to: usize) -> usize {
+pub(super) fn piece_to_index(piece: usize, to: usize) -> usize {
     debug_assert!(piece < 6, "piece index out of range");
     debug_assert!(to < 64, "square index out of range");
     (piece * 64 + to).min(PIECE_TO_SIZE - 1)
 }
 
-pub(crate) fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usize {
+fn pawn_history_index(pawn_key: u64, piece: usize, to: usize) -> usize {
     let slot = infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1);
     slot * PIECE_TO_SIZE + piece_to_index(piece, to)
 }

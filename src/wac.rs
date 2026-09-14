@@ -17,7 +17,7 @@
 use crate::board::moves::{CASTLE_KINGSIDE, CASTLE_QUEENSIDE, PROMO_KNIGHT};
 use crate::board::{Board, Move, Piece, Square};
 
-pub const DEFAULT_WAC_DEPTH: u16 = 10;
+pub(crate) const DEFAULT_WAC_DEPTH: u16 = 10;
 
 /// The raw EPD suite: `<placement> <stm> <castling> <ep> bm <san...>; id "WAC.n";`
 const WAC_EPD: &str = include_str!("wac.epd");

@@ -16,9 +16,9 @@ use super::square::Square;
 
 /// All attack tables, initialized once.
 pub struct AttackTables {
-    pub pawn_attacks: [[Bitboard; 64]; 2],
-    pub knight_attacks: [Bitboard; 64],
-    pub king_attacks: [Bitboard; 64],
+    pub(crate) pawn_attacks: [[Bitboard; 64]; 2],
+    knight_attacks: [Bitboard; 64],
+    pub(crate) king_attacks: [Bitboard; 64],
     bishop: [SliderEntry; 64],
     rook: [SliderEntry; 64],
     bishop_table: Vec<Bitboard>,

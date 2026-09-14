@@ -1,7 +1,7 @@
 use crate::board::{Board, Move};
 use crate::search::params::SearchParams;
 
-pub const MAX_THREADS: usize = 1024;
+pub(crate) const MAX_THREADS: usize = 1024;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SyzygyOptions {
@@ -84,7 +84,7 @@ pub struct SearchLimits {
     /// hand-off, so any wake-up or setup latency under a loaded host was
     /// invisible to its budget and came straight off the harness margin.
     /// `None` (tests, bench) means the search stamps its own start.
-    pub issued: Option<std::time::Instant>,
+    pub(crate) issued: Option<std::time::Instant>,
 }
 
 impl SearchLimits {

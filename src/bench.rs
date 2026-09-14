@@ -1,4 +1,4 @@
-pub const DEFAULT_BENCH_DEPTH: u16 = 13;
+pub(crate) const DEFAULT_BENCH_DEPTH: u16 = 13;
 
 // 40 positions covering openings, middlegames (quiet + tactical), a broad range
 // of endgames, mates, and fortresses. The final "Nodes searched" total is a

@@ -9,7 +9,7 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use rarog::board::{Board, Move};
+use rarog::board::{Board, Move, MoveList};
 
 const PROFILE: &str = include_str!("../tests/data/board-v2.tsv");
 const ORACLE: &str = include_str!("../tests/data/board-v2-oracle.tsv");
@@ -213,8 +213,10 @@ fn staged_moves(boards: &mut [Board]) -> u64 {
     boards
         .iter_mut()
         .map(|board| {
-            let (captures, pinned) = board.generate_legal_captures_pinned();
-            let quiets = board.generate_legal_quiets_pinned(pinned);
+            let mut captures = MoveList::new();
+            let pinned = board.generate_legal_captures_pinned_into(&mut captures);
+            let mut quiets = MoveList::new();
+            board.generate_legal_quiets_pinned_into(pinned, &mut quiets);
             black_box((&captures, &quiets));
             (captures.len() + quiets.len()) as u64
         })

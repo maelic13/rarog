@@ -22,7 +22,7 @@ impl Searcher {
         raw + self.correction_value(board, ply)
     }
 
-    pub(super) fn correction_value(&self, board: &Board, ply: usize) -> i32 {
+    fn correction_value(&self, board: &Board, ply: usize) -> i32 {
         let color = board.side_to_move();
         let us = color as usize;
         let them = (!color) as usize;
@@ -118,7 +118,7 @@ impl Searcher {
         let them = (!color) as usize;
         let scaled = (diff * depth.max(1)).clamp(-1024, 1024);
         #[cfg(feature = "diag")]
-        if crate::diag::sampled(board.hash, ply, crate::diag::SAMPLE_CORRECTION) {
+        if crate::diag::sampled(board.hash(), ply, crate::diag::SAMPLE_CORRECTION) {
             crate::diag_count!(corr_sample_updates);
             crate::diag_add!(corr_sample_abs_sum, u64::from(diff.unsigned_abs()));
             let pawn_key = board.pawn_key();

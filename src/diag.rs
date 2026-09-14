@@ -373,7 +373,7 @@ pub mod counters {
 /// queens) per side; each family is tried in both orientations, so a Black
 /// strong side counts the same as a White one.
 #[cfg(feature = "diag")]
-pub fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
+pub(crate) fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
     // At most 7 men total (2 kings + 5 pieces) can match any listed family.
     let men: u32 = w.iter().sum::<u32>() + b.iter().sum::<u32>();
     if men > 5 {
@@ -477,11 +477,11 @@ pub fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
 /// Stable domains keep independent samples from accidentally selecting exactly
 /// the same positions. Public constants make call sites self-documenting.
 #[cfg(feature = "diag")]
-pub const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
+pub(crate) const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
 #[cfg(feature = "diag")]
-pub const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
+pub(crate) const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
 #[cfg(feature = "diag")]
-pub const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
+pub(crate) const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
 
 /// Sampling stride mask, read once from `RAROG_DIAG_SAMPLE_STRIDE`.
 ///
@@ -564,7 +564,7 @@ mod correction_probe {
 
 #[cfg(feature = "diag")]
 #[inline]
-pub fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
+pub(crate) fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
     correction_probe::record(source, index, key, value);
 }
 
@@ -645,7 +645,7 @@ pub fn reset() {
 mod tests {
     use std::sync::atomic::Ordering;
 
-    use crate::board::Board;
+    use crate::board::{Board, MoveList};
 
     use super::{SAMPLE_MAIN, SAMPLE_QSEARCH, counters, sampled};
 
@@ -674,8 +674,10 @@ mod tests {
     fn board_profile_counters_are_live() {
         counters::reset();
         let mut board = Board::starting_position();
-        let (captures, pinned) = board.generate_legal_captures_pinned();
-        let quiets = board.generate_legal_quiets_pinned(pinned);
+        let mut captures = MoveList::new();
+        let pinned = board.generate_legal_captures_pinned_into(&mut captures);
+        let mut quiets = MoveList::new();
+        board.generate_legal_quiets_pinned_into(pinned, &mut quiets);
         assert!(captures.is_empty());
         assert_eq!(quiets.len(), 20);
 
@@ -732,7 +734,7 @@ mod tests {
 /// been joined — otherwise the helper tail contributions are missing and, worse,
 /// each helper emits its own competing set of lines.
 #[inline(always)]
-pub fn dump() {
+pub(crate) fn dump() {
     #[cfg(feature = "diag")]
     {
         counters::dump();
