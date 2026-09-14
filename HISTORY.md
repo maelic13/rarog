@@ -59,6 +59,18 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-14 — PLAN B.2.0.1 CLOSED, RAR-M53: the documents restructured, each
+  to one purpose.** The two retired trackers were recovered and archived
+  (the review had called one lost and the other a duplicate; neither was);
+  PLAN's closed leaves became one line each with their text archived;
+  EXPERIMENTS became one row per experiment with prose records in
+  `analysis/ledger_records_2026-09-14.md`; PROCESS kept procedures and took
+  the independence boundary and the registration template; `analysis/` got
+  an index and an archive; `check_guide.py` fails on dead paths in current
+  documents; GUIDE and AGENTS were shortened, AGENTS after the maintainer
+  approved the draft. The ticket that untracked six logo variants was
+  reverted at the maintainer's instruction: logos stay tracked. The same
+  session withdrew B.0's null-calibration hold, which contradicted RAR-M03.
 - **2026-09-14 — PLAN B.2.0 CLOSED, RAR-P25: the architecture review's twelve
   upgrades landed behaviour-neutral.** The review
   (`analysis/architecture_review_2026-09.md`, RAR-M51) found the layering
