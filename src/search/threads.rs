@@ -15,8 +15,6 @@ use super::movepick::ScoredMoveList;
 use super::shared::{RootBound, STOP_QUIT, STOP_SEARCH, SharedContext};
 use super::{MAX_PLY, SearchEvent, SearchExit, SearchResult, Searcher, TB_WIN_SCORE};
 
-const SEARCH_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
-
 struct WorkerJob {
     pub root: Board,
     pub(super) root_moves: Arc<[Move]>,
@@ -100,7 +98,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
     let (sender, receiver) = mpsc::channel();
     let handle = thread::Builder::new()
         .name(format!("rarog-search-{index}"))
-        .stack_size(SEARCH_THREAD_STACK_SIZE)
+        .stack_size(infra::THREAD_STACK_SIZE)
         .spawn(move || {
             let mut worker = Searcher::default();
             while let Ok(message) = receiver.recv() {

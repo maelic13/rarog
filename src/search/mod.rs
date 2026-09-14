@@ -194,6 +194,7 @@ pub struct Searcher {
 
 impl Default for Searcher {
     fn default() -> Self {
+        let params = SearchParams::default();
         Self {
             tt: TranspositionTable::default(),
             hash_mb: 64,
@@ -206,21 +207,14 @@ impl Default for Searcher {
             ponderhit: false,
             stop_on_ponderhit: false,
             start: Instant::now(),
-            limits: RuntimeLimits {
-                depth: MAX_DEPTH,
-                nodes: 0,
-                optimum_ms: f64::INFINITY,
-                maximum_ms: f64::INFINITY,
-                movetime_mode: false,
-                analysis_mode: false,
-            },
-            lmr_table: build_lmr_table(768, 2304),
-            lmr_table_key: (768, 2304),
+            limits: RuntimeLimits::default(),
+            lmr_table: build_lmr_table(params.lmr_table_base, params.lmr_table_div),
+            lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
             syzygy_probe_depth: 1,
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
             syzygy_largest: 0,
-            params: SearchParams::default(),
+            params,
             td: ThreadData::default(),
         }
     }
@@ -1461,11 +1455,9 @@ mod tests {
             start: Instant::now() - Duration::from_millis(10),
             limits: RuntimeLimits {
                 depth: 64,
-                nodes: 0,
                 optimum_ms: 1.0,
                 maximum_ms: 1.0,
-                movetime_mode: false,
-                analysis_mode: false,
+                ..RuntimeLimits::default()
             },
             ..Searcher::default()
         };

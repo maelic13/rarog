@@ -27,13 +27,8 @@
 [alias]
 xtask = "run --package xtask --"
 
-# 9.0a: libtest runs each test on a thread with the default stack. Rarog's
-# `Searcher` is ~35 KB inline (pv_table alone is 32 KB) and DEBUG frames are
-# unoptimised, so tests that build an Engine overflowed and `cargo test` died
-# outright — which meant no `debug_assert!` in the crate was ever exercised.
-# Release builds and production were never affected: main.rs and
-# search_threads.rs already size their threads explicitly (16 MB each).
-# This gives test threads the same budget so the debug suite — and with it the
-# whole debug_assert layer — actually runs.
+# libtest runs each test on a thread with the default stack, which a `Searcher`
+# overflows in debug builds. This gives test threads the engine's own budget,
+# `infra::THREAD_STACK_SIZE` (16 MiB); keep the two equal.
 [env]
 RUST_MIN_STACK = "16777216"

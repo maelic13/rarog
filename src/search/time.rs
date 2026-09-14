@@ -26,6 +26,20 @@ pub(super) struct RuntimeLimits {
     pub(super) analysis_mode: bool,
 }
 
+impl Default for RuntimeLimits {
+    /// No limit: full depth, no node cap, no clock.
+    fn default() -> Self {
+        Self {
+            depth: super::MAX_DEPTH,
+            nodes: 0,
+            optimum_ms: f64::INFINITY,
+            maximum_ms: f64::INFINITY,
+            movetime_mode: false,
+            analysis_mode: false,
+        }
+    }
+}
+
 /// Compute time limits for one search.
 ///
 /// `game_ply` is the number of half-moves played so far in the game

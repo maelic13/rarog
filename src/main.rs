@@ -6,18 +6,8 @@ use rarog::cpu_advice;
 use rarog::crash_report;
 use rarog::engine::Engine;
 use rarog::engine_command::{EngineCommandQueue, EngineControl};
-use rarog::infra::capitalize_first_letter;
+use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
 use rarog::uci_protocol::{CommandOutcome, UciProtocol};
-
-// 9.0b: Rarog supports 64-bit targets only (user decision 2026-07-19 — the
-// shipped arches are x86-64/x86-64-v3, and 64-bit is what makes the
-// `u64 → usize` hash-indexing conversions in the TT/eval caches lossless; see
-// `infra::index`). Fail at COMPILE time on anything else instead of shipping
-// silently-wrong index math.
-#[cfg(not(target_pointer_width = "64"))]
-compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
-
-const ENGINE_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 
 // 4.8a — THE STARTUP CPU GUARD IS GONE, because it never worked.
 //
@@ -71,7 +61,7 @@ fn main() {
     let engine_control = Arc::clone(&control);
     let engine_thread = thread::Builder::new()
         .name("rarog-engine".to_string())
-        .stack_size(ENGINE_THREAD_STACK_SIZE)
+        .stack_size(THREAD_STACK_SIZE)
         // Construct the Engine (which owns the large inline-array Searcher)
         // *inside* this 16 MB thread, not on the caller's stack. In debug builds
         // the default 1 MB Windows main-thread stack overflows while building the

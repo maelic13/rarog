@@ -87,24 +87,6 @@ pub struct SearchLimits {
     pub(crate) issued: Option<std::time::Instant>,
 }
 
-impl SearchLimits {
-    fn reset_temporary_parameters(&mut self) {
-        self.move_time = 0;
-        self.white_time = 0;
-        self.white_increment = 0;
-        self.black_time = 0;
-        self.black_increment = 0;
-        self.depth = None;
-        self.movestogo = 0;
-        self.nodes = 0;
-        self.perft = 0;
-        self.infinite = false;
-        self.ponder = false;
-        self.search_moves.clear();
-        self.issued = None;
-    }
-}
-
 #[derive(Clone, Default)]
 pub struct SearchOptions {
     pub position: PositionState,
@@ -144,7 +126,7 @@ impl SearchOptions {
 
     pub fn reset(&mut self) {
         self.position = PositionState::default();
-        self.limits.reset_temporary_parameters();
+        self.limits = SearchLimits::default();
     }
 
     pub fn set_position(&mut self, args: &[String]) -> Result<(), String> {
@@ -190,7 +172,7 @@ impl SearchOptions {
     }
 
     pub fn set_search_parameters(&mut self, args: &[String]) {
-        self.limits.reset_temporary_parameters();
+        self.limits = SearchLimits::default();
         self.limits.issued = Some(std::time::Instant::now());
 
         self.limits.ponder = args.iter().any(|r| r == "ponder");
@@ -214,25 +196,25 @@ impl SearchOptions {
         let searchmoves_index = args.iter().position(|r| r == "searchmoves");
 
         if let Some(index) = move_time_index {
-            self.limits.move_time = Self::parse_usize(args, index, "movetime");
+            self.limits.move_time = Self::parse_or_notice(args, index, "movetime");
         }
 
         if let Some(index) = white_time_index {
-            self.limits.white_time = Self::parse_usize(args, index, "wtime");
+            self.limits.white_time = Self::parse_or_notice(args, index, "wtime");
         }
         if let Some(index) = white_increment_index {
-            self.limits.white_increment = Self::parse_usize(args, index, "winc");
+            self.limits.white_increment = Self::parse_or_notice(args, index, "winc");
         }
         if let Some(index) = black_time_index {
-            self.limits.black_time = Self::parse_usize(args, index, "btime");
+            self.limits.black_time = Self::parse_or_notice(args, index, "btime");
         }
         if let Some(index) = black_increment_index {
-            self.limits.black_increment = Self::parse_usize(args, index, "binc");
+            self.limits.black_increment = Self::parse_or_notice(args, index, "binc");
         }
         if let Some(index) = depth_index {
             // 9.0: preserves the historical fallback exactly — the previous
             // `parse_f64` returned 2.0 for an unparseable depth, so an invalid
-            // `go depth x` still yields 2, not parse_u32's generic 0.
+            // `go depth x` still yields 2, not the generic 0.
             let parsed = args
                 .get(index + 1)
                 .and_then(|value| value.parse::<u32>().ok())
@@ -243,7 +225,7 @@ impl SearchOptions {
             self.limits.depth = Some(parsed.max(1));
         }
         if let Some(index) = mate_index {
-            let mate = Self::parse_usize(args, index, "mate");
+            let mate: usize = Self::parse_or_notice(args, index, "mate");
             if mate > 0 {
                 // Mate in N -> search 2N-1 plies.
                 let plies = mate.saturating_mul(2).saturating_sub(1);
@@ -251,13 +233,13 @@ impl SearchOptions {
             }
         }
         if let Some(index) = movestogo_index {
-            self.limits.movestogo = Self::parse_usize(args, index, "movestogo");
+            self.limits.movestogo = Self::parse_or_notice(args, index, "movestogo");
         }
         if let Some(index) = nodes_index {
-            self.limits.nodes = Self::parse_u64(args, index, "nodes");
+            self.limits.nodes = Self::parse_or_notice(args, index, "nodes");
         }
         if let Some(index) = perft_index {
-            self.limits.perft = Self::parse_u32(args, index, "perft");
+            self.limits.perft = Self::parse_or_notice(args, index, "perft");
         }
         if let Some(index) = searchmoves_index {
             for token in args.iter().skip(index + 1) {
@@ -399,32 +381,18 @@ impl SearchOptions {
         }
     }
 
-    fn parse_usize(args: &[String], index: usize, name: &str) -> usize {
+    /// The value after `args[index]`, or zero with a notice when it is missing
+    /// or does not parse.
+    fn parse_or_notice<T: std::str::FromStr + Default>(
+        args: &[String],
+        index: usize,
+        name: &str,
+    ) -> T {
         match args.get(index + 1).and_then(|value| value.parse().ok()) {
             Some(value) => value,
             None => {
                 crate::info_string!("Invalid {name} value.");
-                0
-            }
-        }
-    }
-
-    fn parse_u64(args: &[String], index: usize, name: &str) -> u64 {
-        match args.get(index + 1).and_then(|value| value.parse().ok()) {
-            Some(value) => value,
-            None => {
-                crate::info_string!("Invalid {name} value.");
-                0
-            }
-        }
-    }
-
-    fn parse_u32(args: &[String], index: usize, name: &str) -> u32 {
-        match args.get(index + 1).and_then(|value| value.parse().ok()) {
-            Some(value) => value,
-            None => {
-                crate::info_string!("Invalid {name} value.");
-                0
+                T::default()
             }
         }
     }

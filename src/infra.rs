@@ -34,6 +34,19 @@ pub(crate) fn to_usize(x: i32) -> usize {
     x as usize
 }
 
+/// Stack size for every thread that runs a search: the engine thread and the
+/// helpers. A `Searcher` is tens of kilobytes inline and debug frames are
+/// unoptimised, so the platform default overflows in debug builds. libtest
+/// threads get the same budget from `RUST_MIN_STACK` in `.cargo/config.toml`.
+pub const THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+/// Flush stdout, dropping the error: a failed flush means the GUI closed the
+/// pipe, which ends a UCI session normally and must not abort the process.
+pub(crate) fn flush_stdout() {
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
 /// Domain-bounded narrowing to `u8` (squares, files, ranks).
 #[inline(always)]
 pub(crate) fn to_u8<T: SmallInt>(x: T) -> u8 {

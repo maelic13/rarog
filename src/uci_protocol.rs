@@ -1,10 +1,10 @@
-use std::io::{self, Write};
+use std::io;
 use std::process;
 use std::sync::{Arc, mpsc};
 
 use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
-use crate::infra::capitalize_first_letter;
+use crate::infra::{capitalize_first_letter, flush_stdout};
 use crate::search_options::SearchOptions;
 use crate::wac::DEFAULT_WAC_DEPTH;
 
@@ -297,14 +297,6 @@ const fn help_text() -> &'static str {
         env!("CARGO_PKG_REPOSITORY"),
         "#readme\n",
     )
-}
-
-fn flush_stdout() {
-    // 9.0a: a failed flush means the GUI closed the pipe — a normal way for a
-    // UCI session to end, not a bug. Panicking here aborted the process
-    // (release sets `panic = "abort"`), turning an ordinary disconnect into a
-    // crash; the write is simply dropped instead.
-    let _ = io::stdout().flush();
 }
 
 fn terminate_on_critical_error(full_command: &str, message: &str) -> ! {

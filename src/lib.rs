@@ -18,7 +18,9 @@ macro_rules! info_string {
     };
 }
 
-// 9.0b: 64-bit only — see the matching guard in main.rs.
+// 64-bit only: the `u64 -> usize` hash-indexing conversions in the table and
+// the evaluation caches are lossless only there (`infra::index`). The binary
+// depends on the library, so this one guard covers both.
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
 

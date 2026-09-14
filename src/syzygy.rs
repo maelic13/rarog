@@ -438,27 +438,25 @@ fn tb_position(board: &Board) -> TbPosition {
 }
 
 fn root_move_from_result(result: u32) -> Option<RootMove> {
-    let from = ((result & TB_RESULT_FROM_MASK) >> TB_RESULT_FROM_SHIFT) as u8;
-    let to = ((result & TB_RESULT_TO_MASK) >> TB_RESULT_TO_SHIFT) as u8;
-    let promotes = match (result & TB_RESULT_PROMOTES_MASK) >> TB_RESULT_PROMOTES_SHIFT {
-        0 => None,
-        1 => Some(Piece::Queen),
-        2 => Some(Piece::Rook),
-        3 => Some(Piece::Bishop),
-        4 => Some(Piece::Knight),
-        _ => return None,
-    };
-    if from == to {
-        None
-    } else {
-        Some(RootMove { from, to, promotes })
-    }
+    root_move(
+        ((result & TB_RESULT_FROM_MASK) >> TB_RESULT_FROM_SHIFT) as u8,
+        ((result & TB_RESULT_TO_MASK) >> TB_RESULT_TO_SHIFT) as u8,
+        (result & TB_RESULT_PROMOTES_MASK) >> TB_RESULT_PROMOTES_SHIFT,
+    )
 }
 
 fn root_move_from_tb_move(mv: u16) -> Option<RootMove> {
-    let from = ((mv >> 6) & 0x3F) as u8;
-    let to = (mv & 0x3F) as u8;
-    let promotes = match (mv >> 12) & 0x7 {
+    root_move(
+        ((mv >> 6) & 0x3F) as u8,
+        (mv & 0x3F) as u8,
+        u32::from((mv >> 12) & 0x7),
+    )
+}
+
+/// Fathom's promotion code (0 none, 1 queen … 4 knight) is shared by both of
+/// its move encodings. An unknown code or a null move decodes to `None`.
+fn root_move(from: u8, to: u8, promotion_code: u32) -> Option<RootMove> {
+    let promotes = match promotion_code {
         0 => None,
         1 => Some(Piece::Queen),
         2 => Some(Piece::Rook),
@@ -466,11 +464,7 @@ fn root_move_from_tb_move(mv: u16) -> Option<RootMove> {
         4 => Some(Piece::Knight),
         _ => return None,
     };
-    if from == to {
-        None
-    } else {
-        Some(RootMove { from, to, promotes })
-    }
+    (from != to).then_some(RootMove { from, to, promotes })
 }
 
 fn wdl_from_raw(value: u32) -> Option<Wdl> {

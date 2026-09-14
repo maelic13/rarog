@@ -1,4 +1,3 @@
-use std::io::{self, Write};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -6,6 +5,7 @@ use std::time::Duration;
 use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
+use crate::infra::flush_stdout;
 use crate::search::{SearchEvent, SearchExit, SearchResult, Searcher};
 use crate::search_options::SearchOptions;
 use crate::wac::{move_matches_any, wac_positions};
@@ -416,26 +416,8 @@ fn print_bestmove(result: &SearchResult) {
     flush_stdout();
 }
 
-fn flush_stdout() {
-    // 9.0a: a failed flush means the GUI closed the pipe — a normal way for a
-    // UCI session to end, not a bug. Panicking here aborted the process
-    // (release sets `panic = "abort"`), turning an ordinary disconnect into a
-    // crash; the write is simply dropped instead.
-    let _ = io::stdout().flush();
-}
-
 #[cfg(test)]
 mod tests {
-    /// Test helper threads get an explicit stack like the real engine threads
-    /// (`main.rs`'s ENGINE_THREAD_STACK_SIZE / `search/threads.rs`'s
-    /// SEARCH_THREAD_STACK_SIZE). 9.0a: these two tests used a bare
-    /// `thread::spawn`, whose default stack overflowed in DEBUG builds — the
-    /// moved `Engine` carries a ~35 KB `Searcher` (pv_table alone is 32 KB)
-    /// and debug frames are unoptimised. That crashed `cargo test` entirely,
-    /// which meant **no `debug_assert!` in the crate was ever exercised**.
-    /// Release builds and production were unaffected.
-    const TEST_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
-
     use super::*;
     use std::sync::mpsc;
     use std::time::Duration;
@@ -542,7 +524,7 @@ mod tests {
         let (done_tx, done_rx) = mpsc::channel();
 
         thread::Builder::new()
-            .stack_size(TEST_THREAD_STACK_SIZE)
+            .stack_size(crate::infra::THREAD_STACK_SIZE)
             .spawn(move || {
                 let exit = engine.wait_until_bestmove_allowed(&options, 0, false);
                 done_tx.send(exit).expect("wait result should be sent");
@@ -567,7 +549,7 @@ mod tests {
         let (done_tx, done_rx) = mpsc::channel();
 
         thread::Builder::new()
-            .stack_size(TEST_THREAD_STACK_SIZE)
+            .stack_size(crate::infra::THREAD_STACK_SIZE)
             .spawn(move || {
                 let exit = engine.wait_until_bestmove_allowed(&options, 0, false);
                 done_tx.send(exit).expect("wait result should be sent");
