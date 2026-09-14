@@ -347,6 +347,42 @@ diagnostics; two rejections stop B.
           procedures-only PROCESS, the `analysis/` index and archive, a
           dead-path check, a shorter GUIDE and the rule-first AGENTS. Logos
           stay tracked (U8's untracking was reverted). Record in HISTORY.
+    - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
+      bounds and gravity; picker exhaustiveness tests; TT store/probe tests
+      including age and replacement; deterministic unwind tests. **Ticket 0,
+      from the B.2.0 review (`analysis/architecture_review_2026-09.md`
+      §4.3):** split `Searcher` into per-thread `ThreadData` (tables,
+      stack, evaluator, stop flags, output sink), per-search configuration
+      (parameters, LMR table, limits) and engine-owned shared resources
+      (table, Syzygy settings, `SharedContext`) before the first mechanism
+      ticket, at the exact fingerprint and inside the NPS pool; `Threads =
+      1` stays free of pool machinery by `thread_count == 1` rather than by
+      the absence of a shared context; the table backend is untouched
+      (D.2's). **Delivery
+      shape (from Manta's 6.5.10):** the cluster lands as ordered tickets
+      behind one umbrella switch, each ticket keeping the umbrella-off arm at
+      the exact B.1 fingerprint; **canaries are anchored to the reference**,
+      meaning a tactical position must be solved at the depth classical
+      Stockfish `9587eeeb` solves it, not at whatever depth the current build
+      manages, and a changed canary is recorded with its cause, never
+      re-blessed; and a **decision trace** (`diag`-only, bounded to plies one
+      and two under `searchmoves`, printing every prune, reduction and proof
+      decision with its inputs) exists before the first ticket, because
+      Manta's two seed defects — a static margin overriding a mate in one, a
+      count-based skip dropping an unmade mating quiet — were found by that
+      trace and are invisible to counters. Implementer and reviewer are
+      separate roles; the reviewer's acceptance is recorded before B.2.2.
+      **Implemented 2026-09-14 (RAR-S73), awaiting the reviewer's
+      acceptance.** The umbrella is the `b2core` Cargo feature over
+      `src/search/core/`; off, the engine is the B.1 behaviour exactly
+      (7,601,220 / EBF 2.474 at every commit, pooled NPS −0.13% against the
+      B.1 pool); on, it reads 4,706,910 / EBF 2.391 unfitted, with 80
+      `CoreParams` coordinates. The review must rule on four resolutions
+      RAR-S73 records: the root, in-check and first-move reduction
+      invariant applied over §3.7's reduction scope; direct checks and
+      promotions kept alive after the quiet skip; rule-50 damping moved
+      from the evaluator into the search; and the KBNK anchor's five-budget
+      majority.
         - **B.2.0.2 MultiPV and the root-line contract — `I1`.** Added by
           maintainer decision 2026-09-14; **executes after B.2.1's reviewer
           acceptance and before B.2.2.** Rarog has no `MultiPV` option, and
@@ -390,42 +426,6 @@ diagnostics; two rejections stop B.
           `go infinite` session at MultiPV 4 ended by `stop`. No SPRT, because
           the default is unchanged. README option list and CHANGELOG updated
           in the same leaf. B.5 inherits this contract.
-    - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
-      bounds and gravity; picker exhaustiveness tests; TT store/probe tests
-      including age and replacement; deterministic unwind tests. **Ticket 0,
-      from the B.2.0 review (`analysis/architecture_review_2026-09.md`
-      §4.3):** split `Searcher` into per-thread `ThreadData` (tables,
-      stack, evaluator, stop flags, output sink), per-search configuration
-      (parameters, LMR table, limits) and engine-owned shared resources
-      (table, Syzygy settings, `SharedContext`) before the first mechanism
-      ticket, at the exact fingerprint and inside the NPS pool; `Threads =
-      1` stays free of pool machinery by `thread_count == 1` rather than by
-      the absence of a shared context; the table backend is untouched
-      (D.2's). **Delivery
-      shape (from Manta's 6.5.10):** the cluster lands as ordered tickets
-      behind one umbrella switch, each ticket keeping the umbrella-off arm at
-      the exact B.1 fingerprint; **canaries are anchored to the reference**,
-      meaning a tactical position must be solved at the depth classical
-      Stockfish `9587eeeb` solves it, not at whatever depth the current build
-      manages, and a changed canary is recorded with its cause, never
-      re-blessed; and a **decision trace** (`diag`-only, bounded to plies one
-      and two under `searchmoves`, printing every prune, reduction and proof
-      decision with its inputs) exists before the first ticket, because
-      Manta's two seed defects — a static margin overriding a mate in one, a
-      count-based skip dropping an unmade mating quiet — were found by that
-      trace and are invisible to counters. Implementer and reviewer are
-      separate roles; the reviewer's acceptance is recorded before B.2.2.
-      **Implemented 2026-09-14 (RAR-S73), awaiting the reviewer's
-      acceptance.** The umbrella is the `b2core` Cargo feature over
-      `src/search/core/`; off, the engine is the B.1 behaviour exactly
-      (7,601,220 / EBF 2.474 at every commit, pooled NPS −0.13% against the
-      B.1 pool); on, it reads 4,706,910 / EBF 2.391 unfitted, with 80
-      `CoreParams` coordinates. The review must rule on four resolutions
-      RAR-S73 records: the root, in-check and first-move reduction
-      invariant applied over §3.7's reduction scope; direct checks and
-      promotions kept alive after the quiet skip; rule-50 damping moved
-      from the evaluator into the search; and the KBNK anchor's five-budget
-      majority.
     - **B.2.2** Diagnostics: oracle differential at stride 1, depth at 300k
       nodes, EBF, tactical suite at fixed depth and equal nodes, 2,000-game
       unfitted paired run. Registered as explanation. **Screen thresholds are

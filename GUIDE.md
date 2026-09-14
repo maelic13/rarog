@@ -152,8 +152,8 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
     - [x] **B.2.0** Architecture review of the B.1 head (RAR-M51) and its twelve behaviour-neutral upgrades: narrowed surface, tagged commands, search output port, TT policy factored once, tuner out of the workspace, tools index, comment hygiene; exact fingerprint, NPS +0.21% vs the B.1 pool (RAR-P25) — DONE 2026-09-14
         - [x] **B.2.0.1** Repository and document restructure: archived trackers, one-line closed leaves, one ledger row per experiment, `analysis/` index, dead-path check, rule-first AGENTS; logos stay tracked (RAR-M53) — DONE 2026-09-14
-        - [ ] **B.2.0.2** MultiPV: UCI option, root lines above 1, identity at `MultiPV = 1` on both arms; runs after B.2.1's acceptance, before B.2.2 — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests; implemented behind `b2core`, awaiting the reviewer's acceptance (RAR-S73) — **IMPLEMENTED / I2**
+        - [ ] **B.2.0.2** MultiPV: UCI option, root lines above 1, identity at `MultiPV = 1` on both arms; runs after B.2.1's acceptance, before B.2.2 — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
     - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**
