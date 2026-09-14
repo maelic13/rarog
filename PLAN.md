@@ -1089,13 +1089,14 @@ diagnostics; two rejections stop B.
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
       sized from RAR-M10; then ledger row and calibration. Accepted head
-      becomes the base for B.3. **Precondition: a null calibration on the
-      adjudication-free harness.** RAR-M17 removed adjudication on
-      2026-09-01, which PROCESS classes as a harness change owing an
-      identical-binary null pair, and no calibration row follows it in the
-      ledger; every gate since has run on an unvalidated boundary. One
-      `tools/sprt.ps1 -Mode calibrate` run of the B.1 head against itself,
-      maintainer-run, recorded as a RAR-M row, before this SPRT starts.
+      becomes the base for B.3. No null calibration precedes it: the 1T
+      harness is calibrated and shared with Basilisk, and switching
+      adjudication off symmetrically (RAR-M17) does not reopen it (RAR-M03;
+      the RAR-E06 registration's calibration disposition, accepted by the
+      maintainer 2026-09-01). **Correction 2026-09-14:** B.0 had added a
+      "null calibration owed" precondition here claiming no calibration
+      followed RAR-M17; that contradicted those two records and is withdrawn
+      by maintainer decision.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
   handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
   donor's entry margin above beta (both donors demand about 150 Rarog
