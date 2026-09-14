@@ -38,20 +38,6 @@ pub(crate) struct SharedSearchState {
     /// rather than the main thread's single noisy estimate. Threshold and
     /// its measured justification: [`SharedSearchState::votes_needed`].
     pub stop_votes: AtomicUsize,
-    /// 4.7b — each thread's own best-move instability in thousandths, one slot
-    /// per thread, written only by its owning thread and never read back by it
-    /// alone.
-    ///
-    /// ⚠ CLOCK ONLY. This is Plan 4.7's "pool worker instability for time, not
-    /// result ownership". The pooled mean reaches exactly one consumer,
-    /// [`crate::search::RootConfidence::time_factor`]; the result the search
-    /// reports is chosen by `select_parallel_result` from `SearchResult`
-    /// values, which carry no confidence and cannot see this vector.
-    ///
-    /// No "unpublished" sentinel: every slot starts at 0, and 0 is a true
-    /// reading rather than a missing one — a thread that has not completed an
-    /// iteration has observed no best-move change.
-    pub thread_instability: Vec<AtomicU64>,
     pub thread_count: usize,
 }
 
@@ -122,37 +108,8 @@ impl SharedSearchState {
                 .map(|_| AtomicI64::new(NO_ROOT_SCORE))
                 .collect(),
             stop_votes: AtomicUsize::new(0),
-            thread_instability: (0..thread_count).map(|_| AtomicU64::new(0)).collect(),
             thread_count,
         }
-    }
-
-    /// Publish this thread's decaying best-move-change count, in thousandths
-    /// (4.7b). One relaxed store per completed root iteration, into a slot no
-    /// other thread writes.
-    pub(crate) fn publish_instability(&self, thread_id: usize, milli: u64) {
-        if let Some(slot) = self.thread_instability.get(thread_id) {
-            slot.store(milli, Ordering::Relaxed);
-        }
-    }
-
-    /// Pool mean of the published instabilities, in thousandths.
-    ///
-    /// The mean covers every slot, including threads that have not published
-    /// yet — see the field's note on why their 0 is a reading rather than a
-    /// gap. Returns `None` only for an empty pool, which cannot occur for a
-    /// live search but keeps the caller total.
-    pub(crate) fn pooled_instability(&self) -> Option<u64> {
-        let count = u64::try_from(self.thread_instability.len()).unwrap_or(u64::MAX);
-        if count == 0 {
-            return None;
-        }
-        let sum: u64 = self
-            .thread_instability
-            .iter()
-            .map(|slot| slot.load(Ordering::Relaxed))
-            .sum();
-        Some(sum / count)
     }
 
     /// Publish `(depth, score, bound)` for root move `index` if it improves on
@@ -388,30 +345,6 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// 4.7b plumbing: a thread writes only its own slot, the mean covers the
-    /// whole pool, and an unpublished slot contributes its true zero rather
-    /// than being skipped — which is what lets this work without a sentinel.
-    #[test]
-    fn pooled_instability_averages_every_slot_including_the_silent_ones() {
-        let state = SharedSearchState::new(0, 0, 3);
-
-        assert_eq!(state.pooled_instability(), Some(0));
-
-        state.publish_instability(0, 1_200);
-        state.publish_instability(2, 1_800);
-
-        assert_eq!(state.pooled_instability(), Some(1_000));
-
-        // A later publication replaces that thread's own reading rather than
-        // accumulating with it.
-        state.publish_instability(0, 300);
-        assert_eq!(state.pooled_instability(), Some(700));
-
-        // An id past the pool is dropped, not written out of bounds.
-        state.publish_instability(99, 9_000);
-        assert_eq!(state.pooled_instability(), Some(700));
-    }
 
     #[test]
     fn shared_stop_request_sets_search_stop() {

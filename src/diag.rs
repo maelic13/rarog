@@ -78,20 +78,11 @@ pub mod counters {
         // 4.8.1 AUDIT of the reduction floor, which 4.5.4 named and never
         // measured. `lmr_reduction` is `(r >> 10).clamp(0, new_depth)`, so
         // both ends silently discard information:
-        //   lmr_floor_clamped -- r was NEGATIVE. The formula asked for an
-        //     extension and the floor refused it. Every relief term
-        //     (tt_pv, improving, corr, and 4.6.7's root relief) is eaten
-        //     here once the accumulated r crosses zero.
         //   lmr_qs_clamped -- reduction reached new_depth, so the "reduced
         //     search" ran at depth 0 and was answered by quiescence. That
         //     is a prune wearing a reduction's name, and it is counted
         //     nowhere in the pruning family.
-        lmr_floor_clamped,
         lmr_qs_clamped,
-        // Root-only reduction census: the denominator 4.6.7 needs to know
-        // whether a root relief can move anything at all.
-        lmr_root_applied,
-        lmr_root_reduction_sum,
         lmr_research,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)
@@ -127,25 +118,10 @@ pub mod counters {
         // positional correction. Nobody has measured that. These give the mean
         // |residual| for each class; if the two means are close, the premise is
         // wrong and neither knob should move off its baseline.
-        // 4.5c — nodes where the margin/reduction knobs are widened by a
-        // correction magnitude that is NOT in the eval they test, because a TT
-        // bound replaced the corrected eval. Exact. This sizes the mismatch
-        // `CorrSkipWhenTtRefined` exists to remove.
-        corr_applied_to_replaced_eval,
         correction_resid_capture_n,
         correction_resid_capture_sum,
         correction_resid_quiet_n,
         correction_resid_quiet_sum,
-        // 4.6c — safe versus losing quiet checks in the ordering path.
-        //
-        // `CheckBonusLosing` measured 0.00% node change even at 0, which is
-        // indistinguishable from dead code. These decide which it is: a zero
-        // `losing` count means the population is genuinely empty, while a
-        // non-zero one means the switch is wired but its effect is masked.
-        // Counted unconditionally, so the answer does not depend on the
-        // switch being enabled.
-        check_order_safe,
-        check_order_losing,
         // 4.5d — residual by HALFMOVE-CLOCK context. PLAN 4.5 allows a new
         // correction context only where held-out unique signal is shown, so the
         // measurement comes before any proposal. Rule-50 proximity is the
@@ -317,28 +293,12 @@ pub mod counters {
         // NMP/ProbCut/singular/IIR cooperation.
         nmp_attempt,
         nmp_sample_cut,
-        nmp_nested_attempt,
-        nmp_eval_raw,
-        nmp_eval_corrected,
-        nmp_eval_tt,
         nmp_verify_attempt,
         nmp_verify_pass,
         nmp_verify_fail,
-        // 4.10a — two DIFFERENT questions the decisive guard has been conflated
-        // with, counted apart because they imply opposite decisions.
-        //
-        // `nmp_decisive_population` is an NMP-eligible node whose WINDOW is
-        // already at mate range. This was `NmpDecisiveGuard`'s predicate; 4.10a
-        // removed that switch (efficiency only, 0.004% of nodes) and kept the
-        // count, because it is the context for the question below.
-        //
-        // `nmp_cut_unproven_mate` is the correctness question, and it is NOT
-        // the same condition: an NMP cutoff whose RETURNED SCORE is mate-range,
-        // i.e. a mate this node never proved by a real line. Rarog returns the
-        // raw null score with no clamp, where Stockfish forces it back to beta
-        // precisely so unproven mates cannot propagate. A non-zero count here
-        // is a defect the guard does not fix.
-        nmp_decisive_population,
+        // 4.10a: an NMP cutoff whose RETURNED SCORE is mate-range, i.e. a mate
+        // this node never proved by a real line. The search clamps it to beta
+        // (as Stockfish does); this counts how often the clamp fires.
         nmp_cut_unproven_mate,
         // Per-NODE: nodes passing the ProbCut entry gate, counted before
         // capture generation, so nodes with no eligible capture are included.
@@ -352,8 +312,6 @@ pub mod counters {
         probcut_qpass,
         probcut_tt_store,
         singular_attempt,
-        singular_probcut_depth_match,
-        singular_speculative_seed_blocked,
         singular_extend_one,
         singular_extend_two,
         singular_multicut,
@@ -362,20 +320,11 @@ pub mod counters {
         iir_pv,
         iir_no_tt_move,
         iir_shallow_tt,
-        iir_extension_debt,
         // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
         move_seen_tt,
         move_seen_good_capture,
         move_seen_quiet,
         move_seen_bad_capture,
-        // Rarog-only: rank of the BEST MOVE at any node, including PV nodes
-        // where it merely raised alpha. Strictly larger population than a beta
-        // cutoff, so it must never be differenced against the oracle's
-        // cutoff-rank counters -- see analysis/phase4_counter_spec.md.
-        best_move_rank_1,
-        best_move_rank_2_3,
-        best_move_rank_4_7,
-        best_move_rank_8_plus,
         // Core (comparable): rank at which a beta cutoff occurred. Exact, and
         // counted in the same block as cutoff_quiet/cutoff_capture so the
         // buckets sum to that denominator.
@@ -383,11 +332,6 @@ pub mod counters {
         best_rank_2_3,
         best_rank_4_7,
         best_rank_8_plus,
-        best_stage_tt,
-        best_stage_good_capture,
-        best_stage_quiet,
-        best_stage_bad_capture,
-        best_was_reduced,
         prune_shadow_moves,
         prune_shadow_lmp,
         prune_shadow_futility,
@@ -403,177 +347,13 @@ pub mod counters {
         correction_slot_repeat,
         correction_slot_collision,
         correction_slot_near_saturation,
-        // Root confidence/SMP observations use fixed-point sums (ppm/cp).
+        // Root iteration census.
         root_iterations,
-        root_gap_sum,
-        root_deviation_sum,
-        root_effort_ppm_sum,
         root_best_changes,
         root_interrupted_fallback,
-        // 4.7b — the completed-iteration confidence model, measured before any
-        // consumer is switched on.
-        //
-        // The scalar histogram answers the first question a confidence model
-        // has to answer: does it DISCRIMINATE? A model that reads ~500 on every
-        // iteration is a constant wearing a model's clothes, and multiplying
-        // the clock by a constant is a re-scale of `TmOptScale`, not a new
-        // mechanism.
-        rootconf_scalar_sum,
-        rootconf_scalar_q1,
-        rootconf_scalar_q2,
-        rootconf_scalar_q3,
-        rootconf_scalar_q4,
-        // Input distributions. The deviation scale is seeded at its measured
-        // half-confidence point instead of a round number that happens to
-        // saturate its term; gap remains diagnostic-only.
-        // The gap gets a ZERO bucket of its own, because the separation term
-        // stands or falls on it: every root move but the best is searched on a
-        // null window, so a move that fails low reports a bound just under
-        // alpha rather than a value. If the gap is mostly exactly 0, the term
-        // is measuring PVS bookkeeping and not separation.
-        // Splits the zero bucket by CAUSE. "No rival" means no other root move
-        // was searched to this depth at all, so the gap is zero by absence of
-        // evidence; the remainder is a rival that genuinely scored level.
-        rootconf_gap_no_rival,
-        rootconf_gap_0,
-        rootconf_gap_1_7,
-        rootconf_gap_8_127,
-        rootconf_gap_128_plus,
-        rootconf_dev_lt_8,
-        rootconf_dev_8_31,
-        rootconf_dev_32_127,
-        rootconf_dev_128_plus,
-        // Is the term the confidence factor REPLACES even live? The baseline
-        // effort factor interpolates over `0.79..=1.0` of the iteration spent
-        // on the best move, and reads its endpoint for everything below 0.79.
-        // This counts the iterations that actually land inside the band — i.e.
-        // the ones where the shipped effort factor is a function rather than a
-        // constant.
-        rootconf_effort_term_live,
-        // Iterations that took at least one aspiration re-search: the WINDOW
-        // term's population.
-        rootconf_window_fail_iters,
-        // The redundancy check behind leaving best-move AGE out of the scalar.
-        // If age and instability track each other, charging both would price
-        // one fact twice; these two sums are what makes that claim falsifiable
-        // rather than asserted.
-        rootconf_best_age_sum,
-        rootconf_instab_milli_sum,
-        rootconf_pool_instab_milli_sum,
-        // PV truncation: the population a PV term would have. 4.5d's lesson —
-        // a term needs a distinct signal AND a population, so measure the
-        // population before adding the term.
-        rootconf_pv_truncated,
-        // 4.7b TM SHADOW — the two clock multipliers side by side, in
-        // ten-thousandths. `RootConfTime` cannot be sized by `bench` (which is
-        // depth-limited, so the soft target never binds), but the multiplier it
-        // would apply is computed from data `bench` does produce. Sum ratio =
-        // does the arm move the total budget or only its distribution;
-        // longer/shorter = how often it disagrees at all.
-        rootconf_tm_baseline_sum,
-        rootconf_tm_candidate_sum,
-        rootconf_tm_longer,
-        rootconf_tm_shorter,
         worker_best_disagreement,
         worker_depth_spread_sum,
         worker_score_spread_sum,
-        // 4.2b SHADOW TEST — inexact bounds that CONTRADICT the current window.
-        //
-        // A `Lower` at or below alpha, or an `Upper` at or above beta, resolved
-        // some OTHER window and says nothing about this one. It cannot produce a
-        // cutoff (proved by a unit test in `evidence.rs`), but every consumer
-        // that does not test the bound direction still admits it at full
-        // nominal depth. The registered question is whether it should carry a
-        // confidence/depth penalty. These counters measure what a penalty WOULD
-        // change; no consumer branches on any of them.
-        //
-        // `contradict_hits` is UNGATED, unlike `tt_bound_contradicts_window`
-        // above, which only counts the cutoff-eligible subset (deep enough, at a
-        // non-PV non-excluded node). The consumers below have their own, looser
-        // depth rules, so the gated figure understates their exposure.
-        contradict_hits,
-        // eval_for_pruning: the highest-volume consumer. `slack` is
-        // `ev.depth` relative to the accepted floor of zero. A hypothetical
-        // penalty of P plies blocks exactly the cases with slack < P — one
-        // histogram answers every P.
-        contradict_refined_eval,
-        contradict_refine_slack_0,
-        contradict_refine_slack_1,
-        contradict_refine_slack_2_3,
-        contradict_refine_slack_4_7,
-        contradict_refine_slack_8_plus,
-        contradict_refine_delta_sum,
-        // Singular seeds its verification window from this stored score.
-        contradict_singular_attempt,
-        contradict_singular_changed_depth,
-        // The multi-cut arm RETURNS, so it cannot be counted alongside the
-        // extension outcomes above; it needs its own counter at its own site.
-        contradict_singular_multicut,
-        // A DEEP contradicting entry suppresses IIR, i.e. it is trusted to
-        // order the node even though it resolved a different window.
-        contradict_iir_suppressed,
-        // Control pair. If a contradicting entry's move is best about as often
-        // as an agreeing one's, the penalty belongs on the SCORE consumers only
-        // and must not touch ordering or IIR. This is the measurement that
-        // decides the shape of the 4.3 change, so it has its own denominator.
-        contradict_move_present,
-        contradict_move_was_best,
-        agree_move_present,
-        agree_move_was_best,
-        // 4.4a SIZING — how much work does each candidate switch actually reach?
-        //
-        // All exact, all measured with the switches OFF, so they size the arms
-        // BEFORE the bundle is chosen rather than after a gate has been spent.
-        // `tt_pv_veto` above is the shared denominator: the nodes where one
-        // inherited PV bit currently blocks all four mechanisms at once. These
-        // count, per mechanism, how many of those vetoed nodes would additionally
-        // satisfy that mechanism's own depth precondition — i.e. the population
-        // its `*AllowTtPv` switch would hand back.
-        tt_pv_veto_rfp_eligible,
-        tt_pv_veto_razor_eligible,
-        tt_pv_veto_nmp_eligible,
-        tt_pv_veto_probcut_eligible,
-        // 4.3 SHADOW — is TT eval refinement SELF-CANCELLING?
-        //
-        // Two depth-floor arms (1 and 2) both measured ~0 Elo while
-        // moving 15-44% of the tree, which has two very different explanations:
-        // the margins absorb it (lesson 2), or the refinement helps as often as
-        // it hurts. Those imply opposite fixes, so measure rather than guess.
-        //
-        // PART 1 - decision flips, at the pruning site. For each consumer, does
-        // the predicate evaluated on `eval_for_pruning` differ from the same
-        // predicate on `static_eval`? `_on` = refinement CAUSED the prune,
-        // `_off` = refinement PREVENTED one static would have taken. Roughly
-        // balanced on/off is the precise form of "self-cancelling", and this
-        // half is unbiased: it is recorded before any of the three can return.
-        refine_flip_nodes,
-        refine_flip_rfp_on,
-        refine_flip_rfp_off,
-        refine_flip_razor_on,
-        refine_flip_razor_off,
-        refine_flip_nmp_on,
-        refine_flip_nmp_off,
-        // PART 2 - did refinement move the eval TOWARD the value the node went
-        // on to report? Recorded at the node tail.
-        //
-        // ⚠ BIASED, and knowably so: a node that pruned never reaches the tail,
-        // so the cases where refinement mattered MOST are exactly the ones
-        // missing. Part 1 sizes that excluded population. The comparison is also
-        // against what the node REPORTED, not against truth — on a fail-low the
-        // reported score is an upper bound, not a value. Read it as "did
-        // refinement agree with the search's own conclusion", nothing stronger.
-        refine_report_nodes,
-        refine_report_closer,
-        refine_report_farther,
-        refine_report_gain_sum,
-        refine_report_loss_sum,
-        // Coverage proof for the shadow consumers planned in 4.2--4.7.
-        shadow_4_2_evidence,
-        shadow_4_3_qsearch,
-        shadow_4_4_selectivity,
-        shadow_4_5_correction,
-        shadow_4_6_prospective_depth,
-        shadow_4_7_root_confidence,
         // 4.9a search-tree occurrence. RAR-M15 measured how often each
         // reference endgame family occurs ON THE BOARD in real games, and 4.9a
         // is ordered on that. These count how often each family is reached in
@@ -845,285 +625,6 @@ pub fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
     correction_probe::record(source, index, key, value);
 }
 
-#[cfg(feature = "diag")]
-pub fn record_best_move(rank: usize, stage: crate::evidence::MoveClass, reduced: bool) {
-    use crate::evidence::MoveClass;
-    use std::sync::atomic::Ordering;
-
-    let rank_counter = match rank {
-        1 => &counters::best_move_rank_1,
-        2 | 3 => &counters::best_move_rank_2_3,
-        4..=7 => &counters::best_move_rank_4_7,
-        _ => &counters::best_move_rank_8_plus,
-    };
-    rank_counter.fetch_add(1, Ordering::Relaxed);
-    // 4.2: takes `MoveClass` rather than a 0..3 integer, so the picker's stage
-    // taxonomy is defined in exactly one place.
-    let stage_counter = match stage {
-        MoveClass::TtMove => &counters::best_stage_tt,
-        MoveClass::GoodCapture => &counters::best_stage_good_capture,
-        MoveClass::Quiet => &counters::best_stage_quiet,
-        MoveClass::BadCapture => &counters::best_stage_bad_capture,
-    };
-    stage_counter.fetch_add(1, Ordering::Relaxed);
-    if reduced {
-        counters::best_was_reduced.fetch_add(1, Ordering::Relaxed);
-    }
-}
-
-/// 4.2b: record how a contradicting entry's MOVE fared for ordering, against
-/// the agreeing-entry control.
-///
-/// Called from both node exits so the numerator and denominator always cover the
-/// same node set — the same trap `cutoff_first_move` documents. `hit` without
-/// `contradicts` is the control group and includes exact bounds.
-#[cfg(feature = "diag")]
-#[inline]
-pub fn record_contradiction_ordering(contradicts: bool, hit: bool, best_was_tt_move: bool) {
-    use std::sync::atomic::Ordering;
-
-    if contradicts {
-        counters::contradict_move_present.fetch_add(1, Ordering::Relaxed);
-        if best_was_tt_move {
-            counters::contradict_move_was_best.fetch_add(1, Ordering::Relaxed);
-        }
-    } else if hit {
-        counters::agree_move_present.fetch_add(1, Ordering::Relaxed);
-        if best_was_tt_move {
-            counters::agree_move_was_best.fetch_add(1, Ordering::Relaxed);
-        }
-    }
-}
-
-/// 4.3 shadow, part 2: did the refined eval sit closer than the plain static
-/// eval to the score this node went on to report?
-///
-/// `gain`/`loss` accumulate the centipawn improvement or worsening so a small
-/// number of large disagreements cannot hide behind a majority of tiny ones —
-/// the count alone would call that self-cancelling when it is not.
-#[cfg(feature = "diag")]
-#[inline]
-pub fn record_refine_agreement(static_eval: i32, refined: i32, reported: i32) {
-    use std::sync::atomic::Ordering;
-
-    counters::refine_report_nodes.fetch_add(1, Ordering::Relaxed);
-    let plain_err = i64::from(static_eval - reported).abs();
-    let refined_err = i64::from(refined - reported).abs();
-    if refined_err < plain_err {
-        counters::refine_report_closer.fetch_add(1, Ordering::Relaxed);
-        let gain = u64::try_from(plain_err - refined_err).unwrap_or(0);
-        counters::refine_report_gain_sum.fetch_add(gain, Ordering::Relaxed);
-    } else if refined_err > plain_err {
-        counters::refine_report_farther.fetch_add(1, Ordering::Relaxed);
-        let loss = u64::try_from(refined_err - plain_err).unwrap_or(0);
-        counters::refine_report_loss_sum.fetch_add(loss, Ordering::Relaxed);
-    }
-}
-
-/// 4.2b: bucket the depth slack a contradicting entry had when it refined
-/// `eval_for_pruning`. A penalty of P plies blocks every case with slack < P.
-#[cfg(feature = "diag")]
-#[inline]
-pub fn record_contradiction_refine(slack: i32, delta: u64) {
-    use std::sync::atomic::Ordering;
-
-    counters::contradict_refined_eval.fetch_add(1, Ordering::Relaxed);
-    counters::contradict_refine_delta_sum.fetch_add(delta, Ordering::Relaxed);
-    let bucket = match slack {
-        i32::MIN..=0 => &counters::contradict_refine_slack_0,
-        1 => &counters::contradict_refine_slack_1,
-        2..=3 => &counters::contradict_refine_slack_2_3,
-        4..=7 => &counters::contradict_refine_slack_4_7,
-        _ => &counters::contradict_refine_slack_8_plus,
-    };
-    bucket.fetch_add(1, Ordering::Relaxed);
-}
-
-/// One completed root iteration, as the 4.7b diagnostics see it.
-///
-/// A struct rather than nine positional scalars: the recorder takes every field
-/// of the same snapshot, and a positional list of `i32`/`f64`/`bool` is exactly
-/// the kind of call site that silently transposes two arguments.
-#[cfg(feature = "diag")]
-pub struct RootConfidenceShadow {
-    pub gap: i32,
-    pub deviation: i32,
-    pub effort: f64,
-    pub best_changed: bool,
-    /// True when no other root move reached this depth, so `gap` is zero for
-    /// want of a rival rather than for want of separation.
-    pub no_rival: bool,
-    pub scalar: i32,
-    pub instability: f64,
-    pub pooled_instability: Option<u64>,
-    pub best_age: usize,
-    pub pv_len: usize,
-    pub fails: i32,
-    /// Clock multiplier the shipped formula applies.
-    pub baseline_time: f64,
-    /// Clock multiplier `RootConfTime = 1` would apply instead.
-    pub candidate_time: f64,
-}
-
-/// Root statistics are cold and diagnostic-only. Floating-point conversion is
-/// intentionally lossy because these are aggregate telemetry units, not search
-/// inputs (effort in ppm, deviation in cp, multipliers in ten-thousandths).
-#[cfg(feature = "diag")]
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-pub fn record_root_confidence(shadow: &RootConfidenceShadow) {
-    use std::sync::atomic::Ordering;
-
-    let add = |counter: &std::sync::atomic::AtomicU64, value: u64| {
-        counter.fetch_add(value, Ordering::Relaxed);
-    };
-    // Octave buckets. The boundaries are where they are so the MEDIAN of each
-    // input is identifiable: a scale coordinate seeded off a mean would be
-    // dragged by the decisive tail (a mate-range gap is hundreds of cp), and
-    // one seeded off a round number would sit wherever the round number sits.
-    let bucket = |value: i32, counters: [&std::sync::atomic::AtomicU64; 4]| {
-        let slot = match value {
-            i32::MIN..8 => counters[0],
-            8..32 => counters[1],
-            32..128 => counters[2],
-            _ => counters[3],
-        };
-        slot.fetch_add(1, Ordering::Relaxed);
-    };
-
-    add(&counters::root_iterations, 1);
-    add(
-        &counters::root_gap_sum,
-        u64::from(shadow.gap.unsigned_abs()),
-    );
-    add(
-        &counters::root_deviation_sum,
-        u64::from(shadow.deviation.unsigned_abs()),
-    );
-    add(
-        &counters::root_effort_ppm_sum,
-        (shadow.effort.clamp(0.0, 1.0) * 1_000_000.0) as u64,
-    );
-    if shadow.best_changed {
-        add(&counters::root_best_changes, 1);
-    }
-    add(&counters::shadow_4_7_root_confidence, 1);
-
-    add(
-        &counters::rootconf_scalar_sum,
-        u64::from(shadow.scalar.clamp(0, 1000).unsigned_abs()),
-    );
-    let quartile = match shadow.scalar {
-        i32::MIN..250 => &counters::rootconf_scalar_q1,
-        250..500 => &counters::rootconf_scalar_q2,
-        500..750 => &counters::rootconf_scalar_q3,
-        _ => &counters::rootconf_scalar_q4,
-    };
-    add(quartile, 1);
-    if shadow.no_rival {
-        add(&counters::rootconf_gap_no_rival, 1);
-    }
-    let gap_slot = match shadow.gap {
-        i32::MIN..1 => &counters::rootconf_gap_0,
-        1..8 => &counters::rootconf_gap_1_7,
-        8..128 => &counters::rootconf_gap_8_127,
-        _ => &counters::rootconf_gap_128_plus,
-    };
-    add(gap_slot, 1);
-    bucket(
-        shadow.deviation,
-        [
-            &counters::rootconf_dev_lt_8,
-            &counters::rootconf_dev_8_31,
-            &counters::rootconf_dev_32_127,
-            &counters::rootconf_dev_128_plus,
-        ],
-    );
-    if shadow.effort > crate::search::EFFORT_TERM_FLOOR {
-        add(&counters::rootconf_effort_term_live, 1);
-    }
-    if shadow.fails > 0 {
-        add(&counters::rootconf_window_fail_iters, 1);
-    }
-    add(
-        &counters::rootconf_best_age_sum,
-        u64::try_from(shadow.best_age).unwrap_or(u64::MAX),
-    );
-    add(
-        &counters::rootconf_instab_milli_sum,
-        (shadow.instability.clamp(0.0, 1_000.0) * 1000.0) as u64,
-    );
-    if let Some(pooled) = shadow.pooled_instability {
-        add(&counters::rootconf_pool_instab_milli_sum, pooled);
-    }
-    if shadow.pv_len < 2 {
-        add(&counters::rootconf_pv_truncated, 1);
-    }
-
-    let baseline = (shadow.baseline_time.max(0.0) * 10_000.0) as u64;
-    let candidate = (shadow.candidate_time.max(0.0) * 10_000.0) as u64;
-    add(&counters::rootconf_tm_baseline_sum, baseline);
-    add(&counters::rootconf_tm_candidate_sum, candidate);
-    // "Disagrees" means by more than 1% of the baseline: below that the two
-    // multipliers are the same decision expressed with different rounding.
-    let tolerance = baseline / 100;
-    if candidate > baseline.saturating_add(tolerance) {
-        add(&counters::rootconf_tm_longer, 1);
-    } else if candidate < baseline.saturating_sub(tolerance) {
-        add(&counters::rootconf_tm_shorter, 1);
-    }
-}
-
-/// 9.7.5(b) per-thread completed depth — the counter that distinguishes "the
-/// pool is deep but the main thread is shallow" from "every thread is shallow".
-/// A plain global counter cannot express it, so this is a small indexed table
-/// written once per thread per search.
-#[cfg(feature = "diag")]
-pub mod smp {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    /// Threads tracked individually. Far below `MAX_THREADS` (1024) on purpose:
-    /// nobody measures SMP quality at 1024 threads, and ids beyond this fold
-    /// into the last slot rather than being lost or panicking.
-    pub const MAX_TRACKED: usize = 64;
-
-    /// `usize` so the caller's `completed_depth` needs no conversion — the
-    /// project bans truncating casts and a lossless one would be noise here.
-    pub static THREAD_DEPTH: [AtomicUsize; MAX_TRACKED] =
-        [const { AtomicUsize::new(0) }; MAX_TRACKED];
-
-    pub fn record_depth(thread_id: usize, depth: usize) {
-        THREAD_DEPTH[thread_id.min(MAX_TRACKED - 1)].store(depth, Ordering::Relaxed);
-    }
-
-    pub fn reset() {
-        for slot in &THREAD_DEPTH {
-            slot.store(0, Ordering::Relaxed);
-        }
-    }
-
-    /// Emits only threads that completed a depth, so the serial case prints one
-    /// line and the dump stays readable.
-    pub fn dump() {
-        for (id, slot) in THREAD_DEPTH.iter().enumerate() {
-            let depth = slot.load(Ordering::Relaxed);
-            if depth > 0 {
-                crate::info_string!("diag thread_depth_{} {}", id, depth);
-            }
-        }
-    }
-}
-
-/// Record a thread's completed depth (no-op without the `diag` feature).
-#[inline(always)]
-pub fn record_thread_depth(thread_id: usize, depth: usize) {
-    #[cfg(feature = "diag")]
-    smp::record_depth(thread_id, depth);
-    #[cfg(not(feature = "diag"))]
-    {
-        let _ = (thread_id, depth);
-    }
-}
-
 /// 9.6(b) side-channel: `eval_king_safety` records the danger-table index it
 /// reads, so the dual-eval comparison can bucket its findings by king danger
 /// without threading a return value through the whole eval stack. A
@@ -1193,7 +694,6 @@ pub fn reset() {
     #[cfg(feature = "diag")]
     {
         counters::reset();
-        smp::reset();
         correction_probe::reset();
     }
 }
@@ -1293,6 +793,5 @@ pub fn dump() {
     #[cfg(feature = "diag")]
     {
         counters::dump();
-        smp::dump();
     }
 }

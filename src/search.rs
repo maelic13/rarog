@@ -18,9 +18,7 @@ use crate::search_threads::{
 };
 use crate::syzygy::{self, Wdl};
 use crate::time_manager::{RuntimeLimits, compute_runtime_limits};
-// `MoveClass` is read only by the diagnostic best-move census; the class itself
-// is always computed (it lives on `MoveEvidence`), but nothing in a production
-// build names the type.
+// `MoveClass` is read only by the diagnostic move-stage census.
 #[cfg(feature = "diag")]
 use crate::evidence::MoveClass;
 use crate::evidence::{MoveEvidence, NodeEvidence, OutcomeKind};
@@ -78,23 +76,20 @@ fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
     let div_f = div as f64 / 1024.0;
     let mut table = Box::new([[0i32; 64]; 64]);
     for (depth, row) in table.iter_mut().enumerate().skip(1) {
-        for (move_index, value) in row.iter_mut().enumerate().skip(1) {
+        for (searched, value) in row.iter_mut().enumerate().skip(1) {
             *value =
-                (1024.0 * (base_f + (depth as f64).ln() * (move_index as f64).ln() / div_f)) as i32;
+                (1024.0 * (base_f + (depth as f64).ln() * (searched as f64).ln() / div_f)) as i32;
         }
     }
     table
 }
 
 #[inline]
-fn lmr_reduction(r: i32, new_depth: i32, min_reduced_depth: i32) -> i32 {
-    // 4.8.1: the ceiling is what the reduced search is allowed to consume.
-    // At `min_reduced_depth == 0` this is the accepted behaviour and the
-    // reduced search may run at depth 0, i.e. in quiescence. `max(0)` keeps
-    // the ceiling non-negative when new_depth is already below the floor,
-    // so a shallow move is simply left unreduced rather than extended.
-    let ceiling = (new_depth - min_reduced_depth).max(0);
-    (r >> 10).clamp(0, ceiling)
+fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
+    // 4.8.1: the ceiling is what the reduced search is allowed to consume: the
+    // reduced search may run at depth 0, i.e. in quiescence. `max(0)` keeps the
+    // ceiling non-negative, so a shallow move is left unreduced, not extended.
+    (r >> 10).clamp(0, new_depth.max(0))
 }
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchEvent {
@@ -215,185 +210,11 @@ impl RootMove {
     }
 }
 
-/// How well-determined the root is after one COMPLETED iteration.
-///
-/// Phase 4.7b's whole point is that there is exactly ONE of these. Before it,
-/// the clock derived its own view of root stability from best-move changes and
-/// effort while aspiration derived a separate view from nothing at all, and
-/// neither could say what the other was already charging for. One snapshot, two
-/// consumers, each behind its own switch.
-///
-/// Built only from a completed iteration, never a partial one — which is what
-/// keeps an aborted search on last-completed evidence (4.7a, `tests/root_abort`).
-#[derive(Copy, Clone, Debug, Default)]
-pub(crate) struct RootConfidence {
-    /// Score gap from the best move to the best of the rest, in centipawns.
-    #[cfg_attr(not(feature = "diag"), allow(dead_code))]
-    gap: i32,
-    /// Standard deviation of the best move's completed-iteration scores, in
-    /// centipawns, from its running mean/mean-square pair.
-    deviation: i32,
-    /// Share of the iteration's nodes spent under the best move, 0.0..=1.0.
-    effort: f64,
-    /// Aspiration re-searches this iteration, by direction.
-    fail_lows: i32,
-    fail_highs: i32,
-    /// This thread's decaying best-move-change count.
-    instability: f64,
-    /// The pool's mean of the same count, when `RootConfPoolInstability` is on
-    /// and a pool exists. ⚠ Read by [`Self::time_factor`] and nothing else.
-    pool_instability: Option<f64>,
-}
-
-/// Confidence returned when the model has no enabled inputs at all, i.e. every
-/// weight was fitted to zero. "Unknown" is the midpoint, not zero.
-const NEUTRAL_CONFIDENCE: i32 = 500;
-
-/// Widening bumps a single side of the aspiration window may accumulate. Makes
-/// `RootConfAspiration` bounded by construction rather than by the scores
-/// happening to behave.
-const ASP_CONF_FAIL_BUMP_CAP: i32 = 3;
-
-impl RootConfidence {
-    /// Confidence in the completed root result, per mille.
-    ///
-    /// Four terms, each normalised to `0..=1000` and weighted by its own
-    /// coordinate: SEPARATION (the gap to the best of the rest), STEADINESS
-    /// (the best move's score deviation), EFFORT (share of the iteration spent
-    /// on it) and WINDOW (aspiration re-searches this iteration).
-    ///
-    /// ⚠ Two of the inputs Plan 4.7 lists are deliberately absent, and both
-    /// absences are the no-double-counting rule rather than oversights.
-    ///
-    /// INSTABILITY is time-only. Keeping it out of the scalar is what makes
-    /// "pool worker instability for time, not result ownership" structural:
-    /// [`Self::aspiration_deltas`] reads only this function, so it cannot see
-    /// pooled helper state however the switches are set.
-    ///
-    /// BEST-MOVE AGE is the same signal as instability in another encoding —
-    /// `tot_best_move_changes` halves every iteration and gains 1 on a change,
-    /// so an age of `n` implies an instability below `2^-n` plus older history.
-    /// Charging both would price one fact twice, so age is not a field here at
-    /// all; it is measured instead (`rootconf_best_age_sum` against
-    /// `rootconf_instab_milli_sum`), which keeps the claim falsifiable without
-    /// leaving an uncharged input lying inside the model.
-    ///
-    /// PV LENGTH is likewise measured only (`rootconf_pv_truncated`), and stays
-    /// out until that counter shows a population — 4.5d's lesson, where a
-    /// context with a real mean and no population would have bought a table
-    /// that never filled.
-    pub(crate) fn scalar(&self, params: &SearchParams) -> i32 {
-        let deviation = i64::from(self.deviation.max(0));
-        let dev_scale = i64::from(params.root_conf_dev_scale.max(1));
-        let steadiness = 1000 * dev_scale / (dev_scale + deviation);
-
-        // KEEP-ALLOW: `effort_term` clamps to `0.0..=1.0` BEFORE this, so the
-        // product is provably inside `0..=1000` rather than merely saturating,
-        // and `round` is the rounding intended. Same contract as the window
-        // centre's cast in `search_root`.
-        #[expect(clippy::cast_possible_truncation)]
-        let effort = (effort_term(self.effort) * 1000.0).round() as i64;
-
-        let fails = i64::from(self.fail_lows.max(0) + self.fail_highs.max(0));
-        let window = 1000 / (1 + fails);
-
-        let weights = [
-            (i64::from(params.root_conf_w_deviation.max(0)), steadiness),
-            (i64::from(params.root_conf_w_effort.max(0)), effort),
-            (i64::from(params.root_conf_w_window.max(0)), window),
-        ];
-        let total: i64 = weights.iter().map(|(weight, _)| *weight).sum();
-        if total == 0 {
-            return NEUTRAL_CONFIDENCE;
-        }
-        let weighted: i64 = weights.iter().map(|(weight, term)| weight * term).sum();
-        i32::try_from((weighted / total).clamp(0, 1000)).unwrap_or(NEUTRAL_CONFIDENCE)
-    }
-
-    /// The clock multiplier that REPLACES the baseline's
-    /// `instability × effort` product when `RootConfTime` is on.
-    ///
-    /// No double counting, by construction. The baseline product has exactly
-    /// two inputs: effort, which lives inside [`Self::scalar`] and is therefore
-    /// charged there and only there, and instability, which is applied here and
-    /// only here. The interpolation has the same SHAPE as the baseline effort
-    /// factor — one linear ramp between two endpoints — but its own pair of
-    /// them, `TmConfHigh`/`TmConfLow`, seeded so the arm redistributes the
-    /// clock without moving its total. See those coordinates for the derivation.
-    ///
-    /// ⚠ The one place `pool_instability` is read. See its field note.
-    pub(crate) fn time_factor(&self, params: &SearchParams) -> f64 {
-        let confidence = f64::from(self.scalar(params)) / 1000.0;
-        let instability = self.pool_instability.unwrap_or(self.instability);
-        tm_confidence_factor(params, confidence) * tm_instability_factor(params, instability)
-    }
-
-    /// Initial `(alpha_delta, beta_delta)` for the next iteration's aspiration
-    /// window when `RootConfAspiration` is on.
-    ///
-    /// Bounded and asymmetric. Bounded: the width is a percentage of the
-    /// baseline delta between two declared coordinates, each side takes at most
-    /// [`ASP_CONF_FAIL_BUMP_CAP`] widening bumps, and the result is clamped into
-    /// the score domain. Asymmetric: a side that failed last iteration is the
-    /// side whose bound was wrong, so it — and not its partner — opens.
-    pub(crate) fn aspiration_deltas(&self, base_delta: i32, params: &SearchParams) -> (i32, i32) {
-        let confidence = i64::from(self.scalar(params));
-        let wide = i64::from(params.asp_conf_wide_pct);
-        let narrow = i64::from(params.asp_conf_narrow_pct);
-        let percent = wide + (narrow - wide) * confidence / 1000;
-        let width = i64::from(base_delta) * percent / 100;
-        let widen = |fails: i32| -> i32 {
-            let bumps = i64::from(fails.clamp(0, ASP_CONF_FAIL_BUMP_CAP));
-            let scaled = width * (100 + i64::from(params.asp_conf_fail_pct) * bumps) / 100;
-            i32::try_from(scaled.clamp(1, i64::from(INF_SCORE))).unwrap_or(INF_SCORE)
-        };
-        (widen(self.fail_lows), widen(self.fail_highs))
-    }
-}
-
-/// Share of an iteration below which the effort term reads its floor. Named
-/// because 4.7b's diagnostics have to count how often the term is above it —
-/// see `rootconf_effort_term_live`.
-pub(crate) const EFFORT_TERM_FLOOR: f64 = 0.79;
-
-/// Iteration-skip pattern for helper threads (4.9c), the classic Lazy-SMP
-/// tables: a thread skips depth `d` when `((d + phase) / size)` is odd.
-///
-/// The shape is what matters. `size` grows with thread index so low-numbered
-/// helpers alternate quickly and high-numbered ones skip in longer runs, and
-/// `phase` offsets them against each other, so at any instant the pool is
-/// spread across several depths instead of stacked on one. Twenty entries then
-/// repeat, which is ample: the pattern only has to decorrelate threads from one
-/// another, not be unique per thread forever.
-///
-/// Deliberately NOT including a position term. Stockfish's variant adds
-/// `game_ply` so the pattern differs move to move; that is omitted here so a
-/// given position always produces the same skip structure, which keeps a 4T/8T
-/// A/B reproducible. Adding it is a later question, not a free improvement.
-const SMP_SKIP_SIZE: [u32; 20] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
-const SMP_SKIP_PHASE: [u32; 20] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
-
-/// Does this helper skip iteration `depth`?
-///
-/// Thread 0 NEVER skips, whatever the switch says. It owns the reported result,
-/// the emitted info lines and the soft-stop estimate, so an iteration it did not
-/// run is one the caller never sees — the whole mechanism has to be paid for by
-/// the helpers.
-fn helper_skips_iteration(thread_id: usize, depth: usize) -> bool {
-    if thread_id == 0 {
-        return false;
-    }
-    let slot = (thread_id - 1) % SMP_SKIP_SIZE.len();
-    let depth = u32::try_from(depth).unwrap_or(u32::MAX);
-    ((depth + SMP_SKIP_PHASE[slot]) / SMP_SKIP_SIZE[slot]) % 2 == 1
-}
+/// Share of an iteration below which the effort term reads its floor.
+const EFFORT_TERM_FLOOR: f64 = 0.79;
 
 /// Effort normalised to `0.0..=1.0`: 0 at or below [`EFFORT_TERM_FLOOR`] of the
 /// iteration spent on the best move, 1 at the whole iteration.
-///
-/// Single-sourced on purpose. The baseline clock and the 4.7b confidence scalar
-/// both consume effort, and a second copy of this interpolation is exactly how
-/// two consumers drift into disagreeing about the same number.
 fn effort_term(effort: f64) -> f64 {
     ((effort - EFFORT_TERM_FLOOR) / (1.0 - EFFORT_TERM_FLOOR)).clamp(0.0, 1.0)
 }
@@ -410,9 +231,8 @@ fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
 ///
 /// ⚠ Measured near-CONSTANT (RAR-S47). The band starts at
 /// [`EFFORT_TERM_FLOOR`], and effort averages 37.9% of the iteration, so this
-/// reads its `TmEffortHigh` endpoint on 473 of 520 bench iterations (91.0%).
-/// That is the concrete thing `RootConfTime` replaces: not a rival estimator,
-/// but a term that is a function on 9% of iterations and a constant on the rest.
+/// reads its `TmEffortHigh` endpoint on 473 of 520 bench iterations (91.0%):
+/// a function on 9% of iterations and a constant on the rest. D.1 owns it.
 fn tm_effort_factor(params: &SearchParams, effort: f64) -> f64 {
     tm_interpolate(
         f64::from(params.tm_effort_high) / 10_000.0,
@@ -421,18 +241,7 @@ fn tm_effort_factor(params: &SearchParams, effort: f64) -> f64 {
     )
 }
 
-/// Confidence factor: the same ramp shape on its own endpoints.
-fn tm_confidence_factor(params: &SearchParams, confidence: f64) -> f64 {
-    tm_interpolate(
-        f64::from(params.tm_conf_high) / 10_000.0,
-        f64::from(params.tm_conf_low) / 10_000.0,
-        confidence,
-    )
-}
-
 /// Best-move-instability factor: rises when the best move changed recently.
-/// Shared by the baseline clock and by [`RootConfidence::time_factor`], so the
-/// arm cannot silently re-shape the term it claims to keep.
 fn tm_instability_factor(params: &SearchParams, instability: f64) -> f64 {
     f64::from(params.tm_instab_base) / 10_000.0
         + f64::from(params.tm_instab_slope) / 10_000.0 * instability
@@ -564,14 +373,6 @@ struct ReductionInputs {
     tt_move_is_null: bool,
     improving: bool,
     is_root: bool,
-    /// Move count at the PARENT when it played into this node.
-    parent_move_count: i32,
-    /// Quiet history of the move that led to this node.
-    parent_stat_score: i32,
-    /// The node's TT move is a capture.
-    tt_move_is_capture: bool,
-    /// The node's TT move was proved singular by the extension search.
-    tt_move_singular: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -582,17 +383,6 @@ struct NodeContext {
     piece: Piece,
     /// Static eval of the position at this ply, or `VALUE_NONE` in check.
     static_eval: i32,
-    /// 4.5.1 MOVE COUNT at this ply when `mv` was made, i.e. how many moves
-    /// this node had already searched. Read by the CHILD, which reduces less
-    /// when its parent had to look at many moves before this one — a node
-    /// whose parent was still searching late is less likely to be a clean cut.
-    move_count: i32,
-    /// 4.5.1 STAT SCORE of `mv`: the quiet history the reduction saw when this
-    /// move was chosen. Read by the CHILD, which compares its own move's
-    /// history against it. An absolute history says how good a move looks; the
-    /// comparison says whether the position is getting better or worse for the
-    /// side to move, which is what the reduction wants to know.
-    stat_score: i32,
     /// 4.5.3 CONTINUATION KEY: `piece_to_index(piece, mv.to)`, derived once
     /// when the move is pushed. Meaningless when `mv` is null; every consumer
     /// checks that first.
@@ -625,8 +415,6 @@ impl Default for NodeContext {
             piece: Piece::Pawn,
             static_eval: VALUE_NONE,
             cont_key: 0,
-            move_count: 0,
-            stat_score: 0,
         }
     }
 }
@@ -681,20 +469,6 @@ pub struct Searcher {
     non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
     /// 10.3(8a): boxed const-size, see [`Searcher::pawn_history`].
     continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
-    /// 4.5b: continuation correction at 2- and 4-ply distance.
-    ///
-    /// The pre-4.5b model had a SINGLE slot keyed on the 1-ply-previous
-    /// `(piece, to)`, so a correction learned from one reply was the only
-    /// continuation context available. These add the same compact keying at
-    /// distance 2 and 4, which is what PLAN 4.5's "true compact 2/4-ply
-    /// continuation-correction pairs" asks for; the three together form the pair
-    /// structure rather than a single slot standing in for it.
-    ///
-    /// Both are inert at the seeded weights of 0: `corrected_eval_from_raw`
-    /// skips the read and `update_correction` skips the write, so neither table
-    /// is even touched and `bench` is unchanged.
-    continuation_correction_2ply: Box<[i16; PIECE_TO_SIZE]>,
-    continuation_correction_4ply: Box<[i16; PIECE_TO_SIZE]>,
     countermove: Box<[[Move; 64]; 64]>,
     root_move_offset: usize,
     /// 8.13: 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
@@ -710,15 +484,6 @@ pub struct Searcher {
     root_iteration_nodes: u64,
     root_best_nodes: u64,
     root_best_effort: f64,
-    /// Non-zero while a verified null cutoff is being re-searched.
-    ///
-    /// 4.4a promoted this from a diagnostic-only counter to a production one:
-    /// NMP verification passes `allow_null = false` at its own root only, so
-    /// descendants re-enable null and the subtree can null-prune inside the very
-    /// search meant to check a null cutoff. With
-    /// `NmpSuppressNullInVerification` on, this field suppresses NMP for the
-    /// whole subtree instead of just its root.
-    nmp_verify_nesting: usize,
 }
 
 impl Default for Searcher {
@@ -763,8 +528,6 @@ impl Default for Searcher {
             minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
             non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
             continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
-            continuation_correction_2ply: Box::new([0; PIECE_TO_SIZE]),
-            continuation_correction_4ply: Box::new([0; PIECE_TO_SIZE]),
             countermove: Box::new([[Move::NULL; 64]; 64]),
             root_move_offset: 0,
             thread_id: 0,
@@ -777,7 +540,6 @@ impl Default for Searcher {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
-            nmp_verify_nesting: 0,
         }
     }
 }
@@ -808,25 +570,6 @@ impl MovePicker {
             tt_move,
             stage: Stage::TtMove,
             ply,
-        }
-    }
-
-    /// Abandon the remaining quiet moves.
-    ///
-    /// 4.6.5: the reference feeds its move-count-pruning flag back INTO the
-    /// picker, so once the flag is set it stops emitting quiets altogether.
-    /// Rarog had no such path: it generated every quiet, scored it, and then
-    /// rejected them one at a time in the move loop. Skipping from
-    /// `GenerateQuiets` also avoids generating and scoring them at all, which
-    /// is where most of the saving is.
-    ///
-    /// Safe from either stage: `BadCaptures` is next in declaration order, and
-    /// the bad-capture partition is independent of the quiet buffer.
-    fn skip_quiets(&mut self) {
-        if let Self::Staged { stage, .. } = self
-            && matches!(*stage, Stage::GenerateQuiets | Stage::Quiets)
-        {
-            *stage = Stage::BadCaptures;
         }
     }
 
@@ -1041,8 +784,6 @@ impl Searcher {
         *self.minor_correction_history = [[0; CORR_SIZE]; 2];
         *self.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
         *self.continuation_correction_history = [0; PIECE_TO_SIZE];
-        *self.continuation_correction_2ply = [0; PIECE_TO_SIZE];
-        *self.continuation_correction_4ply = [0; PIECE_TO_SIZE];
         *self.countermove = [[Move::NULL; 64]; 64];
         self.killers = [[Move::NULL; 2]; MAX_PLY];
     }
@@ -1203,7 +944,6 @@ impl Searcher {
         self.root_iteration_nodes = 0;
         self.root_best_nodes = 0;
         self.root_best_effort = 0.0;
-        self.nmp_verify_nesting = 0;
         if age_tt {
             self.tt.new_search();
         }
@@ -1324,70 +1064,6 @@ impl Searcher {
         }
     }
 
-    /// Summarise the iteration that has just completed (4.7b).
-    ///
-    /// Cold and never inlined for the same reason `RootMove::record_search` is:
-    /// it runs a few dozen times per search, and letting a floating-point
-    /// statistics block into `negamax`'s code layout measurably cost NPS when
-    /// 10.1 first tried it.
-    #[cold]
-    #[inline(never)]
-    fn root_confidence(
-        &self,
-        depth: usize,
-        bestmove: Move,
-        best_score: i32,
-        instability: f64,
-        fail_lows: i32,
-        fail_highs: i32,
-    ) -> RootConfidence {
-        let best = self.root_move_records.iter().find(|rm| rm.mv == bestmove);
-        // The best of the REST, restricted to moves this iteration actually
-        // searched — a stale score from an earlier depth is not evidence about
-        // this one. With no rival searched the gap is 0, i.e. no separation is
-        // claimed rather than an infinite one.
-        let second_score = self
-            .root_move_records
-            .iter()
-            .filter(|rm| rm.last_search_depth == depth && rm.mv != bestmove)
-            .map(|rm| rm.score)
-            .max()
-            .unwrap_or(best_score);
-        let variance = best.map_or(0.0, |rm| {
-            (rm.mean_squared_score - rm.average_score * rm.average_score).max(0.0)
-        });
-        // KEEP-ALLOW: the square root of a non-negative variance is clamped
-        // into the score domain BEFORE the cast, so the conversion is provably
-        // exact rather than saturating, and NaN is handled by the clamp instead
-        // of the language's float-cast rule.
-        #[expect(clippy::cast_possible_truncation)]
-        let deviation = variance.sqrt().clamp(0.0, f64::from(INF_SCORE)).round() as i32;
-        // Pooling is a CLOCK input, so it is admitted only when its own switch
-        // is on and only when a pool exists; a serial search has no shared
-        // state and this stays `None`.
-        let pool_instability = self
-            .shared_state
-            .as_ref()
-            .filter(|_| self.params.root_conf_pool_instability == 1)
-            .and_then(|shared| shared.pooled_instability())
-            .map(|milli| {
-                // KEEP-ALLOW: `u64 -> f64` on a value bounded by the published
-                // thousandths of a decaying count that converges to 2.0.
-                #[expect(clippy::cast_precision_loss)]
-                let milli = milli as f64;
-                milli / 1000.0
-            });
-        RootConfidence {
-            gap: best_score.saturating_sub(second_score),
-            deviation,
-            effort: self.root_best_effort,
-            fail_lows,
-            fail_highs,
-            instability,
-            pool_instability,
-        }
-    }
-
     fn search_root<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         mut board: Board,
@@ -1421,28 +1097,8 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
-        // 4.7b: the last COMPLETED iteration's snapshot. `None` until one
-        // completes, which is why aspiration cannot act on a partial root.
-        let mut confidence: Option<RootConfidence> = None;
-        // Depth at which the current best move took over. Diagnostic-only, and
-        // compiled out otherwise: best-move age is MEASURED against instability
-        // (see `RootConfidence::scalar`) precisely because it must not become a
-        // second charge for the same fact, so production carries no state for
-        // it.
-        #[cfg(feature = "diag")]
-        let mut best_since_depth = 0usize;
 
         for depth in 1..=max_depth {
-            // 4.9c: helpers may skip this iteration so the pool spreads across
-            // depths instead of stacking on one. Gated on `shared_state` as
-            // well as `thread_id` so a serial search cannot reach it even if
-            // the switch is on and a stale id survived.
-            if self.params.smp_iteration_skip == 1
-                && self.shared_state.is_some()
-                && helper_skips_iteration(self.thread_id, depth)
-            {
-                continue;
-            }
             for root_move in &mut self.root_move_records {
                 root_move.begin_iteration();
             }
@@ -1463,41 +1119,10 @@ impl Searcher {
             {
                 window_center = pool_score;
             }
-            // 10.2(a): blend the last completed score with the running average
-            // of completed scores. `asp_center_avg_pct == 0` skips this
-            // entirely and keeps the pure last-score centre bit-for-bit.
-            if self.params.asp_center_avg_pct > 0 && completed_depth > 1 {
-                let pct = self.params.asp_center_avg_pct;
-                // KEEP-ALLOW: the value is clamped into the score domain
-                // BEFORE the cast, so this conversion is provably exact rather
-                // than merely saturating — `[-INF_SCORE, INF_SCORE]` is far
-                // inside `i32`, and `.round()` is the rounding intended. The
-                // clamp also makes NaN handling explicit instead of relying on
-                // the language's float-cast NaN rule.
-                #[expect(clippy::cast_possible_truncation)]
-                let avg = prev_avg_score
-                    .round()
-                    .clamp(-f64::from(INF_SCORE), f64::from(INF_SCORE))
-                    as i32;
-                window_center = (window_center * (100 - pct) + avg * pct) / 100;
-            }
             let use_aspiration =
                 depth >= 4 && window_center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-            // 10.2(a): magnitude-scaled initial half-width; div 0 = flat.
-            let base_delta = if self.params.asp_magnitude_div > 0 {
-                self.params.aspiration_delta + window_center.abs() / self.params.asp_magnitude_div
-            } else {
-                self.params.aspiration_delta
-            };
-            // 4.7b: confidence sizes the window, asymmetrically, from the last
-            // COMPLETED iteration. Off by default, and inert before the first
-            // completed iteration whatever the switch says.
-            let (mut alpha_delta, mut beta_delta) = match confidence {
-                Some(snapshot) if self.params.root_conf_aspiration == 1 => {
-                    snapshot.aspiration_deltas(base_delta, &self.params)
-                }
-                _ => (base_delta, base_delta),
-            };
+            let mut alpha_delta = self.params.aspiration_delta;
+            let mut beta_delta = self.params.aspiration_delta;
             let mut alpha = if use_aspiration {
                 (window_center - alpha_delta).max(-INF_SCORE)
             } else {
@@ -1518,14 +1143,9 @@ impl Searcher {
             let mut fail_high_count = 0i32;
 
             loop {
-                // 10.2(a): confirm a fail-high at slightly reduced depth. The
-                // reduction is 0 by default, which searches at full depth.
-                let search_depth = (infra::to_i32(depth)
-                    - fail_high_count * self.params.asp_fail_high_reduction)
-                    .max(1);
                 let score = self.negamax(
                     &mut board,
-                    search_depth,
+                    infra::to_i32(depth),
                     alpha,
                     beta,
                     0,
@@ -1642,65 +1262,10 @@ impl Searcher {
             tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
                 tot_best_move_changes += 1.0;
-                #[cfg(feature = "diag")]
-                {
-                    best_since_depth = depth;
-                }
+                crate::diag_count!(root_best_changes);
             }
+            crate::diag_count!(root_iterations);
 
-            // 4.7b: ONE snapshot of the completed iteration, built after the
-            // instability update so it describes this iteration rather than the
-            // previous one. Published before it is read, so a pooling thread
-            // sees its own current value in the pool mean.
-            if let Some(shared) = &self.shared_state {
-                // KEEP-ALLOW: `tot_best_move_changes` is a decaying count that
-                // converges to 2.0, so the thousandths are clamped into a small
-                // range before the cast rather than merely saturating.
-                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                let milli = (tot_best_move_changes * 1000.0).clamp(0.0, 1_000_000.0) as u64;
-                shared.publish_instability(self.thread_id, milli);
-            }
-            let snapshot = self.root_confidence(
-                depth,
-                bestmove,
-                best_score,
-                tot_best_move_changes,
-                fail_low_count,
-                fail_high_count,
-            );
-            #[cfg(feature = "diag")]
-            crate::diag::record_root_confidence(&crate::diag::RootConfidenceShadow {
-                gap: snapshot.gap,
-                deviation: snapshot.deviation,
-                effort: snapshot.effort,
-                best_changed: bestmove != previous_bestmove,
-                // Recomputed rather than carried on the snapshot: production
-                // has no use for it, and a diagnostic-only field inside the
-                // model is exactly the kind of uncharged input 4.7b is trying
-                // not to leave lying around.
-                no_rival: !self
-                    .root_move_records
-                    .iter()
-                    .any(|rm| rm.last_search_depth == depth && rm.mv != bestmove),
-                scalar: snapshot.scalar(&self.params),
-                instability: tot_best_move_changes,
-                pooled_instability: self
-                    .shared_state
-                    .as_ref()
-                    .and_then(|shared| shared.pooled_instability()),
-                best_age: completed_depth.saturating_sub(best_since_depth),
-                pv_len: self.pv_len[0],
-                fails: fail_low_count + fail_high_count,
-                // The two clock multipliers side by side, which is what sizes
-                // the `RootConfTime` arm without a game. The live block below
-                // keeps its own multiplication order so the arm-OFF path stays
-                // bit-identical, so the baseline is recomposed here from the
-                // same two shared factors rather than read back out of it.
-                baseline_time: tm_instability_factor(&self.params, tot_best_move_changes)
-                    * tm_effort_factor(&self.params, self.root_best_effort),
-                candidate_time: snapshot.time_factor(&self.params),
-            });
-            confidence = Some(snapshot);
             // Phase 7.5 fix: `falling_eval` must compare this iteration's score
             // against the average of the *prior* iterations. At this point
             // `prev_avg_score` is still that prior average, so capture it here as
@@ -1744,29 +1309,11 @@ impl Searcher {
                 let best_move_instab = tm_instability_factor(&self.params, tot_best_move_changes);
                 // effortFactor: linear interp — at effort≤0.79 → effort_high; at effort≥1.0 → effort_low.
                 let effort_factor = tm_effort_factor(&self.params, self.root_best_effort);
-                // 4.7b: with `RootConfTime` on, the confidence factor REPLACES
-                // the instability × effort product — it does not multiply on
-                // top of it, which is what would double-charge effort (it is
-                // already a term inside the scalar) and instability (already
-                // the snapshot's own time-only input).
-                //
-                // The arm-OFF branch keeps the original multiplication order
-                // literally, so the shipped soft target is bit-identical.
-                let total_time = match confidence {
-                    Some(snapshot) if self.params.root_conf_time == 1 => {
-                        self.limits.optimum_ms
-                            * opt_scale
-                            * falling_eval
-                            * snapshot.time_factor(&self.params)
-                    }
-                    _ => {
-                        self.limits.optimum_ms
-                            * opt_scale
-                            * falling_eval
-                            * best_move_instab
-                            * effort_factor
-                    }
-                };
+                let total_time = self.limits.optimum_ms
+                    * opt_scale
+                    * falling_eval
+                    * best_move_instab
+                    * effort_factor;
                 let soft_target = total_time.min(self.limits.maximum_ms);
                 if self.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
@@ -1831,7 +1378,6 @@ impl Searcher {
         // Phase 4.1: dump per-search counters (no-op without `--features diag`).
         // 9.7.5(b): serial path only — see the reset note above. The parallel
         // dump lives in `search_parallel`, after the helpers are joined.
-        crate::diag::record_thread_depth(self.thread_id, completed_depth);
         if self.shared_state.is_none() {
             crate::diag::dump();
         }
@@ -2083,22 +1629,9 @@ impl Searcher {
         }
     }
 
-    /// 4.6b: LMR reduction in 1024ths, as one formula shared by LMR itself and
-    /// by the prospective depth the pruning consumers may use.
-    ///
-    /// Deliberately EXCLUDES two terms, both documented rather than hidden:
-    ///
-    /// * the per-thread jitter, because it mutates PRNG state and must be drawn
-    ///   exactly once at the real reduction site — it is ±6% of one ply and is
-    ///   not drawn at all at `Threads = 1`;
-    /// * the singular extension, because the pruning consumers run BEFORE the
-    ///   extension is known (pruning at the top of the move loop, extension
-    ///   after it), so a shared pre-move depth cannot include it.
-    ///
-    /// Both callers pass the SAME `ReductionInputs` value, built once per move,
-    /// so the prospective depth and the applied reduction cannot drift apart
-    /// the way this arithmetic already did once. The `debug_assert` at the LMR
-    /// site is kept as a cheap restatement of that, not as the guarantee.
+    /// LMR reduction in 1024ths of a ply. Excludes the per-thread jitter, which
+    /// mutates PRNG state and is drawn once at the reduction site (and not at
+    /// all at `Threads = 1`).
     ///
     /// 4.5.1 removed this function's `#[expect(clippy::too_many_arguments)]`:
     /// the thirteen positional arguments are now one named struct, and the
@@ -2119,10 +1652,6 @@ impl Searcher {
             tt_move_is_null,
             improving,
             is_root,
-            parent_move_count,
-            parent_stat_score,
-            tt_move_is_capture,
-            tt_move_singular,
         } = i;
         let mut r = self.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
         if tt_pv {
@@ -2153,48 +1682,11 @@ impl Searcher {
         r -= quiet_hist * 1024 / self.params.lmr_hist_div;
         // 8.5(b): reduce less when the static eval is heavily corrected.
         r -= corr_abs * self.params.corr_lmr_scale / 128;
-        // ─── 4.5.1 contract additions. All default to 0, so the accepted
-        // fingerprint is preserved until they are fitted. Each is a MECHANISM
-        // taken from the reference; none of its constants are, both because
-        // the independence boundary forbids it and because its thresholds are
-        // in its own history units, which are not Rarog's.
-        //
-        // (a) The TT move is a capture, so a quiet sibling is a worse bet.
-        if is_quiet && tt_move_is_capture {
-            r += self.params.lmr_tt_capture;
-        }
-        // (b) The TT move proved singular here, so this node's value rests on
-        // one move and its siblings deserve a fairer look.
-        if tt_move_singular {
-            r -= self.params.lmr_singular_relief;
-        }
-        // (c) The parent was still searching late when it played into this
-        // node, so this node is less likely to be a clean cut.
-        if parent_move_count >= self.params.lmr_parent_movecount_min {
-            r -= self.params.lmr_parent_movecount_relief;
-        }
-        // (d) Compare this move's history with the move that led here. The
-        // absolute history already has a term above; this asks whether the
-        // position is IMPROVING for the side to move, which the absolute
-        // value cannot say.
-        if is_quiet {
-            let swing = quiet_hist - parent_stat_score;
-            if swing > self.params.lmr_stat_swing_margin {
-                r -= self.params.lmr_stat_swing;
-            } else if swing < -self.params.lmr_stat_swing_margin {
-                r += self.params.lmr_stat_swing;
-            }
-        }
         // 4.6.7: the root is where the answer is chosen, and it was the
         // one node type the reduction could not see.
         if is_root {
             r -= self.params.lmr_root_relief;
         }
-        // 4.10 CANDIDATE: unconditional relief. Applied last, inside
-        // `lmr_reduction_units`, so both call sites see it and the
-        // prospective-depth estimate keeps agreeing with the real reduction —
-        // the `debug_assert_eq!` between them is what enforces that.
-        r -= self.params.lmr_relief;
         r
     }
 
@@ -2300,19 +1792,10 @@ impl Searcher {
         // same entry twice, at `tt_score` and again inside the cutoff block.
         let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
         let tt_pv = ev.pv_line(is_pv);
-        // 4.2b: captured at node entry, against the window this node was ASKED
-        // to resolve. `alpha` is raised by the move loop below, so reading it
-        // later would ask a different question.
-        #[cfg(feature = "diag")]
-        let diag_contradicts = ev.contradicts_window(alpha, beta);
         #[cfg(feature = "diag")]
         if diag_sample {
             if ev.hit {
                 crate::diag_count!(tt_sample_hit);
-                crate::diag_count!(shadow_4_2_evidence);
-                if diag_contradicts {
-                    crate::diag_count!(contradict_hits);
-                }
                 if !is_pv && excluded.is_null() && ev.depth >= depth {
                     match ev.bound {
                         Some(Bound::Exact) => {
@@ -2369,31 +1852,6 @@ impl Searcher {
             && excluded.is_null()
             && let Some(score) = ev.cutoff_score(depth, alpha, beta)
         {
-            // 8.4(a): the TT move just produced a beta cutoff without a
-            // search - today it gets zero feedback. Reward it (quiet
-            // moves only, main/low-ply/pawn histories) at a tunable
-            // fraction of the cutoff bonus. Seed 0 = skip entirely.
-            //
-            // 4.2 note: still unconditional on provenance, so a depth-0 stand
-            // pat can train quiet history through this path. 4.5 owns the
-            // attribution guard; changing it here would be an ungated edit.
-            if matches!(ev.bound, Some(Bound::Lower))
-                && score >= beta
-                && self.params.tt_cutoff_bonus_pct != 0
-                && let Some(mv) = ev.mv.and_then(|m| board.legal_move(m))
-                && !mv.is_capture()
-                && !mv.is_promo()
-            {
-                let bonus = self.history_bonus(depth) * self.params.tt_cutoff_bonus_pct / 100;
-                self.update_quiet_history(
-                    board.side_to_move(),
-                    mv,
-                    board.moving_piece(mv),
-                    board.pawn_key(),
-                    ply,
-                    bonus,
-                );
-            }
             return score;
         }
         let mut tt_move = ev
@@ -2404,21 +1862,6 @@ impl Searcher {
             tt_move = Move::NULL;
         }
 
-        #[cfg(feature = "diag")]
-        let mut diag_iir_applied = false;
-        // 4.2b: a contradicting entry that is deep enough to SUPPRESS IIR — the
-        // search trusts it to order this node even though it resolved a
-        // different window. A depth penalty would let IIR fire here instead.
-        #[cfg(feature = "diag")]
-        if diag_sample
-            && diag_contradicts
-            && excluded.is_null()
-            && depth >= 4
-            && !tt_move.is_null()
-            && !(!is_pv && ev.too_shallow_to_order(depth))
-        {
-            crate::diag_count!(contradict_iir_suppressed);
-        }
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
         if !self.ablated(4)
             && excluded.is_null()
@@ -2427,9 +1870,7 @@ impl Searcher {
         {
             #[cfg(feature = "diag")]
             if diag_sample {
-                diag_iir_applied = true;
                 crate::diag_count!(iir_applied);
-                crate::diag_count!(shadow_4_4_selectivity);
                 if is_pv {
                     crate::diag_count!(iir_pv);
                 }
@@ -2467,12 +1908,9 @@ impl Searcher {
         // seeds are `CorrRfpScale = 3`, `CorrFutScale = 3` and
         // `CorrLmrScale = 27`, so this term is LIVE in the accepted baseline.
         //
-        // 4.5c: it is also applied to a number the correction may no longer be
-        // part of. `eval_for_pruning` below can be REPLACED wholesale by a TT
-        // bound (28.5% of sampled hits refine it, RAR-S30), and when that
-        // happens the corrected eval is discarded — yet these margins are still
-        // widened by the discarded correction's magnitude. That mismatch is what
-        // `CorrSkipWhenTtRefined` measures and can switch off.
+        // It is also applied when `eval_for_pruning` below was REPLACED by a TT
+        // bound (28.5% of sampled hits refine it, RAR-S30) and the corrected
+        // eval discarded; B.2 rebuilds the corrected-eval formula.
         let corr_abs = if static_eval == VALUE_NONE {
             0
         } else {
@@ -2497,20 +1935,6 @@ impl Searcher {
         } else {
             ev.refine_eval(static_eval, 0)
         };
-        // 4.5c: when a TT bound replaced the corrected eval, the correction is
-        // no longer present in the number the margins test, so charging an
-        // uncertainty penalty for it is charging for an adjustment that is not
-        // there. At the seeded 0 this is exactly the prior behaviour.
-        let corr_abs =
-            if self.params.corr_skip_when_tt_refined != 0 && eval_for_pruning != static_eval {
-                0
-            } else {
-                corr_abs
-            };
-        #[cfg(feature = "diag")]
-        if corr_abs != 0 && eval_for_pruning != static_eval {
-            crate::diag_count!(corr_applied_to_replaced_eval);
-        }
         #[cfg(feature = "diag")]
         if diag_sample
             && eval_for_pruning != VALUE_NONE
@@ -2520,176 +1944,43 @@ impl Searcher {
             crate::diag_count!(tt_eval_refined);
             let delta = u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs());
             crate::diag_add!(tt_eval_delta_sum, delta);
-            // 4.2b: an entry that told this node nothing still moved the eval
-            // its forward pruning runs on. Slack is measured against the knob
-            // that actually gates the refinement.
-            if diag_contradicts {
-                crate::diag::record_contradiction_refine(ev.depth, delta);
-            }
         }
         // 8.3 diagnostic: a non-PV, non-check node where the *stored* PV bit
         // (tt_pv true while is_pv false) is what keeps the whole forward-pruning
         // block below from running.
         if tt_pv && !is_pv && !in_check && excluded.is_null() {
             crate::diag_count!(tt_pv_veto);
-            // 4.4a sizing: of the nodes this shared veto blocks, how many would
-            // each mechanism actually reach if its own switch handed them back?
-            // Depth preconditions only — the margin tests need the eval, which
-            // is what the veto is denying them.
-            #[cfg(feature = "diag")]
-            {
-                if depth <= 8 {
-                    crate::diag_count!(tt_pv_veto_rfp_eligible);
-                }
-                if depth <= 3 {
-                    crate::diag_count!(tt_pv_veto_razor_eligible);
-                }
-                if allow_null && depth >= 3 && board.has_non_pawn_material(board.side_to_move()) {
-                    crate::diag_count!(tt_pv_veto_nmp_eligible);
-                }
-                if depth >= 4 {
-                    crate::diag_count!(tt_pv_veto_probcut_eligible);
-                }
-            }
         }
-        // 4.4a: the shared `!tt_pv` veto becomes four per-mechanism predicates.
-        // At the seeded zeros `tt_pv_allows_any` is false, so this outer test is
-        // exactly the old `!tt_pv && ...` — including the fast path, so a
-        // `tt_pv` node still skips the margin arithmetic entirely.
-        let rfp_tt_pv_ok = !tt_pv || self.params.rfp_allow_tt_pv != 0;
-        let razor_tt_pv_ok = !tt_pv || self.params.razor_allow_tt_pv != 0;
-        let nmp_tt_pv_ok = !tt_pv || self.params.nmp_allow_tt_pv != 0;
-        let probcut_tt_pv_ok = !tt_pv || self.params.probcut_allow_tt_pv != 0;
-        let tt_pv_allows_any = rfp_tt_pv_ok || razor_tt_pv_ok || nmp_tt_pv_ok || probcut_tt_pv_ok;
-        if tt_pv_allows_any && !in_check && excluded.is_null() {
+        if !tt_pv && !in_check && excluded.is_null() {
             let futility_margin = (self.params.futility_base
                 + self.params.futility_not_improving * not_improving_i)
                 * depth
                 + corr_abs * self.params.corr_rfp_scale / 128; // 8.5(b)
-            // 4.3 shadow, part 1. Evaluate all three forward-pruning predicates
-            // twice — once on the refined eval the search will actually use, once
-            // on the unrefined static eval — and count the disagreements. Placed
-            // here, before RFP can return, so every consumer is covered by one
-            // block and the sample set is identical for all three. Diagnostic
-            // only: nothing below reads these, and `eval_for_pruning` is
-            // untouched.
-            #[cfg(feature = "diag")]
-            if diag_sample && eval_for_pruning != static_eval {
-                crate::diag_count!(refine_flip_nodes);
-                let nmp_bar = beta
-                    - self.params.nm_depth_coeff * depth
-                    - self.params.nm_improving_bonus * improving_i;
-                let nmp_gated =
-                    allow_null && depth >= 3 && board.has_non_pawn_material(board.side_to_move());
-                // Written out per consumer rather than as an array keyed by an
-                // index: a `(refined, plain, which)` tuple plus a `_` arm is the
-                // positional-sentinel shape the clean-code policy rules out, and
-                // it would silently mislabel a fourth consumer as NMP.
-                if depth <= 8 {
-                    match (
-                        eval_for_pruning - futility_margin >= beta,
-                        static_eval - futility_margin >= beta,
-                    ) {
-                        (true, false) => crate::diag_count!(refine_flip_rfp_on),
-                        (false, true) => crate::diag_count!(refine_flip_rfp_off),
-                        _ => {}
-                    }
-                }
-                if depth <= 3 {
-                    let bar = self.params.razoring_coeff * depth;
-                    match (eval_for_pruning + bar < alpha, static_eval + bar < alpha) {
-                        (true, false) => crate::diag_count!(refine_flip_razor_on),
-                        (false, true) => crate::diag_count!(refine_flip_razor_off),
-                        _ => {}
-                    }
-                }
-                if nmp_gated {
-                    match (eval_for_pruning >= nmp_bar, static_eval >= nmp_bar) {
-                        (true, false) => crate::diag_count!(refine_flip_nmp_on),
-                        (false, true) => crate::diag_count!(refine_flip_nmp_off),
-                        _ => {}
-                    }
-                }
-            }
-            if !self.ablated(1)
-                && rfp_tt_pv_ok
-                && depth <= 8
-                && eval_for_pruning - futility_margin >= beta
-            {
+            if !self.ablated(1) && depth <= 8 && eval_for_pruning - futility_margin >= beta {
                 crate::diag_count!(rfp_cut);
                 return eval_for_pruning;
             }
             if !self.ablated(0)
-                && razor_tt_pv_ok
                 && depth <= 3
                 && eval_for_pruning + self.params.razoring_coeff * depth < alpha
             {
                 crate::diag_count!(razor_drop);
                 return self.quiescence(board, alpha, beta, ply, 0, poll);
             }
-            // 4.4b: which eval the null threshold may read. At the seeded 0
-            // this is `eval_for_pruning`, exactly as before.
-            let nmp_eval = if self.params.nmp_use_static_eval != 0 {
-                static_eval
-            } else {
-                eval_for_pruning
-            };
             if !self.ablated(2)
                 && allow_null
-                && nmp_tt_pv_ok
-                // 4.4a: with the switch on, a null-verification subtree may not
-                // null-prune anywhere inside itself, not merely at its root.
-                && (self.params.nmp_suppress_null_in_verification == 0
-                    || self.nmp_verify_nesting == 0)
-                // 4.4b: restrict to nodes the caller expects to fail high.
-                && (self.params.nmp_require_cut_node == 0 || cut_node)
-                // 4.4c: a node that hinges on one move is the worst place to
-                // trust a null refutation. Evidence-only, so it slightly
-                // over-approximates - the conservative direction.
-                && (self.params.nmp_singular_guard == 0
-                    || !(depth >= 4
-                        && ev.mv.is_some()
-                        && ev.allows_singular(
-                            depth,
-                            self.params.singular_tt_depth_margin,
-                            self.params.singular_reject_speculative != 0,
-                        )))
                 && depth >= 3
-                && nmp_eval
+                && eval_for_pruning
                     >= beta
                         - self.params.nm_depth_coeff * depth
                         - self.params.nm_improving_bonus * improving_i
                 && self.nmp_material_ok(board)
             {
                 #[cfg(feature = "diag")]
-                if self.nmp_verify_nesting > 0 {
-                    // Exact, not sampled, and this IS the population
-                    // `NmpSuppressNullInVerification` refuses: same predicate,
-                    // so the counter and the switch cannot drift apart.
-                    crate::diag_count!(nmp_nested_attempt);
-                }
-                // 4.10a: NMP running at a mate-range WINDOW. This was the
-                // `NmpDecisiveGuard` population; the switch is gone (4.10a
-                // removed it as an efficiency guard worth 0.004% of nodes) but
-                // the count is kept, because it is the context for the unproven
-                // -mate question below, which is a different condition.
-                #[cfg(feature = "diag")]
-                if beta.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY) {
-                    crate::diag_count!(nmp_decisive_population);
-                }
-                #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(nmp_attempt);
-                    crate::diag_count!(shadow_4_4_selectivity);
-                    if eval_for_pruning != static_eval {
-                        crate::diag_count!(nmp_eval_tt);
-                    } else if static_eval != raw_static_eval {
-                        crate::diag_count!(nmp_eval_corrected);
-                    } else {
-                        crate::diag_count!(nmp_eval_raw);
-                    }
                 }
-                let reduction = 4 + depth / 4 + ((nmp_eval - beta) / 200).clamp(0, 3);
+                let reduction = 4 + depth / 4 + ((eval_for_pruning - beta) / 200).clamp(0, 3);
                 board.make_null_move();
                 self.tt.prefetch(board.hash);
                 let score = -self.negamax(
@@ -2742,7 +2033,6 @@ impl Searcher {
                     if depth >= 10 {
                         crate::diag_count!(nmp_verify_attempt);
                         let verify_depth = (depth - reduction).max(1);
-                        self.nmp_verify_nesting += 1;
                         let verified = self.negamax(
                             board,
                             verify_depth,
@@ -2755,7 +2045,6 @@ impl Searcher {
                             false,
                             poll,
                         );
-                        self.nmp_verify_nesting -= 1;
                         if self.stopped || self.quit {
                             return 0;
                         }
@@ -2773,7 +2062,7 @@ impl Searcher {
                 }
             }
 
-            if !self.ablated(3) && probcut_tt_pv_ok && depth >= 4 {
+            if !self.ablated(3) && depth >= 4 {
                 // Per NODE entering the block, before capture generation, so
                 // nodes with no eligible capture are counted here too. This
                 // carried the `probcut_attempt` name until 4.7c prep, and was
@@ -2783,7 +2072,6 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(probcut_nodes);
-                    crate::diag_count!(shadow_4_4_selectivity);
                 }
                 let probcut_beta = beta + self.params.probcut_margin;
                 // 4.7c PROBCUT MOVE FILTER. The entry contract for the
@@ -2847,7 +2135,7 @@ impl Searcher {
                     // ProbCut's child is a verification search, not a
                     // reduced sibling, so it consumes neither selectivity
                     // input. Written explicitly rather than left stale.
-                    self.push_move(ply, mv, probcut_piece, 0, 0);
+                    self.push_move(ply, mv, probcut_piece);
                     board.make_move_unchecked(mv);
                     self.tt.prefetch(board.hash);
                     let score =
@@ -2891,17 +2179,10 @@ impl Searcher {
                         self.tt.store(TtStore {
                             key: hash,
                             depth: depth - 3,
-                            // Which value to persist is an ablation, NOT part of
-                            // the speculative contract: the producer bit keeps
-                            // this result out of singular seeding either way.
-                            // Storing the actual fail-high costs +5.55%
-                            // time-to-depth on its own (RAR-S34), so the
-                            // conservative margin-shifted value is the default.
-                            score: if self.params.probcut_store_actual_score != 0 {
-                                score
-                            } else {
-                                cutoff_score
-                            },
+                            // The margin-shifted value, not the actual
+                            // fail-high: storing that costs +5.55% time-to-depth
+                            // on its own (RAR-S34).
+                            score: cutoff_score,
                             bound: Bound::Lower,
                             mv,
                             ply,
@@ -2971,30 +2252,14 @@ impl Searcher {
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut searched = 0usize;
-        // 4.5.5: every move the loop LOOKED at, pruned or not. `searched`
-        // counts only those actually searched and keeps that meaning, because
-        // the PVS first-move logic and the mate/stalemate test depend on it.
-        let mut considered = 0usize;
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
-        #[cfg(feature = "diag")]
-        let mut diag_best_rank = 0usize;
-        #[cfg(feature = "diag")]
-        let mut diag_best_stage = MoveClass::BadCapture;
-        #[cfg(feature = "diag")]
-        let mut diag_best_reduced = false;
         let mut legal_move_seen = false;
         // 10.3: per-node check masks, built at most once and reused by every
         // move at this node — for the pruning-side `move_gives_check` calls
         // and for the `make_move` check hint below. `board` is restored by
         // `unmake_move` each iteration, so these stay valid for the whole loop.
         let mut node_ci: Option<CheckInfo> = None;
-        // 4.5.1: set when the TT move is proved singular at THIS node. Read by
-        // the node's later moves, which is safe because the TT move is searched
-        // first, so the flag is settled before any move LMR can apply to.
-        let mut tt_move_singular = false;
-        // 4.6.5: latch so `skip_quiets_nodes` counts NODES, not calls.
-        let mut skip_quiets_latched = false;
         // 4.7b: latch so `lmp_nodes` counts NODES, not moves -- the oracle can
         // only observe the per-node event, so that is the comparable unit.
         #[cfg(feature = "diag")]
@@ -3013,16 +2278,6 @@ impl Searcher {
                 continue;
             }
             legal_move_seen = true;
-            // 4.5.5: incremented HERE, where the reference increments, so a
-            // move pruned below still advances the index.
-            considered += 1;
-            // The index the selectivity mechanisms use. Behind a switch, so
-            // the accepted fingerprint holds while it is 0.
-            let move_index = if self.params.selectivity_count_considered != 0 {
-                considered - 1
-            } else {
-                searched
-            };
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut see = if is_capture { picked.see as i32 } else { 0 };
@@ -3059,26 +2314,11 @@ impl Searcher {
                     }
                 }
             }
-            #[cfg(feature = "diag")]
-            let mut diag_move_reduced = false;
 
-            // 4.6b: ONE prospective depth for LMP, futility, SEE pruning and
-            // LMR. The audit's finding was that later pruning did not use the
-            // depth the move would actually be searched at — LMR reduced it,
-            // while the pruning tests all read raw `depth`, so a move about to
-            // be searched 3 plies shallower was still judged as if it were not.
-            //
-            // `r_units_estimate` is the shared reduction; `prospective_depth` is
-            // what remains after it. Both are computed pre-move so the pruning
-            // consumers can see them, and the LMR site debug-asserts it derives
-            // the same units.
-            // 4.5.1: built ONCE and used at both sites, so the prospective
-            // depth and the applied reduction cannot drift apart by
-            // construction rather than by assertion. At the root there is no
-            // parent, and 0 is the inert value for both parent inputs.
+            // 4.5.1: the reduction contract's inputs, built once per move.
             let reduction_inputs = ReductionInputs {
                 depth,
-                searched: move_index,
+                searched,
                 is_quiet,
                 see,
                 tt_pv,
@@ -3089,56 +2329,18 @@ impl Searcher {
                 tt_move_is_null: tt_move.is_null(),
                 improving,
                 is_root: ply == 0,
-                parent_move_count: if ply > 0 {
-                    self.stack[ply - 1].move_count
-                } else {
-                    0
-                },
-                parent_stat_score: if ply > 0 {
-                    self.stack[ply - 1].stat_score
-                } else {
-                    0
-                },
-                tt_move_is_capture: !tt_move.is_null() && tt_move.is_capture(),
-                tt_move_singular,
-            };
-            let r_units_estimate = self.lmr_reduction_units(reduction_inputs);
-            // `depth - 1` is the child's nominal depth; subtract the estimated
-            // reduction and floor at 1 so a consumer never reads a depth that
-            // would make its own `depth <= N` guards nonsensical.
-            let prospective_depth = if depth >= 3 && move_index >= 2 {
-                (depth
-                    - 1
-                    - lmr_reduction(
-                        r_units_estimate,
-                        depth - 1,
-                        self.params.lmr_min_reduced_depth,
-                    ))
-                .max(1)
-            } else {
-                depth
-            };
-            // At the seeded 0 every consumer keeps reading raw `depth`, so this
-            // lands inert; 1 switches all four onto the shared depth together,
-            // because switching them one at a time would recreate exactly the
-            // incoherence 4.6 exists to remove.
-            let sel_depth = if self.params.selectivity_prospective_depth != 0 {
-                prospective_depth
-            } else {
-                depth
             };
             if !tt_pv && !in_check && searched > 0 {
                 #[cfg(feature = "diag")]
                 if diag_order_sample {
                     crate::diag_count!(prune_shadow_moves);
-                    crate::diag_count!(shadow_4_6_prospective_depth);
                     if is_quiet {
                         let lmp_margin = (self.params.lmp_base
                             + self.params.lmp_not_improving * not_improving_i)
                             * depth;
                         let lmp = (depth <= 3 && eval_for_pruning + lmp_margin <= alpha)
                             || (depth <= 8
-                                && move_index
+                                && searched
                                     > late_move_prune_count(
                                         depth,
                                         improving,
@@ -3186,33 +2388,19 @@ impl Searcher {
                 if is_quiet {
                     let prune_margin = (self.params.lmp_base
                         + self.params.lmp_not_improving * not_improving_i)
-                        * sel_depth;
+                        * depth;
                     // 4.6.5: the move-count component ALONE, so it can be fed
                     // back to the picker the way the reference feeds its
                     // `moveCountPruning` flag into `next_move`.
-                    let move_count_pruning = sel_depth <= 8
-                        && move_index
-                            > late_move_prune_count(
-                                sel_depth,
-                                improving,
-                                self.params.lmp_count_base,
-                            );
-                    if move_count_pruning
-                        && self.params.skip_quiets_on_move_count != 0
-                        && !self.ablated(5)
-                    {
-                        if !skip_quiets_latched {
-                            skip_quiets_latched = true;
-                            crate::diag_count!(skip_quiets_nodes);
-                        }
-                        move_picker.skip_quiets();
-                    }
+                    let move_count_pruning = depth <= 8
+                        && searched
+                            > late_move_prune_count(depth, improving, self.params.lmp_count_base);
                     let prune_candidate = !self.ablated(5)
-                        && ((sel_depth <= 3 && eval_for_pruning + prune_margin <= alpha)
+                        && ((depth <= 3 && eval_for_pruning + prune_margin <= alpha)
                             || move_count_pruning
-                            || (sel_depth <= 4 && quiet_hist < -10_000)
-                            || (sel_depth <= 7
-                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * sel_depth)));
+                            || (depth <= 4 && quiet_hist < -10_000)
+                            || (depth <= 7
+                                && quiet_hist < -(self.params.quiet_hist_prune_coeff * depth)));
                     if prune_candidate
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -3228,10 +2416,10 @@ impl Searcher {
                     // whose TT-refined static eval plus a margin can't reach alpha
                     // is skipped. Plain skip (no fail-soft best_score update), to
                     // match the existing LMP/SEE prunes in this loop.
-                    if sel_depth <= 8
+                    if depth <= 8
                         && eval_for_pruning
                             + self.params.fp_base
-                            + self.params.fp_coeff * sel_depth
+                            + self.params.fp_coeff * depth
                             + corr_abs * self.params.corr_fut_scale / 128 // 8.5(b)
                             <= alpha
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
@@ -3239,31 +2427,14 @@ impl Searcher {
                         crate::diag_count!(quiet_futility_prune);
                         continue;
                     }
-                    // 4.6.4: a quiet move that hangs material. Rarog's only
-                    // SEE prune is in the capture branch, so this population
-                    // was never pruned for losing material. Gated OFF by a
-                    // zero depth limit, which is why the accepted fingerprint
-                    // survives.
-                    if self.params.quiet_see_prune_depth != 0
-                        && sel_depth <= self.params.quiet_see_prune_depth
-                        && !board.see_ge_quiet_aware(
-                            mv,
-                            (-self.params.quiet_see_prune_coeff * sel_depth * sel_depth)
-                                .max(-self.params.see_pruning_max),
-                        )
-                        && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
-                    {
-                        crate::diag_count!(quiet_see_prune);
-                        continue;
-                    }
                 } else if is_capture && see < 0 {
                     let cap_hist = captured_piece.map_or(0, |cap| {
                         self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
-                    let see_threshold = (-self.params.see_pruning_coeff * sel_depth - cap_hist / 8)
+                    let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
                         .max(-self.params.see_pruning_max);
-                    if sel_depth <= 8
+                    if depth <= 8
                         && !board.see_ge(mv, see_threshold)
                         && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                     {
@@ -3277,34 +2448,12 @@ impl Searcher {
             let mut extension = 0;
             let singular_move_candidate =
                 !self.ablated(6) && ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
-            #[cfg(feature = "diag")]
             if singular_move_candidate
-                && ev.speculative_singular_seed_blocked(depth, self.params.singular_tt_depth_margin)
-            {
-                crate::diag_count!(singular_speculative_seed_blocked);
-            }
-            if singular_move_candidate
-                && ev.allows_singular(
-                    depth,
-                    self.params.singular_tt_depth_margin,
-                    self.params.singular_reject_speculative != 0,
-                )
+                && ev.allows_singular(depth, self.params.singular_tt_depth_margin, false)
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_attempt);
-                    crate::diag_count!(shadow_4_4_selectivity);
-                    if ev.depth == depth - 3 && matches!(ev.bound, Some(Bound::Lower)) {
-                        // Since 4.3c this is explicitly only the historical
-                        // ProbCut-shaped signature; tagged ProbCut producers
-                        // have already been rejected above.
-                        crate::diag_count!(singular_probcut_depth_match);
-                    }
-                    // 4.2b: the verification window is seeded from a score that
-                    // resolved a different window.
-                    if diag_contradicts {
-                        crate::diag_count!(contradict_singular_attempt);
-                    }
                 }
                 let singular_beta = ev.score - self.params.singular_beta_mult * depth;
                 let singular_depth = (depth - 1) / 2;
@@ -3324,7 +2473,6 @@ impl Searcher {
                     return 0;
                 }
                 if singular_score < singular_beta {
-                    tt_move_singular = true;
                     extension = if !is_pv
                         && singular_score < singular_beta - self.params.singular_double_margin
                     {
@@ -3344,13 +2492,6 @@ impl Searcher {
                     #[cfg(feature = "diag")]
                     if diag_sample {
                         crate::diag_count!(singular_multicut);
-                        // 4.2b: counted HERE, not below. This arm returns, so
-                        // the post-block counter never sees a multi-cut — the
-                        // single largest tree effect a contradicting seed can
-                        // have was silently missing from the shadow until now.
-                        if diag_contradicts {
-                            crate::diag_count!(contradict_singular_multicut);
-                        }
                     }
                     return singular_beta;
                 } else if ev.score >= beta {
@@ -3360,37 +2501,16 @@ impl Searcher {
                     }
                     extension = -1;
                 }
-                #[cfg(feature = "diag")]
-                if diag_sample && diag_iir_applied && extension != 0 {
-                    crate::diag_count!(iir_extension_debt);
-                }
-                // 4.2b: did that seed change the DEPTH? Extensions and negative
-                // extensions only — the multi-cut path returns above and is
-                // counted there. Sum the two for total tree effect.
-                #[cfg(feature = "diag")]
-                if diag_sample && diag_contradicts && extension != 0 {
-                    crate::diag_count!(contradict_singular_changed_depth);
-                }
             }
 
             let checking_move =
-                if depth >= 3 && move_index >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
+                if depth >= 3 && searched >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
                     move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 } else {
                     gives_check.unwrap_or(false)
                 };
 
-            // 4.5.1: the child reduces using its parent's move count and the
-            // history of the move that led there. `searched` is the count
-            // BEFORE this move, so +1 makes it this move's index.
-            let searched_i32 = i32::try_from(searched).unwrap_or(i32::MAX);
-            self.push_move(
-                ply,
-                mv,
-                moving_piece,
-                searched_i32.saturating_add(1),
-                if is_quiet { quiet_hist } else { 0 },
-            );
+            self.push_move(ply, mv, moving_piece);
             let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
             // bitboard tests) and lets `make_move` skip `calculate_checkers`
@@ -3426,7 +2546,7 @@ impl Searcher {
                 // increased the deterministic tree by 14.83% and had no owner.
                 let reducible = !self.ablated(7)
                     && depth >= 3
-                    && move_index >= 2
+                    && searched >= 2
                     && (is_quiet || see < 0)
                     && !mv.is_promo()
                     && !in_check
@@ -3437,15 +2557,7 @@ impl Searcher {
                     // behavior exactly. SPSA tunes from this baseline.
                     // `reducible` already guarantees depth >= 3 && searched >= 2, so the
                     // table lookup is always in the populated region.
-                    // 4.6b: ONE formula, shared with the prospective depth the
-                    // pruning consumers can use. Previously this arithmetic lived
-                    // only here, so LMP/futility/SEE had no way to know how deep
-                    // the move would actually be searched.
                     let mut r = self.lmr_reduction_units(reduction_inputs);
-                    debug_assert_eq!(
-                        r, r_units_estimate,
-                        "4.6b: LMR and the prospective depth must share one formula"
-                    );
                     // 8.13: per-thread reduction jitter, the Reckless
                     // diversification shape. `r` is in 1024ths of a ply, so
                     // ±64 is ±6% of one ply: enough to send threads down
@@ -3461,48 +2573,19 @@ impl Searcher {
                     // what keeps bench identical.
                     // SMP diversification, unchanged: magnitude 64 reproduces
                     // the original expression exactly.
-                    //
-                    // 4.10 CANDIDATE — 1T selectivity jitter. Three independent
-                    // results say perturbing this surface beats leaving it
-                    // alone: RAR-S54 (+4.06 ± 3.71 over 14,196 games for a
-                    // blind uniform de-selectivity shift), RAR-S62 (a ProbCut
-                    // desync reading an arbitrary continuation row beat correct
-                    // indexing by ~5 Elo) and RAR-S64 (a stale prior-reduction
-                    // firing on a quasi-random subset beat the correct one by
-                    // ~4.5). Twice a BUG that scattered noise into selectivity
-                    // beat its own correction. The machinery already existed
-                    // and was disabled at 1T only to keep bench deterministic
-                    // for SMP work — the PRNG is re-seeded per search from a
-                    // fixed seed, so 1T stays reproducible.
                     if self.shared_state.is_some() {
                         r += self.next_jitter(64);
-                    } else if self.params.lmr_jitter_1t != 0 {
-                        r += self.next_jitter(self.params.lmr_jitter_1t);
                     }
                     // 10.2.5 candidate: strong late moves may escape the old
                     // mandatory one-ply reduction. A zero reduction is a normal
                     // full-depth PVS search and must not trigger a redundant
                     // verification search at the same depth.
-                    let reduction = lmr_reduction(r, new_depth, self.params.lmr_min_reduced_depth);
+                    let reduction = lmr_reduction(r, new_depth);
                     #[cfg(feature = "diag")]
                     {
-                        if r < 0 {
-                            crate::diag_count!(lmr_floor_clamped);
-                        }
                         if new_depth > 0 && reduction == new_depth {
                             crate::diag_count!(lmr_qs_clamped);
                         }
-                        if ply == 0 {
-                            crate::diag_count!(lmr_root_applied);
-                            crate::diag_add!(
-                                lmr_root_reduction_sum,
-                                u64::try_from(reduction).unwrap_or(0)
-                            );
-                        }
-                    }
-                    #[cfg(feature = "diag")]
-                    {
-                        diag_move_reduced = reduction > 0;
                         // 4.2: EXACT, because its denominator `lmr_applied` is
                         // exact. Sampling only the numerator made the mean
                         // reduction read 1024x low at the default stride.
@@ -3603,12 +2686,6 @@ impl Searcher {
             if score > best_score {
                 best_score = score;
                 best_move = mv;
-                #[cfg(feature = "diag")]
-                if diag_sample {
-                    diag_best_rank = searched;
-                    diag_best_stage = move_ev.class;
-                    diag_best_reduced = diag_move_reduced;
-                }
                 if ply == 0 {
                     self.root_best_nodes = move_nodes;
                 }
@@ -3752,21 +2829,6 @@ impl Searcher {
                             self.update_correction(board, residual, depth, ply);
                         }
                     }
-                    #[cfg(feature = "diag")]
-                    if diag_order_sample && diag_best_rank > 0 {
-                        crate::diag::record_best_move(
-                            diag_best_rank,
-                            diag_best_stage,
-                            diag_best_reduced,
-                        );
-                        if !tt_move.is_null() {
-                            crate::diag::record_contradiction_ordering(
-                                diag_contradicts,
-                                ev.hit,
-                                diag_best_stage == MoveClass::TtMove,
-                            );
-                        }
-                    }
                     return score;
                 }
             }
@@ -3859,24 +2921,6 @@ impl Searcher {
                     }
                     Bound::Lower => {}
                 }
-                // 4.3 shadow, part 2. This node refined its pruning eval and
-                // then completed, so compare which estimate sat closer to the
-                // score it reported. Only reachable when the node was NOT
-                // pruned — see the counter docs for why that biases it.
-                if eval_for_pruning != static_eval && static_eval != VALUE_NONE {
-                    crate::diag::record_refine_agreement(static_eval, eval_for_pruning, best_score);
-                }
-            }
-        }
-        #[cfg(feature = "diag")]
-        if diag_order_sample && diag_best_rank > 0 {
-            crate::diag::record_best_move(diag_best_rank, diag_best_stage, diag_best_reduced);
-            if !tt_move.is_null() {
-                crate::diag::record_contradiction_ordering(
-                    diag_contradicts,
-                    ev.hit,
-                    diag_best_stage == MoveClass::TtMove,
-                );
             }
         }
         best_score
@@ -3912,7 +2956,6 @@ impl Searcher {
         #[cfg(feature = "diag")]
         if diag_q_sample {
             crate::diag_count!(sampled_qnodes);
-            crate::diag_count!(shadow_4_3_qsearch);
             if in_check {
                 crate::diag_count!(q_in_check);
             }
@@ -4094,9 +3137,7 @@ impl Searcher {
                 }
             }
             let moving_piece = board.moving_piece(mv);
-            // Quiescence does not reduce, so it has no reduction inputs to
-            // hand its children.
-            self.push_move(ply, mv, moving_piece, 0, 0);
+            self.push_move(ply, mv, moving_piece);
             board.make_move_unchecked(mv);
             self.tt.prefetch(board.hash);
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
@@ -4390,21 +3431,8 @@ impl Searcher {
         // bonuses are equal (the seeded state) the SEE probe is SKIPPED, so
         // ordering pays nothing for a distinction it is not making.
         let direct_check = if board.gives_check_with(mv, check_info) {
-            // 4.6c: the safe/losing SPLIT WAS REVERTED. `see_ge(mv, 0)` returned
-            // true for all 332,683 quiet checking moves on bench and `losing`
-            // counted ZERO, so the split could never fire — `see_ge` is
-            // evidently trivially satisfied for a non-capturing move, making it
-            // the wrong predicate for "the checker can be taken at a loss".
-            // Shipping a knob that cannot fire would be dead code dressed as a
-            // tunable, so only the census survives; a correct classifier needs a
-            // different test (is the destination defended, or the checker
-            // attacked by a lesser piece) and belongs in 4.10's ordering work.
-            #[cfg(feature = "diag")]
-            if board.see_ge(mv, 0) {
-                crate::diag_count!(check_order_safe);
-            } else {
-                crate::diag_count!(check_order_losing);
-            }
+            // 4.6c: a safe/losing split was measured non-functional (RAR-S44:
+            // `see_ge(mv, 0)` is trivially true for a non-capture) and reverted.
             self.params.check_bonus_safe
         } else {
             0
@@ -4599,16 +3627,7 @@ impl Searcher {
                 }
             }
         }
-        // 4.5b: all three continuation tables age through the same loop, which
-        // is the "centralize saturation/aging" half of PLAN 4.5 - a table that
-        // ages on a different schedule from its siblings drifts out of scale
-        // with them and the weights stop meaning what they meant when fitted.
-        for value in self
-            .continuation_correction_history
-            .iter_mut()
-            .chain(self.continuation_correction_2ply.iter_mut())
-            .chain(self.continuation_correction_4ply.iter_mut())
-        {
+        for value in self.continuation_correction_history.iter_mut() {
             *value /= 2;
         }
     }
@@ -4735,18 +3754,11 @@ impl Searcher {
         // continuation term keeps its inherent `/2`). `Σ src·W / 16384`
         // reproduces the old `(pawn+minor+own_np+their_np+cont/2)/128` bit-for-
         // bit at seed, since `Σsrc·128/16384 == Σsrc/128` in integer division.
-        // 4.5b: distance-2 and distance-4 continuation terms. Both reads are
-        // skipped entirely at the seeded weight of 0, so the default costs not
-        // even a table lookup.
-        let cont2 = self.continuation_at(ply, 2, self.params.corr_w_cont2);
-        let cont4 = self.continuation_at(ply, 4, self.params.corr_w_cont4);
         (pawn * self.params.corr_w_pawn
             + minor * self.params.corr_w_minor
             + own_non_pawn * self.params.corr_w_own_np
             + their_non_pawn * self.params.corr_w_their_np
-            + (continuation / 2) * self.params.corr_w_cont
-            + (cont2 / 2) * self.params.corr_w_cont2
-            + (cont4 / 2) * self.params.corr_w_cont4)
+            + (continuation / 2) * self.params.corr_w_cont)
             / 16384
     }
 
@@ -4854,7 +3866,6 @@ impl Searcher {
         #[cfg(feature = "diag")]
         if crate::diag::sampled(board.hash, ply, crate::diag::SAMPLE_CORRECTION) {
             crate::diag_count!(correction_sample_updates);
-            crate::diag_count!(shadow_4_5_correction);
             crate::diag_add!(correction_sample_abs_sum, u64::from(diff.unsigned_abs()));
             let pawn_key = board.pawn_key();
             let minor_key = board.minor_key();
@@ -4922,27 +3933,6 @@ impl Searcher {
                 );
             }
         }
-        // 4.5b: same keying at distance 2 and 4. Writes are skipped at weight 0
-        // so an unused table is never touched; enabling a weight simply starts
-        // from an empty table, exactly as a fresh `new_game` would.
-        if self.params.corr_w_cont2 != 0
-            && let Some(index) = self.continuation_index(ply, 2)
-        {
-            update_hist_entry(
-                &mut self.continuation_correction_2ply[index],
-                scaled / 2,
-                HISTORY_MAX,
-            );
-        }
-        if self.params.corr_w_cont4 != 0
-            && let Some(index) = self.continuation_index(ply, 4)
-        {
-            update_hist_entry(
-                &mut self.continuation_correction_4ply[index],
-                scaled / 2,
-                HISTORY_MAX,
-            );
-        }
     }
 
     /// Record the move being searched at `ply`, deriving its continuation key.
@@ -4950,12 +3940,10 @@ impl Searcher {
     /// The ONLY way to put a move on the stack. Writing `mv` and `piece`
     /// separately is what let ProbCut desynchronise them (see `NodeContext`).
     #[inline]
-    fn push_move(&mut self, ply: usize, mv: Move, piece: Piece, move_count: i32, stat_score: i32) {
+    fn push_move(&mut self, ply: usize, mv: Move, piece: Piece) {
         self.stack[ply].mv = mv;
         self.stack[ply].piece = piece;
         self.stack[ply].cont_key = piece_to_index(piece as usize, mv.to_sq().index());
-        self.stack[ply].move_count = move_count;
-        self.stack[ply].stat_score = stat_score;
     }
 
     /// Clear the move at `ply`. The static eval is deliberately preserved: it
@@ -4964,39 +3952,6 @@ impl Searcher {
     fn clear_move(&mut self, ply: usize) {
         self.stack[ply].mv = Move::NULL;
         self.stack[ply].cont_key = 0;
-        self.stack[ply].move_count = 0;
-        self.stack[ply].stat_score = 0;
-    }
-
-    /// 4.5b: compact `(piece, to)` key for the move `distance` plies back, or
-    /// `None` when that ply does not exist or held a null move.
-    #[inline(always)]
-    fn continuation_index(&self, ply: usize, distance: usize) -> Option<usize> {
-        if ply < distance {
-            return None;
-        }
-        let prev = self.stack[ply - distance].mv;
-        if prev.is_null() {
-            return None;
-        }
-        Some(self.stack[ply - distance].cont_key)
-    }
-
-    /// 4.5b: read the distance-`distance` continuation correction, or 0 when the
-    /// term is switched off. Checking the weight FIRST is what keeps the seeded
-    /// default free of a table access.
-    #[inline(always)]
-    fn continuation_at(&self, ply: usize, distance: usize, weight: i32) -> i32 {
-        if weight == 0 {
-            return 0;
-        }
-        let table = if distance == 2 {
-            &self.continuation_correction_2ply
-        } else {
-            &self.continuation_correction_4ply
-        };
-        self.continuation_index(ply, distance)
-            .map_or(0, |index| i32::from(table[index]))
     }
 
     /// True when mechanism `bit` is ablated. Const `false` without the
@@ -5439,19 +4394,15 @@ mod tests {
 
     #[test]
     fn lmr_reduction_allows_strong_late_moves_to_reach_zero() {
-        assert_eq!(lmr_reduction(1023, 8, 0), 0);
-        assert_eq!(lmr_reduction(1024, 8, 0), 1);
-        assert_eq!(lmr_reduction(4096, 3, 0), 3);
-        assert_eq!(lmr_reduction(-1, 8, 0), 0);
-        assert_eq!(lmr_reduction(1024, 0, 0), 0);
-        // 4.8.1: with a floor of one ply the reduced search keeps a ply.
-        // The 4096/3 case is exactly the one the audit counts: it consumed
-        // the whole of new_depth and ran in quiescence.
-        assert_eq!(lmr_reduction(4096, 3, 1), 2);
-        assert_eq!(lmr_reduction(4096, 1, 1), 0);
-        // new_depth already at or below the floor: leave it unreduced,
-        // never extend it.
-        assert_eq!(lmr_reduction(4096, 0, 1), 0);
+        assert_eq!(lmr_reduction(1023, 8), 0);
+        assert_eq!(lmr_reduction(1024, 8), 1);
+        // 4.8.1: the reduction may consume the whole of new_depth, so the
+        // reduced search runs in quiescence (B.2 floors it at one ply).
+        assert_eq!(lmr_reduction(4096, 3), 3);
+        assert_eq!(lmr_reduction(-1, 8), 0);
+        // Never extend, and never reduce below depth 0.
+        assert_eq!(lmr_reduction(1024, 0), 0);
+        assert_eq!(lmr_reduction(4096, -1), 0);
     }
 
     #[test]
@@ -5635,252 +4586,6 @@ mod tests {
             run(),
             run(),
             "a serial search must be deterministic with all SMP gates closed"
-        );
-    }
-
-    /// 4.9c: the skip pattern has to spread the pool across depths WITHOUT
-    /// starving any helper. Three properties, each of which would be a real
-    /// defect if violated.
-    #[test]
-    fn helper_skip_pattern_spreads_depth_without_starving_anyone() {
-        // The main thread owns the reported result: it must run every
-        // iteration whatever the pattern says.
-        for depth in 1..=64 {
-            assert!(!helper_skips_iteration(0, depth), "main skipped {depth}");
-        }
-
-        // No helper may skip everything, and none may skip nothing — either
-        // would mean this thread contributes no depth diversity at all.
-        for thread in 1..=32 {
-            let searched = (1..=64)
-                .filter(|d| !helper_skips_iteration(thread, *d))
-                .count();
-            assert!(
-                (16..=48).contains(&searched),
-                "thread {thread} searched {searched} of 64 iterations"
-            );
-        }
-
-        // At any given depth the pool must DISAGREE — if every helper made the
-        // same choice the mechanism would be a no-op with extra steps.
-        for depth in 4..=32 {
-            let skipping = (1..=16)
-                .filter(|t| helper_skips_iteration(*t, depth))
-                .count();
-            assert!(
-                (1..16).contains(&skipping),
-                "at depth {depth}, {skipping} of 16 helpers skip — the pool is in lockstep"
-            );
-        }
-    }
-
-    /// A neutral snapshot to perturb one field at a time from.
-    fn confidence_fixture() -> RootConfidence {
-        RootConfidence {
-            gap: 30,
-            deviation: 30,
-            effort: 0.9,
-            fail_lows: 0,
-            fail_highs: 0,
-            instability: 0.5,
-            pool_instability: None,
-        }
-    }
-
-    /// Each retained term must move the scalar in the direction its name claims. A
-    /// confidence model whose terms are wired backwards still compiles, still
-    /// produces plausible numbers, and is worse than no model at all.
-    ///
-    #[test]
-    fn root_confidence_scalar_moves_with_each_of_its_terms() {
-        let params = SearchParams::default();
-        let base = confidence_fixture().scalar(&params);
-
-        let noisier = RootConfidence {
-            deviation: 300,
-            ..confidence_fixture()
-        };
-        let idler = RootConfidence {
-            effort: 0.5,
-            ..confidence_fixture()
-        };
-        let re_searched = RootConfidence {
-            fail_highs: 2,
-            ..confidence_fixture()
-        };
-
-        assert!(noisier.scalar(&params) < base, "a noisier score is weaker");
-        assert!(idler.scalar(&params) < base, "less effort is weaker");
-        assert!(
-            re_searched.scalar(&params) < base,
-            "aspiration re-searches are weaker"
-        );
-        assert!((0..=1000).contains(&base));
-    }
-
-    /// Root gap remains diagnostic-only. RAR-S47 found it exactly zero on 82.3%
-    /// of completed bench iterations because rival root moves usually carry
-    /// null-window bounds, not comparable values. Keep that structurally out of
-    /// the scalar unless a future real-value root search creates new evidence.
-    #[test]
-    fn root_gap_is_diagnostic_only() {
-        let params = SearchParams::default();
-
-        assert_eq!(
-            confidence_fixture().scalar(&params),
-            RootConfidence {
-                gap: 30_000,
-                ..confidence_fixture()
-            }
-            .scalar(&params),
-            "a gap must not move the shipped scalar at all"
-        );
-    }
-
-    /// With every weight fitted to zero the model has no inputs, so it must
-    /// report "unknown" rather than "no confidence" — the two would scale the
-    /// clock in opposite directions.
-    #[test]
-    fn root_confidence_without_weights_is_neutral_not_zero() {
-        let params = SearchParams {
-            root_conf_w_deviation: 0,
-            root_conf_w_effort: 0,
-            root_conf_w_window: 0,
-            ..SearchParams::default()
-        };
-
-        assert_eq!(confidence_fixture().scalar(&params), NEUTRAL_CONFIDENCE);
-    }
-
-    /// PLAN 4.7's hard rule: pooled worker instability may reach TIME and
-    /// nothing else.
-    ///
-    /// Enforced structurally rather than by convention — `scalar` has no
-    /// instability term, and `aspiration_deltas` is written on top of `scalar`
-    /// — so this pins the property that keeps that true: two snapshots that
-    /// differ ONLY in the pooled value must be indistinguishable to the window
-    /// and distinguishable to the clock.
-    ///
-    /// Result ownership needs no case here because it cannot express the
-    /// question: `select_parallel_result` chooses between `SearchResult`
-    /// values, which carry no confidence at all.
-    #[test]
-    fn pooled_instability_reaches_the_clock_and_nothing_else() {
-        let params = SearchParams {
-            root_conf_pool_instability: 1,
-            ..SearchParams::default()
-        };
-        let own = confidence_fixture();
-        let pooled = RootConfidence {
-            pool_instability: Some(4.0),
-            ..confidence_fixture()
-        };
-
-        assert_eq!(own.scalar(&params), pooled.scalar(&params));
-        assert_eq!(
-            own.aspiration_deltas(21, &params),
-            pooled.aspiration_deltas(21, &params),
-            "pooled helper instability must not reach the aspiration window"
-        );
-        assert!(
-            pooled.time_factor(&params) > own.time_factor(&params),
-            "pooled helper instability must reach the clock"
-        );
-    }
-
-    /// The window must widen on the side that was WRONG, stay bounded whatever
-    /// the fail counts do, and narrow as confidence rises.
-    #[test]
-    fn root_confidence_aspiration_is_asymmetric_and_bounded() {
-        let params = SearchParams::default();
-        let failed_high = RootConfidence {
-            fail_highs: 2,
-            ..confidence_fixture()
-        };
-        let (alpha, beta) = failed_high.aspiration_deltas(21, &params);
-        assert!(beta > alpha, "the failing side is the side that opens");
-
-        let runaway = RootConfidence {
-            fail_lows: 1_000,
-            fail_highs: 1_000,
-            ..confidence_fixture()
-        };
-        let (alpha, beta) = runaway.aspiration_deltas(INF_SCORE, &params);
-        assert!((1..=INF_SCORE).contains(&alpha) && (1..=INF_SCORE).contains(&beta));
-
-        let confident = RootConfidence {
-            gap: 4_000,
-            deviation: 0,
-            effort: 1.0,
-            ..confidence_fixture()
-        };
-        let unsure = RootConfidence {
-            gap: 0,
-            deviation: 4_000,
-            effort: 0.0,
-            ..confidence_fixture()
-        };
-        assert!(
-            confident.aspiration_deltas(21, &params).0 < unsure.aspiration_deltas(21, &params).0,
-            "confidence must narrow the window"
-        );
-    }
-
-    /// Both arms must be INERT at their defaults and WIRED when enabled.
-    ///
-    /// The second half is the half that matters: 4.6c landed a switch that
-    /// measured 0.00% node change both off AND on, which is indistinguishable
-    /// from dead code. `RootConfAspiration` changes the tree, so `bench` can see
-    /// it. `RootConfTime` cannot change a depth-limited search by construction —
-    /// the soft target never binds — so what is asserted here is exactly that
-    /// inertness, and its sizing is the TM shadow in the diagnostics.
-    #[test]
-    fn root_confidence_arms_are_inert_off_and_aspiration_is_wired_on() {
-        let board = Board::default();
-        let legal = board.generate_legal_moves();
-
-        let run = |params: SearchParams| {
-            let mut searcher = Searcher::default();
-            let limits = SearchLimits {
-                depth: Some(8),
-                ..SearchLimits::default()
-            };
-            searcher.reset_search_state(
-                &limits,
-                &EngineOptions::default(),
-                board.side_to_move(),
-                0,
-                true,
-                true,
-            );
-            searcher.params = params;
-            let result =
-                searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
-            (result.nodes, result.bestmove)
-        };
-
-        let baseline = run(SearchParams::default());
-        assert_eq!(
-            baseline,
-            run(SearchParams::default()),
-            "the snapshot itself must not perturb a search"
-        );
-        assert_eq!(
-            baseline,
-            run(SearchParams {
-                root_conf_time: 1,
-                ..SearchParams::default()
-            }),
-            "a depth-limited search never binds the soft target, on or off"
-        );
-        assert_ne!(
-            baseline.0,
-            run(SearchParams {
-                root_conf_aspiration: 1,
-                ..SearchParams::default()
-            })
-            .0,
-            "RootConfAspiration must reach the tree when enabled"
         );
     }
 
