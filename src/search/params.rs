@@ -537,6 +537,37 @@ search_params! {
     see_noisy_linear = 27, "CoreSeeNoisyLinear", 0..=200;
     see_noisy_history = 29, "CoreSeeNoisyHistory", 0..=120;
     see_noisy_constant = 10, "CoreSeeNoisyConstant", -100..=100;
+
+    // Late-move reductions, in 1024ths of a ply.
+    lmr_log = 269, "CoreLmrLog", 0..=1024;
+    lmr_improvement = 425, "CoreLmrImprovement", 0..=2048;
+    lmr_correction = 3_417, "CoreLmrCorrection", 0..=8192;
+    lmr_exact = 1_412, "CoreLmrExact", 0..=4096;
+    lmr_tt_score_below_alpha = 464, "CoreLmrTtScoreBelowAlpha", 0..=2048;
+    lmr_tt_shallow = 326, "CoreLmrTtShallow", 0..=2048;
+    lmr_quiet = 2_432, "CoreLmrQuiet", 0..=6144;
+    lmr_quiet_history = 179, "CoreLmrQuietHistory", 0..=1024;
+    lmr_alpha_gap = 418, "CoreLmrAlphaGap", 0..=2048;
+    lmr_noisy = 1_687, "CoreLmrNoisy", 0..=6144;
+    lmr_noisy_history = 130, "CoreLmrNoisyHistory", 0..=1024;
+    lmr_critical_ply = 128, "CoreLmrCriticalPly", 0..=512;
+    lmr_pv = 519, "CoreLmrPv", 0..=2048;
+    lmr_pv_window = 437, "CoreLmrPvWindow", 0..=2048;
+    lmr_non_pv = 96, "CoreLmrNonPv", -1024..=1024;
+    lmr_laterality = 32, "CoreLmrLaterality", 0..=256;
+    lmr_tt_pv = 333, "CoreLmrTtPv", 0..=2048;
+    lmr_tt_pv_score = 611, "CoreLmrTtPvScore", 0..=2048;
+    lmr_tt_pv_depth = 685, "CoreLmrTtPvDepth", 0..=2048;
+    lmr_cut_node = 1_852, "CoreLmrCutNode", 0..=4096;
+    lmr_cut_node_no_tt_move = 2_204, "CoreLmrCutNodeNoTtMove", 0..=4096;
+    lmr_gives_check = 955, "CoreLmrGivesCheck", 0..=4096;
+    lmr_child_cutoffs = 1_151, "CoreLmrChildCutoffs", 0..=4096;
+    lmr_child_cutoffs_all_node = 400, "CoreLmrChildCutoffsAllNode", 0..=2048;
+    lmr_parent = 136, "CoreLmrParent", 0..=1024;
+    /// Re-search a reduced move one ply deeper when it beats the best score
+    /// by more than this, one ply shallower when by less than this.
+    lmr_research_deeper = 26, "CoreLmrResearchDeeper", 0..=200;
+    lmr_research_shallower = 4, "CoreLmrResearchShallower", -50..=50;
 }
 
 #[cfg(test)]

@@ -667,7 +667,9 @@ impl TtProbe {
         is_pv || self.stored_pv
     }
 
-    /// An exact score is stored. Consumed by the LMR reduction adjustment.
+    /// An exact score is stored. Consumed by the accepted arm's LMR reduction
+    /// adjustment.
+    #[cfg(any(test, not(feature = "b2core")))]
     #[inline(always)]
     pub(crate) fn is_exact(&self) -> bool {
         matches!(self.bound, Some(Bound::Exact))

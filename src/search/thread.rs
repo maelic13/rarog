@@ -50,6 +50,9 @@ pub(super) struct ThreadData {
     pub(super) root_iteration_nodes: u64,
     pub(super) root_best_nodes: u64,
     pub(super) root_best_effort: f64,
+    /// Width of the root window of the current aspiration step.
+    #[cfg(feature = "b2core")]
+    pub(super) root_delta: i32,
 }
 
 impl Default for ThreadData {
@@ -80,6 +83,8 @@ impl Default for ThreadData {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
+            #[cfg(feature = "b2core")]
+            root_delta: 1,
         }
     }
 }

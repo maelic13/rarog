@@ -90,6 +90,12 @@ pub mod counters {
         //     nowhere in the pruning family.
         node_lmr_qs_clamped,
         lmr_research,
+        // Selectivity core: reductions clamped to one ply, reductions that
+        // extend, and re-searches made deeper or shallower.
+        lmr_floor_hits,
+        lmr_extended,
+        lmr_research_deeper,
+        lmr_research_shallower,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)
         // interior node, i.e. the DENOMINATOR of the ordering metric below.

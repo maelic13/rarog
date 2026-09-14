@@ -65,36 +65,43 @@ impl NodeType for NonPv {
     const ROOT: bool = false;
 }
 
-#[inline]
-pub(super) fn lmr_reduction(r: i32, new_depth: i32) -> i32 {
-    // 4.8.1: the ceiling is what the reduced search is allowed to consume: the
-    // reduced search may run at depth 0, i.e. in quiescence. `max(0)` keeps the
-    // ceiling non-negative, so a shallow move is left unreduced, not extended.
-    (r >> 10).clamp(0, new_depth.max(0))
-}
-/// 4.5.1 THE REDUCTION CONTRACT'S INPUTS.
-///
-/// `lmr_reduction_units` took thirteen positional arguments and PLAN 4.5.1
-/// named that as the defect: it was a pile of parameters rather than a
-/// contract over the per-ply context, and adding an input meant editing three
-/// signatures and hoping the call sites stayed in step.
-///
-/// Naming the inputs also removes the whole class of bug where two `bool`s or
-/// two `i32`s are passed in the wrong order and still compile.
+/// The inputs of the late-move reduction for one move.
 #[derive(Copy, Clone)]
-pub(super) struct ReductionInputs {
-    pub(super) depth: i32,
-    pub(super) searched: usize,
+struct LateMoveInputs {
+    depth: i32,
+    improvement: i32,
+    corr_abs: i32,
+    /// Alpha has been raised at this node.
+    exact: bool,
+    tt_score_below_alpha: bool,
+    tt_score_above_alpha: bool,
+    /// The stored result is shallower / at least as deep as this node.
+    tt_shallow: bool,
+    tt_deep: bool,
+    win_beta: bool,
     is_quiet: bool,
-    pub(super) see: i32,
+    history: i32,
+    /// Alpha minus the estimated score.
+    alpha_gap: i32,
+    /// Plies since the last node searched without a reduction.
+    critical_distance: i32,
+    pv: bool,
+    window: i32,
+    laterality: i32,
     tt_pv: bool,
     cut_node: bool,
-    pub(super) quiet_hist: i32,
-    pub(super) corr_abs: i32,
-    ev_is_exact: bool,
-    tt_move_is_null: bool,
-    pub(super) improving: bool,
-    is_root: bool,
+    tt_move_null: bool,
+    gives_check: bool,
+    /// Beta cutoffs among this node's children so far.
+    child_cutoffs: i32,
+    parent_reduction: i32,
+}
+
+/// The depth a reduced move is searched at: the reduction in whole plies,
+/// never below one ply of main search and never more than two plies above
+/// `new_depth`; a PV node searches its reduced moves two plies deeper.
+fn reduced_depth(new_depth: i32, reduction: i32, pv: bool) -> i32 {
+    (new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * i32::from(pv)
 }
 
 /// How much later than the first few moves the move at `move_count` is:
@@ -153,67 +160,6 @@ impl Searcher {
         }
     }
 
-    /// LMR reduction in 1024ths of a ply. Excludes the per-thread jitter, which
-    /// mutates PRNG state and is drawn once at the reduction site (and not at
-    /// all at `Threads = 1`).
-    ///
-    /// 4.5.1 removed this function's `#[expect(clippy::too_many_arguments)]`:
-    /// the thirteen positional arguments are now one named struct, and the
-    /// expectation went unfulfilled the moment they did. That is the
-    /// self-cleaning property `#[expect]` is used for.
-    #[inline(always)]
-    pub(super) fn lmr_reduction_units(&self, i: ReductionInputs) -> i32 {
-        let ReductionInputs {
-            depth,
-            searched,
-            is_quiet,
-            see,
-            tt_pv,
-            cut_node,
-            quiet_hist,
-            corr_abs,
-            ev_is_exact,
-            tt_move_is_null,
-            improving,
-            is_root,
-        } = i;
-        let mut r = self.cfg.lmr_table[infra::to_usize(depth.min(63))][searched.min(63)];
-        if tt_pv {
-            r -= self.cfg.params.lmr_tt_pv_adj;
-        } else if is_quiet {
-            r += 1024;
-        }
-        if improving {
-            r -= 1024;
-        }
-        if ev_is_exact {
-            r += self.cfg.params.lmr_exact_bound;
-        }
-        // `lmr_shallow_tt` is a misnomer: it fires on TT-move PRESENCE and was
-        // SPSA'd as such. See the `search/params.rs` note.
-        if !tt_move_is_null && searched >= 4 {
-            r += self.cfg.params.lmr_shallow_tt;
-        }
-        if cut_node {
-            r += self.cfg.params.lmr_cut_node;
-        }
-        if !is_quiet && see < 0 {
-            r += 1024;
-        }
-        if !tt_pv && !cut_node && quiet_hist > 4_000 {
-            r -= 1024;
-        }
-        r -= quiet_hist * 1024 / self.cfg.params.lmr_hist_div;
-        // 8.5(b): reduce less when the static eval is heavily corrected.
-        r -= corr_abs * self.cfg.params.corr_lmr_scale / 128;
-        // 4.6.7: the root is where the answer is chosen, and it was the
-        // one node type the reduction could not see.
-        if is_root {
-            r -= self.cfg.params.lmr_root_relief;
-        }
-        r
-    }
-
     /// Search the root position at `depth` inside the window: the entry the
     /// iterative-deepening loop calls, so it never depends on the kernel's
     /// argument list.
@@ -225,6 +171,7 @@ impl Searcher {
         beta: i32,
         poll: &mut P,
     ) -> i32 {
+        self.td.root_delta = beta - alpha;
         self.negamax::<Root, _>(
             board,
             depth,
@@ -256,6 +203,58 @@ impl Searcher {
         );
     }
 
+    /// The late-move reduction in 1024ths of a ply. Positive terms reduce
+    /// more: a node that already has an exact score, a TT score at or below
+    /// alpha or a shallow entry, a quiet (more with the eval below alpha), a
+    /// cut node without a TT move, children that keep failing high. Negative
+    /// terms reduce less: improvement, a large correction, good history, a
+    /// short distance to the last unreduced node, a PV line (less with a
+    /// narrow window), a move that gives check. The node count adds a small
+    /// per-thread spread.
+    #[inline(always)]
+    fn late_move_reduction(&self, i: &LateMoveInputs) -> i32 {
+        let p = &self.cfg.core;
+        let mut r = p.lmr_log * i.depth.ilog2().cast_signed();
+        r -= (p.lmr_improvement * i.improvement / 128).clamp(-241, 1_155);
+        r -= p.lmr_correction * i.corr_abs / 1024;
+        r += p.lmr_exact * i32::from(i.exact);
+        r += p.lmr_tt_score_below_alpha * i32::from(i.tt_score_below_alpha);
+        r += p.lmr_tt_shallow * i32::from(i.tt_shallow);
+        r += 1024 * i32::from(i.win_beta);
+        if i.is_quiet {
+            r += p.lmr_quiet - p.lmr_quiet_history * i.history / 1024
+                + p.lmr_alpha_gap * i.alpha_gap.clamp(-65, 91) / 128;
+        } else {
+            r += p.lmr_noisy - p.lmr_noisy_history * i.history / 1024;
+        }
+        r -= p.lmr_critical_ply * i.critical_distance.min(8);
+        if i.pv {
+            r -= p.lmr_pv + p.lmr_pv_window * i.window / self.td.root_delta.max(1);
+        } else {
+            r += p.lmr_laterality * i.laterality - p.lmr_non_pv;
+        }
+        if i.tt_pv {
+            r -= p.lmr_tt_pv
+                + p.lmr_tt_pv_score * i32::from(i.tt_score_above_alpha)
+                + p.lmr_tt_pv_depth * i32::from(i.tt_deep);
+        } else if i.cut_node {
+            r += p.lmr_cut_node + p.lmr_cut_node_no_tt_move * i32::from(i.tt_move_null);
+        }
+        if i.gives_check {
+            r -= p.lmr_gives_check;
+        }
+        if i.child_cutoffs > 2 {
+            r += p.lmr_child_cutoffs
+                + p.lmr_child_cutoffs_all_node * i32::from(!i.pv && !i.cut_node);
+        }
+        if !i.pv && i.parent_reduction > r + 414 {
+            r += p.lmr_parent;
+        }
+        let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
+        let spread = i32::try_from((self.td.nodes + thread * 27) % 128).unwrap_or(0);
+        r + spread - 59
+    }
+
     /// Record the order index of the move about to be searched at `ply` and
     /// the line's accumulated lateness: the parent's laterality plus
     /// [`laterality_step`] of this move's index.
@@ -267,10 +266,6 @@ impl Searcher {
         entry.laterality = parent + laterality_step(move_count);
     }
 
-    #[expect(
-        clippy::only_used_in_recursion,
-        reason = "last_critical_ply is produced ahead of its consumer, the reduction formula"
-    )]
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -1005,21 +1000,6 @@ impl Searcher {
                 }
             }
 
-            // 4.5.1: the reduction contract's inputs, built once per move.
-            let reduction_inputs = ReductionInputs {
-                depth,
-                searched,
-                is_quiet,
-                see,
-                tt_pv,
-                cut_node,
-                quiet_hist,
-                corr_abs,
-                ev_is_exact: ev.is_exact(),
-                tt_move_is_null: tt_move.is_null(),
-                improving,
-                is_root: NODE::ROOT,
-            };
             // Move-loop pruning. Never at the root, never in check, and only
             // once a move has produced a non-losing score, so the first move
             // and every move while all scores are mated are searched.
@@ -1239,23 +1219,16 @@ impl Searcher {
                 }
             }
 
-            let checking_move =
-                if depth >= 3 && searched >= 2 && (is_quiet || see < 0) && !mv.is_promo() {
-                    move_gives_check(board, &mut node_ci, mv, &mut gives_check)
-                } else {
-                    gives_check.unwrap_or(false)
-                };
-
             self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
             let nodes_before_move = if NODE::ROOT { self.td.nodes } else { 0 };
-            // 10.3: the check predicate is cheap here (node masks + two
-            // bitboard tests) and lets `make_move` skip `calculate_checkers`
-            // for the overwhelmingly common non-checking move.
+            // The check predicate is cheap here (node masks and two bitboard
+            // tests) and lets `make_move` skip `calculate_checkers` for the
+            // common non-checking move.
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
             self.shared.tt.prefetch(board.hash());
-            let new_depth = depth - 1 + extension;
+            let mut new_depth = depth - 1 + extension;
             #[cfg(feature = "diag")]
             if diag_sample {
                 crate::diag_add!(
@@ -1294,73 +1267,75 @@ impl Searcher {
                     )
                 };
             } else {
-                // Late evasions are intentionally not reduced. The alternative
-                // increased the deterministic tree by 14.83% and had no owner.
-                let reducible = !self.ablated(7)
-                    && depth >= 3
-                    && searched >= 2
-                    && (is_quiet || see < 0)
-                    && !mv.is_promo()
-                    && !in_check
-                    && !checking_move;
-                if reducible {
-                    // Accumulate in 1024ths; `>> 10` gives integer ply reduction.
-                    // Defaults for lmr_* params = 1024, reproducing the original ±1 ply
-                    // behavior exactly. SPSA tunes from this baseline.
-                    // `reducible` already guarantees depth >= 3 && searched >= 2, so the
-                    // table lookup is always in the populated region.
-                    let mut r = self.lmr_reduction_units(reduction_inputs);
-                    // 8.13: per-thread reduction jitter, the Reckless
-                    // diversification shape. `r` is in 1024ths of a ply, so
-                    // ±64 is ±6% of one ply: enough to send threads down
-                    // different trees, small enough not to distort the mean
-                    // reduction. It composes WITH rotation and pool ordering —
-                    // pool knowledge correlates the threads' root ordering, so
-                    // in-tree decorrelation matters more here than it did
-                    // standalone (jitter-for-rotation alone measured ±0).
-                    // 9.7.5(k): a real per-thread PRNG (see `next_jitter`),
-                    // replacing a node-counter modulo that was both correlated
-                    // with the counter and biased +4.5/1024. Only in a parallel
-                    // search: the thread count gates it, which is what keeps
-                    // bench identical.
-                    // SMP diversification, unchanged: magnitude 64 reproduces
-                    // the original expression exactly.
-                    if self.shared.threads > 1 {
-                        r += self.next_jitter(64);
+                // Late-move reductions: every move after the first, from depth
+                // 2, never at the root or in check.
+                if !self.ablated(7) && !NODE::ROOT && !in_check && depth >= 2 {
+                    let tt_valid = ev.bound.is_some();
+                    let reduction = self.late_move_reduction(&LateMoveInputs {
+                        depth,
+                        improvement,
+                        corr_abs,
+                        exact: alpha > original_alpha,
+                        tt_score_below_alpha: tt_valid && ev.score <= alpha,
+                        tt_score_above_alpha: tt_valid && ev.score > alpha,
+                        tt_shallow: tt_valid && ev.depth < depth,
+                        tt_deep: tt_valid && ev.depth >= depth,
+                        win_beta: beta >= TB_WIN_SCORE,
+                        is_quiet,
+                        history: if is_quiet {
+                            quiet_hist
+                        } else {
+                            self.td.hist.noisy(
+                                threats.all,
+                                !board.side_to_move(),
+                                moving_piece,
+                                mv.to_sq(),
+                                captured_piece,
+                            )
+                        },
+                        alpha_gap: alpha - eval_for_pruning,
+                        critical_distance: infra::to_i32(ply.saturating_sub(last_critical_ply)),
+                        pv: NODE::PV,
+                        window: beta - alpha,
+                        laterality: self.td.stack[ply].laterality,
+                        tt_pv,
+                        cut_node,
+                        tt_move_null: tt_move.is_null(),
+                        gives_check: mv_gives_check,
+                        child_cutoffs: self.td.stack[ply + 1].cutoff_count,
+                        parent_reduction: self.td.stack.back(ply, 1).reduction,
+                    });
+                    let reduced_depth = reduced_depth(new_depth, reduction, NODE::PV);
+                    crate::diag_count!(lmr_applied);
+                    #[cfg(feature = "diag")]
+                    {
+                        if new_depth - reduction / 1024 < 1 {
+                            crate::diag_count!(lmr_floor_hits);
+                        }
+                        if reduced_depth > new_depth {
+                            crate::diag_count!(lmr_extended);
+                        } else if reduced_depth == new_depth {
+                            crate::diag_count!(node_lmr_zero_reduction);
+                        }
+                        crate::diag_add!(
+                            reduction_depth_sum,
+                            u64::try_from(new_depth - reduced_depth).unwrap_or(0)
+                        );
                     }
-                    // 10.2.5 candidate: strong late moves may escape the old
-                    // mandatory one-ply reduction. A zero reduction is a normal
-                    // full-depth PVS search and must not trigger a redundant
-                    // verification search at the same depth.
-                    let reduction = lmr_reduction(r, new_depth);
                     trace_decision!(
                         self,
                         ply,
-                        "lmr depth {depth} move {mv} searched {searched} history {quiet_hist} \
-                         units {r} reduction {reduction} new_depth {new_depth} window {alpha} {beta}"
+                        "lmr depth {depth} move {mv} move_count {move_count} quiet {is_quiet} \
+                         history {quiet_hist} improvement {improvement} corr {corr_abs} \
+                         cutoffs {} laterality {} units {reduction} new_depth {new_depth} \
+                         reduced_depth {reduced_depth} window {alpha} {beta}",
+                        self.td.stack[ply + 1].cutoff_count,
+                        self.td.stack[ply].laterality
                     );
-                    #[cfg(feature = "diag")]
-                    {
-                        if new_depth > 0 && reduction == new_depth {
-                            crate::diag_count!(node_lmr_qs_clamped);
-                        }
-                        // 4.2: EXACT, because its denominator `lmr_applied` is
-                        // exact. Sampling only the numerator made the mean
-                        // reduction read 1024x low at the default stride.
-                        crate::diag_add!(
-                            reduction_depth_sum,
-                            u64::try_from(reduction).unwrap_or(0)
-                        );
-                    }
-                    if reduction == 0 {
-                        crate::diag_count!(node_lmr_zero_reduction);
-                    } else {
-                        crate::diag_count!(lmr_applied);
-                    }
-                    self.td.stack[ply].reduction = r;
+                    self.td.stack[ply].reduction = reduction;
                     score = -self.negamax::<NonPv, _>(
                         board,
-                        new_depth - reduction,
+                        reduced_depth,
                         -alpha - 1,
                         -alpha,
                         ply + 1,
@@ -1371,31 +1346,40 @@ impl Searcher {
                         poll,
                     );
                     self.td.stack[ply].reduction = 0;
-                    if reduction > 0 && score > alpha {
-                        crate::diag_count!(lmr_research);
-                        trace_decision!(
-                            self,
-                            ply,
-                            "lmr_research move {mv} reduced_score {score} alpha {alpha}"
-                        );
-                        // Full-depth verification re-search. (A do-deeper / do-shallower
-                        // LMR re-search adjustment was tried as Phase 2.8 and dropped:
-                        // do_shallower was proven dead, and SPSA-tuned do_deeper failed
-                        // its SPRT gate at st=0.1 — -1.38 Elo for ~4% more nodes
-                        // (bench 5,612,008 vs 5,401,662), a TC-transfer failure like the
-                        // 2.4 LMR tune. See PLAN §5 2.8.)
-                        score = -self.negamax::<NonPv, _>(
-                            board,
-                            new_depth,
-                            -alpha - 1,
-                            -alpha,
-                            ply + 1,
-                            true,
-                            Move::NULL,
-                            !cut_node,
-                            last_critical_ply,
-                            poll,
-                        );
+                    if score > alpha {
+                        // A reduced move that beat alpha by a wide margin earns
+                        // a deeper verification; one that barely did, a
+                        // shallower one.
+                        let deeper = score > best_score + self.cfg.core.lmr_research_deeper;
+                        let shallower = score < best_score + self.cfg.core.lmr_research_shallower;
+                        if deeper {
+                            crate::diag_count!(lmr_research_deeper);
+                        }
+                        if shallower {
+                            crate::diag_count!(lmr_research_shallower);
+                        }
+                        new_depth += i32::from(deeper) - i32::from(shallower);
+                        if new_depth > reduced_depth {
+                            crate::diag_count!(lmr_research);
+                            trace_decision!(
+                                self,
+                                ply,
+                                "lmr_research move {mv} reduced_score {score} alpha {alpha} \
+                                 new_depth {new_depth}"
+                            );
+                            score = -self.negamax::<NonPv, _>(
+                                board,
+                                new_depth,
+                                -alpha - 1,
+                                -alpha,
+                                ply + 1,
+                                true,
+                                Move::NULL,
+                                !cut_node,
+                                last_critical_ply,
+                                poll,
+                            );
+                        }
                     }
                 } else {
                     score = -self.negamax::<NonPv, _>(
@@ -1406,12 +1390,17 @@ impl Searcher {
                         ply + 1,
                         true,
                         Move::NULL,
-                        true,
+                        !cut_node,
                         ply + 1,
                         poll,
                     );
                 }
-                if score > alpha && score < beta {
+                // Principal variation search: at a PV node a later move that
+                // beats alpha is searched again with the full window.
+                if NODE::PV && score > alpha {
+                    if mv == tt_move && ev.depth > 1 {
+                        new_depth = new_depth.max(1);
+                    }
                     score = -self.negamax::<Pv, _>(
                         board,
                         new_depth,
@@ -1962,6 +1951,26 @@ impl Searcher {
 mod tests {
     use super::*;
 
+    /// A reduced move always keeps at least one ply of main search, a
+    /// negative reduction extends by at most two plies, and PV nodes add two.
+    #[test]
+    fn reduced_depth_is_floored_at_one_ply_and_capped_above() {
+        assert_eq!(reduced_depth(8, 3 * 1024, false), 5);
+        assert_eq!(reduced_depth(8, 3 * 1024 + 1023, false), 5, "whole plies");
+        assert_eq!(reduced_depth(3, 10 * 1024, false), 1, "floor");
+        assert_eq!(reduced_depth(1, 1024, false), 1, "floor at depth 1");
+        assert_eq!(reduced_depth(6, -5 * 1024, false), 8, "cap");
+        assert_eq!(reduced_depth(6, -1023, false), 6, "truncates toward zero");
+        assert_eq!(reduced_depth(6, 2 * 1024, true), 6, "PV adds two");
+        assert_eq!(reduced_depth(3, 10 * 1024, true), 3, "PV floor plus two");
+        for new_depth in 1..40 {
+            for reduction in (-20_000..20_000).step_by(977) {
+                assert!(reduced_depth(new_depth, reduction, false) >= 1);
+                assert!(reduced_depth(new_depth, reduction, false) <= new_depth + 2);
+            }
+        }
+    }
+
     #[test]
     fn laterality_grows_by_the_log_of_the_move_index() {
         let steps = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
@@ -2064,19 +2073,6 @@ mod tests {
             );
             assert!(score.abs() < INF_SCORE, "ply {ply}");
         }
-    }
-
-    #[test]
-    fn lmr_reduction_allows_strong_late_moves_to_reach_zero() {
-        assert_eq!(lmr_reduction(1023, 8), 0);
-        assert_eq!(lmr_reduction(1024, 8), 1);
-        // 4.8.1: the reduction may consume the whole of new_depth, so the
-        // reduced search runs in quiescence (B.2 floors it at one ply).
-        assert_eq!(lmr_reduction(4096, 3), 3);
-        assert_eq!(lmr_reduction(-1, 8), 0);
-        // Never extend, and never reduce below depth 0.
-        assert_eq!(lmr_reduction(1024, 0), 0);
-        assert_eq!(lmr_reduction(4096, -1), 0);
     }
 
     #[test]

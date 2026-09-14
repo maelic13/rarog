@@ -231,6 +231,7 @@ impl Searcher {
     /// do not get consecutive jitter. At magnitude 64 the range is [−64, 63]
     /// with mean −0.5/1024, so the jitter diversifies the threads without
     /// raising their mean reduction.
+    #[cfg(not(feature = "b2core"))]
     #[inline(always)]
     pub(super) fn next_jitter(&mut self, magnitude: i32) -> i32 {
         let mut x = self.td.jitter_state;
