@@ -503,6 +503,40 @@ search_params! {
     /// Internal iterative reduction: the least depth at which a missing or
     /// shallow TT move costs a ply.
     iir_min_depth = 4, "CoreIirMinDepth", 2..=10;
+
+    // Move-loop pruning.
+    /// Late-move pruning count, in 1024ths: `(base + improvement *
+    /// improvement/16 + square * depth^2 + history * history/1024) / 1024`.
+    lmp_base = 2_818, "CoreLmpBase", 0..=8192;
+    lmp_improvement = 78, "CoreLmpImprovement", 0..=400;
+    lmp_square = 1_351, "CoreLmpSquare", 256..=4096;
+    lmp_history = 74, "CoreLmpHistory", 0..=400;
+    /// Quiet futility value: `eval + base + linear * depth + history *
+    /// history/1024 + above_beta * (eval >= beta) + correction * |corr|/1024`.
+    fp_base = 150, "CoreFpBase", -100..=500;
+    fp_linear = 90, "CoreFpLinear", 10..=300;
+    fp_history = 25, "CoreFpHistory", 0..=200;
+    fp_eval_above_beta = 35, "CoreFpEvalAboveBeta", 0..=200;
+    fp_correction = 254, "CoreFpCorrection", 0..=2048;
+    /// Bad-noisy futility value: `eval + base + linear * depth + history *
+    /// history/1024 + victim value`.
+    bnfp_base = 40, "CoreBnfpBase", -100..=400;
+    bnfp_linear = 60, "CoreBnfpLinear", 10..=300;
+    bnfp_history = 37, "CoreBnfpHistory", 0..=200;
+    /// History pruning below `-slope * depth`.
+    hp_slope = 948, "CoreHpSlope", 100..=4000;
+    /// SEE-pruning allowance for quiets: `min(0, -square * depth^2 + linear *
+    /// depth - history * history/1024 + constant)`, SEE units.
+    see_quiet_square = 9, "CoreSeeQuietSquare", 0..=40;
+    see_quiet_linear = 42, "CoreSeeQuietLinear", 0..=200;
+    see_quiet_history = 20, "CoreSeeQuietHistory", 0..=120;
+    see_quiet_constant = 20, "CoreSeeQuietConstant", -100..=100;
+    /// SEE-pruning allowance for noisy moves: `min(0, -square * depth^2 -
+    /// linear * depth - history * history/1024 + constant)`.
+    see_noisy_square = 5, "CoreSeeNoisySquare", 0..=40;
+    see_noisy_linear = 27, "CoreSeeNoisyLinear", 0..=200;
+    see_noisy_history = 29, "CoreSeeNoisyHistory", 0..=120;
+    see_noisy_constant = 10, "CoreSeeNoisyConstant", -100..=100;
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ use crate::tt::{Bound, TtProbe, TtStore};
 
 use super::history::cont_context;
 use super::movepick::{
-    BadCaptureList, MovePicker, SEE_UNKNOWN, diversify_root_scores, is_noisy, pick_next,
+    BadCaptureList, MovePicker, SEE_UNKNOWN, Stage, diversify_root_scores, is_noisy, pick_next,
 };
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
@@ -104,15 +104,6 @@ fn laterality_step(move_count: i32) -> i32 {
         (move_count.ilog2().cast_signed() - 1).max(0)
     } else {
         0
-    }
-}
-
-fn late_move_prune_count(depth: i32, improving: bool, count_base: i32) -> usize {
-    let base = count_base + 2 * depth * depth / 3;
-    if improving {
-        infra::to_usize(base + depth)
-    } else {
-        infra::to_usize(base)
     }
 }
 
@@ -531,7 +522,6 @@ impl Searcher {
         };
         let improving = improvement > 0;
         let improving_i = i32::from(improving);
-        let not_improving_i = 1 - improving_i;
         // The estimated score: the corrected eval, replaced by a stored bound
         // that tightens it.
         let eval_for_pruning = if in_check {
@@ -972,14 +962,13 @@ impl Searcher {
         // and for the `make_move` check hint below. `board` is restored by
         // `unmake_move` each iteration, so these stay valid for the whole loop.
         let mut node_ci: Option<CheckInfo> = None;
-        // 4.7b: latch so `lmp_nodes` counts NODES, not moves -- the oracle can
-        // only observe the per-node event, so that is the comparable unit.
-        #[cfg(feature = "diag")]
-        let mut diag_node_lmp_seen = false;
         let mut quiets = MoveList::new();
         let mut good_caps = BadCaptureList::new();
         let mut bad_caps = BadCaptureList::new();
-        while let Some(picked) = move_picker.next(self, board, &threats, false) {
+        // Set by late-move or quiet-futility pruning: the picker hands over no
+        // more quiets.
+        let mut skip_quiets = false;
+        while let Some(picked) = move_picker.next(self, board, &threats, skip_quiets) {
             let mv = picked.mv;
             if mv == excluded {
                 continue;
@@ -991,7 +980,15 @@ impl Searcher {
             let mut see = if is_capture { picked.see as i32 } else { 0 };
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
-            let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
+            // The TT move is emitted before quiets are scored, so its history
+            // is read here.
+            let quiet_hist = if !is_quiet {
+                0
+            } else if mv == tt_move {
+                self.quiet_pruning_history(board, threats.all, ply, mv)
+            } else {
+                picked.quiet_history
+            };
             let mut gives_check = None;
             // The picker stage the move came from, classified at pick time: `see`
             // is refined later for some moves, so it must be read here.
@@ -1023,145 +1020,151 @@ impl Searcher {
                 improving,
                 is_root: NODE::ROOT,
             };
-            if !tt_pv && !in_check && searched > 0 {
-                #[cfg(feature = "diag")]
-                if diag_order_sample {
-                    crate::diag_count!(prune_shadow_moves);
-                    if is_quiet {
-                        let lmp_margin = (self.cfg.params.lmp_base
-                            + self.cfg.params.lmp_not_improving * not_improving_i)
-                            * depth;
-                        let lmp = (depth <= 3 && eval_for_pruning + lmp_margin <= alpha)
-                            || (depth <= 8
-                                && searched
-                                    > late_move_prune_count(
-                                        depth,
-                                        improving,
-                                        self.cfg.params.lmp_count_base,
-                                    ))
-                            || (depth <= 4 && quiet_hist < -10_000)
-                            || (depth <= 7
-                                && quiet_hist < -(self.cfg.params.quiet_hist_prune_coeff * depth));
-                        let futility = depth <= 8
-                            && eval_for_pruning
-                                + self.cfg.params.fp_base
-                                + self.cfg.params.fp_coeff * depth
-                                + corr_abs * self.cfg.params.corr_fut_scale / 128
-                                <= alpha;
-                        let checking = (lmp || futility)
-                            && move_gives_check(board, &mut node_ci, mv, &mut gives_check);
-                        if lmp {
-                            crate::diag_count!(prune_shadow_lmp);
-                        }
-                        if futility {
-                            crate::diag_count!(prune_shadow_futility);
-                        }
-                        if lmp && futility {
-                            crate::diag_count!(prune_shadow_overlap_two_plus);
-                        }
-                        if checking {
-                            crate::diag_count!(prune_shadow_check_exempt);
-                        }
-                    } else if is_capture && see < 0 {
-                        let cap_hist = self.td.hist.noisy(
-                            threats.all,
-                            board.side_to_move(),
-                            moving_piece,
-                            mv.to_sq(),
-                            captured_piece,
-                        );
-                        let threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
-                            .max(-self.cfg.params.see_pruning_max);
-                        let see_shadow = depth <= 8 && !board.see_ge(mv, threshold);
-                        if see_shadow {
-                            crate::diag_count!(prune_shadow_see);
-                            if move_gives_check(board, &mut node_ci, mv, &mut gives_check) {
-                                crate::diag_count!(prune_shadow_check_exempt);
-                            }
-                        }
-                    }
-                }
-                if is_quiet {
-                    let prune_margin = (self.cfg.params.lmp_base
-                        + self.cfg.params.lmp_not_improving * not_improving_i)
-                        * depth;
-                    // 4.6.5: the move-count component ALONE, so it can be fed
-                    // back to the picker the way the reference feeds its
-                    // `moveCountPruning` flag into `next_move`.
-                    let move_count_pruning = depth <= 8
-                        && searched
-                            > late_move_prune_count(
-                                depth,
-                                improving,
-                                self.cfg.params.lmp_count_base,
-                            );
-                    let prune_candidate = !self.ablated(5)
-                        && ((depth <= 3 && eval_for_pruning + prune_margin <= alpha)
-                            || move_count_pruning
-                            || (depth <= 4 && quiet_hist < -10_000)
-                            || (depth <= 7
-                                && quiet_hist < -(self.cfg.params.quiet_hist_prune_coeff * depth)));
-                    if prune_candidate
-                        && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
-                    {
-                        crate::diag_count!(lmp_prune);
-                        trace_decision!(
-                            self,
-                            ply,
-                            "lmp depth {depth} move {mv} searched {searched} history {quiet_hist} \
-                             eval {eval_for_pruning} margin {prune_margin} count_prune {move_count_pruning} \
-                             alpha {alpha}"
-                        );
-                        #[cfg(feature = "diag")]
-                        if !diag_node_lmp_seen {
-                            diag_node_lmp_seen = true;
-                            crate::diag_count!(lmp_nodes);
-                        }
-                        continue;
-                    }
-                    // Per-move quiet futility pruning (Phase 2.7): a quiet move
-                    // whose TT-refined static eval plus a margin can't reach alpha
-                    // is skipped. Plain skip (no fail-soft best_score update), to
-                    // match the existing LMP/SEE prunes in this loop.
-                    if depth <= 8
-                        && eval_for_pruning
-                            + self.cfg.params.fp_base
-                            + self.cfg.params.fp_coeff * depth
-                            + corr_abs * self.cfg.params.corr_fut_scale / 128 // 8.5(b)
-                            <= alpha
-                        && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
-                    {
-                        crate::diag_count!(quiet_futility_prune);
-                        trace_decision!(
-                            self,
-                            ply,
-                            "futility depth {depth} move {mv} searched {searched} eval {eval_for_pruning} \
-                             corr {corr_abs} alpha {alpha}"
-                        );
-                        continue;
-                    }
-                } else if is_capture && see < 0 {
-                    let cap_hist = self.td.hist.noisy(
+            // Move-loop pruning. Never at the root, never in check, and only
+            // once a move has produced a non-losing score, so the first move
+            // and every move while all scores are mated are searched.
+            if !NODE::ROOT && !in_check && best_score > -TB_WIN_SCORE && !self.ablated(5) {
+                let core = &self.cfg.core;
+                let is_direct_check = node_ci
+                    .get_or_insert_with(|| board.check_info())
+                    .direct_check_squares(moving_piece)
+                    .contains(mv.to_sq());
+                let history = if is_quiet {
+                    quiet_hist
+                } else {
+                    self.td.hist.noisy(
                         threats.all,
                         board.side_to_move(),
                         moving_piece,
                         mv.to_sq(),
                         captured_piece,
-                    );
-                    let see_threshold = (-self.cfg.params.see_pruning_coeff * depth - cap_hist / 8)
-                        .max(-self.cfg.params.see_pruning_max);
-                    if depth <= 8
-                        && !board.see_ge(mv, see_threshold)
-                        && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
-                    {
-                        crate::diag_count!(see_prune);
-                        trace_decision!(
-                            self,
-                            ply,
-                            "see_prune depth {depth} move {mv} searched {searched} threshold {see_threshold}"
-                        );
-                        continue;
+                    )
+                };
+                crate::diag_count!(prune_shadow_moves);
+
+                // Late-move pruning: past a move count that grows with the
+                // square of the depth, the remaining quiets are skipped. A
+                // quiet that gives direct check survives the skip.
+                if is_quiet
+                    && !is_direct_check
+                    && beta < TB_WIN_SCORE
+                    && move_count
+                        >= (core.lmp_base
+                            + core.lmp_improvement * improvement / 16
+                            + core.lmp_square * depth * depth
+                            + core.lmp_history * history / 1024)
+                            / 1024
+                {
+                    crate::diag_count!(lmp_prune);
+                    #[cfg(feature = "diag")]
+                    if !skip_quiets {
+                        crate::diag_count!(lmp_nodes);
+                        crate::diag_count!(skip_quiets_nodes);
                     }
+                    trace_decision!(
+                        self,
+                        ply,
+                        "lmp depth {depth} move {mv} move_count {move_count} history {history} \
+                         improvement {improvement} alpha {alpha}"
+                    );
+                    skip_quiets = true;
+                    continue;
+                }
+
+                // Quiet futility: a quiet that cannot lift the eval to alpha
+                // even with a depth- and history-scaled margin. The node's
+                // best score rises to the margin (fail-soft) and the rest of
+                // the quiets are skipped.
+                let futility_value = static_eval
+                    + core.fp_base
+                    + core.fp_linear * depth
+                    + core.fp_history * history / 1024
+                    + core.fp_eval_above_beta * i32::from(static_eval >= beta)
+                    + core.fp_correction * corr_abs / 1024;
+                if is_quiet && !is_direct_check && depth < 14 && futility_value <= alpha {
+                    crate::diag_count!(quiet_futility_prune);
+                    #[cfg(feature = "diag")]
+                    if !skip_quiets {
+                        crate::diag_count!(skip_quiets_nodes);
+                    }
+                    trace_decision!(
+                        self,
+                        ply,
+                        "futility depth {depth} move {mv} move_count {move_count} eval {static_eval} \
+                         history {history} corr {corr_abs} value {futility_value} alpha {alpha}"
+                    );
+                    if best_score < futility_value && best_score.abs() < TB_WIN_SCORE {
+                        best_score = futility_value;
+                    }
+                    skip_quiets = true;
+                    continue;
+                }
+
+                // Bad-noisy futility: once the picker is down to the losing
+                // noisy moves, one that cannot reach alpha with its victim
+                // and a margin ends the move loop.
+                let noisy_futility_value = static_eval
+                    + core.bnfp_base
+                    + core.bnfp_linear * depth
+                    + core.bnfp_history * history / 1024
+                    + captured_piece.map_or(0, piece_value);
+                if !is_direct_check
+                    && depth < 11
+                    && move_picker.stage() == Stage::BadNoisy
+                    && noisy_futility_value <= alpha
+                {
+                    crate::diag_count!(bad_noisy_futility);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "bad_noisy_futility depth {depth} move {mv} move_count {move_count} \
+                         eval {static_eval} history {history} value {noisy_futility_value} alpha {alpha}"
+                    );
+                    if best_score < noisy_futility_value && best_score.abs() < TB_WIN_SCORE {
+                        best_score = noisy_futility_value;
+                    }
+                    break;
+                }
+
+                // History pruning: a quiet whose history is far below zero at
+                // shallow depth.
+                if is_quiet && depth < 5 && history < -core.hp_slope * depth {
+                    crate::diag_count!(history_pruned);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "history_prune depth {depth} move {mv} move_count {move_count} history {history}"
+                    );
+                    continue;
+                }
+
+                // SEE pruning, both move classes: the exchange must not lose
+                // more than a depth- and history-scaled allowance.
+                let threshold = if is_quiet {
+                    (-core.see_quiet_square * depth * depth + core.see_quiet_linear * depth
+                        - core.see_quiet_history * history / 1024
+                        + core.see_quiet_constant)
+                        .min(0)
+                } else {
+                    (-core.see_noisy_square * depth * depth
+                        - core.see_noisy_linear * depth
+                        - core.see_noisy_history * history / 1024
+                        + core.see_noisy_constant)
+                        .min(0)
+                };
+                if !board.see_ge_quiet_aware(mv, threshold) {
+                    if is_quiet {
+                        crate::diag_count!(quiet_see_prune);
+                    } else {
+                        crate::diag_count!(see_prune);
+                    }
+                    trace_decision!(
+                        self,
+                        ply,
+                        "see_prune depth {depth} move {mv} move_count {move_count} quiet {is_quiet} \
+                         history {history} threshold {threshold}"
+                    );
+                    continue;
                 }
             }
 
@@ -1993,6 +1996,51 @@ mod tests {
         for ply in 0..MAX_PLY {
             assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
         }
+    }
+
+    /// A quiet move that gives direct check survives the move-count skip and
+    /// quiet futility even when it is ordered last: every other quiet gets a
+    /// saturated history, so `Ra8#` comes out after them, past the count at
+    /// which the rest of the quiets are skipped, at a node far below its
+    /// window.
+    #[test]
+    fn a_late_direct_check_survives_the_quiet_skip() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("6k1/5ppp/8/8/8/8/1P6/R3K3 w - - 0 1").expect("valid FEN");
+        let mate = board.parse_move("a1a8").expect("legal quiet mate");
+        let threats = board.threats();
+        for mv in board.generate_legal_moves() {
+            if mv != mate && board.is_quiet_move(mv) {
+                for _ in 0..64 {
+                    searcher.td.hist.update_quiet(
+                        threats.all,
+                        crate::board::Color::White,
+                        mv,
+                        8_192,
+                    );
+                }
+            }
+        }
+        let quiets = board
+            .generate_legal_moves()
+            .into_iter()
+            .filter(|&mv| board.is_quiet_move(mv))
+            .count();
+        assert!(quiets > 8, "the skip must be reachable: {quiets} quiets");
+        let alpha = MATE_SCORE - 100;
+        let score = searcher.negamax::<NonPv, _>(
+            &mut board,
+            1,
+            alpha,
+            alpha + 1,
+            1,
+            false,
+            Move::NULL,
+            false,
+            1,
+            &mut || SearchEvent::None,
+        );
+        assert_eq!(score, MATE_SCORE - 2, "the late quiet mate was pruned");
     }
 
     /// The grandchild cutoff reset stays inside the stack at the deepest node

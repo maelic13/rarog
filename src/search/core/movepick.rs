@@ -52,6 +52,9 @@ pub(crate) struct ScoredMove {
     pub see: i16,
     /// The history pruning and reductions read for a quiet move.
     pub(super) quiet_history: i32,
+    /// A quiet-list move the picker still emits after quiets are skipped: a
+    /// direct check or a non-capturing promotion.
+    pub(super) survives_skip: bool,
 }
 
 // See MoveList in board/moves.rs: plain initialized arrays cost -10% NPS.
@@ -73,12 +76,25 @@ impl ScoredMoveList {
 
     #[inline(always)]
     fn push(&mut self, mv: Move, score: i32, see: i16, quiet_history: i32) {
+        self.push_quiet(mv, score, see, quiet_history, false);
+    }
+
+    #[inline(always)]
+    fn push_quiet(
+        &mut self,
+        mv: Move,
+        score: i32,
+        see: i16,
+        quiet_history: i32,
+        survives_skip: bool,
+    ) {
         debug_assert!(self.len < self.moves.len());
         self.moves[self.len].write(ScoredMove {
             mv,
             score,
             see,
             quiet_history,
+            survives_skip,
         });
         self.len += 1;
     }
@@ -174,8 +190,9 @@ pub(super) fn is_noisy(mv: Move) -> bool {
 ///              filters it out.
 ///   LEGALITY   both paths emit only generated legal moves; the TT move is
 ///              validated by the caller.
-///   SKIP       once the caller asks to skip quiets, no quiet is emitted and
-///              bad noisy moves still are.
+///   SKIP       once the caller asks to skip quiets, the only quiet-list
+///              moves still emitted are direct checks and non-capturing
+///              promotions; bad noisy moves still are.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(super) enum Stage {
     TtMove,
@@ -262,10 +279,6 @@ impl MovePicker {
 
     /// The stage the picker is in: the stage of the last emitted move, except
     /// after the TT move, which reports the stage that follows it.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "bad-noisy futility reads the stage")
-    )]
     pub(super) fn stage(&self) -> Stage {
         match self {
             Self::Full { stage, .. } | Self::Staged { stage, .. } => *stage,
@@ -351,11 +364,9 @@ impl MovePicker {
                             *bad_len += 1;
                             *noisy_index += 1;
                         }
-                        *stage = if skip_quiets {
-                            Stage::BadNoisy
-                        } else {
-                            Stage::GenerateQuiets
-                        };
+                        // Quiets are generated even when already skipped:
+                        // direct checks and promotions among them survive.
+                        *stage = Stage::GenerateQuiets;
                     }
                     Stage::GenerateQuiets => {
                         let mut quiets = MoveList::new();
@@ -371,11 +382,13 @@ impl MovePicker {
                         *stage = Stage::Quiets;
                     }
                     Stage::Quiets => {
-                        if !skip_quiets && *noisy_len + *quiet_index < moves.len() {
+                        while *noisy_len + *quiet_index < moves.len() {
                             let picked =
                                 pick_next(&mut moves.as_mut_slice()[*noisy_len..], *quiet_index);
                             *quiet_index += 1;
-                            return Some(picked);
+                            if !skip_quiets || picked.survives_skip {
+                                return Some(picked);
+                            }
                         }
                         *stage = Stage::BadNoisy;
                     }
@@ -402,6 +415,7 @@ fn tt_scored_move(mv: Move) -> ScoredMove {
         score: 30_000_000,
         see,
         quiet_history: 0,
+        survives_skip: false,
     }
 }
 
@@ -514,11 +528,13 @@ impl Searcher {
             }
             if mv.is_promo() {
                 let score = QUIET_PROMOTION_OFFSET + self.noisy_score(board, threats, mv);
-                out.push(mv, score, 0, 0);
+                out.push_quiet(mv, score, 0, 0, true);
                 continue;
             }
             let (score, pruning_history) = self.quiet_score(board, threats, &ctx, hist, mv);
-            out.push(mv, score, 0, pruning_history);
+            let direct_check =
+                ctx.check_squares[board.moving_piece(mv) as usize].contains(mv.to_sq());
+            out.push_quiet(mv, score, 0, pruning_history, direct_check);
         }
     }
 
@@ -790,6 +806,40 @@ mod tests {
             picker
                 .next(&searcher, &mut board, &threats, false)
                 .is_none()
+        );
+    }
+
+    /// After the skip, direct checks and non-capturing promotions still come
+    /// out of the quiet stage; ordinary quiets do not.
+    #[test]
+    fn skipping_quiets_still_emits_direct_checks_and_promotions() {
+        let searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/1P6/8/8/8/8/8/R3K3 w - - 0 1").expect("valid FEN");
+        let threats = board.threats();
+        let check_info = board.check_info();
+        let mut picker = MovePicker::staged(&searcher, &mut board, &threats, Move::NULL, 0);
+        let first = picker
+            .next(&searcher, &mut board, &threats, false)
+            .expect("a quiet first");
+        let mut after_skip = Vec::new();
+        while let Some(picked) = picker.next(&searcher, &mut board, &threats, true) {
+            after_skip.push(picked.mv);
+        }
+        let legal = board.generate_legal_moves();
+        for mv in legal {
+            if mv == first.mv || mv.is_capture() {
+                continue;
+            }
+            let survives = mv.is_promo()
+                || check_info
+                    .direct_check_squares(board.moving_piece(mv))
+                    .contains(mv.to_sq());
+            assert_eq!(after_skip.contains(&mv), survives, "{mv}");
+        }
+        assert!(after_skip.iter().any(|mv| mv.is_promo()));
+        assert!(
+            after_skip.iter().any(|mv| !mv.is_promo()),
+            "a rook check survives"
         );
     }
 

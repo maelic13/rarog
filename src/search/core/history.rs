@@ -217,6 +217,26 @@ impl Searcher {
         (!entry.mv.is_null()).then_some(entry.cont_key)
     }
 
+    /// The history a pruning or reduction decision reads for a quiet move:
+    /// the quiet table plus the one- and two-ply continuations.
+    pub(super) fn quiet_pruning_history(
+        &self,
+        board: &Board,
+        threats: Bitboard,
+        ply: usize,
+        mv: Move,
+    ) -> i32 {
+        let stm = board.side_to_move();
+        let piece = board.moving_piece(mv);
+        let mut history = self.td.hist.quiet(threats, stm, mv);
+        for back in [1, 2] {
+            if let Some(context) = self.cont_context_back(ply, back) {
+                history += self.td.hist.cont(context, stm, piece, mv.to_sq());
+            }
+        }
+        history
+    }
+
     /// Reward for the move that produced a beta cutoff.
     pub(super) fn history_bonus(&self, depth: i32) -> i32 {
         (self.cfg.params.hist_bonus_mul * depth - self.cfg.params.hist_bonus_sub)

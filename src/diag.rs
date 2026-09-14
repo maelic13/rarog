@@ -71,6 +71,12 @@ pub mod counters {
         lmp_nodes,
         quiet_futility_prune,
         see_prune,
+        // Selectivity core: nodes whose quiets were skipped by late-move or
+        // quiet-futility pruning, and the per-move prunes it adds.
+        skip_quiets_nodes,
+        quiet_see_prune,
+        history_pruned,
+        bad_noisy_futility,
         // LMR reduction and its verification re-search.
         lmr_applied,
         // Late moves whose reduction rounds to zero plies.
