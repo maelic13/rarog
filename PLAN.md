@@ -962,8 +962,9 @@ diagnostics; two rejections stop B.
       state and then committed separately. `src/` shrank 379 lines, not the
       predicted 700–1,200, because rewritten comments replaced prose rather
       than deleting it and the command enum and go keyword table added
-      lines. Found in passing: `tools/texel/fit_complete.ps1` still pins the
-      fingerprint 6,901,489, so the next HCE fit must update it first.
+      lines. Found in passing: `tools/texel/fit_complete.ps1` pinned the
+      stale fingerprint 6,901,489; since `b95dd8b` it reads GUIDE's
+      Development head row instead.
       Original scope follows. Added 2026-09-14 by maintainer decision; runs before B.2.1.
       Numbered inside B.2 because the status board has two levels, not
       because it belongs to the cluster: it is behaviour-neutral and earns no
