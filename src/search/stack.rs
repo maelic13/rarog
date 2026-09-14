@@ -57,16 +57,16 @@ impl Searcher {
     /// separately is what let ProbCut desynchronise them (see `NodeContext`).
     #[inline]
     pub(super) fn push_move(&mut self, ply: usize, mv: Move, piece: Piece) {
-        self.stack[ply].mv = mv;
-        self.stack[ply].piece = piece;
-        self.stack[ply].cont_key = piece_to_index(piece as usize, mv.to_sq().index());
+        self.td.stack[ply].mv = mv;
+        self.td.stack[ply].piece = piece;
+        self.td.stack[ply].cont_key = piece_to_index(piece as usize, mv.to_sq().index());
     }
 
     /// Clear the move at `ply`. The static eval is deliberately preserved: it
     /// belongs to the node, not to the move being tried at it.
     #[inline]
     pub(super) fn clear_move(&mut self, ply: usize) {
-        self.stack[ply].mv = Move::NULL;
-        self.stack[ply].cont_key = 0;
+        self.td.stack[ply].mv = Move::NULL;
+        self.td.stack[ply].cont_key = 0;
     }
 }

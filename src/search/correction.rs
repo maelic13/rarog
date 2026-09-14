@@ -27,21 +27,21 @@ impl Searcher {
         let us = color as usize;
         let them = (!color) as usize;
         let pawn =
-            self.correction_history[us][infra::index(board.pawn_key()) & (CORR_SIZE - 1)] as i32;
-        let minor = self.minor_correction_history[us]
+            self.td.correction_history[us][infra::index(board.pawn_key()) & (CORR_SIZE - 1)] as i32;
+        let minor = self.td.minor_correction_history[us]
             [infra::index(board.minor_key()) & (CORR_SIZE - 1)] as i32;
-        let own_non_pawn = self.non_pawn_correction_history[us][us]
+        let own_non_pawn = self.td.non_pawn_correction_history[us][us]
             [infra::index(board.non_pawn_key(color)) & (CORR_SIZE - 1)]
             as i32;
-        let their_non_pawn = self.non_pawn_correction_history[us][them]
+        let their_non_pawn = self.td.non_pawn_correction_history[us][them]
             [infra::index(board.non_pawn_key(!color)) & (CORR_SIZE - 1)]
             as i32;
         let continuation = if ply >= 1 {
-            let prev = self.stack[ply - 1].mv;
+            let prev = self.td.stack[ply - 1].mv;
             if prev.is_null() {
                 0
             } else {
-                self.continuation_correction_history[self.stack[ply - 1].cont_key] as i32
+                self.td.continuation_correction_history[self.td.stack[ply - 1].cont_key] as i32
             }
         } else {
             0
@@ -137,55 +137,55 @@ impl Searcher {
                 0,
                 us * CORR_SIZE + pawn_index,
                 pawn_key,
-                self.correction_history[us][pawn_index],
+                self.td.correction_history[us][pawn_index],
             );
             crate::diag::record_correction_slot(
                 1,
                 us * CORR_SIZE + minor_index,
                 minor_key,
-                self.minor_correction_history[us][minor_index],
+                self.td.minor_correction_history[us][minor_index],
             );
             crate::diag::record_correction_slot(
                 2,
                 us * 2 * CORR_SIZE + us * CORR_SIZE + own_index,
                 own_key,
-                self.non_pawn_correction_history[us][us][own_index],
+                self.td.non_pawn_correction_history[us][us][own_index],
             );
             crate::diag::record_correction_slot(
                 3,
                 us * 2 * CORR_SIZE + them * CORR_SIZE + other_index,
                 other_key,
-                self.non_pawn_correction_history[us][them][other_index],
+                self.td.non_pawn_correction_history[us][them][other_index],
             );
         }
         update_hist_entry(
-            &mut self.correction_history[us][infra::index(board.pawn_key()) & (CORR_SIZE - 1)],
+            &mut self.td.correction_history[us][infra::index(board.pawn_key()) & (CORR_SIZE - 1)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.minor_correction_history[us]
+            &mut self.td.minor_correction_history[us]
                 [infra::index(board.minor_key()) & (CORR_SIZE - 1)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.non_pawn_correction_history[us][us]
+            &mut self.td.non_pawn_correction_history[us][us]
                 [infra::index(board.non_pawn_key(color)) & (CORR_SIZE - 1)],
             scaled,
             HISTORY_MAX,
         );
         update_hist_entry(
-            &mut self.non_pawn_correction_history[us][them]
+            &mut self.td.non_pawn_correction_history[us][them]
                 [infra::index(board.non_pawn_key(!color)) & (CORR_SIZE - 1)],
             scaled,
             HISTORY_MAX,
         );
         if ply >= 1 {
-            let prev = self.stack[ply - 1].mv;
+            let prev = self.td.stack[ply - 1].mv;
             if !prev.is_null() {
                 update_hist_entry(
-                    &mut self.continuation_correction_history[self.stack[ply - 1].cont_key],
+                    &mut self.td.continuation_correction_history[self.td.stack[ply - 1].cont_key],
                     scaled / 2,
                     HISTORY_MAX,
                 );

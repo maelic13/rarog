@@ -10,6 +10,7 @@ mod node;
 pub mod params;
 mod shared;
 mod stack;
+mod thread;
 mod threads;
 mod time;
 
@@ -24,14 +25,12 @@ use crate::syzygy::{self, Wdl};
 use crate::tt::TranspositionTable;
 
 use correction::CORR_SIZE;
-use history::{
-    CONT_SIZE, CONT_TABLES, LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE,
-    boxed_cont_tables,
-};
+use history::{LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE};
 use node::build_lmr_table;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SharedContext};
 use stack::NodeContext;
+use thread::ThreadData;
 use threads::WorkerPool;
 use time::{RuntimeLimits, compute_runtime_limits, tm_effort_factor, tm_instability_factor};
 
@@ -174,9 +173,6 @@ pub struct Searcher {
     worker_pool: WorkerPool,
     evaluator: Evaluator,
     shared_state: Option<Arc<SharedContext>>,
-    nodes: u64,
-    tb_hits: u64,
-    seldepth: usize,
     stopped: bool,
     quit: bool,
     pondering: bool,
@@ -184,55 +180,16 @@ pub struct Searcher {
     stop_on_ponderhit: bool,
     start: Instant,
     limits: RuntimeLimits,
-    pv_table: [[Move; MAX_PLY]; MAX_PLY],
-    pv_len: [usize; MAX_PLY],
-    /// 4.5.1 per-ply search context. See `NodeContext`.
-    stack: [NodeContext; MAX_PLY],
-    killers: [[Move; 2]; MAX_PLY],
-    /// Compact root-order/index backbone. Keep this separate from the larger
-    /// records below so existing move-membership and SMP hot reads retain
-    /// their pre-10.1 cache layout.
-    root_moves: Vec<Move>,
-    root_move_records: Vec<RootMove>,
     lmr_table: Box<[[i32; 64]; 64]>,
     lmr_table_key: (i32, i32),
-    main_history: Box<[[[i16; 64]; 64]; 2]>,
-    cap_history: Box<[[[i16; 6]; 64]; 6]>,
-    low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
-    /// 10.3(8a): boxed const-size, NOT `Vec<i16>` — see [`Searcher::cont_history`].
-    pawn_history: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
-    /// Continuation history, one table per look-back distance. Indexed by
-    /// [`CONT_PLY_BACK`] position, NOT by ply distance — see that table.
-    ///
-    /// KEEP-PERF (10.3, 2026-07-22): `Box<[[i16; CONT_SIZE]; N]>`, NOT
-    /// `[Vec<i16>; N]`. The Vec form was bisected to a −2.1% NPS regression
-    /// (commit 886916b, isolated by a 7-waypoint compiler-fixed bisect): four
-    /// separate Vec headers with *runtime* lengths defeat bounds-check
-    /// elision in the hottest loops in the engine. With a boxed array the
-    /// inner length is a compile-time constant, so `cont_index`'s
-    /// `.min(CONT_SIZE − 1)` lets LLVM prove both index bounds and drop the
-    /// checks, and there is one base pointer instead of four.
-    cont_history: Box<[[i16; CONT_SIZE]; CONT_TABLES]>,
-    correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
-    /// 10.3(8a): boxed const-size, see [`Searcher::pawn_history`].
-    continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
-    countermove: Box<[[Move; 64]; 64]>,
-    root_move_offset: usize,
-    /// 8.13: 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
-    thread_id: usize,
-    /// 9.7.5(k) xorshift64 state for the per-thread LMR jitter. Re-seeded from
-    /// `thread_id` on every `reset_search_state`; never zero.
-    jitter_state: u64,
     syzygy_probe_depth: i32,
     syzygy_probe_limit: usize,
     syzygy_50_move_rule: bool,
     syzygy_largest: usize,
     params: SearchParams,
-    root_iteration_nodes: u64,
-    root_best_nodes: u64,
-    root_best_effort: f64,
+    /// Per-thread search state: the stack, PV, histories, correction tables,
+    /// root-move records and counters.
+    td: ThreadData,
 }
 
 impl Default for Searcher {
@@ -243,9 +200,6 @@ impl Default for Searcher {
             worker_pool: WorkerPool::default(),
             evaluator: Evaluator::default(),
             shared_state: None,
-            nodes: 0,
-            tb_hits: 0,
-            seldepth: 0,
             stopped: false,
             quit: false,
             pondering: false,
@@ -260,35 +214,14 @@ impl Default for Searcher {
                 movetime_mode: false,
                 analysis_mode: false,
             },
-            pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
-            pv_len: [0; MAX_PLY],
-            stack: [NodeContext::default(); MAX_PLY],
-            killers: [[Move::NULL; 2]; MAX_PLY],
-            root_moves: Vec::new(),
-            root_move_records: Vec::new(),
             lmr_table: build_lmr_table(768, 2304),
             lmr_table_key: (768, 2304),
-            main_history: Box::new([[[0; 64]; 64]; 2]),
-            cap_history: Box::new([[[0; 6]; 64]; 6]),
-            low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
-            pawn_history: Box::new([0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]),
-            cont_history: boxed_cont_tables(),
-            correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
-            continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
-            countermove: Box::new([[Move::NULL; 64]; 64]),
-            root_move_offset: 0,
-            thread_id: 0,
-            jitter_state: JITTER_SEED,
             syzygy_probe_depth: 1,
             syzygy_probe_limit: 7,
             syzygy_50_move_rule: true,
             syzygy_largest: 0,
             params: SearchParams::default(),
-            root_iteration_nodes: 0,
-            root_best_nodes: 0,
-            root_best_effort: 0.0,
+            td: ThreadData::default(),
         }
     }
 }
@@ -347,19 +280,19 @@ impl Searcher {
     }
 
     pub fn clear_history(&mut self) {
-        *self.main_history = [[[0; 64]; 64]; 2];
-        *self.cap_history = [[[0; 6]; 64]; 6];
-        *self.low_ply_history = [[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE];
-        *self.pawn_history = [0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE];
-        for table in self.cont_history.iter_mut() {
+        *self.td.main_history = [[[0; 64]; 64]; 2];
+        *self.td.cap_history = [[[0; 6]; 64]; 6];
+        *self.td.low_ply_history = [[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE];
+        *self.td.pawn_history = [0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE];
+        for table in self.td.cont_history.iter_mut() {
             table.fill(0);
         }
-        *self.correction_history = [[0; CORR_SIZE]; 2];
-        *self.minor_correction_history = [[0; CORR_SIZE]; 2];
-        *self.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
-        *self.continuation_correction_history = [0; PIECE_TO_SIZE];
-        *self.countermove = [[Move::NULL; 64]; 64];
-        self.killers = [[Move::NULL; 2]; MAX_PLY];
+        *self.td.correction_history = [[0; CORR_SIZE]; 2];
+        *self.td.minor_correction_history = [[0; CORR_SIZE]; 2];
+        *self.td.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
+        *self.td.continuation_correction_history = [0; PIECE_TO_SIZE];
+        *self.td.countermove = [[Move::NULL; 64]; 64];
+        self.td.killers = [[Move::NULL; 2]; MAX_PLY];
     }
 
     pub fn hashfull(&self) -> usize {
@@ -399,8 +332,8 @@ impl Searcher {
             );
         }
         self.shared_state = None;
-        self.root_move_offset = 0;
-        self.thread_id = 0;
+        self.td.root_move_offset = 0;
+        self.td.thread_id = 0;
 
         // Reserve the whole search's history headroom once, before any hot
         // path or helper exists. Search pushes one UnmakeInfo per ply and pops
@@ -495,9 +428,9 @@ impl Searcher {
         // configuration invalidation and thread hand-off are on the clock
         // because they are on the harness's clock (A.3.3, RAR-R11).
         self.start = limits.issued.unwrap_or_else(Instant::now);
-        self.nodes = 0;
-        self.tb_hits = 0;
-        self.seldepth = 0;
+        self.td.nodes = 0;
+        self.td.tb_hits = 0;
+        self.td.seldepth = 0;
         self.stopped = false;
         self.quit = false;
         self.pondering = limits.ponder;
@@ -515,25 +448,25 @@ impl Searcher {
             self.lmr_table_key = table_key;
         }
         self.syzygy_largest = syzygy::largest().min(self.syzygy_probe_limit);
-        self.root_iteration_nodes = 0;
-        self.root_best_nodes = 0;
-        self.root_best_effort = 0.0;
+        self.td.root_iteration_nodes = 0;
+        self.td.root_best_nodes = 0;
+        self.td.root_best_effort = 0.0;
         if age_tt {
             self.tt.new_search();
         }
         if age_history {
             self.age_history();
         }
-        self.pv_table = [[Move::NULL; MAX_PLY]; MAX_PLY];
-        self.pv_len = [0; MAX_PLY];
-        self.stack = [NodeContext::default(); MAX_PLY];
+        self.td.pv_table = [[Move::NULL; MAX_PLY]; MAX_PLY];
+        self.td.pv_len = [0; MAX_PLY];
+        self.td.stack = [NodeContext::default(); MAX_PLY];
         // 9.7.5(k): re-seed the LMR-jitter PRNG per search, per thread, so each
         // thread walks a different sequence and a given thread's sequence does
         // not depend on how the previous search happened to end. `thread_id` is
         // bounded by MAX_THREADS so the conversion always succeeds; a fallback
         // seed would only pick a different sequence, never break anything.
-        let thread_seed = u64::try_from(self.thread_id).unwrap_or(0);
-        self.jitter_state = JITTER_SEED ^ thread_seed.wrapping_mul(JITTER_STRIDE) | 1;
+        let thread_seed = u64::try_from(self.td.thread_id).unwrap_or(0);
+        self.td.jitter_state = JITTER_SEED ^ thread_seed.wrapping_mul(JITTER_STRIDE) | 1;
     }
 
     fn no_legal_moves_result(&mut self, board: &Board) -> SearchResult {
@@ -546,7 +479,7 @@ impl Searcher {
                 .evaluate_result(result, board.side_to_move(), 0),
             depth: 0,
             nodes: 0,
-            tb_hits: self.tb_hits,
+            tb_hits: self.td.tb_hits,
             elapsed_ms: self.start.elapsed().as_millis(),
             exit: SearchExit::Stop,
             ponderhit: self.ponderhit,
@@ -627,10 +560,11 @@ impl Searcher {
         if self.shared_state.is_none() {
             crate::diag::reset();
         }
-        self.root_moves.clear();
-        self.root_moves.extend_from_slice(legal_moves);
-        self.root_move_records.clear();
-        self.root_move_records
+        self.td.root_moves.clear();
+        self.td.root_moves.extend_from_slice(legal_moves);
+        self.td.root_move_records.clear();
+        self.td
+            .root_move_records
             .extend(legal_moves.iter().copied().map(RootMove::new));
         let mut bestmove = legal_moves[0];
         let mut pondermove = Move::NULL;
@@ -646,13 +580,13 @@ impl Searcher {
         let mut cast_stop_vote = false;
 
         for depth in 1..=max_depth {
-            for root_move in &mut self.root_move_records {
+            for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
             let previous_bestmove = bestmove;
-            self.root_iteration_nodes = self.nodes;
-            self.root_best_nodes = 0;
-            self.root_best_effort = 0.0;
+            self.td.root_iteration_nodes = self.td.nodes;
+            self.td.root_best_nodes = 0;
+            self.td.root_best_effort = 0.0;
             // 8.13: the aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
@@ -754,24 +688,29 @@ impl Searcher {
                 }
                 best_score = score;
                 completed_depth = depth;
-                let iteration_nodes = self.nodes.saturating_sub(self.root_iteration_nodes).max(1);
-                self.root_best_effort = self.root_best_nodes as f64 / iteration_nodes as f64;
-                if self.pv_len[0] > 0 {
-                    bestmove = self.pv_table[0][0];
-                    pondermove = if self.pv_len[0] > 1 {
-                        self.pv_table[0][1]
+                let iteration_nodes = self
+                    .td
+                    .nodes
+                    .saturating_sub(self.td.root_iteration_nodes)
+                    .max(1);
+                self.td.root_best_effort = self.td.root_best_nodes as f64 / iteration_nodes as f64;
+                if self.td.pv_len[0] > 0 {
+                    bestmove = self.td.pv_table[0][0];
+                    pondermove = if self.td.pv_len[0] > 1 {
+                        self.td.pv_table[0][1]
                     } else {
                         Move::NULL
                     };
                 }
                 if let Some(root_move) = self
+                    .td
                     .root_move_records
                     .iter_mut()
                     .find(|rm| rm.mv == bestmove)
                 {
                     root_move.last_best_depth = depth;
                 }
-                for root_move in &mut self.root_move_records {
+                for root_move in &mut self.td.root_move_records {
                     if root_move.last_search_depth == depth {
                         root_move.complete_iteration();
                     }
@@ -855,7 +794,7 @@ impl Searcher {
                 // bestMoveInstab: ↑ when best move changed recently.
                 let best_move_instab = tm_instability_factor(&self.params, tot_best_move_changes);
                 // effortFactor: linear interp — at effort≤0.79 → effort_high; at effort≥1.0 → effort_low.
-                let effort_factor = tm_effort_factor(&self.params, self.root_best_effort);
+                let effort_factor = tm_effort_factor(&self.params, self.td.root_best_effort);
                 let total_time = self.limits.optimum_ms
                     * opt_scale
                     * falling_eval
@@ -889,7 +828,7 @@ impl Searcher {
                                 shared.request_stop();
                             }
                         }
-                        if self.thread_id != 0 {
+                        if self.td.thread_id != 0 {
                             // Helpers keep searching until the pool agrees, so
                             // their remaining time still fills the shared TT.
                             continue;
@@ -915,6 +854,7 @@ impl Searcher {
         #[cfg(feature = "diag")]
         if (self.stopped || self.quit)
             && self
+                .td
                 .root_move_records
                 .iter()
                 .any(|rm| rm.last_search_depth > completed_depth)
@@ -934,8 +874,8 @@ impl Searcher {
             pondermove,
             score: best_score,
             depth: completed_depth,
-            nodes: self.nodes,
-            tb_hits: self.tb_hits,
+            nodes: self.td.nodes,
+            tb_hits: self.td.tb_hits,
             elapsed_ms: self.start.elapsed().as_millis(),
             exit: if self.quit {
                 SearchExit::Quit
@@ -1002,7 +942,7 @@ impl Searcher {
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
         let total_nodes = self.record_node();
         if let Some(shared_state) = &self.shared_state
-            && (self.limits.nodes > 0 || self.nodes & SHARED_NODE_BATCH_MASK == 0)
+            && (self.limits.nodes > 0 || self.td.nodes & SHARED_NODE_BATCH_MASK == 0)
         {
             match shared_state.stop_state.load(Ordering::Relaxed) {
                 STOP_QUIT => {
@@ -1024,7 +964,7 @@ impl Searcher {
             }
             return true;
         }
-        if self.nodes & 2047 == 0 {
+        if self.td.nodes & 2047 == 0 {
             match poll() {
                 SearchEvent::Quit => {
                     self.quit = true;
@@ -1053,9 +993,9 @@ impl Searcher {
     }
 
     fn record_node(&mut self) -> u64 {
-        self.nodes += 1;
+        self.td.nodes += 1;
         if let Some(shared_state) = &self.shared_state {
-            let pending = self.nodes & SHARED_NODE_BATCH_MASK;
+            let pending = self.td.nodes & SHARED_NODE_BATCH_MASK;
             if pending == 0 {
                 shared_state
                     .nodes
@@ -1064,15 +1004,15 @@ impl Searcher {
             } else if self.limits.nodes > 0 {
                 shared_state.nodes.load(Ordering::Relaxed) + pending
             } else {
-                self.nodes
+                self.td.nodes
             }
         } else {
-            self.nodes
+            self.td.nodes
         }
     }
 
     fn record_tb_hit(&mut self) {
-        self.tb_hits += 1;
+        self.td.tb_hits += 1;
         if let Some(shared_state) = &self.shared_state {
             shared_state.tb_hits.fetch_add(1, Ordering::Relaxed);
         }
@@ -1081,15 +1021,16 @@ impl Searcher {
     fn reported_nodes(&self) -> u64 {
         self.shared_state
             .as_ref()
-            .map_or(self.nodes, |shared_state| {
-                shared_state.nodes.load(Ordering::Relaxed) + (self.nodes & SHARED_NODE_BATCH_MASK)
+            .map_or(self.td.nodes, |shared_state| {
+                shared_state.nodes.load(Ordering::Relaxed)
+                    + (self.td.nodes & SHARED_NODE_BATCH_MASK)
             })
     }
 
     fn reported_tb_hits(&self) -> u64 {
         self.shared_state
             .as_ref()
-            .map_or(self.tb_hits, |shared_state| {
+            .map_or(self.td.tb_hits, |shared_state| {
                 shared_state.tb_hits.load(Ordering::Relaxed)
             })
     }
@@ -1099,7 +1040,7 @@ impl Searcher {
     }
 
     fn send_info(&self, depth: usize, score: i32) {
-        let pv = self.pv_table[0][..self.pv_len[0].min(MAX_PLY)]
+        let pv = self.td.pv_table[0][..self.td.pv_len[0].min(MAX_PLY)]
             .iter()
             .copied()
             .filter(|mv| !mv.is_null())
@@ -1122,7 +1063,7 @@ impl Searcher {
         println!(
             "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
-            self.seldepth,
+            self.td.seldepth,
             format_score(score),
             nodes,
             nps,
@@ -1385,8 +1326,8 @@ mod tests {
 
         let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
 
-        assert_eq!(searcher.root_move_records.len(), legal.len());
-        assert!(searcher.root_move_records.iter().all(|rm| {
+        assert_eq!(searcher.td.root_move_records.len(), legal.len());
+        assert!(searcher.td.root_move_records.iter().all(|rm| {
             rm.samples >= 3
                 && rm.previous_score > -INF_SCORE
                 && rm.score > -INF_SCORE
@@ -1396,6 +1337,7 @@ mod tests {
                 && rm.mean_squared_score + 1e-9 >= rm.average_score * rm.average_score
         }));
         let best = searcher
+            .td
             .root_move_records
             .iter()
             .find(|rm| rm.mv == result.bestmove)
@@ -1404,6 +1346,7 @@ mod tests {
         assert!(best.pv_len > 1);
         assert!(
             searcher
+                .td
                 .root_move_records
                 .iter()
                 .map(|rm| rm.nodes)
@@ -1513,7 +1456,6 @@ mod tests {
     #[test]
     fn ponderhit_preserves_elapsed_time_budget() {
         let mut searcher = Searcher {
-            nodes: 2047,
             pondering: true,
             start: Instant::now() - Duration::from_millis(10),
             limits: RuntimeLimits {
@@ -1526,6 +1468,7 @@ mod tests {
             },
             ..Searcher::default()
         };
+        searcher.td.nodes = 2047;
 
         let stopped = searcher.check_stop(&mut || SearchEvent::PonderHit);
 
@@ -1583,14 +1526,14 @@ mod tests {
         assert_eq!(board.to_fen(), before_fen);
         assert_eq!(board.hash, before_hash);
         assert!(
-            !searcher.pv_table[0][..searcher.pv_len[0].min(MAX_PLY)]
+            !searcher.td.pv_table[0][..searcher.td.pv_len[0].min(MAX_PLY)]
                 .iter()
                 .any(|&mv| mv.same_uci_move(illegal)),
             "malformed TT move must not appear in the root PV"
         );
         assert_legal_pv(
             &root,
-            &searcher.pv_table[0][..searcher.pv_len[0].min(MAX_PLY)],
+            &searcher.td.pv_table[0][..searcher.td.pv_len[0].min(MAX_PLY)],
         );
     }
 

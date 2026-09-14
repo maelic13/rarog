@@ -396,12 +396,12 @@ impl Searcher {
         scored: &mut ScoredMoveList,
     ) {
         let previous = if ply > 0 {
-            self.stack[ply - 1].mv
+            self.td.stack[ply - 1].mv
         } else {
             Move::NULL
         };
         let counter = if !previous.is_null() {
-            self.countermove[previous.from_sq().index()][previous.to_sq().index()]
+            self.td.countermove[previous.from_sq().index()][previous.to_sq().index()]
         } else {
             Move::NULL
         };
@@ -414,8 +414,8 @@ impl Searcher {
         // 9.7.5(d): node-invariant, so read once rather than per move — the
         // killers were being loaded FOUR times per move (twice in the tier
         // chain, twice more in the quiet-history re-test below).
-        let killer0 = self.killers[ply][0];
-        let killer1 = self.killers[ply][1];
+        let killer0 = self.td.killers[ply][0];
+        let killer1 = self.td.killers[ply][1];
         let stm = board.side_to_move();
 
         for &mv in moves {
@@ -431,8 +431,8 @@ impl Searcher {
                 let attacker = board.moving_piece(mv);
                 let victim = board.captured_piece(mv).unwrap_or(Piece::Pawn);
                 see = board.see(mv);
-                let hist =
-                    self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+                let hist = self.td.cap_history[attacker as usize][mv.to_sq().index()]
+                    [victim as usize] as i32;
                 if see >= 0 {
                     20_000_000 + 32 * see + 10 * piece_value(victim) - piece_value(attacker) + hist
                 } else {
@@ -520,7 +520,7 @@ impl Searcher {
                 0
             };
             let hist =
-                self.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
+                self.td.cap_history[attacker as usize][mv.to_sq().index()][victim as usize] as i32;
             if board.see_ge(mv, 0) {
                 20_000_000 + 16 * (piece_value(victim) + promo_gain) - piece_value(attacker) + hist
             } else {

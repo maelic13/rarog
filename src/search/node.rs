@@ -215,8 +215,8 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, ply);
         }
-        self.pv_len[ply] = ply;
-        self.seldepth = self.seldepth.max(ply);
+        self.td.pv_len[ply] = ply;
+        self.td.seldepth = self.td.seldepth.max(ply);
 
         if ply > 0 && board.can_declare_draw_in_search() {
             return 0;
@@ -286,7 +286,7 @@ impl Searcher {
         // 9.7.5(b): main thread only. If helper work is reaching the thread
         // that owns the answer, this hit rate must RISE with thread count; a
         // flat rate means the helpers are filling a table nobody reads.
-        if self.thread_id == 0 {
+        if self.td.thread_id == 0 {
             crate::diag_count!(main_tt_probes);
             if tt_entry.is_some() {
                 crate::diag_count!(main_tt_hits);
@@ -363,7 +363,7 @@ impl Searcher {
             .mv
             .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
-        if ply == 0 && !self.root_moves.is_empty() && !self.root_moves.contains(&tt_move) {
+        if ply == 0 && !self.td.root_moves.is_empty() && !self.td.root_moves.contains(&tt_move) {
             tt_move = Move::NULL;
         }
 
@@ -402,7 +402,7 @@ impl Searcher {
             };
             (self.corrected_eval_from_raw(board, raw, ply), raw)
         };
-        self.stack[ply].static_eval = static_eval;
+        self.td.stack[ply].static_eval = static_eval;
         // 8.5(b): magnitude of the correction applied to this node's static
         // eval. A large |corr| means the raw eval is being heavily adjusted and
         // is less trustworthy, so the margin/reduction knobs below prune and
@@ -428,8 +428,8 @@ impl Searcher {
         // two plies back when that node was in check.
         let improving = !in_check
             && ply >= 2
-            && self.stack[ply - 2].static_eval != VALUE_NONE
-            && static_eval > self.stack[ply - 2].static_eval;
+            && self.td.stack[ply - 2].static_eval != VALUE_NONE
+            && static_eval > self.td.stack[ply - 2].static_eval;
         let improving_i = if improving { 1 } else { 0 };
         let not_improving_i = 1 - improving_i;
         // 9.7.5 lead: the TT may only stand in for the static eval here if its
@@ -716,11 +716,11 @@ impl Searcher {
             }
 
             let root_moves;
-            let legal_moves = if ply == 0 && !self.root_moves.is_empty() {
+            let legal_moves = if ply == 0 && !self.td.root_moves.is_empty() {
                 root_moves = legal_moves
                     .iter()
                     .copied()
-                    .filter(|mv| self.root_moves.contains(mv))
+                    .filter(|mv| self.td.root_moves.contains(mv))
                     .collect::<Vec<_>>();
                 if root_moves.is_empty() {
                     legal_moves.as_slice()
@@ -744,9 +744,9 @@ impl Searcher {
             // Helpers rotate their root list on top of the pool ordering, so
             // the pool's shared view refines the ordering without collapsing
             // every thread onto the same tree.
-            let rotate = self.root_move_offset > 0;
+            let rotate = self.td.root_move_offset > 0;
             if ply == 0 && rotate && scored.len() > 1 {
-                let offset = self.root_move_offset % scored.len();
+                let offset = self.td.root_move_offset % scored.len();
                 diversify_root_scores(scored.as_mut_slice(), offset);
             }
             MovePicker::full(scored, tt_move)
@@ -772,7 +772,7 @@ impl Searcher {
         let mut good_caps = BadCaptureList::new();
         let mut bad_caps = BadCaptureList::new();
         let previous_move = if ply > 0 {
-            self.stack[ply - 1].mv
+            self.td.stack[ply - 1].mv
         } else {
             Move::NULL
         };
@@ -860,7 +860,7 @@ impl Searcher {
                         }
                     } else if is_capture && see < 0 {
                         let cap_hist = captured_piece.map_or(0, |cap| {
-                            self.cap_history[moving_piece as usize][mv.to_sq().index()]
+                            self.td.cap_history[moving_piece as usize][mv.to_sq().index()]
                                 [cap as usize] as i32
                         });
                         let threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
@@ -918,7 +918,7 @@ impl Searcher {
                     }
                 } else if is_capture && see < 0 {
                     let cap_hist = captured_piece.map_or(0, |cap| {
-                        self.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
+                        self.td.cap_history[moving_piece as usize][mv.to_sq().index()][cap as usize]
                             as i32
                     });
                     let see_threshold = (-self.params.see_pruning_coeff * depth - cap_hist / 8)
@@ -1000,7 +1000,7 @@ impl Searcher {
                 };
 
             self.push_move(ply, mv, moving_piece);
-            let nodes_before_move = if ply == 0 { self.nodes } else { 0 };
+            let nodes_before_move = if ply == 0 { self.td.nodes } else { 0 };
             // 10.3: the check predicate is cheap here (node masks + two
             // bitboard tests) and lets `make_move` skip `calculate_checkers`
             // for the overwhelmingly common non-checking move.
@@ -1158,7 +1158,7 @@ impl Searcher {
             }
 
             let move_nodes = if ply == 0 {
-                self.nodes.saturating_sub(nodes_before_move)
+                self.td.nodes.saturating_sub(nodes_before_move)
             } else {
                 0
             };
@@ -1176,17 +1176,17 @@ impl Searcher {
                 best_score = score;
                 best_move = mv;
                 if ply == 0 {
-                    self.root_best_nodes = move_nodes;
+                    self.td.root_best_nodes = move_nodes;
                 }
             }
             if score > alpha {
                 alpha = score;
-                self.pv_table[ply][ply] = mv;
-                let child_len = self.pv_len[ply + 1].max(ply + 1);
+                self.td.pv_table[ply][ply] = mv;
+                let child_len = self.td.pv_len[ply + 1].max(ply + 1);
                 for next_ply in ply + 1..child_len {
-                    self.pv_table[ply][next_ply] = self.pv_table[ply + 1][next_ply];
+                    self.td.pv_table[ply][next_ply] = self.td.pv_table[ply + 1][next_ply];
                 }
-                self.pv_len[ply] = child_len;
+                self.td.pv_len[ply] = child_len;
 
                 if score >= beta {
                     if excluded.is_null() {
@@ -1428,8 +1428,8 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, MAX_PLY - 1);
         }
-        self.pv_len[ply] = ply;
-        self.seldepth = self.seldepth.max(ply);
+        self.td.pv_len[ply] = ply;
+        self.td.seldepth = self.td.seldepth.max(ply);
 
         if board.can_declare_draw_in_search() {
             return 0;
@@ -1653,12 +1653,12 @@ impl Searcher {
             if score > alpha {
                 alpha = score;
                 best_move = mv;
-                self.pv_table[ply][ply] = mv;
-                let child_len = self.pv_len[ply + 1].max(ply + 1);
+                self.td.pv_table[ply][ply] = mv;
+                let child_len = self.td.pv_len[ply + 1].max(ply + 1);
                 for next_ply in ply + 1..child_len {
-                    self.pv_table[ply][next_ply] = self.pv_table[ply + 1][next_ply];
+                    self.td.pv_table[ply][next_ply] = self.td.pv_table[ply + 1][next_ply];
                 }
-                self.pv_len[ply] = child_len;
+                self.td.pv_len[ply] = child_len;
             }
         }
         let bound = if alpha > original_alpha {

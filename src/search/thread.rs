@@ -1,0 +1,96 @@
+//! Per-thread search state.
+
+use crate::board::Move;
+
+use super::correction::CORR_SIZE;
+use super::history::{
+    CONT_SIZE, CONT_TABLES, LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE,
+    boxed_cont_tables,
+};
+use super::stack::NodeContext;
+use super::{JITTER_SEED, MAX_PLY, RootMove};
+
+/// Everything one search thread owns and mutates while it searches: the
+/// per-ply stack and PV, the move-ordering histories and correction tables,
+/// the root-move records and the node counters. B.1 moved these fields out of
+/// `Searcher` without changing their ownership: every table stays per thread
+/// (sharing correction tables is a D.2 decision).
+pub(super) struct ThreadData {
+    pub(super) nodes: u64,
+    pub(super) tb_hits: u64,
+    pub(super) seldepth: usize,
+    pub(super) pv_table: [[Move; MAX_PLY]; MAX_PLY],
+    pub(super) pv_len: [usize; MAX_PLY],
+    /// 4.5.1 per-ply search context. See `NodeContext`.
+    pub(super) stack: [NodeContext; MAX_PLY],
+    pub(super) killers: [[Move; 2]; MAX_PLY],
+    /// Compact root-order/index backbone. Keep this separate from the larger
+    /// records below so existing move-membership and SMP hot reads retain
+    /// their pre-10.1 cache layout.
+    pub(super) root_moves: Vec<Move>,
+    pub(super) root_move_records: Vec<RootMove>,
+    pub(super) main_history: Box<[[[i16; 64]; 64]; 2]>,
+    pub(super) cap_history: Box<[[[i16; 6]; 64]; 6]>,
+    pub(super) low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
+    /// 10.3(8a): boxed const-size, NOT `Vec<i16>` — see [`ThreadData::cont_history`].
+    pub(super) pawn_history: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
+    /// Continuation history, one table per look-back distance. Indexed by
+    /// [`CONT_PLY_BACK`] position, NOT by ply distance — see that table.
+    ///
+    /// KEEP-PERF (10.3, 2026-07-22): `Box<[[i16; CONT_SIZE]; N]>`, NOT
+    /// `[Vec<i16>; N]`. The Vec form was bisected to a −2.1% NPS regression
+    /// (commit 886916b, isolated by a 7-waypoint compiler-fixed bisect): four
+    /// separate Vec headers with *runtime* lengths defeat bounds-check
+    /// elision in the hottest loops in the engine. With a boxed array the
+    /// inner length is a compile-time constant, so `cont_index`'s
+    /// `.min(CONT_SIZE − 1)` lets LLVM prove both index bounds and drop the
+    /// checks, and there is one base pointer instead of four.
+    pub(super) cont_history: Box<[[i16; CONT_SIZE]; CONT_TABLES]>,
+    pub(super) correction_history: Box<[[i16; CORR_SIZE]; 2]>,
+    pub(super) minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
+    pub(super) non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
+    /// 10.3(8a): boxed const-size, see [`ThreadData::pawn_history`].
+    pub(super) continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
+    pub(super) countermove: Box<[[Move; 64]; 64]>,
+    pub(super) root_move_offset: usize,
+    /// 8.13: 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
+    pub(super) thread_id: usize,
+    /// 9.7.5(k) xorshift64 state for the per-thread LMR jitter. Re-seeded from
+    /// `thread_id` on every `reset_search_state`; never zero.
+    pub(super) jitter_state: u64,
+    pub(super) root_iteration_nodes: u64,
+    pub(super) root_best_nodes: u64,
+    pub(super) root_best_effort: f64,
+}
+
+impl Default for ThreadData {
+    fn default() -> Self {
+        Self {
+            nodes: 0,
+            tb_hits: 0,
+            seldepth: 0,
+            pv_table: [[Move::NULL; MAX_PLY]; MAX_PLY],
+            pv_len: [0; MAX_PLY],
+            stack: [NodeContext::default(); MAX_PLY],
+            killers: [[Move::NULL; 2]; MAX_PLY],
+            root_moves: Vec::new(),
+            root_move_records: Vec::new(),
+            main_history: Box::new([[[0; 64]; 64]; 2]),
+            cap_history: Box::new([[[0; 6]; 64]; 6]),
+            low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
+            pawn_history: Box::new([0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]),
+            cont_history: boxed_cont_tables(),
+            correction_history: Box::new([[0; CORR_SIZE]; 2]),
+            minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
+            non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
+            continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
+            countermove: Box::new([[Move::NULL; 64]; 64]),
+            root_move_offset: 0,
+            thread_id: 0,
+            jitter_state: JITTER_SEED,
+            root_iteration_nodes: 0,
+            root_best_nodes: 0,
+            root_best_effort: 0.0,
+        }
+    }
+}

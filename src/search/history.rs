@@ -19,7 +19,7 @@ pub const PIECE_TO_SIZE: usize = 6 * 64;
 /// 9.0a: replaces four parallel `cont_history_N` fields and four copy-pasted
 /// blocks in each of the read / update / age paths (twelve near-identical
 /// stanzas). `(plies_back, bonus_divisor)` — slot order is the array order in
-/// [`Searcher::cont_history`], so adding a look-back distance is one entry
+/// [`ThreadData::cont_history`], so adding a look-back distance is one entry
 /// here rather than a field plus three new blocks.
 pub(super) const CONT_PLY_BACK: [(usize, i32); 4] = [(1, 1), (2, 1), (4, 2), (6, 3)];
 pub(super) const CONT_TABLES: usize = CONT_PLY_BACK.len();
@@ -83,11 +83,11 @@ impl Searcher {
             if ply < back {
                 continue;
             }
-            let prev = self.stack[ply - back].mv;
+            let prev = self.td.stack[ply - back].mv;
             if prev.is_null() {
                 continue;
             }
-            cont_bases[slot] = Some(self.stack[ply - back].cont_row_base());
+            cont_bases[slot] = Some(self.td.stack[ply - back].cont_row_base());
         }
         QuietHistoryCtx {
             cont_bases,
@@ -106,20 +106,20 @@ impl Searcher {
     ) -> i32 {
         let from = mv.from_sq().index();
         let to = mv.to_sq().index();
-        let main = self.main_history[color as usize][from][to] as i32;
+        let main = self.td.main_history[color as usize][from][to] as i32;
         let piece = board.moving_piece(mv) as usize;
         // The shared per-move offset into every (piece, to)-shaped row.
         let piece_to = piece_to_index(piece, to);
-        let pawn = self.pawn_history[ctx.pawn_base + piece_to] as i32;
+        let pawn = self.td.pawn_history[ctx.pawn_base + piece_to] as i32;
         let low_ply = if ply < LOW_PLY_HISTORY_SIZE {
-            self.low_ply_history[ply][from][to] as i32 / (1 + infra::to_i32(ply))
+            self.td.low_ply_history[ply][from][to] as i32 / (1 + infra::to_i32(ply))
         } else {
             0
         };
         let mut cont = 0;
         for (slot, base) in ctx.cont_bases.iter().enumerate() {
             if let Some(base) = base {
-                cont += self.cont_history[slot][(base + piece_to).min(CONT_SIZE - 1)] as i32;
+                cont += self.td.cont_history[slot][(base + piece_to).min(CONT_SIZE - 1)] as i32;
             }
         }
         // 4.6c: safe versus losing check classes. A check whose checker can be
@@ -164,9 +164,9 @@ impl Searcher {
         good_caps: &BadCaptureList,
         bad_caps: &BadCaptureList,
     ) {
-        if self.killers[ply][0] != best {
-            self.killers[ply][1] = self.killers[ply][0];
-            self.killers[ply][0] = best;
+        if self.td.killers[ply][0] != best {
+            self.td.killers[ply][1] = self.td.killers[ply][0];
+            self.td.killers[ply][0] = best;
         }
 
         let color = board.side_to_move();
@@ -210,7 +210,7 @@ impl Searcher {
         }
 
         if !previous.is_null() {
-            self.countermove[previous.from_sq().index()][previous.to_sq().index()] = best;
+            self.td.countermove[previous.from_sq().index()][previous.to_sq().index()] = best;
         }
 
         let piece = best_piece as usize;
@@ -219,13 +219,13 @@ impl Searcher {
             if ply < back {
                 continue;
             }
-            let prev = self.stack[ply - back].mv;
+            let prev = self.td.stack[ply - back].mv;
             if prev.is_null() {
                 continue;
             }
-            let index = self.stack[ply - back].cont_row_base() + piece_to_index(piece, to);
+            let index = self.td.stack[ply - back].cont_row_base() + piece_to_index(piece, to);
             update_hist_entry(
-                &mut self.cont_history[slot][index],
+                &mut self.td.cont_history[slot][index],
                 bonus / divisor,
                 HISTORY_MAX,
             );
@@ -242,19 +242,19 @@ impl Searcher {
         bonus: i32,
     ) {
         update_hist_entry(
-            &mut self.main_history[color as usize][mv.from_sq().index()][mv.to_sq().index()],
+            &mut self.td.main_history[color as usize][mv.from_sq().index()][mv.to_sq().index()],
             bonus,
             HISTORY_MAX,
         );
         if ply < LOW_PLY_HISTORY_SIZE {
             update_hist_entry(
-                &mut self.low_ply_history[ply][mv.from_sq().index()][mv.to_sq().index()],
+                &mut self.td.low_ply_history[ply][mv.from_sq().index()][mv.to_sq().index()],
                 bonus,
                 HISTORY_MAX,
             );
         }
         update_hist_entry(
-            &mut self.pawn_history
+            &mut self.td.pawn_history
                 [pawn_history_index(pawn_key, piece as usize, mv.to_sq().index())],
             bonus,
             HISTORY_MAX,
@@ -270,7 +270,7 @@ impl Searcher {
     ) {
         if let Some(captured) = captured {
             update_hist_entry(
-                &mut self.cap_history[attacker as usize][to][captured as usize],
+                &mut self.td.cap_history[attacker as usize][to][captured as usize],
                 bonus,
                 CAP_HISTORY_MAX,
             );
@@ -278,53 +278,53 @@ impl Searcher {
     }
 
     pub(super) fn age_history(&mut self) {
-        for color in self.main_history.iter_mut() {
+        for color in self.td.main_history.iter_mut() {
             for from in color.iter_mut() {
                 for value in from.iter_mut() {
                     *value /= 2;
                 }
             }
         }
-        for attacker in self.cap_history.iter_mut() {
+        for attacker in self.td.cap_history.iter_mut() {
             for to in attacker.iter_mut() {
                 for value in to.iter_mut() {
                     *value /= 2;
                 }
             }
         }
-        for ply in self.low_ply_history.iter_mut() {
+        for ply in self.td.low_ply_history.iter_mut() {
             for from in ply.iter_mut() {
                 for value in from.iter_mut() {
                     *value /= 2;
                 }
             }
         }
-        for value in self.pawn_history.iter_mut() {
+        for value in self.td.pawn_history.iter_mut() {
             *value /= 2;
         }
-        for table in self.cont_history.iter_mut() {
+        for table in self.td.cont_history.iter_mut() {
             for value in table.iter_mut() {
                 *value /= 2;
             }
         }
-        for color in self.correction_history.iter_mut() {
+        for color in self.td.correction_history.iter_mut() {
             for value in color.iter_mut() {
                 *value /= 2;
             }
         }
-        for color in self.minor_correction_history.iter_mut() {
+        for color in self.td.minor_correction_history.iter_mut() {
             for value in color.iter_mut() {
                 *value /= 2;
             }
         }
-        for stm in self.non_pawn_correction_history.iter_mut() {
+        for stm in self.td.non_pawn_correction_history.iter_mut() {
             for color in stm.iter_mut() {
                 for value in color.iter_mut() {
                     *value /= 2;
                 }
             }
         }
-        for value in self.continuation_correction_history.iter_mut() {
+        for value in self.td.continuation_correction_history.iter_mut() {
             *value /= 2;
         }
     }
@@ -409,7 +409,7 @@ mod tests {
         let from = Square::A2.index();
         let to = Square::A3.index();
 
-        searcher.low_ply_history[7][from][to] = 800;
+        searcher.td.low_ply_history[7][from][to] = 800;
 
         let ci = board.check_info();
         let ctx7 = searcher.quiet_history_ctx(&board, 7);
@@ -449,12 +449,12 @@ mod tests {
         );
 
         assert!(
-            searcher.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::A2.index()]
+            searcher.td.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::A2.index()]
                 [Square::A3.index()]
                 > 0
         );
         assert_eq!(
-            searcher.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::H2.index()]
+            searcher.td.low_ply_history[LOW_PLY_HISTORY_SIZE - 1][Square::H2.index()]
                 [Square::H3.index()],
             0
         );

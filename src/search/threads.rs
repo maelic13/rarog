@@ -226,8 +226,8 @@ impl Searcher {
         self.tt = job.tt;
         self.hash_mb = job.hash_mb;
         self.shared_state = Some(Arc::clone(&job.shared_state));
-        self.root_move_offset = job.root_move_offset;
-        self.thread_id = job.thread_id;
+        self.td.root_move_offset = job.root_move_offset;
+        self.td.thread_id = job.thread_id;
         let result = self.search_worker(
             job.root,
             &job.limits,
@@ -250,11 +250,11 @@ impl Searcher {
     /// zero, so the jitter now diversifies without also pruning harder.
     #[inline(always)]
     pub(super) fn next_jitter(&mut self, magnitude: i32) -> i32 {
-        let mut x = self.jitter_state;
+        let mut x = self.td.jitter_state;
         x ^= x << 13;
         x ^= x >> 7;
         x ^= x << 17;
-        self.jitter_state = x;
+        self.td.jitter_state = x;
         // Top 7 bits, not the bottom ones: xorshift64's low bits are its
         // weakest (they carry the least mixing), and taking them measurably
         // skewed the mean. `>> 57` yields 0..=127, so the result is [−64, 63].
@@ -315,7 +315,7 @@ impl Searcher {
         self.tt.make_shared(self.hash_mb);
         let helper_count = threads.saturating_sub(1);
         let root_len = root_moves.len();
-        let shared_state = Arc::new(SharedContext::new(self.tb_hits, root_len, threads));
+        let shared_state = Arc::new(SharedContext::new(self.td.tb_hits, root_len, threads));
         let mut worker_engine_options = engine_options;
         worker_engine_options.threads = 1;
         self.worker_pool.set_helper_count(helper_count);
@@ -354,8 +354,8 @@ impl Searcher {
         }
         drop(result_tx);
 
-        self.root_move_offset = 0;
-        self.thread_id = 0;
+        self.td.root_move_offset = 0;
+        self.td.thread_id = 0;
         self.shared_state = Some(Arc::clone(&shared_state));
         let root_for_ponder = root.clone();
         let mut main_poll = || match shared_state.stop_state.load(Ordering::Relaxed) {
@@ -387,7 +387,7 @@ impl Searcher {
                 helper_results.push(result);
             }
         }
-        self.root_move_offset = 0;
+        self.td.root_move_offset = 0;
 
         #[cfg(feature = "diag")]
         if let Some(main) = helper_results.first() {
@@ -451,8 +451,8 @@ impl Searcher {
                 exit: SearchExit::Stop,
                 ponderhit: self.ponderhit,
             });
-        self.nodes = total_nodes;
-        self.tb_hits = total_tb_hits;
+        self.td.nodes = total_nodes;
+        self.td.tb_hits = total_tb_hits;
         self.quit = quit;
         self.stopped = true;
         best.nodes = total_nodes;
@@ -521,6 +521,7 @@ impl Searcher {
         nodes: u64,
     ) {
         let Some(index) = self
+            .td
             .root_moves
             .iter()
             .position(|root_move| *root_move == mv)
@@ -541,17 +542,23 @@ impl Searcher {
             shared.publish_root_score(index, depth, score, bound);
         }
 
-        let root_move = &mut self.root_move_records[index];
+        let root_move = &mut self.td.root_move_records[index];
         // This is the cumulative search-wide seldepth at the time the move
         // completes (the same low-cost shape used by Basilisk), so a later move
         // may inherit a deeper earlier move's maximum. Exact per-move tracking
         // required extra branches in every recursive move loop and measured a
         // real speed loss; 10.2 should treat this field as a conservative max.
-        root_move.record_search(infra::to_usize(depth), score, nodes, self.seldepth, bound);
+        root_move.record_search(
+            infra::to_usize(depth),
+            score,
+            nodes,
+            self.td.seldepth,
+            bound,
+        );
         if score > alpha {
-            let child_len = self.pv_len[1].clamp(1, MAX_PLY);
+            let child_len = self.td.pv_len[1].clamp(1, MAX_PLY);
             root_move.pv[0] = mv;
-            root_move.pv[1..child_len].copy_from_slice(&self.pv_table[1][1..child_len]);
+            root_move.pv[1..child_len].copy_from_slice(&self.td.pv_table[1][1..child_len]);
             root_move.pv_len = child_len;
         }
     }
