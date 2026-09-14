@@ -114,30 +114,28 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Orient once per session: operating rules, GUIDE's current and held overview,
   the selected PLAN section. Follow up with `rg` and bounded excerpts; re-read
   only changed regions or to answer a concrete question.
-- Batch independent reads and checks. Send verbose output to logs and return
-  exit status plus a short result; read full output only to investigate.
+- Batch independent reads and checks; send verbose output to logs and return
+  exit status plus a short result. Run long jobs durably with logs and exit
+  status, and back off unchanged polls: waiting on the CPU is not reasoning.
 - Keep a compact working record: leaf, source and binary identity, evidence
   paths, completed checks, live process IDs, blocker, next action. After an
   interruption, inspect it and existing outputs before restarting anything.
-- Define the smallest sufficient measurement before launching it and follow
-  the leaf's registered scope. Record why an expansion is needed before
-  collecting results; never shrink a registered run after seeing results.
-- Reuse the harness's runner, parser and archive format; add a durable helper
-  only for a missing correctness check or a repeated workflow. Run long jobs
-  durably with logs, output paths and exit status; prefer completion
-  notifications and back off unchanged polls.
-- Report confounds immediately; otherwise give brief milestone updates and do
-  not inspect more to have something to say. Waiting on the CPU is not
-  reasoning. Write documentation once results are ready, except registrations,
-  new blockers and corrections to false claims.
-- Before repeating a read, check, run or helper, name what changed or what it
-  answers; if nothing, skip it. Once a leaf's checks pass, commit and continue.
+- Define the smallest sufficient measurement before launching it, inside the
+  leaf's registered scope; never shrink a registered run after seeing results.
+  Reuse the harness's runner, parser and archive format. Before repeating any
+  read, check or run, name what changed or what it answers; if nothing, skip
+  it. Report confounds immediately; write documentation once results are
+  ready, except registrations, new blockers and corrections to false claims.
 
 ## Measurement
 
 - Never measure a `--all-features` binary: it enables `texel`, which bypasses
   the eval and pawn caches. If a number you are not changing changes, check
   the binary.
+- Measure only on an idle host: check CPU use and running engine or harness
+  processes first, and if the machine is busy stop and ask rather than measure
+  (RAR-M48's first pool was discarded for this). Keep builds, profiling and
+  unrelated load off a match host while it plays.
 - Rebuild before measuring, with the exact feature set: `cargo test`,
   `clippy` and `bench` leave their own `target/release/rarog.exe`. For a
   multi-run study, build once, verify the fingerprint, hash and archive that
@@ -184,6 +182,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
+  The comparison fingerprint is revision-specific: a deliberately integrated
+  behaviour change updates the fingerprint record; never preserve a known
+  defect to keep an obsolete count.
 - Test constructs and behaviour, not words in a comment.
 
 ## Changes
@@ -192,6 +193,12 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   Commit after each finished and verified step. No `Co-Authored-By` trailers.
   Never relax a correctness test in the commit whose change made it fail; fix
   its precondition in its own commit, with the justifying measurement.
+- Never push, tag, publish or merge to `master`; the maintainer does, on
+  instruction. Do not amend or rewrite a commit that has left this machine.
+- Most of the tree is CRLF. A scripted edit preserves the file's existing line
+  endings, asserts each anchor is present exactly once, and re-reads the
+  region afterwards; a mixed-ending file or a silently unmatched anchor is a
+  failed edit.
 - Counters explain a candidate; only a registered SPRT accepts one. Node counts
   are not Elo: a +7.36% tree change measured −1.49 ± 2.87 Elo.
 - Comments explain the problem or the invariant, briefly: no roadmap step
@@ -249,7 +256,8 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   requirements change; an AGENTS-only edit needs no PLAN or GUIDE churn.
 - GUIDE carries status. Tick a step only when finished and verified, in the
   commit that finishes it; tick the parent when its last sub-step is ticked.
-- Sub-items indent by 4 spaces, never 6 (6 renders as code). Run
+- Sub-steps indent by 4 spaces and addenda (`B.2.0.1`) by 8, never 6 (6
+  renders as code); nothing goes deeper than three levels. Run
   `python tools/diag/check_guide.py` rather than reading the file.
 - Keep GUIDE short: its operator contract, model mapping, two prompts, board
   and checkpoint. What a step involves goes in PLAN, a completed record in
@@ -275,9 +283,6 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   any held obligation that matters.
 - Report confounds when found; correct contradicted current claims where they
   live and preserve historical measurements with explicit supersession.
-- The comparison fingerprint is revision-specific. A deliberately integrated
-  behaviour change updates the fingerprint record; never preserve a known
-  defect to keep an obsolete count.
 
 ## Handing work back
 

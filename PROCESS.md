@@ -125,8 +125,9 @@ games until the end destroys attribution and lets losing structures hide.
 3. **Implement** — the smallest dependency-complete cluster. Substeps may be
    compiled and diagnosed separately, but are not expected to pass standalone
    and no incomplete cluster becomes the next strength baseline.
-4. **Prove correctness** — fmt, workspace tests in debug and release,
-   all-feature clippy and targeted invariants. A behavior-neutral diagnostic
+4. **Prove correctness** — fmt, the engine suite in debug and release
+   (`cargo test -p rarog`, both profiles), all-feature clippy and targeted
+   invariants. A behavior-neutral diagnostic
    seam must preserve the exact accepted fingerprint when disabled.
 5. **Explain** — use the frozen suite at fixed depth/nodes to compare nodes,
    qnodes, move source, cutoff index, TT use, reductions and re-searches,
@@ -399,8 +400,9 @@ mismatch.
 
 ```powershell
 cargo fmt --check
-cargo test --workspace --all-targets
-cargo test --workspace --all-targets --release
+cargo test -p rarog
+cargo test -p rarog --release
+cargo test -p xtask
 # The texel tuner is its own workspace, so `texel` never unifies into the engine.
 cargo test --manifest-path tools/texel-tuner/Cargo.toml
 cargo clippy --workspace --all-targets --all-features -- -D warnings
