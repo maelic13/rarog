@@ -763,6 +763,9 @@ loss).
   every accepted representation reconstructing through `EvalTrace`).
 - **E.2 Target gate — `V`.** The pool measurement defined in section 1, at 1T
   and 4T. Met, or not met with the measured shortfall per engine recorded.
+  **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
+  of the four targets, by 26 to 75 Elo, so Phases B and C are judged against
+  the 1T column.
 - **E.3 Release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version

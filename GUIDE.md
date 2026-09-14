@@ -97,44 +97,13 @@ together, and `python tools/diag/check_guide.py` must pass.
 
 ## Next and held work
 
-**Phase A is closed and 2.4.0 is released.** Its records are in `HISTORY.md`:
-the document and repository reset, the 1.98.1 pin, RAR-E16 licensing the
-release at +54.77 ± 17.04 Elo over 2.3.2, the pre-release repairs of A.3.3 and
-A.4, the conversion instrument, the consolidation analysis that decided Phase A
-refactors nothing, the version bump, and four baselines measured on the
-released binary.
-
-**B.1 and B.2.0 are closed.** B.2.0 landed its review's twelve
-behaviour-neutral upgrades at the exact fingerprint and inside the NPS window
-(RAR-P25); the `Searcher` split it designed is B.2.1's ticket 0.
 **B.2.0.1 is the next executable leaf**: the repository and document
 restructure, nine documents-only tickets in
-`analysis/repository_review_2026-09.md` §5 (RAR-M52), so that every
-document has one purpose and every tracked file one owner. Then
-B.2.1, cluster 1, the selectivity core, `READY_FOR_IMPLEMENTATION / I2`, to
-the handoff in
-`analysis/search_programme_2026-09-13.md` §13.2 (ticket order 0–8, the
-umbrella-off arm reproducing 7,601,220 at every ticket). B.1 landed the
-scaffold behaviour-neutral at the exact fingerprint and made the engine
-**6.30% faster** (pooled PGO, RAR-P24), so B.2.2's 0.90x NPS floor is read
-interleaved against the B.1 pool. B.0 found the deficit is decision quality
-at a fixed budget, not per-ply growth; B.2's prediction (+35 Elo after
-fitting, 90% [+5, +70]) is frozen in that document.
-
-Two Phase A findings bind later work, recorded in PLAN at the leaves that own
-them. **D.2's premise is contradicted** — at 4T Rarog beats this reference
-field rather than trailing it, so the leaf must be re-justified against modern
-engines before it consumes work; the clean instrument is self-relative scaling
-against Reckless and Stockfish. **E.2's binding arm is 1T, not 4T**, by 26 to
-75 Elo on three of the four targets, so Phase B and C are judged against the 1T
-column. The universal binary stays **optional and unscheduled** under G.2, its
-design in `analysis/universal_binary_2026-09.md`.
-
-Every checkpoint figure is now read on the released binary. The conversion
-re-read (RAR-M49, 2026-09-13, zero games) held Rarog's rate but **retired
-RAR-M47's "worse than Basilisk" reading**: on the same games the two engines
-throw away 107 and 106, so C.5 rests on Rarog's own stable rate, four fifths
-of it fifty-move or repetition with material in hand.
+`analysis/repository_review_2026-09.md` §5. Then **B.2.1**, cluster 1, the
+selectivity core, to the handoff in `analysis/search_programme_2026-09-13.md`
+§13.2, with the `Searcher` split as ticket 0. Binding findings sit at their
+leaves in PLAN: D.2's premise is contradicted (RAR-M46) and E.2's binding arm
+is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
