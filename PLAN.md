@@ -372,6 +372,17 @@ diagnostics; two rejections stop B.
       count-based skip dropping an unmade mating quiet — were found by that
       trace and are invisible to counters. Implementer and reviewer are
       separate roles; the reviewer's acceptance is recorded before B.2.2.
+      **Implemented 2026-09-14 (RAR-S73), awaiting the reviewer's
+      acceptance.** The umbrella is the `b2core` Cargo feature over
+      `src/search/core/`; off, the engine is the B.1 behaviour exactly
+      (7,601,220 / EBF 2.474 at every commit, pooled NPS −0.13% against the
+      B.1 pool); on, it reads 4,706,910 / EBF 2.391 unfitted, with 80
+      `CoreParams` coordinates. The review must rule on four resolutions
+      RAR-S73 records: the root, in-check and first-move reduction
+      invariant applied over §3.7's reduction scope; direct checks and
+      promotions kept alive after the quiet skip; rule-50 damping moved
+      from the evaluator into the search; and the KBNK anchor's five-budget
+      majority.
     - **B.2.2** Diagnostics: oracle differential at stride 1, depth at 300k
       nodes, EBF, tactical suite at fixed depth and equal nodes, 2,000-game
       unfitted paired run. Registered as explanation. **Screen thresholds are
@@ -484,8 +495,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1, B.2.0 and B.2.0.1 closed 2026-09-14; next executable leaf |
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
+| B.2.1 | IMPLEMENTED | I2 | Implemented 2026-09-14 behind `b2core` (RAR-S73); next: the separate reviewer's acceptance, class R2 |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for the B.2.1 review |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
