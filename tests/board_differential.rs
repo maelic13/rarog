@@ -124,7 +124,7 @@ fn walk(name: &str, fen: &str, seed: u64, plies: usize) {
         }
         let before = FullState::of(&board);
         let mv = moves[rng.below(moves.len())];
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
 
         board.check_consistency().unwrap_or_else(|e| {
             panic!(

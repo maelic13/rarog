@@ -1081,7 +1081,7 @@ impl Searcher {
             return Move::NULL;
         };
         let mut child = root.clone();
-        child.make_move_unchecked(bestmove);
+        child.make_move(bestmove);
         self.tt
             .probe(child.hash)
             .and_then(super::tt::TtEntry::best_move)
@@ -1236,8 +1236,10 @@ mod tests {
         main.tt.make_shared(main.hash_mb);
         store_static_eval(&mut main, &board, 123);
 
-        let mut helper = Searcher::worker_default();
-        helper.tt = main.tt.clone();
+        let mut helper = Searcher {
+            tt: main.tt.clone(),
+            ..Searcher::default()
+        };
         let mut options = EngineOptions::default();
         options.search_params.lazy_margin = 2_000;
         helper.reset_search_state(
@@ -1541,7 +1543,7 @@ mod tests {
         let root = Board::default();
         let bestmove = root.parse_move("a2a3").expect("legal root move");
         let mut child = root.clone();
-        child.make_move_unchecked(bestmove);
+        child.make_move(bestmove);
         let ponder = child.parse_move("a7a6").expect("legal child move");
         searcher.tt.store(TtStore {
             key: child.hash,
@@ -1566,7 +1568,7 @@ mod tests {
             let legal = board
                 .parse_move(&mv.to_string())
                 .unwrap_or_else(|| panic!("PV move {mv} is illegal in {}", board.to_fen()));
-            board.make_move_unchecked(legal);
+            board.make_move(legal);
         }
     }
 }

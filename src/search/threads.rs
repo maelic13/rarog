@@ -102,7 +102,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
         .name(format!("rarog-search-{index}"))
         .stack_size(SEARCH_THREAD_STACK_SIZE)
         .spawn(move || {
-            let mut worker = Searcher::worker_default();
+            let mut worker = Searcher::default();
             while let Ok(message) = receiver.recv() {
                 match message {
                     WorkerMessage::Search(job) => {
@@ -206,13 +206,6 @@ pub(super) fn parallel_result_key(
 }
 
 impl Searcher {
-    pub(crate) fn worker_default() -> Self {
-        Self {
-            worker_pool: WorkerPool::default(),
-            ..Self::default()
-        }
-    }
-
     pub(crate) fn reset_worker_state_for_new_game(&mut self) {
         self.clear_history();
         self.evaluator.clear_pawn_table();

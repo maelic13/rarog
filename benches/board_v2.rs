@@ -223,7 +223,7 @@ fn staged_moves(boards: &mut [Board]) -> u64 {
 
 fn mutate(inputs: &mut [(Board, Move)]) -> u64 {
     for (board, mv) in &mut *inputs {
-        board.make_move_unchecked(*mv);
+        board.make_move(*mv);
         black_box(&board);
         board.unmake_move(*mv);
     }

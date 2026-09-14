@@ -234,19 +234,6 @@ impl Searcher {
         }
 
         let in_check = board.is_in_check();
-        if in_check {
-            // Phase 8.2(a): the unconditional in-check extension (`depth += 1`)
-            // is REMOVED. It was the first of five stacked protections around
-            // checked nodes and the prime EBF suspect — every check bought a
-            // full extra ply regardless of whether the check was forcing.
-            // Checked nodes now search at their natural depth; a checked node
-            // at depth 0 falls through to qsearch, which is safe because
-            // qsearch generates the FULL legal movelist when in check (not just
-            // captures) and detects mate, so evasions are never missed.
-            // The `check_extensions` diag counter is intentionally left defined
-            // in diag.rs and now reads 0 — an explicit confirmation the
-            // extension is off. Restore this line to revert on H0.
-        }
 
         let mate_alpha = -MATE_SCORE + infra::to_i32(ply);
         let mate_beta = MATE_SCORE - infra::to_i32(ply) - 1;
@@ -656,7 +643,7 @@ impl Searcher {
                     // reduced sibling, so it consumes neither selectivity
                     // input. Written explicitly rather than left stale.
                     self.push_move(ply, mv, probcut_piece);
-                    board.make_move_unchecked(mv);
+                    board.make_move(mv);
                     self.tt.prefetch(board.hash);
                     let score = -self.quiescence::<NonPv, _>(
                         board,
@@ -1651,7 +1638,7 @@ impl Searcher {
             }
             let moving_piece = board.moving_piece(mv);
             self.push_move(ply, mv, moving_piece);
-            board.make_move_unchecked(mv);
+            board.make_move(mv);
             self.tt.prefetch(board.hash);
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);

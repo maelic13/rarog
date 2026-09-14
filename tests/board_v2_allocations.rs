@@ -94,7 +94,7 @@ fn board_v2_isolated_primitives_do_not_allocate_after_warmup() {
         black_box((captures, board.generate_legal_quiets_pinned(pinned)));
     }
     for (board, mv) in &mut mutations {
-        board.make_move_unchecked(*mv);
+        board.make_move(*mv);
         board.unmake_move(*mv);
     }
     for (board, mv) in &see_inputs {
@@ -114,7 +114,7 @@ fn board_v2_isolated_primitives_do_not_allocate_after_warmup() {
                 black_box((captures, board.generate_legal_quiets_pinned(pinned)));
             }
             for (board, mv) in &mut mutations {
-                board.make_move_unchecked(*mv);
+                board.make_move(*mv);
                 black_box(&board);
                 board.unmake_move(*mv);
             }

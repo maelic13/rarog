@@ -165,7 +165,7 @@ fn divide(board: &mut Board, depth: u32) -> BTreeMap<String, u64> {
     let mut result = BTreeMap::new();
     let moves = board.generate_legal_movelist();
     for &mv in &moves {
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         let nodes = board.perft(depth - 1);
         board.unmake_move(mv);
         before.assert_matches(board, &format!("divide unmake {mv}"));
@@ -333,7 +333,7 @@ fn board_v2_preflight_rejects_wrong_moves_work_and_state() {
 
     let mut board = Board::from_fen(&case.fen).expect("valid oracle FEN");
     let mv = board.parse_move("e5d6").expect("legal en passant move");
-    board.make_move_unchecked(mv);
+    board.make_move(mv);
     assert_eq!(
         preflight(&case, &mut board),
         Err("canonical FEN"),
@@ -407,7 +407,7 @@ fn board_v2_randomized_unwind_and_clone_history_are_independent() {
             .parse_move(cycle[ply % cycle.len()])
             .expect("reversible move must stay legal");
         played.push(mv);
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         board
             .check_consistency()
             .expect("long history must remain consistent");
@@ -420,7 +420,7 @@ fn board_v2_randomized_unwind_and_clone_history_are_independent() {
         .iter()
         .next()
         .expect("clone must have a legal move");
-    clone.make_move_unchecked(clone_move);
+    clone.make_move(clone_move);
     assert_ne!(State::of(&clone), clone_state, "clone move must be live");
     assert_eq!(
         State::of(&board),

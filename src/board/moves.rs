@@ -131,18 +131,8 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn source(self) -> Square {
-        self.from_sq()
-    }
-
-    #[inline(always)]
     pub fn to_sq(self) -> Square {
         Square(((self.0 >> 6) & 0x3F) as u8)
-    }
-
-    #[inline(always)]
-    pub fn dest(self) -> Square {
-        self.to_sq()
     }
 
     #[inline(always)]

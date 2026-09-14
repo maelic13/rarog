@@ -563,7 +563,7 @@ fn ordinary_relocation_updates_and_restores_every_piece_class() {
         let to = mv.to_sq();
 
         assert!(!mv.is_capture() && !mv.is_promo() && !mv.is_castling());
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         assert_eq!(board.piece_at(from), None, "{uci} left its origin occupied");
         assert_eq!(board.piece_at(to), Some((color, piece)), "{uci} target");
         board
@@ -598,7 +598,7 @@ fn special_moves_update_board_and_hash_correctly() {
     let mut castle = Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
     let before_castle = Snapshot::from(&castle);
     let white_king_side = castle.parse_move("e1g1").unwrap();
-    castle.make_move_unchecked(white_king_side);
+    castle.make_move(white_king_side);
     assert_eq!(castle.to_fen(), "r3k2r/8/8/8/8/8/8/R4RK1 b kq - 1 1");
     castle.unmake_move(white_king_side);
     before_castle.assert_same(&castle, "castling unmake");
@@ -606,7 +606,7 @@ fn special_moves_update_board_and_hash_correctly() {
     let mut ep = Board::from_fen("8/8/8/3pP3/8/8/8/4K2k w - d6 0 1").unwrap();
     let before_ep = Snapshot::from(&ep);
     let ep_capture = ep.parse_move("e5d6").unwrap();
-    ep.make_move_unchecked(ep_capture);
+    ep.make_move(ep_capture);
     assert_eq!(ep.to_fen(), "8/8/3P4/8/8/8/8/4K2k b - - 0 1");
     ep.unmake_move(ep_capture);
     before_ep.assert_same(&ep, "en-passant unmake");
@@ -614,7 +614,7 @@ fn special_moves_update_board_and_hash_correctly() {
     let mut promotion = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
     let before_promotion = Snapshot::from(&promotion);
     let promote = promotion.parse_move("a7a8q").unwrap();
-    promotion.make_move_unchecked(promote);
+    promotion.make_move(promote);
     assert_eq!(
         promotion.piece_at(Square::A8),
         Some((Color::White, Piece::Queen))
@@ -714,7 +714,7 @@ fn assert_make_unmake_stable(board: &mut Board, depth: u32) {
 
     let moves = board.generate_legal_moves();
     for mv in moves {
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         assert_make_unmake_stable(board, depth - 1);
         board.unmake_move(mv);
         before.assert_same(board, &format!("make/unmake of {mv}"));
@@ -736,7 +736,7 @@ fn move_set(moves: &[&str]) -> BTreeSet<String> {
 fn custom_perft_divide(board: &mut Board, depth: u32) -> BTreeMap<String, u64> {
     let mut divide = BTreeMap::new();
     for mv in board.generate_legal_moves() {
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         let nodes = board.perft(depth - 1);
         board.unmake_move(mv);
         divide.insert(mv.to_string(), nodes);
@@ -1268,7 +1268,7 @@ fn ep_capture_removes_pawn_from_correct_square() {
     // Execute the en passant capture
     let ep_mv = board.parse_move("e5f6").expect("e5f6 must be legal");
     assert!(ep_mv.is_en_passant(), "e5f6 must be flagged as EP");
-    board.make_move_unchecked(ep_mv);
+    board.make_move(ep_mv);
 
     // The captured pawn (on f5) must be gone; the capturing pawn must be on f6
     assert_eq!(

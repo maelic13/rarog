@@ -48,7 +48,6 @@ pub mod counters {
         qnodes,
         // 8.2 — check-node cost.
         nodes_in_check,
-        check_extensions,
         // 8.3 — stale PV bit vetoes pruning at a non-PV node.
         tt_pv_veto,
         // Forward-pruning families (successful cutoffs / skips).
@@ -65,11 +64,6 @@ pub mod counters {
         lmp_nodes,
         quiet_futility_prune,
         see_prune,
-        // 4.6.4: quiet moves pruned for hanging material. Rarog had no
-        // such population before; the capture-side `see_prune` is separate.
-        quiet_see_prune,
-        // 4.6.5: nodes where the picker was told to stop emitting quiets.
-        skip_quiets_nodes,
         // LMR reduction and its verification re-search.
         lmr_applied,
         // 10.2.5 — late moves whose confidence estimate removes the old

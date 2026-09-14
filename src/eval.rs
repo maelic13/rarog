@@ -1895,7 +1895,7 @@ impl Evaluator {
             let mut threats = pawn_attacks[color as usize] & board.color_occ(them);
             while threats.any() {
                 let sq = threats.pop_lsb();
-                match board.piece_on(sq) {
+                match board.piece_type_at(sq) {
                     Some(Piece::Knight | Piece::Bishop) => {
                         *mg += sign * self.params.threat_minor_mg[0];
                         *eg += sign * self.params.threat_minor_eg[0];
@@ -1930,7 +1930,7 @@ impl Evaluator {
             let mut tb = our_minor_att & enemy_occ;
             while tb.any() {
                 let sq = tb.pop_lsb();
-                if let Some(v) = board.piece_on(sq) {
+                if let Some(v) = board.piece_type_at(sq) {
                     *mg += sign * self.params.threat_by_minor_mg[v as usize];
                     *eg += sign * self.params.threat_by_minor_eg[v as usize];
                     tr_mg!(self, threat_by_minor_mg, v as usize, sign);
@@ -1940,7 +1940,7 @@ impl Evaluator {
             let mut tb = attacked_by[ci][Piece::Rook as usize] & enemy_occ;
             while tb.any() {
                 let sq = tb.pop_lsb();
-                if let Some(v) = board.piece_on(sq) {
+                if let Some(v) = board.piece_type_at(sq) {
                     *mg += sign * self.params.threat_by_rook_mg[v as usize];
                     *eg += sign * self.params.threat_by_rook_eg[v as usize];
                     tr_mg!(self, threat_by_rook_mg, v as usize, sign);
@@ -1960,7 +1960,7 @@ impl Evaluator {
                 let def1 = (attacked[ti] & bb).any();
                 let def2 = (attacked2[ti] & bb).any();
                 if ((att1 && !def1) || (att2 && def1 && !def2))
-                    && let Some(v) = board.piece_on(sq)
+                    && let Some(v) = board.piece_type_at(sq)
                 {
                     *mg += sign * self.params.threat_hanging_refined_mg[v as usize];
                     *eg += sign * self.params.threat_hanging_refined_eg[v as usize];
@@ -2808,7 +2808,7 @@ impl Evaluator {
             & !board.pieces(color, Piece::King);
         while pieces.any() {
             let sq = pieces.pop_lsb();
-            let Some(piece) = board.piece_on(sq) else {
+            let Some(piece) = board.piece_type_at(sq) else {
                 continue;
             };
             let sq_bb = Bitboard::from(sq);

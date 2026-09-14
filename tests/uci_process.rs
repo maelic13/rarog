@@ -424,7 +424,7 @@ fn assert_uci_pv_lines_are_legal(root_fen: &str, lines: &[String]) {
                     board.to_fen()
                 )
             });
-            board.make_move_unchecked(mv);
+            board.make_move(mv);
         }
     }
     assert!(saw_pv, "search should emit at least one PV line: {lines:?}");

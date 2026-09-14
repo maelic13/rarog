@@ -42,14 +42,6 @@ pub fn to_u8<T: SmallInt>(x: T) -> u8 {
     v as u8
 }
 
-/// Domain-bounded narrowing to `i8` (file/rank deltas).
-#[inline(always)]
-pub fn to_i8<T: SmallInt>(x: T) -> i8 {
-    let v = x.to_i32();
-    debug_assert!((-128..=127).contains(&v), "value out of i8 range: {v}");
-    v as i8
-}
-
 /// Integers that are small by domain. Each impl narrows through `i32` with a
 /// debug-time range check; implement it only for source types that actually
 /// appear in the engine.

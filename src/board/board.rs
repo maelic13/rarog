@@ -481,11 +481,6 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn piece_on(&self, sq: Square) -> Option<Piece> {
-        self.piece_type_at(sq)
-    }
-
-    #[inline(always)]
     pub fn color_on(&self, sq: Square) -> Option<Color> {
         self.piece_at(sq).map(|(color, _)| color)
     }
@@ -499,11 +494,6 @@ impl Board {
     #[inline(always)]
     pub fn is_quiet_move(&self, mv: Move) -> bool {
         mv.flags() <= DOUBLE_PUSH
-    }
-
-    #[inline(always)]
-    pub fn en_passant(&self) -> Option<Square> {
-        self.ep_square()
     }
 
     pub fn parse_move(&self, input: &str) -> Option<Move> {
@@ -687,11 +677,6 @@ impl Board {
         }
     }
 
-    #[inline(always)]
-    pub fn make_move_unchecked(&mut self, mv: Move) {
-        self.make_move(mv);
-    }
-
     pub fn generate_legal_moves(&self) -> Vec<Move> {
         generate_legal_moves(self)
     }
@@ -757,16 +742,6 @@ impl Board {
         } else {
             None
         }
-    }
-
-    #[inline(always)]
-    pub fn is_capture(&self, mv: Move) -> bool {
-        mv.is_capture()
-    }
-
-    #[inline(always)]
-    pub fn is_en_passant(&self, mv: Move) -> bool {
-        mv.is_en_passant()
     }
 
     /// Per-node check-detection masks (10.3 speed pass).
@@ -2407,7 +2382,7 @@ mod history_contract_tests {
             let mv = board
                 .parse_move(uci)
                 .unwrap_or_else(|| panic!("{uci} must be legal at ply {index}"));
-            board.make_move_unchecked(mv);
+            board.make_move(mv);
             played.push(mv);
         }
         played
