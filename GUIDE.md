@@ -219,7 +219,7 @@ is the numbering: release first, baselines on the released binary.
 
 - [ ] **D.1** Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]` — **R2**
-- [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` move; zero crashes over pool tournaments — **R2**
+- [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; zero crashes over pool tournaments — **R2**
 - [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **R2**
 
 ## Phase E — Classical checkpoint and release

@@ -190,6 +190,43 @@ def fingerprint_problems(guide_text, agents_text, plan_text):
     return problems
 
 
+# The current documents a reader acts on. The ledger, HISTORY and analysis/
+# are exempt: their historical paths are evidence of what existed.
+CURRENT_DOCS = ("GUIDE.md", "PLAN.md", "PROCESS.md", "AGENTS.md")
+# A backticked repository path: a known top-level directory, then segments.
+# Placeholders (`<name>`, globs, ellipses) are templates, not paths.
+REPO_PATH = re.compile(
+    r"`((?:src|tests|tools|analysis|docs|benches|xtask|vendor|logo|\.github|\.cargo)"
+    r"/[^`\s]*)`")
+TEMPLATE = re.compile(r"[<>*{}…]|\.\.\.")
+
+
+def dead_path_problems(texts, exists):
+    """Every backticked repository path in a current document must exist,
+    unless it is marked `path` (planned).
+
+    `texts` maps a document name to its text; `exists(path)` says whether the
+    path is tracked or on disk. A path that exists nowhere sends the reader to
+    nothing, and 44 of them accumulated before anything checked.
+    """
+    problems = []
+    for name, text in texts.items():
+        for n, line in enumerate(text.splitlines(), 1):
+            for m in REPO_PATH.finditer(line):
+                path = m.group(1).rstrip(".,;:")
+                path = re.sub(r":\d+(?:-\d+)?$", "", path).split("#")[0]
+                if TEMPLATE.search(path) or line[m.end():].startswith(" (planned"):
+                    continue
+                if not exists(path):
+                    problems.append("%s:%d: `%s` exists neither in the index nor on disk"
+                                    % (name, n, path))
+    return problems
+
+
+def repository_path_exists(path):
+    return (ROOT / path.rstrip("/")).exists()
+
+
 def self_test():
     """Prove the workflow guard rejects intentionally malformed input."""
     sample = [
@@ -217,6 +254,14 @@ def self_test():
         sys.stdout.write("FAIL: fingerprint self-test expected 2 disagreements, got %d\n" % len(fp))
         return 1
     sys.stdout.write("fingerprint negative self-test: PASS (2 disagreements detected)\n")
+    dead = dead_path_problems(
+        {"PLAN.md": "see `src/search/mod.rs`, `src/search.rs` and `tools/<name>.ps1`"},
+        lambda p: p == "src/search/mod.rs",
+    )
+    if len(dead) != 1 or "src/search.rs" not in dead[0]:
+        sys.stdout.write("FAIL: dead-path self-test expected only src/search.rs, got %r\n" % dead)
+        return 1
+    sys.stdout.write("dead-path negative self-test: PASS (1 dangling path detected)\n")
     return 0
 
 
@@ -352,6 +397,9 @@ def main():
     else:
         agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
         problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
+        texts = {name: (ROOT / name).read_text(encoding="utf-8")
+                 for name in CURRENT_DOCS if (ROOT / name).is_file()}
+        problems.extend(dead_path_problems(texts, repository_path_exists))
         absent = [s for s in step_numbers
                   if not re.search(STEP_IN_PLAN.pattern % re.escape(s), plan_text)]
         if absent:

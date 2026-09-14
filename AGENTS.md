@@ -378,7 +378,7 @@ did what its name suggests.**
   `analysis/`. GUIDE grew to 898 lines by absorbing all five and stopped being
   readable as an overview.
 - `HISTORY.md` is HISTORY. Every numbering scheme in it is retired; the
-  current roadmap uses lettered phases (`A.2.1`) and PLAN section 6 maps the
+  current roadmap uses lettered phases (`A.2.1`) and HISTORY's number map maps the
   retired Phase-4 identifiers onto it. Never take a next step from HISTORY or
   from `docs/archive/`.
 - When two documents disagree, source, defaults and reproducible artifacts

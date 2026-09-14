@@ -12,7 +12,7 @@ None of them is the current roadmap's, which uses lettered phases (`A.2.1`).
 |---|---|---|
 | Legacy Rarog phases 7–14 (`7.0b`, `8.2(a)`, `9.0a`, `10.3 speed pass`, `11.x`–`14`) | older source comments and tool prose, the oldest ledger rows, releases up to 2.3.1 | [docs/archive/GUIDE-legacy-2026-07-29.md](docs/archive/GUIDE-legacy-2026-07-29.md) (the tracker) and [docs/archive/PLAN-legacy-2026-07-29.md](docs/archive/PLAN-legacy-2026-07-29.md) (§S6, rationale per item), both verbatim from the 2.3.1 release commit `a5fd288` |
 | Phase 4 roadmap before the 2026-09-04 renumbering (`4.9b`) | ledger rows and analyses written 2026-08-11…2026-09-03 | [docs/archive/GUIDE-phase4-tracker-2026-08-21.md](docs/archive/GUIDE-phase4-tracker-2026-08-21.md); its old numbers map to the renumbered ones in section 13 of the archived Phase-4 PLAN |
-| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](docs/archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is PLAN section 6 |
+| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](docs/archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
 | Current roadmap (`A`–`G`) | `PLAN.md`, `GUIDE.md`, ledger rows from RAR-M45 on | `PLAN.md` |
 
 ## The Phase-4 line, 2026-08-11 to 2026-09-09: what it established
@@ -38,8 +38,61 @@ maintainer's assumption that endgames were the last missing evaluation piece
 was contradicted by the 329-Elo same-search evaluation gap and by the
 110–220-Elo pool deficit to the strongest HCE-era engines.
 
+## Number map: retired leaves that continue in the current roadmap
+
+Every identifier from the archived roadmap is retired. Where a retired open
+leaf continues here, this is the mapping; everything else is history.
+
+| Retired | Continues as | Note |
+|---|---|---|
+| 4.12 (20 endgame functions) | C.5 (8 leaves) | rescoped from function coverage to conversion and generic scaling |
+| 4.13, 4.14 (labels, refit cycles) | C.2, C.8 | inside the evaluation programme |
+| 4.13a (HCE audit) | C.0 | |
+| 4.15, 4.15a–c, 4.16, 4.18 (search audits, SPSA, cleanup) | B.0–B.9 | replaced by the search programme |
+| 4.17 (time management) | D.1 | |
+| 4.19, 4.20 (checkpoint, release) | E.1–E.3 | |
+| A.3.4, A.5, A.6, A.7 (before 2026-09-10) | A.9, A.8, A.5, A.6 | Phase A reordered so the numbering matches execution: improvements, instrument and analysis, then the version bump, then baselines on the bumped binary, then the release. Only open leaves moved; A.1-A.3 keep their numbers |
+| 4.21 (universal binary) | G.2 | investigated under A.4 and deferred 2026-09-10 as optional; `analysis/universal_binary_2026-09.md` holds the design and the revival triggers |
+| Phase 5, 6, 7 (NNUE runway, baseline, frontier) | F | |
+| Phase 8 (scaling) | G | |
+| Phase 9 (classical fallback) | dropped | the classical evaluation stays as datagen baseline and fallback by construction |
+
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-14 — PLAN B.2.0 CLOSED, RAR-P25: the architecture review's twelve
+  upgrades landed behaviour-neutral.** The review
+  (`analysis/architecture_review_2026-09.md`, RAR-M51) found the layering
+  sound and the weight in comments, public surface and duplication. The
+  upgrades: dead aliases and counters deleted; visibility narrowed to what
+  external crates use, one move-generation API, private `Board` fields; one
+  definition each of the duplicated helpers; a tagged `EngineCommand` with its
+  own `ClearHash`; an `InfoSink` output port for the search; the table's
+  replacement policy written once over both backends (NPS +0.04% on its own);
+  the texel tuner as its own Cargo workspace; a tools index; retired step
+  numbers removed from the owned source, configuration and tools. Fingerprint
+  7,601,220 / EBF 2.474 exact at every engine commit; pooled NPS +0.21%
+  [−0.34%, +0.68%] against the B.1 pool. The `Searcher` split it designed went
+  to B.2.1 as ticket 0.
+- **2026-09-14 — PLAN B.1 CLOSED, RAR-P24: the search restructure, exact
+  fingerprint and 6.30% faster.** Seven engine commits split `search.rs` into
+  `src/search/` modules, introduced `NodeType {Root, Pv, NonPv}`, `ThreadData`,
+  `SharedContext` and a sentinel `PlyArray` stack, removed the 44 parameters
+  inert at default, the root-confidence subsystem, the SMP iteration skip and
+  TT provenance (`evidence.rs`), and re-keyed the diagnostic counters. Every
+  commit reproduced 7,601,220 / EBF 2.474 on magic and PEXT with all 40
+  positions identical; the B.0 section 11 baselines reproduced exactly; pooled
+  PGO NPS +6.30% [+5.78%, +6.84%], the removed per-node work. RAR-S65–S69 were
+  superseded by B.2.
+- **2026-09-13 — PLAN B.0 DONE, `NO_CHANGE` to source, RAR-M50: the search
+  programme's investigation.** `analysis/search_programme_2026-09-13.md`.
+  Rarog's branching factor over depths 4–14 is 1.630, below the oracle's 1.736
+  and Reckless's 1.697, so the deficit is not per-ply growth; it is decision
+  quality at a fixed budget (WAC at 100k nodes: oracle 242, Reckless 224,
+  Rarog 200; median depth at 300k nodes 16 against 19). 46.7% of LMR
+  reductions land in quiescence and 1.3% are re-searched. Decisions: node
+  types with runtime `cut_node`; `ThreadData` and `SharedContext` without
+  changing table ownership; `evidence.rs` deleted; frozen handoffs for B.1–B.3
+  and B.2's prediction (+35 Elo after fitting, 90% [+5, +70]).
 - **2026-09-11 — PLAN A.9 DONE: Rarog 2.4.0 released, and PHASE A IS CLOSED.**
   `dev` squashed into `master` as one `Version 2.4.0` commit, which ran the CI
   matrix for the first time on the 1.98.1 pin and **discharged that standing
