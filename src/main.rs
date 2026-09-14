@@ -28,7 +28,7 @@ fn main() {
     println!(
         "{} {} by {}",
         capitalize_first_letter(env!("CARGO_PKG_NAME")),
-        env!("CARGO_PKG_VERSION"),
+        rarog::VERSION,
         env!("CARGO_PKG_AUTHORS").replace(':', ", ")
     );
 

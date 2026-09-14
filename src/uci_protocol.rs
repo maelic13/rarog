@@ -111,7 +111,7 @@ impl UciProtocol {
         println!(
             "id name {} {}",
             capitalize_first_letter(env!("CARGO_PKG_NAME")),
-            env!("CARGO_PKG_VERSION")
+            crate::VERSION
         );
         println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
         for option in SearchOptions::get_uci_options() {

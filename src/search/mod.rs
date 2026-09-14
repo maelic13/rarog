@@ -19,9 +19,16 @@ macro_rules! trace_decision {
     };
 }
 
+// The selectivity-core candidate replaces the node kernel and the tables it
+// owns as one unit behind the `b2core` umbrella. The module names stay the
+// same in both arms, so everything else in the search compiles against either.
+#[cfg_attr(feature = "b2core", path = "core/correction.rs")]
 mod correction;
+#[cfg_attr(feature = "b2core", path = "core/history.rs")]
 mod history;
+#[cfg_attr(feature = "b2core", path = "core/movepick.rs")]
 mod movepick;
+#[cfg_attr(feature = "b2core", path = "core/node.rs")]
 mod node;
 pub mod params;
 mod shared;
@@ -39,8 +46,6 @@ use crate::infra;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
 
-use correction::CORR_SIZE;
-use history::{LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE};
 use node::{Root, build_lmr_table};
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
@@ -298,19 +303,8 @@ impl Searcher {
     }
 
     pub(crate) fn clear_history(&mut self) {
-        *self.td.main_history = [[[0; 64]; 64]; 2];
-        *self.td.cap_history = [[[0; 6]; 64]; 6];
-        *self.td.low_ply_history = [[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE];
-        *self.td.pawn_history = [0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE];
-        for table in self.td.cont_history.iter_mut() {
-            table.fill(0);
-        }
-        *self.td.correction_history = [[0; CORR_SIZE]; 2];
-        *self.td.minor_correction_history = [[0; CORR_SIZE]; 2];
-        *self.td.non_pawn_correction_history = [[[0; CORR_SIZE]; 2]; 2];
-        *self.td.continuation_correction_history = [0; PIECE_TO_SIZE];
-        *self.td.countermove = [[Move::NULL; 64]; 64];
-        self.td.killers = PlyArray::new([Move::NULL; 2]);
+        self.td.hist.clear();
+        self.td.corr.clear();
     }
 
     pub fn hashfull(&self) -> usize {
@@ -472,7 +466,8 @@ impl Searcher {
             self.shared.tt.new_search();
         }
         if age_history {
-            self.age_history();
+            self.td.hist.age();
+            self.td.corr.age();
         }
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);

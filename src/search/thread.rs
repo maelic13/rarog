@@ -3,11 +3,8 @@
 use crate::board::Move;
 use crate::eval::Evaluator;
 
-use super::correction::CORR_SIZE;
-use super::history::{
-    CONT_SIZE, CONT_TABLES, LOW_PLY_HISTORY_SIZE, PAWN_HISTORY_SIZE, PIECE_TO_SIZE,
-    boxed_cont_tables,
-};
+use super::correction::CorrectionTables;
+use super::history::HistoryTables;
 use super::stack::{PlyArray, StackEntry};
 use super::{InfoSink, JITTER_SEED, MAX_PLY, RootMove, SilentSink};
 
@@ -36,28 +33,14 @@ pub(super) struct ThreadData {
     /// Per-ply search context with sentinel entries below the root. See
     /// `StackEntry`.
     pub(super) stack: PlyArray<StackEntry>,
-    pub(super) killers: PlyArray<[Move; 2]>,
     /// Compact root-order/index backbone, kept separate from the larger
     /// records below so move-membership and SMP hot reads stay cache-compact.
     pub(super) root_moves: Vec<Move>,
     pub(super) root_move_records: Vec<RootMove>,
-    pub(super) main_history: Box<[[[i16; 64]; 64]; 2]>,
-    pub(super) cap_history: Box<[[[i16; 6]; 64]; 6]>,
-    pub(super) low_ply_history: Box<[[[i16; 64]; 64]; LOW_PLY_HISTORY_SIZE]>,
-    /// Boxed const-size, NOT `Vec<i16>` — see [`ThreadData::cont_history`].
-    pub(super) pawn_history: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
-    /// Continuation history, one table per look-back distance. Indexed by
-    /// [`CONT_PLY_BACK`] position, NOT by ply distance — see that table.
-    ///
-    /// Boxed fixed-size arrays, not `Vec`s: the `Vec` form cost −2.1% NPS
-    /// because runtime lengths defeat bounds-check elision in the hot loops.
-    pub(super) cont_history: Box<[[i16; CONT_SIZE]; CONT_TABLES]>,
-    pub(super) correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    pub(super) minor_correction_history: Box<[[i16; CORR_SIZE]; 2]>,
-    pub(super) non_pawn_correction_history: Box<[[[i16; CORR_SIZE]; 2]; 2]>,
-    /// Boxed const-size, see [`ThreadData::pawn_history`].
-    pub(super) continuation_correction_history: Box<[i16; PIECE_TO_SIZE]>,
-    pub(super) countermove: Box<[[Move; 64]; 64]>,
+    /// Move-ordering histories.
+    pub(super) hist: HistoryTables,
+    /// Static-evaluation correction tables.
+    pub(super) corr: CorrectionTables,
     pub(super) root_move_offset: usize,
     /// 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
     pub(super) thread_id: usize,
@@ -87,19 +70,10 @@ impl Default for ThreadData {
             pv_table: PlyArray::new([Move::NULL; MAX_PLY]),
             pv_len: PlyArray::new(0),
             stack: PlyArray::new(StackEntry::default()),
-            killers: PlyArray::new([Move::NULL; 2]),
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
-            main_history: Box::new([[[0; 64]; 64]; 2]),
-            cap_history: Box::new([[[0; 6]; 64]; 6]),
-            low_ply_history: Box::new([[[0; 64]; 64]; LOW_PLY_HISTORY_SIZE]),
-            pawn_history: Box::new([0; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]),
-            cont_history: boxed_cont_tables(),
-            correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            minor_correction_history: Box::new([[0; CORR_SIZE]; 2]),
-            non_pawn_correction_history: Box::new([[[0; CORR_SIZE]; 2]; 2]),
-            continuation_correction_history: Box::new([0; PIECE_TO_SIZE]),
-            countermove: Box::new([[Move::NULL; 64]; 64]),
+            hist: HistoryTables::default(),
+            corr: CorrectionTables::default(),
             root_move_offset: 0,
             thread_id: 0,
             jitter_state: JITTER_SEED,

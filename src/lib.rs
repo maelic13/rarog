@@ -20,6 +20,15 @@ macro_rules! info_string {
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
 
+/// The engine version as reported to the user: the package version, with
+/// `+b2core` when the selectivity-core candidate is compiled in.
+#[cfg(not(feature = "b2core"))]
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// The engine version as reported to the user: the package version, with
+/// `+b2core` when the selectivity-core candidate is compiled in.
+#[cfg(feature = "b2core")]
+pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+b2core");
+
 pub mod bench;
 pub mod board;
 pub mod cpu_advice;
