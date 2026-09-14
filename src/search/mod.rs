@@ -47,6 +47,8 @@ use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOpti
 use crate::syzygy::{self, Wdl};
 
 use node::build_lmr_table;
+#[cfg(feature = "b2core")]
+use params::CoreParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
 use stack::{PlyArray, StackEntry};
@@ -202,6 +204,8 @@ impl RootMove {
 /// from them, the resolved limits and the instant the clock started.
 struct SearchConfig {
     params: SearchParams,
+    #[cfg(feature = "b2core")]
+    core: CoreParams,
     lmr_table: Box<[[i32; 64]; 64]>,
     /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
     /// it only when the parameters change.
@@ -217,6 +221,8 @@ impl Default for SearchConfig {
             lmr_table: build_lmr_table(params.lmr_table_base, params.lmr_table_div),
             lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
             params,
+            #[cfg(feature = "b2core")]
+            core: CoreParams::default(),
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -450,6 +456,10 @@ impl Searcher {
         self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.cfg.params = engine_options.search_params.clone();
+        #[cfg(feature = "b2core")]
+        {
+            self.cfg.core = engine_options.core_params.clone();
+        }
         let table_key = (
             self.cfg.params.lmr_table_base,
             self.cfg.params.lmr_table_div,

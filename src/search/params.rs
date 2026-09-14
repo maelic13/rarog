@@ -10,13 +10,16 @@
 /// unrepresentable: one line per parameter generates all four, so a bake can
 /// only ever change one number.
 ///
-/// Syntax: `field = default, "UciName", min..=max;` — doc comments and plain
-/// `//` section comments pass through as normal.
+/// Syntax: `struct Name, checks_module; field = default, "UciName", min..=max;`
+/// — doc comments and plain `//` section comments pass through as normal.
 macro_rules! search_params {
-    ($(
-        $(#[$meta:meta])*
-        $field:ident = $default:literal, $uci:literal, $min:literal ..= $max:literal;
-    )+) => {
+    (
+        struct $name:ident, $checks:ident;
+        $(
+            $(#[$meta:meta])*
+            $field:ident = $default:literal, $uci:literal, $min:literal ..= $max:literal;
+        )+
+    ) => {
         /// Tunable search parameters — every field is a UCI `spin` option in
         /// tune builds. Defaults are the current accepted integration-head
         /// values; the trailing comment on each declaration records its bake
@@ -24,17 +27,17 @@ macro_rules! search_params {
         /// `tools/spsa_configs/` and run `./tools/spsa.ps1` (see that
         /// directory's README).
         #[derive(Clone, Debug)]
-        pub struct SearchParams {
+        pub struct $name {
             $( $(#[$meta])* pub $field: i32, )+
         }
 
-        impl Default for SearchParams {
+        impl Default for $name {
             fn default() -> Self {
                 Self { $( $field: $default, )+ }
             }
         }
 
-        impl SearchParams {
+        impl $name {
             /// UCI `spin` declarations for every tunable, generated from the
             /// same literals as the defaults and clamps — they cannot disagree.
             /// Tune builds only (production must not advertise these).
@@ -67,14 +70,14 @@ macro_rules! search_params {
         }
 
         #[cfg(test)]
-        mod generated_param_checks {
+        mod $checks {
             use super::*;
 
             /// Every default must sit inside its own declared range. Cheap, but
             /// it is the invariant the four-way duplication used to break.
             #[test]
             fn defaults_are_within_declared_ranges() {
-                let p = SearchParams::default();
+                let p = $name::default();
                 $(
                     assert!(
                         ($min..=$max).contains(&p.$field),
@@ -97,6 +100,8 @@ macro_rules! search_params {
 // min..=max;`. Struct field, Default value, UCI option string and setter clamp
 // are all generated from these lines — see the `search_params!` docs above.
 search_params! {
+    struct SearchParams, generated_param_checks;
+
     /// Initial aspiration window half-width (centipawns).
     aspiration_delta = 21, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30 → 21
 
@@ -443,6 +448,36 @@ search_params! {
     tm_effort_high = 9_240, "TmEffortHigh", 6000..=12000;  // 0.924
     /// Effort factor at high effort (interp endpoint at t=1). Seed 7100 (0.71).
     tm_effort_low = 7_100, "TmEffortLow", 4000..=10000;  // 0.71
+}
+
+// The selectivity core's own coordinates. Seeds follow the handoff's seed
+// rule: the donor's value converted to Rarog's scale (evaluation units x0.457,
+// SEE units x0.75, plies, counts and history units unchanged), or the
+// geometric mean of the classical-oracle and Rarog-fitted values where the
+// donor's margin is sized for a far more accurate evaluation.
+#[cfg(feature = "b2core")]
+search_params! {
+    struct CoreParams, generated_core_param_checks;
+
+    // Correction update and blend.
+    /// Update slope in 128ths: `bonus = slope * depth * residual / 128`.
+    corr_update_slope = 148, "CoreCorrUpdateSlope", 32..=512;
+    /// Clamps of one update, in table units (64 per evaluation unit).
+    corr_update_min = -2_138, "CoreCorrUpdateMin", -8192..=-256;
+    corr_update_max = 1_141, "CoreCorrUpdateMax", 128..=8192;
+    /// Blend weights of the six tables, in 128ths.
+    corr_weight_pawn = 128, "CoreCorrWeightPawn", 0..=384;
+    corr_weight_minor = 80, "CoreCorrWeightMinor", 0..=384;
+    corr_weight_non_pawn_white = 128, "CoreCorrWeightNonPawnWhite", 0..=384;
+    corr_weight_non_pawn_black = 128, "CoreCorrWeightNonPawnBlack", 0..=384;
+    corr_weight_cont2 = 128, "CoreCorrWeightCont2", 0..=384;
+    corr_weight_cont4 = 128, "CoreCorrWeightCont4", 0..=384;
+    // Corrected-eval formula, neutral at zero.
+    /// Material scaling of the raw eval, in 64ths per starting-material unit.
+    eval_material_scale = 0, "CoreEvalMaterialScale", -64..=64;
+    /// Search-side rule-50 damping in percent of `(200 - clock) / 200`; the
+    /// evaluator damps rule-50 itself, so this stays off unless that changes.
+    eval_rule50_damping = 0, "CoreEvalRule50Damping", 0..=100;
 }
 
 #[cfg(test)]

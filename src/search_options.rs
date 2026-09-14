@@ -1,4 +1,6 @@
 use crate::board::{Board, Move};
+#[cfg(feature = "b2core")]
+use crate::search::params::CoreParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
@@ -30,6 +32,9 @@ pub struct EngineOptions {
     pub threads: usize,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
+    /// The selectivity core's coordinates.
+    #[cfg(feature = "b2core")]
+    pub core_params: CoreParams,
 }
 
 impl Default for EngineOptions {
@@ -41,6 +46,8 @@ impl Default for EngineOptions {
             threads: 1,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
+            #[cfg(feature = "b2core")]
+            core_params: CoreParams::default(),
         }
     }
 }
@@ -164,6 +171,8 @@ impl SearchOptions {
         // params.rs, so the strings cannot drift from the defaults and clamps.
         #[cfg(feature = "tune")]
         opts.extend(SearchParams::uci_option_strings());
+        #[cfg(all(feature = "tune", feature = "b2core"))]
+        opts.extend(CoreParams::uci_option_strings());
         opts
     }
 
@@ -412,6 +421,10 @@ impl SearchOptions {
                     .search_params
                     .set_uci_option(&option_name, &value)
                 {
+                    return OptionUpdate::Engine;
+                }
+                #[cfg(all(feature = "tune", feature = "b2core"))]
+                if self.engine.core_params.set_uci_option(&option_name, &value) {
                     return OptionUpdate::Engine;
                 }
                 crate::info_string!("No such option: {option_name_raw}");

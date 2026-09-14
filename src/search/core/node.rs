@@ -481,8 +481,8 @@ impl Searcher {
         // arms were identical, because a probe MISS and a hit carrying no
         // stored eval both fall back to a fresh raw eval. `TtProbe::MISS`
         // already reports `VALUE_NONE`, so one test covers both.
-        let (static_eval, raw_static_eval) = if in_check {
-            (VALUE_NONE, VALUE_NONE)
+        let (static_eval, raw_static_eval, correction) = if in_check {
+            (VALUE_NONE, VALUE_NONE, 0)
         } else {
             let raw = if ev.raw_static_eval == VALUE_NONE {
                 let raw = self.raw_eval(board);
@@ -495,7 +495,8 @@ impl Searcher {
             } else {
                 ev.raw_static_eval
             };
-            (self.corrected_eval_from_raw(board, raw, ply), raw)
+            let (eval, correction) = self.corrected_eval_parts(board, raw, ply);
+            (eval, raw, correction)
         };
         self.td.stack[ply].static_eval = static_eval;
         self.td.stack[ply].tt_pv = tt_pv;
@@ -505,24 +506,10 @@ impl Searcher {
         if ply + 2 < MAX_PLY {
             self.td.stack[ply + 2].cutoff_count = 0;
         }
-        // 8.5(b): magnitude of the correction applied to this node's static
-        // eval. A large |corr| means the raw eval is being heavily adjusted and
-        // is less trustworthy, so the margin/reduction knobs below prune and
-        // reduce less. Zero in check (no static eval).
-        //
-        // ⚠ The comment here used to say "seeds leave every scale at 0, so this
-        // term vanishes". That is no longer true and had gone stale: the fitted
-        // seeds are `CorrRfpScale = 3`, `CorrFutScale = 3` and
-        // `CorrLmrScale = 27`, so this term is LIVE in the accepted baseline.
-        //
-        // It is also applied when `eval_for_pruning` below was REPLACED by a TT
-        // bound (28.5% of sampled hits refine it, RAR-S30) and the corrected
-        // eval discarded; B.2 rebuilds the corrected-eval formula.
-        let corr_abs = if static_eval == VALUE_NONE {
-            0
-        } else {
-            (static_eval - raw_static_eval).abs()
-        };
+        // How much the tables moved this node's eval: a large correction marks
+        // an eval the search has repeatedly found wrong, so margins widen and
+        // reductions shrink with it. Zero in check.
+        let corr_abs = correction.abs();
         // A `ply - 4` fallback for an unusable `ply - 2` was measured and
         // rejected: RAR-S66 stopped at 13,882 games with the LLR receding from
         // a +2.44 peak. `improving = false` after a check is a conservative
@@ -1512,32 +1499,11 @@ impl Searcher {
                         if diag_sample {
                             crate::diag_count!(main_store_lower);
                         }
-                        if !in_check && !is_noisy(mv) && score > static_eval {
-                            self.train_continuation_correction(
-                                board,
-                                depth,
-                                score - static_eval,
-                                ply,
-                            );
-                        }
-                        if static_eval != VALUE_NONE
-                            && score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
-                            && score > static_eval
-                        {
-                            crate::diag_count!(correction_updates);
-                            // 8.5a diagnostic: correction trained by a *capture*
-                            // beta cutoff — the eval learning to absorb search
-                            // tactics that then feed back into pruning.
-                            if is_capture {
-                                crate::diag_count!(corr_on_capture);
-                            }
-                            let residual = self.attributed_residual(
-                                score - static_eval,
-                                is_capture,
-                                board.halfmove_clock(),
-                            );
-                            self.update_correction(board, residual, depth, ply);
-                        }
+                    }
+                    // A fail-high above the static eval with a quiet move
+                    // trains the correction; see the node's end.
+                    if !in_check && !is_noisy(mv) && score > static_eval {
+                        self.train_correction(board, depth, score - static_eval, ply);
                     }
                     return score;
                 }
@@ -1577,30 +1543,16 @@ impl Searcher {
             && bound == Bound::Upper
             && move_count > 2
             && self.td.stack.back(ply, 1).tt_pv;
-        // Continuation corrections train where the bound agrees with the
-        // residual's sign and the best move is quiet.
-        if excluded.is_null()
-            && !in_check
+        // The correction learns only what the static eval can be blamed for:
+        // never in check, never from a noisy best move (the residual is then
+        // tactics, not a positional error), and only where the bound agrees
+        // with the residual's sign (a fail-low above the eval says nothing
+        // about how far above).
+        if !in_check
             && !(bound == Bound::Exact && is_noisy(best_move))
             && !(bound == Bound::Upper && best_score >= static_eval)
         {
-            self.train_continuation_correction(board, depth, best_score - static_eval, ply);
-        }
-        if excluded.is_null()
-            && static_eval != VALUE_NONE
-            && best_score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY)
-        {
-            let diff = best_score - static_eval;
-            // Update correction for PV nodes (Exact) and fail-lows where score < static_eval
-            if bound == Bound::Exact || (bound == Bound::Upper && diff < 0) {
-                crate::diag_count!(correction_updates);
-                if best_move.is_capture() {
-                    crate::diag_count!(corr_on_capture);
-                }
-                let residual =
-                    self.attributed_residual(diff, best_move.is_capture(), board.halfmove_clock());
-                self.update_correction(board, residual, depth, ply);
-            }
+            self.train_correction(board, depth, best_score - static_eval, ply);
         }
         if excluded.is_null() {
             // 8.4(b): an Exact (PV) node best move improved alpha without
