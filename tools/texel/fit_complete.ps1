@@ -102,7 +102,7 @@ function Invoke-Bench {
 #
 # WHAT THIS CANNOT PROVE. A fingerprint identifies the SEARCH, and a change
 # confined to positions the bench suite never reaches is invisible to it. The
-# 4.9a.4 mate drive is exactly that: it moves KBN-K conversion from 19.4% to
+# KBN-K mate drive is exactly that: it moves KBN-K conversion from 19.4% to
 # 96.9% and leaves `bench 13` byte-identical, because no bench tree reaches a
 # bare-king minor-piece mate. So this guard will happily pass a tree carrying
 # an unaccepted eval change. Check `git rev-parse HEAD` against the commit the
@@ -262,7 +262,7 @@ try {
             # hce-v2: 750,000-opening phase-BALANCED beast_seed.epd, adjudicated
             # self-play. The corpus RAR-E06 and RAR-E08 were fitted on.
             [pscustomobject]@{ Adjudication = "datagen-v1"; Starts = 600000 },
-            # hce-v3 (4.9a.6): 1,000,000-opening phase-WEIGHTED phase_book_v1.epd
+            # hce-v3: 1,000,000-opening phase-WEIGHTED phase_book_v1.epd
             # at 50/10/10/10/20, NO adjudication. The balanced book could not
             # reach the row target at any schedule; see
             # analysis/texel_corpus_book_shape_2026-09-02.md.

@@ -28,7 +28,7 @@
         per-feature gate any more.
       - LTC confirmation runs at tc=10+0.1 (pass -TC "10+0.1") at phase
         boundaries and for TC-suspect features.
-      - Pass -Nodes N for a fixed-NODES diagnostic (10.0b) — it removes speed
+      - Pass -Nodes N for a fixed-NODES diagnostic — it removes speed
         AND time management, so it answers "is the remaining gap pure search
         quality?" and nothing else. Never a strength gate.
       - Hash 64 MB, Threads 1, UHO_Lichess_4852_v1.epd opening book (random
@@ -39,7 +39,7 @@
         symmetric: unbiased but decisive. Cuts the draw rate (~56% → ~35–45%
         at our level), so SPRTs resolve in substantially fewer games; kills
         opening reuse forever (SuperGM's 2,668 lines were exhausted by any
-        run > 5,336 games, correlating 23% of pairs in 7.2b). Draw rates and
+        run > 5,336 games, correlating 23% of pairs). Draw rates and
         logistic-Elo magnitudes are NOT comparable to pre-UHO runs; verdicts
         are (each SPRT is self-contained). Legacy PGN books still work via
         -Book (format auto-detected from the extension),
@@ -149,12 +149,12 @@
     Fixed NODES-per-move (fastchess `nodes=N`). Default 0 (use clock TC).
     Mutually exclusive with -MoveTime.
 
-    Added for 10.0(b): it removes BOTH speed and time management from the
+    It removes BOTH speed and time management from the
     comparison, which is the only way to ask "is the gap pure search quality?"
     of an engine that matches us on NPS. Use it for that diagnostic and for
     cross-engine search-accuracy questions — never as a strength gate, because
     a node-limited match cannot see time management at all, and TM is the one
-    thing 9.7.5 identified as a live ~16 Elo lever.
+    thing measured as a live ~16 Elo lever.
 
     ⚠ Equal nodes is NOT equal work across different engines: a node means
     whatever each engine counts, and Rarog counts interior + qsearch nodes.
@@ -167,7 +167,7 @@
     forfeit. It does not change the engine's own time budget.
 
 .PARAMETER AllowDirtyTree
-    Permit an engine built from uncommitted changes. Refused by default (4.10.9):
+    Permit an engine built from uncommitted changes. Refused by default:
     such a binary cannot be reproduced from git, so a ledger row citing it is a
     promise that someone is still storing the evidence. Use only for a
     deliberate throwaway screen, and say why in the registration.
@@ -219,11 +219,11 @@ param(
     [double]$Beta  = 0.05,
     [int]$Hash = 64,
     [int]$Concurrency = 0,
-    # 8.13: engine Threads for BOTH sides. Concurrency and the affinity list
+    # Engine Threads for BOTH sides. Concurrency and the affinity list
     # scale with it automatically; a multi-thread gate must be null-pair
     # calibrated at the same Threads value before it is trusted.
     [int]$Threads = 1,
-    # 8.13 tie-breaker: per-engine Threads override (defaults to $Threads).
+    # Tie-breaker: per-engine Threads override (defaults to $Threads).
     # Enables the asymmetric 4T-vs-1T self-play delta. The core budget reserves
     # max(ThreadsA,ThreadsB) cores per game slot, so neither side oversubscribes.
     # A calibration (null) must stay symmetric — ThreadsA must equal ThreadsB.
@@ -312,7 +312,7 @@ $Seed = New-HarnessSeed -Requested $Seed
 # GAME to a single core regardless of the engine Threads option — verified by
 # direct core sampling: Threads=4 concurrency=3 pinned only 3 cores (4 engine
 # threads crammed onto 1), starving every multi-thread search and corrupting the
-# 8.13(d) SmpVariant comparison (VarA read -100 purely from starvation). At
+# SmpVariant comparison (VarA read -100 purely from starvation). At
 # Threads=1 the one-core-per-game rule is exactly right and the explicit list
 # still removes the Zen-3 CCX placement bias, so it stays. At Threads>1 the OS
 # scheduler spreads the pool across cores far better than fastchess's broken
@@ -325,7 +325,7 @@ if ($maxThreads -gt 1) {
     $affinityArgs = @('-use-affinity', $AffinityCpus)
 }
 
-# 4.2a.4: an option this script ACCEPTS but the chosen mode cannot HONOR is
+# An option this script ACCEPTS but the chosen mode cannot HONOR is
 # the same defect class as a dead `--rset` -- the run completes, reports a
 # plausible number, and measured something other than what was asked for.
 # Basilisk hit exactly this: `-Games` was accepted in a mode that ignored it.
@@ -374,7 +374,7 @@ if ($Nodes -gt 0) {
     $tcArg   = "nodes=$Nodes"
     $tcLabel = "nodes=$Nodes (fixed nodes/move; NO time management)"
     Write-Host "NOTE: fixed-nodes match - speed and time management are both removed." -ForegroundColor Yellow
-    Write-Host "      Diagnostic only (10.0b). Not a strength gate: TM is invisible here." -ForegroundColor Yellow
+    Write-Host "      Diagnostic only. Not a strength gate: TM is invisible here." -ForegroundColor Yellow
 } elseif ($MoveTime -gt 0) {
     $tcArg   = "st=$MoveTime"
     $tcLabel = "st=$MoveTime (fixed ${MoveTime}s/move)"
@@ -427,7 +427,7 @@ if ($Mode -eq "calibrate" -and $shaA -ne $shaB) {
     throw "Calibration requires byte-identical engine binaries (SHA-256 differs)."
 }
 if ($Mode -ne "calibrate" -and $shaA -eq $shaB) {
-    # 8.13(d): identical binaries ARE legitimate when the two sides differ by
+    # Identical binaries ARE legitimate when the two sides differ by
     # UCI options (the SmpVariant arms) OR by Threads (the 4T-vs-1T tie-break) —
     # running one binary is strictly better than two, since it removes the
     # ~0.36% per-build PGO offset from the measurement. Refuse only when the
@@ -453,7 +453,7 @@ $pgnOut    = Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.pgn"
 $logOut    = Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.log"
 $manifestPath = [System.IO.Path]::ChangeExtension($pgnOut, ".manifest.txt")
 
-# 9.7: copy both engines' provenance manifests (written by build_test.ps1 next
+# Copy both engines' provenance manifests (written by build_test.ps1 next
 # to each binary) into the result dir, so the result is permanently
 # self-describing: which SHA vs which SHA, both bench fingerprints, dirty
 # flags. Warn-not-fail on absence — pre-9.7 binaries have no manifest.
@@ -483,7 +483,7 @@ foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
         if ($manifestData.flavor -like "*-tune") {
             throw "Manifest for $($pair[1]) is a tune build; rebuild a PGO gate binary."
         }
-        # 4.10.9: a dirty tree is a REFUSAL, not a warning. The rule this
+        # A dirty tree is a REFUSAL, not a warning. The rule this
         # protects is AGENTS.md's evidence rule -- a ledger row must reproduce
         # its artifact without the branch it came from -- and a binary built
         # from uncommitted changes cannot, by construction. A warning here is
@@ -514,12 +514,12 @@ foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
     }
 }
 
-# 8.10a COMPILER-EQUALITY GUARD (2026-07-22) - the toolchain-pin analogue for
+# COMPILER-EQUALITY GUARD - the toolchain-pin analogue for
 # BINARIES. A rustc change between building engine A and engine B folds the
 # compiler delta into the measured Elo, and no null pair can see it: a null
 # runs ONE binary against itself, so both sides always share a compiler.
 #
-# This is not hypothetical. The 9.1 bump (1.97.0 -> 1.97.1) landed 2026-07-19
+# This is not hypothetical. The toolchain bump 1.97.0 -> 1.97.1 landed 2026-07-19
 # 21:19, AFTER p82a-nocheckext was built. Every gate before that split reads
 # -5.68..+30.75; the three run after it, all candidate-1.97.1 vs
 # baseline-1.97.0, read -8.68 / -8.22 / -7.37. Tight clustering across three
@@ -613,7 +613,7 @@ Write-Host "  Log:  $logOut  (full output; console shows report blocks only)"
 Write-Host "======================================================="
 Write-Host ""
 
-# Per-engine UCI options (8.10a): "Name=Value" pairs become option.Name=Value
+# Per-engine UCI options: "Name=Value" pairs become option.Name=Value
 # so ONE binary can be A/B-tested on a knob without a rebuild. Empty by
 # default, so the emitted fastchess command is byte-identical to before -
 # no null-pair re-calibration is required for the default path.

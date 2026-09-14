@@ -6,7 +6,7 @@
     Run from an elevated PowerShell 7 prompt on the experiment machine.  The
     input must be the ordinary release binary built with debug symbols, never a
     diag or all-features/texel build.  The Python driver keeps UCI stdin open,
-    clears the TT between roots and runs the frozen 4.11b.7 suite.
+    clears the TT between roots and runs the frozen board-profile suite.
 
     Outputs are written below tools/results (gitignored): an ETL, xperf
     butterfly report and runner JSON for each cohort, plus a hash manifest.

@@ -41,7 +41,7 @@ def replace_const(text, const_name, vals):
     )
     # Check that the pattern MATCHED (subn count), not that the text changed —
     # a baked value set identical to the current defaults (e.g. material pinned
-    # by an L2-to-prior fit, Phase 6.1) legitimately produces identical text.
+    # by an L2-to-prior fit) legitimately produces identical text.
     new, n = pat.subn(lambda m: m.group(1) + fmt_arr(vals) + ";", text, count=1)
     if n != 1:
         raise SystemExit(f"const {const_name} not replaced (n={n})")

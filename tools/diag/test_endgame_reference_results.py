@@ -1,4 +1,4 @@
-"""Tests for the attained-reference-result artifact (PLAN 4.11.3).
+"""Tests for the attained-reference-result artifact.
 
 The generator's job is half arithmetic and half REFUSAL. An artifact that
 silently combined two arms measured over different positions, or at different
@@ -164,7 +164,7 @@ class FramingTests(unittest.TestCase):
         Checks KEY names, not the serialized document -- the disclaimer text
         deliberately contains the phrase "not a ceiling", and a substring test
         over the whole JSON fails on the very sentence that prevents the
-        misreading. (Written wrong first, exactly as in 4.10.3.)
+        misreading.
         """
         doc = json.loads(self.ARTIFACT.read_text(encoding="utf-8"))
         self.assertIn("attained_reference_result", doc["totals"])

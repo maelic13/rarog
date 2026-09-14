@@ -1,4 +1,4 @@
-"""Tests for endgame_board_occurrence (PLAN 4.11.10).
+"""Tests for endgame_board_occurrence.
 
 The predicates are the whole tool -- everything downstream is counting -- so
 they are tested against positions rather than against each other. The
@@ -97,7 +97,7 @@ class ThePositionsRARM15CouldNotSee(unittest.TestCase):
 class NoHiddenThreshold(unittest.TestCase):
     """The `<= 8 men` fast path must be a bound, never a cut-off.
 
-    PLAN 4.11.5's occurrence result moved sharply when a "generous" threshold
+    A tree-occurrence result moved sharply when a "generous" threshold
     moved by one man. The guarantee here is structural: any position the fast
     path skips matches nothing anyway.
     """
@@ -248,7 +248,7 @@ class Sources(unittest.TestCase):
 
 
 class TheRegisteredOrderMatchesItsTrackedInputs(unittest.TestCase):
-    """4.12's order must be what the stored artifacts actually produce.
+    """The registered order must be what the stored artifacts actually produce.
 
     `endgame_ranking_v2.json` decides the order of twenty engine changes, and
     its corpus is a 117 MB Colosseum database in `AppData` that this repo will
@@ -279,9 +279,9 @@ class TheRegisteredOrderMatchesItsTrackedInputs(unittest.TestCase):
         self.assertEqual(order, registered["order"])
 
     def test_v1_reproduces_too_so_the_correction_stays_visible(self):
-        # Both orders must be derivable, not just the current one: v1 is what
-        # 4.12 was numbered by until 4.11.12, and the difference between them
-        # is the finding.
+        # Both orders must be derivable, not just the current one: v1 is the
+        # order the endgame work was first numbered by, and the difference
+        # between them is the finding.
         registered = json.loads(
             (self.DIAG / "endgame_ranking_v1.json").read_text(encoding="utf-8"))
         self.assertEqual(self._rank(None, "engine"), registered["order"])

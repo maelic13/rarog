@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rank the twenty reference functions on corrected evidence (PLAN 4.11.6).
+"""Rank the twenty reference functions on corrected evidence.
 
 The pre-correction order was board occurrence times a conversion number the
 RAR-E14 instrument defect depressed. All three inputs have since been
@@ -12,15 +12,14 @@ RULES, fixed before the output was looked at:
    drawn-share bias is high is a SCALE problem whatever Stockfish called its
    function; one whose conversion deficit is high is a VERDICT problem. A family
    can be both, and is then ranked on the larger of its two normalised defects.
-   4.9a.7 nearly declared a working scale change null by reading it on
-   conversion; 4.11.4 found three families that would have been called healthy
-   the same way.
+   Reading a working scale change on conversion nearly declared it null, and
+   three more families would have been called healthy the same way.
 2. **Occurrence gates, it does not score.** It cannot rescue a family with no
    defect and it cannot condemn one with a large defect -- it decides how much a
    given defect is worth fixing. Board occurrence is the primary gate because
-   it is far better sampled than tree occurrence (40 bench positions, PLAN
-   4.11.5); tree occurrence is carried alongside and flagged where the two
-   contradict. Since 4.11.12 board occurrence is measured over the 36,400-game
+   it is far better sampled than tree occurrence (40 bench positions); tree
+   occurrence is carried alongside and flagged where the two contradict.
+   Board occurrence is measured over the 36,400-game
    rating tournament -- 10,000 of them Rarog's own, against thirteen other
    engines -- instead of 3,915 self-play games of one engine pair.
 3. **Layers are never aggregated.** Conversion deficit and drawn-share bias are
@@ -34,7 +33,7 @@ RULES, fixed before the output was looked at:
 6. **A measured zero is not a certain zero -- and two of these were never
    zero.** RAR-M15 reported KQKR, KQKRPs and KRPPKRP in zero of 3,915 games and
    this ranking floored all three by the rule of three, treating the problem as
-   sample size. PLAN 4.11.12 re-measured occurrence over 36,400 rated games and
+   sample size. Re-measuring occurrence over 36,400 rated games
    found **all three occur**: KRPPKRP in 4.97% of games, KQKR in 0.55%,
    KQKRPs in 0.39%. The floor stays -- it is still right that a sample which
    fails to contain something bounds rather than annihilates it -- but it is no
@@ -48,20 +47,20 @@ RULES, fixed before the output was looked at:
 
 WHY TREE OCCURRENCE IS NOT THE MULTIPLIER. It is the more direct gate in
 principle -- a scoring defect misguides the search wherever the evaluator is
-called, whether or not the game reaches that ending. But PLAN 4.11.5 measured
+called, whether or not the game reaches that ending. But the root-split census measured
 that Rarog's tree-occurrence instrument is weak: three of forty bench roots
 produce 56% of the whole census, and four families read zero over all forty.
 Using it as a multiplier would give it more authority than that finding allows.
 It is carried as a flag and the contradictions are named in the registration.
 The retry trigger that asked for a better occurrence corpus has since been
-DISCHARGED by 4.11.12; what remains open is tree occurrence itself.
+DISCHARGED by the 36,400-game board census; what remains open is tree occurrence itself.
 
 The output is a PRIORITISER. It is not an Elo estimate and not an acceptance
 target (`analysis/endgame_measurement_layers.md`).
 
 Example:
 
-  # the REGISTERED order (v2, PLAN 4.11.12)
+  # the REGISTERED order (v2)
   python tools/diag/endgame_ranking.py \\
       --board-occurrence tools/diag/endgame_board_occurrence_v1.json \\
       --occurrence-scope engine --output tools/diag/endgame_ranking_v2.json
@@ -79,7 +78,7 @@ from pathlib import Path
 
 DIAG = Path(__file__).resolve().parent
 
-# Board occurrence is an INPUT, and since PLAN 4.11.12 it arrives as an
+# Board occurrence is an INPUT, and it arrives as an
 # artifact (`--board-occurrence`, schema `rarog-board-occurrence-v1`) rather
 # than as constants. What remains here is RAR-M15's original table, kept as the
 # fallback so `endgame_ranking_v1.json` still reproduces exactly -- a frozen
@@ -115,7 +114,7 @@ COHORT_FAMILY = {
 #
 # ⚠ The OTHER half of the old reason is gone. This set used to read "reachable
 # neither by sampling play nor by verified construction", on RAR-M15's zero.
-# PLAN 4.11.12 measured KRPPKRP in **1,808 of 36,400 rated games (4.97%)**, the
+# The rated-game census measured KRPPKRP in **1,808 of 36,400 games (4.97%)**, the
 # fourth most common family in the set, and exhibited a position from RAR-M15's
 # OWN corpus (`8/1r3p2/8/7P/8/4kPK1/1R6/8 b - - 0 66`). It is reached constantly
 # and cannot be measured, which is a far worse gap than a rare ending and must

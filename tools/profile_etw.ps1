@@ -52,8 +52,8 @@ foreach ($f in @($exe, $pdb, $manifest)) { if (-not (Test-Path $f)) { throw "mis
 
 # STALENESS GUARD. The staged binary is copied here by hand, so without this
 # check the script silently profiles whatever was last copied. That happened
-# once: a trace taken to measure 8.12(f)(i) was actually of the pre-(f)(i)
-# binary and was meaningless.
+# once: a trace taken to measure a change was actually of the binary before
+# it and was meaningless.
 #
 # The test is on BUILD INPUTS, not on HEAD. Comparing HEAD rejects the binary
 # after any docs- or tooling-only commit, which is a false alarm that trains

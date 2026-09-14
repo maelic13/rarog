@@ -77,8 +77,7 @@ def _worker(task):
     """Score one shard of drawn positions. Returns [(index, cp, is_mate), ...].
 
     Engine and tablebase lifetimes are the task's, explicitly. The pool
-    initializer version of this deadlocked in 4.10.3 and there is no reason to
-    rediscover that.
+    initializer version of this deadlocks.
     """
     engine_path, syzygy, hash_mb, nodes, mate_cp, items = task
     tb = chess.syzygy.open_tablebase(syzygy)
@@ -99,7 +98,7 @@ def _worker(task):
             # Without it the engine carries its table across positions and a
             # position's score depends on which positions preceded it. That is
             # not a theoretical worry: it was caught by the serial-vs-sharded
-            # byte-identity check at 4.11.4, where KBP-KB's overclaim rate read
+            # byte-identity check, where KBP-KB's overclaim rate read
             # 0.702 serially and 0.750 over six workers on the SAME positions.
             # A census must be position-local to be shardable at all, and
             # order-independence is worth having on its own account.
@@ -177,7 +176,7 @@ def main() -> int:
     ap.add_argument(
         "--workers", type=int, default=1,
         help="independent one-thread engine processes. Changes wall time only; "
-             "results are reassembled by fixed index (PLAN 4.10.3)",
+             "results are reassembled by fixed index",
     )
     ap.add_argument("--output", type=Path)
     args = ap.parse_args()
@@ -187,7 +186,7 @@ def main() -> int:
 
     # Generate and fingerprint every family's positions BEFORE opening an
     # engine, so a sharded run and a serial run address identical positions by
-    # index -- the same contract as `endgame_truth.py` (PLAN 4.10.2/4.10.3).
+    # index -- the same contract as `endgame_truth.py`.
     fens = {}
     digests = {}
     for name in names:
@@ -260,8 +259,8 @@ def main() -> int:
                     # of conversion -- does the evaluator claim won what theory
                     # says is drawn. A SCALE function is validated here and is
                     # invisible in conversion; a VERDICT function is the other
-                    # way round. Reading 4.9a.7 off conversion nearly called a
-                    # working change a failure.
+                    # way round: read off conversion, a working scale change
+                    # looks like a failure.
                     "layer": "drawn_share_bias",
                     "layer_note": (
                         "static evaluation of theoretically drawn positions; "

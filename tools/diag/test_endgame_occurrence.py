@@ -1,4 +1,4 @@
-"""Tests for the occurrence split (PLAN 4.11.5).
+"""Tests for the occurrence split.
 
 The measurement's whole risk is the threshold: at 7 men the bench suite looks
 uncontaminated and at 10 it is 94% contaminated, on identical data. So the

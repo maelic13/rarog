@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Freeze the attained reference result per family (PLAN 4.11.3).
+"""Freeze the attained reference result per family.
 
 **"Attained reference result", never "ceiling".** The number below is what ONE
 engine managed on ONE cohort at ONE node budget. It is not a theoretical bound

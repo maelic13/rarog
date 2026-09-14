@@ -1,4 +1,4 @@
-"""Tests for the feature-matrix audit (PLAN 4.10.12).
+"""Tests for the feature-matrix audit.
 
 The one that matters is `test_the_matrix_covers_every_declared_feature`: a
 matrix that silently stops covering a feature is worse than no matrix, because

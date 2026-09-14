@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeat a family verdict across a bracket of node budgets (PLAN 4.10.6).
+"""Repeat a family verdict across a bracket of node budgets.
 
 One budget is a guess. A verdict that appears only at a low budget is
 PROVISIONAL, because the losing move it turns on may be a tactic a real search

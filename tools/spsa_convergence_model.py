@@ -10,7 +10,7 @@ Measured inputs:
   * alpha/gamma = 0.601/0.102 and A = iterations/10;
   * gain a is derived exactly as tools/spsa.ps1 derives it from r_end.
 
-The canceled pre-NNUE Phase-4 proposal (10k/0.00235, 30 coordinates) is kept
+A canceled proposal (10k/0.00235, 30 coordinates) is kept
 here only as a reproducible lesson in schedule design. It was never launched:
 a valid schedule does not establish that a tune has enough expected value.
 """

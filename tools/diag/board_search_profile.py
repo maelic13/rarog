@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Profile board work on frozen full-search cohorts (PLAN 4.11b.7).
+"""Profile board work on frozen full-search cohorts.
 
 The diagnostic build supplies exact recursive-search call/work counters.  Its
 existing lifecycle resets after the one top-level legal-generation call; that

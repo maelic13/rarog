@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure actual nodes per move at a real time control (PLAN 4.10.6).
+"""Measure actual nodes per move at a real time control.
 
 Every fixed-node screen in this project implies a claim: that its budget stands
 in for what the engine really gets at the time control it is tested and shipped

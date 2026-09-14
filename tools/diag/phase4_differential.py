@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Phase-4 differential suite against Rarog and the oracle (PLAN 4.2).
+"""Run the oracle differential suite against Rarog and the oracle.
 
 Drives both engines over tools/diag/phase4_suite_v1.epd at a fixed depth, one
 thread, and joins their `info string diag <name> <value>` output by counter
@@ -63,7 +63,7 @@ EXCLUDED = {
     "probcut_tt_served": "oracle-only: TT-served ProbCut return, a path Rarog "
                          "does not have. Subtract it before reading the "
                          "oracle's cut rate as a SEARCH conversion",
-    "prune_shadow_moves": "SEE families range over different populations (4.7)",
+    "prune_shadow_moves": "SEE families range over different populations",
     "prune_shadow_lmp": "see prune_shadow_moves",
     "prune_shadow_futility": "see prune_shadow_moves",
     "prune_shadow_see": "see prune_shadow_moves",
@@ -79,9 +79,8 @@ INVARIANTS = [
     ("rank buckets == cutoff_quiet + cutoff_capture",
      lambda c: c["best_rank_1"] + c["best_rank_2_3"] + c["best_rank_4_7"]
      + c["best_rank_8_plus"] == c["cutoff_quiet"] + c["cutoff_capture"]),
-    # Was `probcut_cut <= probcut_attempt` until 4.7c prep. That held on both
-    # engines and told us nothing, because the two counters were in different
-    # units: the oracle's attempt is per MOVE searched, Rarog's was per NODE
+    # Not `probcut_cut <= probcut_attempt`: that holds on both engines and
+    # tells nothing, because the two counters are in different units: the oracle's attempt is per MOVE searched, Rarog's was per NODE
     # entered. Cuts are per node on both sides, so the node count is the only
     # denominator this bounds -- and on the oracle the old form can now legally
     # fail, since a TT-served cut has no attempt behind it.
@@ -194,7 +193,7 @@ def main():
     # means "in line with tree size", and only a value far from 1.00 is a
     # real divergence in how often the mechanism fires per node searched.
     scale = (r_total["nodes"] / o_total["nodes"]) if o_total["nodes"] else 1.0
-    # 4.6 AUDIT: a qsearch counter must be normalised by QNODES, not by
+    # AUDIT: a qsearch counter must be normalised by QNODES, not by
     # main-search nodes. Rarog runs 1.62x more qsearch per node than the
     # oracle, and that ratio was contaminating every q_* reading: q_tt_cut read
     # 4.25x when it is 2.63x, and q_stand_pat_cut read 1.62x when the two

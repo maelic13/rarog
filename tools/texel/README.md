@@ -5,12 +5,6 @@ fully implemented. Hydra contributed the useful five-reservoir sampling idea;
 Rarog deliberately retains self-play game-result labels because its measured
 Stockfish-distillation experiment lost 17.11 Elo (RAR-E03).
 
-> **Roadmap note.** Historical comments inside the tuner may still use the
-> phase numbers from the cycle in which it was built. Current scheduling is
-> authoritative in `PLAN.md`: corpus/instrument qualification is 4.7, the
-> complete existing-surface refit is 4.8, structural clusters are 4.9, and
-> post-structure consolidation is 4.10. No historical tune group is frozen.
-
 > **Three outputs feed the tuner, all in `FEN;target` text format** (one position
 > per line; `target` is White-perspective expected score: `1` / `0.5` / `0`, or
 > a float in `[0,1]`). The tuner selects on `train.csv` + `validation.csv` and
@@ -28,7 +22,7 @@ and compare.
 ### Path A — self-play labels (primary, fully functional now)
 
 Label each position by the **result of a Rarog-vs-Rarog game** that passed
-through it. This remains mandatory for Rarog: its Phase-6 Stockfish-distilled
+through it. This remains mandatory for Rarog: its Stockfish-distilled
 fit improved offline loss but lost 17.11 Elo. We copy Hydra's reliable
 five-reservoir sampling design, not its label source.
 

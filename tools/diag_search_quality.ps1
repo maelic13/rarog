@@ -1,14 +1,14 @@
 <#
 .SYNOPSIS
-    Phase 4.1 interaction map plus the legacy first-move-cutoff and LMR
+    Search interaction map plus the first-move-cutoff and LMR
     readouts over the deterministic `bench` suite.
 
 .DESCRIPTION
     Runs `bench <depth>` on a `--features diag` build and aggregates the
-    per-position `info string diag <name> <value>` dumps. Exact legacy event
-    counters and deterministic 1/1024 Phase-4 samples are reported separately.
+    per-position `info string diag <name> <value>` dumps. Exact event
+    counters and deterministic 1/1024 samples are reported separately.
 
-    WHY THESE TWO. 10.0 measured Rarog's eval at parity with Basilisk 1.9.1
+    WHY THESE TWO. Rarog's eval measured at parity with Basilisk 1.9.1
     (paired Texel loss -0.0003 +/- 0.0012 over 8,000 quiet positions) and its
     NPS as equal, yet Rarog plays 38-55 Elo weaker at one thread at BOTH time
     controls. So the deficit is search accuracy, and it splits two ways that
@@ -18,7 +18,7 @@
                     / (cutoff_quiet + cutoff_capture). The share of beta
                     cutoffs delivered by the node's FIRST move. Healthy engines
                     sit ~90%+; materially below implicates move ordering, in
-                    which case re-tuning the selectivity surface (10.4.6) is
+                    which case re-tuning the selectivity surface is
                     aimed at the wrong half of the problem.
       * DEPTH     - over-reduction ratio = lmr_research / lmr_applied. The
                     share of LMR reductions that had to be re-searched at full
@@ -42,7 +42,7 @@
 
 .PARAMETER Csv
     Optional path to append one machine-readable row per run, so a later
-    revision (e.g. post-10.2.5) can be compared against this baseline.
+    revision can be compared against this baseline.
 
 .EXAMPLE
     cargo build --release --features diag
@@ -114,7 +114,7 @@ $cutoffShare = Ratio $cutoffs $totals['nodes']
 
 Write-Host ""
 Write-Host "======================================================="
-Write-Host "  Phase 4.1 interaction map - bench $Depth, 1 thread"
+Write-Host "  Search interaction map - bench $Depth, 1 thread"
 Write-Host "  exe:         $(Split-Path $Exe -Leaf)"
 Write-Host "  positions:   $dumps    fingerprint: $fingerprint    geomean EBF: $ebf    NPS: $nps"
 Write-Host "======================================================="
@@ -155,18 +155,14 @@ Write-Host ("      root iterations / best-move changes : {0:N0} / {1:N0}" -f `
     $rootIterations, (Value 'root_best_changes'))
 Write-Host ""
 
-# B.1 removed the root-confidence model, TT provenance, the 4.2b contradiction
-# shadow, the 4.3 refinement shadow and the 4.4a switch sizing together with
-# their counters (analysis/search_programme_2026-09-13.md section 6.4).
-
-# 4.5: IS a capture-caused residual actually noisier? Capture weighting
+# IS a capture-caused residual actually noisier? Capture weighting
 # assumes it is; the all-or-nothing guard was rejected and removed.
 $rcN = Value 'corr_resid_capture_n'
 $rqN = Value 'corr_resid_quiet_n'
 if (($rcN + $rqN) -gt 0) {
     $rcMean = if ($rcN -gt 0) { (Value 'corr_resid_capture_sum') / $rcN } else { 0 }
     $rqMean = if ($rqN -gt 0) { (Value 'corr_resid_quiet_sum') / $rqN } else { 0 }
-    Write-Host "  4.5 CORRECTION RESIDUAL BY ATTRIBUTION (exact)"
+    Write-Host "  CORRECTION RESIDUAL BY ATTRIBUTION (exact)"
     Write-Host ("      capture-caused : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rcN, $rcMean)
     Write-Host ("      quiet-caused   : {0,10:N0} updates, mean |residual| {1,7:N1} cp" -f $rqN, $rqMean)
     Write-Host ("      capture share  : {0,7:N2} %   ratio of means {1:N3}" -f `
@@ -175,14 +171,14 @@ if (($rcN + $rqN) -gt 0) {
     Write-Host ""
 }
 
-# 4.5d: does a halfmove-clock context carry usable signal? PLAN 4.5 permits a
-# new correction context only where held-out UNIQUE signal is shown, so the
+# Does a halfmove-clock context carry usable signal? A new correction
+# context is permitted only where held-out UNIQUE signal is shown, so the
 # POPULATION matters as much as the mean - a context nothing lands in cannot
 # be learned however distinct its residuals look.
 $hmTotal = 0
 foreach ($b in @("low","mid","high")) { $hmTotal += Value "corr_resid_hm_${b}_n" }
 if ($hmTotal -gt 0) {
-    Write-Host "  4.5d CORRECTION RESIDUAL BY HALFMOVE CLOCK (exact)"
+    Write-Host "  CORRECTION RESIDUAL BY HALFMOVE CLOCK (exact)"
     foreach ($b in @(@("low","0-19"), @("mid","20-49"), @("high","50+"))) {
         $n = Value "corr_resid_hm_$($b[0])_n"
         $sum = Value "corr_resid_hm_$($b[0])_sum"

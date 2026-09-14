@@ -1,12 +1,11 @@
 <#
 .SYNOPSIS
-    Run the Rarog 2.2.0 end-of-Phase-4 external gauntlet via fastchess.
+    Run the Rarog 2.2.0 external gauntlet via fastchess (a frozen field).
 
 .DESCRIPTION
     Runs fastchess in gauntlet mode: Rarog 2.2.0 (the candidate) plays every
     other engine in the field, but the field engines do not play each other.
-    This is the real-opponent transfer check for the staged Phase 4 self-play
-    SPRT campaign (see PLAN.md SS10) -- self-play SPRT systematically
+    It is a real-opponent transfer check: self-play SPRT systematically
     overstates strength against a diverse field.
 
     Engine list mirrors D:\chess\little blitzer\engines_fast.lbe (same

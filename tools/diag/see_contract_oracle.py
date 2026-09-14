@@ -1,4 +1,4 @@
-"""Independent legal same-square exchange oracle for PLAN 4.11b.4.
+"""Independent legal same-square exchange oracle for the SEE contract.
 
 Each side may decline further exchange, even in check: this is a material
 subgame, not tactical search. Enumerate ALL legal recaptures (including every
@@ -39,7 +39,7 @@ CASES = [
     ("castle-queen", "policy-castle", "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1", "e1c1", 0),
 ]
 
-# Additional 4.11b.5 cases exercise the repair's state transitions. Preserve
+# Additional cases exercise the SEE repair's state transitions. Preserve
 # the original contract-v1 artifact and its historical debt labels unchanged.
 REPAIR_CASES = [
     ("promoted-piece-recaptured", "exchange", "7k/8/8/8/8/8/pR6/1rR1K3 w - - 0 1", "b2b1", 100),

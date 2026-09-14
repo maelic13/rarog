@@ -52,7 +52,7 @@ def run_bench(exe, depth, stride, options):
     totals = collections.Counter()
     dumps = collections.Counter()
     # Per-position values, in bench order, for callers that need to attribute a
-    # counter to the ROOT it was measured under (PLAN 4.11.5). The sum is still
+    # counter to the ROOT it was measured under. The sum is still
     # the only thing this tool prints: keeping the sequence does not reintroduce
     # the "read the last dump" mistake, it makes the legitimate version of that
     # question answerable.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recover and summarize PLAN 4.11b.7 ETW profiles with LLVM symbols.
+"""Recover and summarize board-profile ETW traces with LLVM symbols.
 
 The ETW capture stores executable-relative addresses in xperf's exclusive-hit
 table.  This tool resolves those addresses against the exact archived PE/PDB

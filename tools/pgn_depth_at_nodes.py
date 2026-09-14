@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Per-engine reported depth and time-per-move from a fastchess PGN.
 
-Built for 10.0(b) and kept because it answers a question no internal counter
+It answers a question no internal counter
 can: at a FIXED NODE budget, how deep does each engine go, and how fast?
 
-Why fixed nodes makes it decisive. PLAN 10.0's headline observation was "14.6
+Why fixed nodes makes it decisive. The headline observation was "14.6
 nominal depth vs Basilisk's 12.7 at identical NPS with equal eval quality" - a
 bigger depth number on a thinner tree - but that came from two measurements
 taken under different conditions. In a `-Nodes N` match both engines answer the
 same positions with the same node budget, so a depth difference is PURELY tree
 shape and a time difference is PURELY speed. No modelling, no normalisation.
 
-The 10.0(b) reading (250,000 nodes/move, ~158k moves per engine):
+The fixed-nodes reading (250,000 nodes/move, ~158k moves per engine):
 
     engine              moves   mean depth   median   s/move   implied nps
     basilisk-1.9.1     158841        13.96     13.0   0.0819     3,051,641
@@ -20,8 +20,8 @@ The 10.0(b) reading (250,000 nodes/move, ~158k moves per engine):
 i.e. Rarog reaches 2.5 MORE plies on the same nodes at near-identical speed -
 and loses the match by 65 Elo. Depth is not the currency; tree quality is.
 
-⚠ Registered as a progress metric: after 10.4.6's selectivity re-fit, re-run
-this. If the re-fit did what 10.0(c) predicts, Rarog's mean depth at 250k nodes
+⚠ Registered as a progress metric: after a selectivity re-fit, re-run this.
+If the re-fit removes over-pruning, Rarog's mean depth at 250k nodes
 should FALL toward ~14 while its Elo RISES. A re-fit that keeps the depth
 advantage has not fixed the over-pruning.
 

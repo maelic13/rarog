@@ -1,4 +1,4 @@
-"""Tests for the datagen label audit (PLAN 4.10.8).
+"""Tests for the datagen label audit.
 
 Every guard is exercised on a known-BAD input as well as a good one, per rule
 15. The two that matter most are the ones the count silently depends on: a

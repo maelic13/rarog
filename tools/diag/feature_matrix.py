@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check every shipped feature combination compiles (PLAN 4.10.12).
+"""Check every shipped feature combination compiles.
 
 Which headers, items and modules arrive under a given `cfg` differs per feature
 combination, so a module can compile in the default build and in `--features

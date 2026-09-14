@@ -42,7 +42,7 @@ Learning rate at the END of the planned run (fishtest's `r_end`). The gain
 `a` is DERIVED from this and -Iterations, so the schedule always lands on
 the same end-state whatever horizon you pick — changing -Iterations can
 never silently change how hot the tune finishes. Default 0.0031, from a
-simulation validated against 8.5's real trajectory; fishtest's own default
+simulation validated against a real 3,670-iteration trajectory; fishtest's own default
 is 0.002, the same order. Larger = hotter = more late wander.
 
 .PARAMETER Concurrency
@@ -355,7 +355,7 @@ if (-not $LaunchOnly) {
     # round(value), so an integer knob needs step * c_t(N) >= 0.5, i.e.
     # step >= 2. A step-1 integer knob goes dead at it > 2^(1/gamma) ~= 894.
     # Cross-check on the two calibrations agreeing from independent
-    # directions: our simulation (validated against 8.5's real trajectory to
+    # directions: our simulation (validated against a real trajectory to
     # within 0.02 steps of observed wander) puts the optimum at a ≈ 0.1 for
     # N=5000, which is r_end ≈ 0.0031 — the same order as fishtest's 0.002
     # default, while the a=1.0 we shipped this morning is r_end ≈ 0.031, ~15x
@@ -369,9 +369,8 @@ if (-not $LaunchOnly) {
     # `"A": 0.0965` where it needed `"A": 500`. That is A ≈ 0, i.e. NO damping
     # over the first 10% of the run — the exact defect the 2026-07-27 schedule
     # fix existed to remove, reintroduced by a language footgun.
-    # Found 2026-07-30 by a -SetupOnly dry run before 10.4.6(a), which is the
-    # FIRST tune this parameterization would ever have driven, so no fit was
-    # contaminated. The assertion below is what makes it un-shippable again.
+    # Found 2026-07-30 by a -SetupOnly dry run before the first tune this
+    # parameterization would have driven, so no fit was contaminated. The assertion below is what makes it un-shippable again.
     $dampingA = [int]([Math]::Floor($Iterations / 10))
     if ($dampingA -le 0) { throw "-Iterations $Iterations is too small: damping A would be zero." }
     $gainA = $REnd * [Math]::Pow($dampingA + $Iterations, $alpha) / [Math]::Pow($Iterations, 2 * $gamma)
@@ -526,7 +525,7 @@ if ([int]$launchManifest['games_per_iteration'] -ne [int]$launchConfig.games) {
 # ─── Multi-session bookkeeping ────────────────────────────────────────────
 # Long tunes span several sessions. Three things make that safe, and each was
 # broken before 2026-07-27:
-#   1. the log must APPEND on resume (it truncated — 8.5 lost 1,086 of its
+#   1. the log must APPEND on resume (it truncated — one tune lost 1,086 of its
 #      3,670 iterations, and the trajectory is what the bake filter reads);
 #   2. the run must STOP ITSELF at the target (main.py was `while True:`, so
 #      the target existed only in the operator's head);

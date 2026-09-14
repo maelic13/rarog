@@ -1,6 +1,6 @@
 . "$PSScriptRoot\uci_probe.ps1"
 
-# 9.7.5(b) diagnostic sweep. Same two positions as the scaling run so the two
+# SMP diagnostic sweep. Same two positions as the scaling run so the two
 # measurements are comparable. 3 reps because Lazy SMP has ~2 iterations of
 # rep-to-rep spread and a single reading already produced one false conclusion.
 $EXE = "$PSScriptRoot\..\target\release\rarog.exe"  # build with: cargo build --release --features diag
@@ -58,7 +58,7 @@ foreach ($t in 1, 2, 4, 8, 16) {
             $nodes += $d['nodes']
             $depthSets += , $d['depths']
             $dumps += $d['dumps']
-            # 4.9b: what happens to a sampled TT HIT, by cause. The shares must
+            # What happens to a sampled TT HIT, by cause. The shares must
             # be read against `tt_sample_hit`, never against probes: the
             # question is what a hit is worth, not how often one occurs.
             $sh = [Math]::Max(1, $d['tt_sample_hit'])
@@ -78,7 +78,7 @@ foreach ($t in 1, 2, 4, 8, 16) {
     }
     "{0,-3} {1,8:N1} {2,9:N1} {3,10:N1} {4,9:N0}  {5}   dumps={6}" -f `
         $t, (Med $hits), (Med $sk), (Med $asp), (Med $nodes), ($perSlot -join ','), ((Med $dumps))
-    # 4.9b breakdown of the same runs: of every sampled TT hit, what share
+    # Breakdown of the same runs: of every sampled TT hit, what share
     # could actually cut, and what share was refused for each distinct reason.
     "    of hits: cut {0,5:N1}%  shallow {1,5:N1}% (short by {2,4:N1} ply)  pv/excl {3,5:N1}%  wrong-window {4,5:N1}%" -f `
         (Med $cutPct), (Med $shallowPct), (Med $deficit), (Med $pvPct), (Med $windowPct)

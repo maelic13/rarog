@@ -95,7 +95,7 @@ function Get-DatagenProfileV2 {
 #
 # Removing eval adjudication does not by itself make labels truthful. It makes
 # them reflect what the DATAGEN ENGINE can actually convert at its node budget,
-# and 4.9a.1 measured that at 60,000 nodes: KBN-K converts at 7%, KRP-KR at
+# and the endgame truth harness measured that at 60,000 nodes: KBN-K converts at 7%, KRP-KR at
 # 52%, KBB-K at 86%. At datagen's 8,000 nodes it is worse. So a theoretically
 # won endgame is played out and recorded as a DRAW, which mislabels every
 # position sampled from that game -- the exact failure eval adjudication was
@@ -277,7 +277,7 @@ function Get-PhysicalCoreCount {
 }
 
 function Resolve-HarnessConcurrency {
-    # 8.13: `ThreadsPerGame` generalises this past the 1-thread assumption.
+    # `ThreadsPerGame` generalises this past the 1-thread assumption.
     # Each concurrent game needs `ThreadsPerGame` physical cores, so the core
     # budget is divided, not handed out one game per core. At Threads=1 the
     # arithmetic is identical to before, so 1-thread runs are unaffected.
@@ -313,7 +313,7 @@ function Resolve-HarnessConcurrency {
 }
 
 function Get-HarnessAffinityCpuList {
-    # 8.13: the pinned set must cover EVERY core the games will use, i.e.
+    # The pinned set must cover EVERY core the games will use, i.e.
     # Concurrency x ThreadsPerGame — not one core per game. Under-sizing this
     # list silently oversubscribes cores and reintroduces exactly the hidden
     # per-run offset the affinity pinning exists to remove.

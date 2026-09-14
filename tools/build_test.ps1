@@ -84,7 +84,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 . "$PSScriptRoot\harness_common.ps1"
 
-# --- 9.7 provenance manifest -------------------------------------------------
+# --- provenance manifest -----------------------------------------------------
 # Every test binary gets a sidecar JSON next to it: git SHA + dirty flag,
 # branch, rustc, and a bench fingerprint VERIFIED by running the binary just
 # built (which doubles as a smoke test — a broken build fails here, not in an
@@ -215,7 +215,7 @@ try {
         Write-Host "Done: $dest"
         Write-Host ""
     } else {
-        # 2.3.0: `--native` is now ORTHOGONAL to `--arch`. Both flavours build
+        # `--native` is now ORTHOGONAL to `--arch`. Both flavours build
         # the PEXT code path; -Native only swaps the portable x86-64-v3 baseline
         # for `target-cpu=native`. Gate binaries deliberately stay portable, so
         # what we SPRT matches the shipped pext asset (PLAN S3).

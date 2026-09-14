@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate endgame floors: the ratchet half of the 4.9a.3 contract.
+"""Aggregate endgame floors: the ratchet half of the endgame contract.
 
 The hard vetoes live in `tests/endgames.rs` and are absolute -- a won position
 may not score as drawn, a drawn position may not be claimed as forced mate.
@@ -15,8 +15,8 @@ any breach. That is 19 families x 3 metrics = **57 one-sided comparisons**, each
 at roughly 1.5-2 standard errors, so breaches by chance were not merely
 possible but expected -- and on RAR-E08 it produced four, of which
 re-measurement at n=400 showed three were sampling. One of the false positives
-was KBN-K reading -5.1 pp, in the family 4.9a.4 had just taken from 19.4% to
-96.9%. An instrument that cries wolf on the thing you just fixed will be
+was KBN-K reading -5.1 pp, in the family the mate drive had just taken from
+19.4% to 96.9%. An instrument that cries wolf on the thing you just fixed will be
 ignored, which is worse than having no instrument.
 
 WHAT REPLACED IT. Two tiers, matching what the policy actually says and what a
@@ -28,7 +28,7 @@ human reviewer actually did with the numbers:
          3) SE, which is a breach too large to be sampling.
   REPORT any single family beyond 2 SE. Recorded, owned, and NOT blocking --
          which is exactly how KQ-KP's real -3.8 pp regression was handled:
-         assigned to 4.9a.14 with a retry trigger, not used to veto a +6.73 Elo
+         assigned an owner with a retry trigger, not used to veto a +6.73 Elo
          gain.
 
 Tolerances are computed from the actual denominators rather than assumed:
@@ -41,7 +41,7 @@ Keep DTZ progress. On RAR-E08 the floors flagged KQ-KP on DTZ progress and a
 later conversion measurement at n=400 confirmed a real regression there, while
 the conversion flag on KBN-K was false. It was the leading indicator.
 
-COHORT IDENTITY (4.10.2). Floors and report must describe the SAME positions.
+COHORT IDENTITY. Floors and report must describe the SAME positions.
 The floors file stores the per-family SHA-256 of the position set it was
 measured on, and a comparison across differing digests is refused rather than
 reported. Per family, not per run, so a single-family re-run still works -- the
@@ -71,7 +71,7 @@ METRICS = {
 }
 REPORT_SIGMA = 2.0
 
-# THIN-SAMPLE REFUSAL (PLAN 4.10.4). Below this many observations a rate is not
+# THIN-SAMPLE REFUSAL. Below this many observations a rate is not
 # reported as a number at all -- it is reported as thin.
 #
 # The failure this prevents is not a wrong verdict, it is a CONFIDENT one. A
@@ -93,7 +93,7 @@ MIN_ELIGIBLE = 5
 # was produced by the harness that aborted correct pawn technique (RAR-E14), so
 # its conversion rates are not the same quantity as a v2 report's and comparing
 # them would manufacture a large fake improvement in exactly the pawn families
-# 4.12 is about. Fail closed rather than mix.
+# the endgame work is about. Fail closed rather than mix.
 TRUTH_SCHEMA = "rarog-endgame-truth-v2"
 
 
@@ -125,7 +125,7 @@ def cohorts(report: dict) -> dict[str, str]:
         if not digest:
             raise SystemExit(
                 f"family {name} carries no cohort_sha256; the report predates "
-                "4.10.2 and its position set cannot be identified. Re-run it."
+                "cohort digests and its position set cannot be identified. Re-run it."
             )
         out[name] = digest
     return out
@@ -140,14 +140,14 @@ def check_cohorts(floors_doc: dict, report: dict) -> None:
     the overall cohort id to match would forbid it for no reason. What must
     never happen is comparing KRP-KR measured on one position set against
     KRP-KR measured on another, which is what produced the "52% versus 47.9%"
-    claim in 4.9a.7 from two artifacts sharing zero of 1,900 positions.
+    claim from two artifacts sharing zero of 1,900 positions.
     """
     want = floors_doc.get("cohort", {}).get("family_sha256")
     if not want:
         raise SystemExit(
             "the floors file records no per-family cohort digests; it predates "
-            "4.10.2 and cannot be shown to describe the same positions as this "
-            "report. Re-derive it: PLAN step 4.11.2."
+            "cohort digests and cannot be shown to describe the same positions "
+            "as this report. Re-derive it with --update."
         )
     got = cohorts(report)
     mismatched = sorted(
@@ -270,14 +270,13 @@ def main() -> int:
         )
     # The floors file records which truth schema produced it, so a floors file
     # built from the defective harness cannot be compared against a corrected
-    # run. The committed floors predate 4.10.1 and carry no such key, so they
-    # fail here until 4.11.2 re-derives them -- which is the point.
+    # run. Floors without that key fail here until they are re-derived.
     if doc.get("truth_schema") != TRUTH_SCHEMA:
         raise SystemExit(
             f"{args.floors} was measured by {doc.get('truth_schema')!r}, not "
-            f"{TRUTH_SCHEMA!r}. Floors derived from the pre-4.10.1 harness are "
+            f"{TRUTH_SCHEMA!r}. Floors derived from the schema-v1 harness are "
             "depressed in every pawn family and are superseded (RAR-E14). "
-            "Re-derive them from a corrected head run: PLAN step 4.11.2."
+            "Re-derive them from a corrected head run with --update."
         )
     check_cohorts(doc, report_doc)
     floors = doc["families"]

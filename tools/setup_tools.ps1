@@ -376,7 +376,7 @@ if (Test-Path $wfSpsa) {
 
 # weather-factory's main.py loops forever (`while True:`), so a target
 # iteration count existed only in the operator's head — unworkable for the
-# 5,000-iteration tunes 10.4.6 needs, which always span several sessions.
+# 5,000-iteration tunes, which always span several sessions.
 # Patch it to stop cleanly at $env:RAROG_MAX_ITERS (0/unset = unbounded), and
 # guard the finally-block rate prints against a zero-length session (resuming
 # an already-complete run would otherwise ZeroDivisionError after saving).
