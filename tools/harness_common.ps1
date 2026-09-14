@@ -63,19 +63,7 @@ function Get-DatagenProfile {
     }
 }
 
-# datagen-v2 (2026-09-01, RAR-M17): no adjudication at all. The label-quality
-# argument for dropping it in datagen is stronger than the verdict argument
-# that dropped it in sprt.ps1, and it is not about mislabeling -- resign at
-# 600/3 two-sided almost never calls a game wrong. It is SAMPLE DEPLETION.
-# RAR-M15 measured adjudication ending 52.7% of all endgames before they are
-# reached, so an adjudicated corpus is systematically short of exactly the
-# positions the endgame families need, and the phase-balanced extraction then
-# draws its endgame reservoir from a truncated distribution. Basilisk hit the
-# same shape from the other side: adjudicated data left its corpus without
-# mating material, which made king safety free to destroy mating behavior.
-#
-# datagen-v1 is retained by name, not edited, because `hce-v2` and every
-# manifest already written cite it and must keep meaning what they said.
+# datagen-v2: no adjudication (PROCESS.md "Adjudication", RAR-M17); datagen-v1 stays by name for its manifests.
 function Get-DatagenProfileV2 {
     [pscustomobject]@{
         Name               = "datagen-v2"
@@ -89,27 +77,8 @@ function Get-DatagenProfileV2 {
     }
 }
 
-# datagen-v3 (2026-09-01): no EVAL-based adjudication, plus Syzygy tablebase
-# adjudication. This is the label contract to prefer, and it resolves a real
-# tension that datagen-v2 alone does not.
-#
-# Removing eval adjudication does not by itself make labels truthful. It makes
-# them reflect what the DATAGEN ENGINE can actually convert at its node budget,
-# and the endgame truth harness measured that at 60,000 nodes: KBN-K converts at 7%, KRP-KR at
-# 52%, KBB-K at 86%. At datagen's 8,000 nodes it is worse. So a theoretically
-# won endgame is played out and recorded as a DRAW, which mislabels every
-# position sampled from that game -- the exact failure eval adjudication was
-# accused of, arriving from the other direction.
-#
-# Tablebase adjudication is not lossy in that way because it is not an opinion:
-# on reaching 6 men it ends the game with the position's true value. The fifty
-# move rule is deliberately NOT disabled (`-tbignore50` is not passed), because
-# the label must be the result the game would really have had; a cursed win is
-# a draw and should be labelled one.
-#
-# This is for DATAGEN ONLY. A strength gate must never use it: a gate measures
-# realized conversion skill, and adjudicating on tablebase truth would credit
-# both arms equally for an endgame only one of them can actually win.
+# datagen-v3: no eval adjudication, Syzygy truth at 6 men with the fifty-move rule kept (RAR-M18).
+# DATAGEN ONLY: a strength gate measures realized conversion, which tablebase adjudication would erase.
 function Get-DatagenProfileV3 {
     param([Parameter(Mandatory)][string]$SyzygyPath, [int]$Pieces = 6)
     [pscustomobject]@{

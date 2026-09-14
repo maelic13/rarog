@@ -1,8 +1,9 @@
 # Rarog recurring procedures
 
-Agent-facing process detail. Split out of `GUIDE.md` on 2026-08-21.
-`AGENTS.md` holds the rules that stop wrong results; this holds the
-step-by-step procedures those rules assume.
+The recurring procedures: how a leaf is researched, registered, implemented,
+gated and closed, and how the build, fit, tune and gate instruments are run.
+`AGENTS.md` holds the rules that stop wrong results; `PLAN.md` holds the
+roadmap. This file also owns the independence boundary with donor engines.
 
 ## Recurring procedures
 
@@ -120,7 +121,7 @@ games until the end destroys attribution and lets losing structures hide.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;
    unknown-sign repairs need a symmetric one. Size from RAR-M10 at the
-   EXPECTED value before choosing, and use the PLAN §2 sizing table.
+   EXPECTED value before choosing (`tools/spsa_convergence_model.py`).
 3. **Implement** — the smallest dependency-complete cluster. Substeps may be
    compiled and diagnosed separately, but are not expected to pass standalone
    and no incomplete cluster becomes the next strength baseline.
@@ -166,77 +167,40 @@ presented as mature.
 
 ### The independence boundary
 
-Rarog takes **ideas** from Stockfish and builds its own answer. It does not
-take code, and it does not aim to resemble it. Both engines are GPLv3, so
-copying would be legally permissible — this boundary is a product decision and
-is deliberately stricter than the licence requires. PLAN §4 holds the full
-table; the working rules are:
+Donors: **Reckless** for search, threading, time management and NNUE;
+**Stockfish 11** for the classical evaluation; **Stockfish 19** for NNUE and
+SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
+rule 1 points here).
 
-- What may cross: the problem a mechanism solves, that the problem exists at
-  all, which mechanisms interact and in what order, which populations are
-  worth measuring, and known failure modes.
-- What may not cross: source code in any language or amount, line-by-line or
-  structure-for-structure transcription, copied identifiers or file layout,
-  and behavioral equivalence as a goal. A donor constant may cross only as an
-  explicitly labelled seed under PLAN's current independence rule; it is on
-  the donor's scale and must be locally fitted and gated before acceptance.
-- Read, understand, close the file, then design from Rarog's own code and its
-  measured evidence. If a change cannot be justified without pointing at the reference,
-  it is not understood well enough to ship.
-- No upstream code is copied, so Rarog is not a derivative work. `README.md`
-  already states the correct posture — an independent engine, with thanks for
-  the inspiration. Do not restyle that into an attribution of derived code.
-- Do not merge the `hybrid` branch, copy its FFI boundary into Rarog, replace
-  native Rust with C++/FFI, or read the oracle as permission for a wholesale
-  unmeasured rewrite.
+- May cross: architecture, mechanisms, population choices, contracts, failure
+  modes and constants. A constant is a seed on the donor's scale: converted
+  through the measured scale ratio, fitted locally and gated (PLAN rule 2).
+- Written by us: code in Rarog's own structure. Line-for-line transcription
+  only where an algorithm has one natural form or a different form provably
+  loses throughput.
+- Read the donor, close the file, then design from Rarog's own code and its
+  measured evidence. If a change cannot be justified without pointing at the
+  donor, it is not understood well enough to ship.
+- `README.md`'s posture stays accurate: an independent engine, with thanks for
+  the inspiration.
+- Do not merge the `hybrid` oracle, copy its FFI boundary into Rarog, replace
+  native Rust with C++/FFI, or read the oracle as permission for an unmeasured
+  rewrite.
 - Similarity is never a reason to accept anything, and a counter that diverges
-  from the oracle is a question, not a defect. Closing a counter gap is not an
-  outcome; winning games is.
-- Rarog solving a problem differently, or deciding it does not apply here, is
-  a first-class result — record it with its reason and move on.
+  from the oracle is a question, not a defect. Games decide.
+- Deciding a donor mechanism does not apply here is a first-class result;
+  record it with its reason.
 
-**Adjudication is off by default as of 2026-09-01** (RAR-M16), in `sprt.ps1`
-and `gauntlet.ps1`. It used to be kept for search-only candidates on the
-grounds that both arms share Rarog's score scale, which is true but was never
-the whole cost: RAR-M15 measured adjudication destroying **52.7% of all
-endgames before they are reached**, and RAR-M16 priced playing games out at
-only about **10% wall time** (97.5 games/min against 88.4). RAR-O01 versus
-RAR-O02 priced the cross-evaluator confounder at about 74 Elo separately.
+### Adjudication
 
-Adjudication is not unfair -- it is symmetric between arms -- it is **lossy**,
-and the loss scales with how badly the engine converts. An engine that
-converts KRP-KR at 52% disagrees with its own adjudicated verdict far more
-often than one converting at 99%, which is the argument for revisiting this
-default once the endgame cluster (PLAN C.5) closes rather than treating it as
-permanent.
-
-Pass `-Adjudicate` to opt back in, and justify it in the registration: wall
-time genuinely binding, and a change that provably cannot touch conversion or
-defensive holding. A result produced with the flag is not comparable with one
-produced without it.
-
-**This covers every instrument, SPSA and datagen included.** `setup_tools.ps1`
-now strips both the resign and the draw line from weather-factory's
-`cutechess.py` (marker `RAROG_ADJUDICATION_PATCH_V4`) and `spsa.ps1` refuses
-to START a tune without it -- while still exempting a RESUME, because a run
-that began under an older rule must finish under it rather than becoming
-incomparable with itself halfway through.
-
-`datagen.ps1` defaults to the new `datagen-v2` profile: no adjudication at
-all. The case there is stronger than for a gate and is not about mislabeling
--- resign at 600/3 two-sided almost never calls a game wrong. It is **sample
-depletion**: adjudication ends 52.7% of endgames before they are reached, so
-an adjudicated corpus is systematically short of exactly the positions the
-endgame families must be fitted on, and the phase-balanced extraction then
-draws its endgame reservoir from a truncated distribution. `datagen-v1` is
-retained by name and unedited, because `hce-v2` and every manifest already
-written cite it and must keep meaning what they said. Pass `-Adjudicate` to
-reproduce it.
-
-Historical note, superseded: an HCE A/B used to require a registered
-calibration proving adjudication safe for both
-arms. Use fixed movetime or nodes only for the deterministic diagnostic suite,
-never as the strength verdict.
+Every instrument plays games out: `sprt.ps1`, `gauntlet.ps1`, SPSA (the
+`RAROG_ADJUDICATION_PATCH_V4` weather-factory patch, required to start a tune)
+and datagen (`datagen-v2`, or `datagen-v3` with Syzygy truth for labels,
+datagen only). Adjudication ends 52.7% of endgames before they are reached and
+saves about 10% wall time (RAR-M15, RAR-M16, RAR-M17, RAR-M18). `-Adjudicate`
+opts back in only with a registered reason; its results are not comparable with
+unadjudicated ones. `datagen-v1` stays by name so the manifests citing it keep
+their meaning. Use fixed movetime or nodes only for deterministic diagnostics.
 
 ### Toolchain and harness notes
 
@@ -254,10 +218,11 @@ triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
 `fastchess -use-affinity` with concurrency 14 is mandatory for 1T gates;
 unpinned Zen 3 runs carry a hidden per-run offset of roughly ±10 nElo. It pins
-one core per game and starves `Threads>1`, so drop it for multi-thread runs
-and re-calibrate the null pair under that configuration. Validate any harness
-change on a null pair — the same executable on both arms — before trusting a
-verdict.
+one core per game and starves `Threads>1`, so multi-thread runs drop it. The
+1T harness is null-calibrated and shared with Basilisk; a new null pair (the
+same executable on both arms, `-Mode calibrate`) is owed only after a runner,
+scheduler or topology change, never for a symmetric adjudication toggle
+(RAR-M03).
 
 NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
@@ -267,14 +232,14 @@ That figure does not extrapolate: applied to the oracle's 1.80x NPS deficit it
 predicts 160 Elo, where the standard ~60 Elo per doubling gives ~51. Above a
 few percent, convert through doublings and say which conversion was used.
 
-### Matched ablation (the Phase-4 measurement instrument)
+### Matched ablation (deficit decomposition)
 
 How the deficit was decomposed, and the procedure for every later use.
 `analysis/ablation_design.md` holds the reasoning; this is the operation.
 
 One shared bitmask on both engines — 0 razoring, 1 futility-child, 2 nullmove,
 3 probcut, 4 iir, 5 shallow-pruning, 6 extensions, 7 lmr — so the same number
-ablates the same mechanism on each side. Oracle: branch `hybrid-ablate`.
+ablates the same mechanism on each side. Oracle: tag `oracle/hybrid-ablate`.
 Rarog: `--features ablate`, which compiles every guard away in a shipped build.
 
 0. **The harness now refuses to start when an engine does not expose an option
@@ -418,31 +383,6 @@ second book or LTC as an extra robustness check for a mechanism suspected of
 condition sensitivity; do not create an unnecessary tuning/confirmation
 mismatch.
 
-### CPU compatibility design
-
-There is deliberately no startup CPU guard inside specialized assets. When the
-compiler is told that BMI2/AVX2/FMA are mandatory, ordinary feature-detection
-macros fold those checks to true and the guard is removed. A working
-in-process guard would require baseline-compiled CPUID code to execute before
-specialized code, adding a separate dispatch boundary. The current design is
-close to the specialized-binary model: users choose `x86-64`, `avx2`, `pext`
-or `arm64`, the README states exact requirements, and release tooling
-disassembles each asset to enforce the promise. If a single universal binary
-becomes a product goal, 8.1 may add a Stockfish-style baseline dispatcher.
-
-### Experiment discipline
-
-- Begin from a clean revision and record both binary hashes.
-- Register hypothesis, interactions, gate, stop rule and budget before games.
-- Treat tune and non-PGO results as diagnostics unless the experiment says
-  otherwise; final-PGO games decide promotion.
-- Do not turn node reduction into Elo. Use diagnostics to explain a game
-  result.
-- Record rejected and neutral outcomes in `EXPERIMENTS.md`; never silently
-  rewrite them into a later success story.
-- A correctness exception must name the invariant, the tests and the
-  incomplete strength evidence honestly.
-
 ## Decision rules
 
 - One item open at a time; each candidate gates against the current accepted
@@ -451,10 +391,9 @@ becomes a product goal, 8.1 may add a Stockfish-style baseline dispatcher.
 - A touched dormant switch must be removed, kept inert with a named owner, or
   separately gated. It is never activated opportunistically.
 - Borderline results are not accumulated as hidden debt. Accept or revert.
-- Commit after each finished and verified step, and keep tooling changes in
-  separate commits from engine changes.
-- Mirror any status or number change into **both `GUIDE.md` and `PLAN.md` in
-  the same commit**. `HISTORY.md` is history and is not updated for new work.
+- Tune and non-PGO results are diagnostics; final-PGO games decide promotion.
+- A correctness exception names the invariant, the tests and the incomplete
+  strength evidence.
 
 ## Common commands
 
@@ -478,8 +417,8 @@ cargo xtask verify-isa --arch pext
 ./tools/sprt.ps1 -EngineA <candidate.exe> -EngineB <baseline.exe> `
   -NameA candidate -NameB baseline -Elo0 0 -Elo1 3 -MaxGames 80000
 
-# Harness calibration after any runner change — same binary on both sides
-./tools/sprt.ps1 -EngineA <same.exe> -EngineB <same.exe> -NameA a -NameB b
+# Null pair, only after a runner, scheduler or topology change (RAR-M03)
+./tools/sprt.ps1 -EngineA <same.exe> -EngineB <same.exe> -NameA a -NameB b -Mode calibrate
 
 # Test/tune binaries and the SPSA coverage audit
 ./tools/build_test.ps1 -Suffix <s>

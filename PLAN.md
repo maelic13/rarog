@@ -80,14 +80,10 @@ miss and the budget above is corrected rather than defended.
 `AGENTS.md` is authoritative for measurement, verification, documents and
 gating. The rules below decide order and acceptance in this roadmap.
 
-1. **Donor architecture, own implementation.** Reckless is the primary donor
-   for search, threading, time management and NNUE; Stockfish 11 is the donor
-   for the classical evaluation and Stockfish 19 for NNUE and SMP details where
-   Reckless is silent. Architecture, mechanisms, population choices and
-   constants may all be taken. Code is written by us in our own structure;
-   line-for-line transcription is used only where an algorithm has one natural
-   form or where a different form provably loses throughput. Similarity to a
-   donor is never an acceptance criterion; games are.
+1. **Donor architecture, own implementation.** Which engine donates what,
+   what may cross and how the code is written: `PROCESS.md`, *The
+   independence boundary*. Similarity to a donor is never an acceptance
+   criterion; games are.
 2. **Constants are seeds.** A ported constant sits on the donor's score scale
    and node population. It is converted through the measured scale ratio (B.0),
    seeded, fitted by SPSA over the cluster's live coordinates, and only then
