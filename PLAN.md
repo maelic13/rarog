@@ -935,6 +935,37 @@ diagnostics; two rejections stop B.
   reductions; cutoff counting. NMP, ProbCut, singular and extensions keep
   Rarog's current forms in this cluster so that B.3 can measure them
   separately. Sub-steps:
+    - **B.2.0 Architecture and design review of the whole engine on the B.1
+      head, then its accepted upgrades — `R3` for the review, `I2` for the
+      upgrades.** Added 2026-09-14 by maintainer decision; runs before B.2.1.
+      Numbered inside B.2 because the status board has two levels, not
+      because it belongs to the cluster: it is behaviour-neutral and earns no
+      strength credit. **Review** (`analysis/architecture_review_2026-09.md`):
+      module ownership and public surfaces after B.1; the board → evaluation
+      → search → UCI data flow and where state is duplicated or threaded
+      through arguments; lifecycle, error and protocol contracts; allocation
+      and layout choices that carry measured evidence and those that carry
+      only history; test structure (in-file tests, `tests/`, fixtures) and
+      the tooling that reads engine output; a comment audit — `src/` holds
+      about 460 references to retired phase and step numbers. Every finding
+      is classified keep / upgrade now / upgrade in its owner leaf, with the
+      evidence and the owner named; behaviour-changing upgrades go to their
+      B/C/D owner, never into this leaf. **Upgrades** (same leaf, state
+      `READY_FOR_IMPLEMENTATION` → `IMPLEMENTED` → `LOCAL_QUALIFIED` →
+      `CLOSED`, register class updated to `I2` at that transition): the
+      accepted behaviour-neutral refactors and the comment hygiene in modules
+      no B or C cluster rewrites — `board/`, `tt.rs`, `engine*.rs`,
+      `uci_protocol.rs`, `search_options.rs`, `infra.rs`, `diag.rs`,
+      `syzygy.rs`, `bench.rs`, `wac.rs`, `main.rs`, `tools/` — plus the
+      structural (not mechanism) comments of the `search/` scaffold. Search
+      mechanism comments are rewritten by the cluster that rewrites the
+      mechanism (B.2–B.5); `eval.rs` comments by C.1. Comment rule, now in
+      AGENTS: short, states the problem or invariant, no roadmap phase or
+      step numbers, deleted when it only records history. Done criteria:
+      exact fingerprint 7,601,220 / EBF 2.474 on magic and PEXT, debug and
+      release suites, fmt, clippy, pooled-PGO NPS within ±0.5% of the B.1
+      pool unless a speed change is registered on its own. E.1 re-runs the
+      review on the B.9 and C.11 heads.
     - **B.2.1** Implement to the B.0 handoff; unit tests for every table's
       bounds and gravity; picker exhaustiveness tests; TT store/probe tests
       including age and replacement; deterministic unwind tests. **Delivery
@@ -1062,7 +1093,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14, next executable leaf |
+| B.2.0 | RESEARCH | R3 | Added 2026-09-14; runs now on the B.1 head; class becomes I2 when its upgrades reach READY_FOR_IMPLEMENTATION |
+| B.2.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; B.1 closed 2026-09-14; waits for B.2.0 |
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; waits for B.2.1 |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
@@ -1311,7 +1343,8 @@ loss).
 
 ## Phase E — Classical checkpoint and release
 
-- **E.1 Attribution checkpoint — `V`.** Final head against 2.3.2 and against
+- **E.1 Attribution checkpoint — `V`.** Re-run the B.2.0 architecture review
+  on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
   from the accepted SPRTs; deficit meters; NPS; the maturity checklist
   (family map without unknown rows, every slot with a fitting instrument,

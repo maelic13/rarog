@@ -92,7 +92,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool measured interleaved (RAR-P24; the 2.4.0 pool read 3.07 on that day against 3.19 in RAR-M48, a host shift, so compare pools interleaved); Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games) |
 | Active experiment | none; **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.1 — implement cluster 1 (the selectivity core)** to the B.0 handoff. B.1 closed 2026-09-14 |
+| Current step | **B.2.0 — architecture review and upgrades on the B.1 head** (added 2026-09-14), then B.2.1. B.1 closed 2026-09-14 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -104,8 +104,11 @@ A.4, the conversion instrument, the consolidation analysis that decided Phase A
 refactors nothing, the version bump, and four baselines measured on the
 released binary.
 
-**B.1 is closed and B.2.1 is the next executable leaf**: cluster 1, the
-selectivity core, `READY_FOR_IMPLEMENTATION / I2`, to the handoff in
+**B.1 is closed and B.2.0 is the next executable leaf**: the whole-engine
+architecture and design review on the B.1 head, `RESEARCH / R3`, followed in
+the same leaf by its accepted behaviour-neutral upgrades and comment hygiene
+at the exact fingerprint (PLAN B.2.0). Then B.2.1, cluster 1, the selectivity
+core, `READY_FOR_IMPLEMENTATION / I2`, to the handoff in
 `analysis/search_programme_2026-09-13.md` §13.2 (ticket order 0–8, the
 umbrella-off arm reproducing 7,601,220 at every ticket). B.1 landed the
 scaffold behaviour-neutral at the exact fingerprint and made the engine
@@ -172,6 +175,7 @@ is the numbering: release first, baselines on the released binary.
 - [x] **B.0** Investigation: mechanism map, cluster contents, scale ratio 0.457 (eval) / 0.75 (SEE), B.2.2 screens registered as a branching window plus fixed-node quality, 116 oracle-anchored canaries, B.1–B.3 handoffs frozen (`analysis/search_programme_2026-09-13.md`, RAR-M50) — DONE 2026-09-13
 - [x] **B.1** Search restructure: `search/` modules, `NodeType`, `ThreadData`, sentinel `PlyArray` stack; 44 inert parameters, root confidence, SMP skip and `evidence.rs` removed; exact fingerprint, pooled-PGO NPS +6.30% (RAR-P24) — DONE 2026-09-14
 - [ ] **B.2** Cluster 1 — selectivity core: TT eval storage, correction, histories, picker, move-loop pruning, LMR — **READY_FOR_IMPLEMENTATION / I2**
+    - [ ] **B.2.0** Architecture and design review of the whole engine on the B.1 head, then its accepted behaviour-neutral upgrades and comment hygiene in modules no B/C cluster rewrites; exact fingerprint — **RESEARCH / R3**
     - [ ] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
@@ -216,7 +220,7 @@ is the numbering: release first, baselines on the released binary.
 
 ## Phase E — Classical checkpoint and release
 
-- [ ] **E.1** Attribution checkpoint: STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
+- [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4 and Fritz 16 at 1T and 4T — **V**
 - [ ] **E.3** Release 3.0.0 (gate met) or 2.5.0: changelog, suites, PGO assets, ISA, CI with tag-equals-version and cross-matrix fingerprint assertions, tag on instruction — **M**
 

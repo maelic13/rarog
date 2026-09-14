@@ -271,6 +271,14 @@ did what its name suggests.**
   that justifies it.
 - Counters explain a candidate; only a registered SPRT accepts one. Node counts
   are not Elo: a measured +7.36% tree change was worth −1.49 ± 2.87 Elo.
+- **Code comments explain the problem or the invariant, briefly.** No
+  roadmap phase or step numbers, no ledger IDs as the explanation, no
+  narration of what an earlier version did. A comment that only records
+  history is deleted; history lives in `HISTORY.md` and `EXPERIMENTS.md`.
+  A measured reason to keep a shape ("boxed array: the Vec form cost
+  −2.1% NPS") stays, in one sentence. Rewrite a mechanism's comments
+  when you rewrite the mechanism; `src/` carried about 460 references to
+  retired step numbers at B.1, and B.2.0 owns the ones no cluster touches.
 
 ## Evidence
 
