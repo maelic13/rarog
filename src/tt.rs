@@ -5,14 +5,15 @@ use std::sync::{
 };
 
 use crate::board::Move;
-use crate::eval::MATE_SCORE;
-use crate::evidence::{OutcomeKind, debug_assert_outcome};
+use crate::eval::{MATE_SCORE, VALUE_NONE};
 use crate::infra;
 
 const MAX_PLY: i32 = 128;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
-const SPECULATIVE_BIT: u8 = 0x08;
+// Bit 0x08 is free. It carried the 4.3c speculative-producer class until B.1
+// removed provenance (no shipped consumer read it); it stays unused so the
+// 4-bit age arithmetic below is untouched. Widening the age is B.2's.
 const AGE_MASK: u8 = 0xF0;
 const AGE_STRIDE: u8 = 0x10;
 const AGE_QUALITY_DIVISOR: i32 = 4;
@@ -60,13 +61,6 @@ impl TtEntry {
     #[inline(always)]
     pub fn is_pv_node(self) -> bool {
         self.flag_age & PV_BIT != 0
-    }
-
-    /// Whether this entry came from a window-speculative producer such as
-    /// ProbCut. This is orthogonal to bound, depth and move authority.
-    #[inline(always)]
-    pub fn is_speculative(self) -> bool {
-        self.flag_age & SPECULATIVE_BIT != 0
     }
 
     #[inline(always)]
@@ -277,11 +271,6 @@ pub struct TtStore {
     pub ply: usize,
     pub static_eval: i32,
     pub is_pv: bool,
-    /// What produced `score`. The full kind drives the debug contract/census;
-    /// 4.3c also persists its speculative/non-speculative class in one TT bit.
-    /// Required, not defaulted: invariant 1 is that every result is typed, and
-    /// an optional field would let the next store site skip it.
-    pub kind: OutcomeKind,
 }
 
 impl TranspositionTable {
@@ -442,12 +431,6 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn store(&mut self, e: TtStore) {
-        // 4.2 producer contract and census. Both compile out of a production
-        // build: `debug_assert_outcome` under `debug_assertions`, the counter
-        // under `--features diag`. Placed here rather than at the seven call
-        // sites so a new store path cannot bypass either.
-        debug_assert_outcome(e.kind, e.depth, e.bound, e.mv);
-        count_store_kind(e.kind);
         match &mut self.storage {
             TtStorage::Local(table) => {
                 store_local(table, e);
@@ -493,91 +476,6 @@ impl TranspositionTable {
                 used * 1000 / (sample * SHARED_CLUSTER_ENTRIES)
             }
         }
-    }
-}
-
-/// 4.3 hazard census: a moveless store INHERITS the resident move.
-///
-/// This is why a persisted producer class is not the only thing missing — for a
-/// `StandPat` store the inheritance means a purely static estimate walks away
-/// carrying a searched move, and the resulting entry (depth 0, `Lower`, with a
-/// move) is byte-identical to a searched `QsearchMove`. Any attempt to infer
-/// "stand pat" from "depth 0 + Lower + no move" is therefore only as sound as
-/// this counter is small, which is exactly why it is measured before 4.3
-/// designs around the inference.
-#[inline(always)]
-fn count_move_inheritance(kind: OutcomeKind, resident: u16) {
-    #[cfg(feature = "diag")]
-    if resident != 0 {
-        crate::diag_count!(tt_move_inherited);
-        if kind == OutcomeKind::StandPat {
-            crate::diag_count!(tt_move_inherited_stand_pat);
-        }
-    }
-    #[cfg(not(feature = "diag"))]
-    {
-        let _ = (kind, resident);
-    }
-}
-
-/// 4.3 hazard census: a depth-0 horizon store landing on a deeper searched entry
-/// for the SAME position. The depth-preservation rule above only protects an
-/// entry more than 3 plies deeper, so depths 1..3 are overwritten by a horizon
-/// estimate. Counted to size that evidence loss before 4.3 tightens anything.
-///
-/// Also records the COMMITTED-store denominators. Both call sites sit after the
-/// depth-preservation `return`, so everything counted here actually landed —
-/// which is what makes the published hazard rates exact rather than biased low.
-#[inline(always)]
-fn count_horizon_overwrite(kind: OutcomeKind, depth: i32, same_key: bool, resident_depth: i8) {
-    #[cfg(feature = "diag")]
-    {
-        match kind {
-            OutcomeKind::StandPat => crate::diag_count!(store_committed_stand_pat),
-            OutcomeKind::QsearchMove => crate::diag_count!(store_committed_qsearch_move),
-            _ => {}
-        }
-        if kind.is_horizon() {
-            crate::diag_count!(store_committed_horizon);
-            if same_key && i32::from(resident_depth) > depth {
-                crate::diag_count!(tt_horizon_overwrote_searched);
-            }
-        }
-    }
-    #[cfg(not(feature = "diag"))]
-    {
-        let _ = (kind, depth, same_key, resident_depth);
-    }
-}
-
-/// 4.3: a store the depth-preservation rule threw away. Counted at the `return`
-/// so `attempted - skipped == committed` holds on both backends, which is the
-/// arithmetic the tool asserts.
-#[inline(always)]
-fn count_skipped_store() {
-    crate::diag_count!(store_skipped_depth_rule);
-}
-
-/// Exact per-producer store census. Expands to nothing without `--features
-/// diag`; the `match` and the unused binding both disappear.
-#[inline(always)]
-fn count_store_kind(kind: OutcomeKind) {
-    #[cfg(feature = "diag")]
-    match kind {
-        OutcomeKind::Full => crate::diag_count!(store_kind_full),
-        OutcomeKind::VerifiedReduced => crate::diag_count!(store_kind_verified_reduced),
-        OutcomeKind::QsearchMove => crate::diag_count!(store_kind_qsearch_move),
-        OutcomeKind::QsearchTail => crate::diag_count!(store_kind_qsearch_tail),
-        OutcomeKind::StandPat => crate::diag_count!(store_kind_stand_pat),
-        OutcomeKind::ProbCut => crate::diag_count!(store_kind_probcut),
-        OutcomeKind::Tablebase => crate::diag_count!(store_kind_tablebase),
-        // `debug_assert_outcome` already rejects these; a release diag build
-        // must still not miscount them into a neighbouring bucket.
-        OutcomeKind::Null | OutcomeKind::Incomplete => {}
-    }
-    #[cfg(not(feature = "diag"))]
-    {
-        let _ = kind;
     }
 }
 
@@ -669,6 +567,144 @@ pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
     }
 }
 
+/// One node's decoded probe, plus the admission rules its consumers apply.
+///
+/// Built once per node immediately after the probe, so mate-distance
+/// conversion and rule-50 clamping (`score_from_tt`) happen exactly once and no
+/// consumer can forget them or apply them twice. Node-local context (`depth`,
+/// `alpha`, `beta`, `is_pv`) is passed to the predicates rather than stored:
+/// IIR mutates `depth` after the cutoff test and the move loop raises `alpha`.
+///
+/// B.1 kept this discipline from 4.2's `NodeEvidence` and removed its producer
+/// field: no shipped search decision consumed provenance (B.0 section 6.1).
+#[derive(Copy, Clone, Debug)]
+pub struct TtProbe {
+    /// Bound kind, or `None` for a probe miss.
+    pub bound: Option<Bound>,
+    /// Stored depth; `-1` on a miss.
+    pub depth: i32,
+    /// Score with mate distance and rule-50 already resolved for this node;
+    /// `VALUE_NONE` on a miss.
+    pub score: i32,
+    /// Raw (uncorrected) static eval as stored, or `VALUE_NONE`.
+    pub raw_static_eval: i32,
+    /// Stored best move, unvalidated — callers must still check legality.
+    pub mv: Option<Move>,
+    /// The entry's own PV bit. Combine with the node's `is_pv` via
+    /// [`Self::pv_line`].
+    pub stored_pv: bool,
+    /// Whether the probe hit at all.
+    pub hit: bool,
+}
+
+impl TtProbe {
+    /// A probe that missed.
+    pub const MISS: Self = Self {
+        bound: None,
+        depth: -1,
+        score: VALUE_NONE,
+        raw_static_eval: VALUE_NONE,
+        mv: None,
+        stored_pv: false,
+        hit: false,
+    };
+
+    /// Decode a probe result. `halfmove_clock` is the node's, and is what makes
+    /// a mate score rule-50-safe.
+    #[inline(always)]
+    pub fn from_entry(entry: Option<TtEntry>, ply: usize, halfmove_clock: u8) -> Self {
+        match entry {
+            None => Self::MISS,
+            Some(entry) => Self {
+                bound: entry.bound(),
+                depth: i32::from(entry.depth),
+                score: score_from_tt(i32::from(entry.score), ply, halfmove_clock),
+                raw_static_eval: i32::from(entry.static_eval),
+                mv: entry.best_move(),
+                stored_pv: entry.is_pv_node(),
+                hit: true,
+            },
+        }
+    }
+
+    /// Does this node sit on a PV line, either currently or per the stored bit?
+    #[inline(always)]
+    pub fn pv_line(&self, is_pv: bool) -> bool {
+        is_pv || self.stored_pv
+    }
+
+    /// An exact score is stored. Consumed by the LMR reduction adjustment.
+    #[inline(always)]
+    pub fn is_exact(&self) -> bool {
+        matches!(self.bound, Some(Bound::Exact))
+    }
+
+    /// Cut this node off outright: the score to return, or `None`. The caller
+    /// owns the node-role guards (`!is_pv`, no excluded move); this covers only
+    /// deep enough plus a bound that resolves the window.
+    #[inline(always)]
+    pub fn cutoff_score(&self, depth: i32, alpha: i32, beta: i32) -> Option<i32> {
+        if self.depth < depth {
+            return None;
+        }
+        match self.bound? {
+            Bound::Exact => Some(self.score),
+            Bound::Lower if self.score >= beta => Some(self.score),
+            Bound::Upper if self.score <= alpha => Some(self.score),
+            _ => None,
+        }
+    }
+
+    /// Stand in for the static eval when forward-pruning. The main-search form:
+    /// requires a real score and `min_depth` plies of stored depth. The
+    /// accepted callers pass 0, admitting depth-0 qsearch entries.
+    #[inline(always)]
+    pub fn refine_eval(&self, static_eval: i32, min_depth: i32) -> i32 {
+        if self.score == VALUE_NONE || self.depth < min_depth {
+            return static_eval;
+        }
+        self.refine_eval_bound_only(static_eval)
+    }
+
+    /// The same refinement with NO depth or `VALUE_NONE` guard: the qsearch
+    /// stand-pat form (RAR-S02). At `min_depth == 0` the two agree on every
+    /// storable state, which a test below pins.
+    #[inline(always)]
+    pub fn refine_eval_bound_only(&self, base: i32) -> i32 {
+        match self.bound {
+            Some(Bound::Exact) => self.score,
+            Some(Bound::Lower) if self.score > base => self.score,
+            Some(Bound::Upper) if self.score < base => self.score,
+            _ => base,
+        }
+    }
+
+    /// Seed a singular-extension verification window: a lower-or-exact bound
+    /// within `depth_margin` plies and a non-mate score.
+    #[inline(always)]
+    pub fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
+        self.depth >= depth - depth_margin
+            && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
+            && self.score.abs() < MATE_SCORE - MAX_PLY
+    }
+
+    /// Is the stored depth too shallow to guide move ordering? The evidence
+    /// half of the IIR predicate; the caller owns the node-role half.
+    #[inline(always)]
+    pub fn too_shallow_to_order(&self, depth: i32) -> bool {
+        self.depth < depth - 3
+    }
+
+    /// An inexact bound that points the wrong way for the current window: a
+    /// `Lower` at or below `alpha`, or an `Upper` at or above `beta`. Such an
+    /// entry is admissible but told the node nothing. Diagnostic only.
+    #[inline(always)]
+    pub fn contradicts_window(&self, alpha: i32, beta: i32) -> bool {
+        matches!(self.bound, Some(Bound::Lower)) && self.score <= alpha
+            || matches!(self.bound, Some(Bound::Upper)) && self.score >= beta
+    }
+}
+
 fn new_local_table(mb: usize) -> Option<LocalTable> {
     let power = cluster_count::<LocalCluster>(mb);
     let mut clusters = Vec::new();
@@ -754,31 +790,19 @@ fn store_local(table: &mut LocalTable, e: TtStore) {
     }
 
     let replace = &mut cluster.entries[replace_index];
-    // 9.7.5(b): does this store land on a slot that already held THIS position?
-    // Instrumented on both backends so the 1T (local) and NT (shared) duplication
-    // shares are comparable — a same_key share that climbs with thread count
-    // means threads are re-deriving each other's work.
-    if replace.key16 == key16 {
-        crate::diag_count!(tt_store_same_key);
-    } else {
-        crate::diag_count!(tt_store_fresh);
-    }
     if replace.key16 == key16
         && e.bound != Bound::Exact
         && e.depth < replace.depth as i32 - 3
         && (replace.flag_age & AGE_MASK) == table.age
     {
-        count_skipped_store();
         return;
     }
 
     let stored_move = if e.mv.is_null() && replace.key16 == key16 {
-        count_move_inheritance(e.kind, replace.mv);
         replace.mv
     } else {
         e.mv.0
     };
-    count_horizon_overwrite(e.kind, e.depth, replace.key16 == key16, replace.depth);
 
     *replace = make_entry(key16, stored_move, table.age, e);
 }
@@ -812,28 +836,19 @@ fn store_shared(table: &SharedTable, e: TtStore) {
         }
     }
 
-    // 9.7.5(b): see the local backend for what this measures.
-    if replace_hits_same_key {
-        crate::diag_count!(tt_store_same_key);
-    } else {
-        crate::diag_count!(tt_store_fresh);
-    }
     if replace_hits_same_key
         && e.bound != Bound::Exact
         && e.depth < replace_entry.depth as i32 - 3
         && (replace_entry.flag_age & AGE_MASK) == age
     {
-        count_skipped_store();
         return;
     }
 
     let stored_move = if e.mv.is_null() && replace_hits_same_key {
-        count_move_inheritance(e.kind, replace_entry.mv);
         replace_entry.mv
     } else {
         e.mv.0
     };
-    count_horizon_overwrite(e.kind, e.depth, replace_hits_same_key, replace_entry.depth);
 
     cluster.store(replace_index, key16, make_entry(key16, stored_move, age, e));
 }
@@ -847,7 +862,6 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
         ply,
         static_eval,
         is_pv,
-        kind,
         ..
     } = e;
     TtEntry {
@@ -856,14 +870,7 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore) -> TtEntry {
         static_eval: crate::infra::saturating_i16(static_eval),
         mv,
         depth: crate::infra::saturating_i8(depth, -1),
-        flag_age: age
-            | bound as u8
-            | if is_pv { PV_BIT } else { 0 }
-            | if kind.is_speculative() {
-                SPECULATIVE_BIT
-            } else {
-                0
-            },
+        flag_age: age | bound as u8 | if is_pv { PV_BIT } else { 0 },
     }
 }
 
@@ -878,16 +885,147 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 
 #[cfg(test)]
 mod tests {
+    use super::TtProbe;
     use super::{
-        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, LocalTable, PV_BIT, SPECULATIVE_BIT,
-        TranspositionTable, TtEntry, TtStorage, entry_quality,
+        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, LocalTable, PV_BIT, TranspositionTable,
+        TtEntry, TtStorage, entry_quality,
     };
+    use crate::eval::{MATE_SCORE, VALUE_NONE};
+
+    /// Build a probe directly, bypassing `from_entry`, so a case can be stated
+    /// without constructing a table and a matching key.
+    fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
+        TtProbe {
+            bound: Some(bound),
+            depth,
+            score,
+            ..TtProbe::MISS
+        }
+    }
+
+    #[test]
+    fn a_miss_grants_no_capability() {
+        let miss = TtProbe::MISS;
+        assert_eq!(miss.cutoff_score(0, -100, 100), None);
+        assert_eq!(miss.refine_eval(42, 0), 42);
+        assert_eq!(miss.refine_eval_bound_only(42), 42);
+        assert!(!miss.allows_singular(4, 3));
+        assert!(!miss.is_exact());
+        assert_eq!(miss.depth, -1);
+    }
+
+    #[test]
+    fn cutoff_requires_depth_and_a_resolving_bound() {
+        assert_eq!(probe(Bound::Exact, 8, 50).cutoff_score(8, 0, 100), Some(50));
+        assert_eq!(probe(Bound::Exact, 9, 50).cutoff_score(8, 0, 100), Some(50));
+        assert_eq!(probe(Bound::Exact, 7, 50).cutoff_score(8, 0, 100), None);
+        assert_eq!(
+            probe(Bound::Lower, 8, 150).cutoff_score(8, 0, 100),
+            Some(150)
+        );
+        assert_eq!(probe(Bound::Lower, 8, 50).cutoff_score(8, 0, 100), None);
+        assert_eq!(
+            probe(Bound::Upper, 8, -50).cutoff_score(8, 0, 100),
+            Some(-50)
+        );
+        assert_eq!(probe(Bound::Upper, 8, 50).cutoff_score(8, 0, 100), None);
+    }
+
+    #[test]
+    fn eval_refinement_only_moves_in_the_bound_direction() {
+        assert_eq!(probe(Bound::Lower, 4, 80).refine_eval(30, 0), 80);
+        assert_eq!(probe(Bound::Lower, 4, 10).refine_eval(30, 0), 30);
+        assert_eq!(probe(Bound::Upper, 4, 10).refine_eval(30, 0), 10);
+        assert_eq!(probe(Bound::Upper, 4, 80).refine_eval(30, 0), 30);
+    }
+
+    #[test]
+    fn only_the_main_search_form_enforces_a_depth_floor() {
+        let shallow = probe(Bound::Lower, 0, 80);
+        assert_eq!(shallow.refine_eval(30, 4), 30, "depth floor rejects it");
+        assert_eq!(
+            shallow.refine_eval_bound_only(30),
+            80,
+            "the qsearch form has no floor"
+        );
+        assert_eq!(shallow.refine_eval(30, 0), 80);
+        let none = TtProbe {
+            score: VALUE_NONE,
+            ..probe(Bound::Lower, 8, 0)
+        };
+        assert_eq!(none.refine_eval(30, 0), 30, "VALUE_NONE is rejected");
+    }
+
+    #[test]
+    fn singular_seed_needs_depth_a_lower_bound_and_a_non_mate_score() {
+        let probcut_shaped = probe(Bound::Lower, 5, 40);
+        assert!(probcut_shaped.allows_singular(8, 3));
+        assert!(!probcut_shaped.allows_singular(8, 2));
+        assert!(!probe(Bound::Lower, 4, 40).allows_singular(8, 3));
+        assert!(!probe(Bound::Upper, 8, 40).allows_singular(8, 3));
+        assert!(!probe(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3));
+        assert!(!probe(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3));
+    }
+
+    #[test]
+    fn guarded_refinement_at_depth_zero_equals_the_unguarded_form() {
+        // Every stored depth is >= 0 and a converted score is never VALUE_NONE,
+        // so the two refinement forms agree at a depth floor of zero.
+        for bound in [Bound::Exact, Bound::Lower, Bound::Upper] {
+            for depth in 0..=12 {
+                for score in [-MATE_SCORE, -300, -1, 0, 1, 300, MATE_SCORE] {
+                    for base in [-500, -1, 0, 1, 500] {
+                        let ev = probe(bound, depth, score);
+                        assert_eq!(
+                            ev.refine_eval(base, 0),
+                            ev.refine_eval_bound_only(base),
+                            "bound {bound:?} depth {depth} score {score} base {base}"
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            TtProbe::MISS.refine_eval(42, 0),
+            TtProbe::MISS.refine_eval_bound_only(42)
+        );
+    }
+
+    #[test]
+    fn a_contradicting_bound_can_never_produce_a_cutoff() {
+        for alpha in -300..=300 {
+            for beta in (alpha + 1)..=300 {
+                for score in [alpha - 1, alpha, beta, beta + 1] {
+                    for bound in [Bound::Lower, Bound::Upper] {
+                        let ev = probe(bound, 99, score);
+                        if ev.contradicts_window(alpha, beta) {
+                            assert_eq!(ev.cutoff_score(0, alpha, beta), None);
+                        }
+                    }
+                }
+            }
+        }
+        assert!(!probe(Bound::Exact, 8, 50).contradicts_window(0, 100));
+    }
+
+    #[test]
+    fn pv_line_is_the_union_of_node_and_stored_bits() {
+        let stored = TtProbe {
+            stored_pv: true,
+            ..TtProbe::MISS
+        };
+        assert!(stored.pv_line(false));
+        assert!(TtProbe::MISS.pv_line(true));
+        assert!(!TtProbe::MISS.pv_line(false));
+    }
 
     #[test]
     fn four_bit_age_preserves_the_per_generation_replacement_penalty() {
         let entry = TtEntry {
             depth: 20,
-            flag_age: Bound::Exact as u8 | PV_BIT | SPECULATIVE_BIT,
+            // The free 0x08 bit is set too: flag bits below the age nibble
+            // must never leak into the replacement quality.
+            flag_age: Bound::Exact as u8 | PV_BIT | 0x08,
             ..TtEntry::default()
         };
 

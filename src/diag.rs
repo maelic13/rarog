@@ -148,55 +148,6 @@ pub mod counters {
         // rate that climbs with thread count indicts pool-seeded windows.
         asp_fail_high,
         asp_fail_low,
-        // TT store duplication. `same_key` means the slot already held THIS
-        // position; `fresh` means it did not. If threads are re-deriving each
-        // other's work, the same_key share rises with thread count. Counted on
-        // both backends so 1T (local) and NT (shared) are comparable.
-        tt_store_same_key,
-        tt_store_fresh,
-        // 4.2 — EXACT producer census, keyed by the `OutcomeKind` the store site
-        // declares. The 4.1 producer counters are sampled and sit at the call
-        // sites; these are unsampled and sit in the store path, so they both
-        // cross-check the sampler's producer mix and catch a store site that
-        // stops being reached at all. `Null`/`Incomplete` have no counter
-        // because no path stores them — `debug_assert_outcome` fires instead.
-        store_kind_full,
-        store_kind_verified_reduced,
-        store_kind_qsearch_move,
-        store_kind_qsearch_tail,
-        store_kind_stand_pat,
-        store_kind_probcut,
-        store_kind_tablebase,
-        // 4.3 — provenance HAZARDS in the store path, both exact.
-        //
-        // `tt_move_inherited` counts moveless stores that adopted the resident
-        // move; the `_stand_pat` subset is the one that matters, because it
-        // turns a static estimate into an entry indistinguishable from a
-        // searched qmove. If that subset is large, "depth 0 + Lower + no move"
-        // is NOT a usable stand-pat test and 4.3 cannot lean on it.
-        //
-        // `tt_horizon_overwrote_searched` counts depth-0 stores that replaced a
-        // deeper same-position entry, which the depth-preservation rule only
-        // blocks beyond 3 plies.
-        tt_move_inherited,
-        tt_move_inherited_stand_pat,
-        tt_horizon_overwrote_searched,
-        // 4.3 — ATTEMPTED versus COMMITTED stores.
-        //
-        // The `store_kind_*` census above runs before the backend dispatch, so
-        // it counts ATTEMPTS and reconciles with `fresh + same_key`. The hazard
-        // counters run after the depth-preservation `return`, so they count
-        // COMMITTED stores. Dividing one by the other mismatches denominators
-        // and understates every hazard rate, which is exactly the error the
-        // first RAR-S25 figures carried. These give the matched denominators.
-        //
-        // A store is skipped when it lands on a same-position entry more than 3
-        // plies deeper, is not exact, and is the current generation — so horizon
-        // producers are by far the likeliest to be skipped.
-        store_skipped_depth_rule,
-        store_committed_stand_pat,
-        store_committed_qsearch_move,
-        store_committed_horizon,
         // Does helper work actually REACH the main thread? Probe/hit counted
         // on thread 0 only. If helpers contribute, main's hit rate should rise
         // with thread count; if it is flat, the helpers are searching in vain.

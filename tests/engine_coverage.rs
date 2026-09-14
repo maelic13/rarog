@@ -1,7 +1,6 @@
 use rarog::board::{Board, Color, GameResult, Move, Piece, Square};
 use rarog::engine_command::EngineCommand;
 use rarog::eval::{Evaluator, MATE_SCORE, piece_value};
-use rarog::evidence::OutcomeKind;
 use rarog::search::{SearchEvent, SearchExit, Searcher};
 use rarog::search_options::SearchOptions;
 use rarog::syzygy;
@@ -357,7 +356,6 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
         ply: 0,
         static_eval: 42,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     let entry = table.probe(key).expect("entry must be stored");
     assert_eq!(entry.score, 123);
@@ -375,7 +373,6 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
         ply: 0,
         static_eval: 0,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     assert!(table.hashfull() > 0);
 
@@ -399,7 +396,6 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
         ply: 0,
         static_eval: 42,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     let shared_entry = table
         .probe(key)
@@ -428,7 +424,6 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
         ply: 0,
         static_eval: 11,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     let replaced = table.probe(key).expect("entry must remain present");
     assert_eq!(replaced.bound(), Some(Bound::Upper));
@@ -468,7 +463,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: 34,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     table.store(TtStore {
         key: second_key,
@@ -479,7 +473,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: 10,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     table.prefetch(key);
     assert!(table.hashfull() > 0);
@@ -504,7 +497,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: -10,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     table.store(TtStore {
         key: second_fresh_key,
@@ -515,7 +507,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: -3,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     assert!(table.hashfull() > 0);
 
@@ -530,7 +521,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: 11,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     shared.store(TtStore {
         key: second_key,
@@ -541,7 +531,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         ply: 0,
         static_eval: 22,
         is_pv: false,
-        kind: OutcomeKind::Full,
     });
     // `hashfull` reports per-mille of SLOTS over the sampled clusters, so two
     // entries in a 1 MiB shared table legitimately round to zero — it only
@@ -559,7 +548,6 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
             ply: 0,
             static_eval: 5,
             is_pv: false,
-            kind: OutcomeKind::Full,
         });
     }
     shared.prefetch(key);

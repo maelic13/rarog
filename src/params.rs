@@ -194,7 +194,7 @@ search_params! {
     /// is not a provenance guarantee: a ProbCut entry produced by an earlier
     /// deeper search can still qualify at a shallower consumer. RAR-S31 found
     /// value 2 positive on a tune binary, but the ~3 Elo knob was parked under
-    /// the material-gain policy; explicit provenance is implemented in 4.3c.
+    /// the material-gain policy. B.1 removed 4.3c's persisted provenance.
     singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
 
     /// Ordering bonus for a quiet move that gives check.

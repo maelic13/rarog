@@ -18,11 +18,7 @@ use crate::search_threads::{
 };
 use crate::syzygy::{self, Wdl};
 use crate::time_manager::{RuntimeLimits, compute_runtime_limits};
-// `MoveClass` is read only by the diagnostic move-stage census.
-#[cfg(feature = "diag")]
-use crate::evidence::MoveClass;
-use crate::evidence::{MoveEvidence, NodeEvidence, OutcomeKind};
-use crate::tt::{Bound, TranspositionTable, TtStore};
+use crate::tt::{Bound, TranspositionTable, TtProbe, TtStore};
 
 const MAX_DEPTH: usize = 100;
 
@@ -1773,7 +1769,6 @@ impl Searcher {
                 ply,
                 static_eval: VALUE_NONE,
                 is_pv,
-                kind: OutcomeKind::Tablebase,
             });
             return score;
         }
@@ -1790,7 +1785,7 @@ impl Searcher {
         // 4.2: one decode of the probe for the whole node. Mate distance and
         // rule-50 are resolved exactly once here — the pre-4.2 code decoded the
         // same entry twice, at `tt_score` and again inside the cutoff block.
-        let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
+        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock);
         let tt_pv = ev.pv_line(is_pv);
         #[cfg(feature = "diag")]
         if diag_sample {
@@ -1885,7 +1880,7 @@ impl Searcher {
 
         // 4.2: the pre-4.2 form spelled out three branches whose two `else`
         // arms were identical, because a probe MISS and a hit carrying no
-        // stored eval both fall back to a fresh raw eval. `NodeEvidence::MISS`
+        // stored eval both fall back to a fresh raw eval. `TtProbe::MISS`
         // already reports `VALUE_NONE`, so one test covers both.
         let (static_eval, raw_static_eval) = if in_check {
             (VALUE_NONE, VALUE_NONE)
@@ -2188,7 +2183,6 @@ impl Searcher {
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: false,
-                            kind: OutcomeKind::ProbCut,
                         });
                         #[cfg(feature = "diag")]
                         if diag_sample {
@@ -2283,35 +2277,20 @@ impl Searcher {
             let mut see = if is_capture { picked.see as i32 } else { 0 };
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
-            // 4.2: the pre-move evidence snapshot, taken at pick time. It
-            // replaces a bare `0..3` stage integer, and 4.6 extends it with the
-            // check/evasion taxonomy and the shared prospective depth. `see` is
-            // captured here deliberately: the local below is refined for some
-            // moves, and classification must not depend on where it is read.
-            let move_ev = MoveEvidence::new(
-                mv == tt_move,
-                is_capture,
-                is_quiet,
-                see,
-                if is_quiet { picked.quiet_history } else { 0 },
-            );
-            let quiet_hist = move_ev.quiet_history;
+            let quiet_hist = if is_quiet { picked.quiet_history } else { 0 };
             let mut gives_check = None;
+            // The picker stage the move came from, classified at pick time: `see`
+            // is refined later for some moves, so it must be read here.
             #[cfg(feature = "diag")]
             if diag_order_sample {
-                match move_ev.class {
-                    MoveClass::TtMove => {
-                        crate::diag_count!(move_seen_tt);
-                    }
-                    MoveClass::GoodCapture => {
-                        crate::diag_count!(move_seen_good_capture);
-                    }
-                    MoveClass::Quiet => {
-                        crate::diag_count!(move_seen_quiet);
-                    }
-                    MoveClass::BadCapture => {
-                        crate::diag_count!(move_seen_bad_capture);
-                    }
+                if mv == tt_move {
+                    crate::diag_count!(move_seen_tt);
+                } else if is_capture && see >= 0 {
+                    crate::diag_count!(move_seen_good_capture);
+                } else if is_quiet {
+                    crate::diag_count!(move_seen_quiet);
+                } else {
+                    crate::diag_count!(move_seen_bad_capture);
                 }
             }
 
@@ -2449,7 +2428,7 @@ impl Searcher {
             let singular_move_candidate =
                 !self.ablated(6) && ply > 0 && mv == tt_move && excluded.is_null() && depth >= 4;
             if singular_move_candidate
-                && ev.allows_singular(depth, self.params.singular_tt_depth_margin, false)
+                && ev.allows_singular(depth, self.params.singular_tt_depth_margin)
             {
                 #[cfg(feature = "diag")]
                 if diag_sample {
@@ -2804,7 +2783,6 @@ impl Searcher {
                             ply,
                             static_eval: raw_static_eval,
                             is_pv: tt_pv,
-                            kind: OutcomeKind::Full,
                         });
                         #[cfg(feature = "diag")]
                         if diag_sample {
@@ -2908,7 +2886,6 @@ impl Searcher {
                 ply,
                 static_eval: raw_static_eval,
                 is_pv: tt_pv,
-                kind: OutcomeKind::Full,
             });
             #[cfg(feature = "diag")]
             if diag_sample {
@@ -2962,7 +2939,7 @@ impl Searcher {
         }
         let original_alpha = alpha;
         let tt_entry = self.tt.probe(hash);
-        let ev = NodeEvidence::from_probe(tt_entry, ply, board.halfmove_clock);
+        let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock);
         #[cfg(feature = "diag")]
         if diag_q_sample && ev.hit {
             crate::diag_count!(q_tt_hit);
@@ -3052,7 +3029,6 @@ impl Searcher {
                     ply,
                     static_eval: q_raw_static_eval,
                     is_pv: false,
-                    kind: OutcomeKind::StandPat,
                 });
                 return stand_pat;
             }
@@ -3161,7 +3137,6 @@ impl Searcher {
                     ply,
                     static_eval: q_raw_static_eval,
                     is_pv: false,
-                    kind: OutcomeKind::QsearchMove,
                 });
                 return score;
             }
@@ -3202,7 +3177,6 @@ impl Searcher {
             ply,
             static_eval: q_raw_static_eval,
             is_pv: false,
-            kind: OutcomeKind::QsearchTail,
         });
         alpha
     }
@@ -4320,7 +4294,6 @@ mod tests {
             ply: 0,
             static_eval,
             is_pv: false,
-            kind: OutcomeKind::Full,
         });
     }
 
@@ -4688,7 +4661,6 @@ mod tests {
             ply: 0,
             static_eval: VALUE_NONE,
             is_pv: false,
-            kind: OutcomeKind::Full,
         });
 
         let _ = searcher.negamax(
@@ -4870,7 +4842,6 @@ mod tests {
             ply: 1,
             static_eval: VALUE_NONE,
             is_pv: false,
-            kind: OutcomeKind::Full,
         });
 
         assert_eq!(searcher.ponder_from_tt(&root, bestmove), ponder);
