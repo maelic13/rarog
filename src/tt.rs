@@ -85,6 +85,22 @@ struct LocalCluster {
     _padding: [u8; 2],
 }
 
+impl ClusterSlots for LocalCluster {
+    const ENTRIES: usize = LOCAL_CLUSTER_ENTRIES;
+
+    #[inline(always)]
+    fn slot(&self, index: usize) -> (u16, TtEntry) {
+        let entry = self.entries[index];
+        (entry.key16, entry)
+    }
+
+    /// The local slot keeps its tag in the entry, and the tag alone decides.
+    #[inline(always)]
+    fn holds(slot_key16: u16, _entry: TtEntry, key16: u16) -> bool {
+        slot_key16 == key16
+    }
+}
+
 #[derive(Clone)]
 struct LocalTable {
     clusters: Vec<LocalCluster>,
@@ -196,11 +212,43 @@ impl SharedCluster {
         self.tags[index].store(key16 ^ fold16(data), Ordering::Relaxed);
     }
 
-    #[inline(always)]
-    fn clear_slot(&self, index: usize) {
-        self.data[index].store(0, Ordering::Relaxed);
-        self.tags[index].store(0, Ordering::Relaxed);
+    fn clear(&self) {
+        for index in 0..SHARED_CLUSTER_ENTRIES {
+            self.data[index].store(0, Ordering::Relaxed);
+            self.tags[index].store(0, Ordering::Relaxed);
+        }
     }
+}
+
+impl ClusterSlots for SharedCluster {
+    const ENTRIES: usize = SHARED_CLUSTER_ENTRIES;
+
+    #[inline(always)]
+    fn slot(&self, index: usize) -> (u16, TtEntry) {
+        self.load_any(index).unwrap_or_default()
+    }
+
+    /// A shared slot's tag is reconstructed from its payload, so an empty slot
+    /// can reconstruct to any tag; only an occupied one holds a position.
+    #[inline(always)]
+    fn holds(slot_key16: u16, entry: TtEntry, key16: u16) -> bool {
+        slot_key16 == key16 && entry.bound().is_some()
+    }
+}
+
+/// Read access to one cluster's slots. Each backend supplies how a slot is
+/// read; the replacement policy and `hashfull` are written once over it, and
+/// each backend writes the slot the policy chooses in its own way.
+trait ClusterSlots {
+    const ENTRIES: usize;
+
+    /// The slot's verification tag and entry. An empty slot reads as an
+    /// unoccupied entry.
+    fn slot(&self, index: usize) -> (u16, TtEntry);
+
+    /// Whether a slot read as `(slot_key16, entry)` holds the position tagged
+    /// `key16`.
+    fn holds(slot_key16: u16, entry: TtEntry, key16: u16) -> bool;
 }
 
 // The shared cluster must be exactly 64 bytes, and must store positions at the
@@ -355,32 +403,16 @@ impl TranspositionTable {
     pub fn clear(&mut self) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                let clusters = table.clusters.as_mut_slice();
-                let num_threads =
-                    std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-                let chunk_size = (clusters.len() / num_threads).max(1);
-                std::thread::scope(|s| {
-                    for chunk in clusters.chunks_mut(chunk_size) {
-                        s.spawn(|| chunk.fill(LocalCluster::default()));
-                    }
+                let size = clear_chunk_size(table.clusters.len());
+                clear_in_parallel(table.clusters.chunks_mut(size), |chunk| {
+                    chunk.fill(LocalCluster::default());
                 });
                 table.age = 0;
             }
             TtStorage::Shared(table) => {
-                let clusters = table.clusters.as_ref();
-                let num_threads =
-                    std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-                let chunk_size = (clusters.len() / num_threads).max(1);
-                std::thread::scope(|s| {
-                    for chunk in clusters.chunks(chunk_size) {
-                        s.spawn(move || {
-                            for cluster in chunk {
-                                for index in 0..SHARED_CLUSTER_ENTRIES {
-                                    cluster.clear_slot(index);
-                                }
-                            }
-                        });
-                    }
+                let size = clear_chunk_size(table.clusters.len());
+                clear_in_parallel(table.clusters.chunks(size), |chunk| {
+                    chunk.iter().for_each(SharedCluster::clear);
                 });
                 table.age.store(0, Ordering::Relaxed);
             }
@@ -412,20 +444,8 @@ impl TranspositionTable {
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         match &self.storage {
-            TtStorage::Local(table) => {
-                let ptr = table
-                    .clusters
-                    .as_ptr()
-                    .wrapping_add(infra::index(key) & table.mask);
-                prefetch_ptr(ptr);
-            }
-            TtStorage::Shared(table) => {
-                let ptr = table
-                    .clusters
-                    .as_ptr()
-                    .wrapping_add(infra::index(key) & table.mask);
-                prefetch_ptr(ptr);
-            }
+            TtStorage::Local(table) => prefetch_cluster(&table.clusters, table.mask, key),
+            TtStorage::Shared(table) => prefetch_cluster(&table.clusters, table.mask, key),
         }
     }
 
@@ -443,37 +463,9 @@ impl TranspositionTable {
 
     pub fn hashfull(&self) -> usize {
         match &self.storage {
-            TtStorage::Local(table) => {
-                let sample = table.clusters.len().min(334);
-                if sample == 0 {
-                    return 0;
-                }
-                let age = table.age;
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| cluster.entries)
-                    .filter(|entry| current_entry(*entry, age))
-                    .count();
-                used * 1000 / (sample * LOCAL_CLUSTER_ENTRIES)
-            }
+            TtStorage::Local(table) => hashfull_of(&table.clusters, table.age),
             TtStorage::Shared(table) => {
-                let sample = table.clusters.len().min(334);
-                if sample == 0 {
-                    return 0;
-                }
-                let age = table.age.load(Ordering::Relaxed);
-                let used = table
-                    .clusters
-                    .iter()
-                    .take(sample)
-                    .flat_map(|cluster| {
-                        (0..SHARED_CLUSTER_ENTRIES).filter_map(|index| cluster.load_any(index))
-                    })
-                    .filter(|(_, entry)| current_entry(*entry, age))
-                    .count();
-                used * 1000 / (sample * SHARED_CLUSTER_ENTRIES)
+                hashfull_of(&table.clusters, table.age.load(Ordering::Relaxed))
             }
         }
     }
@@ -777,38 +769,9 @@ fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
 fn store_local(table: &mut LocalTable, e: TtStore) {
     let key16 = key16_of(e.key);
     let cluster = &mut table.clusters[crate::infra::index(e.key) & table.mask];
-
-    let mut replace_index = 0usize;
-    let mut replace_quality = i32::MAX;
-    for index in 0..cluster.entries.len() {
-        let entry = cluster.entries[index];
-        if entry.key16 == key16 {
-            replace_index = index;
-            break;
-        }
-        let quality = entry_quality(entry, table.age);
-        if quality < replace_quality {
-            replace_quality = quality;
-            replace_index = index;
-        }
+    if let Some((index, entry)) = replacement(cluster, table.age, key16, e) {
+        cluster.entries[index] = entry;
     }
-
-    let replace = &mut cluster.entries[replace_index];
-    if replace.key16 == key16
-        && e.bound != Bound::Exact
-        && e.depth < replace.depth as i32 - 3
-        && (replace.flag_age & AGE_MASK) == table.age
-    {
-        return;
-    }
-
-    let stored_move = if e.mv.is_null() && replace.key16 == key16 {
-        replace.mv
-    } else {
-        e.mv.0
-    };
-
-    *replace = make_entry(key16, stored_move, table.age, e);
 }
 
 #[inline(always)]
@@ -816,20 +779,35 @@ fn store_shared(table: &SharedTable, e: TtStore) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
     let cluster = &table.clusters[crate::infra::index(e.key) & table.mask];
+    if let Some((index, entry)) = replacement(cluster, age, key16, e) {
+        cluster.store(index, key16, entry);
+    }
+}
 
+/// The replacement policy: the slot a store for `key16` goes to and the entry
+/// written there, or `None` when the existing entry is kept.
+///
+/// A slot that already holds the position is reused; otherwise the slot of
+/// lowest [`entry_quality`] is. A shallower non-exact result does not
+/// overwrite a current-generation entry for the same position more than three
+/// plies deeper, and a store without a move keeps the position's stored move.
+#[inline(always)]
+fn replacement<C: ClusterSlots>(
+    cluster: &C,
+    age: u8,
+    key16: u16,
+    e: TtStore,
+) -> Option<(usize, TtEntry)> {
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
     let mut replace_entry = TtEntry::default();
-    // Whether the chosen slot already holds THIS position — verification is
-    // now 16-bit, matching the local backend, so the same-position test is a
-    // key16 comparison rather than a full-key one.
-    let mut replace_hits_same_key = false;
-    for index in 0..SHARED_CLUSTER_ENTRIES {
-        let (entry_key16, entry) = cluster.load_any(index).unwrap_or_default();
-        if entry_key16 == key16 && entry.bound().is_some() {
+    let mut same_position = false;
+    for index in 0..C::ENTRIES {
+        let (slot_key16, entry) = cluster.slot(index);
+        if C::holds(slot_key16, entry, key16) {
             replace_index = index;
             replace_entry = entry;
-            replace_hits_same_key = true;
+            same_position = true;
             break;
         }
         let quality = entry_quality(entry, age);
@@ -840,21 +818,57 @@ fn store_shared(table: &SharedTable, e: TtStore) {
         }
     }
 
-    if replace_hits_same_key
+    if same_position
         && e.bound != Bound::Exact
         && e.depth < replace_entry.depth as i32 - 3
         && (replace_entry.flag_age & AGE_MASK) == age
     {
-        return;
+        return None;
     }
 
-    let stored_move = if e.mv.is_null() && replace_hits_same_key {
+    let stored_move = if e.mv.is_null() && same_position {
         replace_entry.mv
     } else {
         e.mv.0
     };
+    Some((replace_index, make_entry(key16, stored_move, age, e)))
+}
 
-    cluster.store(replace_index, key16, make_entry(key16, stored_move, age, e));
+/// Share of current-generation entries, in permille, over the first 334
+/// clusters.
+fn hashfull_of<C: ClusterSlots>(clusters: &[C], age: u8) -> usize {
+    let sample = clusters.len().min(334);
+    if sample == 0 {
+        return 0;
+    }
+    let used = clusters
+        .iter()
+        .take(sample)
+        .flat_map(|cluster| (0..C::ENTRIES).map(move |index| cluster.slot(index).1))
+        .filter(|entry| current_entry(*entry, age))
+        .count();
+    used * 1000 / (sample * C::ENTRIES)
+}
+
+/// Chunk length that splits a table of `clusters` over at most eight threads.
+fn clear_chunk_size(clusters: usize) -> usize {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+    (clusters / threads).max(1)
+}
+
+/// Clear each chunk on its own scoped thread.
+fn clear_in_parallel<T: Send>(chunks: impl Iterator<Item = T>, clear: impl Fn(T) + Sync) {
+    let clear = &clear;
+    std::thread::scope(|s| {
+        for chunk in chunks {
+            s.spawn(move || clear(chunk));
+        }
+    });
+}
+
+#[inline(always)]
+fn prefetch_cluster<T>(clusters: &[T], mask: usize, key: u64) {
+    prefetch_ptr(clusters.as_ptr().wrapping_add(infra::index(key) & mask));
 }
 
 #[inline(always)]
