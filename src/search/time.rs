@@ -1,5 +1,10 @@
+//! Clock management: per-search limits and the between-iteration soft-stop
+//! factors.
+
 use crate::board::Color;
 use crate::search_options::{EngineOptions, SearchLimits};
+
+use super::params::SearchParams;
 
 #[derive(Copy, Clone)]
 pub(crate) struct RuntimeLimits {
@@ -152,6 +157,43 @@ pub(crate) fn compute_runtime_limits(
         movetime_mode,
         analysis_mode,
     }
+}
+
+/// Share of an iteration below which the effort term reads its floor.
+pub(super) const EFFORT_TERM_FLOOR: f64 = 0.79;
+
+/// Effort normalised to `0.0..=1.0`: 0 at or below [`EFFORT_TERM_FLOOR`] of the
+/// iteration spent on the best move, 1 at the whole iteration.
+pub(super) fn effort_term(effort: f64) -> f64 {
+    ((effort - EFFORT_TERM_FLOOR) / (1.0 - EFFORT_TERM_FLOOR)).clamp(0.0, 1.0)
+}
+
+/// Interpolate a clock multiplier from `high` at `t = 0` to `low` at `t = 1`.
+///
+/// Clamped to the ordered pair so an SPSA-crossed (`low > high`) setting cannot
+/// panic `f64::clamp`; for the effort endpoints this is `clamp(0.71, 0.924)`.
+pub(super) fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
+    (high + t * (low - high)).clamp(low.min(high), low.max(high))
+}
+
+/// Baseline effort factor: the shipped clock's own confidence proxy.
+///
+/// ⚠ Measured near-CONSTANT (RAR-S47). The band starts at
+/// [`EFFORT_TERM_FLOOR`], and effort averages 37.9% of the iteration, so this
+/// reads its `TmEffortHigh` endpoint on 473 of 520 bench iterations (91.0%):
+/// a function on 9% of iterations and a constant on the rest. D.1 owns it.
+pub(super) fn tm_effort_factor(params: &SearchParams, effort: f64) -> f64 {
+    tm_interpolate(
+        f64::from(params.tm_effort_high) / 10_000.0,
+        f64::from(params.tm_effort_low) / 10_000.0,
+        effort_term(effort),
+    )
+}
+
+/// Best-move-instability factor: rises when the best move changed recently.
+pub(super) fn tm_instability_factor(params: &SearchParams, instability: f64) -> f64 {
+    f64::from(params.tm_instab_base) / 10_000.0
+        + f64::from(params.tm_instab_slope) / 10_000.0 * instability
 }
 
 #[cfg(test)]

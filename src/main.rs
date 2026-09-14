@@ -111,7 +111,7 @@ fn main() {
 /// Written during the 8.13(e) time-forfeit hunt, and kept with an honest
 /// scope note: this did NOT fix the forfeits (measured — the ~35 ms stalls
 /// are scheduler starvation under multi-thread contention, addressed by the
-/// SMP time reserve in `time_manager.rs`). What it does buy: the 1 ms
+/// SMP time reserve in `search/time.rs`). What it does buy: the 1 ms
 /// `thread::sleep` in the ponder/infinite wait loop actually sleeps ~1 ms
 /// instead of a 15.6 ms tick, so `ponderhit`/`stop` are picked up promptly,
 /// and short timed waits across the engine stop being tick-quantised.

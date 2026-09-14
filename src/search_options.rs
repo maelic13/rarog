@@ -1,5 +1,5 @@
 use crate::board::{Board, Move};
-use crate::params::SearchParams;
+use crate::search::params::SearchParams;
 
 pub const MAX_THREADS: usize = 1024;
 

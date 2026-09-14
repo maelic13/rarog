@@ -97,7 +97,7 @@ macro_rules! search_params {
 // min..=max;`. Struct field, Default value, UCI option string and setter clamp
 // are all generated from these lines — see the `search_params!` docs above.
 search_params! {
-    /// Initial aspiration window half-width (centipawns). [search.rs:615]
+    /// Initial aspiration window half-width (centipawns).
     aspiration_delta = 21, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30 → 21
 
     // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
@@ -133,36 +133,36 @@ search_params! {
     asp_max_fails = 20, "AspMaxFails", 1..=32;
 
     /// Futility pruning base margin.
-    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`. [search.rs:1003]
+    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
     futility_base = 52, "FutilityBase", 20..=200;  // was 70 → 82 → 86 → 60 → 52
     /// Extra futility margin added when *not* improving (multiplied by
     /// `not_improving_i`). Larger value → prune less when not improving.
     futility_not_improving = 51, "FutilityNotImproving", 0..=120;  // was 20 → 51 → 49 → 42 → 51
 
-    /// Razoring coefficient. Prune if `eval + coeff * depth < alpha`. [search.rs:1007]
+    /// Razoring coefficient. Prune if `eval + coeff * depth < alpha`.
     razoring_coeff = 274, "RazoringCoeff", 50..=300;  // was 150 → 194 → 191 → 193 → 274
 
-    /// Null-move pruning depth coefficient. [search.rs:1012]
+    /// Null-move pruning depth coefficient.
     /// Allow NMP when `eval >= beta - coeff * depth - improving_bonus * improving`.
     nm_depth_coeff = 12, "NullMoveDepthCoeff", 2..=40;  // was 12 → 14 → 15 → 10 → 12
-    /// Null-move pruning improving bonus. [search.rs:1012]
+    /// Null-move pruning improving bonus.
     nm_improving_bonus = 35, "NullMoveImprovingBonus", 0..=80;  // was 24 → 25 → 32 → 35
 
     /// LMP prune-margin base.
-    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`. [search.rs:1182]
+    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
     lmp_base = 80, "LmpBase", 30..=200;  // was 90 → 115 → 88 → 80
     /// Extra LMP prune-margin added when *not* improving (multiplied by
     /// `not_improving_i`). Larger value → prune less when not improving.
     lmp_not_improving = 64, "LmpNotImproving", 0..=120;  // was 25 → 53 → 57 → 63 → 64
 
     /// Quiet-history pruning coefficient (stored positive; applied as `-(coeff * depth)`).
-    /// [search.rs:1186]
+    ///
     quiet_hist_prune_coeff = 5_617, "QuietHistPruneCoeff", 1000..=10000;  // was 4000 → 4372 → 4419 → 5069 → 5617
 
     /// SEE bad-capture threshold coefficient (stored positive; applied as `-(coeff * depth)`).
-    /// [search.rs:1195]
+    ///
     see_pruning_coeff = 66, "SeePruningCoeff", 20..=200;  // was 83 → 51 → 66
-    /// SEE bad-capture threshold maximum magnitude (floor of `-(coeff * depth)`). [search.rs:1195]
+    /// SEE bad-capture threshold maximum magnitude (floor of `-(coeff * depth)`).
     see_pruning_max = 955, "SeePruningMax", 200..=1600;
 
     // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
@@ -181,7 +181,7 @@ search_params! {
     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
     qs_see_bad_floor = -55, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
 
-    /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`. [search.rs:1215]
+    /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`.
     singular_beta_mult = 4, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6 → 4
 
     /// 4.3 arm B — how far below the node depth a TT entry may sit and still
@@ -230,7 +230,7 @@ search_params! {
     /// removing them outright.
     singular_double_margin = 20, "SingularDoubleMargin", 0..=200;
 
-    /// LMP count base. `count = base + 2 * depth * depth / 3`. [search.rs:2394]
+    /// LMP count base. `count = base + 2 * depth * depth / 3`.
     lmp_count_base = 1, "LmpCountBase", 1..=12;  // was 4 → 2 → 1 (10.4.6 lower rail; active)
 
     // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
@@ -243,7 +243,7 @@ search_params! {
     lmr_exact_bound = 109, "LmrExactBound", 0..=2048;  // was 0; Phase 2.4 candidate was 98
     /// Late-move reduction bump applied when a **TT move is present** and the
     /// move is late in the list (`!tt_move.is_null() && searched >= 4`). NB the
-    /// name is a misnomer — the live condition (`search.rs`, LMR block) fires
+    /// name is a misnomer — the live condition (`search/node.rs`, LMR block) fires
     /// on TT-move *presence*, not absence, and never checks TT depth. The value
     /// (656) was SPSA'd under this live condition; the "TT-absent / depth-aware"
     /// polarity the name implies is a deliberate 10.4-menu A/B, not a bug.
@@ -272,7 +272,7 @@ search_params! {
     /// Quiet futility per-depth coefficient (cp).
     fp_coeff = 135, "FpCoeff", 0..=300;
 
-    /// ProbCut beta margin (cp). `probcut_beta = beta + margin`. [search.rs:1108]
+    /// ProbCut beta margin (cp). `probcut_beta = beta + margin`.
     /// Re-tuned in the Phase 5 SPSA wave after the Phase 4 eval re-fit changed
     /// what a centipawn means; the flat-margin form is the current accepted
     /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
@@ -404,7 +404,7 @@ search_params! {
     // already computed per node. Each knob adds `|corr| · knob / 128` to a
     // margin (or subtracts it from the LMR reduction in 1024ths). Seed 0 = off.
     //
-    // ⚠ These three are NOT inert. A stale comment in `search.rs` claimed the
+    // ⚠ These three are NOT inert. A stale comment in the search claimed the
     // seeds left them at 0; the fitted values below are live in the accepted
     // baseline, so `corr_abs` actively widens margins and shrinks reductions.
     corr_rfp_scale = 3, "CorrRfpScale", 0..=512;
@@ -423,7 +423,7 @@ search_params! {
 
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
-    // falling-eval × best-move-instability × effort (search.rs soft-stop block);
+    // falling-eval × best-move-instability × effort (`search_root` soft-stop block);
     // these are the 2.2 SF-seeded constants, exposed for the TM SPSA group.
     // Stored in ten-thousandths so the float defaults reconstruct bit-exactly
     // (`x / 10000.0` is correctly-rounded, identical to the original literal).

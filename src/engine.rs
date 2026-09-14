@@ -427,7 +427,7 @@ fn flush_stdout() {
 #[cfg(test)]
 mod tests {
     /// Test helper threads get an explicit stack like the real engine threads
-    /// (`main.rs`'s ENGINE_THREAD_STACK_SIZE / `search_threads.rs`'s
+    /// (`main.rs`'s ENGINE_THREAD_STACK_SIZE / `search/threads.rs`'s
     /// SEARCH_THREAD_STACK_SIZE). 9.0a: these two tests used a bare
     /// `thread::spawn`, whose default stack overflowed in DEBUG builds — the
     /// moved `Engine` carries a ~35 KB `Searcher` (pv_table alone is 32 KB)

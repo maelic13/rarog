@@ -1,21 +1,13 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, AtomicUsize, Ordering},
-    mpsc::{self, Sender},
-};
-use std::thread::{self, JoinHandle};
+//! State every search thread shares: stop requests, pooled node and
+//! tablebase counters, root-move scores and soft-stop votes.
 
-use crate::board::{Board, Move};
-use crate::search::{SearchEvent, SearchResult, Searcher};
-use crate::search_options::{EngineOptions, SearchLimits};
-use crate::tt::TranspositionTable;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 
 pub(crate) const STOP_NONE: u8 = 0;
 pub(crate) const STOP_SEARCH: u8 = 1;
 pub(crate) const STOP_QUIT: u8 = 2;
-const SEARCH_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 
-pub(crate) struct SharedSearchState {
+pub(crate) struct SharedContext {
     pub stop_state: AtomicU8,
     pub ponderhit: AtomicBool,
     pub nodes: AtomicU64,
@@ -36,7 +28,7 @@ pub(crate) struct SharedSearchState {
     /// expires casts one vote and keeps searching; the pool stops once a
     /// strict majority agrees, so the decision uses N clamped opinions
     /// rather than the main thread's single noisy estimate. Threshold and
-    /// its measured justification: [`SharedSearchState::votes_needed`].
+    /// its measured justification: [`SharedContext::votes_needed`].
     pub stop_votes: AtomicUsize,
     pub thread_count: usize,
 }
@@ -97,7 +89,7 @@ fn unpack_root_score(packed: i64) -> (i32, i32, RootBound) {
     (depth, score, bound)
 }
 
-impl SharedSearchState {
+impl SharedContext {
     pub(crate) fn new(initial_tb_hits: u64, root_move_count: usize, thread_count: usize) -> Self {
         Self {
             stop_state: AtomicU8::new(STOP_NONE),
@@ -227,128 +219,13 @@ impl SharedSearchState {
     }
 }
 
-pub(crate) struct WorkerJob {
-    pub root: Board,
-    pub root_moves: Arc<[Move]>,
-    pub limits: SearchLimits,
-    pub engine_options: EngineOptions,
-    pub tt: TranspositionTable,
-    pub hash_mb: usize,
-    pub root_move_offset: usize,
-    /// 8.13: helper index (1-based); seeds the per-thread reduction jitter.
-    pub thread_id: usize,
-    pub shared_state: Arc<SharedSearchState>,
-    pub result_tx: Sender<SearchResult>,
-}
-
-enum WorkerMessage {
-    // 9.0: boxed — WorkerJob is ~712 B while the other variants are unit, so
-    // every queued message paid the largest size. This is a per-search thread
-    // handoff (not a hot path), so the indirection is free here.
-    Search(Box<WorkerJob>),
-    NewGame,
-    Shutdown,
-}
-
-struct SearchWorkerHandle {
-    sender: Sender<WorkerMessage>,
-    handle: Option<JoinHandle<()>>,
-}
-
-#[derive(Default)]
-pub(crate) struct WorkerPool {
-    workers: Vec<SearchWorkerHandle>,
-}
-
-impl WorkerPool {
-    pub(crate) fn set_helper_count(&mut self, helper_count: usize) {
-        while self.workers.len() > helper_count {
-            if let Some(mut worker) = self.workers.pop() {
-                let _ = worker.sender.send(WorkerMessage::Shutdown);
-                if let Some(handle) = worker.handle.take() {
-                    let _ = handle.join();
-                }
-            }
-        }
-        while self.workers.len() < helper_count {
-            if let Some(worker) = spawn_search_worker(self.workers.len()) {
-                self.workers.push(worker);
-            } else {
-                crate::info_string!(
-                    "Unable to create helper search thread {}; using {} search threads.",
-                    self.workers.len() + 1,
-                    self.workers.len() + 1
-                );
-                break;
-            }
-        }
-    }
-
-    pub(crate) fn new_game(&self) {
-        for worker in &self.workers {
-            let _ = worker.sender.send(WorkerMessage::NewGame);
-        }
-    }
-
-    pub(crate) fn send_search(&self, index: usize, job: WorkerJob) -> bool {
-        self.workers.get(index).is_some_and(|worker| {
-            worker
-                .sender
-                .send(WorkerMessage::Search(Box::new(job)))
-                .is_ok()
-        })
-    }
-}
-
-impl Drop for WorkerPool {
-    fn drop(&mut self) {
-        self.set_helper_count(0);
-    }
-}
-
-fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
-    let (sender, receiver) = mpsc::channel();
-    let handle = thread::Builder::new()
-        .name(format!("rarog-search-{index}"))
-        .stack_size(SEARCH_THREAD_STACK_SIZE)
-        .spawn(move || {
-            let mut worker = Searcher::worker_default();
-            while let Ok(message) = receiver.recv() {
-                match message {
-                    WorkerMessage::Search(job) => {
-                        let result_tx = job.result_tx.clone();
-                        let shared_state = Arc::clone(&job.shared_state);
-                        let mut helper_poll =
-                            || match shared_state.stop_state.load(Ordering::Relaxed) {
-                                STOP_QUIT => SearchEvent::Quit,
-                                STOP_SEARCH => SearchEvent::Stop,
-                                _ if shared_state.ponderhit.load(Ordering::Relaxed) => {
-                                    SearchEvent::PonderHit
-                                }
-                                _ => SearchEvent::None,
-                            };
-                        let result = worker.run_worker_job(*job, &mut helper_poll);
-                        let _ = result_tx.send(result);
-                    }
-                    WorkerMessage::NewGame => worker.reset_worker_state_for_new_game(),
-                    WorkerMessage::Shutdown => break,
-                }
-            }
-        })
-        .ok()?;
-    Some(SearchWorkerHandle {
-        sender,
-        handle: Some(handle),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn shared_stop_request_sets_search_stop() {
-        let state = SharedSearchState::new(0, 0, 1);
+        let state = SharedContext::new(0, 0, 1);
 
         state.request_stop();
 
@@ -358,22 +235,22 @@ mod tests {
     /// The threshold is a strict majority at EVERY pool size, including the
     /// two-thread case where that means unanimity. 9.7.5(f) tried exempting
     /// N=2 and lost its gate by −15.85 ± 6.12, so this is a MEASURED
-    /// invariant — see [`SharedSearchState::votes_needed`].
+    /// invariant — see [`SharedContext::votes_needed`].
     #[test]
     fn stop_vote_threshold_is_a_strict_majority_at_every_pool_size() {
         assert_eq!(
-            SharedSearchState::votes_needed(2),
+            SharedContext::votes_needed(2),
             2,
             "N=2 needs BOTH votes: exempting it measured -15.85 Elo (9.7.5(f))"
         );
         for n in [1usize, 2, 3, 4, 5, 6, 8, 16] {
             assert_eq!(
-                SharedSearchState::votes_needed(n),
+                SharedContext::votes_needed(n),
                 n / 2 + 1,
                 "N={n} must keep the strict-majority threshold"
             );
             assert!(
-                SharedSearchState::votes_needed(n) * 2 > n,
+                SharedContext::votes_needed(n) * 2 > n,
                 "N={n} threshold must still be a strict majority"
             );
         }
@@ -384,11 +261,11 @@ mod tests {
     /// estimate from deciding for the pool.
     #[test]
     fn stop_vote_fires_at_the_threshold_not_before() {
-        let two = SharedSearchState::new(0, 0, 2);
+        let two = SharedContext::new(0, 0, 2);
         assert!(!two.vote_to_stop(), "1 of 2 must not stop");
         assert!(two.vote_to_stop(), "2 of 2 is unanimity and must stop");
 
-        let four = SharedSearchState::new(0, 0, 4);
+        let four = SharedContext::new(0, 0, 4);
         assert!(!four.vote_to_stop(), "1 of 4 must not stop");
         assert!(!four.vote_to_stop(), "2 of 4 must not stop");
         assert!(four.vote_to_stop(), "3 of 4 is the majority and must stop");
@@ -396,7 +273,7 @@ mod tests {
 
     #[test]
     fn shared_stop_request_does_not_overwrite_quit() {
-        let state = SharedSearchState::new(0, 0, 1);
+        let state = SharedContext::new(0, 0, 1);
 
         state.request_quit();
         state.request_stop();
@@ -406,7 +283,7 @@ mod tests {
 
     #[test]
     fn root_score_packing_roundtrips_and_ranks_bounds() {
-        let state = SharedSearchState::new(0, 2, 1);
+        let state = SharedContext::new(0, 2, 1);
 
         // Negative scores and bound tags survive the round trip.
         state.publish_root_score(0, 12, -481, RootBound::Upper);
@@ -436,7 +313,7 @@ mod tests {
     /// root score in a live search.
     #[test]
     fn root_score_packing_survives_the_field_extremes() {
-        let state = SharedSearchState::new(0, 1, 1);
+        let state = SharedContext::new(0, 1, 1);
 
         for score in [i32::MIN, i32::MIN + 1, -1, 0, 1, i32::MAX - 1, i32::MAX] {
             state.publish_root_score(0, 1, score, RootBound::Exact);

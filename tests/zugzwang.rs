@@ -44,7 +44,7 @@ fn search(fen: &str, depth: u32) -> (Move, i32) {
 fn search_with(
     fen: &str,
     depth: u32,
-    configure: impl FnOnce(&mut rarog::params::SearchParams),
+    configure: impl FnOnce(&mut rarog::search::params::SearchParams),
 ) -> (Move, i32) {
     let board = Board::from_fen(fen).expect("valid FEN");
     let mut searcher = Searcher::default();
@@ -222,7 +222,7 @@ fn forced_mates_are_still_proven() {
 /// combination is what 4.4's bundle will actually ship.
 #[test]
 fn every_4_4_switch_preserves_null_soundness() {
-    type Setter = fn(&mut rarog::params::SearchParams);
+    type Setter = fn(&mut rarog::search::params::SearchParams);
     let arms: [(&str, Setter); 5] = [
         ("baseline", |_p| {}),
         ("singular double margin 200", |p| {
