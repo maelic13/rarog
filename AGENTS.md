@@ -1,447 +1,301 @@
 # Agent operating rules for Rarog
 
-Read `GUIDE.md` for what to work on and the relevant part of `PLAN.md` for why.
-These rules protect correctness and the maintainer's time and token budget.
+The rules an agent follows while working on Rarog. `GUIDE.md` says what to work
+on; the relevant section of `PLAN.md` says why; `PROCESS.md` holds the
+procedures these rules assume. Each rule is stated once, here. The incidents
+that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
 
-## Classify the work before starting
+## Classify the work
 
-Before substantial work, name its primary kind: research/diagnosis, experiment
-design, implementation, deterministic qualification, performance
-qualification, playing-strength gate, or documentation/provenance. Do not read
-every roadmap leaf as an instruction to write code. `PLAN.md` owns the workflow
-state and capability class; `GUIDE.md` owns the maintainer-editable mapping from
-capability classes to current models.
+- Before substantial work, name its primary kind: research/diagnosis,
+  experiment design, implementation, deterministic qualification, performance
+  qualification, playing-strength gate, or documentation/provenance. A roadmap
+  leaf is not automatically an instruction to write code. PLAN owns each
+  leaf's workflow state and capability class; GUIDE maps classes to models.
+- The workflow is `RESEARCH -> READY_FOR_IMPLEMENTATION -> IMPLEMENTED ->
+  LOCAL_QUALIFIED -> GAME_GATE -> CLOSED`. Not every task needs every state:
+  documentation can close without games, research can close `NO_CHANGE`,
+  neutral performance work closes on deterministic and performance
+  qualification. A playing-strength change does not bypass `GAME_GATE`.
+- `READY_FOR_IMPLEMENTATION` is a hard boundary. A substantial playing change
+  crosses it only with: the measured defect or opportunity and its evidence in
+  this engine, credible competing explanations, interacting mechanisms, the
+  cheapest test that can kill the hypothesis, its falsifier and stop rule, and
+  the condition that justifies implementation. A plausible idea or a donor
+  feature is not enough.
 
-The prospective workflow is `RESEARCH -> READY_FOR_IMPLEMENTATION ->
-IMPLEMENTED -> LOCAL_QUALIFIED -> GAME_GATE -> CLOSED`. Not every task needs
-every state. Documentation can close without games; research can close with a
-justified `NO_CHANGE`; neutral performance work uses deterministic/performance
-qualification. A playing-strength change normally cannot bypass `GAME_GATE`.
-
-`READY_FOR_IMPLEMENTATION` is a hard semantic boundary. Before promoting a
-substantial playing change, establish the measured defect or opportunity, the
-evidence for it in this engine, credible competing explanations, interacting
-mechanisms, the cheapest test that can kill the hypothesis, its falsifier and
-stop rule, and the exact condition that makes implementation justified. A
-plausible chess-programming idea or donor-engine feature is not enough.
-
-## Research and implementation ownership
+## Research and implementation
 
 - Research owns the causal question, competing hypotheses, interaction map,
-  prospective prediction, falsifiers, experiment meaning and readiness
-  decision. It should prefer cheap discriminating evidence over a sophisticated
+  prospective prediction, falsifiers, the meaning of each experiment and the
+  readiness decision. Prefer cheap discriminating evidence to a sophisticated
   implementation of an uncertain idea.
-- Implementation owns normal local engineering: idiomatic Rust structure,
-  necessary local refactoring, focused instrumentation/tests, compilation,
-  debugging and cheap deterministic qualification. The maintainer should not
-  need to prescribe those ordinary steps.
-- Implementation must not silently replace the hypothesis, broaden the chess
-  mechanism, add adjacent heuristics, tune unrelated constants, port extra
-  donor behavior, change the experiment after exposure or rescue a weak
-  candidate by modifying neighbouring mechanisms. If a material premise is
-  false, preserve useful instrumentation, record the contradiction and return
-  the leaf to `RESEARCH`.
-- Reference engines teach mechanisms, contracts, dependencies, failure modes
-  and experimental methods. Their constants may be labelled seed values under
-  PLAN's independence boundary; neither similarity nor a copied value is
-  acceptance evidence.
+- Implementation owns ordinary engineering: idiomatic Rust structure, necessary
+  local refactoring, focused instrumentation and tests, compilation, debugging
+  and cheap deterministic qualification. The maintainer need not prescribe it.
+- Implementation does not replace the hypothesis, broaden the mechanism, add
+  adjacent heuristics, tune unrelated constants, port extra donor behaviour,
+  change the experiment after exposure, or rescue a weak candidate by changing
+  its neighbours. If a material premise is false, keep useful instrumentation,
+  record the contradiction and return the leaf to `RESEARCH`.
+- Donor engines teach mechanisms, contracts, dependencies, failure modes and
+  methods. What may cross is `PROCESS.md`, *The independence boundary*. Neither
+  similarity nor a copied value is acceptance evidence.
+- For nontrivial playing work, check shared signals and feedback: search
+  changes move evaluation populations, evaluation changes move pruning,
+  ordering evidence may also prune, TT semantics can mask a candidate, and
+  rule-50, repetition and promotion closure can make a local feature non-local.
+  Use a bounded baseline/A/B/A+B screen when it cheaply separates interaction;
+  do not require a factorial for every small change.
 
-For nontrivial playing work, explicitly check for shared signals and feedback:
-search changes alter evaluation populations, evaluation changes alter pruning,
-ordering evidence may also prune, TT semantics can mask a candidate, and
-rule-50/repetition/promotion closure can make a local-looking feature non-local.
-Use a bounded baseline/A/B/A+B screen when it cheaply distinguishes interaction;
-do not require a factorial for every small change.
+## Judgment toward the CCRL goal
 
-## Engineering judgment toward the CCRL goal
-
-The maintainer aims for CCRL top 100, ideally top 50. Treat that as a direction
-for measured strength, reliability and research prioritization, not a promised
-ranking or a reason to accumulate familiar features. Judge progress by resolved
-uncertainty and qualified results, not code volume or willingness to implement.
-
-Before a substantial engine change, answer these four questions briefly in the
-existing PLAN research card or experiment registration; link prior answers
-instead of repeating them. Routine mechanical fixes need only the applicable
-contract and focused check, not a new research document.
-
-1. **Mechanism:** what causal mechanism should improve strength, correctness
-   or useful speed, and what evidence says it is active in Rarog?
-2. **Interactions:** which producers, consumers and shared signals interact
-   with it; where could it duplicate, cancel or weaken an existing mechanism?
-3. **Invariants:** which node/depth, TT, score/evaluation, history, board and
-   protocol contracts must remain true, and how will the relevant ones be tested?
-4. **Falsifier:** what cheapest observation would refute the explanation or
-   reject the candidate, and what prospective rule stops further investment?
-
-**Disagree plainly when warranted, including with the maintainer or an earlier
-agent conclusion.** Say "I recommend against implementing this now" when the
-evidence shows a conflicting contract, redundant mechanism, absent activation,
-unfavorable cost or unresolved premise. Explain the specific evidence, distinguish
-refutation from insufficient evidence, and give the cheapest alternative or
-objective condition that would change the recommendation. An existing PLAN
-checkbox or a strong donor engine is not evidence that the idea is worthwhile.
-Do not manufacture objections or rejection quotas; supported positive results
-deserve equally clear recommendations.
-
-When a proposed change would violate a known correctness contract or registered
-experimental rule, stop that change, explain the conflict and offer a valid
-path. Do not silently implement it, relax the check or disguise uncertainty as
-success. Ordinary engineering tradeoffs do not create a new permission loop:
-make the recommendation and continue already-authorized independent work.
-
-Keep the engine-specific design record in its existing owners: PLAN for current
-contracts, decisions and dependencies; source/tests for executable invariants;
-EXPERIMENTS and linked analysis for predictions, failures and retry triggers;
-PROCESS for repeatable methods. Extend a missing contract there. Do not create
-a parallel design summary that can drift, or reread the entire history per leaf.
+- The aim is CCRL top 100, ideally top 50: a direction for measured strength,
+  reliability and prioritisation, not a promised ranking or a reason to
+  accumulate features. Progress is resolved uncertainty and qualified results.
+- Before a substantial engine change, answer in the PLAN research card or the
+  experiment registration (link earlier answers): **mechanism** — what should
+  improve and what evidence says it is active here; **interactions** — which
+  producers, consumers and shared signals, and where it could duplicate,
+  cancel or weaken an existing mechanism; **invariants** — which node, TT,
+  score, history, board and protocol contracts must hold and how they are
+  tested; **falsifier** — the cheapest refuting observation and the rule that
+  stops further investment. Routine mechanical fixes need only the contract and
+  a focused check.
+- Disagree plainly when the evidence warrants, including with the maintainer
+  or an earlier conclusion: say "I recommend against implementing this now",
+  give the evidence, distinguish refutation from insufficient evidence, and
+  name the cheapest alternative or the condition that would change the
+  recommendation. A PLAN checkbox or a strong donor is not evidence. Do not
+  manufacture objections; a supported positive result gets an equally clear
+  recommendation.
+- When a change would violate a known correctness contract or a registered
+  experimental rule, stop that change, explain the conflict and offer a valid
+  path. Ordinary engineering tradeoffs do not open a permission loop.
+- Keep the design record in its owners: PLAN for contracts, decisions and
+  dependencies; source and tests for executable invariants; EXPERIMENTS and
+  linked analyses for predictions, failures and retry triggers; PROCESS for
+  repeatable methods. Extend a missing contract there, not in a parallel
+  summary.
 
 ## Expensive jobs and interruptions
 
-Long tournaments/SPRTs, large datagen, expensive tuning, large PGO campaigns,
-lengthy profiling and other machine-occupying jobs belong to the maintainer
-unless the repository or user explicitly delegates them. The agent prepares
-and verifies the command, inputs, configuration, artifacts and live wire, then
-hands off the runnable job. Cheap local qualification remains the agent's job.
+- Long tournaments and SPRTs, large datagen, expensive tuning, large PGO
+  campaigns and lengthy profiling belong to the maintainer unless explicitly
+  delegated. Prepare and verify the command, inputs, configuration, artifacts
+  and live wire, then hand over the runnable job. Cheap local qualification is
+  the agent's job.
+- When the user interrupts for a correction or scope change, finish and
+  qualify that correction, report it and return control. Resume the earlier
+  objective only when asked.
 
-If the user interrupts work for a correction or scope change, finish and
-qualify that requested correction, report it and return control. Do not resume
-the interrupted objective unless the user explicitly asks.
+## Predictions and negative results
 
-## Predictions, negative results and research calibration
-
-Freeze prospective predictions before result exposure. Afterwards append a
-calibration/postmortem; never rewrite the prediction into retrospective
-certainty. A persuasive after-the-fact explanation does not prove it was
-predicted. Record which original assumption failed and whether the miss was in
-sign, magnitude, mechanism, interaction, confidence or instrument.
-
-`NO_CHANGE`, refuted, too sparse, low expected value, inappropriate interaction
-and retry-trigger-not-fired are successful research outcomes. Do not create
-implementation work to make the roadmap move, and do not retry a rejected idea
-until its objective trigger fires. State the evidence layer: better loss,
-nodes, NPS, depth, conversion, tactics or reference agreement is not
-automatically Elo and has no implicit exchange rate to it.
+- Freeze predictions before exposure. Afterwards append a calibration: which
+  assumption failed, and whether the miss was in sign, magnitude, mechanism,
+  interaction, confidence or instrument. Never rewrite a prediction into
+  retrospective certainty.
+- `NO_CHANGE`, refuted, too sparse, low expected value, inappropriate
+  interaction and retry-trigger-not-fired are successful outcomes. Do not
+  create work to make the roadmap move, and do not retry a rejected idea until
+  its trigger fires.
+- State the evidence layer. Loss, nodes, NPS, depth, conversion, tactics and
+  reference agreement are not Elo and have no implicit exchange rate to it.
 
 ## The one failure mode
 
-Almost every mistake made in this repo by an agent has the same shape: *the
-check that was run did not check what it was thought to check*. A stale binary
-was measured, a parser silently read one record instead of forty, an exit code
-came from the wrong end of a pipe. The engine was never the problem.
-
-So: **verify mechanically, never by eyeballing, and never by assuming the tool
-did what its name suggests.**
+Almost every agent mistake here has been a check that did not check what it
+was thought to check: a stale binary measured, one record parsed instead of
+forty, an exit code read from the wrong end of a pipe. **Verify mechanically,
+never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Token-efficient execution
 
-- **One orientation per session, not per tool call or leaf.** Read operating
-  rules once, GUIDE's current/held overview, and the selected PLAN section.
-  Use `rg` and bounded excerpts for follow-up. Re-read only changed regions
-  or to answer a concrete unresolved question; do not repeatedly dump documents.
-- Batch independent reads/checks. Send verbose output to logs and return exit
-  status plus a short result; read full output only to investigate a failure.
-- Keep a compact working record: leaf, accepted source/binary identity,
-  evidence paths, completed checks, live process/session ID, blocker and next
-  action. After interruption, inspect that record and existing outputs before
-  restarting work. A usage interruption does not imply the process stopped.
-- **Define the smallest sufficient measurement before launching it.** Follow
-  the leaf's registered scope; do not expand decisive cases to every family,
-  feature or engine by default. Record why any expansion is necessary before
-  collecting results. Never shrink a registered run after seeing its results.
-- **Reuse the harness.** Prefer its existing runner, parser and archive format.
-  A one-off invocation does not need a new orchestration framework. Add a
-  durable helper only for a missing correctness check or repeated workflow;
-  keep it small. Do not create separate run/summary/archive tools by default.
-- Run long jobs in a durable process with logs, output paths and exit status.
-  Prefer completion notifications or bounded completion waits. After confirming
-  startup, back off unchanged polls within host/tool limits; inspect logs at
-  milestones, completion, errors or a credible stall. Do not repeatedly query
-  both process lists and unchanged log tails. CPU waiting is not useful reasoning.
-- Give milestone updates and report confounds immediately. If the host requires
-  more frequent updates, keep them brief; do not perform extra inspections or
-  repeat the analysis merely to manufacture something to say.
-- **Write documentation once results are ready.** Prospective registration,
-  newly discovered blockers and corrections to false claims cannot wait;
-  routine "running" prose and partial result tables can. Keep raw progress in
-  the job log, then update final status and evidence together.
-- Before repeating a read, check, run or helper implementation, identify what
-  changed or what unanswered question it resolves. If neither exists, skip it.
-  Once the leaf's acceptance checks pass, commit and follow the authorized
-  sequence; do not invent extra audits to fill elapsed compute time.
+- Orient once per session: operating rules, GUIDE's current and held overview,
+  the selected PLAN section. Follow up with `rg` and bounded excerpts; re-read
+  only changed regions or to answer a concrete question.
+- Batch independent reads and checks. Send verbose output to logs and return
+  exit status plus a short result; read full output only to investigate.
+- Keep a compact working record: leaf, source and binary identity, evidence
+  paths, completed checks, live process IDs, blocker, next action. After an
+  interruption, inspect it and existing outputs before restarting anything.
+- Define the smallest sufficient measurement before launching it and follow
+  the leaf's registered scope. Record why an expansion is needed before
+  collecting results; never shrink a registered run after seeing results.
+- Reuse the harness's runner, parser and archive format; add a durable helper
+  only for a missing correctness check or a repeated workflow. Run long jobs
+  durably with logs, output paths and exit status; prefer completion
+  notifications and back off unchanged polls.
+- Report confounds immediately; otherwise give brief milestone updates and do
+  not inspect more to have something to say. Waiting on the CPU is not
+  reasoning. Write documentation once results are ready, except registrations,
+  new blockers and corrections to false claims.
+- Before repeating a read, check, run or helper, name what changed or what it
+  answers; if nothing, skip it. Once a leaf's checks pass, commit and continue.
 
 ## Measurement
 
-- **`--all-features` enables `texel`, which must never be measured.** The
-  manifest says it bypasses the eval and pawn caches. `cargo test --release
-  --all-features` leaves that binary in `target/release/rarog.exe`, and a
-  depth sweep run on it produced a confident, wrong conclusion — reversed
-  once rebuilt. The tell was that the BASELINE moved between two sweeps; if a
-  number you are not changing changes, stop and check the binary.
-- **Rebuild before measuring, with the exact feature set.**
-  `cargo test`, `cargo clippy` and `cargo bench` all build the `rarog` binary
-  too, with *their* features, and leave it in `target/release/rarog.exe`. A
-  differential run was voided this way. There is no such thing as "the binary
-  is probably still right". For a multi-run study, build once, verify its
-  fingerprint, archive/hash that executable and measure that immutable copy.
-  Rebuild if source, features, toolchain or build settings change; a hash-verified
-  copy does not need rebuilding for every budget. Keep test builds separate.
-- `bench` dumps diagnostic counters **once per position** — 40 lines per name
-  for `bench 13`, 47 for the oracle. They must be **summed**. Reading the last
-  one gives a single position's numbers that look plausible and are wrong.
-- **Never hand-roll a counter parser.** Use `tools/diag/bench_counters.py` for
-  bench and `tools/diag/phase4_differential.py` for the suite. Both aggregate
-  correctly.
-- Counter ratios are only valid at `RAROG_DIAG_SAMPLE_STRIDE=1`. Half the core
-  counters are sampled and half are exact, deliberately; see
-  `analysis/phase4_counter_spec.md`.
-- Before differencing two counters, check they are in the **same unit**. Per
-  node vs per move has produced three false findings in this project
-  (RAR-S25, and twice inside the matched-ablation instrumentation itself). A passing
-  invariant does not prove comparability — `probcut_cut <= probcut_attempt`
-  held for two phases while the two counters counted different things.
-- **A binary in a rated pool is a release or says what it is.** Colosseum's
-  Super Rating Tournament rated a Manta build whose version string read
-  `1.1.0-dev` while its bench fingerprint proved it was the unfinished
-  selective-core candidate; the number entered the list under a name that
-  looked like production. Enter only tagged releases under a bare version;
-  anything else carries its bench fingerprint or feature flag in the version
-  string (`2.5.0-dev+b2core`), and the ledger row names the fingerprint.
-- **One fingerprint, three documents, checked mechanically.** The current
-  fingerprint is declared in GUIDE's checkpoint; `check_guide.py` fails when
-  AGENTS' "currently" values or PLAN's checkpoint row disagree with it. Manta's
-  GUIDE carried two different production fingerprints on the day it froze.
+- Never measure a `--all-features` binary: it enables `texel`, which bypasses
+  the eval and pawn caches. If a number you are not changing changes, check
+  the binary.
+- Rebuild before measuring, with the exact feature set: `cargo test`,
+  `clippy` and `bench` leave their own `target/release/rarog.exe`. For a
+  multi-run study, build once, verify the fingerprint, hash and archive that
+  executable, and measure the copy; rebuild only when source, features,
+  toolchain or build settings change. Keep test builds separate.
+- `bench` dumps counters once per position (40 lines per name for `bench 13`,
+  47 for the oracle suite); sum them. Use `tools/diag/bench_counters.py` and
+  `tools/diag/phase4_differential.py`; never hand-roll a counter parser.
+  Counter ratios are valid only at `RAROG_DIAG_SAMPLE_STRIDE=1`
+  (`analysis/phase4_counter_spec.md`).
+- Before differencing two counters, confirm they are in the same unit (per
+  node versus per move produced RAR-S25). A passing invariant does not prove
+  comparability.
+- A binary entered in a rated pool is a tagged release or carries its bench
+  fingerprint or feature flag in its version string (`2.5.0-dev+b2core`), and
+  its ledger row names the fingerprint.
+- The current fingerprint is declared once, in GUIDE's checkpoint;
+  `check_guide.py` fails when AGENTS' "currently" values or PLAN's checkpoint
+  row disagree with it.
 
 ## Verification
 
-- **Scope checks to the change.** Rust engine/test/build/dependency changes
-  require debug AND release tests, `cargo fmt --check`, and
-  `cargo clippy --all-features --all-targets`, with zero warnings. Debug-only
-  failures have occurred; release alone is insufficient.
-- Documentation-only changes need diff/link/status consistency checks, not
-  Cargo builds, engine tests or bench. Run `check_guide.py` when GUIDE/PLAN
-  structure or status changes. Python/tooling changes need affected tooling
-  tests and a meaningful smoke/negative check of changed measurement paths;
-  they do not automatically require rebuilding an unchanged engine.
-- **Run each required check once on the final relevant state.** Record its
-  command, exit status and covered source/configuration. Reuse that pass while
-  those inputs are unchanged, including across a following docs-only commit.
-  Rerun affected checks after edits, failures or new evidence of a gap; do not
-  rerun the whole suite after prose edits. Never call a prior pass newly run.
-- **Suppress lints with `#[expect(...)]`, not `#[allow(...)]`.** An
-  expectation warns when it stops being needed, so the suppression list
-  cleans itself; an `allow` sits there forever. Converting the crate's 25
-  found six that had been dead for some time. Use `allow` only when the
-  lint fires in one feature configuration and not another — there is
-  exactly one such site, in `search_options.rs`, and it says so. Every
-  suppression still needs a written reason.
-- **Check exit status directly**, never through a pipe: `cmd > out 2>&1; echo
-  $?` and then read `out`. `cmd | tail` reports `tail`'s status, which is
-  always 0.
-- **Every scripted edit must assert its anchor matched.** A `str.replace` that
-  finds nothing changes nothing and reports success. If you edit with a script,
-  `assert old in text` before writing, and re-read the region after. Assert the anchor is **unique** and lands in executable code:
-  a `--rset` block anchored on a line that also appears in the module
-  docstring was inserted as prose, parsed fine, and silently measured
-  default parameters in every run for two screens.
-- **Prove a harness wire is live before trusting a null from it.** Set a
-  deliberately absurd value and require the numbers to move. Two candidates
-  were recorded as null results by a dead `--rset`; one of them, re-measured,
-  moved oracle agreement 66% -> 78%. Verifying the ENGINE responds is not the
-  same check -- a standalone probe confirmed the option worked while the
-  instrument reporting on it did not.
-- A behavior-neutral **engine change** must reproduce the immediate development
-  production `bench 13` fingerprint (currently **7,601,220 / EBF 2.474**),
-  plus targeted checks for changed behavior the suite does not reach. The
-  fingerprint includes the RAR-M28 SEE repair and was accepted by RAR-E15. The
-  RAR-E12-era mate drive changed KBN-K conversion 19.4% -> 96.9% with an
-  identical bench: fingerprint equality alone is not proof of narrow-feature
-  neutrality.
-  RAR-P14/P16 establish cross-platform fingerprint agreement; investigate a
-  mismatch, do not dismiss it as platform noise. For docs-only work, verify
-  the diff contains no engine inputs rather than running a neutrality bench.
+- Scope checks to the change. Rust engine, test, build or dependency changes
+  need debug and release tests, `cargo fmt --check` and
+  `cargo clippy --all-features --all-targets` at zero warnings; release alone is
+  not enough. Documentation-only changes need diff, link and status checks, and
+  `check_guide.py` when GUIDE or PLAN structure changes, and no Cargo builds,
+  engine tests or bench. Tooling changes need their tests and a meaningful
+  smoke or negative check of the changed path, not a rebuilt engine.
+- Run each required check once on the final relevant state, record command,
+  exit status and coverage, and reuse the pass while its inputs are unchanged.
+  Rerun after edits, failures or evidence of a gap; never call an old pass new.
+- Suppress lints with `#[expect(...)]`, which warns when no longer needed; use
+  `#[allow(...)]` only for a lint that fires in one feature configuration and
+  not another, with its reason written.
+- Check exit status directly: `cmd > out 2>&1; echo $?`, never through a pipe.
+- Every scripted edit asserts its anchor matched, is unique and lands in
+  executable code; re-read the region afterwards.
+- Prove a harness wire is live before trusting a null from it: set an absurd
+  value and require the numbers to move. Proving the engine responds is not
+  proving the instrument reports it.
+- A behaviour-neutral engine change reproduces the immediate development
+  fingerprint (currently **7,601,220 / EBF 2.474**) plus targeted checks for
+  behaviour the suite does not reach: an identical bench does not prove a
+  narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
+  (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
+- Test constructs and behaviour, not words in a comment.
 
 ## Changes
 
-- Engine changes and tooling/doc changes go in **separate commits**.
-- Commit after each finished **and verified** step, not after each edit.
-- **No `Co-Authored-By` trailers.**
-- A correctness test is never relaxed in the same commit as the change that
-  made it fail. Fix its precondition, in its own commit, with the measurement
-  that justifies it.
+- Engine changes and tooling or documentation changes go in separate commits.
+  Commit after each finished and verified step. No `Co-Authored-By` trailers.
+  Never relax a correctness test in the commit whose change made it fail; fix
+  its precondition in its own commit, with the justifying measurement.
 - Counters explain a candidate; only a registered SPRT accepts one. Node counts
-  are not Elo: a measured +7.36% tree change was worth −1.49 ± 2.87 Elo.
-- **Code comments explain the problem or the invariant, briefly.** No
-  roadmap phase or step numbers, no ledger IDs as the explanation, no
-  narration of what an earlier version did. A comment that only records
-  history is deleted; history lives in `HISTORY.md` and `EXPERIMENTS.md`.
-  A measured reason to keep a shape ("boxed array: the Vec form cost
-  −2.1% NPS") stays, in one sentence. Rewrite a mechanism's comments
-  when you rewrite the mechanism; `src/` carried about 460 references to
-  retired step numbers at B.1, and B.2.0 owns the ones no cluster touches.
+  are not Elo: a +7.36% tree change measured −1.49 ± 2.87 Elo.
+- Comments explain the problem or the invariant, briefly: no roadmap step
+  numbers, no ledger IDs as the explanation, no narration of earlier versions.
+  A measured reason to keep a shape stays, in one sentence. Rewrite a
+  mechanism's comments when you rewrite the mechanism.
 
 ## Evidence
 
-- **Development and raw evidence live on this machine.** macOS and Windows
-  on ARM are compatibility-test hosts, not separate development workspaces.
-  Keep source, build/CI files, reusable tools, required test fixtures, and
-  concise design/result records in Git. Keep raw runs, logs, executables,
-  profiling traces, bundles and scratch outputs in ignored `analysis/artifacts/`
-  or `tools/results/`; never force-add them merely to preserve evidence.
-  Record local paths, recipes and hashes in the tracked analysis/ledger.
-  Small frozen datasets actually consumed by tests or tools remain versioned.
-  Compatibility checks must not depend on this machine's private run outputs.
-  See `analysis/README.md` for storage boundaries. Untracking uses `git rm
-  --cached` and preserves local bytes; it does not authorize deleting evidence
-  or rewriting Git history.
-
-- **A ledger row must reproduce its artifact without the branch it came from.**
-  Record the recipe — exact parameter values, or the diff when it is small —
-  plus a fingerprint that proves a rebuild matched. A bare SHA is not evidence;
-  it is a promise that someone else is still storing your evidence.
-- Before deleting any branch or tag, check what the ledger cites on it. A SHA
-  with no output from `git branch -a --contains <sha>` is **dangling** and will
-  disappear at the next `gc`.
-- RAR-S54 cited a docs-only commit while its real source was dangling on a
-  deleted branch. Its twelve parameter values now live in `EXPERIMENTS.md`;
-  retain such recipes with the evidence, not only in branch history.
+- Development and raw evidence live on this machine; macOS and Windows on ARM
+  are compatibility-test hosts. Git holds source, build and CI files, reusable
+  tools, required fixtures and concise records; raw runs, logs, executables,
+  traces and bundles stay in ignored `analysis/artifacts/` or `tools/results/`
+  with their paths, recipes and hashes recorded (`analysis/README.md`). Small
+  frozen datasets that tests or tools consume stay versioned. Compatibility
+  checks never depend on this machine's private outputs. Never force-add
+  evidence. Untracking uses `git rm --cached`, keeps the local bytes, and
+  authorises neither deleting evidence nor rewriting history.
+- A ledger row reproduces its artifact without the branch it came from: the
+  recipe (exact values, or a small diff) plus a fingerprint proving a rebuild
+  matched. A bare SHA is not evidence; keep recipes with the evidence, not
+  only in branch history (RAR-S54).
+- Before deleting a branch or tag, check what the ledger cites on it
+  (`git branch -a --contains <sha>`; an empty answer means dangling).
 
 ## Gating
 
-- The strength unit is one dependency-complete, locally fitted **cluster**.
-  Internal substeps are not expected to win standalone and do not get their own
-  gates.
-- Register in `EXPERIMENTS.md` — hypothesis, baseline SHA, gate, cap, stop rule
-  — **before any games**. Never change bounds, cap, book or adjudication after
-  seeing games.
-- **`[0,3]` nElo is the DEFAULT bracket.** Widen only when the prior is
-  genuinely large, and say why in the registration. This is not "narrow is
-  better": the ProbCut cluster (RAR-S57) had a 25–60 nElo prior, measured +24.90, and `[3,10]` resolved
-  it in **2,838 games** — a wide bracket is the right instrument for a large
-  effect. The error is using one for a small candidate. Compute the games at
-  the EXPECTED value from RAR-M10 before choosing, every time.
-- **A removal or simplification needs a bracket that permits a small loss**,
-  fishtest-style (`[-1.75, 0.25]`), not `[0,3]`. A repair of unknown sign wants
-  a symmetric bracket that can detect harm — RAR-S62 used `[-5,5]` and resolved
-  in 4,436 games.
-- **The harness already runs GSPRT; nothing to change.** `tools/sprt.ps1`
-  passes `model=normalized` to fastchess and the output carries `Ptnml(0-2)`,
-  so it is the pentanomial GSPRT — the same mathematics fishtest uses, with
-  nuisance parameters replaced by maximum-likelihood estimates. The gap between
-  this project and fishtest is bounds and budget, never the test.
-- **High bounds reject small gains, not merely slowly resolve them.** RAR-M10
-  estimates a true +4 nElo reaches H0 under `[0,10]` in ~35k games and `[3,10]`
-  in ~20k; `[0,3]` accepts it in ~47k. At the measured ~98 games/min this is
-  overnight compute, not an excuse to widen bounds or consume tokens polling.
-  Bench/counter screening chooses which candidates earn a gate; it never
-  accepts strength (RAR-S64's clean bench signal measured zero in games).
-- **Do not invent an acceptance rule after seeing a result.** A threshold like
-  "accept if the CI excludes zero at 20,000 games" is arbitrary and is the same
-  act as moving the bounds. If small gains need to be bankable, register the
-  narrower bracket PROSPECTIVELY.
-- **An unresolved stop is not "probably fine".** RAR-S61 measured
-  +4.50 ± 3.50 at LOS 99.41% and the entire effect turned out to be a stale-read
-  bug (RAR-S64 re-measured it at +0.39 once fixed). A high LOS on a point
-  estimate is not evidence that a mechanism works.
-- **SPSA is conditional, not owed.** PLAN rule 4 says "only when activation,
-  interaction and curvature justify the cost". Establish that first with a
-  zero-game sweep over the suite or bench; a flat or monotone surface is
-  evidence *against* spending it.
+- The strength unit is one dependency-complete, locally fitted cluster;
+  internal sub-steps get no gates of their own. Register it in `EXPERIMENTS.md`
+  (hypothesis, baseline SHA, gate, cap, stop rule) before any games, and never
+  change bounds, cap, book or adjudication after seeing games.
+- `[0,3]` nElo is the default bracket. Widen only for a genuinely large prior
+  and say why; a wide bracket resolves a large effect fast (RAR-S57, `[3,10]`,
+  2,838 games). Compute the games at the expected value from RAR-M10 first.
+- A removal or simplification uses a bracket that permits a small loss
+  (`[-1.75, 0.25]`); a repair of unknown sign uses a symmetric one (RAR-S62,
+  `[-5,5]`).
+- `tools/sprt.ps1` already runs the pentanomial GSPRT (`model=normalized`); the
+  gap to fishtest is bounds and budget, not the test.
+- High bounds reject small gains: a true +4 nElo reaches H0 under `[0,10]` in
+  about 35k games and is accepted by `[0,3]` in about 47k (RAR-M10). That is
+  overnight compute: budget the games, do not widen the bounds or poll.
+- Bench and counter screens choose candidates and never accept strength
+  (RAR-S64). Do not invent an acceptance rule after seeing a result; register a
+  narrower bracket prospectively if small gains must be bankable.
+- An unresolved stop is not "probably fine": a high LOS on a point estimate is
+  not evidence the mechanism works (RAR-S61, RAR-S64).
+- SPSA is conditional (PLAN rule 4): first show activation, interaction and
+  curvature with a zero-game sweep; a flat or monotone surface is evidence
+  against the tune.
 
 ## Documents
 
-- **`GUIDE.md` and `PLAN.md` are updated in the SAME commit.** GUIDE is the
-  short operator contract/current-model mapping plus the overview of PLAN's
-  current state and ordered steps. A
-  GUIDE that disagrees with PLAN is worse than no GUIDE, because it is the
-  file that says what to do next and it will be believed. This applies when
-  roadmap status or requirements change; an AGENTS-only operating-rule edit
-  does not require unrelated PLAN/GUIDE churn.
-- **GUIDE carries STATUS, not just a list.** Its phase checkboxes are how
-  the maintainer sees what is done. Tick one only when the step is finished
-  AND verified, in the commit that finishes it — never in advance.
-- **Tick the PARENT when its last sub-step is ticked.** A step whose sub-steps
-  are all done is done; leaving it open makes finished work look outstanding.
-- **Sub-items indent by 4 spaces, never 6.** Under a `- ` parent the content
-  column is 2, so 6 spaces is the indented-code threshold and the sub-list
-  silently renders as a code block. Both rules are checked mechanically —
-  run it rather than reading the file:
+- `GUIDE.md` and `PLAN.md` change in the same commit when roadmap status or
+  requirements change; an AGENTS-only edit needs no PLAN or GUIDE churn.
+- GUIDE carries status. Tick a step only when finished and verified, in the
+  commit that finishes it; tick the parent when its last sub-step is ticked.
+- Sub-items indent by 4 spaces, never 6 (6 renders as code). Run
+  `python tools/diag/check_guide.py` rather than reading the file.
+- Keep GUIDE short: its operator contract, model mapping, two prompts, board
+  and checkpoint. What a step involves goes in PLAN, a completed record in
+  HISTORY, a procedure in PROCESS, evidence in EXPERIMENTS, a derivation in
+  `analysis/`.
+- `HISTORY.md` is history and resolves every retired numbering scheme; never
+  take a next step from it or from `docs/archive/`. When documents disagree,
+  source, defaults and reproducible artifacts outrank prose; fix the prose in
+  the same change.
 
-  ```bash
-  python tools/diag/check_guide.py
-  ```
-- **Keep GUIDE short.** Outside its operator contract, model mapping and two
-  reusable prompts, a change that runs past a few lines belongs somewhere
-  else: what a step INVOLVES goes in `PLAN.md`; a completed step's
-  record goes in `HISTORY.md`; a repeatable procedure goes in `PROCESS.md`;
-  durable evidence goes in `EXPERIMENTS.md`; a measurement's derivation goes in
-  `analysis/`. GUIDE grew to 898 lines by absorbing all five and stopped being
-  readable as an overview.
-- `HISTORY.md` is HISTORY. Every numbering scheme in it is retired; the
-  current roadmap uses lettered phases (`A.2.1`) and HISTORY's number map maps the
-  retired Phase-4 identifiers onto it. Never take a next step from HISTORY or
-  from `docs/archive/`.
-- When two documents disagree, source, defaults and reproducible artifacts
-  outrank prose. Fix the prose in the same change.
-
-## Step sequencing and explicit holds
+## Sequencing and holds
 
 - Work one executable leaf at a time: verify proportionately, update PLAN and
-  GUIDE in the same documentation commit, and report. If the maintainer
-  authorized a multi-step session, continue to the next eligible leaf without
-  asking again; otherwise stop at the requested scope. Engine and
-  tooling/doc changes still go in separate commits; intermediate commits do
-  not falsely mark an unfinished cluster accepted.
-- Read GUIDE's current/held overview and PLAN's dependency register before
-  selecting work. The earliest open leaf may be held. Keep its checkbox/ID,
-  reason, unblock condition and latest required completion point visible.
-  Review holds each handoff; resume the earliest eligible one. Never silently
-  skip, move or tick missing verification.
-- The agent may use check_guide.py internally for structural consistency.
-  Its raw open-item list is not a scheduler and does not resolve holds or
-  dependencies. The maintainer need not run it; always state the next
-  executable step and any held obligation that matters.
-- Report confounds when found. Correct contradicted current claims in
-  PLAN/GUIDE/analysis/EXPERIMENTS where applicable; preserve historical
-  measurements with explicit supersession rather than silently deleting them.
-- Test constructs and behavior, not a word in a comment/disclaimer. Check
-  each command's actual exit status and require every intended check to have
-  run successfully before committing; do not rely on a chained command's
-  final status as proof of earlier checks.
-- The comparison fingerprint is revision-specific. For a neutral change compare
-  to the exact immediate development baseline (currently 7,601,220 / EBF 2.474)
-  and targeted cases. A deliberately integrated behavior change updates the
-  fingerprint record; never preserve a known defect to force an obsolete count.
+  GUIDE in one documentation commit, report. In a multi-step session continue
+  to the next eligible leaf without asking; otherwise stop at the requested
+  scope. Intermediate commits never mark an unfinished cluster accepted.
+- Read GUIDE's current and held overview and PLAN's register before selecting
+  work. Keep a held leaf's ID, reason, unblock condition and latest completion
+  point visible; review holds at each handoff and resume the earliest
+  eligible one. Never silently skip, move or tick missing verification.
+- `check_guide.py` checks structure; its open-item list is not a scheduler and
+  resolves no hold or dependency. Always state the next executable step and
+  any held obligation that matters.
+- Report confounds when found; correct contradicted current claims where they
+  live and preserve historical measurements with explicit supersession.
+- The comparison fingerprint is revision-specific. A deliberately integrated
+  behaviour change updates the fingerprint record; never preserve a known
+  defect to keep an obsolete count.
 
 ## Handing work back
 
 - When maintainer action is needed, give runnable commands in their own fenced
-  block and restate them rather than referring back. Routine internal checks
-  need not become user chores. Always name the next executable leaf.
-- **Whenever reporting the next step, use its PLAN capability class and the
-  current GUIDE mapping to recommend one GPT model AND one Claude model**, with
-  a brief task-specific reason. GUIDE's table is the single maintainer-edited
-  source for names and versions; do not automatically substitute newer models.
-  Prefer the least costly model judged sufficient for the defined task;
+  block and restate them rather than referring back. Routine internal checks do
+  not become the maintainer's chores. Always name the next executable leaf.
+- When reporting the next step, use its PLAN capability class and GUIDE's
+  mapping to recommend one GPT model and one Claude model, each with its own
+  thinking mode (`GPT: <model> — <mode>; Claude: <model> — <mode>`) and a brief
+  task-specific reason. Prefer the least costly model judged sufficient and
   reserve deeper review for unresolved design, interaction or correctness
-  questions. Recommendations are task judgments, not guarantees or claims of
-  measured model superiority. Do not change the active model automatically.
-- **PLAN records stable capability classes, not vendor generations.** Do not
-  silently downgrade a recorded class. If changed scope or new
-  correctness/design uncertainty calls for escalation, state why and update
-  PLAN and GUIDE together. The current mapping is a recommendation, not an
-  automatic model change.
-- **Pair EACH recommended model with its own thinking mode**: Medium, High,
-  Extra High, or a stronger mode using that model's actual supported name.
-  Choose effort independently for each model and the specific next leaf;
-  do not automatically give both models the same mode or assume their effort
-  labels are equivalent. Recommend the lowest effort judged sufficient for
-  the task's ambiguity and verification demands, not its compute duration.
-  Use `GPT: <model> — <mode>; Claude: <model> — <mode>` plus a brief reason.
-  If support or the exact mode name is unknown, say so rather than inventing
-  a setting. A recommendation does not authorize changing active settings.
-- Report what was actually measured. If a step was skipped or a result is
-  partial, say so plainly.
-- For a multi-step session, give a short summary per completed leaf: ID,
-  result/change, verification, commit. Name unfinished work separately. Do not
-  recount every tool call or imply planned work was implemented.
+  questions; choose each mode independently at the lowest sufficient effort;
+  never substitute newer models, and say so when a mode name is unknown rather
+  than inventing one. A recommendation is a task judgment, not a guarantee, and
+  changes no active setting.
+- PLAN records capability classes, not vendor generations. Do not silently
+  downgrade a class; if scope or uncertainty calls for escalation, say why and
+  update PLAN and GUIDE together.
+- Report what was actually measured, and say plainly when a step was skipped
+  or a result is partial. For a multi-step session, summarise each completed
+  leaf (ID, result, verification, commit) and name unfinished work separately.
