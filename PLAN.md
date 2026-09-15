@@ -475,6 +475,27 @@ diagnostics; two rejections stop B.
       ≤ anchor + 2 plies and 100k nodes, 47 of them quiet key moves, WAC.001
       at ≤ depth 11. Instrument: `tools/diag/fixed_budget_probe.py`.** The
       shape of the ladder is fixed here.
+      **Zero-game screens run 2026-09-15 (RAR-S73,
+      `analysis/b22_screens_2026-09-15.md`); four floors fail.** Pooled NPS
+      **0.683x** of the B.1 head [0.677, 0.687] (P5's falsifier fires); WAC at
+      100k **204** (floor 205); oracle agreement **35/50** (floor 38);
+      canaries **75/116** (B.1 67) and WAC.001 at depth 14. Branching 1.605
+      is inside its window, WAC at 400k 245 is between floor and target, the
+      median depth at 300k is unchanged at 16. P3 moved the wrong way
+      (branching down) and P4 stopped short (2.56%, 35.3%). No ablation
+      order had been registered, so the one ablation ran as an unordered
+      sweep of all eight bits: removing razoring alone lifts the canaries to
+      104, WAC at 100k to 217 and agreement to 39; ProbCut and singular are
+      next and smaller. At a fixed depth the candidate searches more interior
+      and fewer quiescence nodes than B.1. An equal-time WAC proxy (0.683 of
+      each budget) reads 190 against B.1's 200 at 100k and 235 against 237 at
+      400k. **Not played:** the registered 2,000-game paired run (binaries
+      built, hash-bound and smoke-tested) and the ETW profile the review asked
+      for before it (binary staged; needs an elevated shell). P1 assumed
+      0.93–0.97x speed, so at 0.683x the −40 floor cannot separate a defect
+      from the speed loss. **Decision owed by the maintainer:** re-plan B.2
+      (razoring first, then ProbCut and singular; B.7 for the per-node cost)
+      and whether the paired run is played on this arm now.
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -566,7 +587,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; B.2.0.2 closed 2026-09-15, so it is the next executable leaf; runs the NPS pool first (review's speed warning) |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Zero-game screens run 2026-09-15: NPS 0.683x, WAC 100k 204, agreement 35, canaries 75/116 below floors; one ablation sweep points at razoring (`analysis/b22_screens_2026-09-15.md`). The paired run and the ETW profile are prepared, maintainer-run; the re-plan is the maintainer's decision |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |

@@ -58,6 +58,7 @@ commit that adds it.
 | [`ablation_results.md`](ablation_results.md) | Paired ablation, results | Deliverable | B.9 |
 | [`architecture_review_2026-09.md`](architecture_review_2026-09.md) | Architecture and design review — PLAN B.2.0 | Deliverable | B.2.0, E.1 |
 | [`b21_review_2026-09-14.md`](b21_review_2026-09-14.md) | B.2.1 review — the `b2core` selectivity core against the B.0 handoff | Deliverable | B.2.1, B.2.2, B.3, B.7 |
+| [`b22_screens_2026-09-15.md`](b22_screens_2026-09-15.md) | B.2.2 screens — the unfitted `b2core` candidate against B.0's registered numbers | Deliverable | B.2.2, B.2 re-plan, B.7 |
 | [`consolidation_2026-09-10.md`](consolidation_2026-09-10.md) | Codebase consolidation analysis — PLAN A.6 | Deliverable | A.6 |
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |
