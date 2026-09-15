@@ -778,12 +778,17 @@ diagnostics; two rejections stop B.
       it. **Horizon:** the repo's convergence model puts 82 coordinates
       within a few percent of 30 (endpoint RMSE in step units 0.60 / 0.47
       / 0.42 at N = 5,000 / 10,000 / 15,000 for weak curvature; 0.26 /
-      0.22 / 0.23 for moderate), so **N = 10,000** (320,000 games, about
-      65–79 hours at 82–97 games per minute) is registered, with staged
-      reviews at `-StopAfter 2500` and `5000` that read state without
-      changing the horizon; N = 5,000 is the economy alternative if the
-      maintainer chooses it at registration, and the choice is immutable
-      after launch. **Estimator:** the final theta at N from
+      0.22 / 0.23 for moderate), so the second 5,000 iterations buy a modest sharpening of a tune
+      predicted at about +12 Elo, below what 2,000 games resolve, for 35
+      more hours. **N = 5,000** (160,000 games, about 35 hours at 82–97
+      games per minute) is registered, maintainer decision 2026-09-15,
+      run in sessions: the tuner saves state every 10 iterations,
+      `-StopAfter` stages a stop and `-Resume` continues with the same
+      `-Iterations`, which never changes after launch; the host must be
+      idle while a session runs. Staged reviews at `-StopAfter 1250` and
+      `2500` read state without changing the horizon. If the
+      fitted-vs-unfitted run below is clearly positive and coordinates are
+      still moving at N, B.6's joint tune starts from the fitted defaults. **Estimator:** the final theta at N from
       `tuner/state.json`, rounded to integers, no checkpoint selection;
       the maintainer pastes the final values. **Registration** as RAR-S75
       before launch: surface, fixed values, binary hash and fingerprint,
@@ -897,7 +902,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | READY_FOR_IMPLEMENTATION | V | Defined 2026-09-15: 82 coordinates, config and fixed file, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, horizon N = 10,000 registered as RAR-S75 before launch, final theta baked then a fitted-vs-unfitted diagnostic run before B.2.4 |
+| B.2.3 | READY_FOR_IMPLEMENTATION | V | Defined 2026-09-15: 82 coordinates, config and fixed file, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, horizon N = 5,000 in resumable sessions registered as RAR-S75 before launch, final theta baked then a fitted-vs-unfitted diagnostic run before B.2.4 |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
