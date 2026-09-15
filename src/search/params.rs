@@ -560,6 +560,11 @@ search_params! {
     // Late-move reductions, in 1024ths of a ply.
     lmr_log = 269, "CoreLmrLog", 0..=1024;
     lmr_improvement = 425, "CoreLmrImprovement", 0..=2048;
+    /// Bounds of the improvement term, in reduction units. Seeded at the
+    /// donor's values; converting them to Rarog's evaluation scale measured
+    /// worse (RAR-S74), so the fit decides them.
+    lmr_improvement_clamp_lo = -241, "CoreLmrImprovementClampLo", -1024..=0;
+    lmr_improvement_clamp_hi = 1_155, "CoreLmrImprovementClampHi", 0..=4096;
     lmr_correction = 3_417, "CoreLmrCorrection", 0..=8192;
     lmr_exact = 1_412, "CoreLmrExact", 0..=4096;
     lmr_tt_score_below_alpha = 464, "CoreLmrTtScoreBelowAlpha", 0..=2048;
@@ -567,6 +572,10 @@ search_params! {
     lmr_quiet = 2_432, "CoreLmrQuiet", 0..=6144;
     lmr_quiet_history = 179, "CoreLmrQuietHistory", 0..=1024;
     lmr_alpha_gap = 418, "CoreLmrAlphaGap", 0..=2048;
+    /// Bounds of `alpha - estimated score` in the quiet term, evaluation
+    /// units, seeded at the donor's values like the improvement bounds.
+    lmr_alpha_gap_lo = -65, "CoreLmrAlphaGapLo", -512..=0;
+    lmr_alpha_gap_hi = 91, "CoreLmrAlphaGapHi", 0..=512;
     lmr_noisy = 1_687, "CoreLmrNoisy", 0..=6144;
     lmr_noisy_history = 130, "CoreLmrNoisyHistory", 0..=1024;
     lmr_critical_ply = 128, "CoreLmrCriticalPly", 0..=512;

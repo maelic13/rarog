@@ -236,9 +236,8 @@ impl Searcher {
     fn late_move_reduction(&self, i: &LateMoveInputs) -> i32 {
         let p = &self.cfg.core;
         let mut r = p.lmr_log * i.depth.ilog2().cast_signed();
-        // Both clamps bound evaluation-unit quantities, so they carry the
-        // donor's bounds converted to Rarog's evaluation scale (x0.457).
-        r -= (p.lmr_improvement * i.improvement / 128).clamp(-110, 528);
+        r -= (p.lmr_improvement * i.improvement / 128)
+            .clamp(p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi);
         r -= p.lmr_correction * i.corr_abs / 1024;
         r += p.lmr_exact * i32::from(i.exact);
         r += p.lmr_tt_score_below_alpha * i32::from(i.tt_score_below_alpha);
@@ -246,7 +245,7 @@ impl Searcher {
         r += 1024 * i32::from(i.win_beta);
         if i.is_quiet {
             r += p.lmr_quiet - p.lmr_quiet_history * i.history / 1024
-                + p.lmr_alpha_gap * i.alpha_gap.clamp(-30, 42) / 128;
+                + p.lmr_alpha_gap * i.alpha_gap.clamp(p.lmr_alpha_gap_lo, p.lmr_alpha_gap_hi) / 128;
         } else {
             r += p.lmr_noisy - p.lmr_noisy_history * i.history / 1024;
         }
@@ -2036,31 +2035,62 @@ mod tests {
         }
     }
 
-    /// The improvement term saturates at -110 and +528 reduction units and
-    /// the alpha gap at -30 and +42 evaluation units: the donor's clamps in
-    /// Rarog's evaluation scale.
+    /// The improvement term saturates at its coordinates' bounds, seeded at
+    /// the donor's -241 and +1155 reduction units, and the alpha gap at its
+    /// bounds, seeded at -65 and +91 evaluation units; moving a coordinate
+    /// moves the saturation point.
     #[test]
-    fn late_move_reduction_clamps_are_in_rarog_evaluation_units() {
-        let searcher = Searcher::default();
-        let base = quiet_late_move();
-        let with = |edit: &dyn Fn(&mut LateMoveInputs)| {
-            let mut inputs = base;
-            edit(&mut inputs);
-            searcher.late_move_reduction(&inputs)
-        };
-        let neutral = with(&|_| {});
-        let slope = searcher.cfg.core.lmr_improvement;
-        let at = |units: i32| units * 128 / slope + 1;
-        assert_eq!(neutral - with(&|i| i.improvement = at(528)), 528);
-        assert_eq!(neutral - with(&|i| i.improvement = 10_000), 528);
-        assert_eq!(neutral - with(&|i| i.improvement = -10_000), -110);
-        assert!(neutral - with(&|i| i.improvement = at(400)) < 528);
+    fn late_move_reduction_clamps_follow_their_coordinates() {
+        let mut searcher = Searcher::default();
+        let p = &searcher.cfg.core;
+        assert_eq!(
+            (p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi),
+            (-241, 1_155),
+            "donor seeds"
+        );
+        assert_eq!(
+            (p.lmr_alpha_gap_lo, p.lmr_alpha_gap_hi),
+            (-65, 91),
+            "donor seeds"
+        );
 
+        let reductions = |searcher: &Searcher| {
+            let with = |edit: &dyn Fn(&mut LateMoveInputs)| {
+                let mut inputs = quiet_late_move();
+                edit(&mut inputs);
+                searcher.late_move_reduction(&inputs)
+            };
+            let neutral = with(&|_| {});
+            (
+                neutral - with(&|i| i.improvement = 10_000),
+                neutral - with(&|i| i.improvement = -10_000),
+                with(&|i| i.alpha_gap = 1_000) - neutral,
+                with(&|i| i.alpha_gap = -1_000) - neutral,
+            )
+        };
         let gap = searcher.cfg.core.lmr_alpha_gap;
-        assert_eq!(with(&|i| i.alpha_gap = 1_000) - neutral, gap * 42 / 128);
-        assert_eq!(with(&|i| i.alpha_gap = 42) - neutral, gap * 42 / 128);
-        assert_eq!(with(&|i| i.alpha_gap = -1_000) - neutral, gap * -30 / 128);
-        assert!(with(&|i| i.alpha_gap = 30) - neutral < gap * 42 / 128);
+        assert_eq!(
+            reductions(&searcher),
+            (1_155, -241, gap * 91 / 128, gap * -65 / 128)
+        );
+        // Below saturation the term is linear in the improvement.
+        let slope = searcher.cfg.core.lmr_improvement;
+        let with_improvement = |searcher: &Searcher, improvement: i32| {
+            let mut inputs = quiet_late_move();
+            let neutral = searcher.late_move_reduction(&inputs);
+            inputs.improvement = improvement;
+            neutral - searcher.late_move_reduction(&inputs)
+        };
+        assert_eq!(with_improvement(&searcher, 128), slope);
+
+        searcher.cfg.core.lmr_improvement_clamp_lo = -110;
+        searcher.cfg.core.lmr_improvement_clamp_hi = 528;
+        searcher.cfg.core.lmr_alpha_gap_lo = -30;
+        searcher.cfg.core.lmr_alpha_gap_hi = 42;
+        assert_eq!(
+            reductions(&searcher),
+            (528, -110, gap * 42 / 128, gap * -30 / 128)
+        );
     }
 
     /// A non-PV node whose table entry carries the PV bit, far below alpha
