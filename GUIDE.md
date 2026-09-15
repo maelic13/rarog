@@ -92,7 +92,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** registered (B.2 selectivity core; B.2.3 and B.2.4 frozen before any game); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.2.2 run (g)** (maintainer: the clamp-converted arm against the RAR-S73 candidate, 2,000 games), then **B.2.2.3** (curvature sweep), **B.2.2.4** (screen rules), then **B.2.3** if the sweep is curved |
+| Current step | **B.2.2.2 revert ticket** (`I1`: the two LMR clamps back to the donor's values as four `CoreParams` coordinates, `b2core` 4,706,910 again), then **B.2.2.3** (curvature sweep), **B.2.2.4** (screen rules), then **B.2.3** if the sweep is curved |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -116,7 +116,7 @@ arm is 1T.
 |---|---|---|
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| B.2.2.2 run (g), maintainer-run (RAR-S74): converted arm 6,586,667 against the 4,706,910 candidate | The 2,000-game read is recorded; at or below −5 the clamp conversion is reverted | B.2.2.3 starts |
+| B.2.2.2's revert commit (RAR-S74's rule fired at −7.64) | The `b2core` bench reads 4,706,910 / EBF 2.391 with the four clamp coordinates at the donor's seeds | B.2.2.3 starts |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 
@@ -161,7 +161,7 @@ is the numbering: release first, baselines on the released binary.
         - [x] **B.2.0.2** MultiPV: UCI option up to 256, root lines above 1; identity at `MultiPV = 1` on both arms (bench and `info` stream), pooled NPS +0.62% (RAR-P26) — DONE 2026-09-15
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0. Screens run 2026-09-15: paired run **+52.16 ± 10.73 Elo** unfitted while four zero-game floors fail (`analysis/b22_screens_2026-09-15.md`); held for review — **READY_FOR_IMPLEMENTATION / V**
         - [x] **B.2.2.1** Two seed-scale clamps converted (`b2core` 6,586,667 / EBF 2.433); five categorical switches (`CoreRazorGuards`, `CoreCorrTrainDecisive`, `CoreCorrTrainExcluded`, `CoreLmrFullDepth`, `CoreLmrCheckRoot`) with tests; `b2core,tune` PGO build; RAR-S74 registered — DONE 2026-09-15
-        - [ ] **B.2.2.2** Paired runs: (a)–(e) read, effects −2.6 / −15.1 / +2.3 / +1.7 / −3.8, nothing adopted, (f) not applicable; run (g) converted arm vs the 4,706,910 candidate outstanding (RAR-S74) — **GAME_GATE / V**
+        - [ ] **B.2.2.2** Paired runs (a)–(g) read: nothing adopted, mate-residual training stays, the clamp conversion reads −7.64 ± 9.72 and is reverted; closes on the revert commit that exposes the four clamp bounds as SPSA coordinates (RAR-S74) — **GAME_GATE / V**
         - [ ] **B.2.2.3** Curvature sweep of the five §9 coordinates and the P6 profile; flat or monotone on all five skips B.2.3 — **READY_FOR_IMPLEMENTATION / V**
         - [ ] **B.2.2.4** Screen rules for B.3–B.5: paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **B.2.3** SPSA over the registered live coordinates less the five categorical switches; runs only if B.2.2.3 finds a curved surface — **RESEARCH / V**

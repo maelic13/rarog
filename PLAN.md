@@ -629,7 +629,18 @@ diagnostics; two rejections stop B.
           candidate (4,706,910, `tools/test_engines/rarog-b22core-pext-pgo.exe`),
           same conditions, prediction 0 ± 11; at or below −5 the clamp
           conversion is reverted and the clamps become SPSA coordinates.
-          B.2.2.2 closes when (g) is read.
+          **Run (g) read 2026-09-15: −7.64 ± 9.72 for the converted arm; the
+          rule fires.** Revert ticket, `I1`, one engine commit: restore the
+          two clamps and expose them as four `CoreParams` spins seeded at
+          the donor's values, `CoreLmrImprovementClampLo` −241 (range
+          −1024..=0), `CoreLmrImprovementClampHi` 1155 (0..=4096),
+          `CoreLmrAlphaGapLo` −65 (−512..=0), `CoreLmrAlphaGapHi` 91
+          (0..=512); the clamp test asserts the seeds; the `b2core` bench
+          must read 4,706,910 / EBF 2.391 again (the five switches are
+          inert at their defaults); the off arm stays 7,601,220. The four
+          are SPSA coordinates in B.2.3 (the five switches are not). Record
+          the fingerprint in RAR-S73 and RAR-S74. B.2.2.2 closes on that
+          commit; B.2.2.3 runs on the 4,706,910 arm.
         - **B.2.2.3 Curvature sweep and the P6 profile — `V`.** On the arm
           B.2.2.2 leaves, the sweep §9 registered as SPSA's condition: the
           five coordinates (`CoreRfpLinear`, `CoreLmpSquare`, `CoreFpBase`,
@@ -756,7 +767,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.2 | GAME_GATE | V | Runs (a)–(e) read 2026-09-15 (RAR-S74): effects −2.6, −15.1, +2.3, +1.7, −3.8; nothing adopted, (f) not applicable; run (g), the converted arm against the 4,706,910 candidate, is the last run (prediction 0 ± 11), then the leaf closes |
+| B.2.2.2 | GAME_GATE | V | Runs (a)–(g) read 2026-09-15 (RAR-S74): nothing adopted; (g) −7.64 ± 9.72 for the clamp-converted arm, so the conversion is reverted and the four clamp bounds become SPSA coordinates seeded at the donor's values; closes on the revert commit (`b2core` back to 4,706,910) |
 | B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 leaves; its report decides whether B.2.3 runs |
 | B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |
