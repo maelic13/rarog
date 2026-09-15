@@ -92,14 +92,17 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** registered (B.2 selectivity core; B.2.3 and B.2.4 frozen before any game); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.3's pilot** (maintainer-run, 128 × 32, sensitivity only; preparation done and RAR-S75 registered 2026-09-15), then the N = 5,000 tune in sessions, the bake and the fitted-vs-unfitted run, then **B.2.4** (the `[0,10]` gate) |
+| Current step | **B.2.4a** (the maintainer's `[0,10]` SPRT of the unfitted `b2core` arm against the off arm, once the agent hands over two PGO builds at one revision) in parallel with **B.2.3**'s preparation; then the tune in sessions, then **B.2.4b** |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
 
-**B.2.3 is next**: SPSA on the `b2core` arm (4,706,910 / EBF 2.391) over
-the registered coordinates plus the four clamp bounds, less the five
-categorical switches. B.2.2 closed on 2026-09-15:
+**B.2.4a and B.2.3 are next**: the cluster gate no longer waits for the
+tune (maintainer amendment 2026-09-15): B.2.4a is the `[0,10]` SPRT of the
+unfitted `b2core` arm (4,706,910 / EBF 2.391) against the off arm, and
+B.2.4b later gates the fitted arm against the unfitted one. B.2.3 is the
+SPSA over the registered coordinates plus the four clamp bounds, less the
+five categorical switches, N = 5,000 in sessions. B.2.2 closed on 2026-09-15:
 - the unfitted paired run measured +52.16 ± 10.73 Elo;
 - no switch was adopted and mate-residual training stays;
 - the clamp conversion was reverted to coordinates;
@@ -165,7 +168,7 @@ is the numbering: release first, baselines on the released binary.
         - [x] **B.2.2.3** Curvature sweep of the five §9 coordinates and the P6 profile: three curved (`CoreLmpSquare`, `CoreLmrQuiet`, `CoreCorrUpdateSlope`), so B.2.3 runs; P6 +5.59% (`analysis/b223_sweep_2026-09-15.md`) — DONE 2026-09-15
         - [x] **B.2.2.4** Screen rules for B.3–B.5 in rule 8: paired run governs, one ablation sweep in mechanism order, time-to-depth, positional screen (phase-4 suite until STS is placed), canary regression rule, sweep checklist — DONE 2026-09-15
     - [ ] **B.2.3** SPSA on the `b2core` arm: 82 `CoreParams` coordinates (switches, `CoreIirMinDepth` and `CoreEvalRule50Damping` out), `config_b23core.json`, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, N = 5,000 in resumable sessions registered as RAR-S75, final theta baked, fitted-vs-unfitted diagnostic run. Preparation done 2026-09-15 (RAR-S75, binary `25467C63…`, setup proven at N = 5,000); pilot and tune pending — **IMPLEMENTED / V**
-    - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**
+    - [ ] **B.2.4** Gate as two SPRTs: B.2.4a unfitted `b2core` vs the off arm `[0,10]` (runs now, before the tune); B.2.4b fitted vs unfitted `[0,10]` after B.2.3; ledger row and calibration after each — **READY_FOR_IMPLEMENTATION / V**
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **READY_FOR_IMPLEMENTATION / I2**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV; keeps B.2.0.2's MultiPV contract; SPRT `[0,3]` — **RESEARCH / I2**
