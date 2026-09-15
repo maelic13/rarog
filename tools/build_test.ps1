@@ -21,7 +21,9 @@
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
     for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
     not depend on absolute NPS — both sides of each mini-match use the same
-    binary.
+    binary.  With -Features (a candidate arm such as `b2core`) it builds
+    `--features tune,<Features>` and records the flavor `<Features>-tune`, so
+    the manifest's bench fingerprint is that arm's own.
 
     Output always goes to tools\test_engines\ (repo-local and separate from
     released engines).
@@ -42,12 +44,15 @@
 
 .PARAMETER Tune
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
+    Combine with -Features to tune a candidate arm compiled behind a flag.
 
 .PARAMETER Features
-    Cargo features for a PGO build of a candidate arm compiled behind a flag
-    (`b2core`). Passed to xtask for both PGO builds and recorded in the build
-    command; the verified bench fingerprint is the arm's own. Not valid with
-    -Tune.
+    Cargo features for a candidate arm compiled behind a flag (`b2core`).
+    For a PGO build they pass to xtask for both PGO builds; with -Tune they
+    join `tune` in the cargo build and name the flavor (`b2core-tune`). Either
+    way they are recorded in the build command and the verified bench
+    fingerprint is the arm's own. `tune` and `texel` are refused: the first is
+    implied by -Tune, the second bypasses the evaluation caches.
 
 .PARAMETER TestEnginesDir
     Destination directory.  Default: tools\test_engines
@@ -85,8 +90,8 @@ param(
 if ($Tune -and $Native) {
     throw "-Tune and -Native are mutually exclusive."
 }
-if ($Tune -and $Features) {
-    throw "-Tune builds its own feature set; -Features is for PGO builds."
+if ($Features -match '(^|,)\s*(tune|texel)\s*(,|$)') {
+    throw "-Features may not name 'tune' (implied by -Tune) or 'texel' (it bypasses the evaluation caches)."
 }
 if ($BenchDepth -lt 1) { throw "-BenchDepth must be positive." }
 
@@ -195,7 +200,9 @@ Push-Location $repoRoot
 try {
     if ($Tune) {
         Write-Host ""
-        Write-Host "Building pext tune binary (--features tune, no PGO) — suffix: $Suffix"
+        $tuneFeatures = if ($Features) { "tune,$Features" } else { "tune" }
+        $tuneFlavor = if ($Features) { "$($Features -replace '\s*,\s*', '+')-tune" } else { "pext-tune" }
+        Write-Host "Building pext tune binary (--features $tuneFeatures, no PGO, flavor $tuneFlavor) — suffix: $Suffix"
         Write-Host "NOTE: Use this binary only for SPSA, never for SPRT."
         Write-Host ""
 
@@ -203,8 +210,8 @@ try {
         $savedRustFlags = $env:RUSTFLAGS
         try {
             $env:RUSTFLAGS = "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
-            cargo build --release --features tune
-            if ($LASTEXITCODE -ne 0) { throw "cargo build --features tune failed (exit $LASTEXITCODE)" }
+            cargo build --release --features $tuneFeatures
+            if ($LASTEXITCODE -ne 0) { throw "cargo build --features $tuneFeatures failed (exit $LASTEXITCODE)" }
         } finally {
             $env:RUSTFLAGS = $savedRustFlags
         }
@@ -218,8 +225,8 @@ try {
 
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-tune.exe"
         Copy-Item $src $dest -Force
-        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor "pext-tune" `
-            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features tune" `
+        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $tuneFlavor `
+            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features $tuneFeatures" `
             -Depth $BenchDepth -SkipBench:$BuildOnly
         Write-Host ""
         Write-Host "Done: $dest"

@@ -20,6 +20,8 @@
         tools\weather-factory\main.py is missing (this script also auto-clones
         weather-factory if absent).
       - Build the tune binary: ./tools/build_test.ps1 -Suffix <s> -Tune
+        (add -Features b2core for a surface of the selectivity core's Core*
+        options; such a config is refused on any other tune build)
 
 .PARAMETER ConfigGroup
     Which registered parameter group to tune (selects
@@ -190,6 +192,23 @@ if (-not $LaunchOnly) {
     }
     if ($engineManifest.flavor -notlike "*-tune") {
         throw "SPSA requires a tune build manifest; selected flavor is '$($engineManifest.flavor)'."
+    }
+    # The selectivity core's coordinates exist only in a `b2core` build. An
+    # off-arm tune binary would tune a different search under the same names
+    # or fail late on a missing option, so the arm is checked from the
+    # manifest before anything else is read or copied.
+    $armConfig = Join-Path $configs "config_$ConfigGroup.json"
+    if (-not (Test-Path $armConfig)) { throw "Config not found: $armConfig" }
+    $armNames = @((Get-Content $armConfig -Raw | ConvertFrom-Json).PSObject.Properties.Name)
+    $armFixed = Join-Path $configs "fixed_$ConfigGroup.json"
+    if (Test-Path $armFixed) {
+        $armNames += @((Get-Content $armFixed -Raw | ConvertFrom-Json).PSObject.Properties.Name)
+    }
+    $coreNames = @($armNames | Where-Object { $_ -like "Core*" })
+    if ($coreNames.Count -gt 0 -and $engineManifest.flavor -notlike "*b2core*") {
+        throw ("Config group '$ConfigGroup' names selectivity-core options ($($coreNames[0]) and " +
+               "$($coreNames.Count - 1) more), but the tune binary's flavor is '$($engineManifest.flavor)'. " +
+               "Build it with ./tools/build_test.ps1 -Tune -Features b2core.")
     }
     if ($engineManifest.git_dirty) {
         throw "Tune binary was built from a dirty source tree."

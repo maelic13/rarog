@@ -12,7 +12,7 @@ not change.
 | Tool | Purpose | Used by |
 |---|---|---|
 | `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs | PROCESS "Decision rules", "Common commands"; every SPRT row |
-| `build_test.ps1` | Build a PGO test binary with a provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; SPRT and SPSA setup |
+| `build_test.ps1` | Build a PGO or tune test binary, of the default arm or a feature arm (`-Features b2core`), with a bench-verified provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; SPRT and SPSA setup |
 | `harness_common.ps1` | Shared preflight: fastchess version, affinity list, adjudication profiles | dot-sourced by `sprt.ps1`, `spsa.ps1`, `datagen.ps1`, `build_test.ps1` and others |
 | `setup_tools.ps1` | Stage fastchess, the UHO book and the patched weather-factory | PROCESS "Toolchain and harness notes" |
 | `pgn_result.ps1` | Recompute Elo, LOS and pentanomial counts from a PGN | re-reading a finished match |
@@ -80,7 +80,7 @@ not change.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `spsa.ps1` | Set up and run a weather-factory SPSA tune | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
+| `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a `b2core-tune` binary | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
 | `audit_spsa_coverage.ps1` | Check a tune surface against `src/search/params.rs` | PROCESS "SPSA go/no-go procedure" |
 | `spsa_convergence_model.py` | Compare SPSA horizons under the live schedule | SPSA registration |
 | `datagen.ps1` | Deterministic self-play PGN segments for Texel data | PROCESS "Texel convergence procedure" |
