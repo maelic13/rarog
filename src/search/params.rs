@@ -477,6 +477,11 @@ search_params! {
     corr_weight_non_pawn_black = 128, "CoreCorrWeightNonPawnBlack", 0..=384;
     corr_weight_cont2 = 128, "CoreCorrWeightCont2", 0..=384;
     corr_weight_cont4 = 128, "CoreCorrWeightCont4", 0..=384;
+    /// Categorical, never an SPSA coordinate. 1 trains the correction on a
+    /// decisive (mate-range or tablebase-range) result as the donors do; 0
+    /// refuses a result at or beyond the tablebase-win band at both training
+    /// sites, as the accepted search does.
+    corr_train_decisive = 1, "CoreCorrTrainDecisive", 0..=1;
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
     eval_material_scale = 0, "CoreEvalMaterialScale", -64..=64;

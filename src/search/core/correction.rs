@@ -72,6 +72,19 @@ impl Default for CorrectionTables {
 }
 
 impl CorrectionTables {
+    /// Every entry of every table is zero: nothing has been trained.
+    #[cfg(test)]
+    pub(super) fn untouched(&self) -> bool {
+        self.pawn.iter().all(|&v| v == 0)
+            && self.minor.iter().all(|&v| v == 0)
+            && self
+                .non_pawn
+                .iter()
+                .all(|table| table.iter().all(|&v| v == 0))
+            && self.continuation_2.iter().all(|&v| v == 0)
+            && self.continuation_4.iter().all(|&v| v == 0)
+    }
+
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
         self.pawn.fill(0);

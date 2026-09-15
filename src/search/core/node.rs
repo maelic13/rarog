@@ -251,6 +251,14 @@ impl Searcher {
         r + spread - 59
     }
 
+    /// Whether a node's result may train the correction, given the
+    /// categorical admission switches: a decisive score is admitted only when
+    /// `CoreCorrTrainDecisive` is set.
+    #[inline(always)]
+    fn admits_correction_training(&self, score: i32) -> bool {
+        self.cfg.core.corr_train_decisive != 0 || score.abs() < TB_WIN_SCORE
+    }
+
     /// Record the order index of the move about to be searched at `ply` and
     /// the line's accumulated lateness: the parent's laterality plus
     /// [`laterality_step`] of this move's index.
@@ -1483,7 +1491,11 @@ impl Searcher {
                     );
                     // A fail-high above the static eval with a quiet move
                     // trains the correction; see the node's end.
-                    if !in_check && !is_noisy(mv) && score > static_eval {
+                    if !in_check
+                        && !is_noisy(mv)
+                        && score > static_eval
+                        && self.admits_correction_training(score)
+                    {
                         self.train_correction(board, depth, score - static_eval, ply);
                     }
                     return score;
@@ -1527,6 +1539,7 @@ impl Searcher {
         if !in_check
             && !(bound == Bound::Exact && is_noisy(best_move))
             && !(bound == Bound::Upper && best_score >= static_eval)
+            && self.admits_correction_training(best_score)
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
         }
@@ -1973,10 +1986,47 @@ mod tests {
     /// Sets one categorical switch on a searcher.
     type SetSwitch = fn(&mut Searcher, i32);
 
+    /// A quiet mate in one searched at depth 1 with a window above the static
+    /// eval and above the razoring limit: the mate fails high and is the
+    /// node's only training event. At
+    /// `CoreCorrTrainDecisive = 0` every correction table stays zero; at 1
+    /// the mate residual is trained.
+    #[test]
+    fn corr_train_decisive_zero_leaves_every_table_untouched_after_a_mate() {
+        let search = |decisive: i32| {
+            let mut searcher = Searcher::default();
+            searcher.cfg.core.corr_train_decisive = decisive;
+            let mut board =
+                Board::from_fen("6k1/5ppp/8/8/8/8/1P6/R3K3 w - - 0 1").expect("valid FEN");
+            assert!(searcher.td.corr.untouched());
+            let score = searcher.negamax::<NonPv, _>(
+                &mut board,
+                1,
+                1_000,
+                1_001,
+                1,
+                false,
+                Move::NULL,
+                false,
+                1,
+                &mut || SearchEvent::None,
+            );
+            assert!(score >= TB_WIN_SCORE, "the mate is found: {score}");
+            searcher.td.corr.untouched()
+        };
+        assert!(search(0), "a decisive residual trained a table at 0");
+        assert!(!search(1), "the mate residual is trained at 1");
+    }
+
     /// The categorical switches, each settable to 0 or 1 on a searcher.
-    const SWITCHES: &[(&str, SetSwitch)] = &[("CoreRazorGuards", |s, v| {
-        s.cfg.core.razor_guards = v;
-    })];
+    const SWITCHES: &[(&str, SetSwitch)] = &[
+        ("CoreRazorGuards", |s, v| {
+            s.cfg.core.razor_guards = v;
+        }),
+        ("CoreCorrTrainDecisive", |s, v| {
+            s.cfg.core.corr_train_decisive = v;
+        }),
+    ];
 
     /// Every switch at both values leaves no reduction on the stack after
     /// the search unwinds and a root PV made of legal moves, from a quiet
