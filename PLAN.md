@@ -641,6 +641,16 @@ diagnostics; two rejections stop B.
           are SPSA coordinates in B.2.3 (the five switches are not). Record
           the fingerprint in RAR-S73 and RAR-S74. B.2.2.2 closes on that
           commit; B.2.2.3 runs on the 4,706,910 arm.
+          **CLOSED 2026-09-15 on `308abe9`.** The `b2core` bench reads
+          4,706,910 / EBF 2.391 again, 40/40 per-position lines identical to
+          the pre-conversion arm on magic and PEXT. The four coordinates set
+          to the converted bounds over UCI reproduce 6,586,667. The off arm is
+          7,601,220 / EBF 2.474. Suites: release 295, debug 294, `b2core`
+          release 319, `b2core` debug 318, 0 failed; fmt and clippy clean on
+          `--all-features` and `b2core,tune`. `CoreParams` now declares 89
+          coordinates: the 80 of B.2.1, the four clamp bounds (SPSA
+          coordinates in B.2.3) and the five categorical switches (never
+          coordinates).
         - **B.2.2.3 Curvature sweep and the P6 profile — `V`.** On the arm
           B.2.2.2 leaves, the sweep §9 registered as SPSA's condition: the
           five coordinates (`CoreRfpLinear`, `CoreLmpSquare`, `CoreFpBase`,
@@ -767,8 +777,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.2 | GAME_GATE | V | Runs (a)–(g) read 2026-09-15 (RAR-S74): nothing adopted; (g) −7.64 ± 9.72 for the clamp-converted arm, so the conversion is reverted and the four clamp bounds become SPSA coordinates seeded at the donor's values; closes on the revert commit (`b2core` back to 4,706,910) |
-| B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 leaves; its report decides whether B.2.3 runs |
+| B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 left (`b2core` 4,706,910 / EBF 2.391 at `308abe9`); the next executable leaf; its report decides whether B.2.3 runs |
 | B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |

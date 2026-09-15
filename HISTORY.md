@@ -59,6 +59,10 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-15 — PLAN B.2.2.2 CLOSED, RAR-S74:** six paired runs adopted no
+  switch, kept mate-residual training (+15 Elo), and reverted the clamp
+  conversion (−7.64) to four SPSA coordinates at the donor's seeds;
+  `b2core` 4,706,910 / EBF 2.391 again at `308abe9`.
 - **2026-09-15 — PLAN B.2.2.1 CLOSED, RAR-S74: the seed-scale clamps
   converted and five categorical switches on the `b2core` arm.** Two LMR
   clamps still in the donor's evaluation units were converted (×0.457),
