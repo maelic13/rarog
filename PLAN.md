@@ -755,7 +755,7 @@ diagnostics; two rejections stop B.
       in. `SearchParams` (null move, ProbCut, singular, aspiration, time)
       stay at their defaults: B.3, B.5 and B.6 own them, and search and
       evaluation coordinates are never mixed. **Config:**
-      `tools/spsa_configs/config_b23core.json`, one entry per coordinate
+      a new `config_b23core.json` under `tools/spsa_configs/`, one entry per coordinate
       with `value` = the engine default, `min_value`/`max_value` = the
       declared range, `step` = `max(2, round((max − min) / 16))` (about 6%
       of the range at iteration 1, decaying to 0.39 of that at N = 10,000;
