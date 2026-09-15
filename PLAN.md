@@ -448,6 +448,10 @@ diagnostics; two rejections stop B.
           completed depth's reported lines, never a root record, whose score
           keeps a fail-low bound (found by the 4-thread stop session, pinned
           by a node-stopped test that fails on the record fill).
+          **Reviewed and accepted 2026-09-15** by a separate session (RAR-P26
+          carries the checks): fingerprints and the fixed-depth `info` stream
+          reproduced against the parent on both arms, suites and lint clean,
+          stopped MultiPV 4 sessions on 1T and 4T as the contract requires.
     - **B.2.2** Diagnostics: oracle differential at stride 1, depth at 300k
       nodes, EBF, tactical suite at fixed depth and equal nodes, 2,000-game
       unfitted paired run. Registered as explanation. **Screen thresholds are
