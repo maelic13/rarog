@@ -19,9 +19,9 @@
 
     Tune (-Tune switch): runs `cargo build --release --features tune` — produces
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
-    for weather-factory SPSA runs.  PGO is skipped because (a) xtask does not
-    support --features, and (b) SPSA accuracy does not depend on absolute NPS —
-    both sides of each mini-match use the same binary.
+    for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
+    not depend on absolute NPS — both sides of each mini-match use the same
+    binary.
 
     Output always goes to tools\test_engines\ (repo-local and separate from
     released engines).
@@ -42,6 +42,12 @@
 
 .PARAMETER Tune
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
+
+.PARAMETER Features
+    Cargo features for a PGO build of a candidate arm compiled behind a flag
+    (`b2core`). Passed to xtask for both PGO builds and recorded in the build
+    command; the verified bench fingerprint is the arm's own. Not valid with
+    -Tune.
 
 .PARAMETER TestEnginesDir
     Destination directory.  Default: tools\test_engines
@@ -70,6 +76,7 @@ param(
     [switch]$Tune,
     [switch]$Native,
     [switch]$BuildOnly,
+    [string]$Features = "",
     [int]$BenchDepth = 13,
     [string]$TestEnginesDir = "$PSScriptRoot\test_engines",
     [string]$SourceRoot = ""
@@ -77,6 +84,9 @@ param(
 
 if ($Tune -and $Native) {
     throw "-Tune and -Native are mutually exclusive."
+}
+if ($Tune -and $Features) {
+    throw "-Tune builds its own feature set; -Features is for PGO builds."
 }
 if ($BenchDepth -lt 1) { throw "-BenchDepth must be positive." }
 
@@ -225,10 +235,11 @@ try {
         Write-Host "Building $label+PGO binary (suffix: $Suffix) ..."
         Write-Host ""
 
+        $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
         if ($Native) {
-            cargo xtask build --arch $arch --native --pgo
+            cargo xtask build --arch $arch --native --pgo @featureArgs
         } else {
-            cargo xtask build --arch $arch --pgo
+            cargo xtask build --arch $arch --pgo @featureArgs
         }
         if ($LASTEXITCODE -ne 0) { throw "xtask build failed (exit $LASTEXITCODE)" }
 
@@ -247,7 +258,7 @@ try {
         $fileFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$fileFlavor.exe"
         Copy-Item $dist.FullName $dest -Force
-        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo"
+        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo$(if ($Features) { " --features $Features" })"
         Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $fileFlavor `
             -RepositoryRoot $repoRoot -BuildCommand $buildCommand -Depth $BenchDepth `
             -SkipBench:$BuildOnly

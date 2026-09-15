@@ -15,6 +15,10 @@ Modes:
                       and whether the bestmove is in `bm` when present.
 
 Each engine gets Hash 64, Threads 1, and `ucinewgame` before every position.
+An engine spec may carry further UCI options after `|`, as in
+`core=rarog.exe|AblationMask=128`; an option the engine reports it does not
+have stops the run, so a misspelt or compiled-out option cannot pass for a
+measurement of the default.
 Engines are driven with streaming stdin (write, read to `bestmove`, then
 write again); a piped `printf ... | engine` aborts the search on every engine
 this project uses. Output is one JSON file with per-position detail and a
@@ -65,8 +69,26 @@ def parse_epd(path):
         items.append({"id": ident, "fen": fen, "bm": bm_uci})
     return items
 
+def parse_engine_spec(arg):
+    """`label=path|Name=Value|...` -> (label, path, [(Name, Value), ...])."""
+    label, rest = arg.split("=", 1)
+    path, *pairs = rest.split("|")
+    options = []
+    for pair in pairs:
+        if "=" not in pair:
+            raise SystemExit(f"engine option {pair!r} in {arg!r} is not Name=Value")
+        name, value = pair.split("=", 1)
+        options.append((name, value))
+    return label, path, options
+
+
+def option_rejected(line):
+    """True for an engine's report that a `setoption` named no option it has."""
+    return "no such option" in line.lower()
+
+
 class Engine:
-    def __init__(self, path):
+    def __init__(self, path, options=()):
         path = os.path.abspath(path).replace("\\", "/")
         self.p = subprocess.Popen([path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, bufsize=1,
@@ -74,6 +96,8 @@ class Engine:
         self.send("uci"); self.wait("uciok")
         self.send("setoption name Hash value 64")
         self.send("setoption name Threads value 1")
+        for name, value in options:
+            self.send(f"setoption name {name} value {value}")
         self.send("isready"); self.wait("readyok")
     def send(self, s):
         self.p.stdin.write(s + "\n"); self.p.stdin.flush()
@@ -82,6 +106,8 @@ class Engine:
             line = self.p.stdout.readline()
             if not line:
                 raise SystemExit("engine died")
+            if option_rejected(line):
+                raise SystemExit(f"engine rejected an option: {line.strip()}")
             if line.startswith(token):
                 return
     def search(self, fen, go):
@@ -117,9 +143,10 @@ def info_fields(line):
 
 def run(mode, budget, suite, engines):
     items = parse_epd(suite)
-    result = {"mode": mode, "budget": budget, "suite": suite, "engines": {}}
-    for label, path in engines.items():
-        eng = Engine(path)
+    result = {"mode": mode, "budget": budget, "suite": suite, "engines": {}, "options": {}}
+    for label, (path, options) in engines.items():
+        result["options"][label] = dict(options)
+        eng = Engine(path, options)
         per = {}
         for it in items:
             if mode == "depthpv":
@@ -185,7 +212,10 @@ def main(argv):
     mode, budget, suite, out = argv[0], int(argv[1]), argv[2], argv[3]
     if mode not in ("depthpv", "nodes"):
         raise SystemExit(f"unknown mode {mode!r}; expected depthpv or nodes")
-    engines = dict(a.split("=", 1) for a in argv[4:])  # label=path
+    engines = {}
+    for arg in argv[4:]:
+        label, path, options = parse_engine_spec(arg)
+        engines[label] = (path, options)
     if not engines:
         raise SystemExit("no engines given (label=path ...)")
     result = run(mode, budget, suite, engines)

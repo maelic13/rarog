@@ -39,6 +39,24 @@ def test_info_fields_reads_depth_pv_and_multipv():
     assert "pv1" not in probe.info_fields("info depth 3 score cp 0 nodes 10 time 1")
 
 
+def test_engine_spec_carries_uci_options():
+    assert probe.parse_engine_spec("core=D:/x/rarog.exe") == ("core", "D:/x/rarog.exe", [])
+    assert probe.parse_engine_spec("core=rarog.exe|AblationMask=128|Hash=16") == (
+        "core", "rarog.exe", [("AblationMask", "128"), ("Hash", "16")])
+    try:
+        probe.parse_engine_spec("core=rarog.exe|AblationMask")
+    except SystemExit as exit_:
+        assert "Name=Value" in str(exit_)
+    else:
+        raise AssertionError("an option without a value must exit")
+
+
+def test_option_rejection_is_recognised():
+    assert probe.option_rejected("info string No such option: AblationMask\n")
+    assert probe.option_rejected("No such option: Foo")
+    assert not probe.option_rejected("info depth 3 score cp 0 nodes 10 time 1 pv e2e4")
+
+
 def test_main_rejects_unknown_mode(capsys):
     try:
         probe.main(["bogus", "10", "x.epd", "out.json", "e=engine.exe"])
