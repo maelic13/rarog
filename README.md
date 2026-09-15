@@ -78,6 +78,7 @@ Explorer. Any UCI-compatible GUI should work.
 | `Hash` | `64` | Transposition table size in MB. More memory helps longer searches. |
 | `Clear Hash` | — | Empties the transposition table. |
 | `Threads` | `1` | Search threads. Set to the number of cores you want to use. |
+| `MultiPV` | `1` | Best lines reported per depth, `1` to `256`. For analysis; leave it at `1` for play. |
 | `Ponder` | `false` | Think while the opponent moves. Enabled by the GUI. |
 | `Move Overhead` | `10` | Milliseconds reserved for GUI and network delay. Raise it if you lose on time. |
 | `SyzygyPath` | empty | Folders holding Syzygy tablebases. Empty disables probing. |

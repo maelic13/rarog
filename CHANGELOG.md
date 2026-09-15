@@ -5,6 +5,17 @@ All notable changes to Rarog are documented in this file.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [Unreleased]
+
+### Added
+
+- `MultiPV` (default `1`, up to `256`) reports the best several lines each
+  depth for analysis, capped by the moves left after `searchmoves` and the
+  tablebase root filter. Lines interrupted by a stop are marked `lowerbound` or
+  `upperbound`, and `bestmove` is always the first line. With `Threads` above
+  one, the main thread searches the lines and the helpers assist through the
+  hash table. At `MultiPV 1` the search and its output are unchanged.
+
 ## [2.4.0] - 2026-09-11
 
 A consolidation release. Its gate, RAR-E16, measured this head against a 2.3.2
