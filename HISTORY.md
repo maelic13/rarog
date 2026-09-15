@@ -59,6 +59,21 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-15 — PLAN B.2.0.2 CLOSED, RAR-P26: MultiPV.** `option name
+  MultiPV` (1–256), clamped to the root set after `searchmoves` and the
+  tablebase filter. Above one line a cold root loop searches each line with
+  the ranked moves excluded through the existing root restriction, keeps the
+  ranked lines in score order, and takes `bestmove`, ponder and the time
+  signals from line 1; helpers search one line and do not vote. At the
+  default nothing moved: both fingerprints, the depth-10 `info` stream on
+  both arms, pooled NPS +0.62% [−0.29%, +1.18%]. Two defects the frozen
+  contract did not name were found and fixed before commit: lines after the
+  first searched a ply shallower than reported (the excluded stored root
+  move fed IIR; fixed as Stockfish and Reckless do, by not storing later
+  lines' root result and giving them their own root TT move), and a stopped
+  depth filled unsearched lines from root records carrying fail-low bounds
+  (found in a 4-thread `go infinite` session; fixed to use the last
+  completed depth's reported lines, with a node-stopped regression test).
 - **2026-09-14 — PLAN B.2.1 CLOSED, RAR-S73: the selectivity core implemented
   behind `b2core` and accepted by its reviewer.** Sixteen commits: the
   `Searcher` split (ticket 0), the diag-only decision trace, the umbrella,

@@ -433,6 +433,21 @@ diagnostics; two rejections stop B.
           `go infinite` session at MultiPV 4 ended by `stop`. No SPRT, because
           the default is unchanged. README option list and CHANGELOG updated
           in the same leaf. B.5 inherits this contract.
+          **Implemented 2026-09-15 (RAR-P26); CLOSED.** Engine `1a27889`,
+          README and CHANGELOG `e1b56f6`. Both fingerprints 40/40 on magic
+          and PEXT; the depth-10 `info` stream over the 40 bench positions
+          byte-identical to the parent on both arms; pooled PGO NPS +0.62%
+          [−0.29%, +1.18%] against the B.2.1 head pool. Lines above 1 run in
+          a cold root function beside `search_root`, which stays the one-line
+          root unchanged. Two resolutions beyond the frozen text, each from
+          the donors: lines after the first neither store the root TT entry
+          nor read a TT-less root (their own candidate is the root TT move),
+          because the excluded stored move otherwise let IIR search lines
+          2..k a ply shallower than reported (Stockfish `pvIdx`, Reckless
+          `pv_index`); and unsearched lines after a stop are the last
+          completed depth's reported lines, never a root record, whose score
+          keeps a fail-low bound (found by the 4-thread stop session, pinned
+          by a node-stopped test that fails on the record fill).
     - **B.2.2** Diagnostics: oracle differential at stride 1, depth at 300k
       nodes, EBF, tactical suite at fixed depth and equal nodes, 2,000-game
       unfitted paired run. Registered as explanation. **Screen thresholds are
@@ -547,8 +562,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.0.2 | READY_FOR_IMPLEMENTATION | I1 | Added by maintainer decision 2026-09-14; contract frozen in the leaf; B.2.1 accepted, so it is the next executable leaf, before B.2.2 |
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; waits for B.2.0.2; runs the NPS pool first (review's speed warning) |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Thresholds registered by B.0; B.2.3/B.2.4 registered in RAR-S73; B.2.0.2 closed 2026-09-15, so it is the next executable leaf; runs the NPS pool first (review's speed warning) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |

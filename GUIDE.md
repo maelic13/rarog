@@ -84,21 +84,21 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Item | Value |
 |---|---|
 | Released baseline | **2.4.0** on `master`, the `Version 2.4.0` squash of this `dev` state; fingerprint **7,601,220 / EBF 2.474**, `rustc 1.98.1`, per-tier PGO assets. Accepted by RAR-E16 at **+54.77 ± 17.04 Elo** over 2.3.2 |
-| Development head | `dev` after B.2.1, version **2.4.0**; fingerprint **7,601,220 / EBF 2.474** unchanged on magic and PEXT (B.1 and B.2.0 are behaviour-neutral, RAR-P24, RAR-P25; B.2.1's candidate is compiled only with `--features b2core`, which reads 4,706,910 / EBF 2.391, RAR-S73); last verified on Windows ARM64 and macOS ARM64 at the 2.4.0 head (RAR-P19); pinned `rustc 1.98.1` |
+| Development head | `dev` after B.2.0.2, version **2.4.0**; fingerprint **7,601,220 / EBF 2.474** unchanged on magic and PEXT (B.1, B.2.0 and B.2.0.2's MultiPV at its default are behaviour-neutral, RAR-P24, RAR-P25, RAR-P26; B.2.1's candidate is compiled only with `--features b2core`, which reads 4,706,910 / EBF 2.391, RAR-S73); last verified on Windows ARM64 and macOS ARM64 at the 2.4.0 head (RAR-P19); pinned `rustc 1.98.1` |
 | Pool position, `3+0.03` 1T | Houdini 3 −224, Critter 1.6a −184, Houdini 1.5a −179, Fritz 16 −147, Rybka 4 −99, Basilisk 1.10.0 −23, Basilisk 1.9.3 −9, Rarog 2.3.2 +70 (RAR-M45, 2026-09-11, 600 games/pair, 2.4.0 release); reproduced within the 200-game bands in the 42-engine Super Rating Tournament, where 2.4.0 scores 64.8% and Houdini 4 −323, Stockfish 5 −222, Stockfish 1.9.1–4 within ±35 (RAR-M54, 2026-09-15) |
 | Pool position, `3+0.03` **4T** | Houdini 3 −169, Fritz 16 −149, Critter 1.6a −109, Rybka 4 −73, Basilisk 1.10.0 **+25**, Rarog 2.3.2 +45, Rybka 3 +79; Perf 3034 vs frozen 3003 (RAR-M46, 2026-09-11) |
 | Search deficit | **247.97 ± 10.89 Elo** equal time against the frozen oracle on the 2.4.0 head, evaluation proved constant (RAR-O03); depth gap only 0.97 ply, so most of it is decision quality; selectivity explains 272 ± 18. At equal nodes: WAC **200 vs 242** solved at 100k, median depth **16 vs 19** at 300k; Rarog's branching factor 1.630 is already below the oracle's 1.736 (RAR-M50) |
 | Evaluation deficit | **about 329 Elo** against Stockfish's classical HCE with the same search |
-| Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
+| Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** registered (B.2 selectivity core; B.2.3 and B.2.4 frozen before any game); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.0.2** (MultiPV, maintainer decision), then **B.2.2**, which runs the NPS pool first (the B.2.1 review's speed warning, `analysis/b21_review_2026-09-14.md`) |
+| Current step | **B.2.2**, which runs the NPS pool first (the B.2.1 review's speed warning, `analysis/b21_review_2026-09-14.md`) |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
 
-**B.2.0.2 is next**: MultiPV (maintainer decision 2026-09-14, contract
-frozen in PLAN), then B.2.2's screens. B.2.1 was accepted by its reviewer on
+**B.2.2 is next**: its screens, the pooled NPS run first. B.2.0.2 closed on
+2026-09-15 (MultiPV, identity at the default, RAR-P26). B.2.1 was accepted by its reviewer on
 2026-09-14 (`analysis/b21_review_2026-09-14.md`): the four resolutions upheld,
 no defect, and a speed warning that B.2.2 answers first with the pooled NPS
 run. Binding findings sit at their leaves in PLAN: D.2's premise is
@@ -150,7 +150,7 @@ is the numbering: release first, baselines on the released binary.
     - [x] **B.2.0** Architecture review of the B.1 head (RAR-M51) and its twelve behaviour-neutral upgrades: narrowed surface, tagged commands, search output port, TT policy factored once, tuner out of the workspace, tools index, comment hygiene; exact fingerprint, NPS +0.21% vs the B.1 pool (RAR-P25) — DONE 2026-09-14
         - [x] **B.2.0.1** Repository and document restructure: archived trackers, one-line closed leaves, one ledger row per experiment, `analysis/` index, dead-path check, rule-first AGENTS; logos stay tracked (RAR-M53) — DONE 2026-09-14
     - [x] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests; behind `b2core`, 4,706,910 / EBF 2.391 unfitted, off arm exact; reviewer-accepted (RAR-S73, `analysis/b21_review_2026-09-14.md`) — DONE 2026-09-14
-        - [ ] **B.2.0.2** MultiPV: UCI option, root lines above 1, identity at `MultiPV = 1` on both arms; before B.2.2 — **READY_FOR_IMPLEMENTATION / I1**
+        - [x] **B.2.0.2** MultiPV: UCI option up to 256, root lines above 1; identity at `MultiPV = 1` on both arms (bench and `info` stream), pooled NPS +0.62% (RAR-P26) — DONE 2026-09-15
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0 — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
     - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**
