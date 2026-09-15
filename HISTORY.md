@@ -59,6 +59,9 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-15 — PLAN B.2.2.3 CLOSED, RAR-S73:** the curvature sweep found
+  three curved coordinates (`CoreLmpSquare`, `CoreLmrQuiet`,
+  `CoreCorrUpdateSlope`), so B.2.3 runs; P6 read +5.59% against < 3%.
 - **2026-09-15 — PLAN B.2.2.2 CLOSED, RAR-S74:** six paired runs adopted no
   switch, kept mate-residual training (+15 Elo), and reverted the clamp
   conversion (−7.64) to four SPSA coordinates at the donor's seeds;

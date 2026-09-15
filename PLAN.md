@@ -668,6 +668,20 @@ diagnostics; two rejections stop B.
           defaults (P6 predicted < 3%), and the continuation-correction
           admission counts by remaining depth from a `diag` run, recorded
           once in RAR-S73. Frozen table in a short `analysis/` record.
+          **CLOSED 2026-09-15** (`analysis/b223_sweep_2026-09-15.md`, rules
+          frozen in `f7b766c` before any point; instrument `f975eae`). WAC at
+          100k across 0.5x–2x on the 4,706,910 arm, which reads 204 at the
+          defaults: `CoreRfpLinear` monotone (212 at 0.5x); `CoreLmpSquare`
+          **curved** (211 at 0.75x, 202 and 196 at the edges); `CoreFpBase`
+          monotone (209 at 0.5x and 0.75x); `CoreLmrQuiet` **curved** (205 at
+          0.75x, weakest); `CoreCorrUpdateSlope` **curved** (207 at 0.75x).
+          **Three curved: B.2 goes to B.2.3.** P6: zeroing both
+          continuation weights moves `bench 13` by +5.59% (two-ply table alone
+          +8.51%), above the predicted 3%, so the falsifier fires as worded;
+          single coordinate steps move the bench 0.3–71%, so the reading does not
+          establish a pruning-signal role alone, and re-admission is for
+          review. Admissions concentrate at low remaining depth (70–72% at
+          depth ≤ 2).
         - **B.2.2.4 Screen registrations for B.3–B.5 — `I1`, documents.**
           Write into PLAN's B.3, B.4 and B.5 screen text and into rule 8:
           the paired run governs and zero-game floors are diagnostics that
@@ -777,9 +791,8 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 left (`b2core` 4,706,910 / EBF 2.391 at `308abe9`); the next executable leaf; its report decides whether B.2.3 runs |
-| B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
-| B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |
+| B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist); the next executable leaf |
+| B.2.3 | RESEARCH | V | B.2.2.3 found three curved coordinates (2026-09-15), so it runs, after B.2.2.4; coordinates = the registered set with the four clamp bounds, less the five categorical switches; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
