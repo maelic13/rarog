@@ -503,6 +503,15 @@ diagnostics; two rejections stop B.
       floors failed. That, the screens' validity, razoring, speed order and
       the gate's bounds go to an in-depth review**
       (`analysis/b22_screens_2026-09-15.md` §9) before B.2.3.
+      **Reviewed 2026-09-15** (`analysis/b22_review_2026-09-15.md`): the paired run
+      governs and the floors are diagnostics; the NPS reading is mostly
+      tree mix and small distributed per-node costs, not one producer;
+      razoring lost the B.1 head's `!tt_pv` and depth guards; the
+      correction trains on mate-range residuals and at singular-excluded
+      nodes as the donors do, each shrinking the tree by a sixth. The
+      review asks for three categorical paired runs, the eval-unit clamps
+      converted, and the registered curvature sweep before B.2.3.
+      **Maintainer decision pending.**
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -594,7 +603,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | All screens in 2026-09-15: paired run +52.16 ± 10.73 Elo (above target) with NPS 0.683x, WAC 100k 204, agreement 35 and canaries 75/116 below their floors; profile clears `threats()`. Held for the in-depth review of `analysis/b22_screens_2026-09-15.md` §9, which decides whether B.2.3 proceeds |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | All screens in 2026-09-15: paired run +52.16 ± 10.73 Elo (above target) with NPS 0.683x, WAC 100k 204, agreement 35 and canaries 75/116 below their floors; profile clears `threats()`. Held for the in-depth review of `analysis/b22_screens_2026-09-15.md` §9, which decides whether B.2.3 proceeds; reviewed 2026-09-15 (`analysis/b22_review_2026-09-15.md`): three categorical paired runs and the curvature sweep precede B.2.3; maintainer decision pending |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
