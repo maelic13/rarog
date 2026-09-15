@@ -587,6 +587,11 @@ search_params! {
     /// by more than this, one ply shallower when by less than this.
     lmr_research_deeper = 26, "CoreLmrResearchDeeper", 0..=200;
     lmr_research_shallower = 4, "CoreLmrResearchShallower", -50..=50;
+    /// Categorical, never an SPSA coordinate. 1 searches the first move of a
+    /// non-PV, non-root node out of check through the donor's full-depth
+    /// branch, which may take one or two plies off it; 0 searches it at full
+    /// depth.
+    lmr_full_depth = 0, "CoreLmrFullDepth", 0..=1;
 
     // History update policy, history units.
     /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.

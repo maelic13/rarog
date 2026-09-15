@@ -94,6 +94,33 @@ struct LateMoveInputs {
     parent_reduction: i32,
 }
 
+/// The inputs of the full-depth branch's reduction for one move.
+#[derive(Copy, Clone)]
+struct FullDepthInputs {
+    depth: i32,
+    improvement: i32,
+    corr_abs: i32,
+    is_quiet: bool,
+    history: i32,
+    tt_pv: bool,
+    /// A stored result at least as deep as this node.
+    tt_deep: bool,
+    cut_node: bool,
+    tt_move_null: bool,
+    is_tt_move: bool,
+    /// Beta cutoffs among this node's children so far.
+    child_cutoffs: i32,
+    parent_reduction: i32,
+}
+
+/// The depth the full-depth branch searches a move at: one ply off from a
+/// reduction of 2621 units and two from 5579, never below one ply and never
+/// deeper than `new_depth`.
+fn full_depth_searched_depth(new_depth: i32, reduction: i32) -> i32 {
+    let plies = i32::from(reduction >= 2_621) + i32::from(reduction >= 5_579);
+    (new_depth - plies).max(new_depth.min(1))
+}
+
 /// The depth a reduced move is searched at: the reduction in whole plies,
 /// never below one ply of main search and never more than two plies above
 /// `new_depth`; a PV node searches its reduced moves two plies deeper.
@@ -249,6 +276,41 @@ impl Searcher {
         let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
         let spread = i32::try_from((self.td.nodes + thread * 27) % 128).unwrap_or(0);
         r + spread - 59
+    }
+
+    /// The donor's second reduction, for the moves late-move reductions do not
+    /// take (`CoreLmrFullDepth`), in 1024ths of a ply. Its constants are the
+    /// donor's seeds, converted where they bound evaluation units, and are
+    /// not coordinates. Reduces more: a quiet, a cut node (more without a TT
+    /// move), children that keep failing high, a parent that reduced far
+    /// more. Reduces less: improvement, a large correction, good history, a
+    /// PV line in the table (more when its entry is deep), the TT move.
+    fn full_depth_reduction(&self, i: &FullDepthInputs) -> i32 {
+        let mut r = 207 * i.depth.ilog2().cast_signed();
+        r -= (366 * i.improvement / 128).clamp(-94, 626);
+        r -= 2_255 * i.corr_abs / 1024;
+        if i.is_quiet {
+            r += 1_468 - 118 * i.history / 1024;
+        } else {
+            r += 940 - 63 * i.history / 1024;
+        }
+        if i.tt_pv {
+            r -= 844 + 1_129 * i32::from(i.tt_deep);
+        } else if i.cut_node {
+            r += 1_260 + 2_168 * i32::from(i.tt_move_null);
+        }
+        if i.child_cutoffs > 2 {
+            r += 1_394 + 258 * i32::from(!i.cut_node);
+        }
+        if i.is_tt_move {
+            r -= 3_002;
+        }
+        if i.parent_reduction > r + 590 {
+            r += 130;
+        }
+        let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
+        let spread = i32::try_from((self.td.nodes + thread * 26) % 128).unwrap_or(0);
+        r + spread - 56
     }
 
     /// Whether a node's result may train the correction, given the
@@ -1231,6 +1293,76 @@ impl Searcher {
                         last_critical_ply,
                         poll,
                     )
+                } else if self.cfg.core.lmr_full_depth != 0
+                    && !NODE::ROOT
+                    && !in_check
+                    && !self.ablated(7)
+                {
+                    // The donor's full-depth branch. Late-move reductions take
+                    // every later move from depth 2, and at depth 1 the one-ply
+                    // floor leaves nothing to take, so the moves it reaches are
+                    // the first moves of non-PV nodes. A fail-high on the
+                    // shortened search is verified at `new_depth`.
+                    let tt_valid = ev.bound.is_some();
+                    let reduction = self.full_depth_reduction(&FullDepthInputs {
+                        depth,
+                        improvement,
+                        corr_abs,
+                        is_quiet,
+                        history: if is_quiet {
+                            quiet_hist
+                        } else {
+                            self.td.hist.noisy(
+                                threats.all,
+                                !board.side_to_move(),
+                                moving_piece,
+                                mv.to_sq(),
+                                captured_piece,
+                            )
+                        },
+                        tt_pv,
+                        tt_deep: tt_valid && ev.depth >= depth,
+                        cut_node,
+                        tt_move_null: tt_move.is_null(),
+                        is_tt_move: mv == tt_move,
+                        child_cutoffs: self.td.stack[ply + 1].cutoff_count,
+                        parent_reduction: self.td.stack.back(ply, 1).reduction,
+                    });
+                    let searched_depth = full_depth_searched_depth(new_depth, reduction);
+                    trace_decision!(
+                        self,
+                        ply,
+                        "fds depth {depth} move {mv} units {reduction} new_depth {new_depth} \
+                         searched_depth {searched_depth} window {alpha} {beta}"
+                    );
+                    let mut first = -self.negamax::<NonPv, _>(
+                        board,
+                        searched_depth,
+                        -beta,
+                        -alpha,
+                        ply + 1,
+                        true,
+                        Move::NULL,
+                        !cut_node,
+                        last_critical_ply,
+                        poll,
+                    );
+                    if first > alpha && searched_depth < new_depth {
+                        search_count += 1;
+                        first = -self.negamax::<NonPv, _>(
+                            board,
+                            new_depth,
+                            -beta,
+                            -alpha,
+                            ply + 1,
+                            true,
+                            Move::NULL,
+                            !cut_node,
+                            last_critical_ply,
+                            poll,
+                        );
+                    }
+                    first
                 } else {
                     -self.negamax::<NonPv, _>(
                         board,
@@ -2050,6 +2182,70 @@ mod tests {
         assert!(!search(1), "the singular-exclusion node trains at 1");
     }
 
+    /// A cut-node first move without a TT move, quiet, at depth 8.
+    fn cut_node_first_move() -> FullDepthInputs {
+        FullDepthInputs {
+            depth: 8,
+            improvement: 0,
+            corr_abs: 0,
+            is_quiet: true,
+            history: 0,
+            tt_pv: false,
+            tt_deep: false,
+            cut_node: true,
+            tt_move_null: true,
+            is_tt_move: false,
+            child_cutoffs: 0,
+            parent_reduction: 0,
+        }
+    }
+
+    /// Under `CoreLmrFullDepth` a non-PV first move is searched below
+    /// `new_depth` when its reduction reaches 2621 units (two plies below
+    /// from 5579) and at `new_depth` otherwise; the one-ply floor never
+    /// deepens a move.
+    #[test]
+    fn full_depth_branch_searches_a_first_move_below_new_depth_from_2621_units() {
+        assert_eq!(full_depth_searched_depth(8, 2_620), 8);
+        assert_eq!(full_depth_searched_depth(8, 2_621), 7);
+        assert_eq!(full_depth_searched_depth(8, 5_578), 7);
+        assert_eq!(full_depth_searched_depth(8, 5_579), 6);
+        assert_eq!(full_depth_searched_depth(2, 9_000), 1, "one-ply floor");
+        assert_eq!(full_depth_searched_depth(1, 9_000), 1, "one-ply floor");
+        assert_eq!(full_depth_searched_depth(0, 9_000), 0, "never deeper");
+        assert_eq!(full_depth_searched_depth(7, -9_000), 7, "never deeper");
+
+        let searcher = Searcher::default();
+        let reduction = |edit: &dyn Fn(&mut FullDepthInputs)| {
+            let mut inputs = cut_node_first_move();
+            edit(&mut inputs);
+            searcher.full_depth_reduction(&inputs)
+        };
+        // 207*3 + 1468 + 1260 + 2168 - 56 = 5461: one ply off.
+        assert_eq!(reduction(&|_| {}), 5_461);
+        assert_eq!(full_depth_searched_depth(9, reduction(&|_| {})), 8);
+        // Children that keep failing high push it past 5579: two plies.
+        let cutoffs = reduction(&|i| i.child_cutoffs = 3);
+        assert_eq!(cutoffs, 5_461 + 1_394);
+        assert_eq!(full_depth_searched_depth(9, cutoffs), 7);
+        // The TT move at a cut node that has one stays at full depth.
+        let tt_move = reduction(&|i| {
+            i.tt_move_null = false;
+            i.is_tt_move = true;
+        });
+        assert_eq!(tt_move, 5_461 - 2_168 - 3_002);
+        assert_eq!(full_depth_searched_depth(9, tt_move), 9);
+        // The improvement clamp is in Rarog's evaluation units.
+        assert_eq!(
+            reduction(&|_| {}) - reduction(&|i| i.improvement = 10_000),
+            626
+        );
+        assert_eq!(
+            reduction(&|_| {}) - reduction(&|i| i.improvement = -10_000),
+            -94
+        );
+    }
+
     /// The categorical switches, each settable to 0 or 1 on a searcher.
     const SWITCHES: &[(&str, SetSwitch)] = &[
         ("CoreRazorGuards", |s, v| {
@@ -2060,6 +2256,9 @@ mod tests {
         }),
         ("CoreCorrTrainExcluded", |s, v| {
             s.cfg.core.corr_train_excluded = v;
+        }),
+        ("CoreLmrFullDepth", |s, v| {
+            s.cfg.core.lmr_full_depth = v;
         }),
     ];
 
