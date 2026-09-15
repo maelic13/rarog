@@ -125,6 +125,18 @@ pub mod counters {
         // four plies back (selectivity core; trained before it is read).
         corr_cont2_admitted,
         corr_cont4_admitted,
+        // The same admissions by the training node's remaining depth: 1, 2,
+        // 3, 4 to 6, 7 and more. Each set sums to its total above.
+        corr_cont2_admitted_d1,
+        corr_cont2_admitted_d2,
+        corr_cont2_admitted_d3,
+        corr_cont2_admitted_d4_6,
+        corr_cont2_admitted_d7_plus,
+        corr_cont4_admitted_d1,
+        corr_cont4_admitted_d2,
+        corr_cont4_admitted_d3,
+        corr_cont4_admitted_d4_6,
+        corr_cont4_admitted_d7_plus,
         // Residual MAGNITUDE by attribution class, exact.
         //
         // The premise behind capture-weighted correction updates is that a

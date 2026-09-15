@@ -257,10 +257,26 @@ impl Searcher {
         apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
         if let Some(slot) = slots.continuation[0] {
             crate::diag_count!(corr_cont2_admitted);
+            #[cfg(feature = "diag")]
+            match depth {
+                ..=1 => crate::diag_count!(corr_cont2_admitted_d1),
+                2 => crate::diag_count!(corr_cont2_admitted_d2),
+                3 => crate::diag_count!(corr_cont2_admitted_d3),
+                4..=6 => crate::diag_count!(corr_cont2_admitted_d4_6),
+                _ => crate::diag_count!(corr_cont2_admitted_d7_plus),
+            }
             apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
         }
         if let Some(slot) = slots.continuation[1] {
             crate::diag_count!(corr_cont4_admitted);
+            #[cfg(feature = "diag")]
+            match depth {
+                ..=1 => crate::diag_count!(corr_cont4_admitted_d1),
+                2 => crate::diag_count!(corr_cont4_admitted_d2),
+                3 => crate::diag_count!(corr_cont4_admitted_d3),
+                4..=6 => crate::diag_count!(corr_cont4_admitted_d4_6),
+                _ => crate::diag_count!(corr_cont4_admitted_d7_plus),
+            }
             apply_bonus(&mut tables.continuation_4[slot], bonus, CONT_MAX);
         }
     }
