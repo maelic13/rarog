@@ -253,10 +253,12 @@ impl Searcher {
 
     /// Whether a node's result may train the correction, given the
     /// categorical admission switches: a decisive score is admitted only when
-    /// `CoreCorrTrainDecisive` is set.
+    /// `CoreCorrTrainDecisive` is set, a singular-exclusion node only when
+    /// `CoreCorrTrainExcluded` is.
     #[inline(always)]
-    fn admits_correction_training(&self, score: i32) -> bool {
-        self.cfg.core.corr_train_decisive != 0 || score.abs() < TB_WIN_SCORE
+    fn admits_correction_training(&self, score: i32, excluded: Move) -> bool {
+        (self.cfg.core.corr_train_decisive != 0 || score.abs() < TB_WIN_SCORE)
+            && (self.cfg.core.corr_train_excluded != 0 || excluded.is_null())
     }
 
     /// Record the order index of the move about to be searched at `ply` and
@@ -1494,7 +1496,7 @@ impl Searcher {
                     if !in_check
                         && !is_noisy(mv)
                         && score > static_eval
-                        && self.admits_correction_training(score)
+                        && self.admits_correction_training(score, excluded)
                     {
                         self.train_correction(board, depth, score - static_eval, ply);
                     }
@@ -1539,7 +1541,7 @@ impl Searcher {
         if !in_check
             && !(bound == Bound::Exact && is_noisy(best_move))
             && !(bound == Bound::Upper && best_score >= static_eval)
-            && self.admits_correction_training(best_score)
+            && self.admits_correction_training(best_score, excluded)
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
         }
@@ -2018,6 +2020,36 @@ mod tests {
         assert!(!search(1), "the mate residual is trained at 1");
     }
 
+    /// The same node searched as a singular-exclusion search (a non-mating
+    /// pawn move excluded): at `CoreCorrTrainExcluded = 0` it trains nothing;
+    /// at 1 the fail-high trains the correction.
+    #[test]
+    fn corr_train_excluded_zero_trains_nothing_at_a_singular_search() {
+        let search = |admit: i32| {
+            let mut searcher = Searcher::default();
+            searcher.cfg.core.corr_train_excluded = admit;
+            let mut board =
+                Board::from_fen("6k1/5ppp/8/8/8/8/1P6/R3K3 w - - 0 1").expect("valid FEN");
+            let excluded = board.parse_move("b2b4").expect("legal pawn move");
+            let score = searcher.negamax::<NonPv, _>(
+                &mut board,
+                1,
+                1_000,
+                1_001,
+                1,
+                false,
+                excluded,
+                false,
+                1,
+                &mut || SearchEvent::None,
+            );
+            assert!(score > 1_000, "the node fails high: {score}");
+            searcher.td.corr.untouched()
+        };
+        assert!(search(0), "a singular-exclusion node trained a table at 0");
+        assert!(!search(1), "the singular-exclusion node trains at 1");
+    }
+
     /// The categorical switches, each settable to 0 or 1 on a searcher.
     const SWITCHES: &[(&str, SetSwitch)] = &[
         ("CoreRazorGuards", |s, v| {
@@ -2025,6 +2057,9 @@ mod tests {
         }),
         ("CoreCorrTrainDecisive", |s, v| {
             s.cfg.core.corr_train_decisive = v;
+        }),
+        ("CoreCorrTrainExcluded", |s, v| {
+            s.cfg.core.corr_train_excluded = v;
         }),
     ];
 

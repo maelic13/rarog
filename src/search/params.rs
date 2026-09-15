@@ -482,6 +482,11 @@ search_params! {
     /// refuses a result at or beyond the tablebase-win band at both training
     /// sites, as the accepted search does.
     corr_train_decisive = 1, "CoreCorrTrainDecisive", 0..=1;
+    /// Categorical, never an SPSA coordinate. 1 trains the correction at a
+    /// singular-exclusion node as the donors do; 0 refuses training whenever
+    /// a move is excluded, at both training sites, as the accepted search
+    /// does.
+    corr_train_excluded = 1, "CoreCorrTrainExcluded", 0..=1;
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
     eval_material_scale = 0, "CoreEvalMaterialScale", -64..=64;
