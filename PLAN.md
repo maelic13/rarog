@@ -116,7 +116,42 @@ gating. The rules below decide order and acceptance in this roadmap.
    fixed-node tree shape, NPS and game strength are different units with no
    exchange rate. Counters, node counts, EBF, tactical suites and fit loss
    explain or screen; only a registered final-PGO SPRT or the target gate
-   accepts.
+   accepts. **Cluster screens** (from B.2.2's review, 2026-09-15; every
+   cluster from B.3 on registers its numbers against this ladder before
+   implementation):
+   - **The paired run governs.** The unfitted 2,000-game paired run against
+     the last accepted head is the only screen that clears a cluster for its
+     fit. Zero-game floors are diagnostics. A floor failure triggers the
+     ablation sweep and a written cause in the cluster's analysis. It never
+     holds a candidate the paired run cleared, and a floor passed never
+     accepts one it failed.
+   - **Ablation:** one sweep of the eight `AblationMask` bits in mechanism
+     order (0 razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
+     hindsight, 5 move-loop pruning, 6 singular, 7 late-move reductions).
+     Each bit is run alone on the fixed-node screens; there is no other order
+     and no second sweep.
+   - **Speed:** time-to-depth on `bench 13` replaces the pooled-NPS floor,
+     because a tree-shape change makes nodes incomparable. Each arm's time is
+     its bench nodes divided by its pooled-PGO median NPS from interleaved
+     `nps_multibuild.ps1` runs. The candidate-to-baseline ratio is read
+     against the floor the cluster registers, and pooled NPS is reported beside
+     it as a diagnostic.
+   - **Fixed-node quality:** WAC at 100k and 400k nodes, plus a positional
+     screen at 100k nodes. That screen is the Strategic Test Suite once the
+     maintainer places it as a tracked fixture `sts_v1.epd` under `tools/diag/`.
+     Until then it is the phase-4 suite scored by agreement with the frozen
+     oracle's best move at the same budget.
+   - **Canaries:** a regression rule. No oracle-anchored canary the baseline
+     solves may be lost, where solving means stable at no more than the anchor
+     plus two plies and solved at 100k nodes. New passes are recorded, not
+     required.
+   - **Curvature sweep before any SPSA:** a checklist item with its own
+     evidence path, `analysis/<leaf>_sweep_<date>.md` with raw results under
+     `tools/results/`. Five registered coordinates each run at 0.5x, 0.75x,
+     1x, 1.5x and 2x, with `bench 13` and WAC at 100k per point. The
+     classification is frozen before the first point, as in
+     `analysis/b223_sweep_2026-09-15.md`. Flat or monotone on all five skips
+     the cluster's SPSA.
 9. **Freeze the prediction before exposure, append the calibration after.**
    A miss is recorded as sign, magnitude, mechanism, interaction, confidence
    or instrument. `NO_CHANGE`, refuted and too-sparse are successful outcomes.
@@ -516,7 +551,10 @@ diagnostics; two rejections stop B.
       B.2.2.3 has reported. B.7 stays where it is; nothing is pulled
       forward.** The five switches are categorical and are never SPSA
       coordinates (RAR-M13's lesson); a losing switch stays at its default
-      until B.8 removes it.
+      until B.8 removes it. **CLOSED 2026-09-15 with B.2.2.4:** no switch
+      adopted, the clamp conversion reverted to four coordinates, three
+      curved coordinates so B.2.3 runs, and the screen ladder written into
+      rule 8.
         - **B.2.2.1 Categorical switches and the seed-scale clamps — `I1`,
           CLOSED 2026-09-15 (RAR-S74).**
           Engine work on the `b2core` arm, one commit per item, each with a
@@ -698,7 +736,11 @@ diagnostics; two rejections stop B.
           become a regression rule (no canary the baseline solves may be
           lost) instead of "all pass"; the curvature sweep is a checklist
           item with its own evidence path. GUIDE and PLAN in one commit;
-          `check_guide.py` passes.
+          `check_guide.py` passes. **CLOSED 2026-09-15:** the ladder is rule
+          8's *Cluster screens*, and B.3, B.4 and B.5 each point to it. The
+          STS fixture is not placed, so the phase-4 suite scored by oracle
+          agreement is the positional screen until it is. **With it, B.2.2
+          closes.**
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -728,7 +770,10 @@ diagnostics; two rejections stop B.
   extension, IIR versus hindsight-depth policy. Rarog's own evidence rules:
   no in-check extension unless a new measurement says otherwise. Same
   sub-step shape as B.2 (implement, diagnose, SPSA if curvature justifies,
-  SPRT `[0,5]`).
+  SPRT `[0,5]`). **Screens: rule 8's cluster ladder**, registered with this
+  cluster's numbers before implementation. The paired run governs; the
+  floors (time-to-depth, WAC, the positional screen, the canary regression
+  rule) are diagnostics; the curvature sweep precedes any SPSA.
 - **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
   TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
   moves, SEE pruning by margin, TT write on exit, check evasions only when
@@ -745,14 +790,21 @@ diagnostics; two rejections stop B.
   canaries include mate threats by quiet moves, B.4 may not remove any
   first-ply check generation B.2 turned out to rely on, and "check evasions
   only when in check" is measured against those canaries, not assumed from
-  the donor.
+  the donor. **Screens: rule 8's cluster ladder**, registered before
+  implementation; under its canary regression rule a quiet mate-threat
+  canary the baseline solves may not be lost. The paired run governs, and
+  the curvature sweep precedes any SPSA.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   Aspiration delta from eval and PV stability, optimism, root move node
   accounting, forgotten-mate and aborted-loss guards, PV table. Multi-PV is
   delivered earlier by B.2.0.2; B.5 keeps its contract (identity at
   `MultiPV = 1`, line semantics above 1).
   SPRT `[0,3]`. Root-only LMR relief keeps its accepted place unless B.2's
-  formula subsumes it, which B.0 decides.
+  formula subsumes it, which B.0 decides. **Screens: rule 8's cluster
+  ladder**, registered before implementation. The paired run governs;
+  time-to-depth replaces pooled NPS as the speed screen (aspiration and
+  iterative-deepening changes move the tree); the curvature sweep precedes
+  any SPSA.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
@@ -790,9 +842,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist); the next executable leaf |
-| B.2.3 | RESEARCH | V | B.2.2.3 found three curved coordinates (2026-09-15), so it runs, after B.2.2.4; coordinates = the registered set with the four clamp bounds, less the five categorical switches; maintainer-run SPSA |
+| B.2.3 | RESEARCH | V | B.2.2 closed 2026-09-15 and B.2.2.3 found three curved coordinates, so it runs and is the next executable leaf; coordinates = the registered set with the four clamp bounds, less the five categorical switches; the agent prepares the `tools/spsa.ps1` configuration and command, the maintainer runs the SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
@@ -1133,7 +1183,7 @@ datagen baseline and the fallback until F.9 replaces it in releases.
 | Cluster acceptance | Registered final-PGO SPRT, brackets per rule 5, `[0,10]` for B.2 | every cluster |
 | Neutral change | Exact fingerprint on magic and PEXT, debug and release suites, `nps_multibuild.ps1` pooled PGO | B.1, B.7, C.1, F.1 |
 | Conversion | `tools/diag/conversion_audit.py` on the latest pool tournament | every checkpoint |
-| Fixed-node shape | oracle differential at stride 1, depth at 300k nodes, EBF, tactical suite at fixed depth and equal nodes | B clusters |
+| Fixed-node shape | oracle differential at stride 1, depth at 300k nodes, EBF, tactical suite at fixed depth and equal nodes, positional screen at 100k; diagnostics under rule 8's cluster ladder | B clusters |
 | Endgame layers | theory truth, drawn overclaim, conversion at 60k/200k/600k, floors | C.5 |
 
 Sizing every SPRT: `tools/spsa_convergence_model.py` and RAR-M10's drift

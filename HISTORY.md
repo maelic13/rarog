@@ -59,6 +59,10 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-15 — PLAN B.2.2.4 and B.2.2 CLOSED:** the screen ladder for
+  B.3–B.5 is written into rule 8. The paired run governs, the floors are
+  diagnostics, time-to-depth replaces pooled NPS, a positional screen and the
+  canary regression rule are added, and a curvature sweep precedes any SPSA.
 - **2026-09-15 — PLAN B.2.2.3 CLOSED, RAR-S73:** the curvature sweep found
   three curved coordinates (`CoreLmpSquare`, `CoreLmrQuiet`,
   `CoreCorrUpdateSlope`), so B.2.3 runs; P6 read +5.59% against < 3%.
