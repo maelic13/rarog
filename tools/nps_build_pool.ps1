@@ -20,6 +20,9 @@ param(
     [Parameter(Mandatory = $true)][string]$OutDir,
     [int]$ExpectFingerprint = 7601220,
     [int]$Depth = 13,
+    # Cargo features for a candidate arm compiled behind a flag (`b2core`).
+    # Pass the arm's own fingerprint with -ExpectFingerprint.
+    [string]$Features = "",
     # Local experimentation only. A pool built from an unidentifiable tree must
     # never back a recorded result; `sprt.ps1` carries the same escape hatch.
     [switch]$AllowDirty
@@ -42,7 +45,8 @@ $rows = @()
 for ($i = 1; $i -le $Builds; $i++) {
     Write-Host "== $Arch build $i/$Builds =="
     $log = Join-Path $OutDir "build-$Arch-$i.log"
-    & cargo xtask build --arch $Arch --pgo *> $log
+    $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
+    & cargo xtask build --arch $Arch --pgo @featureArgs *> $log
     if ($LASTEXITCODE -ne 0) { throw "build $i failed (exit $LASTEXITCODE); see $log" }
 
     # Take the artifact path from xtask itself rather than reconstructing the
@@ -81,6 +85,7 @@ if ($dupes) {
 $manifest = Join-Path $OutDir "manifest-$Arch.txt"
 @(
     "arch          : $Arch"
+    "features      : $(if ($Features) { $Features } else { '(default)' })"
     "source        : $sha (clean)"
     "builds        : $Builds"
     "fingerprint   : $ExpectFingerprint (verified on every copy)"

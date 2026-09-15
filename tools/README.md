@@ -24,7 +24,7 @@ not change.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `nps_build_pool.ps1` | Build N independent PGO binaries of one tier at a clean head, fingerprint-checked, with a hash manifest | PLAN performance qualification; RAR-P24 |
+| `nps_build_pool.ps1` | Build N independent PGO binaries of one tier (or of a feature arm with `-Features`) at a clean head, fingerprint-checked, with a hash manifest | PLAN performance qualification; RAR-P24 |
 | `nps_multibuild.ps1` | Interleaved pooled-PGO NPS A/B with a bootstrap CI | PLAN performance qualification; RAR-P24 |
 | `nps_scaling.ps1` | Thread-scaling NPS on two pinned middlegames (uses `uci_probe.ps1`) | SMP scaling rows |
 | `uci_probe.ps1` | Minimal UCI driver shared by the scaling scripts | `nps_scaling.ps1`, `diag_smp_sweep.ps1` |
