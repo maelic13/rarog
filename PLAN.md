@@ -741,8 +741,63 @@ diagnostics; two rejections stop B.
           STS fixture is not placed, so the phase-4 suite scored by oracle
           agreement is the positional screen until it is. **With it, B.2.2
           closes.**
-    - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
-      `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
+    - **B.2.3 SPSA on the `b2core` arm — preparation `I1`, tune `V`,
+      maintainer-run.** Defined 2026-09-15 by the B.2.2 review after
+      B.2.2.3 found three curved coordinates. **Arm:** `b2core` at
+      4,706,910 / EBF 2.391 (engine `308abe9`), the five categorical
+      switches at their RAR-S74 defaults. **Coordinates, 82:** every
+      `CoreParams` spin except the five switches (`CoreRazorGuards`,
+      `CoreCorrTrainDecisive`, `CoreCorrTrainExcluded`, `CoreLmrFullDepth`,
+      `CoreLmrCheckRoot`, gated by games and never coordinates),
+      `CoreIirMinDepth` (a discrete depth threshold; IIR is B.3's decision)
+      and `CoreEvalRule50Damping` (too few games reach a high clock at
+      `3+0.03` to carry a gradient; rule 6). The four LMR clamp bounds are
+      in. `SearchParams` (null move, ProbCut, singular, aspiration, time)
+      stay at their defaults: B.3, B.5 and B.6 own them, and search and
+      evaluation coordinates are never mixed. **Config:**
+      `tools/spsa_configs/config_b23core.json`, one entry per coordinate
+      with `value` = the engine default, `min_value`/`max_value` = the
+      declared range, `step` = `max(2, round((max − min) / 16))` (about 6%
+      of the range at iteration 1, decaying to 0.39 of that at N = 10,000;
+      every integer coordinate keeps `step · c_t(N) ≥ 0.5`);
+      `fixed_b23core.json` = Hash 64, Threads 1, MultiPV 1 and the five
+      switches at their defaults (fixed because they were gated, not
+      pinned). `./tools/audit_spsa_coverage.ps1` must read clean.
+      **Tooling ticket first:** `tools/build_test.ps1 -Tune` refuses
+      `-Features`, and `spsa.ps1` requires its bench-verified `*-tune`
+      manifest, so today no `b2core` tune binary can enter the tuner.
+      Let `-Tune -Features b2core` build `--features tune,b2core` with
+      flavor `b2core-tune`, the manifest's fingerprint the arm's own
+      (4,706,910), and `spsa.ps1` accept that flavor; a negative test that
+      an off-arm tune binary is refused for a config naming `Core*`
+      options. **Schedule** (`tools/spsa.ps1` defaults, validated by
+      RAR-M05): 32 games per iteration, `r_end` 0.0031, `A = N/10`,
+      `alpha` 0.601, `gamma` 0.102, concurrency 14 with the affinity patch.
+      **Pilot** (PROCESS step 5): 128 iterations × 32 games, sensitivity
+      only, never promoted or used as a seed; re-audit the surface after
+      it. **Horizon:** the repo's convergence model puts 82 coordinates
+      within a few percent of 30 (endpoint RMSE in step units 0.60 / 0.47
+      / 0.42 at N = 5,000 / 10,000 / 15,000 for weak curvature; 0.26 /
+      0.22 / 0.23 for moderate), so **N = 10,000** (320,000 games, about
+      65–79 hours at 82–97 games per minute) is registered, with staged
+      reviews at `-StopAfter 2500` and `5000` that read state without
+      changing the horizon; N = 5,000 is the economy alternative if the
+      maintainer chooses it at registration, and the choice is immutable
+      after launch. **Estimator:** the final theta at N from
+      `tuner/state.json`, rounded to integers, no checkpoint selection;
+      the maintainer pastes the final values. **Registration** as RAR-S75
+      before launch: surface, fixed values, binary hash and fingerprint,
+      horizon, gain, estimator. **After the tune:** bake theta as the
+      `CoreParams` defaults in one engine commit (new `b2core`
+      fingerprint), fresh PGO build; a **diagnostic 2,000-game paired run,
+      fitted against unfitted** (prediction, frozen here: **+12 ± 11** for
+      the fitted arm, moderate; falsifier: ≤ 0 means the donor's seeds
+      were already near the STC optimum, in which case theta is not
+      baked and B.6's joint tune is deferred to the accepted head); then
+      B.2.4 as registered. **P6 ruling (B.2.2.3):** the continuation
+      correction stays admitted; the +52 arm includes it, and a 5.6% bench
+      move in a tree that moves 0.3–71% per coordinate step is not a
+      pruning-signal finding. Calibration at B.2.4.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
       sized from RAR-M10; then ledger row and calibration. Accepted head
       becomes the base for B.3. No null calibration precedes it: the 1T
@@ -842,7 +897,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | RESEARCH | V | B.2.2 closed 2026-09-15 and B.2.2.3 found three curved coordinates, so it runs and is the next executable leaf; coordinates = the registered set with the four clamp bounds, less the five categorical switches; the agent prepares the `tools/spsa.ps1` configuration and command, the maintainer runs the SPSA |
+| B.2.3 | READY_FOR_IMPLEMENTATION | V | Defined 2026-09-15: 82 coordinates, config and fixed file, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, horizon N = 10,000 registered as RAR-S75 before launch, final theta baked then a fitted-vs-unfitted diagnostic run before B.2.4 |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
