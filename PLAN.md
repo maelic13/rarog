@@ -489,13 +489,20 @@ diagnostics; two rejections stop B.
       next and smaller. At a fixed depth the candidate searches more interior
       and fewer quiescence nodes than B.1. An equal-time WAC proxy (0.683 of
       each budget) reads 190 against B.1's 200 at 100k and 235 against 237 at
-      400k. **Not played:** the registered 2,000-game paired run (binaries
-      built, hash-bound and smoke-tested) and the ETW profile the review asked
-      for before it (binary staged; needs an elevated shell). P1 assumed
-      0.93–0.97x speed, so at 0.683x the −40 floor cannot separate a defect
-      from the speed loss. **Decision owed by the maintainer:** re-plan B.2
-      (razoring first, then ProbCut and singular; B.7 for the per-node cost)
-      and whether the paired run is played on this arm now.
+      400k. **Paired run, maintainer-run 2026-09-15: +52.16 ± 10.73 Elo**
+      (nElo +75.14 ± 15.23; 745-808-447; pentanomial [34, 168, 364, 334,
+      100]; 2,000 normal terminations; equal time per move and mean depth
+      15.94 against 15.84), **above the +10 target** while the four floors
+      fail, and P1 (−10 ± 30) missed in sign. **ETW profile:** `threats()` 1.6%
+      and `check_info` 0.9% of samples, so the review's speed suspects cannot
+      explain the NPS loss. The visible costs are evaluation (29.5% through
+      inline chains), TT probing (7.4% exclusive), quiet scoring and selection
+      in the picker, and correction lookups. There is no off-arm profile to
+      compare. The pre-game recommendation against B.2.3 on this arm is
+      withdrawn. **The registration has no rule for a run above target with
+      floors failed. That, the screens' validity, razoring, speed order and
+      the gate's bounds go to an in-depth review**
+      (`analysis/b22_screens_2026-09-15.md` §9) before B.2.3.
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -587,7 +594,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | Zero-game screens run 2026-09-15: NPS 0.683x, WAC 100k 204, agreement 35, canaries 75/116 below floors; one ablation sweep points at razoring (`analysis/b22_screens_2026-09-15.md`). The paired run and the ETW profile are prepared, maintainer-run; the re-plan is the maintainer's decision |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | All screens in 2026-09-15: paired run +52.16 ± 10.73 Elo (above target) with NPS 0.683x, WAC 100k 204, agreement 35 and canaries 75/116 below their floors; profile clears `threats()`. Held for the in-depth review of `analysis/b22_screens_2026-09-15.md` §9, which decides whether B.2.3 proceeds |
 | B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
