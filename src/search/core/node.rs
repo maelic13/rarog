@@ -1379,8 +1379,11 @@ impl Searcher {
                 };
             } else {
                 // Late-move reductions: every move after the first, from depth
-                // 2, never at the root or in check.
-                if !self.ablated(7) && !NODE::ROOT && !in_check && depth >= 2 {
+                // 2; at the root and in check only under `CoreLmrCheckRoot`.
+                if !self.ablated(7)
+                    && (self.cfg.core.lmr_check_root != 0 || (!NODE::ROOT && !in_check))
+                    && depth >= 2
+                {
                     let tt_valid = ev.bound.is_some();
                     let reduction = self.late_move_reduction(&LateMoveInputs {
                         depth,
@@ -1418,6 +1421,11 @@ impl Searcher {
                     });
                     let reduced_depth = reduced_depth(new_depth, reduction, NODE::PV);
                     crate::diag_count!(lmr_applied);
+                    #[cfg(test)]
+                    {
+                        self.td.lmr_at_root += u64::from(NODE::ROOT);
+                        self.td.lmr_in_check += u64::from(in_check);
+                    }
                     #[cfg(feature = "diag")]
                     {
                         if new_depth - reduction / 1024 < 1 {
@@ -1461,9 +1469,11 @@ impl Searcher {
                     if score > alpha {
                         // A reduced move that beat alpha by a wide margin earns
                         // a deeper verification; one that barely did, a
-                        // shallower one.
-                        let deeper = score > best_score + self.cfg.core.lmr_research_deeper;
-                        let shallower = score < best_score + self.cfg.core.lmr_research_shallower;
+                        // shallower one. Not at the root, as the donor does.
+                        let deeper =
+                            !NODE::ROOT && score > best_score + self.cfg.core.lmr_research_deeper;
+                        let shallower = !NODE::ROOT
+                            && score < best_score + self.cfg.core.lmr_research_shallower;
                         if deeper {
                             crate::diag_count!(lmr_research_deeper);
                         }
@@ -2246,6 +2256,41 @@ mod tests {
         );
     }
 
+    /// `CoreLmrCheckRoot` widens late-move reductions to the root and to
+    /// nodes in check: from a quiet root and from a root in check, a late
+    /// move is reduced at both kinds of node at 1 and at neither at 0.
+    #[test]
+    fn lmr_check_root_reduces_at_the_root_and_in_check_only_when_set() {
+        let run = |scope: i32, fen: &str| {
+            let mut searcher = Searcher::default();
+            searcher.cfg.core.lmr_check_root = scope;
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            let score =
+                searcher.search_root_window(&mut board, 7, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            assert!(score.abs() < INF_SCORE);
+            (searcher.td.lmr_at_root, searcher.td.lmr_in_check)
+        };
+        let quiet = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+        let checked = "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3";
+        for fen in [quiet, checked] {
+            assert_eq!(
+                run(0, fen),
+                (0, 0),
+                "no reduction at the root or in check at 0: {fen}"
+            );
+        }
+        let (root, _) = run(1, quiet);
+        assert!(root > 0, "the root reduces a late move at 1");
+        let (root_in_check, in_check) = run(1, checked);
+        assert!(
+            root_in_check > 0,
+            "a root in check reduces a late move at 1"
+        );
+        assert!(in_check > 0, "a node in check reduces a late move at 1");
+    }
+
     /// The categorical switches, each settable to 0 or 1 on a searcher.
     const SWITCHES: &[(&str, SetSwitch)] = &[
         ("CoreRazorGuards", |s, v| {
@@ -2259,6 +2304,9 @@ mod tests {
         }),
         ("CoreLmrFullDepth", |s, v| {
             s.cfg.core.lmr_full_depth = v;
+        }),
+        ("CoreLmrCheckRoot", |s, v| {
+            s.cfg.core.lmr_check_root = v;
         }),
     ];
 

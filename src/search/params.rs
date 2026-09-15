@@ -592,6 +592,11 @@ search_params! {
     /// branch, which may take one or two plies off it; 0 searches it at full
     /// depth.
     lmr_full_depth = 0, "CoreLmrFullDepth", 0..=1;
+    /// Categorical, never an SPSA coordinate. 1 gives late-move reductions
+    /// the donor's scope, the root and nodes in check included, with the
+    /// first move still unreduced and the one-ply floor kept; 0 never
+    /// reduces at the root or in check.
+    lmr_check_root = 0, "CoreLmrCheckRoot", 0..=1;
 
     // History update policy, history units.
     /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.

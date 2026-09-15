@@ -56,6 +56,12 @@ pub(super) struct ThreadData {
     /// Width of the root window of the current aspiration step.
     #[cfg(feature = "b2core")]
     pub(super) root_delta: i32,
+    /// Late-move reductions applied at a root node and at a node in check,
+    /// for the tests of the reduction scope.
+    #[cfg(all(test, feature = "b2core"))]
+    pub(super) lmr_at_root: u64,
+    #[cfg(all(test, feature = "b2core"))]
+    pub(super) lmr_in_check: u64,
 }
 
 impl Default for ThreadData {
@@ -89,6 +95,10 @@ impl Default for ThreadData {
             root_best_effort: 0.0,
             #[cfg(feature = "b2core")]
             root_delta: 1,
+            #[cfg(all(test, feature = "b2core"))]
+            lmr_at_root: 0,
+            #[cfg(all(test, feature = "b2core"))]
+            lmr_in_check: 0,
         }
     }
 }
