@@ -387,7 +387,14 @@ impl Searcher {
             .and_then(|mv| board.legal_move(mv))
             .unwrap_or(Move::NULL);
         if NODE::ROOT && !self.td.root_moves.is_empty() && !self.td.root_moves.contains(&tt_move) {
-            tt_move = Move::NULL;
+            // A later MultiPV line excludes the moves already ranked, which
+            // usually include the stored one. The line's own candidate stands
+            // in, so the root is not taken for a TT-less node and reduced.
+            tt_move = if self.td.multipv_line > 0 {
+                self.td.root_moves[0]
+            } else {
+                Move::NULL
+            };
         }
 
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
@@ -803,7 +810,7 @@ impl Searcher {
             if NODE::ROOT && scored.len() > 1 {
                 // No-op serially: with no shared state there are no pool
                 // scores to fold in.
-                self.apply_shared_root_scores(legal_moves, &mut scored);
+                self.apply_shared_root_scores(&mut scored);
             }
             // Helpers rotate their root list on top of the pool ordering, so
             // the pool's shared view refines the ordering without collapsing
@@ -1395,16 +1402,20 @@ impl Searcher {
                                 }
                             }
                         }
-                        self.shared.tt.store(TtStore {
-                            key: hash,
-                            depth,
-                            score,
-                            bound: Bound::Lower,
-                            mv,
-                            ply,
-                            static_eval: raw_static_eval,
-                            is_pv: tt_pv,
-                        });
+                        // A later MultiPV line's root result is not the
+                        // position's: it excludes the better moves.
+                        if !(NODE::ROOT && self.td.multipv_line > 0) {
+                            self.shared.tt.store(TtStore {
+                                key: hash,
+                                depth,
+                                score,
+                                bound: Bound::Lower,
+                                mv,
+                                ply,
+                                static_eval: raw_static_eval,
+                                is_pv: tt_pv,
+                            });
+                        }
                         #[cfg(feature = "diag")]
                         if diag_sample {
                             crate::diag_count!(main_store_lower);
@@ -1498,16 +1509,18 @@ impl Searcher {
                     bonus,
                 );
             }
-            self.shared.tt.store(TtStore {
-                key: hash,
-                depth,
-                score: best_score,
-                bound,
-                mv: best_move,
-                ply,
-                static_eval: raw_static_eval,
-                is_pv: tt_pv,
-            });
+            if !(NODE::ROOT && self.td.multipv_line > 0) {
+                self.shared.tt.store(TtStore {
+                    key: hash,
+                    depth,
+                    score: best_score,
+                    bound,
+                    mv: best_move,
+                    ply,
+                    static_eval: raw_static_eval,
+                    is_pv: tt_pv,
+                });
+            }
             #[cfg(feature = "diag")]
             if diag_sample {
                 match bound {

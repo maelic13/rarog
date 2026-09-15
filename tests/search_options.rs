@@ -213,6 +213,7 @@ fn search_options_setoption_and_reset_cover_engine_configuration() {
     assert!(names.contains("option name Hash"));
     assert!(names.contains("option name Move Overhead"));
     assert!(names.contains("option name Threads type spin default 1 min 1 max 1024"));
+    assert!(names.contains("option name MultiPV type spin default 1 min 1 max 256"));
     assert!(names.contains("option name Clear Hash"));
     assert!(names.contains("option name Ponder type check default false"));
     assert!(names.contains("option name SyzygyPath type string default <empty>"));
@@ -271,6 +272,24 @@ fn search_options_invalid_setoption_values_preserve_previous_values() {
     assert_eq!(options.engine.syzygy.probe_depth, 8);
     assert_eq!(options.engine.syzygy.probe_limit, 5);
     assert!(!options.engine.syzygy.fifty_move_rule);
+}
+
+#[test]
+fn search_options_multipv_clamps_and_ignores_invalid_values() {
+    let mut options = SearchOptions::default();
+    assert_eq!(options.engine.multi_pv, 1);
+
+    assert_eq!(
+        options.set_option(&args(&["name", "MultiPV", "value", "4"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(options.engine.multi_pv, 4);
+    options.set_option(&args(&["name", "MultiPV", "value", "bad"]));
+    assert_eq!(options.engine.multi_pv, 4);
+    options.set_option(&args(&["name", "MultiPV", "value", "0"]));
+    assert_eq!(options.engine.multi_pv, 1);
+    options.set_option(&args(&["name", "MultiPV", "value", "9999"]));
+    assert_eq!(options.engine.multi_pv, 256);
 }
 
 #[test]

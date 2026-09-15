@@ -37,6 +37,9 @@ pub(super) struct ThreadData {
     /// records below so move-membership and SMP hot reads stay cache-compact.
     pub(super) root_moves: Vec<Move>,
     pub(super) root_move_records: Vec<RootMove>,
+    /// Index of the MultiPV line being searched; 0 outside MultiPV, where the
+    /// root reads and writes the table as an ordinary node.
+    pub(super) multipv_line: usize,
     /// Move-ordering histories.
     pub(super) hist: HistoryTables,
     /// Static-evaluation correction tables.
@@ -75,6 +78,7 @@ impl Default for ThreadData {
             stack: PlyArray::new(StackEntry::default()),
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
+            multipv_line: 0,
             hist: HistoryTables::default(),
             corr: CorrectionTables::default(),
             root_move_offset: 0,

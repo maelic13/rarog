@@ -4,6 +4,8 @@ use crate::search::params::CoreParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
+/// Most principal variations `MultiPV` can ask for.
+pub(crate) const MAX_MULTI_PV: usize = 256;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SyzygyOptions {
@@ -30,6 +32,8 @@ pub struct EngineOptions {
     pub hash_mb: usize,
     pub ponder: bool,
     pub threads: usize,
+    /// Principal variations reported per depth; 1 is the ordinary search.
+    pub multi_pv: usize,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
     /// The selectivity core's coordinates.
@@ -44,6 +48,7 @@ impl Default for EngineOptions {
             hash_mb: 64,
             ponder: false,
             threads: 1,
+            multi_pv: 1,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
             #[cfg(feature = "b2core")]
@@ -159,6 +164,7 @@ impl SearchOptions {
             String::from("option name Ponder type check default false"),
             String::from("option name Move Overhead type spin default 10 min 0 max 5000"),
             format!("option name Threads type spin default 1 min 1 max {MAX_THREADS}"),
+            format!("option name MultiPV type spin default 1 min 1 max {MAX_MULTI_PV}"),
             String::from("option name SyzygyPath type string default <empty>"),
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
@@ -373,6 +379,14 @@ impl SearchOptions {
                     self.engine.threads = threads.clamp(1, MAX_THREADS);
                 } else {
                     crate::info_string!("Invalid Threads value.");
+                }
+                OptionUpdate::Engine
+            }
+            "multipv" => {
+                if let Ok(lines) = value.parse::<usize>() {
+                    self.engine.multi_pv = lines.clamp(1, MAX_MULTI_PV);
+                } else {
+                    crate::info_string!("Invalid MultiPV value.");
                 }
                 OptionUpdate::Engine
             }

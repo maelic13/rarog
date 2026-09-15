@@ -229,6 +229,87 @@ impl Default for SearchConfig {
     }
 }
 
+/// One root line as MultiPV reports it.
+#[derive(Clone, Debug)]
+struct ReportedLine {
+    depth: usize,
+    seldepth: usize,
+    score: i32,
+    bound: RootBound,
+    pv: Vec<Move>,
+}
+
+/// An aspiration window and its widening state for one root search.
+///
+/// From depth 4 the window centres on `center` unless that is a mate score.
+/// Each failure widens the failing side by the growth parameters, re-centred
+/// on `center`; a fail-low also pulls beta to the middle of the old window. A
+/// side opens fully after `asp_max_fails` failures, once its delta saturates,
+/// or when the failing score is in the mate range, so the loop terminates.
+struct Aspiration {
+    alpha: i32,
+    beta: i32,
+    center: i32,
+    alpha_delta: i32,
+    beta_delta: i32,
+    fail_lows: i32,
+    fail_highs: i32,
+}
+
+impl Aspiration {
+    fn new(params: &SearchParams, depth: usize, center: i32) -> Self {
+        let use_aspiration = depth >= 4 && center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
+        let delta = params.aspiration_delta;
+        Self {
+            alpha: if use_aspiration {
+                (center - delta).max(-INF_SCORE)
+            } else {
+                -INF_SCORE
+            },
+            beta: if use_aspiration {
+                (center + delta).min(INF_SCORE)
+            } else {
+                INF_SCORE
+            },
+            center,
+            alpha_delta: delta,
+            beta_delta: delta,
+            fail_lows: 0,
+            fail_highs: 0,
+        }
+    }
+
+    fn fail_low(&mut self, params: &SearchParams, score: i32) {
+        self.fail_lows += 1;
+        self.alpha_delta =
+            (self.alpha_delta * params.asp_growth_pct / 100 + params.asp_growth_add).min(INF_SCORE);
+        self.alpha = if self.fail_lows >= params.asp_max_fails
+            || self.alpha_delta >= INF_SCORE
+            || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
+        {
+            -INF_SCORE
+        } else {
+            (self.center - self.alpha_delta).max(-INF_SCORE)
+        };
+        self.beta = (self.alpha + self.beta) / 2;
+    }
+
+    fn fail_high(&mut self, params: &SearchParams, score: i32) {
+        self.fail_highs += 1;
+        self.beta_delta = (self.beta_delta * params.asp_growth_high_pct / 100
+            + params.asp_growth_add)
+            .min(INF_SCORE);
+        self.beta = if self.fail_highs >= params.asp_max_fails
+            || self.beta_delta >= INF_SCORE
+            || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
+        {
+            INF_SCORE
+        } else {
+            (self.center + self.beta_delta).min(INF_SCORE)
+        };
+    }
+}
+
 /// One search thread: what every thread shares, the configuration of the
 /// current search and the state only this thread mutates. The engine owns the
 /// main thread's `Searcher`, which also owns the helper pool; each helper owns
@@ -412,6 +493,10 @@ impl Searcher {
             }
         }
 
+        let lines = engine_options.multi_pv.clamp(1, root_moves.len());
+        if lines > 1 {
+            return self.search_root_multipv(board, root_moves, lines, emit_info, poll);
+        }
         self.search_root(board, root_moves, emit_info, poll)
     }
 
@@ -629,30 +714,17 @@ impl Searcher {
             {
                 window_center = pool_score;
             }
-            let use_aspiration =
-                depth >= 4 && window_center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-            let mut alpha_delta = self.cfg.params.aspiration_delta;
-            let mut beta_delta = self.cfg.params.aspiration_delta;
-            let mut alpha = if use_aspiration {
-                (window_center - alpha_delta).max(-INF_SCORE)
-            } else {
-                -INF_SCORE
-            };
-            let mut beta = if use_aspiration {
-                (window_center + beta_delta).min(INF_SCORE)
-            } else {
-                INF_SCORE
-            };
-            // TERMINATION BY CONSTRUCTION: once a side has failed
-            // `asp_max_fails` times it is opened to ±INF and cannot fail again,
-            // so this loop runs at most `2 * asp_max_fails` times whatever the
-            // scores do.
-            let mut fail_low_count = 0i32;
-            let mut fail_high_count = 0i32;
+            // Termination by construction: see `Aspiration`.
+            let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
 
             loop {
-                let score =
-                    self.search_root_window(&mut board, infra::to_i32(depth), alpha, beta, poll);
+                let score = self.search_root_window(
+                    &mut board,
+                    infra::to_i32(depth),
+                    window.alpha,
+                    window.beta,
+                    poll,
+                );
                 if self.td.stopped || self.td.quit {
                     break;
                 }
@@ -670,37 +742,14 @@ impl Searcher {
                 // failing score" variant measured −4.52 ± 4.80 Elo, because
                 // AspirationDelta and the pruning group were tuned around these
                 // dynamics.
-                if score <= alpha {
+                if score <= window.alpha {
                     crate::diag_count!(asp_fail_low);
-                    fail_low_count += 1;
-                    alpha_delta = (alpha_delta * self.cfg.params.asp_growth_pct / 100
-                        + self.cfg.params.asp_growth_add)
-                        .min(INF_SCORE);
-                    alpha = if fail_low_count >= self.cfg.params.asp_max_fails
-                        || alpha_delta >= INF_SCORE
-                        || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
-                    {
-                        -INF_SCORE
-                    } else {
-                        (window_center - alpha_delta).max(-INF_SCORE)
-                    };
-                    beta = (alpha + beta) / 2;
+                    window.fail_low(&self.cfg.params, score);
                     continue;
                 }
-                if score >= beta {
+                if score >= window.beta {
                     crate::diag_count!(asp_fail_high);
-                    fail_high_count += 1;
-                    beta_delta = (beta_delta * self.cfg.params.asp_growth_high_pct / 100
-                        + self.cfg.params.asp_growth_add)
-                        .min(INF_SCORE);
-                    beta = if fail_high_count >= self.cfg.params.asp_max_fails
-                        || beta_delta >= INF_SCORE
-                        || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
-                    {
-                        INF_SCORE
-                    } else {
-                        (window_center + beta_delta).min(INF_SCORE)
-                    };
+                    window.fail_high(&self.cfg.params, score);
                     continue;
                 }
                 best_score = score;
@@ -795,26 +844,8 @@ impl Searcher {
                 break;
             }
             if !self.cfg.limits.movetime_mode {
-                // TM dynamic multipliers, stored ×10000 in SearchParams;
-                // `/ 10000.0` reconstructs the Stockfish seeds bit-exactly.
-                let opt_scale = self.cfg.params.tm_opt_scale as f64 / 10_000.0;
-                let fall_base = self.cfg.params.tm_fall_base as f64 / 10_000.0;
-                let fall_slope = self.cfg.params.tm_fall_slope as f64 / 10_000.0;
-                // fallingEval: ↑ when score is falling (want more time); seeds from SF.
-                let falling_eval = (fall_base
-                    + fall_slope * (falling_baseline - best_score as f64))
-                    .clamp(0.572, 1.708);
-                // bestMoveInstab: ↑ when best move changed recently.
-                let best_move_instab =
-                    tm_instability_factor(&self.cfg.params, tot_best_move_changes);
-                // effortFactor: linear interp — at effort≤0.79 → effort_high; at effort≥1.0 → effort_low.
-                let effort_factor = tm_effort_factor(&self.cfg.params, self.td.root_best_effort);
-                let total_time = self.cfg.limits.optimum_ms
-                    * opt_scale
-                    * falling_eval
-                    * best_move_instab
-                    * effort_factor;
-                let soft_target = total_time.min(self.cfg.limits.maximum_ms);
+                let soft_target =
+                    self.soft_target_ms(falling_baseline, best_score, tot_best_move_changes);
                 if self.td.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
                     if elapsed_ms >= soft_target {
@@ -896,6 +927,381 @@ impl Searcher {
                 SearchExit::Stop
             },
             ponderhit: self.td.ponderhit,
+        }
+    }
+
+    /// The between-iteration soft time target: the optimum scaled by the
+    /// falling-eval, best-move-instability and effort factors, capped at the
+    /// maximum. The multipliers are stored ×10000 in `SearchParams`, so
+    /// `/ 10000.0` reconstructs the Stockfish seeds bit-exactly.
+    fn soft_target_ms(
+        &self,
+        falling_baseline: f64,
+        best_score: i32,
+        tot_best_move_changes: f64,
+    ) -> f64 {
+        let opt_scale = self.cfg.params.tm_opt_scale as f64 / 10_000.0;
+        let fall_base = self.cfg.params.tm_fall_base as f64 / 10_000.0;
+        let fall_slope = self.cfg.params.tm_fall_slope as f64 / 10_000.0;
+        // Falling eval: more time when the score falls.
+        let falling_eval =
+            (fall_base + fall_slope * (falling_baseline - best_score as f64)).clamp(0.572, 1.708);
+        // Instability: more time when the best move changed recently.
+        let best_move_instab = tm_instability_factor(&self.cfg.params, tot_best_move_changes);
+        // Effort: less time when the best move took most of the iteration.
+        let effort_factor = tm_effort_factor(&self.cfg.params, self.td.root_best_effort);
+        let total_time = self.cfg.limits.optimum_ms
+            * opt_scale
+            * falling_eval
+            * best_move_instab
+            * effort_factor;
+        total_time.min(self.cfg.limits.maximum_ms)
+    }
+
+    /// Iterative deepening with more than one principal variation.
+    ///
+    /// Each depth searches line 1 over the whole root set, then line `i` over
+    /// the moves not yet ranked at this depth, by narrowing the root
+    /// restriction the kernel already honours for `searchmoves` (it also drops
+    /// a TT move outside the restriction). A line's aspiration window centres
+    /// on the previous-depth score of the move expected at its rank. After a
+    /// line completes, its best move takes that rank and the unranked moves
+    /// keep their previous-depth order, since a move that never raised alpha
+    /// proved only an upper bound. `bestmove`, the ponder move and the time
+    /// manager read line 1 only.
+    #[cold]
+    #[inline(never)]
+    fn search_root_multipv<P: FnMut() -> SearchEvent + ?Sized>(
+        &mut self,
+        mut board: Board,
+        root_set: &[Move],
+        lines: usize,
+        emit_info: bool,
+        poll: &mut P,
+    ) -> SearchResult {
+        if self.shared.threads == 1 {
+            crate::diag::reset();
+        }
+        let lines = lines.clamp(1, root_set.len());
+        self.td.root_move_records.clear();
+        self.td
+            .root_move_records
+            .extend(root_set.iter().copied().map(RootMove::new));
+        // The root set in rank order: moves ranked at this depth first.
+        let mut order = root_set.to_vec();
+        let mut bestmove = root_set[0];
+        let mut pondermove = Move::NULL;
+        let mut best_score = -INF_SCORE;
+        let mut completed_depth = 0;
+        let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
+        let mut prev_avg_score = 0.0_f64;
+        let mut tot_best_move_changes = 0.0_f64;
+        let mut cast_stop_vote = false;
+        // The lines of the last depth whose every line completed, best first.
+        // A record's score alone is not a line: a move that never raised alpha
+        // keeps the bound of its last attempt.
+        let mut settled: Vec<ReportedLine> = Vec::new();
+
+        for depth in 1..=max_depth {
+            for root_move in &mut self.td.root_move_records {
+                root_move.begin_iteration();
+            }
+            // Last depth's lines are the first candidates, in their rank; the
+            // rest follow by previous score. Stable, so ties keep their rank.
+            order.sort_by_key(|&mv| {
+                (
+                    settled
+                        .iter()
+                        .position(|line| line.pv[0] == mv)
+                        .unwrap_or(usize::MAX),
+                    std::cmp::Reverse(
+                        self.root_record(mv)
+                            .map_or(-INF_SCORE, |rm| rm.previous_score),
+                    ),
+                )
+            });
+            let previous_bestmove = bestmove;
+            let mut ranked = 0usize;
+            // The line being searched when the search stopped, with the bound
+            // of its last aspiration attempt at this depth, if it had one.
+            let mut interrupted: Option<ReportedLine> = None;
+
+            for line in 0..lines {
+                self.td.root_moves.clear();
+                self.td.root_moves.extend_from_slice(&order[line..]);
+                self.td.multipv_line = line;
+                if line == 0 {
+                    self.td.root_iteration_nodes = self.td.nodes;
+                    self.td.root_best_nodes = 0;
+                    self.td.root_best_effort = 0.0;
+                }
+                let center = self
+                    .root_record(order[line])
+                    .map_or(-INF_SCORE, |rm| rm.previous_score);
+                let mut window = Aspiration::new(&self.cfg.params, depth, center);
+                let mut attempt: Option<ReportedLine> = None;
+                let completed = loop {
+                    let score = self.search_root_window(
+                        &mut board,
+                        infra::to_i32(depth),
+                        window.alpha,
+                        window.beta,
+                        poll,
+                    );
+                    if self.td.stopped || self.td.quit {
+                        break false;
+                    }
+                    if score <= window.alpha {
+                        crate::diag_count!(asp_fail_low);
+                        // No move raised alpha: the line's bound is the best
+                        // upper bound among the moves this attempt searched.
+                        let bounded_move = order[line..]
+                            .iter()
+                            .copied()
+                            .filter_map(|mv| {
+                                self.root_record(mv)
+                                    .filter(|record| record.last_search_depth == depth)
+                                    .map(|record| (record.score, mv))
+                            })
+                            .max_by_key(|&(score, _)| score)
+                            .map_or(order[line], |(_, mv)| mv);
+                        attempt = Some(self.reported_line(bounded_move, depth, RootBound::Upper));
+                        window.fail_low(&self.cfg.params, score);
+                        continue;
+                    }
+                    if score >= window.beta {
+                        crate::diag_count!(asp_fail_high);
+                        let fail_high_move = if self.td.pv_len[0] > 0 {
+                            self.td.pv_table[0][0]
+                        } else {
+                            order[line]
+                        };
+                        attempt = Some(self.reported_line(fail_high_move, depth, RootBound::Lower));
+                        window.fail_high(&self.cfg.params, score);
+                        continue;
+                    }
+                    break true;
+                };
+                if !completed {
+                    interrupted = attempt;
+                    break;
+                }
+                let line_best = if self.td.pv_len[0] > 0 {
+                    self.td.pv_table[0][0]
+                } else {
+                    order[line]
+                };
+                if let Some(position) = order[line..].iter().position(|&mv| mv == line_best) {
+                    let mv = order.remove(line + position);
+                    order.insert(line, mv);
+                }
+                ranked = line + 1;
+                // A later line searched in its own window can score above an
+                // earlier one; the lines ranked at this depth are kept in score
+                // order, so line 1, and the move played, is the best of them.
+                order[..ranked].sort_by_key(|&mv| {
+                    std::cmp::Reverse(self.root_record(mv).map_or(-INF_SCORE, |rm| rm.score))
+                });
+                if line == 0 {
+                    completed_depth = depth;
+                    let iteration_nodes = self
+                        .td
+                        .nodes
+                        .saturating_sub(self.td.root_iteration_nodes)
+                        .max(1);
+                    self.td.root_best_effort =
+                        self.td.root_best_nodes as f64 / iteration_nodes as f64;
+                }
+                if let Some(record) = self.root_record(order[0]) {
+                    best_score = record.score;
+                    bestmove = record.mv;
+                    pondermove = if record.pv_len > 1 {
+                        record.pv[1]
+                    } else {
+                        Move::NULL
+                    };
+                }
+            }
+            self.td.multipv_line = 0;
+            if ranked > 0
+                && let Some(index) = self.root_record_index(bestmove)
+            {
+                self.td.root_move_records[index].last_best_depth = depth;
+            }
+
+            let stopped = self.td.stopped || self.td.quit;
+            if !stopped {
+                for root_move in &mut self.td.root_move_records {
+                    if root_move.last_search_depth == depth {
+                        root_move.complete_iteration();
+                    }
+                }
+            }
+            // A stop during line 1 reports nothing new, as the one-line search
+            // does; a stop after it reports the lines ranked at this depth, the
+            // interrupted line's last bound, and the previous depth for the
+            // rest.
+            if emit_info && ranked > 0 {
+                let mut report: Vec<ReportedLine> = order[..ranked]
+                    .iter()
+                    .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
+                    .collect();
+                if let Some(bounded) = interrupted.take() {
+                    report.push(bounded);
+                }
+                for previous in &settled {
+                    if report.len() >= lines {
+                        break;
+                    }
+                    if report.iter().all(|line| line.pv[0] != previous.pv[0]) {
+                        report.push(previous.clone());
+                    }
+                }
+                self.send_multipv_info(&report);
+            }
+            if stopped {
+                break;
+            }
+            settled = order[..ranked]
+                .iter()
+                .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
+                .collect();
+
+            tot_best_move_changes /= 2.0;
+            if bestmove != previous_bestmove {
+                tot_best_move_changes += 1.0;
+                crate::diag_count!(root_best_changes);
+            }
+            crate::diag_count!(root_iterations);
+            let falling_baseline = if completed_depth <= 1 {
+                best_score as f64
+            } else {
+                prev_avg_score
+            };
+            prev_avg_score = if completed_depth <= 1 {
+                best_score as f64
+            } else {
+                (prev_avg_score * 2.0 + best_score as f64) / 3.0
+            };
+            let elapsed_ms = self.elapsed_ms();
+            if elapsed_ms >= self.cfg.limits.maximum_ms {
+                break;
+            }
+            if !self.cfg.limits.movetime_mode {
+                let soft_target =
+                    self.soft_target_ms(falling_baseline, best_score, tot_best_move_changes);
+                if self.td.pondering {
+                    if elapsed_ms >= soft_target {
+                        self.td.stop_on_ponderhit = true;
+                    }
+                } else if elapsed_ms >= soft_target {
+                    // The pool votes as in the one-line search; this is the
+                    // main thread, so it defers until a majority agrees.
+                    if let Some(shared) = self.shared.pool() {
+                        if !cast_stop_vote {
+                            cast_stop_vote = true;
+                            if shared.vote_to_stop() {
+                                shared.request_stop();
+                            }
+                        }
+                        if shared.stop_state.load(Ordering::Relaxed) == STOP_NONE {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if pondermove.is_null() {
+            pondermove = self.ponder_from_tt(&board, bestmove);
+        }
+        if self.shared.threads == 1 {
+            crate::diag::dump();
+        }
+        SearchResult {
+            bestmove,
+            pondermove,
+            score: best_score,
+            depth: completed_depth,
+            nodes: self.td.nodes,
+            tb_hits: self.td.tb_hits,
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            exit: if self.td.quit {
+                SearchExit::Quit
+            } else {
+                SearchExit::Stop
+            },
+            ponderhit: self.td.ponderhit,
+        }
+    }
+
+    fn root_record(&self, mv: Move) -> Option<&RootMove> {
+        self.root_record_index(mv)
+            .map(|index| &self.td.root_move_records[index])
+    }
+
+    /// A line as it would be reported now: the move's record at `depth`, with
+    /// its current score and PV.
+    fn reported_line(&self, mv: Move, depth: usize, bound: RootBound) -> ReportedLine {
+        let Some(record) = self.root_record(mv) else {
+            return ReportedLine {
+                depth,
+                seldepth: 0,
+                score: -INF_SCORE,
+                bound,
+                pv: vec![mv],
+            };
+        };
+        ReportedLine {
+            depth,
+            seldepth: record.seldepth,
+            score: record.score,
+            bound,
+            pv: record.pv[..record.pv_len.clamp(1, MAX_PLY)]
+                .iter()
+                .copied()
+                .take_while(|mv| !mv.is_null())
+                .collect(),
+        }
+    }
+
+    /// One `info` line per reported MultiPV line, numbered from 1.
+    fn send_multipv_info(&self, lines: &[ReportedLine]) {
+        let elapsed_ms = self.cfg.start.elapsed().as_millis();
+        let nodes = self.reported_nodes();
+        let tb_hits = self.reported_tb_hits();
+        let nps = (nodes as u128 * 1000)
+            .checked_div(elapsed_ms)
+            .unwrap_or(nodes as u128);
+        let hashfull = self.hashfull();
+        for (index, line) in lines.iter().enumerate() {
+            let bound = match line.bound {
+                RootBound::Exact => "",
+                RootBound::Lower => " lowerbound",
+                RootBound::Upper => " upperbound",
+            };
+            let pv = line
+                .pv
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(" ");
+            self.td.sink.line(&format!(
+                "info depth {} seldepth {} multipv {} score {}{} nodes {} nps {} hashfull {} \
+                 tbhits {} time {} pv {}",
+                line.depth.max(1),
+                line.seldepth,
+                index + 1,
+                format_score(line.score),
+                bound,
+                nodes,
+                nps,
+                hashfull,
+                tb_hits,
+                elapsed_ms,
+                pv
+            ));
         }
     }
 

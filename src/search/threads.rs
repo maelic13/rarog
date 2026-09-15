@@ -299,8 +299,13 @@ impl Searcher {
         let helper_count = threads.saturating_sub(1);
         let root_len = root_moves.len();
         let shared_state = Arc::new(SharedContext::new(self.td.tb_hits, root_len, threads));
+        let lines = engine_options.multi_pv.clamp(1, root_moves.len());
         let mut worker_engine_options = engine_options;
         worker_engine_options.threads = 1;
+        // Helpers search one line; with more, the main thread owns every
+        // reported line and the move, and the helpers feed it through the
+        // table.
+        worker_engine_options.multi_pv = 1;
         self.worker_pool.set_helper_count(helper_count);
         let root_moves_shared: Arc<[Move]> = root_moves.to_vec().into();
 
@@ -357,7 +362,11 @@ impl Searcher {
                 SearchEvent::None => SearchEvent::None,
             },
         };
-        let main_result = self.search_root(root, root_moves, emit_info, &mut main_poll);
+        let main_result = if lines > 1 {
+            self.search_root_multipv(root, root_moves, lines, emit_info, &mut main_poll)
+        } else {
+            self.search_root(root, root_moves, emit_info, &mut main_poll)
+        };
         shared_state.request_stop();
 
         let mut helper_results = Vec::with_capacity(launched_helpers + 1);
@@ -419,18 +428,24 @@ impl Searcher {
             || helper_results
                 .iter()
                 .any(|result| result.exit == SearchExit::Quit);
-        let mut best =
-            select_parallel_result(&helper_results, root_moves).unwrap_or(SearchResult {
-                bestmove: root_moves[0],
-                pondermove: Move::NULL,
-                score: -INF_SCORE,
-                depth: 0,
-                nodes: 0,
-                tb_hits: 0,
-                elapsed_ms: self.cfg.start.elapsed().as_millis(),
-                exit: SearchExit::Stop,
-                ponderhit: self.td.ponderhit,
-            });
+        // With more than one line the main thread's line 1 is the answer; the
+        // helpers searched a single line and do not vote.
+        let voted = if lines > 1 {
+            helper_results.first().cloned()
+        } else {
+            select_parallel_result(&helper_results, root_moves)
+        };
+        let mut best = voted.unwrap_or(SearchResult {
+            bestmove: root_moves[0],
+            pondermove: Move::NULL,
+            score: -INF_SCORE,
+            depth: 0,
+            nodes: 0,
+            tb_hits: 0,
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            exit: SearchExit::Stop,
+            ponderhit: self.td.ponderhit,
+        });
         self.td.nodes = total_nodes;
         self.td.tb_hits = total_tb_hits;
         self.td.quit = quit;
@@ -451,6 +466,18 @@ impl Searcher {
         best
     }
 
+    /// A root move's position in the search's full root list: the index of
+    /// its persistent record and of its slot in the pool's root scores. It
+    /// stays fixed while `td.root_moves` narrows for later MultiPV lines, and
+    /// every thread builds its records from the same list.
+    #[inline]
+    pub(super) fn root_record_index(&self, mv: Move) -> Option<usize> {
+        self.td
+            .root_move_records
+            .iter()
+            .position(|record| record.mv == mv)
+    }
+
     /// Fold the pool's per-root-move knowledge into this thread's root
     /// ordering.
     ///
@@ -459,16 +486,12 @@ impl Searcher {
     /// shared TT already carries much of this implicitly, but root entries
     /// are overwritten under pressure while these slots are not, so the
     /// explicit channel survives exactly the case it is needed in.
-    pub(super) fn apply_shared_root_scores(
-        &self,
-        legal_moves: &[Move],
-        scored: &mut ScoredMoveList,
-    ) {
+    pub(super) fn apply_shared_root_scores(&self, scored: &mut ScoredMoveList) {
         let Some(shared) = self.shared.pool() else {
             return;
         };
         for entry in scored.as_mut_slice() {
-            let Some(index) = legal_moves.iter().position(|mv| *mv == entry.mv) else {
+            let Some(index) = self.root_record_index(entry.mv) else {
                 continue;
             };
             let Some((depth, score, bound)) = shared.root_score(index) else {
@@ -499,12 +522,7 @@ impl Searcher {
         beta: i32,
         nodes: u64,
     ) {
-        let Some(index) = self
-            .td
-            .root_moves
-            .iter()
-            .position(|root_move| *root_move == mv)
-        else {
+        let Some(index) = self.root_record_index(mv) else {
             // Direct diagnostic/unit calls may enter root negamax without the
             // normal `search_root` initialization. Search remains valid; there
             // is simply no persistent table to update on that path.
