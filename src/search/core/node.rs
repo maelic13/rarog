@@ -209,7 +209,9 @@ impl Searcher {
     fn late_move_reduction(&self, i: &LateMoveInputs) -> i32 {
         let p = &self.cfg.core;
         let mut r = p.lmr_log * i.depth.ilog2().cast_signed();
-        r -= (p.lmr_improvement * i.improvement / 128).clamp(-241, 1_155);
+        // Both clamps bound evaluation-unit quantities, so they carry the
+        // donor's bounds converted to Rarog's evaluation scale (x0.457).
+        r -= (p.lmr_improvement * i.improvement / 128).clamp(-110, 528);
         r -= p.lmr_correction * i.corr_abs / 1024;
         r += p.lmr_exact * i32::from(i.exact);
         r += p.lmr_tt_score_below_alpha * i32::from(i.tt_score_below_alpha);
@@ -217,7 +219,7 @@ impl Searcher {
         r += 1024 * i32::from(i.win_beta);
         if i.is_quiet {
             r += p.lmr_quiet - p.lmr_quiet_history * i.history / 1024
-                + p.lmr_alpha_gap * i.alpha_gap.clamp(-65, 91) / 128;
+                + p.lmr_alpha_gap * i.alpha_gap.clamp(-30, 42) / 128;
         } else {
             r += p.lmr_noisy - p.lmr_noisy_history * i.history / 1024;
         }
@@ -1845,6 +1847,61 @@ mod tests {
                 assert!(reduced_depth(new_depth, reduction, false) <= new_depth + 2);
             }
         }
+    }
+
+    /// A quiet, non-PV late move with every optional term neutral.
+    fn quiet_late_move() -> LateMoveInputs {
+        LateMoveInputs {
+            depth: 8,
+            improvement: 0,
+            corr_abs: 0,
+            exact: false,
+            tt_score_below_alpha: false,
+            tt_score_above_alpha: false,
+            tt_shallow: false,
+            tt_deep: false,
+            win_beta: false,
+            is_quiet: true,
+            history: 0,
+            alpha_gap: 0,
+            critical_distance: 0,
+            pv: false,
+            window: 1,
+            laterality: 0,
+            tt_pv: false,
+            cut_node: false,
+            tt_move_null: false,
+            gives_check: false,
+            child_cutoffs: 0,
+            parent_reduction: 0,
+        }
+    }
+
+    /// The improvement term saturates at -110 and +528 reduction units and
+    /// the alpha gap at -30 and +42 evaluation units: the donor's clamps in
+    /// Rarog's evaluation scale.
+    #[test]
+    fn late_move_reduction_clamps_are_in_rarog_evaluation_units() {
+        let searcher = Searcher::default();
+        let base = quiet_late_move();
+        let with = |edit: &dyn Fn(&mut LateMoveInputs)| {
+            let mut inputs = base;
+            edit(&mut inputs);
+            searcher.late_move_reduction(&inputs)
+        };
+        let neutral = with(&|_| {});
+        let slope = searcher.cfg.core.lmr_improvement;
+        let at = |units: i32| units * 128 / slope + 1;
+        assert_eq!(neutral - with(&|i| i.improvement = at(528)), 528);
+        assert_eq!(neutral - with(&|i| i.improvement = 10_000), 528);
+        assert_eq!(neutral - with(&|i| i.improvement = -10_000), -110);
+        assert!(neutral - with(&|i| i.improvement = at(400)) < 528);
+
+        let gap = searcher.cfg.core.lmr_alpha_gap;
+        assert_eq!(with(&|i| i.alpha_gap = 1_000) - neutral, gap * 42 / 128);
+        assert_eq!(with(&|i| i.alpha_gap = 42) - neutral, gap * 42 / 128);
+        assert_eq!(with(&|i| i.alpha_gap = -1_000) - neutral, gap * -30 / 128);
+        assert!(with(&|i| i.alpha_gap = 30) - neutral < gap * 42 / 128);
     }
 
     #[test]
