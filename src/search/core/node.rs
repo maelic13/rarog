@@ -586,10 +586,12 @@ impl Searcher {
         // Razoring: far enough below alpha that only a tactic can help, so
         // the node asks quiescence. Not on a PV line, not when alpha is
         // already a decisive-looking score, not when a quiet TT move or a
-        // fail-high entry says there is more here.
+        // fail-high entry says there is more here. With the guards on, also
+        // not at a node the table places on a PV line and not above depth 3.
         if !self.ablated(0)
             && !NODE::PV
             && !in_check
+            && (self.cfg.core.razor_guards == 0 || (!tt_pv && depth <= 3))
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
             && alpha < RAZOR_ALPHA_LIMIT
@@ -1904,6 +1906,56 @@ mod tests {
         assert!(with(&|i| i.alpha_gap = 30) - neutral < gap * 42 / 128);
     }
 
+    /// A non-PV node whose table entry carries the PV bit, far below alpha
+    /// with no TT move and a quiet mate in one. Without the guards it razors
+    /// and quiescence, which does not play the quiet mate, returns a score
+    /// below alpha; with them the node searches and finds the mate.
+    #[test]
+    fn razor_guards_keep_a_tt_pv_node_out_of_razoring() {
+        // White is a queen and a rook down; Ra8 is mate on the back rank.
+        let fen = "6k1/5ppp/7q/7r/8/8/1P6/R3K3 w - - 0 1";
+        let search = |guards: i32| {
+            let mut searcher = Searcher::default();
+            searcher.cfg.core.razor_guards = guards;
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            searcher.shared.tt.store(TtStore {
+                key: board.hash(),
+                depth: 1,
+                score: -2_000,
+                bound: Bound::Upper,
+                mv: Move::NULL,
+                ply: 1,
+                static_eval: VALUE_NONE,
+                is_pv: true,
+            });
+            let margin = searcher.cfg.core.razor_base + searcher.cfg.core.razor_square * 4;
+            assert!(
+                searcher.corrected_eval(&board, 1) < -margin,
+                "the node must sit below the razoring margin"
+            );
+            searcher.negamax::<NonPv, _>(
+                &mut board,
+                2,
+                0,
+                1,
+                1,
+                false,
+                Move::NULL,
+                false,
+                1,
+                &mut || SearchEvent::None,
+            )
+        };
+        assert!(
+            search(0) <= 0,
+            "guards 0 razors the tt_pv node into quiescence"
+        );
+        assert!(
+            search(1) >= MATE_SCORE - 3,
+            "guards 1 searches the tt_pv node and finds the mate"
+        );
+    }
+
     #[test]
     fn laterality_grows_by_the_log_of_the_move_index() {
         let steps = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
@@ -1916,6 +1968,57 @@ mod tests {
         }
         assert_eq!(laterality_step(16), 3);
         assert_eq!(laterality_step(255), 6);
+    }
+
+    /// Sets one categorical switch on a searcher.
+    type SetSwitch = fn(&mut Searcher, i32);
+
+    /// The categorical switches, each settable to 0 or 1 on a searcher.
+    const SWITCHES: &[(&str, SetSwitch)] = &[("CoreRazorGuards", |s, v| {
+        s.cfg.core.razor_guards = v;
+    })];
+
+    /// Every switch at both values leaves no reduction on the stack after
+    /// the search unwinds and a root PV made of legal moves, from a quiet
+    /// middlegame root and from a root in check.
+    #[test]
+    fn switches_keep_reductions_unwinding_and_the_pv_legal() {
+        let roots = [
+            "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+        ];
+        for &(name, set) in SWITCHES {
+            for value in 0..=1 {
+                for fen in roots {
+                    let mut searcher = Searcher::default();
+                    set(&mut searcher, value);
+                    let root = Board::from_fen(fen).expect("valid FEN");
+                    let mut board = root.clone();
+                    let score = searcher.search_root_window(
+                        &mut board,
+                        7,
+                        -INF_SCORE,
+                        INF_SCORE,
+                        &mut || SearchEvent::None,
+                    );
+                    let context = format!("{name}={value} at {fen}");
+                    assert!(score.abs() < INF_SCORE, "{context}");
+                    assert_eq!(board.to_fen(), root.to_fen(), "{context}");
+                    for ply in 0..MAX_PLY {
+                        assert_eq!(searcher.td.stack[ply].reduction, 0, "{context}, ply {ply}");
+                    }
+                    let mut line = root.clone();
+                    let pv_len = searcher.td.pv_len[0].min(MAX_PLY);
+                    assert!(pv_len > 0, "{context}: empty root PV");
+                    for &mv in &searcher.td.pv_table[0][..pv_len] {
+                        let legal = line
+                            .parse_move(&mv.to_string())
+                            .unwrap_or_else(|| panic!("{context}: illegal PV move {mv}"));
+                        line.make_move(legal);
+                    }
+                }
+            }
+        }
     }
 
     /// After a search unwinds, no ply still carries an LMR reduction: the

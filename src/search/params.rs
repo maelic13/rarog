@@ -489,6 +489,10 @@ search_params! {
     /// Razoring margin `base + square * depth^2`, evaluation units.
     razor_base = 260, "CoreRazorBase", 50..=800;
     razor_square = 116, "CoreRazorSquare", 20..=400;
+    /// Categorical, never an SPSA coordinate. 1 keeps razoring off a node on
+    /// a PV line (`tt_pv`) and above depth 3, as the accepted search does; 0
+    /// razors as the donor does.
+    razor_guards = 0, "CoreRazorGuards", 0..=1;
     /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
     /// unthreatened + constant`, floored at 2.
