@@ -517,7 +517,8 @@ diagnostics; two rejections stop B.
       forward.** The five switches are categorical and are never SPSA
       coordinates (RAR-M13's lesson); a losing switch stays at its default
       until B.8 removes it.
-        - **B.2.2.1 Categorical switches and the seed-scale clamps — `I1`.**
+        - **B.2.2.1 Categorical switches and the seed-scale clamps — `I1`,
+          CLOSED 2026-09-15 (RAR-S74).**
           Engine work on the `b2core` arm, one commit per item, each with a
           test that constructs its effect and the candidate fingerprint
           recorded in the commit message. (1) **Clamp conversion first**,
@@ -619,6 +620,16 @@ diagnostics; two rejections stop B.
           recorded; the fixed-node diagnostics (WAC at 100k, agreement,
           canaries) are re-read on that arm as diagnostics only. Calibration
           of (a)–(f) appended to RAR-S74 after the games.
+          **Runs (a)–(e) played 2026-09-15 (RAR-S74):** switch effects
+          −2.6, **−15.1**, +2.3, +1.7, −3.8 (± 9.5–9.9 each); nothing
+          adopted, (f) not applicable, one host forfeit. Refusing mate-range
+          residuals costs about 15 Elo, so the donor's admission is right
+          on this evaluation; the other four are noise. **Run (g), added by
+          the review:** the converted arm (6,586,667) against the RAR-S73
+          candidate (4,706,910, `tools/test_engines/rarog-b22core-pext-pgo.exe`),
+          same conditions, prediction 0 ± 11; at or below −5 the clamp
+          conversion is reverted and the clamps become SPSA coordinates.
+          B.2.2.2 closes when (g) is read.
         - **B.2.2.3 Curvature sweep and the P6 profile — `V`.** On the arm
           B.2.2.2 leaves, the sweep §9 registered as SPSA's condition: the
           five coordinates (`CoreRfpLinear`, `CoreLmpSquare`, `CoreFpBase`,
@@ -745,8 +756,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.1 | IMPLEMENTED | I1 | Clamps converted (`b2core` 6,586,667 / EBF 2.433) and five categorical switches with tests, 2026-09-15; `b2core,tune` PGO build handed over (sha256 `27B1AF0E…C053`); RAR-S74 registered before any game |
-| B.2.2.2 | READY_FOR_IMPLEMENTATION | V | Six 2,000-game paired runs, maintainer-run, registered as RAR-S74 with the commands; B.2.2.1 is IMPLEMENTED, so it is the next executable leaf; adopted switches become defaults in one engine commit |
+| B.2.2.2 | GAME_GATE | V | Runs (a)–(e) read 2026-09-15 (RAR-S74): effects −2.6, −15.1, +2.3, +1.7, −3.8; nothing adopted, (f) not applicable; run (g), the converted arm against the 4,706,910 candidate, is the last run (prediction 0 ± 11), then the leaf closes |
 | B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 leaves; its report decides whether B.2.3 runs |
 | B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |

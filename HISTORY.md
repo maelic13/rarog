@@ -59,6 +59,19 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-15 — PLAN B.2.2.1 CLOSED, RAR-S74: the seed-scale clamps
+  converted and five categorical switches on the `b2core` arm.** Two LMR
+  clamps still in the donor's evaluation units were converted (×0.457),
+  moving the candidate's bench from 4,706,910 to 6,586,667 / EBF 2.433;
+  five `CoreParams` switches (razoring guards, mate-range residual
+  training, singular-node training, the donor's full-depth branch,
+  reductions in check and at the root) landed one commit each with a
+  constructing test, defaults at today's behaviour; a `b2core,tune` PGO
+  build and the run commands were handed over and RAR-S74 registered
+  before any game. The five runs then read −2.6, −15.1, +2.3, +1.7 and
+  −3.8 Elo for the switches: nothing adopted, and refusing mate-range
+  residuals in correction training costs about 15 Elo, so the donor's
+  admission stands.
 - **2026-09-15 — PLAN B.2.0.2 CLOSED, RAR-P26: MultiPV.** `option name
   MultiPV` (1–256), clamped to the root set after `searchmoves` and the
   tablebase filter. Above one line a cold root loop searches each line with
