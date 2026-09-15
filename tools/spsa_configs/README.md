@@ -22,13 +22,14 @@ options applied to both sides at fixed values. **One group is registered:
   - `value` is the engine default and `min_value`/`max_value` the declared
     range.
   - `step` is `max(2, round((max - min) / 16))`, rounded half away from zero.
-  - Every step keeps `step * c_t(10000) >= 0.5`; the smallest step is 3,
-    giving 1.17.
+  - Every step keeps `step * c_t(5000) >= 0.5` at the registered horizon; the
+    smallest step is 3, giving 1.26.
 - **`fixed_b23core.json`:** Hash 64, Threads 1, MultiPV 1 and the five
   switches at their defaults (fixed because they were gated, not pinned).
 - **Schedule and horizon** are registered in RAR-S75: 32 games per
-  iteration, `r_end` 0.0031, N = 10,000 with staged reviews. The estimator is
-  the final theta, rounded.
+  iteration, `r_end` 0.0031, N = 5,000 run in resumable sessions (staged
+  reviews at `-StopAfter 1250` and `2500`). The estimator is the final
+  theta, rounded.
 
 B.1 (2026-09-14) deleted the twelve historical groups (`aspiration`, `corr`,
 `futility`, `histcov`, `history`, `lazymargin`, `lmr`, `probcut`, `pruning`,
