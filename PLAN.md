@@ -570,6 +570,28 @@ diagnostics; two rejections stop B.
           fingerprinted, and the six `sprt.ps1` commands of B.2.2.2 with
           `-OptionsB`, then register RAR-S74 in `EXPERIMENTS.md` with the
           predictions of B.2.2.2 copied verbatim before any game.
+          **Implemented 2026-09-15 (RAR-S73, RAR-S74).** Engine commits
+          `bebed9f` (clamps), `0e0c526` `CoreRazorGuards`, `218036c`
+          `CoreCorrTrainDecisive`, `dccf72c` `CoreCorrTrainExcluded`,
+          `8d9c9da` `CoreLmrFullDepth`, `7632ae0` `CoreLmrCheckRoot`. The
+          clamp conversion moves the candidate to **6,586,667 / EBF 2.433**
+          (from 4,706,910 / 2.391). The switches leave it there at their
+          defaults; flipped one at a time, the counts are 5,069,746, 5,504,856,
+          5,425,272, 5,527,766 and 4,732,687. The off arm is 7,601,220 / EBF 2.474
+          at every commit. Suites: release 295, debug 294, `b2core` release
+          319, `b2core` debug 318, 0 failed. fmt and clippy are clean on every
+          feature set, `b2core,tune` included. Every `AblationMask` bit moves
+          the tree. Three readings of the frozen text: `CoreLmrFullDepth`
+          reaches the first moves of non-PV nodes, since LMR takes every later
+          move from depth 2 and the one-ply floor, which never deepens, leaves
+          nothing at depth 1. It drops with LMR under ablation bit 7. It
+          carries the listed terms only; the donor's singular-margin term is
+          absent, as it is from the core's LMR. `CoreLmrCheckRoot` adds no
+          in-check term, because the donor's `in_check` term is the core's
+          gives-check term, and it leaves a root move's verification depth
+          unmoved, as the donor does. Handover: the `b2core,tune` PGO
+          binary `tools/results/b2221-core-tune-20260915/pext-1.exe`,
+          sha256 `27B1AF0E…C053`, bench 6,586,667, source `7632ae0` clean.
         - **B.2.2.2 Six paired runs, the categorical screen — `V`,
           maintainer-run.** Registered as one bounded baseline/A/B/A+B screen
           (RAR-S74): the same `b2core,tune` PGO binary on both sides,
@@ -723,8 +745,8 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
-| B.2.2.1 | READY_FOR_IMPLEMENTATION | I1 | Two clamp conversions, five categorical `CoreParams` switches with tests, one `b2core,tune` PGO build and the six run commands; registers RAR-S74 before any game |
-| B.2.2.2 | READY_FOR_IMPLEMENTATION | V | Six 2,000-game paired runs, maintainer-run, predictions frozen in the leaf; starts when B.2.2.1 is IMPLEMENTED; adopted switches become defaults in one engine commit |
+| B.2.2.1 | IMPLEMENTED | I1 | Clamps converted (`b2core` 6,586,667 / EBF 2.433) and five categorical switches with tests, 2026-09-15; `b2core,tune` PGO build handed over (sha256 `27B1AF0E…C053`); RAR-S74 registered before any game |
+| B.2.2.2 | READY_FOR_IMPLEMENTATION | V | Six 2,000-game paired runs, maintainer-run, registered as RAR-S74 with the commands; B.2.2.1 is IMPLEMENTED, so it is the next executable leaf; adopted switches become defaults in one engine commit |
 | B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 leaves; its report decides whether B.2.3 runs |
 | B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
 | B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |
