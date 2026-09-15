@@ -105,7 +105,7 @@ jobs:
           persist-credentials: false
 
       # No toolchain action: rustup reads rust-toolchain.toml and
-      # installs the PINNED compiler plus llvm-tools-preview, which PGO needs.
+      # installs the PINNED compiler plus llvm-tools, which PGO needs.
       # A `@stable` action here would download a second toolchain that the pin
       # then overrides anyway, so the workflow would claim stable while
       # actually building with the pin.

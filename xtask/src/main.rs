@@ -1319,30 +1319,27 @@ fn ensure_llvm_profdata() -> Result<PathBuf> {
 
     if find_on_path("rustup").is_none() {
         return Err(
-            "llvm-profdata was not found. Install it with `rustup component add llvm-tools-preview` or add LLVM's bin directory to PATH."
+            "llvm-profdata was not found. Install it with `rustup component add llvm-tools` or add LLVM's bin directory to PATH."
                 .to_string(),
         );
     }
 
-    println_flush(format_args!(
-        "Installing llvm-tools-preview for PGO support"
-    ));
+    println_flush(format_args!("Installing llvm-tools for PGO support"));
     let status = Command::new("rustup")
         .arg("component")
         .arg("add")
-        .arg("llvm-tools-preview")
+        .arg("llvm-tools")
         .status()
         .map_err(|err| format!("failed to run rustup component add: {err}"))?;
     if !status.success() {
         return Err(
-            "failed to install llvm-tools-preview; run `rustup component add llvm-tools-preview` manually"
+            "failed to install llvm-tools; run `rustup component add llvm-tools` manually"
                 .to_string(),
         );
     }
 
-    find_llvm_profdata().ok_or_else(|| {
-        "llvm-profdata was still not found after installing llvm-tools-preview".to_string()
-    })
+    find_llvm_profdata()
+        .ok_or_else(|| "llvm-profdata was still not found after installing llvm-tools".to_string())
 }
 
 fn find_llvm_profdata() -> Option<PathBuf> {

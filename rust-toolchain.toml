@@ -14,7 +14,7 @@
 # building an SPRT baseline and its candidate.
 [toolchain]
 channel = "1.98.1"
-components = ["rustfmt", "clippy", "llvm-tools-preview"]
+components = ["rustfmt", "clippy", "llvm-tools"]
 profile = "minimal"
 
 # Deliberately NO `targets` list. This file is read by every machine that
