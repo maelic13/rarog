@@ -803,6 +803,19 @@ diagnostics; two rejections stop B.
       correction stays admitted; the +52 arm includes it, and a 5.6% bench
       move in a tree that moves 0.3–71% per coordinate step is not a
       pruning-signal finding. Calibration at B.2.4.
+      **Preparation IMPLEMENTED 2026-09-15 (RAR-S75); the tune is pending,
+      maintainer-run.**
+      - Tooling `2f2c43a`: `build_test.ps1 -Tune -Features b2core` builds
+        flavor `b2core-tune`, and `spsa.ps1` refuses an off-arm tune binary
+        for a `Core*` surface (checked with a real off-arm build).
+      - Surface `b682cf8`, with the README at N = 5,000 in `fa54d5d`:
+        `config_b23core.json` (82 coordinates, audit clean) and
+        `fixed_b23core.json`.
+      - Tune binary: `rarog-b23core-tune.exe`, sha256 `25467C63…FDA0E`,
+        bench-verified at 4,706,910 / EBF 2.391.
+      - `-SetupOnly -Iterations 5000` verified all 82 options, with A = 500
+        and a = 0.09655.
+      - Next is the maintainer's pilot, 128 × 32.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
       sized from RAR-M10; then ledger row and calibration. Accepted head
       becomes the base for B.3. No null calibration precedes it: the 1T
@@ -902,7 +915,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | READY_FOR_IMPLEMENTATION | V | Defined 2026-09-15: 82 coordinates, config and fixed file, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, horizon N = 5,000 in resumable sessions registered as RAR-S75 before launch, final theta baked then a fitted-vs-unfitted diagnostic run before B.2.4 |
+| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; next the maintainer's pilot (128 × 32), then the tune in sessions, final theta baked, fitted-vs-unfitted run before B.2.4 |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
