@@ -511,7 +511,126 @@ diagnostics; two rejections stop B.
       nodes as the donors do, each shrinking the tree by a sixth. The
       review asks for three categorical paired runs, the eval-unit clamps
       converted, and the registered curvature sweep before B.2.3.
-      **Maintainer decision pending.**
+      **Maintainer decision 2026-09-15: the paired run governs; B.2.2's
+      re-plan is the four sub-steps below, in order, and B.2.3 starts when
+      B.2.2.3 has reported. B.7 stays where it is; nothing is pulled
+      forward.** The five switches are categorical and are never SPSA
+      coordinates (RAR-M13's lesson); a losing switch stays at its default
+      until B.8 removes it.
+        - **B.2.2.1 Categorical switches and the seed-scale clamps — `I1`.**
+          Engine work on the `b2core` arm, one commit per item, each with a
+          test that constructs its effect and the candidate fingerprint
+          recorded in the commit message. (1) **Clamp conversion first**,
+          because it changes the base every later arm is measured against:
+          the two hard-coded clamps in `late_move_reduction` that are still
+          in the donor's evaluation units become Rarog's (rule 8.2, ×0.457):
+          the improvement term's `(-241, 1155)` → `(-110, 528)` and the
+          `alpha − estimated` gap's `(-65, 91)` → `(-30, 42)`. New
+          fingerprint, recorded in RAR-S73. (2) Five switches as `CoreParams`
+          spins with range `0..=1`, defaults equal to today's behaviour so
+          the fingerprint after (1) is unchanged by (2): `CoreRazorGuards`
+          (0 = donor; 1 = the B.1 head's guards on the candidate's margins:
+          no razoring on a `tt_pv` node and none above depth 3);
+          `CoreCorrTrainDecisive` (1 = admit mate-range residuals; 0 =
+          refuse `|score| >= TB_WIN_SCORE` at both training sites);
+          `CoreCorrTrainExcluded` (1 = train at singular-excluded nodes; 0 =
+          refuse when `excluded` is set, both sites); `CoreLmrFullDepth` (0 =
+          off; 1 = the donor's full-depth-search branch for the moves LMR
+          does not take at a non-root, non-check node: Reckless's second
+          reduction formula, `207·ilog2(depth)`, improvement
+          `(366·impr/128).clamp(-206, 1370)` with the clamp converted as in
+          (1), `2255·|corr|/1024`, quiet `1468 − 118·history/1024`, noisy
+          `940 − 63·history/1024`, `tt_pv` `−844 − 1129·(tt_depth ≥ depth)`,
+          else cut node `+1260 + 2168·no TT move`, `cutoff_count > 2` `+1394
+          + 258·all-node`, TT move `−3002`, parent reduction `> r + 590` →
+          `+130`, jitter `(nodes + id·26) % 128 − 56`; the move is searched
+          at `new_depth − (r ≥ 2621) − (r ≥ 5579)`, floored at one ply, and
+          re-searched at `new_depth` on a null-window fail-high like a
+          reduced move; its constants are seeds, not coordinates, until the
+          switch wins); `CoreLmrCheckRoot` (0 = off; 1 = the donor's scope:
+          late-move reductions also at the root and at in-check nodes, with
+          the first move still unreduced and the one-ply floor kept; the
+          §13.2 invariants this tests were a B.0 research decision and a
+          registered switch is the way to overturn one). The two shapes
+          were B.2's scope in §3.7 and were not built (B.2.1 review §3.1).
+          (3) Tests: `CoreRazorGuards` — a `tt_pv` node far below alpha is
+          not razored at 1 and is at 0; `CoreCorrTrainDecisive` — a
+          mate-score residual leaves every table untouched at 0; 
+          `CoreCorrTrainExcluded` — the singular search trains nothing at 0;
+          `CoreLmrFullDepth` — a non-PV first move is searched below
+          `new_depth` when its reduction reaches 2621 and at `new_depth`
+          otherwise; `CoreLmrCheckRoot` — a root and an in-check node
+          reduce a late move at 1 and never at 0; every switch keeps
+          `stack_reductions_unwind_to_zero` and the PV-legality tests. (4)
+          Verification: debug and release suites on both arms, fmt, clippy
+          on all features and on `b2core,tune`; `bench 13` on the `b2core`
+          arm at every commit; `AblationMask` bits still move the tree. (5)
+          Hand over: one `b2core,tune` PGO build by
+          `nps_build_pool.ps1 -Features b2core,tune -Builds 1`, hashed and
+          fingerprinted, and the six `sprt.ps1` commands of B.2.2.2 with
+          `-OptionsB`, then register RAR-S74 in `EXPERIMENTS.md` with the
+          predictions of B.2.2.2 copied verbatim before any game.
+        - **B.2.2.2 Six paired runs, the categorical screen — `V`,
+          maintainer-run.** Registered as one bounded baseline/A/B/A+B screen
+          (RAR-S74): the same `b2core,tune` PGO binary on both sides,
+          `sprt.ps1 -Mode fixed -Games 2000 -NoAdjudication`, `3+0.03`, 1T,
+          Hash 64, UHO, paired, concurrency 14 with affinity; A = defaults,
+          B = one switch flipped by `-OptionsB`. Runs, in this order: (a)
+          `CoreRazorGuards=1`; (b) `CoreCorrTrainDecisive=0`; (c)
+          `CoreCorrTrainExcluded=0`; (d) `CoreLmrFullDepth=1`; (e)
+          `CoreLmrCheckRoot=1`; (f) every switch that won in (a)–(e) together
+          against the defaults, the interaction check. **Predictions, frozen
+          2026-09-15 by the review:** (a) **+8 ± 11** (a fixed-node tactical
+          loss of 29 canaries against a 28% node saving; the guard wins if
+          the canaries are games); (b) **+3 ± 11** (mate residuals are a
+          pruning signal, not an evaluation error, and B.1 refused them);
+          (c) **0 ± 11** (donor-faithful either way); (d) **+5 ± 11** (the
+          candidate searches 2.30x the oracle's interior nodes against B.1's
+          1.80x and the absent branch is the likeliest reason); (e) **0 ±
+          11**; (f) the sum of the winners' point estimates within ± 15, a
+          larger shortfall meaning an interaction that B.2.3 must fit
+          around. **Adoption rule, fixed before the games:** a switch is
+          adopted at ≥ +5 Elo, rejected at ≤ −5, and left at its default
+          between; (f) confirms the adopted set at ≥ +5 or returns the
+          adopted switches to one-at-a-time confirmation. Adopted switches
+          become the defaults in one engine commit with the new fingerprint
+          recorded; the fixed-node diagnostics (WAC at 100k, agreement,
+          canaries) are re-read on that arm as diagnostics only. Calibration
+          of (a)–(f) appended to RAR-S74 after the games.
+        - **B.2.2.3 Curvature sweep and the P6 profile — `V`.** On the arm
+          B.2.2.2 leaves, the sweep §9 registered as SPSA's condition: the
+          five coordinates (`CoreRfpLinear`, `CoreLmpSquare`, `CoreFpBase`,
+          `CoreLmrQuiet`, `CoreCorrUpdateSlope`) at 0.5x, 0.75x, 1x, 1.5x
+          and 2x of their defaults, set by UCI option on the `b2core,tune`
+          build, each point reporting `bench 13` nodes and WAC solved at
+          100k nodes (`fixed_budget_probe.py` with the option flags
+          `02d2c09` added); a surface is *curved* when the WAC column has an
+          interior maximum, *monotone* when it rises to an edge, *flat*
+          when it moves by ≤ 2 solved. Rule: flat or monotone on all five
+          sends B.2 to B.2.4 at the defaults; any curved coordinate sends it
+          to B.2.3 over the registered coordinate set less the five
+          categorical switches. Same sitting, for P6: `bench 13` with
+          `CoreCorrWeightCont2=0 CoreCorrWeightCont4=0` against the
+          defaults (P6 predicted < 3%), and the continuation-correction
+          admission counts by remaining depth from a `diag` run, recorded
+          once in RAR-S73. Frozen table in a short `analysis/` record.
+        - **B.2.2.4 Screen registrations for B.3–B.5 — `I1`, documents.**
+          Write into PLAN's B.3, B.4 and B.5 screen text and into rule 8:
+          the paired run governs and zero-game floors are diagnostics that
+          trigger the ablation and a written cause, never a hold of a
+          candidate the paired run cleared nor an acceptance of one it
+          failed; the ablation order is the eight `AblationMask` bits in
+          mechanism order, one sweep; the pooled-NPS floor is replaced by
+          time-to-depth on `bench 13` (interleaved medians) with pooled NPS
+          reported as a diagnostic, because a tree-shape change makes nodes
+          incomparable; a positional fixed-node screen joins WAC — the
+          Strategic Test Suite if the maintainer places it at
+          a tracked fixture `sts_v1.epd` under `tools/diag/`, otherwise the phase-4
+          suite at 100k nodes scored by oracle agreement; the canaries
+          become a regression rule (no canary the baseline solves may be
+          lost) instead of "all pass"; the curvature sweep is a checklist
+          item with its own evidence path. GUIDE and PLAN in one commit;
+          `check_guide.py` passes.
     - **B.2.3** SPSA over the registered live coordinates (expected 40–70),
       `tools/spsa.ps1`, immutable horizon, staged stop. Maintainer-run.
     - **B.2.4** Gate: registered SPRT `[0,10]` against the B.1 head, cap
@@ -603,8 +722,12 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.2 | READY_FOR_IMPLEMENTATION | V | All screens in 2026-09-15: paired run +52.16 ± 10.73 Elo (above target) with NPS 0.683x, WAC 100k 204, agreement 35 and canaries 75/116 below their floors; profile clears `threats()`. Held for the in-depth review of `analysis/b22_screens_2026-09-15.md` §9, which decides whether B.2.3 proceeds; reviewed 2026-09-15 (`analysis/b22_review_2026-09-15.md`): three categorical paired runs and the curvature sweep precede B.2.3; maintainer decision pending |
-| B.2.3 | RESEARCH | V | Waits for B.2.2; maintainer-run SPSA |
+| B.2.2 | READY_FOR_IMPLEMENTATION | V | Screens run 2026-09-15 (paired run +52.16 ± 10.73, four floors failed); reviewed (`analysis/b22_review_2026-09-15.md`); maintainer decision 2026-09-15: the paired run governs, re-plan is B.2.2.1–B.2.2.4 in order; closes when B.2.2.4 lands |
+| B.2.2.1 | READY_FOR_IMPLEMENTATION | I1 | Two clamp conversions, five categorical `CoreParams` switches with tests, one `b2core,tune` PGO build and the six run commands; registers RAR-S74 before any game |
+| B.2.2.2 | READY_FOR_IMPLEMENTATION | V | Six 2,000-game paired runs, maintainer-run, predictions frozen in the leaf; starts when B.2.2.1 is IMPLEMENTED; adopted switches become defaults in one engine commit |
+| B.2.2.3 | READY_FOR_IMPLEMENTATION | V | Curvature sweep of the five §9 coordinates and the P6 profile on the arm B.2.2.2 leaves; its report decides whether B.2.3 runs |
+| B.2.2.4 | READY_FOR_IMPLEMENTATION | I1 | Documents only: screen rules for B.3–B.5 (paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist) |
+| B.2.3 | RESEARCH | V | Waits for B.2.2.3's curvature report (flat or monotone on all five skips it); coordinates = the registered set less the five categorical switches; maintainer-run SPSA |
 | B.2.4 | RESEARCH | V | Waits for B.2.3; SPRT `[0,10]` registered before games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |

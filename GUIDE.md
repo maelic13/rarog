@@ -92,32 +92,31 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** registered (B.2 selectivity core; B.2.3 and B.2.4 frozen before any game); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.2, maintainer decision pending** after the review (`analysis/b22_review_2026-09-15.md`): the paired run (+52.16 ± 10.73 Elo) governs; three categorical paired runs, the eval-unit clamps and the curvature sweep precede **B.2.3** |
+| Current step | **B.2.2.1** (switches and clamps, `I1`), then **B.2.2.2** (six paired runs, maintainer), **B.2.2.3** (curvature sweep), **B.2.2.4** (screen rules), then **B.2.3** if the sweep is curved |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
 
-**B.2.2 is reviewed and waits for the maintainer's decision** (`analysis/b22_review_2026-09-15.md`). The registered paired run
-measured the unfitted core at **+52.16 ± 10.73 Elo** over the B.1 head at
-0.683x NPS. At the same time four zero-game floors fail: WAC at 100k, oracle
-agreement, the canaries, and NPS. The ETW profile clears the `threats()`
-suspect. The registration has no rule for a run above target with floors
-failed, so the review decides whether B.2.3 proceeds (questions in
-`analysis/b22_screens_2026-09-15.md` §9); the review answers them and
-recommends three categorical paired runs (razoring guards, decisive
-residuals, singular-node training), the eval-unit clamps converted and the
-registered curvature sweep before B.2.3. B.3 waits for an accepted B.2
-head. B.2.0.2 closed on 2026-09-15 (MultiPV, RAR-P26). B.2.1 was accepted by its reviewer on
-2026-09-14 (`analysis/b21_review_2026-09-14.md`): the four resolutions upheld,
-no defect, and a speed warning that B.2.2 answers first with the pooled NPS
-run. Binding findings sit at their leaves in PLAN: D.2's premise is
-contradicted (RAR-M46) and E.2's binding arm is 1T.
+**B.2.2's re-plan is the current work** (maintainer decision 2026-09-15
+after `analysis/b22_review_2026-09-15.md`): the paired run (+52.16 ± 10.73
+Elo unfitted) governs; four sub-steps follow in order — B.2.2.1 converts
+the two seed-scale clamps and adds five categorical switches (razoring
+guards, mate-range residuals, singular-node training, the donor's
+full-depth branch, reductions in check and at the root); B.2.2.2 measures
+each in a 2,000-game paired run plus an interaction run; B.2.2.3 runs the
+registered curvature sweep that decides whether B.2.3's SPSA has anything
+to find; B.2.2.4 rewrites the screen rules for B.3–B.5. B.7 keeps its
+place. B.3 waits for an accepted B.2 head. B.2.0.2 closed on 2026-09-15
+(MultiPV, RAR-P26). B.2.1 was accepted by its reviewer on 2026-09-14
+(`analysis/b21_review_2026-09-14.md`). Binding findings sit at their
+leaves in PLAN: D.2's premise is contradicted (RAR-M46) and E.2's binding
+arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| B.2.2 reviewed (`analysis/b22_review_2026-09-15.md`): paired run governs, NPS floor retired as an instrument for tree-shape changes, three categorical A/Bs and the curvature sweep precede SPSA | The maintainer rules on the review's §7 order | B.2.3 starts |
+| B.2.2.2's six paired runs (maintainer-run) | B.2.2.1 hands over the `b2core,tune` PGO build and the commands; RAR-S74 registered before the first game | B.2.2.3 starts |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 
@@ -161,7 +160,11 @@ is the numbering: release first, baselines on the released binary.
     - [x] **B.2.1** Implement to the B.0 handoff with table, picker, TT and unwind tests; behind `b2core`, 4,706,910 / EBF 2.391 unfitted, off arm exact; reviewer-accepted (RAR-S73, `analysis/b21_review_2026-09-14.md`) — DONE 2026-09-14
         - [x] **B.2.0.2** MultiPV: UCI option up to 256, root lines above 1; identity at `MultiPV = 1` on both arms (bench and `info` stream), pooled NPS +0.62% (RAR-P26) — DONE 2026-09-15
     - [ ] **B.2.2** Diagnostics: oracle differential, depth at 300k, EBF, reference-anchored branching curve, tactical suite, 2,000-game unfitted run; screen thresholds registered by B.0. Screens run 2026-09-15: paired run **+52.16 ± 10.73 Elo** unfitted while four zero-game floors fail (`analysis/b22_screens_2026-09-15.md`); held for review — **READY_FOR_IMPLEMENTATION / V**
-    - [ ] **B.2.3** SPSA over the registered live coordinates — **RESEARCH / V**
+        - [ ] **B.2.2.1** Two seed-scale clamps converted; five categorical switches (`CoreRazorGuards`, `CoreCorrTrainDecisive`, `CoreCorrTrainExcluded`, `CoreLmrFullDepth`, `CoreLmrCheckRoot`) with tests; `b2core,tune` PGO build and the six run commands; RAR-S74 registered — **READY_FOR_IMPLEMENTATION / I1**
+        - [ ] **B.2.2.2** Six 2,000-game paired runs, one per switch plus the winners together; adopted switches become defaults in one engine commit — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.2.2.3** Curvature sweep of the five §9 coordinates and the P6 profile; flat or monotone on all five skips B.2.3 — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.2.2.4** Screen rules for B.3–B.5: paired run governs, ablation order, time-to-depth, positional screen, canary regression rule, sweep checklist — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **B.2.3** SPSA over the registered live coordinates less the five categorical switches; runs only if B.2.2.3 finds a curved surface — **RESEARCH / V**
     - [ ] **B.2.4** Gate: SPRT `[0,10]` against the B.1 head; ledger row and calibration — **RESEARCH / V**
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **READY_FOR_IMPLEMENTATION / I2**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
