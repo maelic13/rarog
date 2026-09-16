@@ -842,6 +842,39 @@ diagnostics; two rejections stop B.
       "null calibration owed" precondition here claiming no calibration
       followed RAR-M17; that contradicted those two records and is withdrawn
       by maintainer decision.
+    - **B.2.5 UCI `info` conformance — `I1`.** Added 2026-09-16 by
+      maintainer decision from the implementer's review (`analysis/uci_info_review_2026-09-16.md`);
+      runs after B.2.4 closes and before B.3, on the accepted head, both
+      arms. Output-only, behaviour-neutral, no SPRT: gated by identity
+      (exact fingerprints 4,706,910 / EBF 2.391 with `b2core` and
+      7,601,220 / EBF 2.474 without) plus protocol tests, because the
+      bench prints no `info` line and an identical bench proves nothing
+      here. **Contract, one commit per item:** (1) after the pool's vote,
+      when the reported line is not the winning thread's, print the
+      winner's final line before `bestmove`, as Stockfish's
+      `output_pv(*bestThread)` does; test: at Threads 4 over the review's
+      positions the last `info` line's first PV move equals `bestmove`,
+      always. (2) A root with no legal move prints `info depth 0 score
+      mate 0` in check and `info depth 0 score cp 0` otherwise, then
+      `bestmove 0000` unchanged. (3) `nps` divides by `max(1, elapsed
+      ms)` in both senders; test: a line at `time 0` carries `nps` ≥
+      `nodes · 1000`. (4) Single-PV lines carry `multipv 1`, so every line
+      has one shape; the MultiPV test harness and `tests/multipv.rs`
+      parsers are updated with it; the B.2.0.2 identity check is re-run
+      as a diff against the previous head with the token stripped. (5)
+      Aspiration fail-high and fail-low emit a line with `lowerbound` or
+      `upperbound` in single-PV mode, as the MultiPV path already does,
+      and a stopped iteration reports its last completed bound; no
+      `currmove` output (optional, skipped by Reckless). (6) `seldepth`
+      resets per iteration and reports the maximum ply reached plus one,
+      Stockfish's convention; the diag and probe tools that read seldepth
+      are checked for the off-by-one. **Verification:** both fingerprints
+      exact at every commit; the depth-10 `info` stream over the bench
+      positions diffed against the previous head with the new tokens
+      stripped (identical apart from the changes the item names); debug
+      and release suites on both arms; fmt; clippy on all features. Score
+      normalisation (the review's item 6) is D.3's research card, not this
+      leaf. Documentation: README's UCI notes and CHANGELOG.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
   handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
   donor's entry margin above beta (both donors demand about 150 Rarog
@@ -933,6 +966,7 @@ class until they open.
 |---|---|---|---|
 | B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; next the maintainer's pilot (128 × 32), then the tune in sessions, final theta baked, fitted-vs-unfitted run before B.2.4 |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
+| B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
@@ -1150,6 +1184,14 @@ loss).
   move of the target layout: `engine.rs`, `engine_command.rs`,
   `uci_protocol.rs`, `search_options.rs` and `bench.rs`/`wac.rs` go under
   `src/uci/` (planned) in the same leaf, behaviour-neutral, exact fingerprint.
+  **Research card, added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md` item 6):** the
+  displayed score is raw internal units (startpos depth 1 reads `cp 143`;
+  a tablebase win prints `cp 31744` because `TB_WIN_SCORE` sits below
+  `format_score`'s mate cutoff). Stockfish and Reckless normalise to a
+  win-probability scale. Fit a win-rate model on Rarog's own games (score
+  against outcome by material phase), decide the `cp` mapping and a
+  distinct tablebase-win band, and only then implement; display-only,
+  gated by identity, no SPRT.
 - **D.4 Tablebase policy — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.

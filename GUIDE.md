@@ -169,6 +169,7 @@ is the numbering: release first, baselines on the released binary.
         - [x] **B.2.2.4** Screen rules for B.3–B.5 in rule 8: paired run governs, one ablation sweep in mechanism order, time-to-depth, positional screen (phase-4 suite until STS is placed), canary regression rule, sweep checklist — DONE 2026-09-15
     - [ ] **B.2.3** SPSA on the `b2core` arm: 82 `CoreParams` coordinates (switches, `CoreIirMinDepth` and `CoreEvalRule50Damping` out), `config_b23core.json`, the `-Tune -Features b2core` tooling ticket, pilot 128 × 32, N = 5,000 in resumable sessions registered as RAR-S75, final theta baked, fitted-vs-unfitted diagnostic run. Preparation done 2026-09-15 (RAR-S75, binary `25467C63…`, setup proven at N = 5,000); pilot and tune pending — **IMPLEMENTED / V**
     - [ ] **B.2.4** Gate as two SPRTs: B.2.4a unfitted `b2core` vs the off arm `[0,10]` **passed 2026-09-16, +65.09 ± 23.26 in 432 games** (the unfitted arm is the accepted head); B.2.4b fitted vs unfitted `[0,10]` after B.2.3, then the default flip — **GAME_GATE / V**
+    - [ ] **B.2.5** UCI `info` conformance: winner's line after the SMP vote, `depth 0` line at a mated root, `nps` at `time 0`, `multipv 1` always, bounds in single-PV, seldepth convention; identity-gated, no SPRT (`analysis/uci_info_review_2026-09-16.md`) — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **READY_FOR_IMPLEMENTATION / I2**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV; keeps B.2.0.2's MultiPV contract; SPRT `[0,3]` — **RESEARCH / I2**
@@ -204,7 +205,7 @@ is the numbering: release first, baselines on the released binary.
 
 - [ ] **D.1** Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]` — **R2**
-- [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; zero crashes over pool tournaments — **R2**
+- [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — **R2**
 - [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **R2**
 
 ## Phase E — Classical checkpoint and release

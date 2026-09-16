@@ -68,6 +68,7 @@ commit that adds it.
 | [`repository_review_2026-09.md`](repository_review_2026-09.md) | Repository and document review — PLAN B.2.0.1 | Deliverable | B.2.0.1, E.1 |
 | [`search_programme_2026-09-13.md`](search_programme_2026-09-13.md) | Search programme investigation — PLAN B.0 | Deliverable | B.0, B.1–B.3 |
 | [`time_forfeit_2026-09-09.md`](time_forfeit_2026-09-09.md) | Time forfeits at `3+0.03` — diagnosis and repair (PLAN A.3.3, RAR-R11) | Deliverable | A.3.3 |
+| [`uci_info_review_2026-09-16.md`](uci_info_review_2026-09-16.md) | UCI `info` line conformance against Stockfish and Reckless — PLAN B.2.5, D.3 | Deliverable | B.2.5, D.3 |
 | [`universal_binary_2026-09.md`](universal_binary_2026-09.md) | Universal x86-64 binary — design record and deferral | Deliverable | A.4, G.2 |
 | [`answer_harness_rset_correction.md`](answer_harness_rset_correction.md) | Correction: every `--rset` screen before this commit measured the defaults | Record | RAR-S70 |
 | [`board_audit_2026-09-05.md`](board_audit_2026-09-05.md) | Rarog board audit and measured comparison — 2026-09-05 | Record | RAR-M20 |
