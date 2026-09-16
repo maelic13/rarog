@@ -824,8 +824,11 @@ diagnostics; two rejections stop B.
       B.2.3; passing makes the unfitted arm the accepted head. Binaries
       built 2026-09-15 at `6e4fa8a`: `rarog-b24a-core-pext-pgo.exe`
       (4,706,910, sha256 `9206A598…71F8`) and `rarog-b24a-base-pext-pgo.exe`
-      (7,601,220, sha256 `4EC72F0F…91D5`), recorded in RAR-S73; the run is
-      the maintainer's, between SPSA sessions. **B.2.4b**
+      (7,601,220, sha256 `4EC72F0F…91D5`), recorded in RAR-S73. **Played 2026-09-16: H1 accepted, +65.09 ±
+      23.26 Elo in 432 games (RAR-S73); the unfitted `b2core` arm is the
+      accepted head of B.2.** The feature stays a build flag until B.2.4b
+      chooses the fitted or the unfitted defaults; the default flip then
+      lands once. **B.2.4b**
       the B.2.3-fitted arm against the unfitted arm, `[0,10]` nElo, cap
       16,000 games, after theta is baked; passing makes the fitted arm
       the accepted head, failing leaves the unfitted one. Each accepts
@@ -929,7 +932,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; next the maintainer's pilot (128 × 32), then the tune in sessions, final theta baked, fitted-vs-unfitted run before B.2.4 |
-| B.2.4 | READY_FOR_IMPLEMENTATION | V | B.2.4a binaries built and registered 2026-09-15 (RAR-S73), the maintainer runs it between SPSA sessions; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3 |
+| B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
