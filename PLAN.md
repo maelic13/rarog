@@ -140,7 +140,13 @@ gating. The rules below decide order and acceptance in this roadmap.
      screen at 100k nodes. That screen is the Strategic Test Suite once the
      maintainer places it as a tracked fixture `sts_v1.epd` under `tools/diag/`.
      Until then it is the phase-4 suite scored by agreement with the frozen
-     oracle's best move at the same budget.
+     oracle's best move at the same budget. Scoring convention for STS,
+     the suite's own: each position's `c0` map gives the engine's move its
+     listed points (0 if unlisted) against a maximum of 10, a position
+     without a map scores 10 for a `bm` match and 0 otherwise, reported
+     per theme as points, percentage and top-1 rate (as `sts_runner2.py`
+     in RBp4wn (tissatussa, Go, CC0, `github.com/tissatussa/RBp4wn`, read 2026-09-17) does; the
+     scoring is added to `fixed_budget_probe.py`, not a second runner).
    - **Canaries:** a regression rule. No oracle-anchored canary the baseline
      solves may be lost, where solving means stable at no more than the anchor
      plus two plies and solved at 100k nodes. New passes are recorded, not
@@ -1110,7 +1116,17 @@ loss).
     - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP — `I1`.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
-      where the evidence is clean (KNNK already measured clean).
+      where the evidence is clean (KNNK already measured clean). Option
+      on record for KBNK, from RBp4wn (tissatussa, Go, CC0, `github.com/tissatussa/RBp4wn`, read 2026-09-17):
+      an in-memory distance-to-mate table generated at startup by
+      retrograde analysis (about 33 million positions, folded by the four
+      colour-preserving symmetries with the bishop normalised to one
+      colour, about 5 MB resident, built asynchronously, probed like a
+      tablebase with the fifty-move budget checked) makes the family exact
+      without Syzygy files. Rarog's corner-drive term and the five-budget
+      KBNK anchor stand until C.5's ranking says the family's 0.2% of
+      games is worth 5 MB per process; if it is, this is the shape to
+      build, behind the recogniser dispatcher.
     - **C.5.8 Endgame gate and closure — `V`.** One endgame-start cohort SPRT
       plus one STC SPRT for the whole C.5 cluster after its refit; floors and
       theory vetoes re-run; conversion instrument re-measured; KRPPKRP's 7-man
@@ -1213,7 +1229,15 @@ loss).
   win-probability scale. Fit a win-rate model on Rarog's own games (score
   against outcome by material phase), decide the `cp` mapping and a
   distinct tablebase-win band, and only then implement; display-only,
-  gated by identity, no SPRT.
+  gated by identity, no SPRT. **Noted, not adopted (2026-09-17):** an
+  auto-sized hash as RBp4wn (tissatussa, Go, CC0, `github.com/tissatussa/RBp4wn`, read 2026-09-17)
+  does it (probe at the ladder's maximum, skip move 1 whose empty-table
+  search over-stores by about 35%, sample entries stored on moves 2–5,
+  resize once to `peak / 1.4` on a log2 ladder, never again in the game;
+  fixed `Hash` bypasses it). The GUI and every rated pool own `Hash`, and
+  a mid-game resize discards warm entries, so it is at most a friendlier
+  default for casual play; revisit only if the release checklist asks
+  for one.
 - **D.4 Tablebase policy — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.
