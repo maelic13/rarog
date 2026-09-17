@@ -915,7 +915,29 @@ diagnostics; two rejections stop B.
   the donor. **Screens: rule 8's cluster ladder**, registered before
   implementation; under its canary regression rule a quiet mate-threat
   canary the baseline solves may not be lost. The paired run governs, and
-  the curvature sweep precedes any SPSA.
+  the curvature sweep precedes any SPSA. **Research card, added
+  2026-09-17 (maintainer decision; RAR-M19): the search's piece-value
+  scale.** The evaluator's material is Texel-fitted (middlegame
+  88/394/418/537/1131, endgame 123/239/290/486/930, refit four times);
+  the search carries a separate, never-fitted vector `PIECE_VALUES` =
+  100/320/330/500/900 that feeds SEE (`PRODUCTION_SEE_VALUES`), capture
+  and promotion ordering in both pickers, the quiescence delta margin
+  (`stand_pat + queen + 200`), the bad-noisy futility's victim term, the
+  corrected eval's material scale and the ProbCut SEE gap; B.2's SEE
+  thresholds are seeded on it (donor ×0.75). Ordering consumers need only
+  a self-consistent scale; the margin consumers compare it with
+  evaluation units, where a 900-unit queen meets an 1131-unit one. B.4
+  owns the decision because the delta margin and the SEE thresholds are
+  its mechanisms: (1) audit each consumer for ordering-only against
+  margin use; (2) decide whether the five values plus the delta margin
+  join B.4's SPSA surface as coordinates (Stockfish fits its
+  `PieceValue` by SPSA; Manta parameterises SEE), or whether the margin
+  consumers switch to the evaluator's units with the ordering scale left
+  fixed; (3) if fitted, the same scale must feed every consumer, and
+  `CROSS_ENGINE_SEE_VALUES` stays frozen for the benchmark. The HCE
+  vector stays Texel's (C.1–C.4). Zero-game evidence first: the SEE
+  census and the qsearch delta-prune counters at stride 1 on the accepted
+  head, then a registered A/B if a margin consumer changes units.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   Aspiration delta from eval and PV stability, optimism, root move node
   accounting, forgotten-mate and aborted-loss guards, PV table. Multi-PV is

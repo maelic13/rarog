@@ -171,7 +171,7 @@ is the numbering: release first, baselines on the released binary.
     - [ ] **B.2.4** Gate as two SPRTs: B.2.4a unfitted `b2core` vs the off arm `[0,10]` **passed 2026-09-16, +65.09 ± 23.26 in 432 games** (the unfitted arm is the accepted head); B.2.4b fitted vs unfitted `[0,10]` after B.2.3, then the default flip — **GAME_GATE / V**
     - [ ] **B.2.5** UCI `info` conformance: winner's line after the SMP vote, `depth 0` line at a mated root, `nps` at `time 0`, `multipv 1` always, bounds in single-PV, seldepth convention; identity-gated, no SPRT (`analysis/uci_info_review_2026-09-16.md`) — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; SPRT `[0,5]` — **READY_FOR_IMPLEMENTATION / I2**
-- [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; SPRT `[0,3]` — **RESEARCH / I2**
+- [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; research card on the search's never-fitted piece-value scale (RAR-M19); SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV; keeps B.2.0.2's MultiPV contract; SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
 - [ ] **B.7** Search speed pass on the new modules; pooled-PGO floor +0.5% per change — **RESEARCH / I1**
