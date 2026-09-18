@@ -218,7 +218,11 @@ and PGO training refuses. `rust-toolchain.toml` pins the channel, not the host
 triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
 `fastchess -use-affinity` with concurrency 14 is mandatory for 1T gates;
-unpinned Zen 3 runs carry a hidden per-run offset of roughly ±10 nElo. It pins
+unpinned Zen 3 runs carry a hidden per-run offset of roughly ±10 nElo. The
+pinned list never contains CPU 0 (`Get-HarnessGameCpus`): Windows services
+most interrupts there, so it is always one of the cores left free. After this
+change `setup_tools.ps1` must repatch weather-factory before an SPSA launch,
+and `spsa.ps1` refuses until it has. It pins
 one core per game and starves `Threads>1`, so multi-thread runs drop it. The
 1T harness is null-calibrated and shared with Basilisk; a new null pair (the
 same executable on both arms, `-Mode calibrate`) is owed only after a runner,

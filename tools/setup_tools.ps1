@@ -158,7 +158,8 @@ Write-Host "  Normalized weather-factory sources to LF for deterministic patchin
 $wfCute = Join-Path $wfDir "cutechess.py"
 if (Test-Path $wfCute) {
     $c = Get-Content $wfCute -Raw
-    $allPhysicalCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
+    # Game cores only: never CPU 0, where Windows services most interrupts.
+    $allPhysicalCpus = (Get-HarnessGameCpus).Cpu -join ','
     $c = $c -replace '(?m)^\s*\+ \("-use-affinity " if self\.use_fastchess else ""\).*\r?\n?', ''
     $c = $c -replace '(?m)^.*RAROG_AFFINITY_PATCH_V2.*\r?\n?', ''
     $anchor = 'f"-concurrency {self.threads} "'

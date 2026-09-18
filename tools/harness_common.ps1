@@ -239,6 +239,18 @@ function Assert-AffinityFastchess {
     $info
 }
 
+function Get-HarnessGameCpus {
+    # The cores a TIMED game may be pinned to: every physical core except the
+    # lowest-numbered one. Windows services most device interrupts and their
+    # deferred procedure calls on CPU 0, so an engine pinned there inherits
+    # stalls no other core sees. The reserve in Resolve-HarnessConcurrency
+    # already leaves cores free; this makes one of them CPU 0 by construction
+    # instead of whichever cores happen to sort last.
+    $cores = @(Get-HarnessPhysicalCpus)
+    if ($cores.Count -le 1) { return $cores }
+    @($cores | Sort-Object Cpu | Select-Object -Skip 1)
+}
+
 function Get-PhysicalCoreCount {
     $count = @(Get-HarnessPhysicalCpus).Count
     if (-not $count -or $count -lt 1) { $count = 1 }
@@ -262,13 +274,16 @@ function Resolve-HarnessConcurrency {
 
     if ($ThreadsPerGame -lt 1) { throw "ThreadsPerGame must be >= 1 (got $ThreadsPerGame)." }
     $physical = Get-PhysicalCoreCount
-    $ceiling = if ($AllowOversubscribe) { [Environment]::ProcessorCount } else { $physical }
-    $budget = [Math]::Max(1, $ceiling - $ReservePhysicalCores)
+    # A timed game is never pinned to CPU 0 (Get-HarnessGameCpus), so the timed
+    # ceiling is the game-core count, one less than the physical count.
+    $ceiling = if ($AllowOversubscribe) { [Environment]::ProcessorCount } else { @(Get-HarnessGameCpus).Count }
+    $budgetBase = if ($AllowOversubscribe) { $ceiling } else { $physical }
+    $budget = [Math]::Max(1, $budgetBase - $ReservePhysicalCores)
     $recommended = [Math]::Max(1, [Math]::Floor($budget / $ThreadsPerGame))
     $resolved = if ($Requested -gt 0) { $Requested } else { $recommended }
     $needed = $resolved * $ThreadsPerGame
     if ($needed -gt $ceiling) {
-        $kind = if ($AllowOversubscribe) { "logical processors" } else { "physical cores" }
+        $kind = if ($AllowOversubscribe) { "logical processors" } else { "game cores (physical cores except CPU 0)" }
         throw ("Concurrency $resolved x Threads $ThreadsPerGame = $needed, " +
                "which exceeds the detected $ceiling $kind.")
     }
@@ -288,10 +303,10 @@ function Get-HarnessAffinityCpuList {
     # per-run offset the affinity pinning exists to remove.
     param([Parameter(Mandatory)][int]$Concurrency, [int]$ThreadsPerGame = 1)
 
-    $cores = @(Get-HarnessPhysicalCpus)
+    $cores = @(Get-HarnessGameCpus)
     $needed = $Concurrency * $ThreadsPerGame
     if ($needed -gt $cores.Count) {
-        throw "Concurrency $Concurrency x Threads $ThreadsPerGame = $needed exceeds $($cores.Count) physical cores."
+        throw "Concurrency $Concurrency x Threads $ThreadsPerGame = $needed exceeds $($cores.Count) game cores (physical cores except CPU 0)."
     }
     (($cores | Select-Object -First $needed).Cpu -join ',')
 }

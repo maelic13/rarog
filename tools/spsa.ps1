@@ -254,7 +254,7 @@ if (-not $LaunchOnly) {
     Write-Host "Tunable options verified: $($tunedNames -join ', ')" -ForegroundColor Green
 
     $wfCute = Join-Path $wfRoot "cutechess.py"
-    $expectedAffinityCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
+    $expectedAffinityCpus = (Get-HarnessGameCpus).Cpu -join ','
     $wfCuteContent = if (Test-Path $wfCute) { Get-Content $wfCute -Raw } else { "" }
     if ($wfCuteContent -notmatch 'RAROG_AFFINITY_PATCH_V2' -or
         $wfCuteContent -notmatch [regex]::Escape("-use-affinity $expectedAffinityCpus ")) {
@@ -490,7 +490,7 @@ foreach ($p in @((Join-Path $wfRoot "main.py"), (Join-Path $wfRoot "cutechess.py
 $launchFastchess = Join-Path $wfRoot "fastchess.exe"
 Assert-AffinityFastchess -Path $launchFastchess | Out-Null
 $launchCute = Join-Path $wfRoot "cutechess.py"
-$expectedAffinityCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
+$expectedAffinityCpus = (Get-HarnessGameCpus).Cpu -join ','
 $launchCuteContent = Get-Content $launchCute -Raw
 if ($launchCuteContent -notmatch 'RAROG_AFFINITY_PATCH_V2' -or
     $launchCuteContent -notmatch [regex]::Escape("-use-affinity $expectedAffinityCpus ")) {
