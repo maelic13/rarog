@@ -881,6 +881,32 @@ diagnostics; two rejections stop B.
       and release suites on both arms; fmt; clippy on all features. Score
       normalisation (the review's item 6) is D.3's research card, not this
       leaf. Documentation: README's UCI notes and CHANGELOG.
+    - **B.2.6 Adopt Colosseum CLI as the harness — `M`, tooling only.** Added
+      2026-09-18 by maintainer decision. Colosseum CLI (`D:/code/colosseum`)
+      replaces `sprt.ps1`'s runner, weather-factory, the gauntlet, NPS and
+      PGN-replay scripts. **The harness is qualified in its own repository,
+      not here:** its release acceptance (Colosseum PLAN Phase 10, the
+      qualification item) runs the null pair, the scale check against
+      fastchess, an SPRT replay, a fixed-field gauntlet and the SPSA
+      recovery test, with Rarog as the validation engine. Rarog then trusts
+      a released, qualified binary and repeats none of it; a new null pair
+      is owed only on the trigger PROCESS already names, a runner, scheduler
+      or topology change on this host. The leaf starts only after
+      `cli-v0.1.0` is tagged, B.2.3's tune has finished on weather-factory
+      and B.2.4b has been gated with `sprt.ps1`, so no registered
+      experiment changes instrument mid-way. **B.2.6.1:** Rarog's policy
+      as committed TOML run files (`3+0.03`, Hash 64, Threads 1, UHO, no
+      adjudication, margin 20 ms, placement auto, 14 slots for gates and
+      15 for tunes) and thin wrappers that keep every guard `sprt.ps1` and
+      `spsa.ps1` enforce today; `setup_tools.ps1` stages the tagged release
+      and pins its SHA-256. Check: the wrapper's dry run resolves to the
+      conditions an `sprt.ps1` manifest records, field by field, and one
+      short live run completes with the guards firing on a deliberately
+      mismatched sidecar. **B.2.6.2:** retire the replaced scripts, keep
+      fastchess staged for periodic cross-checks, rewrite PROCESS, AGENTS
+      and `tools/README.md`, and record the 2026-09-17/18 parity runs as
+      ledger rows. Engine-specific tooling (builds, sidecars, bench
+      fingerprints, profiling, counters, Texel) stays here by design.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
   handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
   donor's entry margin above beta (both donors demand about 150 Rarog
@@ -995,6 +1021,9 @@ class until they open.
 | B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; next the maintainer's pilot (128 × 32), then the tune in sessions, final theta baked, fitted-vs-unfitted run before B.2.4 |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
+| B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
+| B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
+| B.2.6.2 | RESEARCH | M | Retire the replaced scripts, rewrite PROCESS, AGENTS and `tools/README.md`, ledger rows for the 2026-09-17/18 parity runs, next tune registered at 15 slots and 30 games per iteration with the budget in games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
