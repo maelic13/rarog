@@ -836,6 +836,12 @@ diagnostics; two rejections stop B.
           (predicted −15). The fit is worth +104.8 ± 18.1 against a foreign
           reference, about 88% of its self-play value. External reference
           points, never gates.
+        - **B.2.3.4 Pool gauntlet of the fit — CLOSED 2026-09-19
+          (RAR-M57).** Maintainer-run Colosseum gauntlet, 6,000 games at the
+          Super Rating Tournament's conditions with the pool held at its
+          ratings: Rarog 2.5.0-dev (native build of the B.2.3.1 values) rates
+          **3191**, against 2.4.0's 3001. At 1T it scores 52.3% against
+          Fritz 16, 46.1% against Critter 1.6a and 39.2% against Houdini 3.
         - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
           `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
           once the final theta is baked and built. An unresolved result is
