@@ -830,9 +830,12 @@ diagnostics; two rejections stop B.
           +118.72 ± 10.62 Elo in 2,000 games against a predicted
           +10 ± 11; bench 6,199,302 / EBF 2.421. Never baked.
         - **B.2.3.2 Rybka 4.1 benchmark — `V`, maintainer-run
-          (RAR-M55).** The B.2.3.1 binary against Deep Rybka 4.1 SSE42 x64
-          at the harness conditions with `Max CPUs=1`, 2,000 games, fixed.
-          An external reference point, never a gate.
+          (RAR-M55, RAR-M56).** The B.2.3.1 binary against Deep Rybka 4.1
+          SSE42 x64 at the harness conditions with `Max CPUs=1`, 2,000 games,
+          fixed: **+97.69 ± 12.84 Elo**, played 2026-09-19. The control
+          (RAR-M56), the unfitted head against the same Rybka, predicts about
+          −15; the step closes when it reports. External reference points,
+          never gates.
         - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
           `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
           once the final theta is baked and built. An unresolved result is
@@ -1047,7 +1050,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19; then the final theta baked and B.2.4b; closes when B.2.3.3 reports |
-| B.2.3.2 | IMPLEMENTED | V | Rybka 4.1 benchmark (RAR-M55): binary, reference options and a 28-game wire check done 2026-09-19; the maintainer runs 2,000 games |
+| B.2.3.2 | IMPLEMENTED | V | Rybka 4.1 benchmark: theta at 3,900 +97.69 ± 12.84 in 2,000 games (RAR-M55, 2026-09-19); the unfitted-head control (RAR-M56) is running; closes when it reports |
 | B.2.3.3 | READY_FOR_IMPLEMENTATION | V | Tail SPRT (RAR-S77), theta at 5,000 against theta at 3,900, `[0,3]`, cap 40,000; needs the baked final theta |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
