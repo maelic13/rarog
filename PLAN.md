@@ -822,13 +822,22 @@ diagnostics; two rejections stop B.
         and a = 0.09655.
       - Pilot done 2026-09-15 (4,096 games). The tune reached 3,900 of
         5,000 on 2026-09-19 and continues to N as registered.
-      - **RAR-S76**, a peek that is never baked: theta at 3,900 against
-        the unfitted head, +118.72 ± 10.62 Elo in 2,000 games against a
-        predicted +10 ± 11; bench 6,199,302 / EBF 2.421.
-      - Follow-ups registered 2026-09-19, neither blocking B.2.4b:
-        **RAR-S77**, theta at 5,000 against theta at 3,900, `[0,3]`, cap
-        40,000; **RAR-S78**, a Colosseum re-tune of the most-moved
-        coordinates, after B.2.6.
+      - Sub-steps added 2026-09-19. None blocks B.2.4b, which needs only
+        the baked final theta; B.2.3 closes when B.2.3.3 reports. The
+        re-tune the maintainer asked for is B.2.7.
+        - **B.2.3.1 Checkpoint peek at 3,900 — CLOSED 2026-09-19
+          (RAR-S76).** Theta at 3,900 against the unfitted head:
+          +118.72 ± 10.62 Elo in 2,000 games against a predicted
+          +10 ± 11; bench 6,199,302 / EBF 2.421. Never baked.
+        - **B.2.3.2 Rybka 4.1 benchmark — `V`, maintainer-run
+          (RAR-M55).** The B.2.3.1 binary against Deep Rybka 4.1 SSE42 x64
+          at the harness conditions with `Max CPUs=1`, 2,000 games, fixed.
+          An external reference point, never a gate.
+        - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
+          `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
+          once the final theta is baked and built. An unresolved result is
+          a reading, not a failure: it bounds what the last 1,100 iterations
+          were worth.
     - **B.2.4** Gate, **two SPRTs (maintainer amendment 2026-09-15, made
       after the unfitted paired run was seen and before either SPRT ran;
       bounds, cap, book and adjudication unchanged from the
@@ -915,6 +924,17 @@ diagnostics; two rejections stop B.
       and `tools/README.md`, and record the 2026-09-17/18 parity runs as
       ledger rows. Engine-specific tooling (builds, sidecars, bench
       fingerprints, profiling, counters, Texel) stays here by design.
+    - **B.2.7 Re-tune of the most-moved B.2.3 coordinates on Colosseum —
+      `V`, maintainer-run (RAR-S78).** Added 2026-09-19 by maintainer
+      request. Surface: every coordinate at least one RAR-S75 step from
+      its seed at N = 5,000, seeded at the rounded final theta, all others
+      fixed there; steps sized to be detectable rather than range/16. It
+      tests whether RAR-S75 was travel-limited, coupled, diluted by
+      dimension or already at the optimum; the discriminating reads are in
+      RAR-S78. The full registration (steps, horizon, slots and games per
+      iteration as B.2.6.2 sets them, cap) comes before launch. Gated by an
+      SPRT `[0,3]` against the head B.2.4b accepts. Waits for B.2.4b and
+      B.2.6.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
   handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
   donor's entry margin above beta (both donors demand about 150 Rarog
@@ -1026,11 +1046,14 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19, RAR-S76 peek +118.72 ± 10.62; then the final theta baked and B.2.4b; follow-ups RAR-S77 and RAR-S78 registered |
+| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19; then the final theta baked and B.2.4b; closes when B.2.3.3 reports |
+| B.2.3.2 | IMPLEMENTED | V | Rybka 4.1 benchmark (RAR-M55): binary, reference options and a 28-game wire check done 2026-09-19; the maintainer runs 2,000 games |
+| B.2.3.3 | READY_FOR_IMPLEMENTATION | V | Tail SPRT (RAR-S77), theta at 5,000 against theta at 3,900, `[0,3]`, cap 40,000; needs the baked final theta |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
+| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; waits for B.2.4b and B.2.6 |
 | B.2.6.2 | RESEARCH | M | Retire the replaced scripts, rewrite PROCESS, AGENTS and `tools/README.md`, ledger rows for the 2026-09-17/18 parity runs, next tune registered at 15 slots and 30 games per iteration with the budget in games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
