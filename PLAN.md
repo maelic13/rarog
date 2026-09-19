@@ -845,7 +845,8 @@ diagnostics; two rejections stop B.
           ratings: Rarog 2.5.0-dev (native build of the B.2.3.1 values) rates
           **3191**, against 2.4.0's 3001. At 1T it scores 59.1% against
           Rybka 4.1, 52.3% against Fritz 16, 46.1% against Critter 1.6a and
-          39.2% against Houdini 3.
+          39.2% against Houdini 3. A follow-up match against Critter 1.6a,
+          stopped at 1,050 games, reads −5.0 (95% −22 to +12; RAR-M58).
         - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
           `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
           once the final theta is baked and built. An unresolved result is
