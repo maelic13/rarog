@@ -820,7 +820,15 @@ diagnostics; two rejections stop B.
         bench-verified at 4,706,910 / EBF 2.391.
       - `-SetupOnly -Iterations 5000` verified all 82 options, with A = 500
         and a = 0.09655.
-      - Next is the maintainer's pilot, 128 × 32.
+      - Pilot done 2026-09-15 (4,096 games). The tune reached 3,900 of
+        5,000 on 2026-09-19 and continues to N as registered.
+      - **RAR-S76**, a peek that is never baked: theta at 3,900 against
+        the unfitted head, +118.72 ± 10.62 Elo in 2,000 games against a
+        predicted +10 ± 11; bench 6,199,302 / EBF 2.421.
+      - Follow-ups registered 2026-09-19, neither blocking B.2.4b:
+        **RAR-S77**, theta at 5,000 against theta at 3,900, `[0,3]`, cap
+        40,000; **RAR-S78**, a Colosseum re-tune of the most-moved
+        coordinates, after B.2.6.
     - **B.2.4** Gate, **two SPRTs (maintainer amendment 2026-09-15, made
       after the unfitted paired run was seen and before either SPRT ran;
       bounds, cap, book and adjudication unchanged from the
@@ -1018,7 +1026,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; next the maintainer's pilot (128 × 32), then the tune in sessions, final theta baked, fitted-vs-unfitted run before B.2.4 |
+| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19, RAR-S76 peek +118.72 ± 10.62; then the final theta baked and B.2.4b; follow-ups RAR-S77 and RAR-S78 registered |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
