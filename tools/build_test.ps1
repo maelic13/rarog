@@ -243,6 +243,7 @@ try {
         Write-Host ""
 
         $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
+        $buildStarted = Get-Date
         if ($Native) {
             cargo xtask build --arch $arch --native --pgo @featureArgs
         } else {
@@ -250,12 +251,19 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw "xtask build failed (exit $LASTEXITCODE)" }
 
-        $dist = Get-ChildItem "target/dist/rarog-*-$arch-pgo.exe" |
+        # The flavour decides the artifact name. A `*-$arch-pgo.exe` glob does
+        # not match `*-$arch-native-pgo.exe`, so a native build used to pick up
+        # the newest portable binary and label it native.
+        $distFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
+        $dist = Get-ChildItem "target/dist/rarog-*-windows-$distFlavor.exe" |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
         if (-not $dist) {
-            throw "No $arch-pgo binary found in target/dist/ — check xtask output above."
+            throw "No $distFlavor binary found in target/dist/ — check xtask output above."
+        }
+        if ($dist.LastWriteTime -lt $buildStarted) {
+            throw "Newest $distFlavor binary ($($dist.Name)) predates this build; xtask did not write it."
         }
 
         if (-not (Test-Path $TestEnginesDir)) {
