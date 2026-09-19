@@ -905,7 +905,17 @@ diagnostics; two rejections stop B.
       `currmove` output (optional, skipped by Reckless). (6) `seldepth`
       resets per iteration and reports the maximum ply reached plus one,
       Stockfish's convention; the diag and probe tools that read seldepth
-      are checked for the off-by-one. **Verification:** both fingerprints
+      are checked for the off-by-one. (7) A string option set to the
+      literal `<empty>`, the default Rarog advertises and GUIs such as
+      CuteChess echo back, means an empty string, as Stockfish's
+      `ucioption.cpp` treats it; today `SyzygyPath` tries to load a folder
+      named `<empty>` and prints "loaded no usable tablebases"; test:
+      `setoption name SyzygyPath value <empty>` prints no tablebase line
+      and leaves probing off. Items (1) and (7) are the two defects in
+      GitHub issue maelic13/rarog#1 (2026-09-15, Rarog 2.4.0 in CuteChess);
+      its `ponder` question is not a defect (UCI allows a ponder move with
+      `Ponder` off), and its 175 ms first line was the start-up stall B.2.8
+      closed. **Verification:** both fingerprints
       exact at every commit; the depth-10 `info` stream over the bench
       positions diffed against the previous head with the new tokens
       stripped (identical apart from the changes the item names); debug
@@ -1077,7 +1087,7 @@ class until they open.
 | B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19; then the final theta baked and B.2.4b; closes when B.2.3.3 reports |
 | B.2.3.3 | READY_FOR_IMPLEMENTATION | V | Tail SPRT (RAR-S77), theta at 5,000 against theta at 3,900, `[0,3]`, cap 40,000; needs the baked final theta |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
-| B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes, identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
+| B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes plus `<empty>` as an empty string option (2026-09-19, GitHub issue #1), identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
 | B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; waits for B.2.4b and B.2.6 |
