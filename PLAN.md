@@ -19,7 +19,10 @@ with any retired number cited in the ledger, the analyses or source comments.
 
 1. **Classical stage.** With the hand-crafted evaluation, beat the strongest
    HCE-era engines in the maintainer's own pool: **Critter 1.6a, Houdini 3,
-   Rybka 4 and Fritz 16**.
+   Rybka 4.1 and Fritz 16**. Rybka 4.1 replaced Rybka 4 by maintainer
+   decision 2026-09-19: the same engine with bug fixes. The 2026-09-11
+   baselines below measured Rybka 4; against Rybka 4.1, 2.4.0 scored −131 in
+   the Super Rating Tournament (RAR-M54).
 2. **NNUE stage.** Train networks on Rarog's own data only, then reach the
    **CCRL top 100**, and later the top 50.
 
@@ -70,8 +73,8 @@ classical stage.
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules |
 
-If those bands are right the classical head lands within reach of Rybka 4 and
-Fritz 16 and near Critter; Houdini 3 may only fall in the NNUE stage. Each
+If those bands are right the classical head lands within reach of Rybka 4.1
+and Fritz 16 and near Critter; Houdini 3 may only fall in the NNUE stage. Each
 programme's checkpoint re-measures its deficit meter so a miss is seen as a
 miss and the budget above is corrected rather than defended.
 
@@ -840,8 +843,9 @@ diagnostics; two rejections stop B.
           (RAR-M57).** Maintainer-run Colosseum gauntlet, 6,000 games at the
           Super Rating Tournament's conditions with the pool held at its
           ratings: Rarog 2.5.0-dev (native build of the B.2.3.1 values) rates
-          **3191**, against 2.4.0's 3001. At 1T it scores 52.3% against
-          Fritz 16, 46.1% against Critter 1.6a and 39.2% against Houdini 3.
+          **3191**, against 2.4.0's 3001. At 1T it scores 59.1% against
+          Rybka 4.1, 52.3% against Fritz 16, 46.1% against Critter 1.6a and
+          39.2% against Houdini 3.
         - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
           `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
           once the final theta is baked and built. An unresolved result is

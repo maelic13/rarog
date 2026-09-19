@@ -172,7 +172,7 @@ is the numbering: release first, baselines on the released binary.
         - [x] **B.2.3.1** Checkpoint peek, theta at 3,900 vs the unfitted head: +118.72 ± 10.62 Elo in 2,000 games (predicted +10 ± 11), bench 6,199,302 / EBF 2.421, never baked (RAR-S76) — DONE 2026-09-19
         - [x] **B.2.3.2** Rybka 4.1 benchmark, 2,000 games each at harness conditions, `Max CPUs=1`: theta at 3,900 **+97.69 ± 12.84** (RAR-M55), the unfitted head −7.12 ± 12.78 (RAR-M56); the fit is worth +104.8 ± 18.1 against Rybka — DONE 2026-09-19
         - [ ] **B.2.3.3** Tail SPRT: theta at 5,000 vs theta at 3,900, `[0,3]`, cap 40,000, after the bake; does not block B.2.4b (RAR-S77) — **READY_FOR_IMPLEMENTATION / V**
-        - [x] **B.2.3.4** Pool gauntlet, 6,000 games at the Super Rating Tournament's conditions, pool held at its ratings: 2.5.0-dev (fit at 3,900, native) rates **3191** against 2.4.0's 3001; Fritz 16 52.3%, Critter 46.1%, Houdini 3 39.2% (RAR-M57) — DONE 2026-09-19
+        - [x] **B.2.3.4** Pool gauntlet, 6,000 games at the Super Rating Tournament's conditions, pool held at its ratings: 2.5.0-dev (fit at 3,900, native) rates **3191** against 2.4.0's 3001; against the E.2 targets Rybka 4.1 59.1%, Fritz 16 52.3%, Critter 46.1%, Houdini 3 39.2% (RAR-M57) — DONE 2026-09-19
     - [ ] **B.2.4** Gate as two SPRTs: B.2.4a unfitted `b2core` vs the off arm `[0,10]` **passed 2026-09-16, +65.09 ± 23.26 in 432 games** (the unfitted arm is the accepted head); B.2.4b fitted vs unfitted `[0,10]` after B.2.3, then the default flip — **GAME_GATE / V**
     - [ ] **B.2.5** UCI `info` conformance: winner's line after the SMP vote, `depth 0` line at a mated root, `nps` at `time 0`, `multipv 1` always, bounds in single-PV, seldepth convention; identity-gated, no SPRT (`analysis/uci_info_review_2026-09-16.md`) — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **B.2.6** Adopt Colosseum CLI as the harness, once `cli-v0.1.0` is released and qualified in its own repository, B.2.3's tune has finished on weather-factory and B.2.4b is gated with `sprt.ps1`; fastchess stays staged as the second runner — **RESEARCH / M**
@@ -220,7 +220,7 @@ is the numbering: release first, baselines on the released binary.
 ## Phase E — Classical checkpoint and release
 
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
-- [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4 and Fritz 16 at 1T and 4T — **V**
+- [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19) — **V**
 - [ ] **E.3** Release 3.0.0 (gate met) or 2.5.0: changelog, suites, PGO assets, ISA, CI with tag-equals-version and cross-matrix fingerprint assertions, tag on instruction — **M**
 
 ## Phase F — NNUE (own data only)
