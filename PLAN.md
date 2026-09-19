@@ -949,6 +949,17 @@ diagnostics; two rejections stop B.
       iteration as B.2.6.2 sets them, cap) comes before launch. Gated by an
       SPRT `[0,3]` against the head B.2.4b accepts. Waits for B.2.4b and
       B.2.6.
+    - **B.2.8 First-search stalls — `I1`, IMPLEMENTED 2026-09-19
+      (RAR-M59).** Added by maintainer decision after a harness lead. The
+      KPK bitbase was built inside the first search that reached KPK (about
+      34 ms on that search's clock), the hash table was converted to its
+      shared form inside the first multi-threaded search, and helpers freed
+      an unused 64 MiB table on it. Engine `9a7b663` and `c0e6ef7` build every
+      table before input is read and do every conversion at `setoption`, as
+      Stockfish and Reckless do; bench unchanged on both arms; a fresh-process
+      test and a `configure` test fail with the fix disabled. Closes when the
+      maintainer's 10,000-game Colosseum confirmation reads 0 time losses.
+      The B.2.3 tune keeps its registered binary and is not rebuilt.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
   handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
   donor's entry margin above beta (both donors demand about 150 Rarog
@@ -1067,6 +1078,7 @@ class until they open.
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
 | B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; waits for B.2.4b and B.2.6 |
+| B.2.8 | IMPLEMENTED | I1 | First-search stalls fixed 2026-09-19 (`9a7b663`, `c0e6ef7`; RAR-M59): tables built at start-up, TT converted at `setoption`; closes on the maintainer's 10,000-game Colosseum confirmation with 0 time losses |
 | B.2.6.2 | RESEARCH | M | Retire the replaced scripts, rewrite PROCESS, AGENTS and `tools/README.md`, ledger rows for the 2026-09-17/18 parity runs, next tune registered at 15 slots and 30 games per iteration with the budget in games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
