@@ -376,6 +376,17 @@ impl Searcher {
                 helpers + 1
             ));
         }
+        // Put the table in the form the next search uses now, not in that
+        // search: converting allocates and clears the whole table (128 MiB
+        // cost 20 ms and 33,000 page faults on a fresh process's first move).
+        if options.threads > 1 {
+            self.shared.tt.make_shared(self.shared.hash_mb);
+        } else if !self.shared.tt.ensure_local(self.shared.hash_mb) {
+            self.notice(format_args!(
+                "Unable to restore local transposition table at {} MiB.",
+                self.shared.hash_mb
+            ));
+        }
     }
 
     pub fn clear_hash(&mut self) {
@@ -1764,6 +1775,27 @@ mod tests {
         assert!(
             main.shared.tt.probe(board.hash()).is_some(),
             "helper startup cleared the shared TT after another thread made it live"
+        );
+    }
+
+    #[test]
+    fn configure_puts_the_table_in_the_form_the_next_search_uses() {
+        let mut searcher = Searcher::default();
+        let mut options = EngineOptions {
+            hash_mb: 1,
+            threads: 4,
+            ..EngineOptions::default()
+        };
+        searcher.configure(&options);
+        assert!(
+            searcher.shared.tt.is_shared(),
+            "Threads > 1 must convert the table at configure, not in the first search"
+        );
+        options.threads = 1;
+        searcher.configure(&options);
+        assert!(
+            !searcher.shared.tt.is_shared(),
+            "Threads = 1 must restore the local table at configure"
         );
     }
 

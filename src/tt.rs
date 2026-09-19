@@ -392,6 +392,12 @@ impl TranspositionTable {
         self.storage = TtStorage::Shared(Arc::new(new_shared_table(mb, age)));
     }
 
+    /// Whether the table is in the atomic form a multi-threaded search uses.
+    #[cfg(test)]
+    pub(crate) fn is_shared(&self) -> bool {
+        matches!(self.storage, TtStorage::Shared(_))
+    }
+
     /// Bytes actually handed to the allocator for the table itself.
     /// The sizing tests assert this against the `Hash` budget.
     pub fn allocated_bytes(&self) -> usize {

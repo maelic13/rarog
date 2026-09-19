@@ -7,9 +7,10 @@
 //! swaps the side to move before probing.
 //!
 //! Index space is `stm(2) × wk(64) × bk(64) × pawn(64)`; pawn squares on ranks 1
-//! and 8 are simply marked invalid. The table is built lazily on first probe and
-//! cached for the process lifetime, so positions that never reach KPK (e.g. the
-//! `bench` suite) never pay for it.
+//! and 8 are simply marked invalid. The engine builds the table at start-up
+//! (`initialize`), because building it on first probe runs the ~34 ms
+//! generation inside whichever search first reaches KPK, on that search's
+//! clock; late in a fast game that loses on time.
 
 use crate::infra;
 use std::sync::OnceLock;
@@ -210,6 +211,11 @@ fn generate() -> Vec<u8> {
 /// Returns true iff the side with the (White-oriented) pawn wins the KPK
 /// position. `white_to_move` is the side to move *after* any mirroring the
 /// caller applied; `wk`/`bk`/`p` are 0..63 square indices with the pawn White's.
+/// Build the table now if it is not built yet.
+pub(crate) fn initialize() {
+    BITBASE.get_or_init(generate);
+}
+
 pub fn probe(white_to_move: bool, wk: usize, bk: usize, p: usize) -> bool {
     let db = BITBASE.get_or_init(generate);
     let stm = if white_to_move { 0 } else { 1 };

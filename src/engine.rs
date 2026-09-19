@@ -28,6 +28,7 @@ impl InfoSink for StdoutSink {
 
 impl Engine {
     pub fn new(commands: EngineCommandQueue, control: Arc<EngineControl>) -> Engine {
+        crate::initialize_tables();
         Engine {
             commands,
             control,

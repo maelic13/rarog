@@ -398,6 +398,45 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// The engine's own `time` for a `go depth 4` from a lone-pawn KPK position,
+/// read from the last `info depth` line.
+fn kpk_search_ms(session: &mut UciSession) -> u64 {
+    session.send("ucinewgame");
+    session.send("position fen 8/8/8/4k3/8/3PK3/8/8 w - - 0 1");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    session.send("go depth 4");
+    let lines = session.collect_until_line_containing("bestmove", wait(5));
+    lines
+        .iter()
+        .rev()
+        .filter(|line| line.starts_with("info depth"))
+        .find_map(|line| parse_uci_u64_field(line, "time"))
+        .unwrap_or_else(|| panic!("KPK search should report its time: {lines:?}"))
+}
+
+/// A fresh process's first search that reaches KPK must cost what the same
+/// search costs warm. The bitbase was built on first probe, inside that search
+/// and on its clock (about 34 ms in release), which lost games on time late in
+/// fast games whenever a harness started a fresh engine for every game.
+///
+/// A genuine timing assertion, deliberately NOT scaled by `wait`: the margin
+/// sits far above a depth-4 KPK search's noise in either profile and below
+/// the cost of building the table in either profile.
+#[test]
+fn first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    let cold = kpk_search_ms(&mut session);
+    let warm = kpk_search_ms(&mut session);
+    assert!(
+        cold <= warm + 15,
+        "first KPK search took {cold} ms against {warm} ms warm: a table is being built inside the search"
+    );
+    session.quit();
+}
+
 fn parse_uci_u64_field(line: &str, field: &str) -> Option<u64> {
     let mut parts = line.split_whitespace();
     while let Some(part) = parts.next() {
