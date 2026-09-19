@@ -29,10 +29,14 @@ impl InfoSink for StdoutSink {
 impl Engine {
     pub fn new(commands: EngineCommandQueue, control: Arc<EngineControl>) -> Engine {
         crate::initialize_tables();
+        let mut searcher = Searcher::with_sink(Box::new(StdoutSink));
+        // Touch every per-thread table now, as a new game would, so a GUI that
+        // sends no `ucinewgame` does not pay those page faults in its first search.
+        searcher.new_game();
         Engine {
             commands,
             control,
-            searcher: Searcher::with_sink(Box::new(StdoutSink)),
+            searcher,
         }
     }
 

@@ -98,7 +98,13 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
         .name(format!("rarog-search-{index}"))
         .stack_size(infra::THREAD_STACK_SIZE)
         .spawn(move || {
+            // Ready before the first search, which runs on the clock: a helper
+            // searches the pool's table, handed over with each job, so its own
+            // default table would only be dropped on that clock; and its
+            // history and cache pages are touched here, not by that search.
             let mut worker = Searcher::default();
+            worker.shared.tt = TranspositionTable::new(1);
+            worker.reset_worker_state_for_new_game();
             while let Ok(message) = receiver.recv() {
                 match message {
                     WorkerMessage::Search(job) => {
