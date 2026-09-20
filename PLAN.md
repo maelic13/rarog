@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's HCE by **about 329 Elo** | RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **7,601,220 / EBF 2.474**; engine source unchanged since `c80df74`, accepted by RAR-E15, and reproduced by every 2.4.0 build in A.7, A.8.3 and A.8.4 | GUIDE checkpoint; RAR-M48 manifests |
+| Fingerprint | `bench 13` **7,185,678 / EBF 2.444**: the B.2.3-fitted selectivity core, the default build since B.2.4b accepted it (2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search at 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -872,8 +872,14 @@ diagnostics; two rejections stop B.
       accepted in 248 games, +138.60 ± 30.66 Elo (+217.71 nElo), so the
       FITTED arm (7,185,678 / EBF 2.444, `14a7079`) is the accepted head and
       the base for B.3 (RAR-S73).** The feature stayed a build flag until
-      B.2.4b chose between the fitted and the unfitted defaults; the default
-      flip now lands once and closes the leaf. **B.2.4b**
+      B.2.4b chose between the fitted and the unfitted defaults. **The flip
+      landed 2026-09-20 (`a47e85b` engine, `58176a1` tooling), CLOSING the
+      leaf:** `b2core` is a default Cargo feature, the default build is the
+      accepted head at 7,185,678 / EBF 2.444 and reports `2.5.0-dev`, and
+      `--no-default-features` still compiles the B.1 search at 7,601,220,
+      reporting `2.5.0-dev+legacy`, until B.8 deletes that path. CI's default
+      jobs cover the core and its `--no-default-features` jobs the legacy
+      search; the feature matrix enumerates 32 subsets from a clean slate. **B.2.4b**
       the B.2.3-fitted arm against the unfitted arm, `[0,10]` nElo, cap
       16,000 games, after theta is baked; passing makes the fitted arm
       the accepted head, failing leaves the unfitted one. Each accepts
@@ -891,8 +897,8 @@ diagnostics; two rejections stop B.
       maintainer decision from the implementer's review (`analysis/uci_info_review_2026-09-16.md`);
       runs after B.2.4 closes and before B.3, on the accepted head, both
       arms. Output-only, behaviour-neutral, no SPRT: gated by identity
-      (exact fingerprints 4,706,910 / EBF 2.391 with `b2core` and
-      7,601,220 / EBF 2.474 without) plus protocol tests, because the
+      (exact fingerprints 7,185,678 / EBF 2.444 for the default build and
+      7,601,220 / EBF 2.474 with `--no-default-features`) plus protocol tests, because the
       bench prints no `info` line and an identical bench proves nothing
       here. **Contract, one commit per item:** (1) after the pool's vote,
       when the reported line is not the winning thread's, print the
@@ -1092,7 +1098,6 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.4 | GAME_GATE | V | Both SPRTs passed (RAR-S73): B.2.4a +65.09 ± 23.26 in 432 games (2026-09-16), B.2.4b +138.60 ± 30.66 in 248 games (2026-09-20). The fitted `b2core` arm at 7,185,678 / EBF 2.444 is the accepted head and the base for B.3; the default flip closes the leaf |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes plus `<empty>` as an empty string option (2026-09-19, GitHub issue #1), identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
