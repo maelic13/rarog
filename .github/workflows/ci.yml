@@ -68,13 +68,14 @@ jobs:
       - name: cargo clippy (--features texel)
         run: cargo clippy --all-targets --features texel -- -D warnings
 
-      # The selectivity-core candidate replaces the node kernel under the
-      # `b2core` umbrella, so its code is linted only when the feature is on.
-      - name: cargo clippy (--features b2core)
-        run: cargo clippy --all-targets --features b2core -- -D warnings
+      # `b2core` is a default feature since B.2.4b, so every step above lints
+      # the accepted selectivity core. These two cover the superseded B.1
+      # search, which stays compilable until B.8 deletes it.
+      - name: cargo clippy (--no-default-features, the legacy search)
+        run: cargo clippy --all-targets --no-default-features -- -D warnings
 
-      - name: cargo clippy (--features b2core,diag,tune)
-        run: cargo clippy --all-targets --features b2core,diag,tune -- -D warnings
+      - name: cargo clippy (--features diag,tune)
+        run: cargo clippy --all-targets --features diag,tune -- -D warnings
 
       - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
@@ -124,13 +125,13 @@ jobs:
             cargo test -p rarog
           fi
 
-      - name: cargo test — engine, b2core candidate (${{ matrix.profile }})
+      - name: cargo test — engine, legacy search (${{ matrix.profile }})
         shell: bash
         run: |
           if [ "${{ matrix.profile }}" = "release" ]; then
-            cargo test -p rarog --release --features b2core
+            cargo test -p rarog --release --no-default-features
           else
-            cargo test -p rarog --features b2core
+            cargo test -p rarog --no-default-features
           fi
 
       - name: cargo test — tooling crates
@@ -204,10 +205,10 @@ jobs:
       # commit, and a hardcoded constant would need editing constantly until
       # somebody just deleted the check. Cross-platform agreement, by contrast,
       # must hold forever regardless of what we change.
-      # The candidate arm must agree across platforms too; it builds into its
+      # The legacy search must agree across platforms too; it builds into its
       # own target directory so the release binary above is untouched.
-      - name: Build release, b2core candidate
-        run: cargo build --release --features b2core --target-dir target/b2core
+      - name: Build release, legacy search
+        run: cargo build --release --no-default-features --target-dir target/legacy
 
       - name: Run bench and record node counts
         shell: bash
@@ -222,10 +223,10 @@ jobs:
           }
           count "./target/release/rarog${{ matrix.ext }}" bench.log
           accepted=$nodes
-          count "./target/b2core/release/rarog${{ matrix.ext }}" bench-b2core.log
-          candidate=$nodes
-          echo "${{ matrix.label }} $accepted $candidate" > "nodes-${{ matrix.label }}.txt"
-          echo "$accepted nodes (b2core $candidate) on ${{ matrix.label }}"
+          count "./target/legacy/release/rarog${{ matrix.ext }}" bench-legacy.log
+          legacy=$nodes
+          echo "${{ matrix.label }} $accepted $legacy" > "nodes-${{ matrix.label }}.txt"
+          echo "$accepted nodes (legacy $legacy) on ${{ matrix.label }}"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -257,7 +258,7 @@ jobs:
               exit 1
             fi
           done
-          echo "all platforms agree: $(awk '{print $2, "b2core", $3}' nodes-*.txt | sort -u)"
+          echo "all platforms agree: $(awk '{print $2, "legacy", $3}' nodes-*.txt | sort -u)"
 
   features:
     name: feature builds
@@ -283,8 +284,8 @@ jobs:
       - name: Build --features diag
         run: cargo build --release --features diag
 
-      - name: Build --features b2core,tune,ablate
-        run: cargo build --release --features b2core,tune,ablate
+      - name: Build --features tune,ablate
+        run: cargo build --release --features tune,ablate
 
       # `ablate` was the fourth declared feature and the only one CI never
       # built, so it could rot unnoticed exactly like the other three would
@@ -296,15 +297,18 @@ jobs:
 
       # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
-      # `diag` and under `tune` and fail under both. This enumerates all 16
-      # subsets with `cargo check --all-targets`, which catches the same
-      # compilation errors far more cheaply than 16 builds.
+      # `diag` and under `tune` and fail under both. This enumerates all 32
+      # subsets of the five declared features with
+      # `cargo check --all-targets --no-default-features`, which catches the
+      # same compilation errors far more cheaply than 32 builds. Every subset
+      # starts from a clean slate, so `b2core` is an axis like any other and
+      # the subsets without it cover the legacy search until B.8 deletes it.
       #
       # Deliberately NOT `--all-features`: that is not a shipped configuration.
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
       # be measured (AGENTS.md).
-      - name: Feature matrix (all 16 subsets compile)
+      - name: Feature matrix (all 32 subsets compile)
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)

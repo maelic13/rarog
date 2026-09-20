@@ -19,6 +19,12 @@ finds the combination that includes `texel`.
 compilation errors -- which is what a feature matrix is for -- at a fraction of
 the cost, so the whole matrix is runnable on demand rather than only in CI.
 
+Every configuration is checked with `--no-default-features`, so each subset is
+exactly the features it names. `b2core` is therefore an axis like any other:
+the subsets that include it are the accepted search, and the ones that omit it
+are the superseded B.1 search that `--no-default-features` still compiles until
+B.8 deletes it.
+
 Example:
 
   python tools/diag/feature_matrix.py
@@ -33,10 +39,11 @@ import subprocess
 import sys
 import time
 
-# Every feature the crate declares. Kept in sync with Cargo.toml by
+# Every feature the crate declares, `default` aside. Kept in sync with
+# Cargo.toml by
 # `test_feature_matrix.py::test_the_matrix_covers_every_declared_feature`, so
 # adding a feature and forgetting to check it fails the suite.
-SHIPPED_FEATURES = ["tune", "diag", "ablate", "texel"]
+SHIPPED_FEATURES = ["b2core", "tune", "diag", "ablate", "texel"]
 
 # Features that change what is MEASURED rather than only what is exposed. A
 # binary built with one of these must never be used for a strength number, and
@@ -53,11 +60,11 @@ def combinations(features: list[str]) -> list[tuple[str, ...]]:
 
 
 def describe(combo: tuple[str, ...]) -> str:
-    return "default" if not combo else ",".join(combo)
+    return "no features (the legacy search)" if not combo else ",".join(combo)
 
 
 def check(combo: tuple[str, ...], release: bool, verbose: bool) -> tuple[bool, float]:
-    cmd = ["cargo", "check", "--all-targets"]
+    cmd = ["cargo", "check", "--all-targets", "--no-default-features"]
     if release:
         cmd.append("--release")
     if combo:

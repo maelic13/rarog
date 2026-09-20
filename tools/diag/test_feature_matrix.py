@@ -23,7 +23,9 @@ class CoverageTests(unittest.TestCase):
         block = text.split("[features]", 1)[1]
         # Stop at the next section header.
         block = re.split(r"^\[", block, maxsplit=1, flags=re.MULTILINE)[0]
-        return sorted(re.findall(r"^(\w+)\s*=\s*\[", block, flags=re.MULTILINE))
+        declared = re.findall(r"^(\w+)\s*=\s*\[", block, flags=re.MULTILINE)
+        # `default` names a set of the others, so it is not a feature to check.
+        return sorted(name for name in declared if name != "default")
 
     def test_the_matrix_covers_every_declared_feature(self):
         self.assertEqual(sorted(feature_matrix.SHIPPED_FEATURES),
@@ -58,9 +60,18 @@ class CombinationTests(unittest.TestCase):
             len(feature_matrix.combinations(feature_matrix.SHIPPED_FEATURES)),
             2 ** len(feature_matrix.SHIPPED_FEATURES))
 
-    def test_the_default_configuration_is_labelled(self):
-        self.assertEqual(feature_matrix.describe(()), "default")
+    def test_the_empty_configuration_is_labelled(self):
+        # Every check runs --no-default-features, so the empty subset is the
+        # legacy search rather than the shipped default build.
+        self.assertEqual(
+            feature_matrix.describe(()), "no features (the legacy search)"
+        )
         self.assertEqual(feature_matrix.describe(("tune", "diag")), "tune,diag")
+
+    def test_every_check_starts_from_a_clean_slate(self):
+        """Without --no-default-features a subset would silently include b2core."""
+        source = (feature_matrix.__file__ and open(feature_matrix.__file__, encoding="utf-8").read())
+        self.assertIn('"--no-default-features"', source)
 
 
 if __name__ == "__main__":
