@@ -421,6 +421,10 @@ mod tests {
     fn rule50_damping_is_the_evaluators_and_material_is_neutral_at_zero() {
         let mut searcher = Searcher::default();
         let board = Board::from_fen("4k3/8/8/8/8/8/3Q4/4K3 w - - 90 60").expect("valid FEN");
+        // The material scale is an SPSA coordinate and is fitted away from
+        // zero, so the damping line is read with it switched off; the term's
+        // own effect is asserted below.
+        searcher.cfg.core.eval_material_scale = 0;
         assert_eq!(
             searcher.corrected_eval_parts(&board, 500, 0).0,
             500 - 500 * 90 / 199,

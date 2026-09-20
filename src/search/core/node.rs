@@ -2035,24 +2035,18 @@ mod tests {
         }
     }
 
-    /// The improvement term saturates at its coordinates' bounds, seeded at
-    /// the donor's -241 and +1155 reduction units, and the alpha gap at its
-    /// bounds, seeded at -65 and +91 evaluation units; moving a coordinate
-    /// moves the saturation point.
+    /// The improvement term saturates at its coordinates' bounds and the alpha
+    /// gap at its own; moving a coordinate moves the saturation point. The
+    /// bounds are read from the parameters, not written here: they are SPSA
+    /// coordinates, so a test that pinned their values would fail on every
+    /// fit while proving nothing about the saturation it exists to check.
     #[test]
     fn late_move_reduction_clamps_follow_their_coordinates() {
         let mut searcher = Searcher::default();
         let p = &searcher.cfg.core;
-        assert_eq!(
-            (p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi),
-            (-241, 1_155),
-            "donor seeds"
-        );
-        assert_eq!(
-            (p.lmr_alpha_gap_lo, p.lmr_alpha_gap_hi),
-            (-65, 91),
-            "donor seeds"
-        );
+        let (clamp_lo, clamp_hi) = (p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi);
+        let (gap_lo, gap_hi) = (p.lmr_alpha_gap_lo, p.lmr_alpha_gap_hi);
+        assert!(clamp_lo < 0 && clamp_hi > 0 && gap_lo < 0 && gap_hi > 0);
 
         let reductions = |searcher: &Searcher| {
             let with = |edit: &dyn Fn(&mut LateMoveInputs)| {
@@ -2071,7 +2065,7 @@ mod tests {
         let gap = searcher.cfg.core.lmr_alpha_gap;
         assert_eq!(
             reductions(&searcher),
-            (1_155, -241, gap * 91 / 128, gap * -65 / 128)
+            (clamp_hi, clamp_lo, gap * gap_hi / 128, gap * gap_lo / 128)
         );
         // Below saturation the term is linear in the improvement.
         let slope = searcher.cfg.core.lmr_improvement;
