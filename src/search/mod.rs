@@ -329,6 +329,13 @@ pub struct Searcher {
     td: ThreadData,
 }
 
+/// Nodes per second for an `info` line. The elapsed time is floored at one
+/// millisecond, as Stockfish floors it: dividing by a zero elapsed time made
+/// the first lines of every search report `nps` a thousand times too low.
+fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
+    u128::from(nodes) * 1000 / elapsed_ms.max(1)
+}
+
 fn format_score(score: i32) -> String {
     if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
         format!("mate {}", (MATE_SCORE - score + 1) / 2)
@@ -1308,9 +1315,7 @@ impl Searcher {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
-        let nps = (nodes as u128 * 1000)
-            .checked_div(elapsed_ms)
-            .unwrap_or(nodes as u128);
+        let nps = nps(nodes, elapsed_ms);
         let hashfull = self.hashfull();
         for (index, line) in lines.iter().enumerate() {
             let bound = match line.bound {
@@ -1527,16 +1532,14 @@ impl Searcher {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
-        let nps = (nodes as u128 * 1000)
-            .checked_div(elapsed_ms)
-            .unwrap_or(nodes as u128);
+        let nps = nps(nodes, elapsed_ms);
         let pv = pv
             .iter()
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(" ");
         self.td.sink.line(&format!(
-            "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
+            "info depth {} seldepth {} multipv 1 score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
             seldepth,
             format_score(score),
@@ -1600,6 +1603,16 @@ mod tests {
     /// band without taking a dependency on the search. This is the assertion
     /// that keeps the mirror honest, and it lives here because this module is
     /// the one that legitimately sees both constants.
+    /// A line printed inside the first millisecond used to divide by zero and
+    /// fall back to the raw node count: `nodes 49 nps 49` instead of 49,000.
+    #[test]
+    fn nps_floors_the_elapsed_time_at_one_millisecond() {
+        assert_eq!(super::nps(49, 0), 49_000);
+        assert_eq!(super::nps(49, 1), 49_000);
+        assert_eq!(super::nps(2_000, 4), 500_000);
+        assert_eq!(super::nps(0, 0), 0);
+    }
+
     #[test]
     fn mopup_mirror_matches_the_real_ply_horizon() {
         assert_eq!(

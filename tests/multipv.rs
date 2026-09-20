@@ -167,14 +167,24 @@ fn lines_are_drawn_from_the_searchmoves_set() {
     assert_eq!(bestmove.to_string(), lines[0].pv[0]);
 }
 
+/// Every reported line carries `multipv`, so a parser meets one line shape
+/// whatever `MultiPV` is set to. Stockfish and Reckless both always print it.
 #[test]
-fn one_line_prints_no_multipv_token() {
+fn one_line_still_prints_the_multipv_token() {
     let (lines, _, raw) = search_lines(MIDDLEGAME, 5, |options| {
         options.engine.multi_pv = 1;
     });
-    assert!(lines.is_empty());
     assert!(raw.iter().any(|line| line.starts_with("info depth 5 ")));
-    assert!(raw.iter().all(|line| !line.contains("multipv")), "{raw:#?}");
+    assert!(
+        raw.iter()
+            .filter(|line| line.starts_with("info depth"))
+            .all(|line| line.contains(" multipv 1 ")),
+        "{raw:#?}"
+    );
+    assert!(
+        lines.iter().all(|line| line.index == 1),
+        "single-PV search reports index 1 only: {lines:#?}"
+    );
 }
 
 #[test]

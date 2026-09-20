@@ -51,10 +51,13 @@ fn search(path: &str, fen: &str, lines: usize) -> (Vec<String>, Vec<String>, Str
         .filter_map(|depth| depth.parse::<u32>().ok())
         .max()
         .expect("a depth was reported");
+    // Every line carries `multipv` now, so a second reported line shows up as
+    // an index above 1 rather than as the token's presence.
     let prefix = format!("info depth {deepest} ");
     let firsts = raw
         .iter()
-        .filter(|line| line.starts_with(&prefix) && line.contains(" multipv "))
+        .filter(|line| line.starts_with(&prefix))
+        .filter(|line| !line.contains(" multipv 1 "))
         .filter_map(|line| line.split(" pv ").nth(1))
         .filter_map(|pv| pv.split_whitespace().next())
         .map(str::to_string)
@@ -68,7 +71,10 @@ fn a_won_tablebase_root_reports_one_line() {
     // KQ v K: the root keeps only the tablebase's preferred winning move.
     let fen = "8/8/8/4k3/8/8/8/3QK3 w - - 0 1";
     let (firsts, raw, bestmove) = search(&path, fen, 5);
-    assert!(firsts.is_empty(), "one line prints no multipv: {raw:#?}");
+    assert!(
+        firsts.is_empty(),
+        "one reported line means no index above 1: {raw:#?}"
+    );
     assert!(
         raw.iter().any(|line| !line.contains(" tbhits 0 ")),
         "{raw:#?}"
