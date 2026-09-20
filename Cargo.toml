@@ -38,13 +38,15 @@ tune = []
 # shipped binary, and never in a strength gate except as the arm under test.
 # Production compiles every guard out entirely -- `ablated()` is a const `false`.
 ablate = []
-# The selectivity-core candidate: one compile-time umbrella over a replacement
-# node kernel, move picker, history and correction tables
-# (`src/search/core/`). Off, the accepted search is compiled unchanged and
-# `bench` reproduces its fingerprint; on, the version string carries `+b2core`
-# so a pool binary identifies itself. Never in a release unless its registered
-# gate accepts it.
+# The selectivity core: one compile-time umbrella over the node kernel, move
+# picker, history and correction tables (`src/search/core/`). **On by default
+# since B.2.4b accepted it, 2026-09-20** (+138.60 ± 30.66 Elo fitted against
+# unfitted, after +65.09 ± 23.26 unfitted against the previous search).
+# `--no-default-features` compiles the superseded B.1 search instead, which
+# reproduces its own fingerprint and reports `+legacy`; B.8 deletes it.
 b2core = []
+
+default = ["b2core"]
 # Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
