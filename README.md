@@ -87,7 +87,24 @@ Explorer. Any UCI-compatible GUI should work.
 | `Syzygy50MoveRule` | `true` | Whether tablebase results respect the fifty-move rule. |
 
 `SyzygyPath` accepts several folders separated by `;` on Windows or `:`
-elsewhere. Positions resolved from tablebases are reported through `tbhits`.
+elsewhere, and the value `<empty>` means no path at all, which is what a GUI
+sends back when it echoes the advertised default. Positions resolved from
+tablebases are reported through `tbhits`.
+
+### Search output
+
+Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
+`nps`, `hashfull`, `tbhits`, `time` and `pv`, in that order.
+
+- `seldepth` is the deepest ply the current iteration reached, counting the
+  root as ply one, and it starts again at each depth.
+- A score still being narrowed by an aspiration re-search is marked
+  `lowerbound` or `upperbound`; the line that closes an iteration is exact.
+- With `Threads` above one the engine picks its move by a vote across threads
+  and reports that thread's line before `bestmove`, so the last line always
+  describes the move played.
+- A position with no legal move reports `info depth 0 score mate 0` when in
+  check and `info depth 0 score cp 0` when stalemated, then `bestmove 0000`.
 
 ### Supported commands
 

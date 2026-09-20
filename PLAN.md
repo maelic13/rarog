@@ -115,6 +115,16 @@ gating. The rules below decide order and acceptance in this roadmap.
    paired UHO, `fastchess -use-affinity`, concurrency 14, unless the
    registration states otherwise and why. Multi-thread gates drop affinity and
    calibrate a null pair first.
+7b. **A cluster may be fitted before its gate, with an argument.** B.2 read
+   +65.09 ± 23.26 Elo unfitted and +138.60 ± 30.66 fitted (RAR-S73), so donor
+   constants can understate a mechanism by more than its whole margin and a
+   good cluster can fail its gate for want of a fit. That is a reason to fit
+   *some* clusters first, never a routine step: SPSA costs tens of hours
+   (RAR-S75 took 62 active hours for 160,000 games), so a pre-gate tune is
+   registered case by case with the argument for why this cluster needs it,
+   what horizon, and what the gate would otherwise measure. Maintainer
+   decision 2026-09-20. The whole-surface refit stays at B.6.
+
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
    exchange rate. Counters, node counts, EBF, tactical suites and fit loss
@@ -893,7 +903,16 @@ diagnostics; two rejections stop B.
       "null calibration owed" precondition here claiming no calibration
       followed RAR-M17; that contradicted those two records and is withdrawn
       by maintainer decision.
-    - **B.2.5 UCI `info` conformance — `I1`.** Added 2026-09-16 by
+    - **B.2.5 UCI `info` conformance — `I1`, CLOSED 2026-09-20.** All seven
+      items landed: `da6d8f9` the pool's winner line, `5cba881` the mated-root
+      line, `45779ee` the `nps` floor and `multipv 1` on every line, `8a76826`
+      single-PV aspiration bounds, `5a8d58b` the seldepth convention,
+      `1e725fe` the `<empty>` placeholder. Both fingerprints held at every
+      commit (7,185,678 default, 7,601,220 legacy) and the depth-10 info
+      stream over five positions stayed identical once each item's own change
+      was masked. README's UCI notes and the changelog record the new output.
+      Items 3 and 4 share a commit; the reason is in its message. Added
+      2026-09-16 by
       maintainer decision from the implementer's review (`analysis/uci_info_review_2026-09-16.md`);
       runs after B.2.4 closes and before B.3, on the accepted head, both
       arms. Output-only, behaviour-neutral, no SPRT: gated by identity
@@ -1098,7 +1117,6 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes plus `<empty>` as an empty string option (2026-09-19, GitHub issue #1), identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
 | B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; waits for B.2.4b and B.2.6 |

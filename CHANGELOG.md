@@ -15,6 +15,33 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `upperbound`, and `bestmove` is always the first line. With `Threads` above
   one, the main thread searches the lines and the helpers assist through the
   hash table. At `MultiPV 1` the search and its output are unchanged.
+- The selectivity core is the default search: a replacement node kernel, move
+  picker, history and correction tables, with its ~100 constants fitted by a
+  160,000-game SPSA. It was accepted over the previous search by two gates,
+  +65.09 ± 23.26 Elo unfitted and +138.60 ± 30.66 Elo fitted against that.
+  `--no-default-features` still builds the previous search.
+
+### Fixed
+
+- **Time losses in fast games.** Lookup tables were built inside the first
+  search that needed them — the king-and-pawn bitbase cost about 34 ms on that
+  search's clock — which lost games late in blitz whenever a GUI or harness
+  started a fresh engine per game. Every table is now built at start-up, and a
+  multi-threaded search no longer converts the hash table on the clock either.
+- **`bestmove` naming a move no `info` line reported.** A multi-threaded search
+  picks its move by a vote across threads; the winning thread's line is now
+  reported before `bestmove`.
+- **`nps` a thousand times too low** on any line printed inside the first
+  millisecond of a search.
+- **Silence where a score belonged:** a position with no legal move now reports
+  `info depth 0 score mate 0` or `... score cp 0` before `bestmove 0000`, and
+  single-PV searches report their aspiration bounds instead of printing nothing
+  until the window closes.
+- **`seldepth`** now resets each iteration and counts the root as ply one, the
+  usual convention; it was a whole-search high-water mark, one lower.
+- **`multipv`** is on every line, so a parser meets one line shape.
+- **`SyzygyPath value <empty>`**, which GUIs send when they echo the advertised
+  default, no longer tries to load tablebases from a folder of that name.
 
 ## [2.4.0] - 2026-09-11
 

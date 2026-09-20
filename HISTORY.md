@@ -59,6 +59,13 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-20 — PLAN B.2 CLOSED.** B.2.3's SPSA finished at N = 5,000
+  (160,000 games) and its theta was baked; B.2.4a (+65.09 ± 23.26) and B.2.4b
+  (+138.60 ± 30.66) accepted the fitted selectivity core, which became the
+  default build at **7,185,678 / EBF 2.444**. RAR-S77 measured the tune's last
+  1,100 iterations at +4.43 ± 2.90. B.2.5 then fixed seven UCI `info` defects,
+  two of them reported in GitHub issue maelic13/rarog#1, and B.2.8 removed the
+  start-up stalls that cost games on time.
 - **2026-09-15 — PLAN B.2.2.4 and B.2.2 CLOSED:** the screen ladder for
   B.3–B.5 is written into rule 8. The paired run governs, the floors are
   diagnostics, time-to-depth replaces pooled NPS, a positional screen and the
