@@ -782,11 +782,17 @@ impl Searcher {
                 // dynamics.
                 if score <= window.alpha {
                     crate::diag_count!(asp_fail_low);
+                    if emit_info {
+                        self.send_bounded_info_line(depth, score, RootBound::Upper, bestmove);
+                    }
                     window.fail_low(&self.cfg.params, score);
                     continue;
                 }
                 if score >= window.beta {
                     crate::diag_count!(asp_fail_high);
+                    if emit_info {
+                        self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
+                    }
                     window.fail_high(&self.cfg.params, score);
                     continue;
                 }
@@ -1523,12 +1529,38 @@ impl Searcher {
     }
 
     fn send_info_line(&self, depth: usize, score: i32, pv: &[Move]) {
-        self.send_full_info_line(depth, self.td.seldepth, score, pv);
+        self.send_full_info_line(depth, self.td.seldepth, score, RootBound::Exact, pv);
+    }
+
+    /// An aspiration re-search's line: the score is only a bound, so it carries
+    /// `lowerbound` or `upperbound`. Printing nothing until the window closed
+    /// left a long iteration silent, and left a stopped iteration reporting the
+    /// previous depth (the 2026-09-16 review, item 5).
+    fn send_bounded_info_line(&self, depth: usize, score: i32, bound: RootBound, fallback: Move) {
+        let mut pv: Vec<Move> = self.td.pv_table[0][..self.td.pv_len[0].min(MAX_PLY)]
+            .iter()
+            .copied()
+            .filter(|mv| !mv.is_null())
+            .collect();
+        if pv.is_empty() && !fallback.is_null() {
+            pv.push(fallback);
+        }
+        if pv.is_empty() {
+            return;
+        }
+        self.send_full_info_line(depth, self.td.seldepth, score, bound, &pv);
     }
 
     /// One full `info` line, from values the caller owns. The pool uses it to
     /// report the winning thread's line, which is not this thread's state.
-    fn send_full_info_line(&self, depth: usize, seldepth: usize, score: i32, pv: &[Move]) {
+    fn send_full_info_line(
+        &self,
+        depth: usize,
+        seldepth: usize,
+        score: i32,
+        bound: RootBound,
+        pv: &[Move],
+    ) {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
@@ -1538,11 +1570,17 @@ impl Searcher {
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(" ");
+        let bound = match bound {
+            RootBound::Exact => "",
+            RootBound::Lower => " lowerbound",
+            RootBound::Upper => " upperbound",
+        };
         self.td.sink.line(&format!(
-            "info depth {} seldepth {} multipv 1 score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
+            "info depth {} seldepth {} multipv 1 score {}{} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
             seldepth,
             format_score(score),
+            bound,
             nodes,
             nps,
             self.hashfull(),
@@ -1563,6 +1601,7 @@ impl Searcher {
             result.depth.max(1),
             result.seldepth,
             result.score,
+            RootBound::Exact,
             &result.pv,
         );
     }

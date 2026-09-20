@@ -398,6 +398,49 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// An aspiration re-search's score is only a bound, and single-PV mode used to
+/// print nothing at all until the window closed: a long iteration went silent
+/// and a stopped one reported the previous depth. One-thread fixed-depth
+/// searches are deterministic, so this asserts exact shapes.
+#[test]
+fn single_pv_reports_aspiration_bounds() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go depth 12");
+    let lines = session.collect_until_line_containing("bestmove", wait(60));
+
+    let bounded: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.contains("lowerbound") || line.contains("upperbound"))
+        .collect();
+    assert!(
+        !bounded.is_empty(),
+        "a depth-12 search re-searches its window and must report the bounds: {lines:?}"
+    );
+    for line in &bounded {
+        assert!(
+            line.contains(" multipv 1 score ") && line.contains(" pv "),
+            "a bounded line keeps the ordinary shape: {line}"
+        );
+        let bounds =
+            usize::from(line.contains("lowerbound")) + usize::from(line.contains("upperbound"));
+        assert_eq!(bounds, 1, "a score is one bound or the other: {line}");
+    }
+    // The line that closes an iteration is exact, never bounded.
+    let last_info = lines
+        .iter()
+        .rev()
+        .find(|line| line.starts_with("info depth"))
+        .expect("the search reports");
+    assert!(
+        !last_info.contains("bound"),
+        "the final line of a search is an exact score: {last_info}"
+    );
+    session.quit();
+}
+
 /// A root with no legal move still reports what the position is worth: a GUI
 /// otherwise receives `bestmove` with no score at all (the 2026-09-16 review).
 #[test]
