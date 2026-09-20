@@ -823,8 +823,11 @@ diagnostics; two rejections stop B.
         bench-verified at 4,706,910 / EBF 2.391.
       - `-SetupOnly -Iterations 5000` verified all 82 options, with A = 500
         and a = 0.09655.
-      - Pilot done 2026-09-15 (4,096 games). The tune reached 3,900 of
-        5,000 on 2026-09-19 and continues to N as registered.
+      - Pilot done 2026-09-15 (4,096 games). **The tune finished 2026-09-20
+        at 5,000 iterations and 160,000 games; the final theta is baked in
+        `14a7079` (new `b2core` fingerprint 7,185,678 / EBF 2.444), after
+        `54a8115` made two seed-pinning tests read their coordinates.**
+        From 3,900 to 5,000 no coordinate moved a full step.
       - Sub-steps added 2026-09-19. None blocks B.2.4b, which needs only
         the baked final theta; B.2.3 closes when B.2.3.3 reports. The
         re-tune the maintainer asked for is B.2.7.
@@ -1084,7 +1087,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; pilot done, tune at 3,900 of 5,000 on 2026-09-19; then the final theta baked and B.2.4b; closes when B.2.3.3 reports |
+| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; tune finished 2026-09-20 at 5,000 iterations and the final theta baked (`14a7079`, 7,185,678 / EBF 2.444); closes when B.2.3.3 reports |
 | B.2.3.3 | READY_FOR_IMPLEMENTATION | V | Tail SPRT (RAR-S77), theta at 5,000 against theta at 3,900, `[0,3]`, cap 40,000; needs the baked final theta |
 | B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes plus `<empty>` as an empty string option (2026-09-19, GitHub issue #1), identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
