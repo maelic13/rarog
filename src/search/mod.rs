@@ -105,6 +105,13 @@ pub struct SearchResult {
     pub pondermove: Move,
     pub score: i32,
     pub depth: usize,
+    /// The principal variation this thread would report, and the selective
+    /// depth beside it. Carried because a parallel search picks its move by
+    /// vote: when the winner is a helper, the main thread's last `info` line
+    /// describes a different move, so the pool prints the winner's own line
+    /// before `bestmove` (Stockfish's `output_pv(*bestThread)`).
+    pub pv: Vec<Move>,
+    pub seldepth: usize,
     pub nodes: u64,
     pub tb_hits: u64,
     pub(crate) elapsed_ms: u128,
@@ -601,6 +608,8 @@ impl Searcher {
                 .evaluator
                 .evaluate_result(result, board.side_to_move(), 0),
             depth: 0,
+            pv: Vec::new(),
+            seldepth: 0,
             nodes: 0,
             tb_hits: self.td.tb_hits,
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
@@ -924,11 +933,14 @@ impl Searcher {
             crate::diag::dump();
         }
 
+        let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
             pondermove,
             score: best_score,
             depth: completed_depth,
+            pv: reported.pv,
+            seldepth: reported.seldepth,
             nodes: self.td.nodes,
             tb_hits: self.td.tb_hits,
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
@@ -1230,11 +1242,14 @@ impl Searcher {
         if self.shared.threads == 1 {
             crate::diag::dump();
         }
+        let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
             pondermove,
             score: best_score,
             depth: completed_depth,
+            pv: reported.pv,
+            seldepth: reported.seldepth,
             nodes: self.td.nodes,
             tb_hits: self.td.tb_hits,
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
@@ -1492,6 +1507,12 @@ impl Searcher {
     }
 
     fn send_info_line(&self, depth: usize, score: i32, pv: &[Move]) {
+        self.send_full_info_line(depth, self.td.seldepth, score, pv);
+    }
+
+    /// One full `info` line, from values the caller owns. The pool uses it to
+    /// report the winning thread's line, which is not this thread's state.
+    fn send_full_info_line(&self, depth: usize, seldepth: usize, score: i32, pv: &[Move]) {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
@@ -1506,7 +1527,7 @@ impl Searcher {
         self.td.sink.line(&format!(
             "info depth {} seldepth {} score {} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
-            self.td.seldepth,
+            seldepth,
             format_score(score),
             nodes,
             nps,
@@ -1515,6 +1536,21 @@ impl Searcher {
             elapsed_ms,
             pv
         ));
+    }
+
+    /// The pool's chosen line, printed when the vote did not choose the line
+    /// this thread already reported. Without it `bestmove` can name a move no
+    /// printed `info` line mentions (GitHub issue #1).
+    pub(super) fn send_voted_info_line(&self, result: &SearchResult) {
+        if result.pv.is_empty() {
+            return;
+        }
+        self.send_full_info_line(
+            result.depth.max(1),
+            result.seldepth,
+            result.score,
+            &result.pv,
+        );
     }
 
     fn ponder_from_tt(&self, root: &Board, bestmove: Move) -> Move {

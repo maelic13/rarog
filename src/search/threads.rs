@@ -134,7 +134,12 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
     })
 }
 
-fn select_parallel_result(results: &[SearchResult], root_moves: &[Move]) -> Option<SearchResult> {
+/// The voted result and the index of the thread that produced it; index 0 is
+/// the main thread, whose line has already been printed.
+fn select_parallel_result(
+    results: &[SearchResult],
+    root_moves: &[Move],
+) -> Option<(usize, SearchResult)> {
     let root_results = results
         .iter()
         .enumerate()
@@ -163,7 +168,15 @@ fn select_parallel_result(results: &[SearchResult], root_moves: &[Move]) -> Opti
                 *right_index == 0,
             ))
         })
-        .map(|(_, result)| result.clone())
+        .map(|(index, result)| (index, result.clone()))
+}
+
+/// Whether the pool must print the winning thread's line. Index 0 is the main
+/// thread, whose line every `info` so far already described; any other index is
+/// a helper the vote chose, and its line has never been printed. With no result
+/// at all there is nothing to report.
+fn voted_line_needs_reporting(voted_index: Option<usize>) -> bool {
+    voted_index.is_some_and(|index| index != 0)
 }
 
 fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
@@ -436,16 +449,21 @@ impl Searcher {
                 .any(|result| result.exit == SearchExit::Quit);
         // With more than one line the main thread's line 1 is the answer; the
         // helpers searched a single line and do not vote.
+        // With more than one line the main thread owns every reported line and
+        // the move, so its result is the answer and index 0 says so.
         let voted = if lines > 1 {
-            helper_results.first().cloned()
+            helper_results.first().cloned().map(|result| (0, result))
         } else {
             select_parallel_result(&helper_results, root_moves)
         };
-        let mut best = voted.unwrap_or(SearchResult {
+        let voted_index = voted.as_ref().map(|(index, _)| *index);
+        let mut best = voted.map(|(_, result)| result).unwrap_or(SearchResult {
             bestmove: root_moves[0],
             pondermove: Move::NULL,
             score: -INF_SCORE,
             depth: 0,
+            pv: Vec::new(),
+            seldepth: 0,
             nodes: 0,
             tb_hits: 0,
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
@@ -468,6 +486,12 @@ impl Searcher {
         } else {
             SearchExit::Stop
         };
+        // The vote can choose a helper's move, and only the main thread prints.
+        // Report the winner's own line so the last `info` line always describes
+        // the move `bestmove` names (GitHub issue #1).
+        if emit_info && voted_line_needs_reporting(voted_index) {
+            self.send_voted_info_line(&best);
+        }
         self.shared.leave_pool();
         best
     }
@@ -582,10 +606,14 @@ mod tests {
             test_search_result(d2d4, 16, 5),
         ];
 
-        let selected =
+        let (index, selected) =
             select_parallel_result(&results, &[e2e4, d2d4, g1f3]).expect("selected result");
 
         assert_eq!(selected.bestmove, d2d4);
+        assert_ne!(
+            index, 0,
+            "the winner here is a helper, and the caller must know"
+        );
     }
 
     #[test]
@@ -597,9 +625,44 @@ mod tests {
             test_search_result(d2d4, TB_WIN_SCORE, 4),
         ];
 
-        let selected = select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
+        let (index, selected) =
+            select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
 
         assert_eq!(selected.bestmove, d2d4);
+        assert_eq!(index, 1);
+    }
+
+    #[test]
+    fn only_a_helpers_line_is_reported_after_the_vote() {
+        assert!(
+            !voted_line_needs_reporting(Some(0)),
+            "the main thread already printed its line"
+        );
+        assert!(voted_line_needs_reporting(Some(1)));
+        assert!(voted_line_needs_reporting(Some(7)));
+        assert!(
+            !voted_line_needs_reporting(None),
+            "no result, nothing to report"
+        );
+    }
+
+    /// The winner's own line is what the pool reports, so a result carries the
+    /// PV and seldepth of the thread that produced it.
+    #[test]
+    fn a_helper_result_carries_the_line_the_pool_would_report() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let mut helper = test_search_result(d2d4, 30, 9);
+        helper.pv = vec![d2d4, e2e4];
+        helper.seldepth = 17;
+        let results = vec![test_search_result(e2e4, 10, 9), helper];
+
+        let (index, selected) =
+            select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
+
+        assert_eq!(index, 1);
+        assert_eq!(selected.pv, vec![d2d4, e2e4]);
+        assert_eq!(selected.seldepth, 17);
     }
 
     fn test_search_result(bestmove: Move, score: i32, depth: usize) -> SearchResult {
@@ -608,6 +671,8 @@ mod tests {
             pondermove: Move::NULL,
             score,
             depth,
+            pv: vec![bestmove],
+            seldepth: depth,
             nodes: 0,
             tb_hits: 0,
             elapsed_ms: 0,

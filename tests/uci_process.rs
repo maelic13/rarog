@@ -398,6 +398,71 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// The last `info` line that carries a PV, and the `bestmove` after it.
+fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
+    let pv_move = lines
+        .iter()
+        .rev()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .find_map(|line| {
+            line.split(" pv ")
+                .nth(1)
+                .and_then(|pv| pv.split_whitespace().next())
+                .map(str::to_owned)
+        })
+        .unwrap_or_else(|| panic!("a search should report at least one PV: {lines:?}"));
+    let best = lines
+        .iter()
+        .rev()
+        .find(|line| line.starts_with("bestmove "))
+        .and_then(|line| line.split_whitespace().nth(1))
+        .unwrap_or_else(|| panic!("a search should end with bestmove: {lines:?}"))
+        .to_owned();
+    (pv_move, best)
+}
+
+/// A parallel search picks its move by vote across threads, but only the main
+/// thread prints `info`. When the vote chose a helper's move, `bestmove` named
+/// a move no printed line mentioned — 4 of 24 searches in the 2026-09-16
+/// review, and the report in GitHub issue #1. The pool now prints the winner's
+/// own line.
+///
+/// **A guard, not a proof.** Whether a given search's vote disagrees with the
+/// main thread is a scheduling matter, so this cannot fail deterministically
+/// on a broken build; it runs at the thread count and time control where the
+/// review saw disagreement most often. The decision itself is pinned
+/// deterministically by `only_a_helpers_line_is_reported_after_the_vote`.
+#[test]
+fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("setoption name Threads value 8");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    for fen in [
+        "position startpos",
+        "position fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "position fen r2q1rk1/pp1bbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 9",
+        "position fen 2rq1rk1/pb1nbppp/1p2pn2/2pp4/2PP4/1PN1PN2/PB2BPPP/R2Q1RK1 w - - 0 11",
+        "position fen r1b1k2r/ppppqppp/2n2n2/2b5/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 6 6",
+        "position fen rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 0 6",
+    ] {
+        session.send("ucinewgame");
+        session.send(fen);
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send("go movetime 300");
+        let lines = session.collect_until_line_containing("bestmove", wait(20));
+        let (pv_move, best) = last_pv_and_bestmove(&lines);
+        assert_eq!(
+            pv_move, best,
+            "the last info line must describe the move played ({fen}): {lines:?}"
+        );
+    }
+    session.quit();
+}
+
 /// The engine's own `time` for a `go depth 4` from a lone-pawn KPK position,
 /// read from the last `info depth` line.
 fn kpk_search_ms(session: &mut UciSession) -> u64 {
