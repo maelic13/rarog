@@ -851,10 +851,12 @@ diagnostics; two rejections stop B.
           39.2% against Houdini 3. A follow-up match against Critter 1.6a,
           stopped at 1,050 games, reads −5.0 (95% −22 to +12; RAR-M58).
         - **B.2.3.3 The tail, theta at 5,000 against theta at 3,900 —
-          `V`, maintainer-run (RAR-S77).** `[0,3]` nElo, cap 40,000 games,
-          once the final theta is baked and built. An unresolved result is
-          a reading, not a failure: it bounds what the last 1,100 iterations
-          were worth.
+          CLOSED 2026-09-20 (RAR-S77).** `[0,3]` nElo, cap 40,000: **H1
+          accepted in 20,806 games, +4.43 ± 2.90 Elo (+7.20 ± 4.72 nElo)**.
+          The last 1,100 iterations were worth about 4 Elo, against a frozen
+          prediction of an unresolved cap; the zero-game movement read (no
+          coordinate moved a full step) described the tail correctly but
+          carried no Elo information. **With it B.2.3 closes.**
     - **B.2.4** Gate, **two SPRTs (maintainer amendment 2026-09-15, made
       after the unfitted paired run was seen and before either SPRT ran;
       bounds, cap, book and adjudication unchanged from the
@@ -866,9 +868,12 @@ diagnostics; two rejections stop B.
       (4,706,910, sha256 `9206A598…71F8`) and `rarog-b24a-base-pext-pgo.exe`
       (7,601,220, sha256 `4EC72F0F…91D5`), recorded in RAR-S73. **Played 2026-09-16: H1 accepted, +65.09 ±
       23.26 Elo in 432 games (RAR-S73); the unfitted `b2core` arm is the
-      accepted head of B.2.** The feature stays a build flag until B.2.4b
-      chooses the fitted or the unfitted defaults; the default flip then
-      lands once. **B.2.4b**
+      accepted head of B.2 until B.2.4b.** **B.2.4b played 2026-09-20: H1
+      accepted in 248 games, +138.60 ± 30.66 Elo (+217.71 nElo), so the
+      FITTED arm (7,185,678 / EBF 2.444, `14a7079`) is the accepted head and
+      the base for B.3 (RAR-S73).** The feature stayed a build flag until
+      B.2.4b chose between the fitted and the unfitted defaults; the default
+      flip now lands once and closes the leaf. **B.2.4b**
       the B.2.3-fitted arm against the unfitted arm, `[0,10]` nElo, cap
       16,000 games, after theta is baked; passing makes the fitted arm
       the accepted head, failing leaves the unfitted one. Each accepts
@@ -1087,9 +1092,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.3 | IMPLEMENTED | V | Preparation done 2026-09-15 (RAR-S75): tooling, 82-coordinate surface and fixed file (audit clean), `b2core-tune` binary at 4,706,910 (sha256 `25467C63…FDA0E`), setup proven at N = 5,000; tune finished 2026-09-20 at 5,000 iterations and the final theta baked (`14a7079`, 7,185,678 / EBF 2.444); closes when B.2.3.3 reports |
-| B.2.3.3 | READY_FOR_IMPLEMENTATION | V | Tail SPRT (RAR-S77), theta at 5,000 against theta at 3,900, `[0,3]`, cap 40,000; needs the baked final theta |
-| B.2.4 | GAME_GATE | V | B.2.4a passed 2026-09-16 (+65.09 ± 23.26, H1 in 432 games, RAR-S73): the unfitted arm is the accepted head; B.2.4b (fitted vs unfitted, `[0,10]`) after B.2.3, then the default flip and the leaf closes |
+| B.2.4 | GAME_GATE | V | Both SPRTs passed (RAR-S73): B.2.4a +65.09 ± 23.26 in 432 games (2026-09-16), B.2.4b +138.60 ± 30.66 in 248 games (2026-09-20). The fitted `b2core` arm at 7,185,678 / EBF 2.444 is the accepted head and the base for B.3; the default flip closes the leaf |
 | B.2.5 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-16 (`analysis/uci_info_review_2026-09-16.md`): six output-only `info` fixes plus `<empty>` as an empty string option (2026-09-19, GitHub issue #1), identity-gated with protocol tests, no SPRT; runs after B.2.4 closes, before B.3 |
 | B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
