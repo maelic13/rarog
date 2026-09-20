@@ -469,7 +469,7 @@ impl Searcher {
         let mut legal_moves = MoveList::new();
         board.generate_legal_movelist_into(&mut legal_moves);
         if legal_moves.is_empty() {
-            return self.no_legal_moves_result(&board);
+            return self.no_legal_moves_result(&board, emit_info);
         }
 
         let filtered_root_moves;
@@ -598,8 +598,19 @@ impl Searcher {
         self.td.jitter_state = JITTER_SEED ^ thread_seed.wrapping_mul(JITTER_STRIDE) | 1;
     }
 
-    fn no_legal_moves_result(&mut self, board: &Board) -> SearchResult {
+    /// A root with no legal move: report the position's value and then
+    /// `bestmove`, as both donors do. Printing nothing at all left a GUI with
+    /// a `bestmove` and no score to show (the 2026-09-16 review, item 2).
+    fn no_legal_moves_result(&mut self, board: &Board, emit_info: bool) -> SearchResult {
         let result = self.result_for_no_legal_moves(board);
+        if emit_info {
+            let score = if board.is_in_check() {
+                "mate 0"
+            } else {
+                "cp 0"
+            };
+            self.td.sink.line(&format!("info depth 0 score {score}"));
+        }
         SearchResult {
             bestmove: Move::NULL,
             pondermove: Move::NULL,

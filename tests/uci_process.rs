@@ -398,6 +398,38 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// A root with no legal move still reports what the position is worth: a GUI
+/// otherwise receives `bestmove` with no score at all (the 2026-09-16 review).
+#[test]
+fn a_root_with_no_legal_move_reports_a_score_before_bestmove() {
+    for (fen, expected) in [
+        // Fool's mate: Black has delivered mate, White is to move.
+        (
+            "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3",
+            "info depth 0 score mate 0",
+        ),
+        // Stalemate: Black to move, no legal move, not in check.
+        ("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "info depth 0 score cp 0"),
+    ] {
+        let mut session = UciSession::start();
+        session.send("uci");
+        session.expect_line_containing("uciok", wait(15));
+        session.send(&format!("position fen {fen}"));
+        session.send("go depth 5");
+        let lines = session.collect_until_line_containing("bestmove", wait(5));
+        assert!(
+            lines.iter().any(|line| line == expected),
+            "expected `{expected}` for {fen}: {lines:?}"
+        );
+        assert_eq!(
+            lines.last().map(String::as_str),
+            Some("bestmove 0000"),
+            "a position with no legal move still answers with bestmove: {lines:?}"
+        );
+        session.quit();
+    }
+}
+
 /// The last `info` line that carries a PV, and the `bestmove` after it.
 fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
     let pv_move = lines
