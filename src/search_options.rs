@@ -150,6 +150,16 @@ pub struct SearchOptions {
     pub limits: SearchLimits,
 }
 
+/// A string option's value, with the advertised `<empty>` placeholder read as
+/// the empty string; see `set_option`.
+fn string_option_value(raw: &str) -> String {
+    if raw.trim() == "<empty>" {
+        String::new()
+    } else {
+        raw.to_string()
+    }
+}
+
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
         // `mut` is needed when compiled with --features tune (the extend
@@ -313,6 +323,12 @@ impl SearchOptions {
 
     /// Apply one `setoption`. An invalid value keeps the previous setting,
     /// with a notice, and still counts as a recognised option.
+    /// The value of a string option, with the `<empty>` placeholder read as
+    /// the empty string. A GUI echoes back the default the engine advertised,
+    /// and CuteChess sends this one literally (GitHub issue maelic13/rarog#1):
+    /// taken at face value it made `SyzygyPath` search a folder called
+    /// `<empty>` and report "loaded no usable tablebases" at every game.
+    /// Stockfish maps the same token to an empty string in `ucioption.cpp`.
     pub fn set_option(&mut self, args: &[String]) -> OptionUpdate {
         let mut index = 0;
         if index < args.len() {
@@ -336,7 +352,7 @@ impl SearchOptions {
 
         let option_name_raw = name_parts.join(" ");
         let option_name = option_name_raw.to_lowercase();
-        let value_raw = value_parts.join(" ");
+        let value_raw = string_option_value(&value_parts.join(" "));
         let value = value_raw.to_lowercase();
 
         match option_name.as_str() {

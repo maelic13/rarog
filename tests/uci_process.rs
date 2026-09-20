@@ -398,6 +398,30 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// The `<empty>` placeholder a GUI echoes back means no path, so the engine
+/// says nothing about tablebases; a genuine path that holds none still does.
+#[test]
+fn the_empty_syzygy_path_placeholder_says_nothing() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("setoption name SyzygyPath value <empty>");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    session.assert_no_line_containing("tablebases", Duration::from_millis(200));
+
+    session.send("setoption name SyzygyPath value D:/no/such/folder");
+    session.send("isready");
+    let lines = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("no usable tablebases")),
+        "a path that holds no tablebases is still worth reporting: {lines:?}"
+    );
+    session.quit();
+}
+
 /// `seldepth` is the deepest ply reached in the CURRENT iteration, counted as
 /// Stockfish counts it (`ss->ply + 1`), not a high-water mark for the whole
 /// search. Carried across a search it only ever rises, which is not what a GUI

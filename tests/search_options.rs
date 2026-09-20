@@ -371,3 +371,34 @@ fn search_options_accept_little_blitzer_fullmove_zero_fen() {
     );
     assert_eq!(options.board.fullmove(), 1);
 }
+
+/// A GUI echoes back the `<empty>` default the engine advertises for a string
+/// option - CuteChess does (GitHub issue maelic13/rarog#1) - and taking it
+/// literally made `SyzygyPath` search a folder called `<empty>` and report
+/// "loaded no usable tablebases" at the start of every game.
+#[test]
+fn the_empty_placeholder_sets_a_string_option_to_nothing() {
+    let mut options = SearchOptions::default();
+
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyPath", "value", r"C:\TB\WDL"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(options.engine.syzygy.path, r"C:\TB\WDL");
+
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyPath", "value", "<empty>"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(
+        options.engine.syzygy.path, "",
+        "the advertised placeholder means no path at all"
+    );
+
+    // A path that merely contains the token is still a path.
+    assert_eq!(
+        options.set_option(&args(&["name", "SyzygyPath", "value", r"C:\<empty>"])),
+        OptionUpdate::Engine
+    );
+    assert_eq!(options.engine.syzygy.path, r"C:\<empty>");
+}
