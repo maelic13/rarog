@@ -398,6 +398,51 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+/// `seldepth` is the deepest ply reached in the CURRENT iteration, counted as
+/// Stockfish counts it (`ss->ply + 1`), not a high-water mark for the whole
+/// search. Carried across a search it only ever rises, which is not what a GUI
+/// plots against depth. One thread at fixed depth is deterministic.
+#[test]
+fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go depth 12");
+    let lines = session.collect_until_line_containing("bestmove", wait(60));
+
+    let reported: Vec<(u64, u64)> = lines
+        .iter()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .filter_map(|line| {
+            Some((
+                parse_uci_u64_field(line, "depth")?,
+                parse_uci_u64_field(line, "seldepth")?,
+            ))
+        })
+        .collect();
+    assert!(reported.len() >= 10, "a depth-12 search reports: {lines:?}");
+    for (depth, seldepth) in &reported {
+        assert!(
+            seldepth >= depth,
+            "an iteration reaches at least its own depth: depth {depth}, seldepth {seldepth}"
+        );
+    }
+    // The root is ply 0 and the count starts at one, so a search that reaches
+    // the first quiescence ply reports 2 at depth 1.
+    assert!(
+        reported
+            .first()
+            .is_some_and(|(depth, seldepth)| *depth == 1 && *seldepth >= 2),
+        "depth 1 counts the plies it reached: {reported:?}"
+    );
+    assert!(
+        reported.windows(2).any(|pair| pair[1].1 < pair[0].1),
+        "a reset iteration may report less than an earlier one: {reported:?}"
+    );
+    session.quit();
+}
+
 /// An aspiration re-search's score is only a bound, and single-PV mode used to
 /// print nothing at all until the window closed: a long iteration went silent
 /// and a stopped one reported the previous depth. One-thread fixed-depth

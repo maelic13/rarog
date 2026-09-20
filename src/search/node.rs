@@ -241,7 +241,7 @@ impl Searcher {
             return self.corrected_eval(board, ply);
         }
         self.td.pv_len[ply] = ply;
-        self.td.seldepth = self.td.seldepth.max(ply);
+        self.td.seldepth = self.td.seldepth.max(ply + 1);
 
         if !NODE::ROOT && board.can_declare_draw_in_search() {
             return 0;
@@ -1553,7 +1553,7 @@ impl Searcher {
             return self.corrected_eval(board, MAX_PLY - 1);
         }
         self.td.pv_len[ply] = ply;
-        self.td.seldepth = self.td.seldepth.max(ply);
+        self.td.seldepth = self.td.seldepth.max(ply + 1);
 
         if board.can_declare_draw_in_search() {
             return 0;

@@ -732,6 +732,10 @@ impl Searcher {
         let mut cast_stop_vote = false;
 
         for depth in 1..=max_depth {
+            // Per iteration, as Stockfish resets `selDepth`: carried across a
+            // whole search the number reports a deeper earlier iteration and
+            // never falls, which is not what a GUI plots against depth.
+            self.td.seldepth = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
@@ -1050,6 +1054,8 @@ impl Searcher {
         let mut settled: Vec<ReportedLine> = Vec::new();
 
         for depth in 1..=max_depth {
+            // Per iteration, as in the single-line path above.
+            self.td.seldepth = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
