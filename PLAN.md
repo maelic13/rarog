@@ -1007,10 +1007,41 @@ diagnostics; two rejections stop B.
       the nine run files dry-run with exit 0 on the staged CLI, a local
       build (sha256 `550CE5D0…DA11`) that is neither the qualified binary
       nor a release; the tag is the only outside dependency left, and the
-      wrappers can be written before it. **B.2.6.2:** retire the replaced scripts, keep
-      fastchess staged for periodic cross-checks, rewrite PROCESS, AGENTS
-      and `tools/README.md`, and record the 2026-09-17/18 parity runs as
-      ledger rows. Engine-specific tooling (builds, sidecars, bench
+      wrappers can be written before it. **B.2.6.1 landed 2026-09-21:**
+      `tools/colosseum.ps1` runs the gate, the fixed match, the null pair,
+      the tune and the gauntlet from the committed run files; every guard
+      `sprt.ps1` and `spsa.ps1` enforce now has ONE implementation, in
+      `tools/harness_common.ps1`, which both paths call, so they cannot
+      drift; three guards the project had only in prose are now enforced —
+      an idle host, the runner's SHA-256 pin, and `-ExpectBench` against the
+      registered fingerprint. The resolved configuration is read back from
+      the CLI's own dry run and refused when it is not Rarog's policy, and
+      the run directory is read afterwards for faults. Checks, both
+      committed: `tools/diag/colosseum_parity.py` matches **30 of 30**
+      fields against `sprt_theta5000_vs_theta3900_20260920_082658`'s
+      manifest, with a fixture test that mutates fourteen of them one at a
+      time; `tools/diag/test_colosseum_guards.ps1` breaks one input per case
+      and gets the refusal that names it, **22 of 22**, including four
+      positive controls and both branches of the idle guard.
+      `setup_tools.ps1` stages the runner from
+      `tools/colosseum/colosseum.pin.json` (revision `0b78c29`, sha256
+      `550CE5D0…DA11`) and refuses any other build; its four staging cases
+      were smoke-tested with every touched file restored byte-identical.
+      **Still owed on this leaf:** the one short live run, prepared and
+      handed to the maintainer, and the reading of its run directory.
+      **B.2.6.2, DONE 2026-09-21:** nothing was retired. PROCESS gained a
+      *Harness* section naming Colosseum the main path, the fastchess and
+      weather-factory path the maintained backup until at least 2.5.0, and
+      the three cross-check triggers — a runner, scheduler or topology
+      change; a surprising result; a Colosseum re-pin. AGENTS,
+      `tools/README.md` and `tools/colosseum/README.md` follow. The
+      2026-09-17/18 parity runs are RAR-M60 (the gate replay: fastchess
+      +94.00 ± 32.76 nElo against Colosseum's +94.08 ± 32.46 on the same
+      arms) and RAR-M61 (the fixed match, where every interval overlaps and
+      Colosseum's own spread is as wide as the gap between the instruments),
+      both recounted from their PGNs. The next tune's shape is registered at
+      15 slots and 30 games per iteration with the budget in games (RAR-M62,
+      RAR-S78). Engine-specific tooling (builds, sidecars, bench
       fingerprints, profiling, counters, Texel) stays here by design.
     - **B.2.7 Re-tune of the most-moved B.2.3 coordinates on Colosseum —
       `V`, maintainer-run (RAR-S78).** Added 2026-09-19 by maintainer
@@ -1154,11 +1185,10 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.6 | READY_FOR_IMPLEMENTATION | M | **Opened 2026-09-21 by maintainer decision: adopt now as the main tool; fastchess, weather-factory and their scripts stay working as backup and second opinion at least until release 2.5.0.** Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
-| B.2.6.1 | READY_FOR_IMPLEMENTATION | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, a staged build pinned by revision and SHA-256; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
+| B.2.6 | READY_FOR_IMPLEMENTATION | M | **B.2.6.2 closed 2026-09-21: Colosseum is the documented main path and nothing was retired; B.2.6.1 waits on its prepared live run and B.2.6.3 on the tag.** Opened 2026-09-21 by maintainer decision: adopt now as the main tool; fastchess, weather-factory and their scripts stay working as backup and second opinion at least until release 2.5.0. Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
+| B.2.6.1 | LOCAL_QUALIFIED | I1 | Landed 2026-09-21: `tools/colosseum.ps1` with every guard from one shared implementation, the runner pinned by revision and SHA-256 in `colosseum.pin.json`, 30/30 configuration-parity fields and 22/22 guard cases as committed checks. Waits only on the prepared short live run and the reading of its run directory |
 | B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20, waits for B.2.6 |
 | B.2.6.3 | RESEARCH | M | Re-pin to the published `cli-v0.1.0` archive by its `SHA256SUMS` entry and repeat the dry-run parity on it; waits for the tag |
-| B.2.6.2 | READY_FOR_IMPLEMENTATION | M | Nothing is retired before 2.5.0: Colosseum documented as the main path, the fastchess and weather-factory path kept working as the named backup; rewrite PROCESS, AGENTS and `tools/README.md`, ledger rows for the 2026-09-17/18 parity runs, next tune registered at 15 slots and 30 games per iteration with the budget in games |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |

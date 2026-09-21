@@ -93,7 +93,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** (B.2 selectivity core: B.2.4a passed 2026-09-16, +65.09 ± 23.26; RAR-S75 finished 2026-09-20 (5,000 iterations, theta baked at 7,185,678); RAR-S76 peek at 3,900 +118.72 ± 10.62; RAR-M55 and RAR-M56 (B.2.3.2 closed: fitted +97.69, unfitted −7.12 vs Rybka 4.1), **B.2.4b passed 2026-09-20, +138.60 ± 30.66**; RAR-S77 (B.2.3.3) passed, +4.43 ± 2.90; RAR-S78 (B.2.7) design registered, not run; close-out audit 2026-09-21, `analysis/b2_audit_2026-09-21.md`); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.3** (cluster 2 — NMP, ProbCut, singular and extensions, `I2`) on the accepted head; **B.2.6** (Colosseum adoption, open now by maintainer decision 2026-09-21; only B.2.6.3 waits for the `cli-v0.1.0` tag), **B.2.7** (re-tune) after B.2.6.2 |
+| Current step | **B.3** (cluster 2 — NMP, ProbCut, singular and extensions, `I2`) on the accepted head; **B.2.6** (Colosseum adoption: B.2.6.2 closed 2026-09-21, B.2.6.1 waits only on its prepared live run, B.2.6.3 on the `cli-v0.1.0` tag), **B.2.7** (re-tune) after B.2.6.1 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -111,6 +111,14 @@ iterations, measured +4.43 ± 2.90 in RAR-S77. B.2.2 closed on 2026-09-15:
 - the curvature sweep found three curved coordinates;
 - the screen ladder for B.3–B.5 is now rule 8's *Cluster screens*.
 
+**Colosseum CLI is the main harness** since 2026-09-21 (B.2.6.2): gates, fixed
+matches, tunes, null pairs and gauntlets run through `tools/colosseum.ps1` from
+the committed run files, with the runner pinned by revision and SHA-256.
+fastchess, weather-factory, `sprt.ps1` and `spsa.ps1` stay installed, working
+and documented as the backup and the second opinion until at least release
+2.5.0; PROCESS's *Harness* section holds the cross-check triggers. The two
+instruments agree where they have been compared (RAR-M60, RAR-M61).
+
 B.7 keeps its place. B.3 is eligible: the B.2 head was accepted on 2026-09-20. B.2.0.2 closed on 2026-09-15
 (MultiPV, RAR-P26). B.2.1 was accepted by its reviewer on 2026-09-14
 (`analysis/b21_review_2026-09-14.md`). Binding findings sit at their
@@ -119,6 +127,7 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| B.2.6.1's one short live run, prepared and handed over 2026-09-21 | The 200-game `colosseum.ps1 -Mode match` run completes on an idle host and its run directory is read | B.2.6.1 ticks; B.2.7 launches |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 
@@ -176,8 +185,8 @@ is the numbering: release first, baselines on the released binary.
     - [x] **B.2.4** Gate as two SPRTs: B.2.4a unfitted `b2core` vs the off arm `[0,10]` **passed 2026-09-16, +65.09 ± 23.26 in 432 games** (the unfitted arm is the accepted head); B.2.4b fitted vs unfitted `[0,10]` **passed 2026-09-20, +138.60 ± 30.66 in 248 games** (the fitted arm at 7,185,678 is the accepted head); the default flip landed 2026-09-20 (`a47e85b`, `58176a1`): `b2core` is a default feature, the default build is 7,185,678 / EBF 2.444 and `--no-default-features` keeps the legacy search at 7,601,220 — DONE 2026-09-20
     - [x] **B.2.5** UCI `info` conformance: winner's line after the SMP vote, `depth 0` line at a mated root, `nps` at `time 0`, `multipv 1` always, bounds in single-PV, seldepth convention, `<empty>` string-option value read as empty (GitHub issue #1); identity-gated, no SPRT (`analysis/uci_info_review_2026-09-16.md`); both fingerprints held at every commit — DONE 2026-09-20
     - [ ] **B.2.6** Adopt Colosseum CLI as the main harness, now (maintainer decision 2026-09-21; the tune and B.2.4b are done, the harness is qualified in its own repository); fastchess, weather-factory, `sprt.ps1`, `spsa.ps1` and their infrastructure stay working as the backup and second opinion at least until release 2.5.0 — **READY_FOR_IMPLEMENTATION / M**
-        - [ ] **B.2.6.1** Policy as committed run files and thin `sprt`/`spsa` wrappers that keep the sidecar, fingerprint, compiler-equality and dirty-tree guards; `setup_tools.ps1` stages a Colosseum build pinned by source revision and SHA-256 (the tagged archive replaces it in B.2.6.3); resolved-configuration parity against the `sprt.ps1` manifest and one short live run with a deliberately mismatched sidecar. Run files and the surface converter landed 2026-09-21; wrappers, staging and parity remain — **READY_FOR_IMPLEMENTATION / I1**
-        - [ ] **B.2.6.2** Colosseum becomes the documented main path and nothing is retired: PROCESS, AGENTS and `tools/README.md` rewritten with the fastchess and weather-factory path kept as the named backup and its cross-check triggers; ledger rows for the 2026-09-17/18 parity runs; next tune registered at 15 slots, 30 games per iteration, budget in games — **READY_FOR_IMPLEMENTATION / M**
+        - [ ] **B.2.6.1** Run files, the surface converter and `tools/colosseum.ps1`, which carries every `sprt.ps1`/`spsa.ps1` guard from one shared implementation plus an idle host, the runner pin and `-ExpectBench`; `setup_tools.ps1` stages the build `colosseum.pin.json` names by revision and SHA-256 (the tagged archive replaces it in B.2.6.3). Landed 2026-09-21: 30 of 30 configuration fields match the recorded `sprt.ps1` manifest and 22 of 22 guard cases behave, both as committed checks. The one short live run is prepared and handed over; the leaf closes when it and its run directory are read — **LOCAL_QUALIFIED / I1**
+        - [x] **B.2.6.2** Colosseum documented as the main path with nothing retired: PROCESS's new *Harness* section, AGENTS, `tools/README.md` and `tools/colosseum/README.md` rewritten with the fastchess and weather-factory path as the named backup and its three cross-check triggers; RAR-M60, RAR-M61 and RAR-M62 recorded from the 2026-09-17/18 artifacts; the next tune's shape registered at 15 slots, 30 games per iteration, budget in games — DONE 2026-09-21
         - [ ] **B.2.6.3** Re-pin to the published `cli-v0.1.0` archive: SHA-256 from its `SHA256SUMS`, dry-run parity repeated on it; waits for the tag — **RESEARCH / M**
     - [ ] **B.2.7** Re-tune on Colosseum of the coordinates at least one step from their seeds at N = 5,000, from the final theta; SPRT `[0,3]` vs the B.2.4b head; B.2.4b has passed, so it waits for B.2.6 only; weather-factory stays installed until this gate resolves (RAR-S78) — **RESEARCH / V**
     - [x] **B.2.8** First-search stalls: KPK bitbase and every table built at start-up, hash table converted at `setoption`, helper tables ready before the first search (`9a7b663`, `c0e6ef7`, bench unchanged, first KPK search 0.16 ms fresh vs 34 before); the 10,000-game confirmation was handed to Colosseum and never played (its 10.9m closed without it); 21,055 post-fix fastchess games lost none on time (RAR-M59) — DONE 2026-09-19

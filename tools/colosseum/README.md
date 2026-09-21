@@ -1,9 +1,19 @@
 # Rarog's policy on Colosseum CLI
 
-Committed run files for Colosseum CLI (`D:/code/colosseum`), staged as
-`tools/bin/colosseum-cli.exe`. They hold the conditions every Rarog measurement
-shares, so a command line carries only what belongs to one experiment: the
-engines, the cap, the seed and the run directory.
+Committed run files for Colosseum CLI, staged as `tools/bin/colosseum-cli.exe`
+by `tools/setup_tools.ps1` from the revision and SHA-256 in
+`colosseum.pin.json`. They hold the conditions every Rarog measurement shares,
+so a command line carries only what belongs to one experiment: the engines, the
+cap, the seed and the run directory.
+
+**Run them through `tools/colosseum.ps1`**, which carries the guards: an idle
+host, the runner pin, each engine's sidecar, build-flavour and compiler
+equality, `-ExpectRevision` and `-ExpectBench`, the advertised options, the tune
+surface against the binary and the horizon, and a field-by-field check that the
+configuration Colosseum resolves is the policy below. It writes a manifest that
+hashes every input, and after the run it reads the CLI's own record for faults.
+Calling `colosseum-cli.exe` directly, as the examples below do, skips all of
+that and is for inspection, not for a measurement anyone will cite.
 
 The harness is qualified in its own repository (Colosseum PLAN Phase 10, GUIDE
 10.9r: scale, verdict, ratings and the SPSA recovery test, with Rarog as the
@@ -29,6 +39,19 @@ of headroom, and engine processes kept per slot. Gates run 14 concurrent games;
 a tune runs 15, because both perturbation arms share one slot.
 
 ## Running one
+
+```powershell
+./tools/colosseum.ps1 -Mode sprt `
+  -EngineA tools/test_engines/<candidate>.exe -EngineB tools/test_engines/<baseline>.exe `
+  -NameA candidate -NameB baseline `
+  -MaxPairs <cap from RAR-M10> -Seed <n> -Dir tools/results/<experiment>
+```
+
+`-Bracket removal | repair | wide` picks the other three run files, `-Mode match`
+a fixed-length measurement, `-Mode calibrate` the null pair, `-Mode spsa` a tune
+and `-Mode gauntlet` a rating gauntlet. `-DryRun` stops after the checks.
+
+The same run, called directly (no guards, no manifest):
 
 ```powershell
 ./tools/bin/colosseum-cli.exe --run-file tools/colosseum/sprt-default.toml `
@@ -72,15 +95,28 @@ matches the JSON, so a surface cannot drift from its registration. Run a tune
 with:
 
 ```powershell
-./tools/bin/colosseum-cli.exe --run-file tools/spsa_configs/colosseum/b23core.run.toml `
-  tools/test_engines/rarog-b23core-tune.exe --total-games <registered> `
-  --seed <n> --dir tools/results/<experiment>
+./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-b23core-tune.exe `
+  -ConfigGroup b23core -Iterations <N> -TotalGames <N*30> `
+  -Seed <n> -Dir tools/results/<experiment>
 ```
 
-## Still owed
+The wrapper re-runs `--check` before every tune, so a surface that has drifted
+from its registration cannot be tuned by accident.
 
-`tools/sprt.ps1` and `tools/spsa.ps1` remain the gate and tune path until
-B.2.6.1's wrappers carry every guard they enforce today — an idle host, a
-bench-verified sidecar, a manifest per run — and `setup_tools.ps1` stages a
-tagged release and pins its SHA-256. fastchess and weather-factory stay
-installed until then, and fastchess stays afterwards for periodic cross-checks.
+## The runner pin
+
+`colosseum.pin.json` names the source revision and the SHA-256. Only the hash
+can be enforced — a stripped release executable does not carry its revision —
+so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
+mismatch rather than substituting a build. `cli-v0.1.0` is not tagged yet, so
+the pin is a local build of `D:/code/colosseum` at `0b78c29`; PLAN B.2.6.3
+re-pins to the published archive by editing that one file, and the dry-run
+parity is repeated on it.
+
+## The backup path
+
+`tools/sprt.ps1` and `tools/spsa.ps1` stay installed, working and documented as
+the backup and the second opinion until at least release 2.5.0. Nothing here is
+retired; PROCESS's *Harness* section names the three cross-check triggers.
+Both paths share one implementation of every guard, in
+`tools/harness_common.ps1`.

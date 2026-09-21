@@ -194,40 +194,94 @@ rule 1 points here).
 
 ### Adjudication
 
-Every instrument plays games out: `sprt.ps1`, `gauntlet.ps1`, SPSA (the
-`RAROG_ADJUDICATION_PATCH_V4` weather-factory patch, required to start a tune)
-and datagen (`datagen-v2`, or `datagen-v3` with Syzygy truth for labels,
-datagen only). Adjudication ends 52.7% of endgames before they are reached and
-saves about 10% wall time (RAR-M15, RAR-M16, RAR-M17, RAR-M18). `-Adjudicate`
-opts back in only with a registered reason; its results are not comparable with
-unadjudicated ones. `datagen-v1` stays by name so the manifests citing it keep
-their meaning. Use fixed movetime or nodes only for deterministic diagnostics.
+Every instrument plays games out: the Colosseum run files (`tools/colosseum/`,
+which set no draw, resign or move cap), `sprt.ps1`, `gauntlet.ps1`, SPSA on
+either path (the `RAROG_ADJUDICATION_PATCH_V4` weather-factory patch is
+required to start a tune there) and datagen (`datagen-v2`, or `datagen-v3`
+with Syzygy truth for labels, datagen only). Adjudication ends 52.7% of
+endgames before they are reached and saves about 10% wall time (RAR-M15,
+RAR-M16, RAR-M17, RAR-M18). `-Adjudicate` opts back in only with a registered
+reason; its results are not comparable with unadjudicated ones. `datagen-v1`
+stays by name so the manifests citing it keep their meaning. Use fixed
+movetime or nodes only for deterministic diagnostics.
+
+### Harness
+
+**Colosseum CLI is the main path** for gates, fixed matches, tunes, null pairs
+and gauntlets (PLAN B.2.6, maintainer decision 2026-09-21). `tools/colosseum.ps1`
+drives it from the committed run files in `tools/colosseum/`, which carry the
+conditions every Rarog measurement shares; the cap, the seed and the run
+directory stay on the command line, because they belong to the registration in
+`EXPERIMENTS.md`. The runner is pinned by revision and SHA-256 in
+`tools/colosseum/colosseum.pin.json` and staged by `setup_tools.ps1`; a binary
+that is not the pinned one is refused, not substituted. The harness is
+qualified in its own repository (Colosseum PLAN Phase 10, with Rarog as the
+validation engine) and Rarog repeats none of that qualification.
+
+**fastchess and weather-factory stay installed, working and documented** as the
+backup and the second opinion, at least until release 2.5.0. `sprt.ps1`,
+`spsa.ps1`, their books, their patches and `setup_tools.ps1`'s staging of them
+are maintained, not deprecated; retirement is reviewed at that release and not
+before. Both paths call one implementation of every guard
+(`tools/harness_common.ps1`), so they cannot come to disagree about what a
+measurable binary is.
+
+Run the backup path as a cross-check when:
+
+- the runner, the scheduler or the CPU topology on this host changes — the
+  same trigger that owes a null pair (RAR-M03);
+- a result is surprising: a sign nobody predicted, a magnitude well outside the
+  registered band, or a gate that resolves far faster or slower than RAR-M10
+  predicts for its bounds;
+- the Colosseum version changes, which means `colosseum.pin.json` was re-pinned.
+
+A cross-check is a fixed match or a replayed gate on the same arms, read as
+"do the two instruments agree inside their intervals" and never as a second
+chance at acceptance. The two agree at this host's resolution: on the B.2.2
+arms over 2,000 games each, fastchess read +54.29 ± 11.12 Elo and Colosseum
++55.71 to +65.92 across three runs of the same seed, a spread as wide as the
+gap between the instruments (RAR-M61); on the B.2.4a arms both reached H1 under
+`[0,10]` in about the same number of games (RAR-M60).
+
+**A registered experiment names its runner and never changes it mid-way.**
+Moving an experiment in flight to the other harness voids it.
+
+Shared conditions on both paths: `3+0.03`, Hash 64, one thread, the UHO book
+in random order, no adjudication, a 20 ms margin, and fourteen concurrent
+games on pinned physical cores that never include CPU 0. A tune runs fifteen,
+because both perturbation arms share a slot. `tools/colosseum/README.md` says
+which run file is for what.
 
 ### Toolchain and harness notes
 
 `build_test.ps1` manifests bind every test asset to its executable hash, source
-tree, compiler, build flavor and benchmark qualification. `sprt.ps1`,
-`spsa.ps1` and `datagen.ps1` validate those sidecars before launch. Do not
-recreate or hand-edit a sidecar to bypass a mismatch; rebuild the asset.
-Successful matches additionally reject crashes, time forfeits and protocol
-failures, and archive hashes of their logs/PGNs.
+tree, compiler, build flavor and benchmark qualification. `colosseum.ps1`,
+`sprt.ps1`, `spsa.ps1` and `datagen.ps1` validate those sidecars before launch.
+Do not recreate or hand-edit a sidecar to bypass a mismatch; rebuild the asset.
+Successful matches additionally reject crashes, time forfeits above the rate
+ceiling and protocol failures, and archive hashes of their logs and PGNs.
+Measure only on an idle host: `colosseum.ps1` refuses when another engine,
+harness or build is running, or when the host is above 15% CPU, and
+`-AllowBusyHost` records the waiver in the run's manifest.
 
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
 and PGO training refuses. `rust-toolchain.toml` pins the channel, not the host
 triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
-`fastchess -use-affinity` with concurrency 14 is mandatory for 1T gates;
-unpinned Zen 3 runs carry a hidden per-run offset of roughly ±10 nElo. The
-pinned list never contains CPU 0 (`Get-HarnessGameCpus`): Windows services
-most interrupts there, so it is always one of the cores left free. After this
-change `setup_tools.ps1` must repatch weather-factory before an SPSA launch,
-and `spsa.ps1` refuses until it has. It pins
-one core per game and starves `Threads>1`, so multi-thread runs drop it. The
-1T harness is null-calibrated and shared with Basilisk; a new null pair (the
-same executable on both arms, `-Mode calibrate`) is owed only after a runner,
-scheduler or topology change, never for a symmetric adjudication toggle
-(RAR-M03).
+Games are pinned to physical cores on both paths, because unpinned Zen 3 runs
+carry a hidden per-run offset of roughly ±10 nElo (RAR-M48). Colosseum does it
+with `--placement auto` and one physical core of headroom; fastchess needs
+`-use-affinity` with concurrency 14, and its list never contains CPU 0
+(`Get-HarnessGameCpus`), because Windows services most interrupts there. The
+two resolve to the same fourteen cores, checked field by field rather than by
+eye (`tools/diag/colosseum_parity.py`). fastchess pins one core per game and
+starves `Threads>1`, so multi-thread runs on that path drop it. After a change
+to the pinned list, `setup_tools.ps1` must repatch weather-factory before an
+SPSA launch there, and `spsa.ps1` refuses until it has. The 1T harness is
+null-calibrated and shared with Basilisk; a new null pair (the same executable
+on both arms, `-Mode calibrate`) is owed only after a runner, scheduler or
+topology change, never for a symmetric adjudication toggle (RAR-M03).
 
 NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
@@ -374,7 +428,12 @@ Before any SPSA:
    resolution and compute budget. `StopAfter` may stage a review without
    changing that horizon or games per iteration.
 8. Run `./tools/audit_spsa_coverage.ps1` and register surface, fixed values,
-   iterations, games, gain and estimator before launch.
+   iterations, games per iteration, slots, the budget in games, gain and
+   estimator before launch. On Colosseum the shape is **15 slots and 30 games
+   per iteration**, so the budget is `iterations x 30` games (RAR-M62);
+   `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
+   registered surface for that horizon and `--check` refuses a file that has
+   drifted from it.
 9. Complete the final theta without post-hoc checkpoint selection; bake it
    into a fresh clean PGO binary and run a paired SPRT, then LTC/4T where
    appropriate.
@@ -417,16 +476,41 @@ cargo xtask verify-isa --arch pext
 ```
 
 ```powershell
-# Primary SPRT [0,3] nElo — the DEFAULT bracket. Add -TC "10+0.1" for LTC.
-# [3,10] is the harness default and is WRONG for a small candidate: wide bounds
-# anchored high drive a true +4 to H0. Size from RAR-M10 before registering.
-./tools/sprt.ps1 -EngineA <candidate.exe> -EngineB <baseline.exe> `
-  -NameA candidate -NameB baseline -Elo0 0 -Elo1 3 -MaxGames 80000
+# MAIN PATH — Colosseum. The gate: [0,3] nElo, the default bracket; -Bracket
+# removal | repair | wide for the three registered alternatives. The cap comes
+# from RAR-M10 at the EXPECTED value, before any game is played.
+./tools/colosseum.ps1 -Mode sprt -EngineA <candidate.exe> -EngineB <baseline.exe> `
+  -NameA candidate -NameB baseline -MaxPairs <cap> -Seed <n> `
+  -ExpectRevision <sha> -Dir tools/results/<experiment>
+
+# A measurement with an interval, which decides nothing
+./tools/colosseum.ps1 -Mode match -EngineA <a.exe> -EngineB <b.exe> `
+  -Games 2000 -Seed <n> -Dir tools/results/<name>
+
+# A tune: 15 slots, 30 games per iteration, budget in games (RAR-M62)
+./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
+  -Iterations <N> -TotalGames <N*30> -Seed <n> -Dir tools/results/<experiment>
 
 # Null pair, only after a runner, scheduler or topology change (RAR-M03)
-./tools/sprt.ps1 -EngineA <same.exe> -EngineB <same.exe> -NameA a -NameB b -Mode calibrate
+./tools/colosseum.ps1 -Mode calibrate -EngineA <same.exe> -EngineB <same.exe> `
+  -Seed <n> -Dir tools/results/<name>
+```
 
-# Test/tune binaries and the SPSA coverage audit
+```powershell
+# BACKUP PATH — fastchess and weather-factory, kept working until at least
+# 2.5.0. Use it for a cross-check on the triggers in "Harness", and say in the
+# registration which runner a result came from.
+# [3,10] is the fastchess wrapper's default and is WRONG for a small candidate:
+# wide bounds anchored high drive a true +4 to H0.
+./tools/sprt.ps1 -EngineA <candidate.exe> -EngineB <baseline.exe> `
+  -NameA candidate -NameB baseline -Elo0 0 -Elo1 3 -MaxGames 80000
+./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <s> -Iterations <N>
+```
+
+```powershell
+# Test/tune binaries, the SPSA coverage audit, and the harness's own checks
 ./tools/build_test.ps1 -Suffix <s>
 ./tools/audit_spsa_coverage.ps1
+pwsh -NoProfile -File tools/diag/test_colosseum_guards.ps1
+python -m unittest discover -s tools/diag -p "test_colosseum_parity.py"
 ```

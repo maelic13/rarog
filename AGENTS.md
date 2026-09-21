@@ -129,13 +129,21 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Measurement
 
+- Colosseum CLI is the main harness for gates, fixed matches, tunes, null pairs
+  and gauntlets; `tools/colosseum.ps1` drives it from the committed run files
+  and carries every guard. fastchess and weather-factory (`tools/sprt.ps1`,
+  `tools/spsa.ps1`) stay installed and working as the backup and the second
+  opinion until at least release 2.5.0; retire nothing before then. PROCESS's
+  *Harness* section names the cross-check triggers.
 - Never measure a `--all-features` binary: it enables `texel`, which bypasses
   the eval and pawn caches. If a number you are not changing changes, check
   the binary.
 - Measure only on an idle host: check CPU use and running engine or harness
   processes first, and if the machine is busy stop and ask rather than measure
   (RAR-M48's first pool was discarded for this). Keep builds, profiling and
-  unrelated load off a match host while it plays.
+  unrelated load off a match host while it plays. `colosseum.ps1` refuses a
+  busy host; a waiver is recorded in the run's manifest, so it cannot be
+  forgotten.
 - Rebuild before measuring, with the exact feature set: `cargo test`,
   `clippy` and `bench` leave their own `target/release/rarog.exe`. For a
   multi-run study, build once, verify the fingerprint, hash and archive that
@@ -151,7 +159,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   comparability.
 - A binary entered in a rated pool is a tagged release or carries its bench
   fingerprint or feature flag in its version string (`2.5.0-dev+b2core`), and
-  its ledger row names the fingerprint.
+  its ledger row names the fingerprint. The harness binary is pinned the same
+  way: `tools/colosseum/colosseum.pin.json` names its revision and SHA-256, and
+  a runner that is not the pinned one is refused, not substituted.
 - The current fingerprint is declared once, in GUIDE's checkpoint;
   `check_guide.py` fails when AGENTS' "currently" values or PLAN's checkpoint
   row disagree with it.
@@ -238,8 +248,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - A removal or simplification uses a bracket that permits a small loss
   (`[-1.75, 0.25]`); a repair of unknown sign uses a symmetric one (RAR-S62,
   `[-5,5]`).
-- `tools/sprt.ps1` already runs the pentanomial GSPRT (`model=normalized`); the
-  gap to fishtest is bounds and budget, not the test.
+- Both harnesses run the pentanomial GSPRT (`model=normalized`); the gap to
+  fishtest is bounds and budget, not the test. A registered experiment names
+  its runner and never changes it mid-way.
 - High bounds reject small gains: a true +4 nElo reaches H0 under `[0,10]` in
   about 35k games and is accepted by `[0,3]` in about 47k (RAR-M10). That is
   overnight compute: budget the games, do not widen the bounds or poll.

@@ -9,16 +9,40 @@ not change.
 
 ## Games and harness
 
+Colosseum CLI is the main path; fastchess and weather-factory stay installed and
+working as the backup and the second opinion until at least release 2.5.0.
+PROCESS's *Harness* section says when to run the backup as a cross-check.
+
+### Main path — Colosseum CLI
+
 | Tool | Purpose | Used by |
 |---|---|---|
-| `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs | PROCESS "Decision rules", "Common commands"; every SPRT row |
-| `build_test.ps1` | Build a PGO or tune test binary, of the default arm or a feature arm (`-Features b2core`), with a bench-verified provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; SPRT and SPSA setup |
-| `harness_common.ps1` | Shared preflight: fastchess version, affinity list, adjudication profiles | dot-sourced by `sprt.ps1`, `spsa.ps1`, `datagen.ps1`, `build_test.ps1` and others |
-| `setup_tools.ps1` | Stage fastchess, the UHO book and the patched weather-factory | PROCESS "Toolchain and harness notes" |
-| `pgn_result.ps1` | Recompute Elo, LOS and pentanomial counts from a PGN | re-reading a finished match |
-| `pgn_depth_at_nodes.py` | Per-engine reported depth and time per move from a fixed-nodes PGN | tree-shape comparisons at equal nodes |
-| `gauntlet.ps1` | The frozen Rarog 2.2.0 external gauntlet (hard-coded field) | historical; Colosseum replaces it |
+| `colosseum.ps1` | Gate, fixed match, null pair, tune or gauntlet on Colosseum CLI from the committed run files, with every provenance, equality, revision, fingerprint, policy and idle-host guard, a per-run manifest and a post-run fault check | PROCESS "Harness", "Common commands"; every run from B.2.6 on |
+| `colosseum/` | The run files that hold Rarog's conditions, and `colosseum.pin.json`, which pins the runner by revision and SHA-256 | `colosseum.ps1`, `setup_tools.ps1`; `colosseum/README.md` |
+| `spsa_config_to_colosseum.py` | Convert a registered surface to a Colosseum tune file for one horizon; `--check` refuses a file that has drifted from its JSON | `colosseum.ps1 -Mode spsa`; PROCESS "SPSA go/no-go procedure" |
+| `diag/colosseum_parity.py` | Compare a Colosseum dry run with a recorded `sprt.ps1` manifest, field by field | RAR-M60; harness cross-checks |
+| `diag/colosseum_recount.py` | Recount W-D-L, pentanomial, Elo and nElo from a run's PGN and check them against its record | RAR-M60, RAR-M61; re-reading a finished run |
+| `diag/test_colosseum_guards.ps1` | Break one input per case and require the refusal that names it | the guard contract; run after touching a guard |
+| `diag/test_colosseum_parity.py` | The recorded parity pair as a fixture, plus one mutation per compared field | the parity contract |
+
+### Backup path — fastchess and weather-factory
+
+| Tool | Purpose | Used by |
+|---|---|---|
+| `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs | PROCESS "Harness"; every SPRT row up to B.2.5 |
+| `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a `b2core-tune` binary | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
+| `pgn_result.ps1` | Recompute Elo, LOS and pentanomial counts from a fastchess PGN | re-reading a finished match |
 | `watch.ps1` | Console-noise filter for long fastchess and weather-factory runs | operator convenience |
+| `gauntlet.ps1` | The frozen Rarog 2.2.0 external gauntlet (hard-coded field) | historical; `colosseum.ps1 -Mode gauntlet` replaces it |
+
+### Shared
+
+| Tool | Purpose | Used by |
+|---|---|---|
+| `build_test.ps1` | Build a PGO or tune test binary, of the default arm or a feature arm (`-Features b2core`), with a bench-verified provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; every gate and tune |
+| `harness_common.ps1` | One implementation of every guard both paths enforce — idle host, runner pin, sidecar provenance, flavour and compiler equality, advertised options, tune surface — plus the affinity list and adjudication profiles | dot-sourced by `colosseum.ps1`, `sprt.ps1`, `spsa.ps1`, `datagen.ps1`, `build_test.ps1` and others |
+| `setup_tools.ps1` | Stage the pinned Colosseum CLI, fastchess, the UHO book and the patched weather-factory | PROCESS "Toolchain and harness notes" |
+| `pgn_depth_at_nodes.py` | Per-engine reported depth and time per move from a fixed-nodes PGN | tree-shape comparisons at equal nodes |
 
 ## Speed
 
@@ -80,7 +104,6 @@ not change.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a `b2core-tune` binary | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
 | `audit_spsa_coverage.ps1` | Check a tune surface against `src/search/params.rs` | PROCESS "SPSA go/no-go procedure" |
 | `spsa_convergence_model.py` | Compare SPSA horizons under the live schedule | SPSA registration |
 | `datagen.ps1` | Deterministic self-play PGN segments for Texel data | PROCESS "Texel convergence procedure" |
