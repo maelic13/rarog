@@ -61,6 +61,7 @@ commit that adds it.
 | [`b22_screens_2026-09-15.md`](b22_screens_2026-09-15.md) | B.2.2 screens — the unfitted `b2core` candidate against B.0's registered numbers | Deliverable | B.2.2, B.2 re-plan, B.7 |
 | [`b223_sweep_2026-09-15.md`](b223_sweep_2026-09-15.md) | B.2.2.3 — curvature sweep and the P6 profile on the `b2core` arm | Deliverable | B.2.2.3, B.2.3 |
 | [`b22_review_2026-09-15.md`](b22_review_2026-09-15.md) | B.2.2 review — what the +52 Elo and the 0.683x NPS mean, and what precedes B.2.3 | Deliverable | B.2.2, B.2.3, B.7, B.3–B.5 screens |
+| [`b2_audit_2026-09-21.md`](b2_audit_2026-09-21.md) | B.2 close-out audit (theta, fingerprints, both SPRTs recounted) and Colosseum CLI readiness for B.2.6 | Record | B.2.3, B.2.4, B.2.6, B.2.7, B.2.8, RAR-M59 |
 | [`consolidation_2026-09-10.md`](consolidation_2026-09-10.md) | Codebase consolidation analysis — PLAN A.6 | Deliverable | A.6 |
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |

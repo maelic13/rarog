@@ -821,8 +821,9 @@ diagnostics; two rejections stop B.
       correction stays admitted; the +52 arm includes it, and a 5.6% bench
       move in a tree that moves 0.3–71% per coordinate step is not a
       pruning-signal finding. Calibration at B.2.4.
-      **Preparation IMPLEMENTED 2026-09-15 (RAR-S75); the tune is pending,
-      maintainer-run.**
+      **Preparation IMPLEMENTED 2026-09-15 (RAR-S75); the tune ran
+      2026-09-15 to 2026-09-20, maintainer-run, and B.2.4b scored the
+      prediction (+138.60 ± 30.66 against +12 ± 11).**
       - Tooling `2f2c43a`: `build_test.ps1 -Tune -Features b2core` builds
         flavor `b2core-tune`, and `spsa.ps1` refuses an off-arm tune binary
         for a `Core*` surface (checked with a real off-arm build).
@@ -991,7 +992,11 @@ diagnostics; two rejections stop B.
       wrappers with the `sprt.ps1`/`spsa.ps1` guards, `setup_tools.ps1`
       staging a tagged release with its hash, the manifest parity run and
       the short live run; `sprt.ps1` and `spsa.ps1` stay the gate and tune
-      path until then. **B.2.6.2:** retire the replaced scripts, keep
+      path until then. **Audit 2026-09-21** (`analysis/b2_audit_2026-09-21.md`):
+      the nine run files dry-run with exit 0 on the staged CLI, a local
+      build (sha256 `550CE5D0…DA11`) that is neither the qualified binary
+      nor a release; the tag is the only outside dependency left, and the
+      wrappers can be written before it. **B.2.6.2:** retire the replaced scripts, keep
       fastchess staged for periodic cross-checks, rewrite PROCESS, AGENTS
       and `tools/README.md`, and record the 2026-09-17/18 parity runs as
       ledger rows. Engine-specific tooling (builds, sidecars, bench
@@ -1005,8 +1010,11 @@ diagnostics; two rejections stop B.
       dimension or already at the optimum; the discriminating reads are in
       RAR-S78. The full registration (steps, horizon, slots and games per
       iteration as B.2.6.2 sets them, cap) comes before launch. Gated by an
-      SPRT `[0,3]` against the head B.2.4b accepts. Waits for B.2.4b and
-      B.2.6.
+      SPRT `[0,3]` against the head B.2.4b accepted on 2026-09-20. Waits for
+      B.2.6. `spsa` was qualified on four coordinates at `r_end` 0.03, so
+      this gate is also its first strength test at Rarog's scale, and
+      weather-factory stays installed until it resolves
+      (`analysis/b2_audit_2026-09-21.md`).
     - **B.2.8 First-search stalls — `I1`, CLOSED 2026-09-19
       (RAR-M59).** Added by maintainer decision after a harness lead. The
       KPK bitbase was built inside the first search that reached KPK (about
@@ -1018,7 +1026,10 @@ diagnostics; two rejections stop B.
       test and a `configure` test fail with the fix disabled. Closed on that
       evidence by maintainer decision; the 10,000-game confirmation is
       Colosseum's qualification and runs there, its result appended to
-      RAR-M59 when reported. The B.2.3 tune keeps its registered binary.
+      RAR-M59 when reported. **It was never played:** Colosseum closed its
+      10.9m on 2026-09-19 without pursuing the target, and its qualification
+      runs used binaries that predate the fix. RAR-M59 closes on 21,055
+      post-fix fastchess games without a time loss (`analysis/b2_audit_2026-09-21.md`). The B.2.3 tune keeps its registered binary.
       The fixed pair for Colosseum: `rarog-startupfix-core-pext-pgo.exe` and
       `rarog-startupfix-base-pext-pgo.exe` at `c0e6ef7`.
 - **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
@@ -1132,11 +1143,11 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; waits for `cli-v0.1.0`, for B.2.3's tune to finish on weather-factory and for B.2.4b |
+| B.2.6 | RESEARCH | M | Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
 | B.2.6.1 | RESEARCH | I1 | Run files, thin wrappers that keep every `sprt.ps1`/`spsa.ps1` guard, hash-pinned staged release; checked by field-by-field configuration parity and one short live run with a deliberately mismatched sidecar |
-| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; waits for B.2.4b and B.2.6 |
+| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20, waits for B.2.6 |
 | B.2.6.2 | RESEARCH | M | Retire the replaced scripts, rewrite PROCESS, AGENTS and `tools/README.md`, ledger rows for the 2026-09-17/18 parity runs, next tune registered at 15 slots and 30 games per iteration with the budget in games |
-| B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; waits for the accepted B.2 head |
+| B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
