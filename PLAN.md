@@ -976,7 +976,22 @@ diagnostics; two rejections stop B.
       and pins its SHA-256. Check: the wrapper's dry run resolves to the
       conditions an `sprt.ps1` manifest records, field by field, and one
       short live run completes with the guards firing on a deliberately
-      mismatched sidecar. **B.2.6.2:** retire the replaced scripts, keep
+      mismatched sidecar. **Landed 2026-09-21 by maintainer request, ahead
+      of the tag and of B.2.4b:** `tools/colosseum/` holds the run files
+      (`common`, the four brackets, `match-fixed`, `spsa-tune`,
+      `calibrate-null`, `gauntlet`) with their README, and
+      `tools/spsa_config_to_colosseum.py` converts a registered surface to
+      a Colosseum tune file plus its run file, `c_end = step · N^−0.102`
+      for the registered horizon, with `--check` refusing a file that has
+      drifted from its JSON. Verified by a dry run of every file against
+      the policy field by field (book, order, adjudication, placement,
+      headroom, slots, time control, margin, brackets, tune width) and by
+      the generated 82-coordinate surface matching the hand-made one used
+      for the 2026-09-18 tune, parameter for parameter. Not yet done:
+      wrappers with the `sprt.ps1`/`spsa.ps1` guards, `setup_tools.ps1`
+      staging a tagged release with its hash, the manifest parity run and
+      the short live run; `sprt.ps1` and `spsa.ps1` stay the gate and tune
+      path until then. **B.2.6.2:** retire the replaced scripts, keep
       fastchess staged for periodic cross-checks, rewrite PROCESS, AGENTS
       and `tools/README.md`, and record the 2026-09-17/18 parity runs as
       ledger rows. Engine-specific tooling (builds, sidecars, bench

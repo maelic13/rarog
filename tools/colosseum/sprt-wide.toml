@@ -1,0 +1,9 @@
+# A genuinely large prior only: [0, 10] nElo resolves a large effect fast
+# (RAR-S57 decided in 2,838 games) and rejects small true gains. The
+# registration says why the prior is large before any game is played.
+
+extend = "sprt-default.toml"
+
+[options]
+elo0 = 0
+elo1 = 10

@@ -1,0 +1,22 @@
+# A fixed-length match: a measurement with an interval, never an acceptance.
+# 2,000 games resolve about +-10 Elo on this host.
+#
+#   colosseum-cli --run-file tools/colosseum/match-fixed.toml \
+#     <a.exe> <b.exe> --seed <n> --dir tools/results/<name>
+
+extend = "common.toml"
+command = ["match"]
+
+[options]
+games = 2000
+concurrency = 14
+
+a-base-ms = 3000
+a-increment-ms = 30
+a-margin-ms = 20
+b-base-ms = 3000
+b-increment-ms = 30
+b-margin-ms = 20
+
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]

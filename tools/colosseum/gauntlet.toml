@@ -1,0 +1,25 @@
+# A rating gauntlet against a fixed field. Each participant brings its own
+# options (`--engine-option <index>:<Name>=<value>`), its label and its prior
+# rating, and anchors are pinned with `--fixed <index>:<rating>`, so this file
+# carries only the conditions.
+#
+#   colosseum-cli --run-file tools/colosseum/gauntlet.toml \
+#     --format gauntlet --engine <newcomer.exe> --label "..." --rating <n> \
+#     --engine <opponent.exe> --label "..." --rating <n> --fixed 2:<rating> \
+#     --games-per-pair 2 --cycles <n> --seed <n> --dir tools/results/<name>
+#
+# A tournament starts fresh engine processes for every game, as the desktop
+# application does, so the kept-engine default is dropped here. Foreign engines
+# that predate a 20 ms margin are charged the desktop's 2,000 ms instead
+# (--margin-ms), which is a condition of the comparison, not a harness setting.
+
+extend = "common.toml"
+command = ["tournament", "run"]
+unset = ["/options/engine-processes"]
+
+[options]
+concurrency = 14
+
+base-ms = 3000
+increment-ms = 30
+margin-ms = 20

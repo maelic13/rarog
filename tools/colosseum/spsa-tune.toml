@@ -1,0 +1,27 @@
+# A tune. Both perturbation arms share a slot, so tunes fill 15 of the 16
+# physical cores; gates use 14.
+#
+#   colosseum-cli --run-file tools/colosseum/spsa-tune.toml \
+#     <engine-tune.exe> --tune <surface.toml> --total-games <registered> \
+#     --seed <n> --dir tools/results/<experiment>
+#
+# The surface, horizon, gain and estimator belong to the registration in
+# EXPERIMENTS.md and are never changed after launch. r-end 0.0031 is the gain
+# RAR-M05 validated; a tune that must travel far from its seeds says so in its
+# registration and sets its own. Generate a surface from a committed
+# `tools/spsa_configs/config_<group>.json` with
+# `python tools/spsa_config_to_colosseum.py <group> --iterations <N>`.
+
+extend = "common.toml"
+command = ["spsa"]
+
+[options]
+concurrency = 15
+games-per-iteration = 30
+r-end = 0.0031
+
+base-ms = 3000
+increment-ms = 30
+margin-ms = 20
+
+option = ["Hash=64", "Threads=1", "MultiPV=1"]

@@ -1,0 +1,8 @@
+# A removal or simplification: [-1.75, 0.25] nElo permits a small loss for the
+# code that goes away. Everything else is the default gate.
+
+extend = "sprt-default.toml"
+
+[options]
+elo0 = -1.75
+elo1 = 0.25

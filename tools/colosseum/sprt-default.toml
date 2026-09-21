@@ -1,0 +1,32 @@
+# The default gate: [0,3] nElo, pentanomial and normalized, the bracket AGENTS
+# names for an ordinary playing change.
+#
+#   colosseum-cli --run-file tools/colosseum/sprt-default.toml \
+#     <candidate.exe> <baseline.exe> --max-pairs <from RAR-M10> --seed <n> \
+#     --dir tools/results/<experiment>
+#
+# --max-pairs and --seed stay on the command line: the cap belongs to the
+# registration in EXPERIMENTS.md, and a seed must be chosen and recorded per
+# run. Bounds, book and adjudication never change after games are seen.
+
+extend = "common.toml"
+command = ["sprt"]
+
+[options]
+model = "normalized"
+elo0 = 0
+elo1 = 3
+alpha = 0.05
+beta = 0.05
+
+concurrency = 14
+
+a-base-ms = 3000
+a-increment-ms = 30
+a-margin-ms = 20
+b-base-ms = 3000
+b-increment-ms = 30
+b-margin-ms = 20
+
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]
