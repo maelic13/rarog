@@ -178,25 +178,14 @@ if (-not $LaunchOnly) {
     }
     Assert-AffinityFastchess -Path $fastchess | Out-Null
 
+    # Sidecar, bench verification, tune flavor and dirty-tree refusals all live
+    # in harness_common.ps1, so the fastchess and Colosseum tune paths cannot
+    # drift apart on what a measurable tune binary is.
     $engineManifestPath = [IO.Path]::ChangeExtension($engine, ".json")
-    if (-not (Test-Path -LiteralPath $engineManifestPath -PathType Leaf)) {
-        throw "Missing engine manifest: $engineManifestPath. Rebuild with tools/build_test.ps1 -Tune."
-    }
-    $engineManifest = Get-Content -LiteralPath $engineManifestPath -Raw | ConvertFrom-Json
+    $engineManifest = Assert-EngineProvenance -Path $engine -Label $engineFile -Kind tune `
+        -RequireManifest -RequireBinaryHash
     $engineHash = Get-HarnessSha256 $engine
-    if (-not $engineManifest.binary_sha256 -or $engineManifest.binary_sha256 -ne $engineHash) {
-        throw "Tune binary SHA-256 does not match its engine manifest."
-    }
-    if ($engineManifest.verification -ne "bench") {
-        throw "Tune binary manifest does not record bench verification."
-    }
-    if ($engineManifest.flavor -notlike "*-tune") {
-        throw "SPSA requires a tune build manifest; selected flavor is '$($engineManifest.flavor)'."
-    }
-    # The selectivity core's coordinates exist only in a `b2core` build. An
-    # off-arm tune binary would tune a different search under the same names
-    # or fail late on a missing option, so the arm is checked from the
-    # manifest before anything else is read or copied.
+
     $armConfig = Join-Path $configs "config_$ConfigGroup.json"
     if (-not (Test-Path $armConfig)) { throw "Config not found: $armConfig" }
     $armNames = @((Get-Content $armConfig -Raw | ConvertFrom-Json).PSObject.Properties.Name)
@@ -204,53 +193,17 @@ if (-not $LaunchOnly) {
     if (Test-Path $armFixed) {
         $armNames += @((Get-Content $armFixed -Raw | ConvertFrom-Json).PSObject.Properties.Name)
     }
-    $coreNames = @($armNames | Where-Object { $_ -like "Core*" })
-    if ($coreNames.Count -gt 0 -and $engineManifest.flavor -notlike "*b2core*") {
-        throw ("Config group '$ConfigGroup' names selectivity-core options ($($coreNames[0]) and " +
-               "$($coreNames.Count - 1) more), but the tune binary's flavor is '$($engineManifest.flavor)'. " +
-               "Build it with ./tools/build_test.ps1 -Tune -Features b2core.")
-    }
-    if ($engineManifest.git_dirty) {
-        throw "Tune binary was built from a dirty source tree."
-    }
+    Assert-CoreSurfaceArm -Names $armNames -Flavor $engineManifest.flavor -ConfigGroup $ConfigGroup
 
-    $srcConfig = Join-Path $configs "config_$ConfigGroup.json"
-    if (-not (Test-Path $srcConfig)) { throw "Config not found: $srcConfig" }
+    $srcConfig = $armConfig
     $advertisedDetails = @(Get-EngineUciOptions -Path $engine -Detailed)
     $advertised = @($advertisedDetails.Name)
     $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
     $advertisedNormalized = @($advertised | ForEach-Object { & $normalize $_ })
     $sourceConfig = Get-Content $srcConfig -Raw | ConvertFrom-Json
-    $tunedNames = @($sourceConfig.PSObject.Properties.Name)
-    if ($tunedNames.Count -eq 0) { throw "$srcConfig declares no parameters." }
-    $missing = @($tunedNames | Where-Object { $advertisedNormalized -notcontains (& $normalize $_) })
-    if ($missing.Count -gt 0) {
-        throw ("$engineFile does not advertise: $($missing -join ', '). " +
-               "SPSA cannot tune an option the selected binary does not expose.")
-    }
-    foreach ($parameter in $sourceConfig.PSObject.Properties) {
-        $declaration = $advertisedDetails | Where-Object {
-            (& $normalize $_.Name) -eq (& $normalize $parameter.Name)
-        } | Select-Object -First 1
-        if ($declaration.Type -ne 'spin') {
-            throw "$($parameter.Name) is advertised as '$($declaration.Type)', not a spin option."
-        }
-        $value = [int64]$parameter.Value.value
-        $minimum = [int64]$parameter.Value.min_value
-        $maximum = [int64]$parameter.Value.max_value
-        $step = [double]$parameter.Value.step
-        if ($value -ne [int64]$declaration.Default -or $minimum -lt $declaration.Min -or
-            $maximum -gt $declaration.Max -or $minimum -ge $maximum -or
-            $value -lt $minimum -or $value -gt $maximum -or $step -le 0) {
-            throw ("Invalid SPSA declaration for $($parameter.Name): config value=$value " +
-                   "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
-                   "range=[$($declaration.Min),$($declaration.Max)].")
-        }
-        $endPerturbation = $step / [Math]::Pow($Iterations, 0.102)
-        if ($endPerturbation -lt 0.5) {
-            throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
-        }
-    }
+    $fixedSurface = if (Test-Path $armFixed) { Get-Content $armFixed -Raw | ConvertFrom-Json } else { $null }
+    $tunedNames = @(Assert-TuneSurface -Advertised $advertisedDetails -Surface $sourceConfig `
+        -Iterations $Iterations -Label $engineFile -Fixed $fixedSurface)
     Write-Host "Tunable options verified: $($tunedNames -join ', ')" -ForegroundColor Green
 
     $wfCute = Join-Path $wfRoot "cutechess.py"

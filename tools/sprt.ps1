@@ -405,21 +405,8 @@ $optionDetailsA = @(Get-EngineUciOptions -Path $EngineA -Detailed)
 $optionDetailsB = @(Get-EngineUciOptions -Path $EngineB -Detailed)
 $optionsAdvertisedA = @($optionDetailsA.Name)
 $optionsAdvertisedB = @($optionDetailsB.Name)
-$normalizeOption = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
-function Assert-RequestedOptions {
-    param([object[]]$Advertised, [string[]]$Wanted, [string]$Label)
-    if (-not $Wanted -or @($Wanted).Count -eq 0) { return }
-    $have = @($Advertised.Name | ForEach-Object { & $normalizeOption $_ })
-    $missing = @($Wanted | Where-Object { $_ } |
-        ForEach-Object { ($_ -split '=', 2)[0] } |
-        Where-Object { $have -notcontains (& $normalizeOption $_) })
-    if ($missing.Count -gt 0) {
-        throw ("$Label does not advertise: $($missing -join ', '). Rebuild it before measuring; " +
-               "fastchess would otherwise play the match at default values.")
-    }
-}
-Assert-RequestedOptions -Advertised $optionDetailsA -Wanted $OptionsA -Label $NameA
-Assert-RequestedOptions -Advertised $optionDetailsB -Wanted $OptionsB -Label $NameB
+Assert-AdvertisedOptions -Advertised $optionDetailsA -Wanted $OptionsA -Label $NameA
+Assert-AdvertisedOptions -Advertised $optionDetailsB -Wanted $OptionsB -Label $NameB
 
 $shaA = Get-HarnessSha256 $EngineA
 $shaB = Get-HarnessSha256 $EngineB
@@ -460,100 +447,18 @@ $manifestPath = [System.IO.Path]::ChangeExtension($pgnOut, ".manifest.txt")
 # Local-only: tools/results/ is gitignored; nothing here reaches a release.
 $engineManifests = @{}
 foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
-    $manifest = [System.IO.Path]::ChangeExtension($pair[0], ".json")
-    if (Test-Path $manifest) {
-        $manifestData = Get-Content $manifest -Raw | ConvertFrom-Json
-        $engineManifests[$pair[1]] = $manifestData
-        if ($manifestData.engine -and $manifestData.engine -ne (Split-Path $pair[0] -Leaf)) {
-            throw "Manifest for $($pair[1]) names '$($manifestData.engine)', not the selected binary."
-        }
-        if ($manifestData.binary_sha256) {
-            $actualHash = Get-HarnessSha256 $pair[0]
-            if ($actualHash -ne $manifestData.binary_sha256) {
-                throw ("PROVENANCE MISMATCH - sidecar does not describe the selected binary.`n" +
-                       "  Engine:  $($pair[1])`n  Actual:  $actualHash`n" +
-                       "  Sidecar: $($manifestData.binary_sha256)`nRebuild with tools/build_test.ps1.")
-            }
-        } else {
-            Write-Warning "Legacy manifest for $($pair[1]) is not bound to its binary SHA-256."
-        }
-        if ($manifestData.verification -and $manifestData.verification -ne "bench") {
-            throw "Manifest for $($pair[1]) records '$($manifestData.verification)', not bench verification."
-        }
-        if ($manifestData.flavor -like "*-tune") {
-            throw "Manifest for $($pair[1]) is a tune build; rebuild a PGO gate binary."
-        }
-        # A dirty tree is a REFUSAL, not a warning. The rule this
-        # protects is AGENTS.md's evidence rule -- a ledger row must reproduce
-        # its artifact without the branch it came from -- and a binary built
-        # from uncommitted changes cannot, by construction. A warning here is
-        # read once and forgotten; by the time the row is questioned the tree
-        # is long gone. -AllowDirtyTree exists for a deliberate throwaway
-        # screen and must be justified in the registration.
-        if ($manifestData.git_dirty -and -not $AllowDirtyTree) {
-            throw ("DIRTY TREE - $($pair[1]) was built from uncommitted changes at " +
-                   "$($manifestData.git_sha), so this result cannot be reproduced " +
-                   "from git alone.`nCommit the change and rebuild with " +
-                   "tools/build_test.ps1, or pass -AllowDirtyTree and say why in " +
-                   "the EXPERIMENTS.md registration.")
-        }
-        if ($manifestData.git_dirty) {
-            Write-Warning ("$($pair[1]) was built from a DIRTY tree and -AllowDirtyTree " +
-                           "was passed. This result is not reproducible from git.")
-        }
-        if ($manifestData.git_sha -and $ExpectRevision -and
-            $manifestData.git_sha -notlike "$ExpectRevision*") {
-            throw ("WRONG REVISION - $($pair[1]) was built at $($manifestData.git_sha), " +
-                   "not the expected $ExpectRevision.`nA gate that measures a " +
-                   "different revision than the one it registers is not evidence " +
-                   "for that revision.")
-        }
-        Copy-Item $manifest (Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.$($pair[1]).manifest.json") -Force
-    } else {
-        Write-Host "NOTE: no manifest next to $(Split-Path $pair[0] -Leaf) (pre-9.7 build) — result will lack provenance for $($pair[1])." -ForegroundColor Yellow
-    }
+    $manifestData = Assert-EngineProvenance -Path $pair[0] -Label $pair[1] -Kind gate `
+        -AllowDirtyTree:$AllowDirtyTree -ExpectRevision $ExpectRevision
+    if ($null -eq $manifestData) { continue }
+    $engineManifests[$pair[1]] = $manifestData
+    Copy-Item ([System.IO.Path]::ChangeExtension($pair[0], ".json")) `
+        (Join-Path $resultsDir "sprt_${NameA}_vs_${NameB}_${timestamp}.$($pair[1]).manifest.json") -Force
 }
 
-# COMPILER-EQUALITY GUARD - the toolchain-pin analogue for
-# BINARIES. A rustc change between building engine A and engine B folds the
-# compiler delta into the measured Elo, and no null pair can see it: a null
-# runs ONE binary against itself, so both sides always share a compiler.
-#
-# This is not hypothetical. The toolchain bump 1.97.0 -> 1.97.1 landed 2026-07-19
-# 21:19, AFTER p82a-nocheckext was built. Every gate before that split reads
-# -5.68..+30.75; the three run after it, all candidate-1.97.1 vs
-# baseline-1.97.0, read -8.68 / -8.22 / -7.37. Tight clustering across three
-# unrelated subsystems is the signature of a per-binary constant, not of three
-# independently bad ideas. HARD-FAIL so it can never recur silently.
-$compilers = @{}
-foreach ($pair in @(@($EngineA, $NameA), @($EngineB, $NameB))) {
-    if ($engineManifests.ContainsKey($pair[1])) {
-        $compilers[$pair[1]] = $engineManifests[$pair[1]].rustc
-    } else {
-        Write-Warning ("No manifest for $($pair[1]) - compiler equality NOT checkable. " +
-            "Rebuild it with tools/build_test.ps1 before trusting a small verdict.")
-    }
-}
-
-if ($engineManifests.Count -eq 2) {
-    $flavorA = $engineManifests[$NameA].flavor
-    $flavorB = $engineManifests[$NameB].flavor
-    if ($flavorA -and $flavorB -and $flavorA -ne $flavorB) {
-        throw ("BUILD FLAVOR MISMATCH - both sides must use the same target/PGO contract.`n" +
-               "  $NameA : $flavorA`n  $NameB : $flavorB")
-    }
-    if ($flavorA -and $flavorB) { Write-Host "  Build flavor equality OK: $flavorA" }
-}
-if ($compilers.Count -eq 2) {
-    $cA = $compilers[$NameA]; $cB = $compilers[$NameB]
-    if ($cA -ne $cB) {
-        throw ("COMPILER MISMATCH - this match would measure the compiler, not the change.`n" +
-               "  $NameA : $cA`n  $NameB : $cB`n" +
-               "Rebuild BOTH engines with the pinned toolchain (rust-toolchain.toml) " +
-               "via tools/build_test.ps1, then re-run.")
-    }
-    Write-Host "  Compiler equality OK: $cA"
-}
+# Build flavor and compiler equality (harness_common.ps1). The compiler guard
+# is the toolchain-pin analogue for BINARIES, and no null pair can see what it
+# catches, because a null runs one binary against itself.
+Assert-EngineArmEquality -Manifests $engineManifests -LabelA $NameA -LabelB $NameB
 
 $repoSha = (git rev-parse HEAD 2>$null)
 if (-not $repoSha) { $repoSha = "n/a" } else { $repoSha = $repoSha.Trim() }

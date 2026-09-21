@@ -496,3 +496,361 @@ function Assert-NoAffinityFailure {
         throw "fastchess reported an affinity failure; the match is invalid. See '$LogPath'."
     }
 }
+
+# ─── Guards shared by every game-playing instrument ────────────────────────
+# One implementation each, so the fastchess path (`sprt.ps1`, `spsa.ps1`) and
+# the Colosseum path (`colosseum.ps1`) cannot drift into disagreeing about what
+# a measurable binary is. Each function keeps the refusal that produced it.
+
+function Get-HarnessBusyProcess {
+    # Processes whose presence makes a timed measurement meaningless: another
+    # engine, another runner, or a compiler competing for the same cores. The
+    # current process is excluded so a wrapper never reports itself.
+    #
+    # `colosseum-cli` is here; the `colosseum` desktop application is NOT. An
+    # open window is not a measurement, and refusing for it would teach the
+    # operator to pass -AllowBusyHost out of habit, which is worse than not
+    # checking. A tournament the application is actually running shows up as its
+    # engine children, which these patterns do catch.
+    $patterns = @(
+        'rarog*', 'fastchess*', 'colosseum-cli*', 'cutechess*',
+        'stockfish*', 'basilisk*', 'reckless*', 'cargo*', 'rustc*'
+    )
+    $self = $PID
+    @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        if ($_.Id -eq $self) { return $false }
+        $name = $_.ProcessName.ToLowerInvariant()
+        foreach ($pattern in $patterns) { if ($name -like $pattern) { return $true } }
+        $false
+    })
+}
+
+function Get-HarnessHostBusyPercent {
+    # Median of a few samples. One reading catches a transient; a median over a
+    # second of wall time distinguishes an idle desktop from a loaded one, which
+    # is all this guard has to do.
+    param([int]$Samples = 3, [int]$IntervalMs = 400)
+
+    if (-not $script:HarnessIsWindows) { return $null }
+    $readings = @()
+    for ($i = 0; $i -lt $Samples; $i++) {
+        if ($i -gt 0) { Start-Sleep -Milliseconds $IntervalMs }
+        $total = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -eq '_Total' } | Select-Object -First 1
+        if ($total) { $readings += [double]$total.PercentProcessorTime }
+    }
+    if ($readings.Count -eq 0) { return $null }
+    $sorted = @($readings | Sort-Object)
+    $sorted[[int]([Math]::Floor($sorted.Count / 2))]
+}
+
+function Assert-HarnessHostIdle {
+    # AGENTS.md, "Measurement": measure only on an idle host; if the machine is
+    # busy, stop and ask rather than measure. RAR-M48's first pool was discarded
+    # for exactly this, and until now the rule lived only in prose — an operator
+    # could start a gate on a loaded box and nothing would say so.
+    param(
+        [double]$MaxBusyPercent = 15,
+        [switch]$Allow,
+        [switch]$Quiet
+    )
+
+    $busy = @(Get-HarnessBusyProcess)
+    $percent = Get-HarnessHostBusyPercent
+    $reasons = @()
+    if ($busy.Count -gt 0) {
+        $listed = ($busy | ForEach-Object { "$($_.ProcessName) ($($_.Id))" }) -join ', '
+        $reasons += "engine, harness or build processes are running: $listed"
+    }
+    if ($null -ne $percent -and $percent -gt $MaxBusyPercent) {
+        $reasons += ("host CPU is {0:N0}%, over the {1:N0}% ceiling" -f $percent, $MaxBusyPercent)
+    }
+
+    $state = [pscustomobject]@{
+        BusyPercent   = $percent
+        BusyProcesses = @($busy | ForEach-Object { "$($_.ProcessName):$($_.Id)" })
+        Reasons       = $reasons
+        # A waiver only counts when something was actually waived, so a manifest
+        # never claims a busy host that was not there.
+        Waived        = ([bool]$Allow -and $reasons.Count -gt 0)
+    }
+
+    if ($reasons.Count -eq 0) {
+        if (-not $Quiet) {
+            Write-Host ("  Host idle: {0} (no engine, harness or build process)" -f
+                $(if ($null -eq $percent) { "CPU unreadable" } else { "{0:N0}% CPU" -f $percent }))
+        }
+        return $state
+    }
+    if ($Allow) {
+        Write-Warning ("HOST NOT IDLE and the check was waived: " + ($reasons -join '; ') +
+            ". The result carries this in its manifest and is not comparable with an idle-host run.")
+        return $state
+    }
+    throw ("HOST NOT IDLE - " + ($reasons -join '; ') + ".`n" +
+           "A timed game measures the host as much as the engine. Stop the other work and " +
+           "re-run, or pass -AllowBusyHost and say why in the registration.")
+}
+
+function Assert-AdvertisedOptions {
+    # fastchess only WARNS about an option an engine does not expose and then
+    # plays the whole match at the DEFAULT — a completed run that measured
+    # something else. Refuse instead (PROCESS.md, "Matched ablation", rule 0).
+    param([object[]]$Advertised, [string[]]$Wanted, [string]$Label)
+
+    if (-not $Wanted -or @($Wanted).Count -eq 0) { return }
+    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
+    $have = @($Advertised | ForEach-Object { & $normalize $_.Name })
+    $missing = @($Wanted | Where-Object { $_ } |
+        ForEach-Object { ($_ -split '=', 2)[0] } |
+        Where-Object { $have -notcontains (& $normalize $_) })
+    if ($missing.Count -gt 0) {
+        throw ("$Label does not advertise: $($missing -join ', '). Rebuild it before measuring; " +
+               "the runner would otherwise play the match at default values.")
+    }
+}
+
+function Assert-EngineProvenance {
+    # The sidecar `build_test.ps1` writes beside every test binary is the only
+    # thing that binds a measurement to a revision, a compiler and a bench.
+    # Every check here exists because its absence once produced a wrong number.
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Label,
+        [ValidateSet("gate", "tune")][string]$Kind = "gate",
+        [switch]$RequireManifest,
+        [switch]$RequireBinaryHash,
+        [switch]$AllowDirtyTree,
+        [string]$ExpectRevision = ""
+    )
+
+    $manifestPath = [System.IO.Path]::ChangeExtension($Path, ".json")
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        if ($RequireManifest) {
+            throw "Missing engine manifest: $manifestPath. Rebuild with tools/build_test.ps1."
+        }
+        Write-Host "NOTE: no manifest next to $(Split-Path $Path -Leaf) (pre-9.7 build) — result will lack provenance for $Label." -ForegroundColor Yellow
+        return $null
+    }
+
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    if ($manifest.engine -and $manifest.engine -ne (Split-Path $Path -Leaf)) {
+        throw "Manifest for $Label names '$($manifest.engine)', not the selected binary."
+    }
+    if ($manifest.binary_sha256) {
+        $actual = Get-HarnessSha256 $Path
+        if ($actual -ne $manifest.binary_sha256) {
+            throw ("PROVENANCE MISMATCH - sidecar does not describe the selected binary.`n" +
+                   "  Engine:  $Label`n  Actual:  $actual`n" +
+                   "  Sidecar: $($manifest.binary_sha256)`nRebuild with tools/build_test.ps1.")
+        }
+    } elseif ($RequireBinaryHash) {
+        throw "Manifest for $Label is not bound to a binary SHA-256; rebuild with tools/build_test.ps1."
+    } else {
+        Write-Warning "Legacy manifest for $Label is not bound to its binary SHA-256."
+    }
+    if ($manifest.verification -and $manifest.verification -ne "bench") {
+        throw "Manifest for $Label records '$($manifest.verification)', not bench verification."
+    }
+    if ($Kind -eq "gate" -and $manifest.flavor -like "*-tune") {
+        throw "Manifest for $Label is a tune build; rebuild a PGO gate binary."
+    }
+    if ($Kind -eq "tune" -and $manifest.flavor -notlike "*-tune") {
+        throw "A tune requires a tune build manifest; $Label's flavor is '$($manifest.flavor)'."
+    }
+    # A dirty tree is a REFUSAL, not a warning. AGENTS.md's evidence rule says a
+    # ledger row must reproduce its artifact without the branch it came from,
+    # and a binary built from uncommitted changes cannot, by construction.
+    if ($manifest.git_dirty -and -not $AllowDirtyTree) {
+        throw ("DIRTY TREE - $Label was built from uncommitted changes at " +
+               "$($manifest.git_sha), so this result cannot be reproduced " +
+               "from git alone.`nCommit the change and rebuild with " +
+               "tools/build_test.ps1, or pass -AllowDirtyTree and say why in " +
+               "the EXPERIMENTS.md registration.")
+    }
+    if ($manifest.git_dirty) {
+        Write-Warning ("$Label was built from a DIRTY tree and -AllowDirtyTree " +
+                       "was passed. This result is not reproducible from git.")
+    }
+    if ($manifest.git_sha -and $ExpectRevision -and $manifest.git_sha -notlike "$ExpectRevision*") {
+        throw ("WRONG REVISION - $Label was built at $($manifest.git_sha), " +
+               "not the expected $ExpectRevision.`nA gate that measures a " +
+               "different revision than the one it registers is not evidence " +
+               "for that revision.")
+    }
+    $manifest
+}
+
+function Assert-EngineArmEquality {
+    # The compiler-equality guard is the toolchain-pin analogue for BINARIES,
+    # and no null pair can see what it catches: a null runs ONE binary against
+    # itself, so both sides always share a compiler. The 1.97.0 -> 1.97.1 split
+    # of 2026-07-19 folded a per-binary constant into three unrelated gates.
+    param(
+        [Parameter(Mandatory)][hashtable]$Manifests,
+        [Parameter(Mandatory)][string]$LabelA,
+        [Parameter(Mandatory)][string]$LabelB,
+        [switch]$Quiet
+    )
+
+    foreach ($label in @($LabelA, $LabelB)) {
+        if (-not $Manifests.ContainsKey($label) -or $null -eq $Manifests[$label]) {
+            Write-Warning ("No manifest for $label - compiler equality NOT checkable. " +
+                "Rebuild it with tools/build_test.ps1 before trusting a small verdict.")
+            return
+        }
+    }
+
+    $flavorA = $Manifests[$LabelA].flavor
+    $flavorB = $Manifests[$LabelB].flavor
+    if ($flavorA -and $flavorB -and $flavorA -ne $flavorB) {
+        throw ("BUILD FLAVOR MISMATCH - both sides must use the same target/PGO contract.`n" +
+               "  $LabelA : $flavorA`n  $LabelB : $flavorB")
+    }
+    if ($flavorA -and $flavorB -and -not $Quiet) { Write-Host "  Build flavor equality OK: $flavorA" }
+
+    $compilerA = $Manifests[$LabelA].rustc
+    $compilerB = $Manifests[$LabelB].rustc
+    if ($compilerA -ne $compilerB) {
+        throw ("COMPILER MISMATCH - this match would measure the compiler, not the change.`n" +
+               "  $LabelA : $compilerA`n  $LabelB : $compilerB`n" +
+               "Rebuild BOTH engines with the pinned toolchain (rust-toolchain.toml) " +
+               "via tools/build_test.ps1, then re-run.")
+    }
+    if (-not $Quiet) { Write-Host "  Compiler equality OK: $compilerA" }
+}
+
+function Assert-CoreSurfaceArm {
+    # The selectivity core's coordinates exist only in a `b2core` build. An
+    # off-arm binary would tune a different search under the same names or fail
+    # late on a missing option, so the arm is checked before anything is copied.
+    param(
+        [Parameter(Mandatory)][string[]]$Names,
+        [string]$Flavor,
+        [Parameter(Mandatory)][string]$ConfigGroup
+    )
+
+    $core = @($Names | Where-Object { $_ -like "Core*" })
+    if ($core.Count -gt 0 -and $Flavor -notlike "*b2core*") {
+        throw ("Config group '$ConfigGroup' names selectivity-core options ($($core[0]) and " +
+               "$($core.Count - 1) more), but the tune binary's flavor is '$Flavor'. " +
+               "Build it with ./tools/build_test.ps1 -Tune -Features b2core.")
+    }
+}
+
+function Assert-TuneSurface {
+    # A tune surface is only meaningful against the binary that will run it:
+    # every coordinate must exist, be a spin, start at the engine's own default,
+    # stay inside the engine's range, and still perturb by at least half a unit
+    # at the registered horizon — a step-1 integer knob goes dead after ~894
+    # iterations and tunes nothing while looking healthy.
+    param(
+        [Parameter(Mandatory)][object[]]$Advertised,
+        [Parameter(Mandatory)][object]$Surface,
+        [Parameter(Mandatory)][int]$Iterations,
+        [Parameter(Mandatory)][string]$Label,
+        [object]$Fixed = $null,
+        [double]$Gamma = 0.102
+    )
+
+    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
+    $advertisedNames = @($Advertised | ForEach-Object { & $normalize $_.Name })
+    $tuned = @($Surface.PSObject.Properties.Name)
+    if ($tuned.Count -eq 0) { throw "$Label's surface declares no parameters." }
+
+    $missing = @($tuned | Where-Object { $advertisedNames -notcontains (& $normalize $_) })
+    if ($missing.Count -gt 0) {
+        throw ("$Label does not advertise: $($missing -join ', '). " +
+               "SPSA cannot tune an option the selected binary does not expose.")
+    }
+
+    foreach ($parameter in $Surface.PSObject.Properties) {
+        $declaration = $Advertised | Where-Object {
+            (& $normalize $_.Name) -eq (& $normalize $parameter.Name)
+        } | Select-Object -First 1
+        if ($declaration.Type -ne 'spin') {
+            throw "$($parameter.Name) is advertised as '$($declaration.Type)', not a spin option."
+        }
+        $value = [int64]$parameter.Value.value
+        $minimum = [int64]$parameter.Value.min_value
+        $maximum = [int64]$parameter.Value.max_value
+        $step = [double]$parameter.Value.step
+        if ($value -ne [int64]$declaration.Default -or $minimum -lt $declaration.Min -or
+            $maximum -gt $declaration.Max -or $minimum -ge $maximum -or
+            $value -lt $minimum -or $value -gt $maximum -or $step -le 0) {
+            throw ("Invalid SPSA declaration for $($parameter.Name): config value=$value " +
+                   "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
+                   "range=[$($declaration.Min),$($declaration.Max)].")
+        }
+        $endPerturbation = $step / [Math]::Pow($Iterations, $Gamma)
+        if ($endPerturbation -lt 0.5) {
+            throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
+        }
+    }
+
+    if ($Fixed) {
+        foreach ($option in $Fixed.PSObject.Properties) {
+            if ($advertisedNames -notcontains (& $normalize $option.Name)) {
+                throw "$Label does not advertise fixed option '$($option.Name)'."
+            }
+        }
+    }
+
+    $tuned
+}
+function Get-ColosseumPin {
+    # One file names the runner: its source revision and the SHA-256 that is
+    # actually enforced. Re-pinning to the published `cli-v0.1.0` archive
+    # (PLAN B.2.6.3) is an edit to this file and to nothing else.
+    param([Parameter(Mandatory)][string]$PinPath)
+
+    if (-not (Test-Path -LiteralPath $PinPath -PathType Leaf)) {
+        throw "Colosseum pin not found: $PinPath"
+    }
+    $pin = Get-Content -LiteralPath $PinPath -Raw | ConvertFrom-Json
+    foreach ($field in @('revision', 'sha256')) {
+        if (-not $pin.$field) { throw "$PinPath declares no '$field'." }
+    }
+    if ($pin.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+        throw "$PinPath declares a malformed SHA-256: '$($pin.sha256)'."
+    }
+    $pin
+}
+
+function Assert-ColosseumCli {
+    # A harness binary that is not the pinned one is a silent instrument change:
+    # the run completes, reports plausible numbers, and the ledger row names a
+    # runner that never played the games. Refuse on any hash difference.
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$PinPath,
+        [switch]$Quiet
+    )
+
+    $pin = Get-ColosseumPin -PinPath $PinPath
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw ("Colosseum CLI not found at '$Path'. Run ./tools/setup_tools.ps1 to stage the " +
+               "build pinned at $($pin.revision).")
+    }
+    $full = (Resolve-Path -LiteralPath $Path).Path
+    $sha = Get-HarnessSha256 $full
+    if ($sha -ne $pin.sha256) {
+        throw ("COLOSSEUM PIN MISMATCH - the staged runner is not the pinned build.`n" +
+               "  Staged: $sha`n  Pinned: $($pin.sha256)  (revision $($pin.revision))`n" +
+               "Re-stage with ./tools/setup_tools.ps1, or change the pin deliberately in " +
+               "$PinPath and say so in the registration.")
+    }
+    $version = "$(& $full --version 2>&1 | Select-Object -First 1)".Trim()
+    if ($pin.version -and $version -ne $pin.version) {
+        throw "Colosseum CLI reports '$version' but $PinPath pins '$($pin.version)'."
+    }
+    if (-not $Quiet) {
+        Write-Host "  Runner pinned OK: $version, $($sha.Substring(0, 8))... at $($pin.revision.Substring(0, 7))"
+    }
+    [pscustomobject]@{
+        Path    = $full
+        Sha256  = $sha
+        Version = $version
+        Pin     = $pin
+    }
+}
