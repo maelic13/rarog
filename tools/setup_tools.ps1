@@ -1,17 +1,22 @@
 <#
 .SYNOPSIS
-    Stage fastchess, the UHO book and the patched weather-factory toolchain.
+    Stage Colosseum CLI, fastchess, the UHO book and the patched weather-factory.
 
 .DESCRIPTION
-    Makes the Rarog tuning toolchain self-contained inside the repo. Run this
-    once after cloning if tools/bin/fastchess.exe or tools/weather-factory is
-    missing.
+    Makes the Rarog measurement toolchain self-contained inside the repo. Run it
+    once after cloning, and again whenever a pin changes.
 
     After this script:
-      - tools/bin/fastchess.exe
+      - tools/bin/colosseum-cli.exe, the MAIN harness, at the exact SHA-256
+        tools/colosseum/colosseum.pin.json names
+      - tools/bin/fastchess.exe, the backup harness and second opinion
       - tools/books/UHO_Lichess_4852_v1.epd (when present in -BookSource)
-      - tools/weather-factory/
+      - tools/weather-factory/, the backup tuner
       - matplotlib installed for Python
+
+    Nothing is retired here. fastchess and weather-factory stay installed and
+    working until at least release 2.5.0 (PLAN B.2.6), because a second harness
+    that still runs is the only way to cross-check a surprising result.
 
     Opening books are git-ignored. The UHO strength-test book is copied from
     -BookSource when it is not already staged; IM_4mvs.pgn remains an optional
@@ -24,12 +29,17 @@
 .PARAMETER BookSource
     Directory containing UHO_Lichess_4852_v1.epd. Default D:\chess\books.
 
+.PARAMETER ColosseumSource
+    Where a local Colosseum build lives, when the pin names one. Defaults to the
+    repository the pin file records.
+
 .EXAMPLE
     ./tools/setup_tools.ps1
 #>
 param(
     [string]$FastchessTag = "v1.8.0-alpha",
-    [string]$BookSource = "D:\chess\books"
+    [string]$BookSource = "D:\chess\books",
+    [string]$ColosseumSource = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -110,6 +120,92 @@ if ($downloadFastchess) {
     Write-Host "  Done: $ver"
     Assert-AffinityFastchess -Path $fastchessExe | Out-Null
 }
+
+# ── Colosseum CLI, the main harness ───────────────────────────────────────
+# Pinned by BOTH its source revision and its SHA-256, and only the hash can be
+# enforced: a stripped release executable does not carry the revision it was
+# built from. A runner that is not the pinned one is a silent instrument change,
+# so a mismatch refuses rather than replaces. Re-pinning to the published
+# `cli-v0.1.0` archive (PLAN B.2.6.3) is an edit to colosseum.pin.json alone.
+$colosseumPinPath = Join-Path $PSScriptRoot "colosseum\colosseum.pin.json"
+$colosseumPin = Get-ColosseumPin -PinPath $colosseumPinPath
+$colosseumExe = Join-Path $binDir "colosseum-cli.exe"
+$stageColosseum = $true
+if (Test-Path -LiteralPath $colosseumExe) {
+    $stagedHash = Get-HarnessSha256 $colosseumExe
+    if ($stagedHash -eq $colosseumPin.sha256) {
+        $stageColosseum = $false
+    } else {
+        Write-Warning ("tools/bin/colosseum-cli.exe is $stagedHash, not the pinned " +
+            "$($colosseumPin.sha256); re-staging from the pin.")
+    }
+}
+
+if ($stageColosseum) {
+    if ($colosseumPin.archive) {
+        # The published archive: its own SHA-256 comes from the release's
+        # SHA256SUMS, and the extracted executable must still match the pin.
+        $archiveUrl = $colosseumPin.archive.url
+        if (-not $archiveUrl) { throw "$colosseumPinPath declares an archive with no url." }
+        Write-Host "Downloading Colosseum CLI $($colosseumPin.archive.tag)..."
+        $archivePath = Join-Path $binDir "colosseum-cli-archive.tmp"
+        Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath
+        try {
+            if ($colosseumPin.archive.sha256) {
+                $actual = Get-HarnessSha256 $archivePath
+                if ($actual -ne $colosseumPin.archive.sha256) {
+                    throw ("Colosseum archive SHA-256 mismatch: expected " +
+                           "$($colosseumPin.archive.sha256), got $actual")
+                }
+                Write-Host "  Archive SHA-256 verified against the pin."
+            }
+            $extractDir = Join-Path ([System.IO.Path]::GetTempPath()) ("rarog-colosseum-" + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $extractDir | Out-Null
+            try {
+                Expand-Archive -Path $archivePath -DestinationPath $extractDir -Force
+                $found = @(Get-ChildItem -LiteralPath $extractDir -Recurse -Filter "colosseum-cli.exe" -File)
+                if ($found.Count -ne 1) {
+                    throw "Expected one colosseum-cli.exe in the archive, found $($found.Count)."
+                }
+                Copy-Item -LiteralPath $found[0].FullName -Destination $colosseumExe -Force
+            } finally {
+                Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        } finally {
+            Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        # No tag yet, so the pin names a local build. This script never checks a
+        # revision out in another repository's working tree; it verifies that the
+        # build already present is the pinned one, and otherwise says exactly
+        # what to run.
+        $source = if ($ColosseumSource) { $ColosseumSource } else { $colosseumPin.source.repository }
+        if (-not $source -or -not (Test-Path -LiteralPath $source)) {
+            throw ("Colosseum source '$source' not found. Clone it, or pass -ColosseumSource, " +
+                   "or give $colosseumPinPath an 'archive' once cli-v0.1.0 is tagged.")
+        }
+        $artifact = Join-Path $source $colosseumPin.source.artifact
+        $recipe = ("  git -C `"$source`" switch --detach $($colosseumPin.revision)`n" +
+                   "  $($colosseumPin.source.build_command)   # in $source")
+        if (-not (Test-Path -LiteralPath $artifact)) {
+            throw ("No Colosseum build at $artifact. Build the pinned revision, then re-run this " +
+                   "script:`n$recipe")
+        }
+        $artifactHash = Get-HarnessSha256 $artifact
+        if ($artifactHash -ne $colosseumPin.sha256) {
+            throw ("COLOSSEUM PIN MISMATCH - $artifact is $artifactHash, not the pinned " +
+                   "$($colosseumPin.sha256) (revision $($colosseumPin.revision)).`n" +
+                   "Build the pinned revision:`n$recipe`n" +
+                   "If you mean to measure with a different build, change " +
+                   "$colosseumPinPath deliberately and say so in the registration.")
+        }
+        Copy-Item -LiteralPath $artifact -Destination $colosseumExe -Force
+        Write-Host "Staged Colosseum CLI from $artifact"
+    }
+}
+$colosseumInfo = Assert-ColosseumCli -Path $colosseumExe -PinPath $colosseumPinPath -Quiet
+Write-Host ("Colosseum CLI staged: $($colosseumInfo.Version), sha256 " +
+    "$($colosseumInfo.Sha256), revision $($colosseumPin.revision)")
 
 $bookName = "UHO_Lichess_4852_v1.epd"
 $bookDest = Join-Path $booksDir $bookName
@@ -418,10 +514,17 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host "  Toolchain setup complete."
 Write-Host ""
-Write-Host "  Next steps:"
-Write-Host "    1. Build a tune binary:"
-Write-Host "         ./tools/build_test.ps1 -Suffix history -Tune"
-Write-Host "    2. Configure and start SPSA (setup + launch, one command):"
-Write-Host "         ./tools/spsa.ps1 -ConfigGroup history -EngineSuffix history"
+Write-Host "  Next steps (the main path is Colosseum; see tools/colosseum/README.md):"
+Write-Host "    1. Build a test binary:"
+Write-Host "         ./tools/build_test.ps1 -Suffix <s>            # gate binary"
+Write-Host "         ./tools/build_test.ps1 -Suffix <s> -Tune -Features b2core"
+Write-Host "    2. Gate a candidate:"
+Write-Host "         ./tools/colosseum.ps1 -Mode sprt -EngineA <cand> -EngineB <base>"
+Write-Host "             -MaxPairs <cap> -Seed <n> -Dir tools/results/<experiment>"
+Write-Host "    3. Tune:"
+Write-Host "         ./tools/colosseum.ps1 -Mode spsa -Engine <tune> -ConfigGroup <g>"
+Write-Host "             -Iterations <N> -TotalGames <N*g> -Seed <n> -Dir tools/results/<experiment>"
+Write-Host "    The fastchess path (tools/sprt.ps1, tools/spsa.ps1) stays installed as the"
+Write-Host "    backup and the second opinion; nothing is retired before 2.5.0."
 Write-Host "============================================================"
 

@@ -1,0 +1,22 @@
+{
+  "_comment": [
+    "The Colosseum CLI build this repository measures with. `revision` records where",
+    "the binary came from; `sha256` is what tools/setup_tools.ps1 and every wrapper",
+    "run actually enforce, because a revision cannot be read back out of a stripped",
+    "executable. `cli-v0.1.0` is not tagged yet, so this pins a local build of",
+    "D:/code/colosseum. PLAN B.2.6.3 re-pins to the published archive by filling in",
+    "`archive` and replacing `revision`, `sha256` and `version` here; nothing else",
+    "in the tree names a Colosseum build."
+  ],
+  "revision": "0b78c2908ad18c890e67dd8f03a4137a5c1afaba",
+  "sha256": "550CE5D0CF47182C2154C89A2E687774BD0CFAB34281BF68B15DE00B7471DA11",
+  "version": "colosseum-cli 0.1.0",
+  "pinned_utc": "2026-09-21",
+  "source": {
+    "kind": "local-build",
+    "repository": "D:/code/colosseum",
+    "build_command": "cargo build --release -p colosseum-cli",
+    "artifact": "target/release/colosseum-cli.exe"
+  },
+  "archive": null
+}
