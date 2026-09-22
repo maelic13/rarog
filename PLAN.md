@@ -1049,8 +1049,28 @@ diagnostics; two rejections stop B.
       `tools/colosseum/colosseum.pin.json` (revision `0b78c29`, sha256
       `550CE5D0…DA11`) and refuses any other build; its four staging cases
       were smoke-tested with every touched file restored byte-identical.
-      **Still owed on this leaf:** the one short live run, prepared and
-      handed to the maintainer, and the reading of its run directory.
+      **B.2.6.1 DONE 2026-09-22, and with it B.2.6:** the 200-game
+      `colosseum.ps1 -Mode match` of theta 5,000 vs theta 3,900 on
+      `cli-v0.1.0` completed 2026-09-22 on an idle host (3% CPU), status
+      `completed`, exit 0, 200 of 200 games, all terminations normal,
+      zero faults, W-D-L 52-101-47, pentanomial [4, 25, 35, 34, 2], +8.7
+      ± 31.1 Elo (a fixed match; it decides nothing);
+      `colosseum_recount.py` reproduces every number from the PGN
+      (`tools/results/colosseum-b261-live`, `run-record.json`
+      `CBEB2F6D…AF94`). It found two wrapper defects the dry-run guard
+      suite could not reach. The post-run fault parser read the
+      pre-release `engine N/M, time losses N/M` line; the release writes
+      `time: a-b; other: a-b; …`, and an unreadable line only warned, so
+      the zero-tolerance fault guard and the time-loss ceiling passed
+      every run unchecked. And the runner's `match` record carries a
+      zero pentanomial by design, which the manifest copied. Fixed in
+      `7cdd597`: the parser takes both runner shapes and refuses any
+      other, a tournament fault that is not split by time is refused,
+      and the manifest records the pentanomial recounted from
+      `games.pgn`, refusing a record that disagrees. Guard suite **29 of
+      29** (seven post-run cases); the live record passes the new guard;
+      a 4-game end-to-end match writes the recounted pentanomial with no
+      warning; the recount exits 1 on a tampered record.
       **B.2.6.2, DONE 2026-09-21:** nothing was retired. PROCESS gained a
       *Harness* section naming Colosseum the main path, the fastchess and
       weather-factory path the maintained backup until at least 2.5.0, and
@@ -1207,9 +1227,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.6 | READY_FOR_IMPLEMENTATION | M | **B.2.6.2 closed 2026-09-21 and B.2.6.3 on 2026-09-22 (pinned to the released `cli-v0.1.0`); B.2.6.1, and with it this leaf, waits only on the prepared short live run.** Opened 2026-09-21 by maintainer decision: adopt now as the main tool; fastchess, weather-factory and their scripts stay working as backup and second opinion at least until release 2.5.0. Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
-| B.2.6.1 | LOCAL_QUALIFIED | I1 | Landed 2026-09-21: `tools/colosseum.ps1` with every guard from one shared implementation, the runner pinned by revision and SHA-256 in `colosseum.pin.json`, 30/30 configuration-parity fields and 22/22 guard cases as committed checks. Waits only on the prepared short live run and the reading of its run directory |
-| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20, waits for B.2.6 |
+| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |

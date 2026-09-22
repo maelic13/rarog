@@ -11,7 +11,8 @@ host, the runner pin, each engine's sidecar, build-flavour and compiler
 equality, `-ExpectRevision` and `-ExpectBench`, the advertised options, the tune
 surface against the binary and the horizon, and a field-by-field check that the
 configuration Colosseum resolves is the policy below. It writes a manifest that
-hashes every input, and after the run it reads the CLI's own record for faults.
+hashes every input, and after the run it reads the CLI's own record for faults,
+refusing a fault line it cannot parse, and recounts the pentanomial from the PGN.
 Calling `colosseum-cli.exe` directly, as the examples below do, skips all of
 that and is for inspection, not for a measurement anyone will cite.
 
