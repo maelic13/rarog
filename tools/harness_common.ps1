@@ -854,3 +854,71 @@ function Assert-ColosseumCli {
         Pin     = $pin
     }
 }
+
+function Get-ColosseumRunFaults {
+    # The runner's own fault line from run-record.json. A match, SPRT or tune
+    # writes `time: a-b; other: a-b; ...` per side; a tournament writes
+    # `engine N; M allowed` and does not separate time losses. Any other shape
+    # is refused: a guard that cannot read its input must not pass the run.
+    param([Parameter(Mandatory)][object]$Record)
+
+    $field = @($Record.progress.fields | Where-Object { $_.label -eq 'faults' } | Select-Object -First 1)
+    $text = if ($field.Count -gt 0) { "$($field[0].value)" } else { "" }
+    if ($text -match '^time:\s*(?<ta>\d+)-(?<tb>\d+);\s*other:\s*(?<oa>\d+)-(?<ob>\d+)(;|$)') {
+        return [pscustomobject]@{
+            Text       = $text
+            Split      = $true
+            TimeLosses = [int]$Matches['ta'] + [int]$Matches['tb']
+            Other      = [int]$Matches['oa'] + [int]$Matches['ob']
+        }
+    }
+    if ($text -match '^engine\s+(?<engine>\d+);') {
+        return [pscustomobject]@{
+            Text       = $text
+            Split      = $false
+            TimeLosses = $null
+            Other      = [int]$Matches['engine']
+        }
+    }
+    throw ("FAULT COUNTERS UNREADABLE - run-record.json's faults field is '$text', a shape this " +
+           "wrapper does not know. The run is not accepted until its faults are read by hand.")
+}
+
+function Assert-ColosseumRunFaults {
+    # Zero tolerance for a crash, a dropped engine or an illegal move; a rate
+    # ceiling for time losses, because a small background rate is a property of
+    # running fourteen concurrent games, not of the candidate (RAR-M14, RAR-E06).
+    param(
+        [Parameter(Mandatory)][object]$Record,
+        [Parameter(Mandatory)][int]$ScoredGames,
+        [Parameter(Mandatory)][double]$TimeLossRateCeiling,
+        [string]$Dir = ""
+    )
+
+    $faults = Get-ColosseumRunFaults -Record $Record
+    if (-not $faults.Split) {
+        if ($faults.Other -gt 0) {
+            throw ("The run recorded $($faults.Other) engine fault(s) and this runner mode does not " +
+                   "separate time losses from crashes, illegal moves or dropped engines. The result " +
+                   "is not accepted until they are read by hand. See $Dir.")
+        }
+        return $faults
+    }
+    if ($faults.Other -gt 0) {
+        throw ("The run recorded $($faults.Other) non-time engine fault(s) - a crash, an illegal move or a " +
+               "dropped engine is never normal on this harness. The result is invalid. See $Dir.")
+    }
+    if ($faults.TimeLosses -gt 0) {
+        if ($ScoredGames -le 0) {
+            throw "The run recorded $($faults.TimeLosses) time loss(es) and no scored game. See $Dir."
+        }
+        $rate = 100.0 * $faults.TimeLosses / $ScoredGames
+        if ($rate -gt $TimeLossRateCeiling) {
+            throw ("Time-loss rate {0:N3}% ({1}/{2}) exceeds the {3}% ceiling; the run is invalid. See {4}." `
+                -f $rate, $faults.TimeLosses, $ScoredGames, $TimeLossRateCeiling, $Dir)
+        }
+        Write-Host ("  Time losses: {0}/{1} = {2:N3}% (under the {3}% ceiling; recorded, not fatal)" `
+            -f $faults.TimeLosses, $ScoredGames, $rate, $TimeLossRateCeiling) -ForegroundColor Yellow
+    }
+    $faults
+}

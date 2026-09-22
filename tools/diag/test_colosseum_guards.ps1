@@ -78,11 +78,12 @@ $results = [System.Collections.Generic.List[object]]::new()
 function Invoke-Case {
     # `Expect` is a substring of the refusal that names the guard. An empty
     # Expect means the case must SUCCEED — a positive control.
-    param([string]$Name, [string]$Expect, [hashtable]$Arguments)
+    # `Check` replaces the wrapper call for a guard tested as a function.
+    param([string]$Name, [string]$Expect, [hashtable]$Arguments, [scriptblock]$Check)
 
     $outcome = [pscustomobject]@{ Name = $Name; Expect = $Expect; Passed = $false; Detail = "" }
     try {
-        & $wrapper @Arguments *>&1 | Out-Null
+        if ($Check) { & $Check } else { & $wrapper @Arguments *>&1 | Out-Null }
         if ($Expect) {
             $outcome.Detail = "the wrapper ACCEPTED an input it should have refused"
         } else {
@@ -222,6 +223,28 @@ try {
         -Arguments (Merge-Arguments $tune @{ Iterations = 100000000; TotalGames = 3000000 })
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
+
+    # The post-run fault guard, on records in the shapes cli-v0.1.0 writes. Its
+    # first live run found the guard reading a pre-release shape and passing
+    # every run with a warning, so each branch is watched here.
+    . (Join-Path $repo "tools\harness_common.ps1")
+    function New-FaultRecord([string]$Text) {
+        [pscustomobject]@{ progress = [pscustomobject]@{ fields = @(
+            [pscustomobject]@{ label = 'score'; value = '102.5/200 (51.2%)' }
+            [pscustomobject]@{ label = 'faults'; value = $Text }) } }
+    }
+    function Invoke-FaultCase([string]$Name, [string]$Expect, [string]$Text, [int]$Scored = 200) {
+        $check = { Assert-ColosseumRunFaults -Record (New-FaultRecord $Text) -ScoredGames $Scored `
+                       -TimeLossRateCeiling 0.5 -Dir "scratch" *>&1 | Out-Null }.GetNewClosure()
+        Invoke-Case -Name $Name -Expect $Expect -Check $check
+    }
+    Invoke-FaultCase "faults: a non-time fault on side B" "non-time engine fault" "time: 0-0; other: 0-1; 1 of 5 allowed"
+    Invoke-FaultCase "faults: time losses over the ceiling" "exceeds the 0.5% ceiling" "time: 1-1; other: 0-0; 2 of 5 allowed"
+    Invoke-FaultCase "faults: an unknown shape" "FAULT COUNTERS UNREADABLE" "engine 0/5, time losses 0/5"
+    Invoke-FaultCase "faults: a tournament fault" "does not separate time losses" "engine 1; 5 allowed"
+    Invoke-FaultCase "control: the live run's clean line" "" "time: 0-0; other: 0-0; 0 of 5 allowed"
+    Invoke-FaultCase "control: one time loss under the ceiling" "" "time: 0-1; other: 0-0; 1 of 5 allowed"
+    Invoke-FaultCase "control: a clean tournament line" "" "engine 0; 5 allowed"
 } finally {
     if (-not $KeepScratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
 }

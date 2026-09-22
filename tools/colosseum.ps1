@@ -571,13 +571,35 @@ $faultField = @($record.progress.fields | Where-Object { $_.label -eq 'faults' }
 $faults = if ($faultField) { $faultField.value } else { "(not reported)" }
 $scored = [int]$record.official_sample.scored_games
 
+# A `match` record carries a zero pentanomial by design, so the manifest takes
+# the pentanomial from the games, and a record that does carry one must agree.
+$pentanomial = "$($record.official_sample.pentanomial -join ', ')"
+$recountFailure = $null
+if ($Mode -in @('match', 'sprt', 'calibrate') -and (Test-Path -LiteralPath (Join-Path $Dir "games.pgn"))) {
+    $recountJson = & python (Join-Path $PSScriptRoot "diag\colosseum_recount.py") --json $Dir 2>&1
+    $recountExit = $LASTEXITCODE
+    try {
+        $recount = @(($recountJson -join "`n") | ConvertFrom-Json)[0]
+        $pentanomial = "$($recount.pentanomial -join ', ') (recounted from games.pgn; record: " +
+                       "$($recount.recorded_pentanomial -join ', '))"
+        if ($recountExit -ne 0) {
+            $recountFailure = ("The recount of games.pgn ($($recount.pentanomial -join ', '), " +
+                               "$($recount.official_games) games) disagrees with run-record.json " +
+                               "($($recount.recorded_pentanomial -join ', '), $($recount.recorded_scored_games) games).")
+        }
+    } catch {
+        $pentanomial = "RECOUNT FAILED (exit $recountExit)"
+        $recountFailure = "colosseum_recount.py failed (exit $recountExit): $recountJson"
+    }
+}
+
 $completion = [System.Collections.Generic.List[string]]::new()
 $completion.Add("completed_utc:    $((Get-Date).ToUniversalTime().ToString('u'))")
 $completion.Add("exit_code:        $runExit")
 $completion.Add("run_status:       $($record.status)")
 $completion.Add("scored_games:     $scored")
 $completion.Add("completed_pairs:  $($record.official_sample.completed_pairs)")
-$completion.Add("pentanomial:      $($record.official_sample.pentanomial -join ', ')")
+$completion.Add("pentanomial:      $pentanomial")
 $completion.Add("faults:           $faults")
 foreach ($artifact in @('result.json', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
     $path = Join-Path $Dir $artifact
@@ -589,31 +611,9 @@ if ($runExit -ne 0) {
     throw "colosseum-cli exited $runExit. Status '$($record.status)'; see $logPath and $Dir."
 }
 
-# Zero tolerance for a crash, a dropped engine or an illegal move; a rate
-# ceiling for time losses, because a small background rate is a property of
-# running fourteen concurrent games, not of the candidate (RAR-M14, RAR-E06).
-if ($faults -match 'engine\s+(?<engine>\d+)/(?<engineCap>\d+),\s*time losses\s+(?<time>\d+)/(?<timeCap>\d+)') {
-    $engineFaults = [int]$Matches['engine']
-    $timeLosses = [int]$Matches['time']
-    $otherFaults = $engineFaults - $timeLosses
-    if ($otherFaults -gt 0) {
-        throw ("The run recorded $otherFaults non-time engine fault(s) - a crash, an illegal move or a " +
-               "dropped engine is never normal on this harness. The result is invalid. See $Dir.")
-    }
-    if ($scored -gt 0) {
-        $rate = 100.0 * $timeLosses / $scored
-        if ($rate -gt $TimeLossRateCeiling) {
-            throw ("Time-loss rate {0:N3}% ({1}/{2}) exceeds the {3}% ceiling; the run is invalid. See {4}." `
-                -f $rate, $timeLosses, $scored, $TimeLossRateCeiling, $Dir)
-        }
-        if ($timeLosses -gt 0) {
-            Write-Host ("  Time losses: {0}/{1} = {2:N3}% (under the {3}% ceiling; recorded, not fatal)" `
-                -f $timeLosses, $scored, $rate, $TimeLossRateCeiling) -ForegroundColor Yellow
-        }
-    }
-} else {
-    Write-Warning "Could not parse the fault counters from run-record.json; check $Dir by hand."
-}
+if ($recountFailure) { throw "$recountFailure See $Dir." }
+Assert-ColosseumRunFaults -Record $record -ScoredGames $scored `
+    -TimeLossRateCeiling $TimeLossRateCeiling -Dir $Dir | Out-Null
 
 Write-Host ""
 Write-Host "Run finished: status '$($record.status)', $scored scored games."
