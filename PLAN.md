@@ -1091,9 +1091,15 @@ diagnostics; two rejections stop B.
       one-iteration tune on a temporary N = 1 surface with an absolute
       `-Dir` (exit 0), in
       `tools/results/colosseum-smoke-{match,calibrate,sprt,spsa}` (the
-      tune copied in from `%TEMP%`). Not exercised live: a gauntlet and
-      a resume after an interrupt; the runner's own resume is qualified
-      in its repository (`colosseum-qual-recovery`).
+      tune copied in from `%TEMP%`). Resume after Ctrl+C, run by the
+      maintainer (`colosseum-resume-test`): stopped at 60 of 200, 61
+      games kept, 139 played on resume at the carried seed, 200 unique
+      journal games, recount equal to the checkpoint; the runner's
+      "resuming 0 durable game(s)" counts only the journal after the
+      last checkpoint, and its `run.log` records no stop or resume
+      event, contrary to its docs, neither affecting results. The
+      interrupted invocation's manifest simply ended, so it now records
+      the interruption (`266bca8`). Not exercised live: a gauntlet.
       **B.2.6.2, DONE 2026-09-21:** nothing was retired. PROCESS gained a
       *Harness* section naming Colosseum the main path, the fastchess and
       weather-factory path the maintained backup until at least 2.5.0, and
