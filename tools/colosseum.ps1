@@ -373,7 +373,13 @@ $dryPath = Join-Path $resultsDir "colosseum_${Mode}_${label}_${stamp}.dry-run.js
 $manifestPath = Join-Path $resultsDir "colosseum_${Mode}_${label}_${stamp}.manifest.txt"
 $logPath = Join-Path $resultsDir "colosseum_${Mode}_${label}_${stamp}.log"
 
-& $cli.Path @commandArgs --dry-run --json > $dryPath 2>&1
+# stdout is the JSON document and nothing else; the runner's notes go to stderr
+# (a resume says "resuming the stored SPSA horizon" there), so the two are kept
+# apart or the document does not parse on exactly the run that matters most.
+$dryNotesPath = [System.IO.Path]::ChangeExtension($dryPath, '.notes.txt')
+& $cli.Path @commandArgs --dry-run --json 2> $dryNotesPath > $dryPath
+$dryNotes = "$(if (Test-Path -LiteralPath $dryNotesPath) { Get-Content -LiteralPath $dryNotesPath -Raw })"
+if ($dryNotes.Trim()) { Write-Host "  Runner: $($dryNotes.Trim())" -ForegroundColor Yellow }
 if ($LASTEXITCODE -ne 0) {
     Write-Host (Get-Content -LiteralPath $dryPath -Raw)
     throw "colosseum-cli refused the dry run (exit $LASTEXITCODE); nothing was played."
