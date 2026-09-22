@@ -1002,7 +1002,29 @@ diagnostics; two rejections stop B.
       reviewed at that release and not before. Until `cli-v0.1.0` is
       published, `setup_tools.ps1` stages a Colosseum build pinned by its
       source revision and SHA-256, and **B.2.6.3** re-pins to the tagged
-      archive and repeats the dry-run parity. A registered experiment
+      archive and repeats the dry-run parity. **B.2.6.3 DONE 2026-09-22**, the
+      day `cli-v0.1.0` was published at `40a15b1b`: the pin now names that
+      revision, the executable hash `27FF817A…7F19` and the asset
+      `colosseum-cli-0.1.0-windows-x64.zip` with GitHub's digest for it,
+      `BE7D3A33…10F7`. **Two premises of this leaf were wrong and are
+      corrected here.** There is no `SHA256SUMS` in the release; the
+      per-asset digest GitHub serves is the source, which is the mechanism
+      `setup_tools.ps1` already used for fastchess, and it is verified on the
+      archive while the top-level hash is verified on the extracted
+      executable. And the release line is squashed (`ba30829 Create CLI and
+      infra`), so the superseded `0b78c29` is not an ancestor of the tag and
+      the two revisions cannot be compared; only the hash distinguishes them,
+      the release reporting the same `colosseum-cli 0.1.0` version string as
+      the local build did. Staging ran end to end — the old binary refused
+      against the new pin, archive digest verified, extracted, executable
+      hash verified — after one fix: `Expand-Archive` validates the
+      extension, so the temporary file keeps `.zip`. **Repeated on the
+      released runner:** the dry run of the same gate resolves to a
+      configuration identical to the superseded build's in **all 439 fields**
+      including the config hash, so the adoption evidence carries over
+      unchanged; parity **30 of 30**, the regenerated fixture byte-identical
+      to the committed one; guard suite **22 of 22**; the release's own
+      `self-test` 5 of 5. A registered experiment
       names its runner and never changes it mid-way. **Audit 2026-09-21** (`analysis/b2_audit_2026-09-21.md`):
       the nine run files dry-run with exit 0 on the staged CLI, a local
       build (sha256 `550CE5D0…DA11`) that is neither the qualified binary
@@ -1185,10 +1207,9 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.6 | READY_FOR_IMPLEMENTATION | M | **B.2.6.2 closed 2026-09-21: Colosseum is the documented main path and nothing was retired; B.2.6.1 waits on its prepared live run and B.2.6.3 on the tag.** Opened 2026-09-21 by maintainer decision: adopt now as the main tool; fastchess, weather-factory and their scripts stay working as backup and second opinion at least until release 2.5.0. Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
+| B.2.6 | READY_FOR_IMPLEMENTATION | M | **B.2.6.2 closed 2026-09-21 and B.2.6.3 on 2026-09-22 (pinned to the released `cli-v0.1.0`); B.2.6.1, and with it this leaf, waits only on the prepared short live run.** Opened 2026-09-21 by maintainer decision: adopt now as the main tool; fastchess, weather-factory and their scripts stay working as backup and second opinion at least until release 2.5.0. Added 2026-09-18: adopt Colosseum CLI as the harness, tooling only; the harness is qualified in its own repository and not re-tested here; B.2.3's tune finished and B.2.4b passed on 2026-09-20, so it waits for `cli-v0.1.0` only; weather-factory stays installed until B.2.7's gate resolves (`analysis/b2_audit_2026-09-21.md`) |
 | B.2.6.1 | LOCAL_QUALIFIED | I1 | Landed 2026-09-21: `tools/colosseum.ps1` with every guard from one shared implementation, the runner pinned by revision and SHA-256 in `colosseum.pin.json`, 30/30 configuration-parity fields and 22/22 guard cases as committed checks. Waits only on the prepared short live run and the reading of its run directory |
 | B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20, waits for B.2.6 |
-| B.2.6.3 | RESEARCH | M | Re-pin to the published `cli-v0.1.0` archive by its `SHA256SUMS` entry and repeat the dry-run parity on it; waits for the tag |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |

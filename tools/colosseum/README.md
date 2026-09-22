@@ -108,10 +108,16 @@ from its registration cannot be tuned by accident.
 `colosseum.pin.json` names the source revision and the SHA-256. Only the hash
 can be enforced — a stripped release executable does not carry its revision —
 so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
-mismatch rather than substituting a build. `cli-v0.1.0` is not tagged yet, so
-the pin is a local build of `D:/code/colosseum` at `0b78c29`; PLAN B.2.6.3
-re-pins to the published archive by editing that one file, and the dry-run
-parity is repeated on it.
+mismatch rather than substituting a build. Since 2026-09-22 the pin is the
+published release `cli-v0.1.0` (`40a15b1b`): its `archive` entry carries the
+asset URL and the digest GitHub serves for it, checked on download, and the
+top-level `sha256` is checked on the extracted executable. Re-pinning to a
+later release is an edit to that one file.
+
+The released 0.1.0 reports the same version string as the local build that
+preceded it, so the hash is the only identity that separates them — and it
+resolves these run files to a configuration identical to that build's in all
+439 dry-run fields.
 
 ## The backup path
 
