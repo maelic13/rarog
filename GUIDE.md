@@ -93,7 +93,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | **3.27 MNPS** pooled median at the B.1 head, **+6.30% [+5.78%, +6.84%]** over the 2.4.0 pool (RAR-P24); the B.2.0 head **+0.21% [−0.34%, +0.68%]** over the B.1 pool (RAR-P25); the B.2.0.2 head **+0.62% [−0.29%, +1.18%]** over the B.2.1 head pool (RAR-P26). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | **88 draws + 19 losses** after a persistent piece-up in 3,600 games vs the six HCE-era engines on the 2.4.0 release games; rate unchanged from the 2026-09-04 pool (57 + 12 in 2,400). Basilisk 1.9.3 in the same tournament 94 + 12, so RAR-M47's surplus reading is retired (RAR-M49, 2026-09-13, zero games); third sample 24.2 / 3.3 per 1,000 against the same six in the Super Rating Tournament, Basilisk 17.5 / 5.0 (RAR-M54) |
 | Active experiment | **RAR-S73** (B.2 selectivity core: B.2.4a passed 2026-09-16, +65.09 ± 23.26; RAR-S75 finished 2026-09-20 (5,000 iterations, theta baked at 7,185,678); RAR-S76 peek at 3,900 +118.72 ± 10.62; RAR-M55 and RAR-M56 (B.2.3.2 closed: fitted +97.69, unfitted −7.12 vs Rybka 4.1), **B.2.4b passed 2026-09-20, +138.60 ± 30.66**; RAR-S77 (B.2.3.3) passed, +4.43 ± 2.90; RAR-S78 (B.2.7) design registered, not run; close-out audit 2026-09-21, `analysis/b2_audit_2026-09-21.md`); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48 all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0 measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42 engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **B.2.7** (re-tune on Colosseum, RAR-S78): full registration first, then the tune is handed over; it closes B.2; **B.3** (cluster 2 — NMP, ProbCut, singular and extensions, `I2`) after that. B.2.6 closed 2026-09-22 |
+| Current step | **B.2.7** (re-tune on Colosseum, RAR-S78): full registration first, then the tune is handed over; it closes B.2; **B.3** (cluster 2 — NMP, ProbCut, singular and extensions, `I2`) after that. B.2.6 closed 2026-09-22. **E.3.1** (tag-driven release flow, `I1`, added 2026-09-22) is independent tooling that may land at any point before E.3 |
 | Next release | **3.0.0** if the E.2 target gate is met, otherwise 2.5.0 — cut at E.3 after the search and evaluation programmes. Nothing is released between now and that checkpoint unless a correctness repair forces a patch |
 
 ## Next and held work
@@ -129,6 +129,7 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 
@@ -233,7 +234,8 @@ is the numbering: release first, baselines on the released binary.
 
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19) — **V**
-- [ ] **E.3** Release 3.0.0 (gate met) or 2.5.0: changelog, suites, PGO assets, ISA, CI with tag-equals-version and cross-matrix fingerprint assertions, tag on instruction — **M**
+- [ ] **E.3** Release 3.0.0 (gate met) or 2.5.0: changelog, suites, PGO assets, ISA, cut by pushing a `v` tag through E.3.1's workflow, on instruction — **M**
+    - [ ] **E.3.1** Tag-driven release flow (Colosseum's model): `git tag vX.Y.Z` on `master` and push; the workflow validates (tag = `Cargo.toml` version, commit on `master`, `## [X.Y.Z]` section in `CHANGELOG.md`), builds the nine PGO assets read-only, asserts one `bench 13` fingerprint across them, then one write job publishes with notes from the changelog; candidate mode rehearses without a tag; asset names unchanged; repair = delete tag, fix, retag; local `release-check`. Depends on nothing in B–D: **may land any time, must land before E.3** (added 2026-09-22) — **I1**
 
 ## Phase F — NNUE (own data only)
 

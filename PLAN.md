@@ -1556,15 +1556,69 @@ loss).
 - **E.3 Release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.5.0. **Two workflow checks are added before
-  this release, as tooling work that may land any time earlier:** (1) the
-  release job fails when the tag does not equal the manifest version — today
-  `build.yml` names the built file from `Cargo.toml` and the uploaded asset
-  from the tag, so the two can disagree silently, which is the shape of the
-  RAR-E16 baseline confusion; (2) every asset in the matrix runs `bench 13`
-  and the job **asserts** one fingerprint across all of them, replacing the
-  comment that tells the operator to read the node count in the log. Manta's
-  release workflow already does both and rejects the tag otherwise.
+  is 3.0.0 if E.2 is met, else 2.5.0. The release is cut through the
+  tag-driven flow of **E.3.1**, which also carries the two workflow checks
+  this release owed (tag equals version; one fingerprint asserted across the
+  matrix) and may land any time earlier.
+    - **E.3.1 Tag-driven release flow — `I1`, READY_FOR_IMPLEMENTATION,
+      tooling only; may land any time, must land before E.3.** Added
+      2026-09-22 by maintainer decision, modelled on Colosseum's release
+      lanes (in `D:/code/colosseum`: the two release workflows, the
+      `colosseum-release` tag validator and DEVELOPMENT's release lanes). It absorbs
+      the two workflow checks E.3 already owed.
+      **Defect it removes.** Today a release exists on GitHub before any
+      binary is built: the maintainer creates the tag and the release by
+      hand, types the notes into the form, and `build.yml` runs on
+      `release: published` to build the nine-cell PGO matrix and attach the
+      assets. A failed cell leaves a published release with a missing asset,
+      which is what the repair-by-dispatch path exists for; nothing checks
+      that the tag equals `Cargo.toml`'s version, that the tagged commit is
+      on `master`, or that the notes match `CHANGELOG.md` (the shape of the
+      RAR-E16 baseline confusion); and the smoke only checks that `bench`
+      prints a positive number, so a stale or wrong source can ship with a
+      plausible count.
+      **Target.** The maintainer runs `git tag vX.Y.Z` on `master` and
+      pushes the tag; nothing else. The workflow validates first (tag equals
+      the manifest version, the tagged commit is an ancestor of
+      `origin/master`, a `## [X.Y.Z]` section exists in `CHANGELOG.md`),
+      then builds every cell read-only, runs `bench 13` on each asset and
+      asserts one fingerprint across the matrix equal to the fingerprint the
+      tagged source declares in GUIDE's checkpoint (a cross-platform
+      mismatch is investigated, never waived: RAR-P14, RAR-P16), and only
+      then one final job with `contents: write` creates the release with
+      every asset and the notes extracted from that changelog section,
+      marked latest. A `workflow_dispatch` candidate mode builds and checks
+      every asset from a chosen ref and keeps them as workflow artifacts
+      with no tag and no release: the rehearsal. Only
+      `v<major>.<minor>.<patch>` tags trigger it, never the `arm/…` or
+      `oracle/…` markers.
+      **Frozen decisions.** Asset names stay exactly today's
+      (`rarog-vX.Y.Z-<os>-<arch>[.exe]`), so README's `releases/latest` link
+      and the per-tier guidance keep working. Release notes live in
+      `CHANGELOG.md`, whose `[Unreleased]` section becomes the version's
+      section at release time, as A.7 and 2.4.0 already did; the GitHub form
+      is never typed into again. The repair dispatch is dropped: a failed tag
+      run is repaired by deleting the tag, fixing `master` and tagging again,
+      which is safe because nothing is published until every cell passed.
+      `ci.yml` keeps running on pushes to `master` and the release workflow
+      does not duplicate its matrix. The arm64 Windows linker workaround,
+      `rust-toolchain.toml` and the `cargo xtask build --pgo` pipeline move
+      over unchanged.
+      **Compatibility, checked 2026-09-22:** no script, document or sibling
+      repository consumes Rarog asset names or the `release: published`
+      trigger (`D:/code/lichess-bot` and `D:/code/colosseum` searched);
+      the version has one source, `Cargo.toml`, which `id name` prints, so
+      tag-to-version is one check; `git tag` holds 23 `v*` release tags and
+      the `arm/…` and `oracle/…` markers.
+      **Work and exit.** The workflow; a local check that refuses a wrong
+      tag, a commit off `master` and a missing changelog section before
+      anything is pushed (`cargo xtask release-check vX.Y.Z`, as Colosseum's
+      does); PROCESS's release procedure rewritten step by step with the
+      exact commands; then one candidate run on the current head as the
+      exit check: nine assets built, one fingerprint asserted, nothing
+      published. Tooling commits only; no engine input changes and the
+      fingerprint does not move. Tag, push and publish stay the
+      maintainer's.
 ## Phase F — NNUE
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
@@ -1651,7 +1705,11 @@ and adjudication never change after games are seen.
   2.3.2 with the lower bound above +25, positive LTC and 4T lower bounds.
 - NNUE releases require a win over the last classical release at STC, LTC and
   4T, and a clean platform matrix.
-- Tag, push and publish only on maintainer instruction.
+- Tag, push and publish only on maintainer instruction. From E.3.1 on, a
+  release is cut by pushing a `vX.Y.Z` tag on `master`: the workflow
+  validates tag, version, branch and changelog section, builds and
+  fingerprint-checks every asset, and publishes only after all of them
+  passed; the notes come from `CHANGELOG.md`, never from the GitHub form.
 
 ## 5. Documentation ownership
 
