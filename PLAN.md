@@ -1057,20 +1057,43 @@ diagnostics; two rejections stop B.
       ± 31.1 Elo (a fixed match; it decides nothing);
       `colosseum_recount.py` reproduces every number from the PGN
       (`tools/results/colosseum-b261-live`, `run-record.json`
-      `CBEB2F6D…AF94`). It found two wrapper defects the dry-run guard
-      suite could not reach. The post-run fault parser read the
-      pre-release `engine N/M, time losses N/M` line; the release writes
-      `time: a-b; other: a-b; …`, and an unreadable line only warned, so
-      the zero-tolerance fault guard and the time-loss ceiling passed
-      every run unchecked. And the runner's `match` record carries a
-      zero pentanomial by design, which the manifest copied. Fixed in
-      `7cdd597`: the parser takes both runner shapes and refuses any
-      other, a tournament fault that is not split by time is refused,
-      and the manifest records the pentanomial recounted from
-      `games.pgn`, refusing a record that disagrees. Guard suite **29 of
-      29** (seven post-run cases); the live record passes the new guard;
-      a 4-game end-to-end match writes the recounted pentanomial with no
-      warning; the recount exits 1 on a tampered record.
+      `CBEB2F6D…AF94`). **Wrapper audit against the release, 2026-09-22
+      (`506f4c7`), which corrects this record's first reading.** The
+      runtime code the CLI runs is unchanged between the superseded
+      `0b78c29` and `40a15b1` apart from refactors and a crash now
+      reported with its exit status (still a `Disconnect` fault); every
+      defect below was the wrapper's own, and was first entered here as
+      a release change, which it was not. (1) The post-run fault regex
+      matched no Colosseum build: the progress line changed shape at
+      least five times during development, and both the superseded build
+      and the release print `time: a-b; other: a-b; …`; an unreadable
+      line only warned, so the zero-tolerance fault guard and the
+      time-loss ceiling never ran. Faults now come from `colosseum-cli
+      status --json`, the documented interface, and an unreadable view
+      refuses the run. (2) Every non-zero exit was treated as a failure,
+      but the codes are verdicts: an SPRT's H0 exits 1 and a cap stop 4,
+      a calibration's inconclusive 4; such runs skipped every post-run
+      check. (3) The recount oriented pairs by engine name, so a null
+      pair was scored from White's side: +19.42 Elo on
+      `colosseum-qual-symmetry`, whose runner record, −0.0 ± 2.0 with a
+      symmetric pentanomial, is right; the null calibration stands. It
+      now orients by the journal and checks a match against the
+      checkpoint's pentanomial, the `match` record leaving it at zero by
+      design. RAR-M60 and RAR-M61 used distinct names and are
+      unaffected. (4) An absolute `-Dir` was joined onto the working
+      directory. (5) A resume without `-Seed` drew a new seed, which the
+      runner refuses on resume and a dry run does not check; the
+      recorded seed is now carried over. Checked: guard suite **34 of
+      34**, recount tests 7 of 7, parity tests pass; every local run in
+      the released schema passes the new guard and its recount agrees;
+      live through the wrapper, a 4-game match (exit 0), a 4-game
+      one-binary calibrate (exit 4), a 2-pair SPRT (exit 4) and a
+      one-iteration tune on a temporary N = 1 surface with an absolute
+      `-Dir` (exit 0), in
+      `tools/results/colosseum-smoke-{match,calibrate,sprt,spsa}` (the
+      tune copied in from `%TEMP%`). Not exercised live: a gauntlet and
+      a resume after an interrupt; the runner's own resume is qualified
+      in its repository (`colosseum-qual-recovery`).
       **B.2.6.2, DONE 2026-09-21:** nothing was retired. PROCESS gained a
       *Harness* section naming Colosseum the main path, the fastchess and
       weather-factory path the maintained backup until at least 2.5.0, and
