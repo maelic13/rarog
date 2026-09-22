@@ -1,0 +1,10 @@
+{
+  "Hash": 64,
+  "Threads": 1,
+  "MultiPV": 1,
+  "CoreRazorGuards": 0,
+  "CoreCorrTrainDecisive": 1,
+  "CoreCorrTrainExcluded": 1,
+  "CoreLmrFullDepth": 0,
+  "CoreLmrCheckRoot": 0
+}

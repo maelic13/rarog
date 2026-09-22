@@ -1,0 +1,494 @@
+{
+  "CoreCorrUpdateSlope": {
+    "value": 203,
+    "min_value": 32,
+    "max_value": 512,
+    "step": 30
+  },
+  "CoreCorrUpdateMin": {
+    "value": -2047,
+    "min_value": -8192,
+    "max_value": -256,
+    "step": 496
+  },
+  "CoreCorrUpdateMax": {
+    "value": 1184,
+    "min_value": 128,
+    "max_value": 8192,
+    "step": 504
+  },
+  "CoreCorrWeightPawn": {
+    "value": 136,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightMinor": {
+    "value": 63,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightNonPawnWhite": {
+    "value": 131,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightNonPawnBlack": {
+    "value": 110,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightCont2": {
+    "value": 138,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightCont4": {
+    "value": 138,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreEvalMaterialScale": {
+    "value": 27,
+    "min_value": -64,
+    "max_value": 64,
+    "step": 8
+  },
+  "CoreRazorBase": {
+    "value": 288,
+    "min_value": 50,
+    "max_value": 800,
+    "step": 47
+  },
+  "CoreRazorSquare": {
+    "value": 143,
+    "min_value": 20,
+    "max_value": 400,
+    "step": 24
+  },
+  "CoreRfpSquare": {
+    "value": 135,
+    "min_value": 0,
+    "max_value": 320,
+    "step": 20
+  },
+  "CoreRfpLinear": {
+    "value": 17,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreRfpImprovement": {
+    "value": 75,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 32
+  },
+  "CoreRfpCorrection": {
+    "value": 212,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreRfpThreat": {
+    "value": 28,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 8
+  },
+  "CoreRfpConstant": {
+    "value": -26,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreRfpLerp": {
+    "value": 648,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreHindsightDeepenReduction": {
+    "value": 1924,
+    "min_value": 512,
+    "max_value": 6144,
+    "step": 352
+  },
+  "CoreHindsightReduceMargin": {
+    "value": 26,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreLmpBase": {
+    "value": 2407,
+    "min_value": 0,
+    "max_value": 8192,
+    "step": 512
+  },
+  "CoreLmpImprovement": {
+    "value": 62,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "CoreLmpSquare": {
+    "value": 615,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreLmpHistory": {
+    "value": 59,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "CoreFpBase": {
+    "value": 129,
+    "min_value": -100,
+    "max_value": 500,
+    "step": 38
+  },
+  "CoreFpLinear": {
+    "value": 54,
+    "min_value": 10,
+    "max_value": 300,
+    "step": 18
+  },
+  "CoreFpHistory": {
+    "value": 51,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreFpEvalAboveBeta": {
+    "value": 45,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreFpCorrection": {
+    "value": 138,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreBnfpBase": {
+    "value": 51,
+    "min_value": -100,
+    "max_value": 400,
+    "step": 31
+  },
+  "CoreBnfpLinear": {
+    "value": 54,
+    "min_value": 10,
+    "max_value": 300,
+    "step": 18
+  },
+  "CoreBnfpHistory": {
+    "value": 40,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreHpSlope": {
+    "value": 963,
+    "min_value": 100,
+    "max_value": 4000,
+    "step": 244
+  },
+  "CoreSeeQuietSquare": {
+    "value": 8,
+    "min_value": 0,
+    "max_value": 40,
+    "step": 3
+  },
+  "CoreSeeQuietLinear": {
+    "value": 34,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreSeeQuietHistory": {
+    "value": 19,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 8
+  },
+  "CoreSeeQuietConstant": {
+    "value": 10,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreSeeNoisySquare": {
+    "value": 6,
+    "min_value": 0,
+    "max_value": 40,
+    "step": 3
+  },
+  "CoreSeeNoisyLinear": {
+    "value": 6,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreSeeNoisyHistory": {
+    "value": 36,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 8
+  },
+  "CoreSeeNoisyConstant": {
+    "value": 22,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreLmrLog": {
+    "value": 188,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLmrImprovement": {
+    "value": 395,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrImprovementClampLo": {
+    "value": -189,
+    "min_value": -1024,
+    "max_value": 0,
+    "step": 64
+  },
+  "CoreLmrImprovementClampHi": {
+    "value": 974,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrCorrection": {
+    "value": 3774,
+    "min_value": 0,
+    "max_value": 8192,
+    "step": 512
+  },
+  "CoreLmrExact": {
+    "value": 1433,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrTtScoreBelowAlpha": {
+    "value": 409,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrTtShallow": {
+    "value": 261,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrQuiet": {
+    "value": 1808,
+    "min_value": 0,
+    "max_value": 6144,
+    "step": 384
+  },
+  "CoreLmrQuietHistory": {
+    "value": 302,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLmrAlphaGap": {
+    "value": 352,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrAlphaGapLo": {
+    "value": -79,
+    "min_value": -512,
+    "max_value": 0,
+    "step": 32
+  },
+  "CoreLmrAlphaGapHi": {
+    "value": 102,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 32
+  },
+  "CoreLmrNoisy": {
+    "value": 1063,
+    "min_value": 0,
+    "max_value": 6144,
+    "step": 384
+  },
+  "CoreLmrNoisyHistory": {
+    "value": 117,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLmrCriticalPly": {
+    "value": 145,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 32
+  },
+  "CoreLmrPv": {
+    "value": 525,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrPvWindow": {
+    "value": 340,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrNonPv": {
+    "value": 272,
+    "min_value": -1024,
+    "max_value": 1024,
+    "step": 128
+  },
+  "CoreLmrLaterality": {
+    "value": 27,
+    "min_value": 0,
+    "max_value": 256,
+    "step": 16
+  },
+  "CoreLmrTtPv": {
+    "value": 322,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrTtPvScore": {
+    "value": 624,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrTtPvDepth": {
+    "value": 675,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrCutNode": {
+    "value": 2182,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrCutNodeNoTtMove": {
+    "value": 2263,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrGivesCheck": {
+    "value": 968,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrChildCutoffs": {
+    "value": 1053,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrChildCutoffsAllNode": {
+    "value": 340,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrParent": {
+    "value": 128,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLmrResearchDeeper": {
+    "value": 27,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreLmrResearchShallower": {
+    "value": -3,
+    "min_value": -50,
+    "max_value": 50,
+    "step": 6
+  },
+  "CoreHistQuietBonusSlope": {
+    "value": 184,
+    "min_value": 32,
+    "max_value": 512,
+    "step": 30
+  },
+  "CoreHistQuietBonusCap": {
+    "value": 1686,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreHistQuietMalusSlope": {
+    "value": 175,
+    "min_value": 32,
+    "max_value": 512,
+    "step": 30
+  },
+  "CoreHistQuietMalusCap": {
+    "value": 1141,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreHistMalusIndexScale": {
+    "value": 36,
+    "min_value": 0,
+    "max_value": 256,
+    "step": 16
+  },
+  "CoreHistContBonusCap": {
+    "value": 1085,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreHistNoisyBonusCap": {
+    "value": 875,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreHistTtCutoffBonusCap": {
+    "value": 1720,
+    "min_value": 256,
+    "max_value": 4096,
+    "step": 240
+  },
+  "CoreHistFailLowBase": {
+    "value": 93,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  }
+}
