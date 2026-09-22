@@ -1099,7 +1099,21 @@ diagnostics; two rejections stop B.
       last checkpoint, and its `run.log` records no stop or resume
       event, contrary to its docs, neither affecting results. The
       interrupted invocation's manifest simply ended, so it now records
-      the interruption (`266bca8`). Not exercised live: a gauntlet.
+      the interruption (`266bca8`). **Review 2026-09-22, a sixth
+      defect:** `-Mode gauntlet` could never pass its own policy check.
+      The dry run names the subcommand `tournament`, not `tournament run`,
+      and resolves one `time_control` for the field rather than a clock
+      per arm, so every gauntlet was refused as off policy; the mode had
+      only been dry-run before the check existed. Fixed in the wrapper,
+      which now also checks each participant's Hash against the policy
+      and records a `-DryRun` invocation as such in its manifest, so a
+      rehearsal is not read as an interrupted run. Two guard cases added
+      (36 of 36); a two-game gauntlet through the wrapper on the released
+      runner completed with status `completed`, exit 0, no fault
+      (`colosseum_gauntlet_rarog-gauntlet-smoke_20260922_230525`). Every
+      mode has now run live. Independent recount of the 200-game live
+      run: [4, 25, 35, 34, 2], W-D-L 52-101-47, equal to the runner; the
+      released archive and its executable re-hash to the pin.
       **B.2.6.2, DONE 2026-09-21:** nothing was retired. PROCESS gained a
       *Harness* section naming Colosseum the main path, the fastchess and
       weather-factory path the maintained backup until at least 2.5.0, and
