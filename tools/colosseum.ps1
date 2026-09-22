@@ -570,8 +570,21 @@ if ($DryRun) {
     return
 }
 
-& $cli.Path @commandArgs 2>&1 | Tee-Object -FilePath $logPath
-$runExit = $LASTEXITCODE
+# Ctrl+C stops this script along with the runner, so nothing after the run
+# executes; the manifest must still say the invocation ended without a report.
+$runReturned = $false
+try {
+    & $cli.Path @commandArgs 2>&1 | Tee-Object -FilePath $logPath
+    $runExit = $LASTEXITCODE
+    $runReturned = $true
+} finally {
+    if (-not $runReturned) {
+        Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value @(
+            "interrupted_utc:  $((Get-Date).ToUniversalTime().ToString('u'))"
+            "interrupted:      the wrapper was stopped before the runner reported; the run directory holds its durable games. Re-run the same command to resume."
+        )
+    }
+}
 
 # ─── After the run: the runner's own record, not the console ──────────────
 $recordPath = Join-Path $Dir "run-record.json"
