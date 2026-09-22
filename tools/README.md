@@ -17,7 +17,7 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `colosseum.ps1` | Gate, fixed match, null pair, tune or gauntlet on Colosseum CLI from the committed run files, with every provenance, equality, revision, fingerprint, policy and idle-host guard, a per-run manifest and a post-run fault check | PROCESS "Harness", "Common commands"; every run from B.2.6 on |
+| `colosseum.ps1` | Gate, fixed match, null pair, tune or gauntlet on Colosseum CLI from the committed run files, with every provenance, equality, revision, fingerprint, policy and idle-host guard, a per-run manifest, and a post-run verdict, fault check and recount; resumes an existing `-Dir` at its recorded seed | PROCESS "Harness", "Common commands"; every run from B.2.6 on |
 | `colosseum/` | The run files that hold Rarog's conditions, and `colosseum.pin.json`, which pins the runner by revision and SHA-256 | `colosseum.ps1`, `setup_tools.ps1`; `colosseum/README.md` |
 | `spsa_config_to_colosseum.py` | Convert a registered surface to a Colosseum tune file for one horizon; `--check` refuses a file that has drifted from its JSON | `colosseum.ps1 -Mode spsa`; PROCESS "SPSA go/no-go procedure" |
 | `diag/colosseum_parity.py` | Compare a Colosseum dry run with a recorded `sprt.ps1` manifest, field by field | RAR-M60; harness cross-checks |
