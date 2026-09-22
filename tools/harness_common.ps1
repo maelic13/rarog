@@ -526,22 +526,39 @@ function Get-HarnessBusyProcess {
 }
 
 function Get-HarnessHostBusyPercent {
-    # Median of a few samples. One reading catches a transient; a median over a
-    # second of wall time distinguishes an idle desktop from a loaded one, which
-    # is all this guard has to do.
-    param([int]$Samples = 3, [int]$IntervalMs = 400)
+    # Sustained load of everything except this process, from the raw kernel
+    # counters: busy = 1 - idle-ticks / elapsed-ticks over one window. The
+    # formatted counter this replaced was read three times right after the
+    # wrapper's own start-up (PowerShell's JIT, Get-Process over every process,
+    # the CIM provider warming up) and reported that start-up as host load, so a
+    # quiet box read 19%. The window opens only after a settle pause, and the
+    # wrapper's own CPU over the window is subtracted, so the check measures the
+    # host, never itself.
+    param([double]$WindowSeconds = 2.0, [double]$SettleSeconds = 1.0)
 
     if (-not $script:HarnessIsWindows) { return $null }
-    $readings = @()
-    for ($i = 0; $i -lt $Samples; $i++) {
-        if ($i -gt 0) { Start-Sleep -Milliseconds $IntervalMs }
-        $total = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction SilentlyContinue |
+    $cpus = [Environment]::ProcessorCount
+    $read = {
+        $raw = Get-CimInstance Win32_PerfRawData_PerfOS_Processor -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -eq '_Total' } | Select-Object -First 1
-        if ($total) { $readings += [double]$total.PercentProcessorTime }
+        if (-not $raw) { return $null }
+        [pscustomobject]@{
+            Idle = [double]$raw.PercentProcessorTime   # idle time, in 100 ns ticks
+            Time = [double]$raw.Timestamp_Sys100NS
+            Self = (Get-Process -Id $PID).TotalProcessorTime.TotalSeconds
+        }
     }
-    if ($readings.Count -eq 0) { return $null }
-    $sorted = @($readings | Sort-Object)
-    $sorted[[int]([Math]::Floor($sorted.Count / 2))]
+    Start-Sleep -Milliseconds ([int](1000 * $SettleSeconds))
+    $first = & $read
+    Start-Sleep -Milliseconds ([int](1000 * $WindowSeconds))
+    $second = & $read
+    if (-not $first -or -not $second) { return $null }
+    $elapsed = $second.Time - $first.Time
+    if ($elapsed -le 0) { return $null }
+    $busy = 100.0 * (1.0 - ($second.Idle - $first.Idle) / $elapsed)
+    # This process's share of the whole machine over the same window.
+    $self = 100.0 * ($second.Self - $first.Self) / ($elapsed / 1e7) / $cpus
+    [Math]::Max(0.0, $busy - $self)
 }
 
 function Assert-HarnessHostIdle {
