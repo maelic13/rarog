@@ -1141,7 +1141,16 @@ diagnostics; two rejections stop B.
       B.2.6. `spsa` was qualified on four coordinates at `r_end` 0.03, so
       this gate is also its first strength test at Rarog's scale, and
       weather-factory stays installed until it resolves
-      (`analysis/b2_audit_2026-09-21.md`).
+      (`analysis/b2_audit_2026-09-21.md`). **Registration completed
+      2026-09-22 (RAR-S78):** the 17 coordinates at least one RAR-S75 step
+      from their seeds, seeded at theta_5000 with RAR-S75's steps (the
+      perturbation each of them demonstrably responds to, and the only
+      way to keep dimension and gain as the sole changes), the other 65
+      fixed there; N = 5,000 × 30 games on 15 slots, `r_end` 0.0031, the
+      same travel budget per coordinate as RAR-S75; `rarog-b27core-tune.exe`
+      at 7,185,678; gate `[0,3]` against the B.2.4b head, cap 40,000
+      pairs. Predictions frozen in the row. About 31 to 33 hours of tune
+      and up to 15 of gate, both maintainer-run.
     - **B.2.8 First-search stalls — `I1`, CLOSED 2026-09-19
       (RAR-M59).** Added by maintainer decision after a harness lead. The
       KPK bitbase was built inside the first search that reached KPK (about
@@ -1270,7 +1279,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.7 | RESEARCH | V | Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
+| B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78): 17 coordinates at RAR-S75's steps, N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
