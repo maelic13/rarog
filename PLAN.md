@@ -1142,11 +1142,12 @@ diagnostics; two rejections stop B.
       this gate is also its first strength test at Rarog's scale, and
       weather-factory stays installed until it resolves
       (`analysis/b2_audit_2026-09-21.md`). **Registration completed
-      2026-09-22 (RAR-S78):** the 17 coordinates at least one RAR-S75 step
-      from their seeds, seeded at theta_5000 with RAR-S75's steps (the
-      perturbation each of them demonstrably responds to, and the only
-      way to keep dimension and gain as the sole changes), the other 65
-      fixed there; N = 5,000 × 30 games on 15 slots, `r_end` 0.0031, the
+      2026-09-22 (RAR-S78), amended the same day before any game:** all
+      82 coordinates restarted at theta_5000 with RAR-S75's steps, by
+      maintainer decision, because the coordinates are coupled and a
+      17-coordinate surface with 65 held fixed could only bound the
+      available strength from below (the 17-coordinate design stays
+      committed as `config_b27core`, not run); N = 5,000 × 30 games on 15 slots, `r_end` 0.0031, the
       same travel budget per coordinate as RAR-S75; `rarog-b27core-tune.exe`
       at 7,185,678; gate `[0,3]` against the B.2.4b head, cap 40,000
       pairs. Predictions frozen in the row. About 31 to 33 hours of tune
@@ -1279,7 +1280,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78): 17 coordinates at RAR-S75's steps, N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
+| B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
 | B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
