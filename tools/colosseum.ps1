@@ -384,7 +384,8 @@ $resolved = $dry.resolved_configuration
 $violations = [System.Collections.Generic.List[string]]::new()
 function Add-Violation { param([string]$Text) $violations.Add($Text) }
 
-if ($dry.command -ne $(if ($Mode -eq 'gauntlet') { 'tournament run' } else { $Mode })) {
+# The dry run names the subcommand; a gauntlet is `tournament run`.
+if ($dry.command -ne $(if ($Mode -eq 'gauntlet') { 'tournament' } else { $Mode })) {
     Add-Violation "resolved command is '$($dry.command)', expected '$Mode'"
 }
 foreach ($rule in @('draw', 'resign', 'max_moves')) {
@@ -393,7 +394,9 @@ foreach ($rule in @('draw', 'resign', 'max_moves')) {
     }
 }
 $controls = @()
-foreach ($field in @('engine_a_time_control', 'engine_b_time_control', 'engine_time_control')) {
+# A two-arm command resolves one clock per arm, a tune one clock, and a
+# tournament one clock for the field.
+foreach ($field in @('engine_a_time_control', 'engine_b_time_control', 'engine_time_control', 'time_control')) {
     if ($resolved.PSObject.Properties.Name -contains $field) { $controls += ,@($field, $resolved.$field) }
 }
 if ($controls.Count -eq 0) { Add-Violation "the resolved configuration states no time control" }
@@ -417,6 +420,20 @@ foreach ($pair in $optionSets) {
     $name = $pair[0]; $options = $pair[1]
     if ([int]$options.Hash.value -ne $Hash) { Add-Violation "$name Hash is $($options.Hash.value), expected $Hash" }
     if ([int]$options.Threads.value -ne $Threads) { Add-Violation "$name Threads is $($options.Threads.value), expected $Threads" }
+}
+if ($Mode -eq 'gauntlet') {
+    # Participants carry their options in the plan. Hash is Rarog's policy;
+    # a thread option is engine-specific (`Threads`, `Max CPUs`), so each
+    # participant's is listed in the manifest rather than judged here.
+    $participants = @($resolved.plan.participants)
+    if ($participants.Count -lt 2) { Add-Violation "the gauntlet plan names $($participants.Count) participant(s)" }
+    foreach ($entry in $participants) {
+        $launch = $entry.participant.launch
+        $hashValue = $launch.options.PSObject.Properties | Where-Object { $_.Name -eq 'Hash' } | ForEach-Object { $_.Value.value }
+        if ("$hashValue" -ne "$Hash") {
+            Add-Violation "participant '$($launch.label)' Hash is '$hashValue', expected $Hash (pass --option Hash=$Hash)"
+        }
+    }
 }
 if ($resolved.openings.path -ne $Book) {
     Add-Violation "book is '$($resolved.openings.path)', expected '$Book'"
@@ -566,6 +583,9 @@ Write-Host "======================================================="
 Write-Host ""
 
 if ($DryRun) {
+    # The manifest must say this invocation played nothing, or a later reader
+    # takes a rehearsal for a run that was interrupted before its report.
+    Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value "dry_run_only:     true (no game was played)"
     Write-Host "Dry run only; no game was played. Resolved configuration: $dryPath"
     return
 }

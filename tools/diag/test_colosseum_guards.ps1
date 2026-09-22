@@ -224,6 +224,20 @@ try {
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
+    # A gauntlet resolves through `tournament run`, whose dry run names the
+    # command and its clock differently from the two-arm commands; the first
+    # gauntlet through the wrapper was refused by its own policy check.
+    $field = @('--format', 'gauntlet', '--seeds', '1', '--games-per-pair', '2', '--cycles', '1',
+               '--engine', $armA, '--label', 'A', '--engine', $armB, '--label', 'B',
+               '--rating', '3000', '--rating', '3000', '--fixed', '2:3000', '--option', 'Threads=1')
+    $gauntlet = @{
+        Mode = "gauntlet"; Seed = 7; Dir = (Join-Path $scratch "gauntlet"); DryRun = $true; AllowBusyHost = $true
+        ExtraArgs = @($field + @('--option', 'Hash=64'))
+    }
+    Invoke-Case -Name "control: a gauntlet resolves" -Expect "" -Arguments $gauntlet
+    Invoke-Case -Name "gauntlet participants off the Hash policy" -Expect "not Rarog's policy" `
+        -Arguments (Merge-Arguments $gauntlet @{ ExtraArgs = @($field + @('--option', 'Hash=128')) })
+
     # The post-run fault guard, on status views in the shape cli-v0.1.0's
     # `status --json` returns. Its first live run found the earlier guard
     # parsing progress text it did not recognise and passing the run with a
