@@ -143,12 +143,19 @@ if (Test-Path -LiteralPath $colosseumExe) {
 
 if ($stageColosseum) {
     if ($colosseumPin.archive) {
-        # The published archive: its own SHA-256 comes from the release's
-        # SHA256SUMS, and the extracted executable must still match the pin.
+        # The published archive. Its own SHA-256 is the digest GitHub publishes
+        # for the asset (the release has no SHA256SUMS file), and the executable
+        # inside it must still match the pin: two hashes, checked separately,
+        # because a correct archive can still hold the wrong binary.
         $archiveUrl = $colosseumPin.archive.url
         if (-not $archiveUrl) { throw "$colosseumPinPath declares an archive with no url." }
         Write-Host "Downloading Colosseum CLI $($colosseumPin.archive.tag)..."
-        $archivePath = Join-Path $binDir "colosseum-cli-archive.tmp"
+        # Expand-Archive validates the extension, so the temporary file keeps it.
+        if ($archiveUrl -notmatch '\.zip$') {
+            throw ("$colosseumPinPath names '$archiveUrl', which is not a .zip; this staging path " +
+                   "reads the Windows release asset. Stage another platform's archive by hand.")
+        }
+        $archivePath = Join-Path $binDir "colosseum-cli-archive.zip"
         Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath
         try {
             if ($colosseumPin.archive.sha256) {
