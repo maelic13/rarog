@@ -1,0 +1,4 @@
+# Groups whose tune has been baked into the engine. Their seeds are the
+# registration's and are kept as evidence, so audit_spsa_coverage.ps1 does not
+# compare them with the engine's defaults. One group per line.
+b23core   # RAR-S75, final theta baked in 14a7079

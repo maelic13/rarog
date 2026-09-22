@@ -66,6 +66,11 @@ the source of truth for defaults:
 ./tools/audit_spsa_coverage.ps1
 ```
 
+A group whose tune has been baked into the engine is listed in
+`historical.txt`: its seeds are the registration's, kept as evidence, so the
+audit no longer compares them with the defaults or requires every name to
+still be declared. Everything not listed is live and must match `params.rs`.
+
 ## Opening book and match conditions
 
 The harness uses `tools/books/UHO_Lichess_4852_v1.epd` at `3+0.03`, Hash 64,
