@@ -9,7 +9,13 @@ PGN as evidence and must not be counted.
     python tools/diag/colosseum_recount.py tools/results/<run> [<run> ...]
     python tools/diag/colosseum_recount.py --json tools/results/<run>
 
-Exit status 1 if any run's recount disagrees with its own `run-record.json`.
+Each game is scored for side A as the journal (`games.jsonl`) records it,
+because a null pair's two sides share an engine name; a run without a journal
+falls back to the names, and refuses a pair it cannot tell apart.
+
+Exit status 1 if any run's recount disagrees with the runner's own count: the
+pentanomial in `run-record.json`, or in `checkpoint.json` for a `match`, whose
+record leaves it at zero.
 
 The estimators are the ones Colosseum and fastchess report, verified against a
 recorded run: with pair scores x in {0, .25, .5, .75, 1}, mean mu and standard
@@ -55,11 +61,35 @@ def read_games(pgn: pathlib.Path) -> list[dict[str, str]]:
     return games
 
 
-def pentanomial(games: list[dict[str, str]], engine_a: str) -> tuple[list[int], dict]:
+def read_journal_sides(journal: pathlib.Path) -> dict[str, str]:
+    """Which side, `a` or `b`, had White in each game, by game number.
+
+    The PGN names engines, and a null pair's two sides share a name; the
+    journal records the side. A torn last line (a run killed mid-write) is
+    skipped, as a resume would drop it.
+    """
+    sides: dict[str, str] = {}
+    if not journal.exists():
+        return sides
+    for line in journal.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            game = json.loads(line)["game"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        if game.get("white") in ("a", "b") and game.get("number") is not None:
+            sides[str(game["number"])] = game["white"]
+    return sides
+
+
+def pentanomial(games: list[dict[str, str]], engine_a: str,
+                sides: dict[str, str] | None = None) -> tuple[list[int], dict]:
     # Runs before the `ColosseumSample` tag existed have no post-terminal games
     # to exclude, so every game in such a PGN is part of the sample. Deciding
     # this from the PGN, rather than assuming either way, is what keeps the
     # count right on both schemas.
+    sides = sides or {}
+    if not sides and games and all(game.get("White") == game.get("Black") for game in games):
+        raise ValueError("both sides carry the same name and there is no journal to tell them apart")
     tagged = any("ColosseumSample" in game for game in games)
     pairs: dict[str, list[dict[str, str]]] = collections.defaultdict(list)
     for game in games:
@@ -77,7 +107,10 @@ def pentanomial(games: list[dict[str, str]], engine_a: str) -> tuple[list[int], 
         points = 0.0
         for game in members:
             result = game.get("Result")
-            a_is_white = game.get("White") == engine_a
+            side = sides.get(game.get("GameNumber", ""))
+            if sides and side is None:
+                raise ValueError(f"game {game.get('GameNumber', '?')} is in the PGN but not in the journal")
+            a_is_white = side == "a" if side else game.get("White") == engine_a
             if result == "1/2-1/2":
                 points += 0.5
                 wdl[1] += 1
@@ -88,7 +121,8 @@ def pentanomial(games: list[dict[str, str]], engine_a: str) -> tuple[list[int], 
                 points += 0.0 if a_is_white else 1.0
                 wdl[2 if a_is_white else 0] += 1
         counts[int(round(points * 2))] += 1
-    return counts, {"wdl": wdl, "incomplete_pairs": incomplete, "pairs_seen": len(pairs), "tagged": tagged}
+    return counts, {"wdl": wdl, "incomplete_pairs": incomplete, "pairs_seen": len(pairs), "tagged": tagged,
+                    "journal_sides": bool(sides)}
 
 
 def estimates(counts: list[int]) -> dict:
@@ -120,15 +154,24 @@ def recount(directory: pathlib.Path) -> dict:
         names = [game.get("White", "") for game in games if game.get("PairGame") == "1"]
         engine_a = collections.Counter(names).most_common(1)[0][0] if names else ""
 
-    counts, detail = pentanomial(games, engine_a)
+    counts, detail = pentanomial(games, engine_a, read_journal_sides(directory / "games.jsonl"))
     terminations = collections.Counter(game.get("Termination", "?") for game in games)
     official = (sum(1 for game in games if game.get("ColosseumSample") == "official")
                 if detail["tagged"] else len(games))
 
     sample = record.get("official_sample", {})
     recorded = list(sample.get("pentanomial", []))
-    # An older `match` record carries no pentanomial; there is then nothing to
-    # agree with, and the recount stands on its own.
+    recorded_source = "run-record.json"
+    # A `match` record leaves its pentanomial at zero; the checkpoint carries
+    # the runner's count. An older match run has neither, and the recount then
+    # stands on its own.
+    if not any(recorded):
+        checkpoint_path = directory / "checkpoint.json"
+        if checkpoint_path.exists():
+            payload = json.loads(checkpoint_path.read_text(encoding="utf-8")).get("payload", {})
+            if any(payload.get("pentanomial") or []):
+                recorded = list(payload["pentanomial"])
+                recorded_source = "checkpoint.json"
     comparable = any(recorded) and sample.get("scored_games") is not None
     return {
         "run": directory.name,
@@ -141,6 +184,8 @@ def recount(directory: pathlib.Path) -> dict:
         "recorded_scored_games": sample.get("scored_games"),
         "pentanomial": counts,
         "recorded_pentanomial": recorded,
+        "recorded_source": recorded_source,
+        "oriented_by": "journal" if detail["journal_sides"] else "engine names",
         "comparable": comparable,
         "agrees": (not comparable) or
                   ((counts == recorded) and (official == sample.get("scored_games"))),
@@ -167,7 +212,8 @@ def main() -> int:
             print(f"{result['run']}  [{result['command']} / {result['status']}]  {result['players']}")
             print(f"  official games {result['official_games']} (record: {result['recorded_scored_games']}), "
                   f"W-D-L {'-'.join(str(n) for n in result['wdl'])}")
-            print(f"  pentanomial {result['pentanomial']}  record {result['recorded_pentanomial']}  "
+            print(f"  pentanomial {result['pentanomial']} (oriented by {result['oriented_by']})  "
+                  f"{result['recorded_source']} {result['recorded_pentanomial']}  "
                   + (f"agrees: {result['agrees']}" if result["comparable"]
                      else "(this schema records no pentanomial to compare)"))
             if "elo" in result:

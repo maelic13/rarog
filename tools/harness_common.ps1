@@ -855,33 +855,71 @@ function Assert-ColosseumCli {
     }
 }
 
-function Get-ColosseumRunFaults {
-    # The runner's own fault line from run-record.json. A match, SPRT or tune
-    # writes `time: a-b; other: a-b; ...` per side; a tournament writes
-    # `engine N; M allowed` and does not separate time losses. Any other shape
-    # is refused: a guard that cannot read its input must not pass the run.
-    param([Parameter(Mandatory)][object]$Record)
+function Get-ColosseumRunStatus {
+    # The runner's documented machine view of a run directory: its record, the
+    # newest valid checkpoint's aggregates and the journal behind them. The
+    # progress text is for people and has changed shape between builds.
+    param([Parameter(Mandatory)][string]$CliPath, [Parameter(Mandatory)][string]$Dir)
 
-    $field = @($Record.progress.fields | Where-Object { $_.label -eq 'faults' } | Select-Object -First 1)
-    $text = if ($field.Count -gt 0) { "$($field[0].value)" } else { "" }
-    if ($text -match '^time:\s*(?<ta>\d+)-(?<tb>\d+);\s*other:\s*(?<oa>\d+)-(?<ob>\d+)(;|$)') {
-        return [pscustomobject]@{
-            Text       = $text
-            Split      = $true
-            TimeLosses = [int]$Matches['ta'] + [int]$Matches['tb']
-            Other      = [int]$Matches['oa'] + [int]$Matches['ob']
-        }
+    $text = & $CliPath status $Dir --json 2>$null
+    $exit = $LASTEXITCODE
+    if ($exit -ne 0) {
+        throw "colosseum-cli status exited $exit on $Dir; a run that cannot be read is not accepted."
     }
-    if ($text -match '^engine\s+(?<engine>\d+);') {
-        return [pscustomobject]@{
-            Text       = $text
-            Split      = $false
-            TimeLosses = $null
-            Other      = [int]$Matches['engine']
-        }
+    try { ($text -join "`n") | ConvertFrom-Json }
+    catch { throw "colosseum-cli status on $Dir did not return JSON: $($text -join ' ')" }
+}
+
+function Resolve-ColosseumExit {
+    # Colosseum's exit codes are per command and carry the verdict (docs/cli):
+    # an SPRT's H0 exits 1 and a cap stop 4, so a non-zero exit is not a
+    # failure. An outcome is a finished run whose games still have to pass the
+    # fault and recount checks; anything else ends the wrapper.
+    param([Parameter(Mandatory)][string]$Mode, [Parameter(Mandatory)][int]$ExitCode)
+
+    $outcomes = switch ($Mode) {
+        "sprt"      { @{ 0 = "H1 accepted"; 1 = "H0 accepted"; 4 = "cap reached, inconclusive" } }
+        "calibrate" { @{ 0 = "pass"; 1 = "fail"; 4 = "inconclusive" } }
+        default     { @{ 0 = "completed" } }
     }
-    throw ("FAULT COUNTERS UNREADABLE - run-record.json's faults field is '$text', a shape this " +
-           "wrapper does not know. The run is not accepted until its faults are read by hand.")
+    $invalid = if ($Mode -in @("sprt", "calibrate", "spsa")) { 5 } else { 1 }
+    if ($outcomes.ContainsKey($ExitCode)) { return [pscustomobject]@{ Kind = "outcome"; Verdict = $outcomes[$ExitCode] } }
+    $kind = switch ($ExitCode) {
+        $invalid { "invalid" }
+        6        { "cancelled" }
+        2        { "refused" }
+        default  { "error" }
+    }
+    [pscustomobject]@{ Kind = $kind; Verdict = $null }
+}
+
+function Get-ColosseumRunFaults {
+    # Fault counts from the status view's checkpoint. A match, SPRT, calibration
+    # or tune counts per side, each side's engine faults including its time
+    # losses; a tournament counts engine faults without a time split. Anything
+    # else is refused: a guard that cannot read its input must not pass the run.
+    param([Parameter(Mandatory)][object]$Status)
+
+    $checkpoint = $Status.durable.checkpoint
+    if ($null -eq $checkpoint) {
+        throw "FAULT COUNTERS UNREADABLE - the run's status carries no checkpoint, so its faults are unknown."
+    }
+    $faults = $checkpoint.faults
+    if ($null -ne $faults) {
+        foreach ($field in @('engine_a', 'engine_b', 'time_losses_a', 'time_losses_b', 'infrastructure')) {
+            if ($null -eq $faults.$field) {
+                throw "FAULT COUNTERS UNREADABLE - the checkpoint's faults lack '$field'."
+            }
+        }
+        $timeLosses = [int]$faults.time_losses_a + [int]$faults.time_losses_b
+        $other = ([int]$faults.engine_a - [int]$faults.time_losses_a) +
+                 ([int]$faults.engine_b - [int]$faults.time_losses_b) + [int]$faults.infrastructure
+        return [pscustomobject]@{ Split = $true; TimeLosses = $timeLosses; Other = $other }
+    }
+    if ($null -ne $checkpoint.engine_faults) {
+        return [pscustomobject]@{ Split = $false; TimeLosses = $null; Other = [int]$checkpoint.engine_faults }
+    }
+    throw "FAULT COUNTERS UNREADABLE - the checkpoint carries neither per-side faults nor an engine-fault count."
 }
 
 function Assert-ColosseumRunFaults {
@@ -889,13 +927,13 @@ function Assert-ColosseumRunFaults {
     # ceiling for time losses, because a small background rate is a property of
     # running fourteen concurrent games, not of the candidate (RAR-M14, RAR-E06).
     param(
-        [Parameter(Mandatory)][object]$Record,
+        [Parameter(Mandatory)][object]$Status,
         [Parameter(Mandatory)][int]$ScoredGames,
         [Parameter(Mandatory)][double]$TimeLossRateCeiling,
         [string]$Dir = ""
     )
 
-    $faults = Get-ColosseumRunFaults -Record $Record
+    $faults = Get-ColosseumRunFaults -Status $Status
     if (-not $faults.Split) {
         if ($faults.Other -gt 0) {
             throw ("The run recorded $($faults.Other) engine fault(s) and this runner mode does not " +

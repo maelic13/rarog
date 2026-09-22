@@ -324,7 +324,24 @@ if ($Mode -eq "spsa") {
 }
 
 # ─── The command ──────────────────────────────────────────────────────────
-$Dir = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Dir))
+$Dir = [System.IO.Path]::GetFullPath($Dir, (Get-Location).Path)
+# An existing run directory resumes only under the configuration it was started
+# with, the seed included, and a dry run does not check that; so the recorded
+# seed is carried over rather than drawn afresh.
+$existingConfig = Join-Path $Dir "resolved-config.json"
+if (Test-Path -LiteralPath $existingConfig) {
+    $existingSeed = [int64](Get-Content -LiteralPath $existingConfig -Raw | ConvertFrom-Json).master_seed
+    if ($Seed -eq 0) {
+        if ($existingSeed -lt 1 -or $existingSeed -gt [int]::MaxValue) {
+            throw "$Dir records seed $existingSeed, which -Seed cannot carry; resume it with colosseum-cli directly."
+        }
+        $Seed = [int]$existingSeed
+        Write-Host "  Resuming $Dir at its recorded seed $Seed" -ForegroundColor Yellow
+    } elseif ($Seed -ne $existingSeed) {
+        throw ("$Dir holds a run at seed $existingSeed; -Seed $Seed would be refused on resume. " +
+               "Omit -Seed to resume that run, or choose a new -Dir.")
+    }
+}
 $Seed = New-HarnessSeed -Requested $Seed
 
 $expectedConcurrency = if ($Concurrency -gt 0) { $Concurrency } elseif ($Mode -eq "spsa") { 15 } else { 14 }
@@ -571,31 +588,40 @@ $faultField = @($record.progress.fields | Where-Object { $_.label -eq 'faults' }
 $faults = if ($faultField) { $faultField.value } else { "(not reported)" }
 $scored = [int]$record.official_sample.scored_games
 
-# A `match` record carries a zero pentanomial by design, so the manifest takes
-# the pentanomial from the games, and a record that does carry one must agree.
-$pentanomial = "$($record.official_sample.pentanomial -join ', ')"
+# The status view is the runner's machine interface: structured faults, and
+# the checkpoint's aggregates, which for a match hold the pentanomial its run
+# record leaves at zero. The recount of games.pgn must agree with them.
+$status = $null
+$statusFailure = $null
+try { $status = Get-ColosseumRunStatus -CliPath $cli.Path -Dir $Dir } catch { $statusFailure = $_.Exception.Message }
+$pentanomial = if ($status -and $status.durable.checkpoint.pentanomial) {
+    "$($status.durable.checkpoint.pentanomial -join ', ')"
+} else { "$($record.official_sample.pentanomial -join ', ')" }
 $recountFailure = $null
 if ($Mode -in @('match', 'sprt', 'calibrate') -and (Test-Path -LiteralPath (Join-Path $Dir "games.pgn"))) {
     $recountJson = & python (Join-Path $PSScriptRoot "diag\colosseum_recount.py") --json $Dir 2>&1
     $recountExit = $LASTEXITCODE
     try {
         $recount = @(($recountJson -join "`n") | ConvertFrom-Json)[0]
-        $pentanomial = "$($recount.pentanomial -join ', ') (recounted from games.pgn; record: " +
-                       "$($recount.recorded_pentanomial -join ', '))"
         if ($recountExit -ne 0) {
             $recountFailure = ("The recount of games.pgn ($($recount.pentanomial -join ', '), " +
-                               "$($recount.official_games) games) disagrees with run-record.json " +
-                               "($($recount.recorded_pentanomial -join ', '), $($recount.recorded_scored_games) games).")
+                               "$($recount.official_games) games) disagrees with the runner's " +
+                               "$($recount.recorded_source) ($($recount.recorded_pentanomial -join ', ')).")
+        } elseif (-not $recount.comparable) {
+            $recountFailure = "The runner recorded no pentanomial to check the recount of games.pgn against."
+        } else {
+            $pentanomial += " (recount of games.pgn agrees)"
         }
     } catch {
-        $pentanomial = "RECOUNT FAILED (exit $recountExit)"
         $recountFailure = "colosseum_recount.py failed (exit $recountExit): $recountJson"
     }
+    if ($recountFailure) { $pentanomial += " (RECOUNT FAILED)" }
 }
 
 $completion = [System.Collections.Generic.List[string]]::new()
 $completion.Add("completed_utc:    $((Get-Date).ToUniversalTime().ToString('u'))")
-$completion.Add("exit_code:        $runExit")
+$exit = Resolve-ColosseumExit -Mode $Mode -ExitCode $runExit
+$completion.Add("exit_code:        $runExit ($(if ($exit.Verdict) { $exit.Verdict } else { $exit.Kind }))")
 $completion.Add("run_status:       $($record.status)")
 $completion.Add("scored_games:     $scored")
 $completion.Add("completed_pairs:  $($record.official_sample.completed_pairs)")
@@ -607,16 +633,30 @@ foreach ($artifact in @('result.json', 'run-record.json', 'games.pgn', 'resolved
 }
 $completion | ForEach-Object { Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value $_ }
 
-if ($runExit -ne 0) {
-    throw "colosseum-cli exited $runExit. Status '$($record.status)'; see $logPath and $Dir."
+switch ($exit.Kind) {
+    "cancelled" {
+        throw ("The run was cancelled at a committed boundary with $scored games scored. Resume it with the " +
+               "same command and -Dir $Dir; the wrapper carries its seed ($Seed) over.")
+    }
+    "invalid" {
+        throw "The runner invalidated the run under its fault policy (exit $runExit); the result is void. See $Dir."
+    }
+    "outcome" { }
+    default {
+        throw "colosseum-cli exited $runExit ($($exit.Kind)). Status '$($record.status)'; see $logPath and $Dir."
+    }
 }
 
+if ($statusFailure) { throw $statusFailure }
+if ($status.durable.journal.refused) {
+    throw "The run's journal does not match its checkpoint: $($status.durable.journal.refused). See $Dir."
+}
 if ($recountFailure) { throw "$recountFailure See $Dir." }
-Assert-ColosseumRunFaults -Record $record -ScoredGames $scored `
+Assert-ColosseumRunFaults -Status $status -ScoredGames $scored `
     -TimeLossRateCeiling $TimeLossRateCeiling -Dir $Dir | Out-Null
 
 Write-Host ""
-Write-Host "Run finished: status '$($record.status)', $scored scored games."
+Write-Host "Run finished: status '$($record.status)', outcome '$($exit.Verdict)', $scored scored games."
 Write-Host "  Manifest: $manifestPath"
 Write-Host "  Log:      $logPath"
 Write-Host "  Evidence: $Dir"

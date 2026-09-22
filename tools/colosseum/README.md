@@ -11,8 +11,12 @@ host, the runner pin, each engine's sidecar, build-flavour and compiler
 equality, `-ExpectRevision` and `-ExpectBench`, the advertised options, the tune
 surface against the binary and the horizon, and a field-by-field check that the
 configuration Colosseum resolves is the policy below. It writes a manifest that
-hashes every input, and after the run it reads the CLI's own record for faults,
-refusing a fault line it cannot parse, and recounts the pentanomial from the PGN.
+hashes every input. After the run it reads the exit code as the command's
+verdict (an SPRT's H0 exits 1 and a cap stop 4; only an invalid, cancelled or
+failed run ends the wrapper), reads the faults from `colosseum-cli status
+--json` and refuses any it cannot read, and recounts the pentanomial from the
+PGN, oriented by the journal's sides, against the runner's own count. An
+existing `-Dir` resumes at the seed it recorded.
 Calling `colosseum-cli.exe` directly, as the examples below do, skips all of
 that and is for inspection, not for a measurement anyone will cite.
 

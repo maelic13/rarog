@@ -224,27 +224,68 @@ try {
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
-    # The post-run fault guard, on records in the shapes cli-v0.1.0 writes. Its
-    # first live run found the guard reading a pre-release shape and passing
-    # every run with a warning, so each branch is watched here.
+    # The post-run fault guard, on status views in the shape cli-v0.1.0's
+    # `status --json` returns. Its first live run found the earlier guard
+    # parsing progress text it did not recognise and passing the run with a
+    # warning, so each branch is watched here.
     . (Join-Path $repo "tools\harness_common.ps1")
-    function New-FaultRecord([string]$Text) {
-        [pscustomobject]@{ progress = [pscustomobject]@{ fields = @(
-            [pscustomobject]@{ label = 'score'; value = '102.5/200 (51.2%)' }
-            [pscustomobject]@{ label = 'faults'; value = $Text }) } }
+    function New-Status([hashtable]$Checkpoint) {
+        [pscustomobject]@{ durable = [pscustomobject]@{ checkpoint = $(if ($Checkpoint) { [pscustomobject]$Checkpoint }) } }
     }
-    function Invoke-FaultCase([string]$Name, [string]$Expect, [string]$Text, [int]$Scored = 200) {
-        $check = { Assert-ColosseumRunFaults -Record (New-FaultRecord $Text) -ScoredGames $Scored `
+    function Sides([int]$EngineA = 0, [int]$EngineB = 0, [int]$TimeA = 0, [int]$TimeB = 0, [int]$Infra = 0) {
+        @{ faults = [pscustomobject]@{ engine_a = $EngineA; engine_b = $EngineB; time_losses_a = $TimeA
+                                       time_losses_b = $TimeB; infrastructure = $Infra } }
+    }
+    function Invoke-FaultCase([string]$Name, [string]$Expect, [object]$Status) {
+        $check = { Assert-ColosseumRunFaults -Status $Status -ScoredGames 200 `
                        -TimeLossRateCeiling 0.5 -Dir "scratch" *>&1 | Out-Null }.GetNewClosure()
         Invoke-Case -Name $Name -Expect $Expect -Check $check
     }
-    Invoke-FaultCase "faults: a non-time fault on side B" "non-time engine fault" "time: 0-0; other: 0-1; 1 of 5 allowed"
-    Invoke-FaultCase "faults: time losses over the ceiling" "exceeds the 0.5% ceiling" "time: 1-1; other: 0-0; 2 of 5 allowed"
-    Invoke-FaultCase "faults: an unknown shape" "FAULT COUNTERS UNREADABLE" "engine 0/5, time losses 0/5"
-    Invoke-FaultCase "faults: a tournament fault" "does not separate time losses" "engine 1; 5 allowed"
-    Invoke-FaultCase "control: the live run's clean line" "" "time: 0-0; other: 0-0; 0 of 5 allowed"
-    Invoke-FaultCase "control: one time loss under the ceiling" "" "time: 0-1; other: 0-0; 1 of 5 allowed"
-    Invoke-FaultCase "control: a clean tournament line" "" "engine 0; 5 allowed"
+    Invoke-FaultCase "faults: a crash on side B" "non-time engine fault" (New-Status (Sides -EngineB 1))
+    Invoke-FaultCase "faults: an infrastructure fault" "non-time engine fault" (New-Status (Sides -Infra 1))
+    Invoke-FaultCase "faults: time losses over the ceiling" "exceeds the 0.5% ceiling" `
+        (New-Status (Sides -EngineA 1 -EngineB 1 -TimeA 1 -TimeB 1))
+    Invoke-FaultCase "faults: no checkpoint" "FAULT COUNTERS UNREADABLE" (New-Status $null)
+    Invoke-FaultCase "faults: a field missing" "FAULT COUNTERS UNREADABLE" `
+        (New-Status @{ faults = [pscustomobject]@{ engine_a = 0; engine_b = 0 } })
+    Invoke-FaultCase "faults: a tournament fault" "does not separate time losses" (New-Status @{ engine_faults = 1 })
+    Invoke-FaultCase "control: a clean run" "" (New-Status (Sides))
+    Invoke-FaultCase "control: one time loss under the ceiling" "" (New-Status (Sides -EngineB 1 -TimeB 1))
+    Invoke-FaultCase "control: a clean tournament" "" (New-Status @{ engine_faults = 0 })
+
+    # Exit codes carry the verdict: H0 and a cap stop are finished runs to be
+    # checked, not failures, and an invalid or cancelled run is never a verdict.
+    $exitTable = @(
+        @("sprt", 0, "outcome", "H1 accepted"), @("sprt", 1, "outcome", "H0 accepted")
+        @("sprt", 4, "outcome", "cap reached, inconclusive"), @("sprt", 5, "invalid", $null)
+        @("calibrate", 1, "outcome", "fail"), @("calibrate", 4, "outcome", "inconclusive")
+        @("match", 0, "outcome", "completed"), @("match", 1, "invalid", $null)
+        @("spsa", 5, "invalid", $null), @("gauntlet", 1, "invalid", $null)
+        @("spsa", 6, "cancelled", $null), @("match", 2, "refused", $null), @("sprt", 3, "error", $null)
+    )
+    Invoke-Case -Name "exit codes map to the runner's verdicts" -Expect "" -Check {
+        foreach ($row in $exitTable) {
+            $resolved = Resolve-ColosseumExit -Mode $row[0] -ExitCode $row[1]
+            if ($resolved.Kind -ne $row[2] -or $resolved.Verdict -ne $row[3]) {
+                throw "$($row[0]) exit $($row[1]) resolved to $($resolved.Kind)/$($resolved.Verdict)"
+            }
+        }
+    }.GetNewClosure()
+
+    # Resuming an existing run directory: its recorded seed is carried over, and
+    # a different -Seed is refused before anything runs.
+    $resumeDir = Join-Path $scratch "resume"
+    New-Item -ItemType Directory -Path $resumeDir | Out-Null
+    '{"master_seed": 4242}' | Set-Content -LiteralPath (Join-Path $resumeDir "resolved-config.json") -Encoding utf8
+    Invoke-Case -Name "resume under a different -Seed" -Expect "would be refused on resume" `
+        -Arguments (Merge-Arguments $base @{ Dir = $resumeDir; Seed = 7 })
+    $resumeArguments = Merge-Arguments $base @{ Dir = $resumeDir } @("Seed")
+    Invoke-Case -Name "control: resume at the recorded seed" -Expect "" -Check {
+        $output = & $wrapper @resumeArguments *>&1 | Out-String
+        if ($output -notmatch 'at its recorded seed 4242' -or $output -notmatch 'seed 4242\)') {
+            throw "the recorded seed 4242 was not carried into the run"
+        }
+    }.GetNewClosure()
 } finally {
     if (-not $KeepScratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
 }
