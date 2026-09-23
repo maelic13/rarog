@@ -39,6 +39,20 @@ def test_info_fields_reads_depth_pv_and_multipv():
     assert "pv1" not in probe.info_fields("info depth 3 score cp 0 nodes 10 time 1")
 
 
+def test_a_node_budget_reads_the_last_completed_iteration_not_a_bound_line():
+    # phase-4 position 2 on the current head at 300k nodes: depth 13 completes,
+    # depth 14 prints only aspiration bound lines before the budget runs out.
+    infos = [
+        "info depth 13 seldepth 27 multipv 1 score cp 148 nodes 173821 time 106 pv d5d4 c3d5",
+        "info depth 14 seldepth 26 multipv 1 score cp 112 upperbound nodes 200255 time 116 pv d5d4",
+        "info depth 14 seldepth 31 multipv 1 score cp 84 lowerbound nodes 284077 time 164 pv d5d4",
+    ]
+    last = probe.last_completed(infos)
+    assert (last["depth"], last["nodes"]) == (13, 173821)
+    assert probe.last_completed(infos[1:]) == {}, "only bound lines: no completed iteration"
+    assert probe.last_completed([]) == {}
+
+
 def test_engine_spec_carries_uci_options():
     assert probe.parse_engine_spec("core=D:/x/rarog.exe") == ("core", "D:/x/rarog.exe", [])
     assert probe.parse_engine_spec("core=rarog.exe|AblationMask=128|Hash=16") == (

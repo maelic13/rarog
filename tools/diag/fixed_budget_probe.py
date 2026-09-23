@@ -141,6 +141,17 @@ def info_fields(line):
         d["multipv"] = int(toks[toks.index("multipv") + 1])
     return d
 
+def last_completed(infos):
+    """Fields of the last COMPLETED iteration's `info` line, or {}.
+
+    An aspiration `lowerbound`/`upperbound` line belongs to an iteration still
+    in progress when the budget ran out; reading it reports a depth the search
+    never finished, which is what the engine's bound lines (printed since the
+    UCI-info series) did to every node-budget depth read."""
+    exact = [line for line in infos if " lowerbound " not in line and " upperbound " not in line]
+    return info_fields(exact[-1]) if exact else {}
+
+
 def run(mode, budget, suite, engines):
     items = parse_epd(suite)
     result = {"mode": mode, "budget": budget, "suite": suite, "engines": {}, "options": {}}
@@ -174,7 +185,7 @@ def run(mode, budget, suite, engines):
                                  "stable": stable, "secs": round(secs, 3)}
             else:
                 infos, best, secs = eng.search(it["fen"], f"go nodes {budget}")
-                last = info_fields(infos[-1]) if infos else {}
+                last = last_completed(infos)
                 per[it["id"]] = {"depth": last.get("depth"), "seldepth": last.get("seldepth"),
                                  "nodes": last.get("nodes"), "ms": last.get("time"),
                                  "bestmove": best, "secs": round(secs, 3),
