@@ -1169,27 +1169,73 @@ diagnostics; two rejections stop B.
       post-fix fastchess games without a time loss (`analysis/b2_audit_2026-09-21.md`). The B.2.3 tune keeps its registered binary.
       The fixed pair for Colosseum: `rarog-startupfix-core-pext-pgo.exe` and
       `rarog-startupfix-base-pext-pgo.exe` at `c0e6ef7`.
-- **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.** **B.0
-  handoff frozen 2026-09-13 (analysis §3.4–3.5, §13.3): NMP adopts the
-  donor's entry margin above beta (both donors demand about 150 Rarog
-  units; Rarog demands none and converts 24% of attempts), the adaptive
-  reduction, the TT-bound shortcut and the `nmp_min_ply` verification
-  region; ProbCut keeps the 4.7c filter, which is the donor's own
-  `probcut_beta − eval` threshold, and adopts the donor's depth and return
-  shape with the oracle's TT-served shortcut as a measured switch; singular
-  adopts the double/triple margins, multi-cut lerp, −3 negative extension,
-  LDSE and the LMR margin term; IIR versus hindsight is decided here on
-  B.2.2's numbers.** NMP
-  with adaptive reduction and verification, ProbCut with reduced-depth
-  verification and the TT-served shortcut, singular extensions with
-  double/triple margins, multi-cut, negative extension, low-depth singular
-  extension, IIR versus hindsight-depth policy. Rarog's own evidence rules:
-  no in-check extension unless a new measurement says otherwise. Same
-  sub-step shape as B.2 (implement, diagnose, SPSA if curvature justifies,
-  SPRT `[0,5]`). **Screens: rule 8's cluster ladder**, registered with this
-  cluster's numbers before implementation. The paired run governs; the
-  floors (time-to-depth, WAC, the positional screen, the canary regression
-  rule) are diagnostics; the curvature sweep precedes any SPSA.
+- **B.3 Cluster 2 — proof searches and extensions — `I2`, then `V`.**
+  **Researched 2026-09-23 on the fitted head (`analysis/b3_research_2026-09-23.md`,
+  RAR-S79); B.0's handoff (analysis §3.4–3.5, §13.3) re-based.** What the
+  head does today, `bench 13` at stride 1: NMP enters at 12.6% of interior
+  nodes with a margin *below* beta and converts 22% (32% unfitted); its
+  verification search disables the null move at one node only and fails 15
+  times in 4,425; ProbCut's depth − 4 verification confirms 98.2% of qsearch
+  passes; singular attempts 4.9% of interior nodes with a `4·d` margin where
+  both donors use about `0.5·d`; IIR fires at 12.3% of interior nodes and
+  Reckless has none. B.0's mechanism decisions stand; three things change on
+  that evidence: NMP's population moves to cut nodes with a margin above
+  beta, its verification becomes the donors' `nmp_min_ply` region (today's
+  is inert) and the `cutoff_count` consumer lands; ProbCut keeps Rarog's
+  measured SEE-gap filter and searched-move cap (RAR-S57/S58) and adopts the
+  donor's margin-scaled verification depth, adjusted-beta re-search and lerp
+  return, with the TT-served shortcut a switch; singular adopts the donor's
+  graded double/triple extensions, soft multi-cut, TT-move demotion, −3
+  negative extension, LDSE and the LMR margin term, seeded at Rarog's own
+  `4·d` margin; IIR becomes a categorical decided by zero-game screens.
+  Seeds: shape from the donor, magnitude from Rarog's fitted value where one
+  exists, else the donor's converted value (RAR-S75's lesson). **No in-check
+  extension** (RAR-S06). **Gate bracket: the default `[0,3]`**, not B.0's
+  `[0,5]`, fixed before any game: the prior is moderate and RAR-M10 shows
+  `[0,5]` rejects a true +4 nElo the default accepts. Base: the accepted
+  head at B.3.4's registration — the B.2.4b head, or the B.2.7 head if
+  RAR-S78's gate accepts it first, in which case the branch is rebased and
+  the screens and paired run repeat. Predictions frozen in RAR-S79: unfitted
+  paired run +5 ± 12 Elo; fitted gate +8 ± 8 Elo (H1 0.60, cap 0.25, H0
+  0.15); per-mechanism activation moves in the packet. Baselines measured
+  on the head 2026-09-23: branching 1.700, WAC at 100k 221 and at 400k 260,
+  agreement 41/50, canaries 87/116.
+    - **B.3.1 Implement — `I2`, READY_FOR_IMPLEMENTATION.** Feature
+      `b3proof`, off by default, the off arm exact at 7,185,678 / EBF 2.444
+      on all 40 lines. Tickets in the packet's contract: T1 NMP (cut-node
+      population, margin above beta with the `cutoff_count` term, donor
+      reduction, TT-bound shortcut, `nmp_min_ply` verification region as
+      per-thread state), T2 ProbCut (cut nodes, TT and quiet-TT-move gates,
+      Rarog's filter and cap, margin-scaled depth with adjusted-beta
+      re-search, lerp return, `CoreProbcutTtServed` switch), T3 singular
+      (`potential_singularity`, graded extensions to +3, soft multi-cut,
+      demotion, −3, LDSE, the LMR term), T4 `CoreIirPolicy` switch. Every
+      constant a `Core*` spin at its seed; categoricals are switches.
+      Invariants and their tests, counters and decision-trace lines as
+      listed; `AblationMask` bits unchanged. Verified by the off-arm
+      fingerprint, the test suites on both arms, fmt and clippy on every
+      feature set, and the stride-1 counters read against P3–P5 before any
+      screen runs.
+    - **B.3.2 Diagnostics — `V`.** Rule 8's ladder at the packet's floors:
+      stride-1 counters, the oracle differential, branching, WAC at 100k and
+      400k, agreement, canaries (regression rule), time-to-depth; the bit
+      sweep (2, 3, 4, 6); the categoricals `CoreIirPolicy`,
+      `CoreProbcutTtServed` and `SingularTtDepthMargin` as baseline/A/B on
+      the screens, zero games choosing the default and one 2,000-game
+      categorical run only where the screens disagree; then the 2,000-game
+      unfitted paired run against the head (maintainer-run), which governs.
+      Deliverable `analysis/b32_screens_<date>.md` with a review.
+    - **B.3.3 Sweep and SPSA — `V`.** Curvature sweep of `CoreNmpBase`,
+      `CoreNmpREval`, `CoreProbcutBase`, `CoreSingularMargin` and
+      `CoreLmrSingularOffset` (0.5x–2x, bench and WAC at 100k, classification
+      frozen first); if curved, the 32-coordinate surface on Colosseum at
+      15 × 30 from its own registration, maintainer-run; theta baked in one
+      engine commit.
+    - **B.3.4 Gate — `V`.** Fitted `b3proof` PGO build against the accepted
+      head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
+      registered with binaries and hashes before any game; H1 flips the
+      default, H0 or the cap rejects the cluster as a unit (PLAN rule 6) and
+      the bit sweep record says what B.6 may carry.
 - **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
   TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
   moves, SEE pruning by margin, TT write on exit, check evasions only when
@@ -1281,7 +1327,10 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by B.0; eligible since B.2.4b accepted the fitted B.2 head on 2026-09-20 |
+| B.3.1 | READY_FOR_IMPLEMENTATION | I2 | Feature `b3proof`, off arm exact at 7,185,678; the four tickets of the packet's contract; counters read against P3–P5 before any screen |
+| B.3.2 | RESEARCH | V | Rule 8's ladder at RAR-S79's floors, the bit sweep, three categoricals on zero-game screens, the 2,000-game unfitted paired run (maintainer-run) |
+| B.3.3 | RESEARCH | V | Curvature sweep of five coordinates, then the 32-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
+| B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
