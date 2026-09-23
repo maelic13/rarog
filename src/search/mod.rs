@@ -49,6 +49,8 @@ use crate::syzygy::{self, Wdl};
 use node::build_lmr_table;
 #[cfg(feature = "b2core")]
 use params::CoreParams;
+#[cfg(feature = "b3proof")]
+use params::ProofParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
 use stack::{PlyArray, StackEntry};
@@ -213,6 +215,8 @@ struct SearchConfig {
     params: SearchParams,
     #[cfg(feature = "b2core")]
     core: CoreParams,
+    #[cfg(feature = "b3proof")]
+    proof: ProofParams,
     lmr_table: Box<[[i32; 64]; 64]>,
     /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
     /// it only when the parameters change.
@@ -230,6 +234,8 @@ impl Default for SearchConfig {
             params,
             #[cfg(feature = "b2core")]
             core: CoreParams::default(),
+            #[cfg(feature = "b3proof")]
+            proof: ProofParams::default(),
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -569,6 +575,11 @@ impl Searcher {
         #[cfg(feature = "b2core")]
         {
             self.cfg.core = engine_options.core_params.clone();
+        }
+        #[cfg(feature = "b3proof")]
+        {
+            self.cfg.proof = engine_options.proof_params.clone();
+            self.td.nmp_min_ply = 0;
         }
         let table_key = (
             self.cfg.params.lmr_table_base,

@@ -625,6 +625,40 @@ search_params! {
     hist_fail_low_base = 93, "CoreHistFailLowBase", 0..=400;
 }
 
+// The proof-search cluster's coordinates, on the `b3proof` arm only, so the
+// accepted search advertises none of them. Seeds follow the core's rule: the
+// donor's shape, Rarog's own fitted magnitude where one exists, otherwise the
+// donor's value converted (evaluation units x0.457). Categoricals are
+// switches, never SPSA coordinates.
+#[cfg(feature = "b3proof")]
+search_params! {
+    struct ProofParams, generated_proof_param_checks;
+
+    // Null move.
+    /// Categorical, never an SPSA coordinate. 0 tries the null move at every
+    /// node off the PV line (`!tt_pv`), the population Rarog measured; 1 at
+    /// expected cut nodes only, PV-line cut nodes included.
+    nmp_nodes = 0, "CoreNmpNodes", 0..=1;
+    /// Entry margin above beta: `max(2, base - depth_term * depth +
+    /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
+    /// (child cutoffs < 2))`, evaluation units.
+    nmp_base = 150, "CoreNmpBase", 0..=400;
+    nmp_depth = 4, "CoreNmpDepth", 0..=20;
+    nmp_tt_pv = 50, "CoreNmpTtPv", 0..=200;
+    nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
+    nmp_cutoff = 10, "CoreNmpCutoff", 0..=60;
+    /// Reduction in 1024ths of a ply: `base + improving_term * improving +
+    /// depth_term * depth + eval * clamp(estimate - beta, 0, clamp)/128`.
+    nmp_r_base = 4_407, "CoreNmpRBase", 2048..=8192;
+    nmp_r_improving = 917, "CoreNmpRImproving", 0..=2048;
+    nmp_r_depth = 265, "CoreNmpRDepth", 64..=640;
+    nmp_r_eval = 1_044, "CoreNmpREval", 0..=3072;
+    nmp_r_clamp = 542, "CoreNmpRClamp", 128..=1536;
+    /// From this depth a null fail-high outside a verification region is
+    /// verified by a search with the null move disabled over the region.
+    nmp_verify_depth = 16, "CoreNmpVerifyDepth", 4..=32;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

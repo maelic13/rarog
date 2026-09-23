@@ -276,6 +276,18 @@ pub mod counters {
         // this node never proved by a real line. The search clamps it to beta
         // (as Stockfish does); this counts how often the clamp fires.
         nmp_cut_unproven_mate,
+        // `nmp_cut` by the node's depth: 6 and below, 7 to 12, 13 and more.
+        // Each set sums to `nmp_cut`.
+        nmp_cut_d3_6,
+        nmp_cut_d7_12,
+        nmp_cut_d13_plus,
+        // Proof-search arm (`b3proof`): a null move every other gate admitted
+        // but a verification region refused; a null search run against the
+        // stored lower bound below beta instead of beta; a verification whose
+        // region covered at least one ply below the node and failed.
+        nmp_skip_region,
+        nmp_bound_shortcut,
+        nmp_verify_region_fail,
         // Per-NODE: nodes passing the ProbCut entry gate, counted before
         // capture generation, so nodes with no eligible capture are included.
         // Per-MOVE: `probcut_attempt` -- a ProbCut search was actually started,

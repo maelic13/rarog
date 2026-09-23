@@ -56,6 +56,17 @@ pub(super) struct ThreadData {
     /// Width of the root window of the current aspiration step.
     #[cfg(feature = "b2core")]
     pub(super) root_delta: i32,
+    /// While a null-move verification search runs, the first ply at which the
+    /// null move is allowed again; zero outside a verification, and at every
+    /// search start. Per thread: a helper verifies its own null moves.
+    #[cfg(feature = "b3proof")]
+    pub(super) nmp_min_ply: i32,
+    /// The plies at which a null move was made, for the tests of its gates.
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) null_move_plies: Vec<usize>,
+    /// Null-move verification searches started.
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) nmp_verifications: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(all(test, feature = "b2core"))]
@@ -95,6 +106,12 @@ impl Default for ThreadData {
             root_best_effort: 0.0,
             #[cfg(feature = "b2core")]
             root_delta: 1,
+            #[cfg(feature = "b3proof")]
+            nmp_min_ply: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            null_move_plies: Vec::new(),
+            #[cfg(all(test, feature = "b3proof"))]
+            nmp_verifications: 0,
             #[cfg(all(test, feature = "b2core"))]
             lmr_at_root: 0,
             #[cfg(all(test, feature = "b2core"))]

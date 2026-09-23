@@ -45,6 +45,13 @@ ablate = []
 # `--no-default-features` compiles the superseded B.1 search instead, which
 # reproduces its own fingerprint and reports `+legacy`; B.8 deletes it.
 b2core = []
+# B.3's proof searches and extensions on the selectivity core: null move with
+# a verification region, ProbCut's margin-scaled verification, graded singular
+# extensions with LDSE and the LMR margin term, and the IIR policy switch
+# (analysis/b3_research_2026-09-23.md). Off by default until its gate accepts
+# it; with the feature off the search is the accepted core exactly. The
+# version string carries `+b3proof`.
+b3proof = ["b2core"]
 
 default = ["b2core"]
 # Search diagnostics: exact events plus deterministic sampled

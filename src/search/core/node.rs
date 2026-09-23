@@ -13,6 +13,34 @@ use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 /// Razoring stays away from decisive windows: alpha must be below this.
 const RAZOR_ALPHA_LIMIT: i32 = 936;
 
+/// A score in the tablebase-win band or beyond: a win the search may return
+/// or store only where it proved it.
+#[cfg(feature = "b3proof")]
+const fn is_win(score: i32) -> bool {
+    score >= TB_WIN_SCORE
+}
+
+/// A score in the tablebase-loss band or beyond.
+#[cfg(feature = "b3proof")]
+const fn is_loss(score: i32) -> bool {
+    score <= -TB_WIN_SCORE
+}
+
+/// A win or a loss, see [`is_win`].
+#[cfg(feature = "b3proof")]
+const fn is_decisive(score: i32) -> bool {
+    is_win(score) || is_loss(score)
+}
+
+/// What a null-move cutoff returns: the null search's score, but never a win
+/// the reduced search did not prove and never less than beta, which the
+/// verification established when the null search ran against a lower bound
+/// below it.
+#[cfg(feature = "b3proof")]
+fn null_cutoff_score(score: i32, beta: i32) -> i32 {
+    if is_win(score) { beta } else { score.max(beta) }
+}
+
 // Float-to-int truncation is the table formula's rounding, hence the scoped
 // cast allow. The root loop builds the table for either arm; this arm's
 // reductions do not read it.
@@ -177,6 +205,45 @@ impl Searcher {
         } else {
             infra::to_i32(non_pawn.count() as usize) >= self.cfg.params.nmp_min_non_pawn_pieces
         }
+    }
+
+    /// Whether the null move's population takes this node: every node off
+    /// the PV line at `CoreNmpNodes = 0`, expected cut nodes only at 1.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn nmp_population(&self, pv: bool, cut_node: bool, tt_pv: bool) -> bool {
+        if self.cfg.proof.nmp_nodes == 0 {
+            !tt_pv
+        } else {
+            cut_node && !pv
+        }
+    }
+
+    /// How far above beta the estimated score must stand for a null move, in
+    /// evaluation units, never below 2: less at depth and with improvement,
+    /// more on a PV line, less when the children have failed high fewer than
+    /// twice (a null move there is likelier to hold).
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn nmp_margin(&self, depth: i32, tt_pv: bool, improvement: i32, child_cutoffs: i32) -> i32 {
+        let p = &self.cfg.proof;
+        (p.nmp_base - p.nmp_depth * depth + p.nmp_tt_pv * i32::from(tt_pv)
+            - p.nmp_improvement * improvement / 1024
+            - p.nmp_cutoff * i32::from(child_cutoffs < 2))
+        .max(2)
+    }
+
+    /// The null move's reduction in whole plies: a base, more when improving,
+    /// with depth and with the estimate's surplus over beta up to a clamp.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn nmp_reduction(&self, depth: i32, improving: bool, surplus: i32) -> i32 {
+        let p = &self.cfg.proof;
+        (p.nmp_r_base
+            + p.nmp_r_improving * i32::from(improving)
+            + p.nmp_r_depth * depth
+            + p.nmp_r_eval * surplus.clamp(0, p.nmp_r_clamp) / 128)
+            / 1024
     }
 
     /// Search the root position at `depth` inside the window: the entry the
@@ -595,6 +662,7 @@ impl Searcher {
             }
         };
         let improving = improvement > 0;
+        #[cfg(not(feature = "b3proof"))]
         let improving_i = i32::from(improving);
         // The estimated score: the corrected eval, replaced by a stored bound
         // that tightens it.
@@ -716,7 +784,194 @@ impl Searcher {
             }
         }
 
+        // Whether the table suggests the TT move may be singular: a deep
+        // enough lower or exact bound with a score short of the decisive
+        // band. The null move stays off such a node; the singular search
+        // reads it.
+        #[cfg(feature = "b3proof")]
+        let potential_singularity = !self.ablated(6)
+            && depth >= 5 + i32::from(tt_pv)
+            && ev.depth >= depth - self.cfg.params.singular_tt_depth_margin
+            && matches!(ev.bound, Some(Bound::Lower | Bound::Exact))
+            && !is_decisive(ev.score);
+
+        // Null move: far enough above beta that passing should still hold.
+        // Not where the stored refutation is a lower bound won by capturing
+        // a knight or more, not at a potentially singular node, and not
+        // inside a verification region. A stored lower bound below beta and
+        // deep enough is what the null search must hold instead of beta. A
+        // fail-high from `CoreNmpVerifyDepth`, or any fail-high against that
+        // lower bound, is verified by a search of this node with the null
+        // move disabled from here to `nmp_min_ply`; inside a region a
+        // fail-high at beta returns unverified and one below it is dropped,
+        // so verifications never nest.
+        #[cfg(feature = "b3proof")]
+        if !NODE::ROOT
+            && !self.ablated(2)
+            && allow_null
+            && depth >= 3
+            && !in_check
+            && excluded.is_null()
+            && self.nmp_population(NODE::PV, cut_node, tt_pv)
+            && !potential_singularity
+            && !is_loss(beta)
+            && !is_win(eval_for_pruning)
+            && eval_for_pruning
+                >= beta
+                    + self.nmp_margin(
+                        depth,
+                        tt_pv,
+                        improvement,
+                        self.td.stack[ply + 1].cutoff_count,
+                    )
+            && !(ev.bound == Some(Bound::Lower)
+                && !tt_move.is_null()
+                && board
+                    .captured_piece(tt_move)
+                    .is_some_and(|piece| piece_value(piece) >= piece_value(Piece::Knight)))
+            && self.nmp_material_ok(board)
+        {
+            if infra::to_i32(ply) < self.td.nmp_min_ply {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(nmp_skip_region);
+                }
+                trace_decision!(
+                    self,
+                    ply,
+                    "nmp_skip_region depth {depth} min_ply {}",
+                    self.td.nmp_min_ply
+                );
+            } else {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(nmp_attempt);
+                }
+                let reduction = self.nmp_reduction(depth, improving, eval_for_pruning - beta);
+                let null_bound =
+                    if ev.bound == Some(Bound::Lower) && ev.score < beta && depth - 2 <= ev.depth {
+                        ev.score
+                    } else {
+                        beta
+                    };
+                #[cfg(feature = "diag")]
+                if diag_sample && null_bound < beta {
+                    crate::diag_count!(nmp_bound_shortcut);
+                }
+                self.td.stack[ply].laterality = 0;
+                #[cfg(test)]
+                self.td.null_move_plies.push(ply);
+                board.make_null_move();
+                self.shared.tt.prefetch(board.hash());
+                let score = -self.negamax::<NonPv, _>(
+                    board,
+                    depth - reduction,
+                    -null_bound,
+                    -null_bound + 1,
+                    ply + 1,
+                    false,
+                    Move::NULL,
+                    true,
+                    ply + 1,
+                    poll,
+                );
+                board.unmake_null_move();
+                if self.td.stopped || self.td.quit {
+                    return 0;
+                }
+                if score >= beta {
+                    crate::diag_count!(nmp_cut);
+                    #[cfg(feature = "diag")]
+                    match depth {
+                        ..=6 => crate::diag_count!(nmp_cut_d3_6),
+                        7..=12 => crate::diag_count!(nmp_cut_d7_12),
+                        _ => crate::diag_count!(nmp_cut_d13_plus),
+                    }
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(nmp_sample_cut);
+                    }
+                }
+                trace_decision!(
+                    self,
+                    ply,
+                    "nmp depth {depth} reduction {reduction} estimated {eval_for_pruning} \
+                     margin {} bound {null_bound} score {score} beta {beta} min_ply {}",
+                    self.nmp_margin(
+                        depth,
+                        tt_pv,
+                        improvement,
+                        self.td.stack[ply + 1].cutoff_count
+                    ),
+                    self.td.nmp_min_ply
+                );
+                if score >= null_bound && !is_loss(score) {
+                    let in_region = self.td.nmp_min_ply > 0;
+                    if score >= beta && (depth < self.cfg.proof.nmp_verify_depth || in_region) {
+                        if is_win(score) {
+                            crate::diag_count!(nmp_cut_unproven_mate);
+                        }
+                        return null_cutoff_score(score, beta);
+                    }
+                    if !in_region {
+                        let reduced = if score < beta {
+                            depth / 2
+                        } else {
+                            depth - reduction
+                        };
+                        let min_ply = infra::to_i32(ply) + 3 * reduced / 4;
+                        crate::diag_count!(nmp_verify_attempt);
+                        #[cfg(test)]
+                        {
+                            self.td.nmp_verifications += 1;
+                        }
+                        // The verification searches this ply again and
+                        // overwrites its stack entry.
+                        let tt_pv_here = self.td.stack[ply].tt_pv;
+                        let laterality_here = self.td.stack[ply].laterality;
+                        self.td.nmp_min_ply = min_ply;
+                        let verified = self.negamax::<NonPv, _>(
+                            board,
+                            reduced,
+                            beta - 1,
+                            beta,
+                            ply,
+                            false,
+                            Move::NULL,
+                            false,
+                            last_critical_ply,
+                            poll,
+                        );
+                        self.td.nmp_min_ply = 0;
+                        self.td.stack[ply].tt_pv = tt_pv_here;
+                        self.td.stack[ply].laterality = laterality_here;
+                        if self.td.stopped || self.td.quit {
+                            return 0;
+                        }
+                        trace_decision!(
+                            self,
+                            ply,
+                            "nmp_verify depth {reduced} min_ply {min_ply} score {verified} \
+                             null_score {score} beta {beta}"
+                        );
+                        if verified >= beta {
+                            crate::diag_count!(nmp_verify_pass);
+                            if is_win(score) {
+                                crate::diag_count!(nmp_cut_unproven_mate);
+                            }
+                            return null_cutoff_score(score, beta);
+                        }
+                        crate::diag_count!(nmp_verify_fail);
+                        if min_ply > infra::to_i32(ply) {
+                            crate::diag_count!(nmp_verify_region_fail);
+                        }
+                    }
+                }
+            }
+        }
+
         if !tt_pv && !in_check && excluded.is_null() {
+            #[cfg(not(feature = "b3proof"))]
             if !self.ablated(2)
                 && allow_null
                 && depth >= 3
@@ -752,6 +1007,12 @@ impl Searcher {
                 }
                 if score >= beta {
                     crate::diag_count!(nmp_cut);
+                    #[cfg(feature = "diag")]
+                    match depth {
+                        ..=6 => crate::diag_count!(nmp_cut_d3_6),
+                        7..=12 => crate::diag_count!(nmp_cut_d7_12),
+                        _ => crate::diag_count!(nmp_cut_d13_plus),
+                    }
                     // A null-move fail-high proves only "at least beta". A mate
                     // score from the reduced null search is no demonstrated
                     // mate, so the cutoff returns beta instead.
@@ -2465,6 +2726,273 @@ mod tests {
             );
             assert!(score.abs() < INF_SCORE, "ply {ply}");
         }
+    }
+
+    /// White a queen, two rooks and more ahead, nothing hanging either way.
+    #[cfg(feature = "b3proof")]
+    const WHITE_FAR_AHEAD: &str = "4k3/pppp4/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1";
+
+    /// How a probe node is searched: its type and role, and the searcher
+    /// adjustment made before it.
+    #[cfg(feature = "b3proof")]
+    struct NullProbe {
+        fen: &'static str,
+        pv: bool,
+        cut_node: bool,
+        allow_null: bool,
+        excluded: Option<&'static str>,
+        setup: fn(&mut Searcher),
+    }
+
+    #[cfg(feature = "b3proof")]
+    impl NullProbe {
+        fn new() -> Self {
+            Self {
+                fen: WHITE_FAR_AHEAD,
+                pv: false,
+                cut_node: true,
+                allow_null: true,
+                excluded: None,
+                setup: |_| {},
+            }
+        }
+
+        /// Search the node at ply 1, depth 8, with beta 300 below its
+        /// estimate: inside the null move's margin and short of reverse
+        /// futility's. Whether a null move was made at ply 1.
+        fn null_move_at_node(&self) -> bool {
+            let mut searcher = Searcher::default();
+            (self.setup)(&mut searcher);
+            let mut board = Board::from_fen(self.fen).expect("valid FEN");
+            let beta = searcher.corrected_eval(&board, 1) - 300;
+            let excluded = self
+                .excluded
+                .map_or(Move::NULL, |mv| board.parse_move(mv).expect("legal move"));
+            let (depth, ply) = (8, 1);
+            let score = if self.pv {
+                searcher.negamax::<Pv, _>(
+                    &mut board,
+                    depth,
+                    beta - 1,
+                    beta,
+                    ply,
+                    self.allow_null,
+                    excluded,
+                    self.cut_node,
+                    ply,
+                    &mut || SearchEvent::None,
+                )
+            } else {
+                searcher.negamax::<NonPv, _>(
+                    &mut board,
+                    depth,
+                    beta - 1,
+                    beta,
+                    ply,
+                    self.allow_null,
+                    excluded,
+                    self.cut_node,
+                    ply,
+                    &mut || SearchEvent::None,
+                )
+            };
+            assert!(score.abs() < INF_SCORE);
+            searcher.td.null_move_plies.contains(&1)
+        }
+    }
+
+    /// The null move's gates, each from a node that takes the null move
+    /// with the gate open: the population switch, the PV line, an excluded
+    /// move, a verification region above the node, a node in check and the
+    /// consecutive-null guard.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn null_move_keeps_to_its_population_and_out_of_regions() {
+        let base = NullProbe::new;
+        assert!(
+            base().null_move_at_node(),
+            "the probe node must take the null move"
+        );
+        assert!(
+            NullProbe {
+                cut_node: false,
+                ..base()
+            }
+            .null_move_at_node(),
+            "an all node off the PV line takes it at CoreNmpNodes = 0"
+        );
+        let cut_nodes_only: fn(&mut Searcher) = |s| s.cfg.proof.nmp_nodes = 1;
+        assert!(
+            NullProbe {
+                setup: cut_nodes_only,
+                ..base()
+            }
+            .null_move_at_node(),
+            "a cut node takes it at CoreNmpNodes = 1"
+        );
+        assert!(
+            !NullProbe {
+                cut_node: false,
+                setup: cut_nodes_only,
+                ..base()
+            }
+            .null_move_at_node(),
+            "an all node does not at CoreNmpNodes = 1"
+        );
+        for setup in [|_: &mut Searcher| {}, cut_nodes_only] {
+            assert!(
+                !NullProbe {
+                    pv: true,
+                    setup,
+                    ..base()
+                }
+                .null_move_at_node(),
+                "a PV node never takes it"
+            );
+        }
+        assert!(
+            !NullProbe {
+                excluded: Some("a2a3"),
+                ..base()
+            }
+            .null_move_at_node(),
+            "a singular-exclusion node never takes it"
+        );
+        assert!(
+            !NullProbe {
+                setup: |s| s.td.nmp_min_ply = 5,
+                ..base()
+            }
+            .null_move_at_node(),
+            "a node above a verification region's end never takes it"
+        );
+        assert!(
+            !NullProbe {
+                allow_null: false,
+                ..base()
+            }
+            .null_move_at_node(),
+            "the reply to a null move never takes one"
+        );
+        assert!(
+            !NullProbe {
+                fen: "4k3/pppp4/8/8/8/8/PPPPrPPP/RNBQKBNR w KQ - 0 1",
+                ..base()
+            }
+            .null_move_at_node(),
+            "a node in check never takes it"
+        );
+    }
+
+    /// The root never takes a null move, at either population.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_root_never_takes_a_null_move() {
+        for nodes in 0..=1 {
+            let mut searcher = Searcher::default();
+            searcher.cfg.proof.nmp_nodes = nodes;
+            let mut board = Board::from_fen(WHITE_FAR_AHEAD).expect("valid FEN");
+            let score =
+                searcher.search_root_window(&mut board, 8, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            assert!(score.abs() < INF_SCORE);
+            assert!(
+                !searcher.td.null_move_plies.is_empty(),
+                "the tree must try null moves"
+            );
+            assert!(
+                !searcher.td.null_move_plies.contains(&0),
+                "CoreNmpNodes = {nodes}"
+            );
+        }
+    }
+
+    /// With verification from depth 4, a middlegame search verifies null
+    /// moves; the region is cleared after every one, and a new search starts
+    /// with none.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_verification_region_is_cleared_after_verifying_and_at_search_start() {
+        let mut searcher = Searcher::default();
+        searcher.cfg.proof.nmp_verify_depth = 4;
+        let mut board =
+            Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .expect("valid FEN");
+        let score = searcher.search_root_window(&mut board, 9, -INF_SCORE, INF_SCORE, &mut || {
+            SearchEvent::None
+        });
+        assert!(score.abs() < INF_SCORE);
+        assert!(searcher.td.nmp_verifications > 0, "the search must verify");
+        assert_eq!(searcher.td.nmp_min_ply, 0);
+
+        searcher.td.nmp_min_ply = 7;
+        let mut options = crate::search_options::EngineOptions::default();
+        options.proof_params.nmp_verify_depth = 4;
+        searcher.reset_search_state(
+            &crate::search_options::SearchLimits::default(),
+            &options,
+            board.side_to_move(),
+            0,
+            true,
+            false,
+        );
+        assert_eq!(
+            searcher.td.nmp_min_ply, 0,
+            "a search starts outside any region"
+        );
+    }
+
+    /// A null-move cutoff returns at least beta and never a win the reduced
+    /// search did not prove.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn a_null_cutoff_returns_neither_a_win_nor_less_than_beta() {
+        assert_eq!(null_cutoff_score(150, 100), 150);
+        assert_eq!(
+            null_cutoff_score(80, 100),
+            100,
+            "a verified lower-bound fail-high"
+        );
+        assert_eq!(null_cutoff_score(TB_WIN_SCORE, 100), 100);
+        assert_eq!(null_cutoff_score(MATE_SCORE - 3, 100), 100);
+        assert_eq!(null_cutoff_score(-50, -60), -50);
+    }
+
+    /// The margin sits above beta, never below 2, and each term moves it in
+    /// its stated direction; the reduction grows with depth and surplus up to
+    /// the clamp.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn null_move_margin_and_reduction_follow_their_coordinates() {
+        let searcher = Searcher::default();
+        let p = &searcher.cfg.proof;
+        let margin = |depth, tt_pv, improvement, cutoffs| {
+            searcher.nmp_margin(depth, tt_pv, improvement, cutoffs)
+        };
+        assert_eq!(margin(8, false, 0, 2), p.nmp_base - 8 * p.nmp_depth);
+        assert_eq!(margin(8, true, 0, 2) - margin(8, false, 0, 2), p.nmp_tt_pv);
+        assert_eq!(
+            margin(8, false, 0, 2) - margin(8, false, 0, 1),
+            p.nmp_cutoff
+        );
+        assert!(margin(8, false, 1024, 2) < margin(8, false, 0, 2));
+        assert_eq!(margin(8, false, 1_000_000, 0), 2, "floored at 2");
+
+        let reduction =
+            |depth, improving, surplus| searcher.nmp_reduction(depth, improving, surplus);
+        assert!(reduction(12, false, 0) >= reduction(6, false, 0));
+        assert!(reduction(8, true, 0) >= reduction(8, false, 0));
+        assert_eq!(
+            reduction(8, false, -500),
+            reduction(8, false, 0),
+            "no negative surplus"
+        );
+        assert_eq!(
+            reduction(8, false, p.nmp_r_clamp),
+            reduction(8, false, 10 * p.nmp_r_clamp),
+            "the surplus saturates"
+        );
     }
 
     #[test]

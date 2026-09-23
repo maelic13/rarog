@@ -1,6 +1,8 @@
 use crate::board::{Board, Move};
 #[cfg(feature = "b2core")]
 use crate::search::params::CoreParams;
+#[cfg(feature = "b3proof")]
+use crate::search::params::ProofParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
@@ -39,6 +41,9 @@ pub struct EngineOptions {
     /// The selectivity core's coordinates.
     #[cfg(feature = "b2core")]
     pub core_params: CoreParams,
+    /// The proof-search cluster's coordinates.
+    #[cfg(feature = "b3proof")]
+    pub proof_params: ProofParams,
 }
 
 impl Default for EngineOptions {
@@ -53,6 +58,8 @@ impl Default for EngineOptions {
             search_params: SearchParams::default(),
             #[cfg(feature = "b2core")]
             core_params: CoreParams::default(),
+            #[cfg(feature = "b3proof")]
+            proof_params: ProofParams::default(),
         }
     }
 }
@@ -189,6 +196,8 @@ impl SearchOptions {
         opts.extend(SearchParams::uci_option_strings());
         #[cfg(all(feature = "tune", feature = "b2core"))]
         opts.extend(CoreParams::uci_option_strings());
+        #[cfg(all(feature = "tune", feature = "b3proof"))]
+        opts.extend(ProofParams::uci_option_strings());
         opts
     }
 
@@ -455,6 +464,14 @@ impl SearchOptions {
                 }
                 #[cfg(all(feature = "tune", feature = "b2core"))]
                 if self.engine.core_params.set_uci_option(&option_name, &value) {
+                    return OptionUpdate::Engine;
+                }
+                #[cfg(all(feature = "tune", feature = "b3proof"))]
+                if self
+                    .engine
+                    .proof_params
+                    .set_uci_option(&option_name, &value)
+                {
                     return OptionUpdate::Engine;
                 }
                 crate::info_string!("No such option: {option_name_raw}");
