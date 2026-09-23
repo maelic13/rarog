@@ -97,6 +97,13 @@ const _: () = {
 /// The tier this CPU should be running, from what it supports.
 ///
 /// Pure so it can be tested across CPUs this machine is not.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 const fn recommended_tier(has_avx2: bool, has_bmi2: bool, slow_pext: bool) -> Tier {
     if !has_avx2 {
         Tier::Base
@@ -115,11 +122,25 @@ const fn recommended_tier(has_avx2: bool, has_bmi2: bool, slow_pext: bool) -> Ti
 /// its entire source and it is this one — everything else there, all eight
 /// tiers and seventeen feature bits, is pure feature testing. A flag can say an
 /// instruction is legal; it cannot say it is fast.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 const fn has_slow_pext(is_amd: bool, family: u32) -> bool {
     is_amd && (family == 0x15 || family == 0x17)
 }
 
 /// The advisory line, or `None` when this asset is already the right one.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 fn advice_for(built: Tier, recommended: Tier, slow_pext: bool) -> Option<String> {
     if built == recommended {
         return None;
