@@ -77,6 +77,15 @@ jobs:
       - name: cargo clippy (--features diag,tune)
         run: cargo clippy --all-targets --features diag,tune -- -D warnings
 
+      # The proof-search candidate lives behind `b3proof`, so its blocks are
+      # linted only when the feature is on; with diag and tune its counters
+      # and `ProofParams` UCI plumbing compile too.
+      - name: cargo clippy (--features b3proof)
+        run: cargo clippy --all-targets --features b3proof -- -D warnings
+
+      - name: cargo clippy (--features b3proof,diag,tune)
+        run: cargo clippy --all-targets --features b3proof,diag,tune -- -D warnings
+
       - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -132,6 +141,15 @@ jobs:
             cargo test -p rarog --release --no-default-features
           else
             cargo test -p rarog --no-default-features
+          fi
+
+      - name: cargo test — engine, b3proof candidate (${{ matrix.profile }})
+        shell: bash
+        run: |
+          if [ "${{ matrix.profile }}" = "release" ]; then
+            cargo test -p rarog --release --features b3proof
+          else
+            cargo test -p rarog --features b3proof
           fi
 
       - name: cargo test — tooling crates
@@ -210,6 +228,10 @@ jobs:
       - name: Build release, legacy search
         run: cargo build --release --no-default-features --target-dir target/legacy
 
+      # The proof-search candidate must agree across platforms as well.
+      - name: Build release, b3proof candidate
+        run: cargo build --release --features b3proof --target-dir target/b3proof
+
       - name: Run bench and record node counts
         shell: bash
         run: |
@@ -225,8 +247,10 @@ jobs:
           accepted=$nodes
           count "./target/legacy/release/rarog${{ matrix.ext }}" bench-legacy.log
           legacy=$nodes
-          echo "${{ matrix.label }} $accepted $legacy" > "nodes-${{ matrix.label }}.txt"
-          echo "$accepted nodes (legacy $legacy) on ${{ matrix.label }}"
+          count "./target/b3proof/release/rarog${{ matrix.ext }}" bench-b3proof.log
+          candidate=$nodes
+          echo "${{ matrix.label }} $accepted $legacy $candidate" > "nodes-${{ matrix.label }}.txt"
+          echo "$accepted nodes (legacy $legacy, b3proof $candidate) on ${{ matrix.label }}"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -251,14 +275,14 @@ jobs:
       - name: All platforms must report the same node counts
         run: |
           cat nodes-*.txt
-          for column in 2 3; do
+          for column in 2 3 4; do
             counts=$(awk -v c=$column '{print $c}' nodes-*.txt | sort -u | wc -l)
             if [ "$counts" -ne 1 ]; then
               echo "::error::platforms disagree on bench node count (column $column) — see the table above"
               exit 1
             fi
           done
-          echo "all platforms agree: $(awk '{print $2, "legacy", $3}' nodes-*.txt | sort -u)"
+          echo "all platforms agree: $(awk '{print $2, "legacy", $3, "b3proof", $4}' nodes-*.txt | sort -u)"
 
   features:
     name: feature builds
@@ -295,10 +319,14 @@ jobs:
       - name: Build --features ablate
         run: cargo build --release --features ablate
 
+      # The set B.3.2's bit sweep and B.3.3's tune run on.
+      - name: Build --features b3proof,tune,ablate
+        run: cargo build --release --features b3proof,tune,ablate
+
       # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
-      # `diag` and under `tune` and fail under both. This enumerates all 32
-      # subsets of the five declared features with
+      # `diag` and under `tune` and fail under both. This enumerates all 64
+      # subsets of the six declared features with
       # `cargo check --all-targets --no-default-features`, which catches the
       # same compilation errors far more cheaply than 32 builds. Every subset
       # starts from a clean slate, so `b2core` is an axis like any other and
@@ -308,7 +336,7 @@ jobs:
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
       # be measured (AGENTS.md).
-      - name: Feature matrix (all 32 subsets compile)
+      - name: Feature matrix (all 64 subsets compile)
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)
