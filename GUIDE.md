@@ -194,7 +194,7 @@ is the numbering: release first, baselines on the released binary.
     - [x] **B.2.8** First-search stalls: KPK bitbase and every table built at start-up, hash table converted at `setoption`, helper tables ready before the first search (`9a7b663`, `c0e6ef7`, bench unchanged, first KPK search 0.16 ms fresh vs 34 before); the 10,000-game confirmation was handed to Colosseum and never played (its 10.9m closed without it); 21,055 post-fix fastchess games lost none on time (RAR-M59) — DONE 2026-09-19
 - [ ] **B.3** Cluster 2 — NMP, ProbCut, singular/multi-cut/negative/LDSE extensions, IIR policy; researched on the fitted head 2026-09-23 (RAR-S79); SPRT `[0,3]` — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **B.3.1** Implement behind `b3proof`: NMP at cut nodes with a verification region, ProbCut's donor depth and return, graded singular/multi-cut/LDSE and the LMR term, IIR switch; off arm exact — **READY_FOR_IMPLEMENTATION / I2**
-    - [ ] **B.3.2** Diagnostics: counters, screen ladder, bit sweep, three categoricals, the 2,000-game unfitted paired run (maintainer-run) — **RESEARCH / V**
+    - [ ] **B.3.2** Diagnostics: counters, screen ladder, bit sweep, five categoricals, the 2,000-game unfitted paired run (maintainer-run) — **RESEARCH / V**
     - [ ] **B.3.3** Curvature sweep, then the SPSA on Colosseum if curved (maintainer-run); theta baked — **RESEARCH / V**
     - [ ] **B.3.4** Gate: SPRT `[0,3]` vs the accepted head, cap 20,000 pairs (maintainer-run); default flip — **RESEARCH / V**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; research card on the search's never-fitted piece-value scale (RAR-M19); SPRT `[0,3]` — **RESEARCH / I2**
