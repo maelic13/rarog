@@ -67,6 +67,11 @@ pub(super) struct ThreadData {
     /// Null-move verification searches started.
     #[cfg(all(test, feature = "b3proof"))]
     pub(super) nmp_verifications: u64,
+    /// ProbCut capture searches started, and ProbCut cutoffs.
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) probcut_searches: u64,
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) probcut_cuts: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(all(test, feature = "b2core"))]
@@ -112,6 +117,10 @@ impl Default for ThreadData {
             null_move_plies: Vec::new(),
             #[cfg(all(test, feature = "b3proof"))]
             nmp_verifications: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            probcut_searches: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            probcut_cuts: 0,
             #[cfg(all(test, feature = "b2core"))]
             lmr_at_root: 0,
             #[cfg(all(test, feature = "b2core"))]

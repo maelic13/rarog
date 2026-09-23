@@ -219,6 +219,18 @@ impl Searcher {
         }
     }
 
+    /// Whether ProbCut's population takes this node: every node off the PV
+    /// line at `CoreProbcutNodes = 0`, expected cut nodes only at 1.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn probcut_population(&self, pv: bool, cut_node: bool, tt_pv: bool) -> bool {
+        if self.cfg.proof.probcut_nodes == 0 {
+            !tt_pv
+        } else {
+            cut_node && !pv
+        }
+    }
+
     /// How far above beta the estimated score must stand for a null move, in
     /// evaluation units, never below 2: less at depth and with improvement,
     /// more on a PV line, less when the children have failed high fewer than
@@ -970,8 +982,8 @@ impl Searcher {
             }
         }
 
+        #[cfg(not(feature = "b3proof"))]
         if !tt_pv && !in_check && excluded.is_null() {
-            #[cfg(not(feature = "b3proof"))]
             if !self.ablated(2)
                 && allow_null
                 && depth >= 3
@@ -1134,10 +1146,17 @@ impl Searcher {
                         0,
                         poll,
                     );
+                    #[cfg(feature = "diag")]
+                    let qpassed = score >= probcut_beta;
                     let score = if score >= probcut_beta {
                         #[cfg(feature = "diag")]
                         if diag_sample {
                             crate::diag_count!(probcut_qpass);
+                            if depth == 4 {
+                                crate::diag_count!(probcut_qpass_base0);
+                            } else {
+                                crate::diag_count!(probcut_verify);
+                            }
                         }
                         -self.negamax::<NonPv, _>(
                             board,
@@ -1154,6 +1173,10 @@ impl Searcher {
                     } else {
                         score
                     };
+                    #[cfg(feature = "diag")]
+                    if diag_sample && qpassed && depth > 4 && score < probcut_beta {
+                        crate::diag_count!(probcut_verify_fail);
+                    }
                     board.unmake_move(mv);
                     self.clear_move(ply);
                     if self.td.stopped || self.td.quit {
@@ -1193,6 +1216,235 @@ impl Searcher {
                             crate::diag_count!(probcut_tt_store);
                         }
                         return cutoff_score;
+                    }
+                }
+            }
+        }
+
+        // ProbCut: a good capture whose reduced search clears beta by a
+        // margin refutes the parent's move. With a stored score, it must
+        // already clear that margin and not be decisive; without one, the
+        // estimate must be at beta. The captures are Rarog's: the SEE must
+        // bridge the gap to the margin and at most `CoreProbcutMoveCap` are
+        // searched. After a quiescence pass, the verification is shallower
+        // the more the pass cleared the margin by, and must then clear a
+        // bound raised by `CoreProbcutAdjust` per ply saved; failing that,
+        // it is repeated at the full depth. A cut stores a lower bound with
+        // its move and returns a score pulled toward beta; a decisive score
+        // is returned and stored as proved.
+        #[cfg(feature = "b3proof")]
+        if !NODE::ROOT
+            && !self.ablated(3)
+            && !in_check
+            && excluded.is_null()
+            && !is_win(beta)
+            && self.probcut_population(NODE::PV, cut_node, tt_pv)
+        {
+            let improving_i = i32::from(improving);
+            let tt_margin = self.cfg.proof.probcut_tt_margin;
+            if self.cfg.proof.probcut_tt_served != 0
+                && ev.bound == Some(Bound::Lower)
+                && ev.depth >= depth - 4
+                && !is_decisive(beta)
+                && !is_decisive(ev.score)
+                && ev.score >= beta + tt_margin
+            {
+                crate::diag_count!(probcut_tt_served);
+                trace_decision!(
+                    self,
+                    ply,
+                    "probcut_tt_served depth {depth} tt_depth {} tt_score {} beta {beta} \
+                     returns {}",
+                    ev.depth,
+                    ev.score,
+                    beta + tt_margin
+                );
+                return beta + tt_margin;
+            }
+            let probcut_beta =
+                beta + self.cfg.proof.probcut_base - self.cfg.proof.probcut_improving * improving_i;
+            let quiet_tt_move =
+                self.cfg.proof.probcut_nodes != 0 && !tt_move.is_null() && !is_noisy(tt_move);
+            let tt_gate = if ev.bound.is_some() {
+                ev.score >= probcut_beta && !is_decisive(ev.score)
+            } else {
+                eval_for_pruning >= beta
+            };
+            #[cfg(feature = "diag")]
+            if diag_sample && depth >= 4 {
+                if quiet_tt_move {
+                    crate::diag_count!(probcut_quiet_tt_reject);
+                } else if !tt_gate {
+                    crate::diag_count!(probcut_tt_gate_reject);
+                }
+            }
+            if depth >= 4 && !quiet_tt_move && tt_gate {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(probcut_nodes);
+                }
+                // The gap is floored at zero, so at a node already above
+                // `probcut_beta` a capture still may not lose material.
+                let see_threshold =
+                    ((probcut_beta - static_eval) * self.cfg.params.probcut_see_gap_scale / 100)
+                        .max(0);
+                let move_cap = self.cfg.proof.probcut_move_cap;
+                let base_depth = (depth - 4 - improving_i).max(0);
+                let mut captures = MoveList::new();
+                board.generate_legal_captures_into(&mut captures);
+                let mut scored =
+                    self.score_tactical_moves(board, &threats, captures.as_slice(), tt_move);
+                let mut searched_here = 0i32;
+                for index in 0..scored.len() {
+                    if searched_here >= move_cap {
+                        break;
+                    }
+                    let picked = pick_next(scored.as_mut_slice(), index);
+                    let mv = picked.mv;
+                    if !board.see_ge(mv, see_threshold) {
+                        continue;
+                    }
+                    searched_here += 1;
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(probcut_attempt);
+                    }
+                    #[cfg(test)]
+                    {
+                        self.td.probcut_searches += 1;
+                    }
+                    let probcut_piece = board.moving_piece(mv);
+                    // ProbCut's child is a verification search, not a
+                    // reduced sibling, so it consumes neither selectivity
+                    // input. Written explicitly rather than left stale.
+                    self.push_move(board, ply, mv, probcut_piece);
+                    self.record_move_order(ply, 0);
+                    board.make_move(mv);
+                    self.shared.tt.prefetch(board.hash());
+                    let mut score = -self.quiescence::<NonPv, _>(
+                        board,
+                        -probcut_beta,
+                        -probcut_beta + 1,
+                        ply + 1,
+                        0,
+                        poll,
+                    );
+                    #[cfg(feature = "diag")]
+                    let qsearch_score = score;
+                    let mut probcut_depth = (base_depth
+                        - (score - probcut_beta) / self.cfg.proof.probcut_depth_div)
+                        .clamp(0, base_depth);
+                    // The bound this move's search must clear to cut.
+                    let mut move_beta = probcut_beta;
+                    if score >= probcut_beta {
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(probcut_qpass);
+                        }
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            if base_depth == 0 {
+                                crate::diag_count!(probcut_qpass_base0);
+                            }
+                            if probcut_depth > 0 {
+                                crate::diag_count!(probcut_verify);
+                            }
+                            if probcut_depth > 0 && probcut_depth < base_depth {
+                                crate::diag_count!(probcut_verify_raised);
+                            }
+                        }
+                        if probcut_depth > 0 {
+                            let adjusted = (probcut_beta
+                                + self.cfg.proof.probcut_adjust * (base_depth - probcut_depth))
+                                .min(INF_SCORE);
+                            score = -self.negamax::<NonPv, _>(
+                                board,
+                                probcut_depth,
+                                -adjusted,
+                                -adjusted + 1,
+                                ply + 1,
+                                false,
+                                Move::NULL,
+                                true,
+                                last_critical_ply,
+                                poll,
+                            );
+                            if score < adjusted && probcut_beta < adjusted {
+                                #[cfg(feature = "diag")]
+                                if diag_sample {
+                                    crate::diag_count!(probcut_deeper_research);
+                                }
+                                probcut_depth = base_depth;
+                                score = -self.negamax::<NonPv, _>(
+                                    board,
+                                    base_depth,
+                                    -probcut_beta,
+                                    -probcut_beta + 1,
+                                    ply + 1,
+                                    false,
+                                    Move::NULL,
+                                    true,
+                                    last_critical_ply,
+                                    poll,
+                                );
+                            } else {
+                                move_beta = adjusted;
+                            }
+                        }
+                    }
+                    board.unmake_move(mv);
+                    self.clear_move(ply);
+                    if self.td.stopped || self.td.quit {
+                        return 0;
+                    }
+                    #[cfg(feature = "diag")]
+                    if diag_sample
+                        && qsearch_score >= probcut_beta
+                        && probcut_depth > 0
+                        && score < move_beta
+                    {
+                        crate::diag_count!(probcut_verify_fail);
+                    }
+                    if score >= move_beta {
+                        crate::diag_count!(probcut_cut);
+                        let returned = if is_decisive(score) {
+                            score
+                        } else {
+                            score + (beta - score) * self.cfg.proof.probcut_lerp / 1024
+                        };
+                        trace_decision!(
+                            self,
+                            ply,
+                            "probcut depth {depth} move {mv} qsearch {qsearch_score} \
+                             probcut_depth {probcut_depth} bound {move_beta} score {score} \
+                             static {static_eval} returns {returned}"
+                        );
+                        self.shared.tt.store(TtStore {
+                            key: hash,
+                            depth: probcut_depth + 1,
+                            // The fail-high shifted down by the margin it
+                            // cleared: storing the raw fail-high measured
+                            // 5.55% slower to depth.
+                            score: if is_decisive(score) {
+                                score
+                            } else {
+                                score - (move_beta - beta)
+                            },
+                            bound: Bound::Lower,
+                            mv,
+                            ply,
+                            static_eval: raw_static_eval,
+                            is_pv: tt_pv,
+                        });
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(probcut_tt_store);
+                        }
+                        #[cfg(test)]
+                        {
+                            self.td.probcut_cuts += 1;
+                        }
+                        return returned;
                     }
                 }
             }
@@ -2993,6 +3245,112 @@ mod tests {
             reduction(8, false, 10 * p.nmp_r_clamp),
             "the surplus saturates"
         );
+    }
+
+    /// White to move can take a hanging queen with a pawn.
+    #[cfg(feature = "b3proof")]
+    const HANGING_QUEEN: &str = "4k3/8/8/3q4/4P3/8/8/4K3 w - - 0 1";
+
+    /// Search `HANGING_QUEEN` at ply 1, depth 8, at a cut node with the null
+    /// move off, beta 100 below the estimate plus `beta_offset`, after an
+    /// optional stored entry. Returns the score, beta and the searcher.
+    #[cfg(feature = "b3proof")]
+    fn probcut_probe(
+        setup: fn(&mut Searcher),
+        stored: Option<(i32, i32, &str)>,
+        beta_offset: i32,
+    ) -> (i32, i32, Searcher) {
+        let mut searcher = Searcher::default();
+        setup(&mut searcher);
+        let mut board = Board::from_fen(HANGING_QUEEN).expect("valid FEN");
+        let estimate = searcher.corrected_eval(&board, 1);
+        let beta = estimate - 100 + beta_offset;
+        if let Some((depth, above_beta, mv)) = stored {
+            searcher.shared.tt.store(TtStore {
+                key: board.hash(),
+                depth,
+                score: beta + above_beta,
+                bound: Bound::Lower,
+                mv: board.parse_move(mv).expect("legal move"),
+                ply: 1,
+                static_eval: VALUE_NONE,
+                is_pv: false,
+            });
+        }
+        let score = searcher.negamax::<NonPv, _>(
+            &mut board,
+            8,
+            beta - 1,
+            beta,
+            1,
+            false,
+            Move::NULL,
+            true,
+            1,
+            &mut || SearchEvent::None,
+        );
+        (score, beta, searcher)
+    }
+
+    /// Taking the queen cuts the node through ProbCut: the node returns a
+    /// score at or above beta and the table holds a lower bound with the
+    /// capture, at the verification depth plus one.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn a_probcut_cut_stores_a_lower_bound_with_its_move() {
+        let (score, beta, searcher) = probcut_probe(|_| {}, None, 0);
+        assert_eq!(searcher.td.probcut_cuts, 1, "ProbCut must cut this node");
+        let board = Board::from_fen(HANGING_QUEEN).expect("valid FEN");
+        assert!(
+            score >= beta,
+            "a cut returns at least beta: {score} < {beta}"
+        );
+        let entry = searcher.shared.tt.probe(board.hash());
+        let ev = TtProbe::from_entry(entry, 1, board.halfmove_clock());
+        assert_eq!(ev.bound, Some(Bound::Lower));
+        assert_eq!(ev.mv, board.parse_move("e4d5"));
+        assert!(ev.depth >= 1, "stored at the verification depth plus one");
+        assert!(ev.score >= beta);
+    }
+
+    /// No ProbCut search starts against a decisive beta, and at the cut-node
+    /// population none starts when the TT move is quiet; a capture TT move,
+    /// or the default population, lets it run.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn probcut_refuses_a_decisive_beta_and_a_quiet_tt_move_at_cut_nodes() {
+        let (_, _, decisive) = probcut_probe(|_| {}, None, TB_WIN_SCORE + 1_000);
+        assert_eq!(decisive.td.probcut_searches, 0, "decisive beta");
+
+        let cut_nodes_only: fn(&mut Searcher) = |s| s.cfg.proof.probcut_nodes = 1;
+        let quiet = Some((1, 200, "e1f1"));
+        let (_, _, vetoed) = probcut_probe(cut_nodes_only, quiet, 0);
+        assert_eq!(vetoed.td.probcut_searches, 0, "quiet TT move at a cut node");
+        let (_, _, capture) = probcut_probe(cut_nodes_only, Some((1, 200, "e4d5")), 0);
+        assert!(
+            capture.td.probcut_searches > 0,
+            "capture TT move at a cut node"
+        );
+        let (_, _, default) = probcut_probe(|_| {}, quiet, 0);
+        assert!(
+            default.td.probcut_searches > 0,
+            "quiet TT move, default population"
+        );
+    }
+
+    /// Under `CoreProbcutTtServed` a stored lower bound at most four plies
+    /// shallower that clears beta by the margin returns `beta + margin`
+    /// before any capture is searched; with the switch off the capture
+    /// search runs.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn a_tt_served_probcut_returns_the_margin_only_when_switched_on() {
+        let stored = Some((6, 300, "e1f1"));
+        let (score, beta, served) = probcut_probe(|s| s.cfg.proof.probcut_tt_served = 1, stored, 0);
+        assert_eq!(score, beta + served.cfg.proof.probcut_tt_margin);
+        assert_eq!(served.td.probcut_searches, 0);
+        let (_, _, searched) = probcut_probe(|_| {}, stored, 0);
+        assert!(searched.td.probcut_searches > 0);
     }
 
     #[test]

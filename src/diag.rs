@@ -297,6 +297,27 @@ pub mod counters {
         probcut_attempt,
         probcut_qpass,
         probcut_tt_store,
+        // Proof-search arm (`b3proof`), per node: refused by the stored score
+        // (below `probcut_beta`, or decisive) or, without one, by the
+        // estimate below beta; refused for a quiet TT move (cut-node
+        // population); returned by a stored lower bound before any capture
+        // (`CoreProbcutTtServed`). Per move: a shallow verification that
+        // failed its raised bound and was repeated at the full depth.
+        probcut_tt_gate_reject,
+        probcut_quiet_tt_reject,
+        probcut_tt_served,
+        probcut_deeper_research,
+        // What a qsearch pass is verified by, both arms, per move. A pass at
+        // base depth 0 (depth 4, or 5 while improving, on the proof arm;
+        // depth 4 on the accepted core) is verified by nothing deeper than
+        // the qsearch it already passed. `probcut_verify` counts passes
+        // verified by a search of at least one ply, `probcut_verify_fail`
+        // those that then failed, `probcut_verify_raised` (proof arm) those
+        // verified shallower than the base against a raised bound.
+        probcut_qpass_base0,
+        probcut_verify,
+        probcut_verify_raised,
+        probcut_verify_fail,
         singular_attempt,
         singular_extend_one,
         singular_extend_two,

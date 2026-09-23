@@ -657,6 +657,31 @@ search_params! {
     /// From this depth a null fail-high outside a verification region is
     /// verified by a search with the null move disabled over the region.
     nmp_verify_depth = 16, "CoreNmpVerifyDepth", 4..=32;
+
+    // ProbCut.
+    /// Categorical, never an SPSA coordinate. 0 runs ProbCut at every node
+    /// off the PV line (`!tt_pv`), the population Rarog measured; 1 at
+    /// expected cut nodes only, and not when the TT move is quiet.
+    probcut_nodes = 0, "CoreProbcutNodes", 0..=1;
+    /// `probcut_beta = beta + base - improving_term * improving`, evaluation
+    /// units; the base is Rarog's fitted `ProbCutMargin`.
+    probcut_base = 180, "CoreProbcutBase", 50..=400;
+    probcut_improving = 39, "CoreProbcutImproving", 0..=150;
+    /// Captures searched at most per node.
+    probcut_move_cap = 4, "CoreProbcutMoveCap", 1..=16;
+    /// The verification depth falls one ply below `depth - 4 - improving`
+    /// for every `div` units the qsearch pass cleared `probcut_beta` by.
+    probcut_depth_div = 146, "CoreProbcutDepthDiv", 48..=512;
+    /// A shallower verification must clear `probcut_beta` plus this per ply
+    /// it saved.
+    probcut_adjust = 90, "CoreProbcutAdjust", 0..=300;
+    /// A cut returns this many 1024ths of the way from its score to beta.
+    probcut_lerp = 276, "CoreProbcutLerp", 0..=1024;
+    /// Categorical, never an SPSA coordinate. 1 returns `beta + margin`
+    /// before the capture search when a stored lower bound at most four
+    /// plies shallower already clears it; 0 does not.
+    probcut_tt_served = 0, "CoreProbcutTtServed", 0..=1;
+    probcut_tt_margin = 208, "CoreProbcutTtMargin", 50..=600;
 }
 
 #[cfg(test)]
