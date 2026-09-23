@@ -1204,8 +1204,20 @@ diagnostics; two rejections stop B.
   0.15); per-mechanism activation moves in the packet. Baselines measured
   on the head 2026-09-23: branching 1.700, WAC at 100k 221 and at 400k 260,
   agreement 41/50, canaries 87/116.
-    - **B.3.1 Implement — `I2`, RESEARCH (returned a fifth time
-      2026-09-23, after amendment 5's budget).** The per-line extension
+    - **B.3.1 Implement — `I2`, IMPLEMENTED 2026-09-23.** The `b3proof` arm
+      is T1 (`cbc602e`), T2 (`2b9507b`) and T3 (`40dcd93`), then amendment
+      3 (`c1bec33`) and amendment 4's lone-move `alpha` return and IIR
+      shrink (`90a7f87`); the per-line extension budget (`9bf6717`)
+      replaced amendment 4's ply bound. **Final fingerprints:**
+      - arm **7,479,114 / EBF 2.467** (`bench 13`);
+      - off arm 7,185,678 / 2.444, all 40 lines;
+      - `--no-default-features` 7,601,220 / 2.474.
+
+      Suites: off 329/330, arm 348/349 (debug/release). The deep-iteration
+      cost screen passes at 2.26× and 1.33× (amendment 6). The stride-1
+      P3–P5 table is in the packet's *Final implementation record*; CI
+      covers the arm (`d0a128f`). Earlier history: returned a fifth time
+      2026-09-23, after amendment 5's budget. The per-line extension
       budget replaces the ply bound (`9bf6717`); the arm reads 7,479,114 /
       EBF 2.467. The deep-iteration cost screen fails at two of eleven
       comparisons: position 11 at depth 17 (3.44× the head's nodes) and
@@ -1274,8 +1286,12 @@ diagnostics; two rejections stop B.
       screen runs.
     - **B.3.2 Diagnostics — `V`.** Rule 8's ladder at the packet's floors:
       stride-1 counters, the oracle differential, branching, WAC at 100k and
-      400k, agreement, canaries (regression rule), time-to-depth; the bit
-      sweep (2, 3, 4, 6); the five categoricals `CoreNmpNodes`,
+      400k, agreement, canaries (regression rule), time-to-depth; the
+      deep-iteration cost screen (amendment 6): per position on five
+      phase-4 positions, `go depth 16..19` under the watchdog. The
+      geometric mean of the arm/head cumulative-node ratios over depths
+      16–19 must be ≤ 3×, and the arm must finish every depth the head
+      finishes. Then the bit sweep (2, 3, 4, 6); the five categoricals `CoreNmpNodes`,
       `CoreProbcutNodes`, `CoreProbcutTtServed`, `SingularTtDepthMargin`
       and `CoreSingularFloor` (amendment 3; `CoreIirPolicy` was shrunk to
       its default under amendment 4, so P8 has no screen) as baseline/A/B on
@@ -1392,8 +1408,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.1 | READY_FOR_IMPLEMENTATION | I2 | **Resumed 2026-09-23 after amendment 6** (packet): the cost screen aggregates over depths 16–19 (geometric mean ≤ 3×, arm finishes what the head finishes) and passes at 2.26× and 1.33×; the bars stay a sweep question; ply-cap lines at deep iterations are B.5's; then counters, suites, CI, close-out. Earlier: **returned a fifth time after amendment 5's budget** (`9bf6717`: per-line extension budget, `CoreSingDoubleBase`; off arm exact; arm 7,479,114 / EBF 2.467). The deep-iteration cost screen fails: arm nodes exceed 3× the head's at position 11 depth 17 (3.44×) and position 15 depth 19 (4.11×). The arm finishes every depth the head finishes, and the other nine ratios run 0.56×–2.59×. The claim that the budget bounds line depth by construction is also false: seldepth 127 persists, and the head reaches it without singular (packet Unknown 11, *Amendment 5 record*). Counters, suites, CI and close-out not done; bars not tuned. Before that, **resumed 2026-09-23 after amendment 5** (packet): bounded by cost, a per-line extension budget (sum of positive extensions ≤ iteration depth) replaces the ply bound, (a1) stays, a deep-iteration cost screen (≤ 3× the head's nodes at depths 16–20) joins B.3.2; then step 2, CI, close-out. Earlier: **returned a fourth time after amendment 4's bounds** (`90a7f87`: `alpha` for a lone excluded move, positive extensions only while `ply < 2·root_depth`, `CoreIirPolicy` shrunk to its default, P8 unfalsifiable; off arm exact; arm 8,099,189 / EBF 2.466). The bounds do not bound seldepth: the default arm reaches the ply cap at depth 17 on the forced-line positions, at up to 300× the head's nodes, and the head reaches it at depth 19, so the seldepth-based regression test's premise is false (packet Unknown 10, *Amendment 4 record*). Step 2, CI and close-out wait. Before that, **resumed 2026-09-23 after amendment 4** (packet): the extension chain is a defect, bounded by Stockfish's `alpha` return for a lone excluded move and a `ply < 2·root_depth` guard on positive extensions, with a forced-line test and a watchdog bench at every IIR policy; the IIR categorical stays if both then finish; then CI and close-out. Earlier: **returned a third time after T4** (`c1bec33` amendment 3 applied, with T3's gates and KBNK passing, arm 10,396,945 / EBF 2.485; `e90d8ba` T4, default tree unchanged; CI and close-out not done). Under `CoreIirPolicy` 0 or 2 the singular extensions run lines to the ply cap (seldepth 127 on bench positions 11 and 15) and `bench 13` does not finish, so IIR is load-bearing, not a free categorical (packet Unknown 9, *T4 record*: watchdog runs, head-vs-arm table, choice 8 = the −3 held to a one-ply child at depth 4). Recommended: (c), SF's alpha return at an exclusion node with no other move plus a shrunk IIR categorical. Before that, **resumed 2026-09-23 after amendment 3** (packet): Rarog's multi-cut rule (the donor's fails KBNK), Rarog's candidate floor as default with the donor's as `CoreSingularFloor`, bars kept, `CoreSingTripleBase` into the sweep, P5's three-ply and multi-cut legs reads; then T4, CI for the arm, close. Earlier: **returned a second time after T3** (`40dcd93`; off arm exact at 7,185,678 on all 40 lines; arm T1–T3 at 6,841,250 / EBF 2.422; T4 not built): P5's attempts, three-ply and multi-cut gates fail, with live wires, because of three contract terms (donor candidate floor, non-PV two-ply bar ≤ 0, the donor's looser multi-cut). The arm also fails `kbnk_positions_are_driven_to_mate` in `tests/endgames.rs` (2 of 5 budgets; T1+T2 passed), and only removing the multi-cut or restricting it to Rarog's rule clears it. Packet Unknown 8 and *T3 record* hold the counters, wire proofs, the attribution and options (a)–(d). Recommended: (c) plus (a), meaning Rarog's multi-cut rule, the other legs as reads, then T4. Before that, **resumed 2026-09-23 at T3 after amendment 2** (packet): option (a) for ProbCut, the region kept with a depth-20 wire check in B.3.2, choices 1–7 accepted, the demotion condition restated; P4's survival leg withdrawn, calibration in RAR-S79. Earlier the same day: **returned to RESEARCH after T1 and T2** (`cbc602e`, `2b9507b`; off arm exact at 7,185,678 on all 40 lines; T3 and T4 not built): two packet premises are contradicted by stride-1 counters with live wires (packet Unknowns 6–7). ProbCut's donor verification can never be deeper than the head's, so P4's survival leg is out of reach, and the region refuses no null move at bench depth. The packet's *B.3.1 implementation record* holds the counters, wire proofs, choices and options (a)–(c). Resume at T3 once the research amendment chooses. Recommended: (a) |
-| B.3.2 | RESEARCH | V | Rule 8's ladder at RAR-S79's floors, the bit sweep, five categoricals on zero-game screens, the 2,000-game unfitted paired run (maintainer-run) |
+| B.3.2 | RESEARCH | V | Rule 8's ladder at RAR-S79's floors, the deep-iteration cost screen (geometric mean over depths 16–19 ≤ 3× the head, five phase-4 positions), the bit sweep, five categoricals (NmpNodes, ProbcutNodes, ProbcutTtServed, SingularTtDepthMargin, SingularFloor) on zero-game screens, the 2,000-game unfitted paired run (maintainer-run) |
 | B.3.3 | RESEARCH | V | Curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
