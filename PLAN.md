@@ -1204,7 +1204,20 @@ diagnostics; two rejections stop B.
   0.15); per-mechanism activation moves in the packet. Baselines measured
   on the head 2026-09-23: branching 1.700, WAC at 100k 221 and at 400k 260,
   agreement 41/50, canaries 87/116.
-    - **B.3.1 Implement — `I2`, READY_FOR_IMPLEMENTATION.** Feature
+    - **B.3.1 Implement — `I2`, RESEARCH (returned 2026-09-23 after T1 and
+      T2).** T1 and T2 are built behind `b3proof`, with the off arm exact.
+      Two premises failed on the stride-1 counters, with every wire proven
+      live, and the rule for a false premise stopped the leaf before T3.
+      First, ProbCut's donor verification is never deeper than the head's
+      `depth − 4`. A third of the head's qsearch passes are at depth 4, where
+      the verification repeats the qsearch, and among passes verified by a
+      real search survival is 97.3% on the head and 97.9% on the arm, so P4's
+      "below 95%" cannot be met. Second, the null-move verification region
+      refuses no null move in `bench 13`, because reverse futility answers
+      its shallow nodes first. The packet (Unknowns 6–7 and *B.3.1
+      implementation record*) holds the evidence and three options. The
+      research amendment picks one, re-registers P4's survival leg, then T3
+      resumes on the contract below. Original handoff: Feature
       `b3proof`, off by default, the off arm exact at 7,185,678 / EBF 2.444
       on all 40 lines. Tickets in the packet's contract: T1 NMP (population
       switch, margin above beta with the `cutoff_count` term, donor
@@ -1338,7 +1351,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.1 | READY_FOR_IMPLEMENTATION | I2 | Feature `b3proof`, off arm exact at 7,185,678; the four tickets of the packet's contract; counters read against P3–P5 before any screen |
+| B.3.1 | RESEARCH | I2 | **Returned to RESEARCH 2026-09-23 after T1 and T2** (`cbc602e`, `2b9507b`; off arm exact at 7,185,678 on all 40 lines; T3 and T4 not built): two packet premises are contradicted by stride-1 counters with live wires (packet Unknowns 6–7). ProbCut's donor verification can never be deeper than the head's, so P4's survival leg is out of reach, and the region refuses no null move at bench depth. The packet's *B.3.1 implementation record* holds the counters, wire proofs, choices and options (a)–(c). Resume at T3 once the research amendment chooses. Recommended: (a) |
 | B.3.2 | RESEARCH | V | Rule 8's ladder at RAR-S79's floors, the bit sweep, five categoricals on zero-game screens, the 2,000-game unfitted paired run (maintainer-run) |
 | B.3.3 | RESEARCH | V | Curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
