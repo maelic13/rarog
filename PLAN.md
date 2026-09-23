@@ -1204,9 +1204,21 @@ diagnostics; two rejections stop B.
   0.15); per-mechanism activation moves in the packet. Baselines measured
   on the head 2026-09-23: branching 1.700, WAC at 100k 221 and at 400k 260,
   agreement 41/50, canaries 87/116.
-    - **B.3.1 Implement — `I2`, RESEARCH (returned 2026-09-23 after T1 and
-      T2).** T1 and T2 are built behind `b3proof`, with the off arm exact.
-      Two premises failed on the stride-1 counters, with every wire proven
+    - **B.3.1 Implement — `I2`, RESEARCH (returned a second time
+      2026-09-23, after T3).** T3 is built on the contract and amendment 2.
+      Its three P5 activation gates fail, with every wire proven live
+      (packet Unknown 8, *T3 record*): candidates are 3.24% of interior
+      nodes because the donor's `depth >= 5 + tt_pv` floor replaces the
+      head's `depth >= 4` (5.44% with it); three-ply extensions are 21% of
+      attempts because the non-PV two-ply bar is at most zero; multi-cut is
+      32% because the donor's rule is looser than Rarog's (19.3% under
+      Rarog's). The same multi-cut rule makes the arm fail the KBNK
+      regression test (`kbnk_positions_are_driven_to_mate`, 2 of 5
+      budgets), which passes with Rarog's rule. The arm with T1–T3 reads
+      6,841,250 / EBF 2.422. T4 waits for the amendment's choice among
+      (a)–(d); recommended (c) plus (a), Rarog's multi-cut with the other
+      legs as reads. First return, after T1 and T2, resolved by amendment 2:
+      two premises failed on the stride-1 counters, with every wire proven
       live, and the rule for a false premise stopped the leaf before T3.
       First, ProbCut's donor verification is never deeper than the head's
       `depth − 4`. A third of the head's qsearch passes are at depth 4, where
@@ -1351,7 +1363,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.1 | READY_FOR_IMPLEMENTATION | I2 | **Resumed 2026-09-23 at T3 after amendment 2** (packet): option (a) for ProbCut, the region kept with a depth-20 wire check in B.3.2, choices 1–7 accepted, the demotion condition restated; P4's survival leg withdrawn, calibration in RAR-S79. Earlier the same day: **returned to RESEARCH after T1 and T2** (`cbc602e`, `2b9507b`; off arm exact at 7,185,678 on all 40 lines; T3 and T4 not built): two packet premises are contradicted by stride-1 counters with live wires (packet Unknowns 6–7). ProbCut's donor verification can never be deeper than the head's, so P4's survival leg is out of reach, and the region refuses no null move at bench depth. The packet's *B.3.1 implementation record* holds the counters, wire proofs, choices and options (a)–(c). Resume at T3 once the research amendment chooses. Recommended: (a) |
+| B.3.1 | RESEARCH | I2 | **Returned a second time 2026-09-23 after T3** (`40dcd93`; off arm exact at 7,185,678 on all 40 lines; arm T1–T3 at 6,841,250 / EBF 2.422; T4 not built): P5's attempts, three-ply and multi-cut gates fail, with live wires, because of three contract terms (donor candidate floor, non-PV two-ply bar ≤ 0, the donor's looser multi-cut). The arm also fails `kbnk_positions_are_driven_to_mate` in `tests/endgames.rs` (2 of 5 budgets; T1+T2 passed), and only removing the multi-cut or restricting it to Rarog's rule clears it. Packet Unknown 8 and *T3 record* hold the counters, wire proofs, the attribution and options (a)–(d). Recommended: (c) plus (a), meaning Rarog's multi-cut rule, the other legs as reads, then T4. Before that, **resumed 2026-09-23 at T3 after amendment 2** (packet): option (a) for ProbCut, the region kept with a depth-20 wire check in B.3.2, choices 1–7 accepted, the demotion condition restated; P4's survival leg withdrawn, calibration in RAR-S79. Earlier the same day: **returned to RESEARCH after T1 and T2** (`cbc602e`, `2b9507b`; off arm exact at 7,185,678 on all 40 lines; T3 and T4 not built): two packet premises are contradicted by stride-1 counters with live wires (packet Unknowns 6–7). ProbCut's donor verification can never be deeper than the head's, so P4's survival leg is out of reach, and the region refuses no null move at bench depth. The packet's *B.3.1 implementation record* holds the counters, wire proofs, choices and options (a)–(c). Resume at T3 once the research amendment chooses. Recommended: (a) |
 | B.3.2 | RESEARCH | V | Rule 8's ladder at RAR-S79's floors, the bit sweep, five categoricals on zero-game screens, the 2,000-game unfitted paired run (maintainer-run) |
 | B.3.3 | RESEARCH | V | Curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
