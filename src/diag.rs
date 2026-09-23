@@ -323,6 +323,22 @@ pub mod counters {
         singular_extend_two,
         singular_multicut,
         singular_negative_extension,
+        // Proof-search arm (`b3proof`): a singular move extended three
+        // plies; a TT move that lost its first slot because the exclusion
+        // search beat its score; a low-depth singular extension of a cut
+        // node's first move; a late-move reduction the singular margin term
+        // raised.
+        singular_extend_three,
+        singular_ttmove_demoted,
+        ldse_applied,
+        lmr_singular_term,
+        // Proof-search arm, the singular population: attempts at expected
+        // cut nodes; extensions at nodes off the PV, where the two-ply bar is
+        // at most zero; multi-cuts whose singular beta already reached beta,
+        // the only ones the accepted core's rule takes.
+        singular_attempt_cut_node,
+        singular_extend_non_pv,
+        singular_multicut_head_rule,
         iir_applied,
         iir_pv,
         iir_no_tt_move,

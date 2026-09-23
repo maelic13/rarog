@@ -72,6 +72,12 @@ pub(super) struct ThreadData {
     pub(super) probcut_searches: u64,
     #[cfg(all(test, feature = "b3proof"))]
     pub(super) probcut_cuts: u64,
+    /// Singular exclusion searches started, and nodes whose first move a
+    /// singular or low-depth singular decision extended or reduced.
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) singular_searches: u64,
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) extended_nodes: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(all(test, feature = "b2core"))]
@@ -121,6 +127,10 @@ impl Default for ThreadData {
             probcut_searches: 0,
             #[cfg(all(test, feature = "b3proof"))]
             probcut_cuts: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            singular_searches: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            extended_nodes: 0,
             #[cfg(all(test, feature = "b2core"))]
             lmr_at_root: 0,
             #[cfg(all(test, feature = "b2core"))]

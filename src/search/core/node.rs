@@ -41,6 +41,16 @@ fn null_cutoff_score(score: i32, beta: i32) -> i32 {
     if is_win(score) { beta } else { score.max(beta) }
 }
 
+/// What a multi-cut returns: `None` unless the exclusion search failed high
+/// with a score short of the decisive band; otherwise the score pulled
+/// `lerp` 1024ths of the way to beta, and never into the decisive band, which
+/// only a proof may reach.
+#[cfg(feature = "b3proof")]
+fn multicut_score(score: i32, beta: i32, lerp: i32) -> Option<i32> {
+    (score >= beta && !is_decisive(score))
+        .then(|| (score + (beta - score) * lerp / 1024).max(-TB_WIN_SCORE + 1))
+}
+
 // Float-to-int truncation is the table formula's rounding, hence the scoped
 // cast allow. The root loop builds the table for either arm; this arm's
 // reductions do not read it.
@@ -120,6 +130,10 @@ struct LateMoveInputs {
     /// Beta cutoffs among this node's children so far.
     child_cutoffs: i32,
     parent_reduction: i32,
+    /// The TT move's score at this node minus its exclusion search's, when
+    /// both were searched.
+    #[cfg(feature = "b3proof")]
+    singular_gap: Option<i32>,
 }
 
 /// The inputs of the full-depth branch's reduction for one move.
@@ -229,6 +243,61 @@ impl Searcher {
         } else {
             cut_node && !pv
         }
+    }
+
+    /// How far a singular TT move extends, one to three plies, given how far
+    /// its exclusion search fell below the singular beta (`below > 0`). The
+    /// bars for two and three plies are higher on a PV node, higher still
+    /// when the table did not already place it on a PV line, lower for a
+    /// quiet TT move and with the correction's size.
+    #[cfg(feature = "b3proof")]
+    fn singular_extension(
+        &self,
+        below: i32,
+        pv: bool,
+        tt_was_pv: bool,
+        quiet_tt: bool,
+        corr_abs: i32,
+    ) -> i32 {
+        let p = &self.cfg.proof;
+        let new_pv = i32::from(pv && !tt_was_pv);
+        let double = p.sing_double_pv * i32::from(pv) + p.sing_double_not_tt_pv * new_pv
+            - p.sing_double_quiet * i32::from(quiet_tt)
+            - p.sing_double_corr * corr_abs / 128;
+        let triple = p.sing_triple_pv * i32::from(pv) + p.sing_triple_not_tt_pv * new_pv
+            - p.sing_triple_quiet * i32::from(quiet_tt)
+            - p.sing_triple_corr * corr_abs / 128
+            + p.sing_triple_base;
+        1 + i32::from(below > double) + i32::from(below > triple)
+    }
+
+    /// Whether a node without a singular candidate extends its first move:
+    /// an expected cut node at depth 7 or less, out of check, whose estimate
+    /// sits `CoreLdseMargin` or more below alpha.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn ldse_applies(
+        &self,
+        depth: i32,
+        in_check: bool,
+        cut_node: bool,
+        estimate: i32,
+        alpha: i32,
+    ) -> bool {
+        depth <= 7 && !in_check && cut_node && estimate <= alpha - self.cfg.proof.ldse_margin
+    }
+
+    /// The late-move reduction's singular term, in 1024ths of a ply: how far
+    /// the TT move's score at this node stood above its exclusion search,
+    /// past an offset, scaled and capped. Zero unless both scores exist.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn lmr_singular_term(&self, singular_gap: Option<i32>) -> i32 {
+        let p = &self.cfg.proof;
+        singular_gap.map_or(0, |gap| {
+            (p.lmr_singular_slope * (gap - p.lmr_singular_offset) / 128)
+                .clamp(0, p.lmr_singular_cap)
+        })
     }
 
     /// How far above beta the estimated score must stand for a null move, in
@@ -347,6 +416,14 @@ impl Searcher {
         if i.child_cutoffs > 2 {
             r += p.lmr_child_cutoffs
                 + p.lmr_child_cutoffs_all_node * i32::from(!i.pv && !i.cut_node);
+        }
+        #[cfg(feature = "b3proof")]
+        {
+            let singular = self.lmr_singular_term(i.singular_gap);
+            if singular > 0 {
+                crate::diag_count!(lmr_singular_term);
+            }
+            r += singular;
         }
         if !i.pv && i.parent_reduction > r + 414 {
             r += p.lmr_parent;
@@ -1450,6 +1527,138 @@ impl Searcher {
             }
         }
 
+        // Singular extension, decided before the move loop so a TT move the
+        // exclusion search beat can lose its first slot. The TT move is
+        // searched against a margin below its stored score with itself
+        // excluded. Everything failing low marks it singular: it extends one
+        // to three plies. An exclusion fail-high at beta is a multi-cut and
+        // returns a softened score. One that beat the stored score demotes
+        // the TT move to the ordinary picker order. Otherwise a stored score
+        // at beta, or a cut node, reduces it three plies. With no singular
+        // candidate, a shallow cut node well below alpha extends its first
+        // move by one instead.
+        #[cfg(feature = "b3proof")]
+        let mut node_extension = 0;
+        #[cfg(feature = "b3proof")]
+        let mut singular_score: Option<i32> = None;
+        #[cfg(feature = "b3proof")]
+        if !NODE::ROOT && excluded.is_null() && potential_singularity && !tt_move.is_null() {
+            #[cfg(feature = "diag")]
+            if diag_sample {
+                crate::diag_count!(singular_attempt);
+            }
+            #[cfg(feature = "diag")]
+            if diag_sample && cut_node {
+                crate::diag_count!(singular_attempt_cut_node);
+            }
+            let k = self.cfg.proof.singular_margin;
+            let span = if ev.bound == Some(Bound::Exact) {
+                (depth + 3) / 4
+            } else {
+                depth
+            };
+            let margin = span * k + depth * k * i32::from(tt_pv && !NODE::PV);
+            let singular_beta = ev.score - margin;
+            let singular_depth = (depth - 1) / 2;
+            #[cfg(test)]
+            {
+                self.td.singular_searches += 1;
+            }
+            let score = self.negamax::<NonPv, _>(
+                board,
+                singular_depth,
+                singular_beta - 1,
+                singular_beta,
+                ply,
+                false,
+                tt_move,
+                cut_node,
+                ply,
+                poll,
+            );
+            // The exclusion search ran at this ply and overwrote it.
+            self.td.stack[ply].tt_pv = tt_pv;
+            if self.td.stopped || self.td.quit {
+                return 0;
+            }
+            singular_score = Some(score);
+            trace_decision!(
+                self,
+                ply,
+                "singular depth {depth} move {tt_move} tt_score {} margin {margin} \
+                 singular_beta {singular_beta} score {score} beta {beta} cut_node {cut_node}",
+                ev.score
+            );
+            if score < singular_beta {
+                node_extension = self.singular_extension(
+                    singular_beta - score,
+                    NODE::PV,
+                    ev.pv_line(false),
+                    !is_noisy(tt_move),
+                    corr_abs,
+                );
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    match node_extension {
+                        1 => crate::diag_count!(singular_extend_one),
+                        2 => crate::diag_count!(singular_extend_two),
+                        _ => crate::diag_count!(singular_extend_three),
+                    }
+                    if !NODE::PV {
+                        crate::diag_count!(singular_extend_non_pv);
+                    }
+                }
+            } else if let Some(cut) = multicut_score(score, beta, self.cfg.proof.sing_multicut_lerp)
+            {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(singular_multicut);
+                    if singular_beta >= beta {
+                        crate::diag_count!(singular_multicut_head_rule);
+                    }
+                }
+                trace_decision!(
+                    self,
+                    ply,
+                    "multicut score {score} beta {beta} returns {cut}"
+                );
+                return cut;
+            } else if score > ev.score && !is_decisive(score) {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(singular_ttmove_demoted);
+                }
+                tt_move = Move::NULL;
+            } else if ev.score >= beta || cut_node {
+                #[cfg(feature = "diag")]
+                if diag_sample {
+                    crate::diag_count!(singular_negative_extension);
+                }
+                node_extension = -3;
+            }
+        } else if !NODE::ROOT
+            && !self.ablated(6)
+            && self.ldse_applies(depth, in_check, cut_node, eval_for_pruning, alpha)
+        {
+            #[cfg(feature = "diag")]
+            if diag_sample {
+                crate::diag_count!(ldse_applied);
+            }
+            trace_decision!(
+                self,
+                ply,
+                "ldse depth {depth} estimated {eval_for_pruning} alpha {alpha} margin {}",
+                self.cfg.proof.ldse_margin
+            );
+            node_extension = 1;
+        }
+        #[cfg(feature = "b3proof")]
+        let mut tt_move_score: Option<i32> = None;
+        #[cfg(all(test, feature = "b3proof"))]
+        if node_extension != 0 {
+            self.td.extended_nodes += 1;
+        }
+
         let mut move_picker = if NODE::ROOT {
             let mut legal_moves = MoveList::new();
             board.generate_legal_movelist_into(&mut legal_moves);
@@ -1701,73 +1910,82 @@ impl Searcher {
             }
 
             let child_is_pv = NODE::PV && searched == 0;
+            // The node's extension belongs to its first move: the TT move
+            // when it has one and kept its slot.
+            #[cfg(feature = "b3proof")]
+            let extension = if move_count == 1 { node_extension } else { 0 };
+            #[cfg(not(feature = "b3proof"))]
             let mut extension = 0;
-            let singular_move_candidate = !self.ablated(6)
-                && !NODE::ROOT
-                && mv == tt_move
-                && excluded.is_null()
-                && depth >= 4;
-            if singular_move_candidate
-                && ev.allows_singular(depth, self.cfg.params.singular_tt_depth_margin)
+            #[cfg(not(feature = "b3proof"))]
             {
-                #[cfg(feature = "diag")]
-                if diag_sample {
-                    crate::diag_count!(singular_attempt);
-                }
-                let singular_beta = ev.score - self.cfg.params.singular_beta_mult * depth;
-                let singular_depth = (depth - 1) / 2;
-                let singular_score = self.negamax::<NonPv, _>(
-                    board,
-                    singular_depth,
-                    singular_beta - 1,
-                    singular_beta,
-                    ply,
-                    false,
-                    mv,
-                    false,
-                    ply,
-                    poll,
-                );
-                // The verification search ran at this ply and overwrote it.
-                self.td.stack[ply].tt_pv = tt_pv;
-                if self.td.stopped || self.td.quit {
-                    return 0;
-                }
-                trace_decision!(
-                    self,
-                    ply,
-                    "singular depth {depth} move {mv} tt_score {} singular_beta {singular_beta} \
+                let singular_move_candidate = !self.ablated(6)
+                    && !NODE::ROOT
+                    && mv == tt_move
+                    && excluded.is_null()
+                    && depth >= 4;
+                if singular_move_candidate
+                    && ev.allows_singular(depth, self.cfg.params.singular_tt_depth_margin)
+                {
+                    #[cfg(feature = "diag")]
+                    if diag_sample {
+                        crate::diag_count!(singular_attempt);
+                    }
+                    let singular_beta = ev.score - self.cfg.params.singular_beta_mult * depth;
+                    let singular_depth = (depth - 1) / 2;
+                    let singular_score = self.negamax::<NonPv, _>(
+                        board,
+                        singular_depth,
+                        singular_beta - 1,
+                        singular_beta,
+                        ply,
+                        false,
+                        mv,
+                        false,
+                        ply,
+                        poll,
+                    );
+                    // The verification search ran at this ply and overwrote it.
+                    self.td.stack[ply].tt_pv = tt_pv;
+                    if self.td.stopped || self.td.quit {
+                        return 0;
+                    }
+                    trace_decision!(
+                        self,
+                        ply,
+                        "singular depth {depth} move {mv} tt_score {} singular_beta {singular_beta} \
                      score {singular_score} beta {beta}",
-                    ev.score
-                );
-                if singular_score < singular_beta {
-                    extension = if !NODE::PV
-                        && singular_score < singular_beta - self.cfg.params.singular_double_margin
-                    {
+                        ev.score
+                    );
+                    if singular_score < singular_beta {
+                        extension = if !NODE::PV
+                            && singular_score
+                                < singular_beta - self.cfg.params.singular_double_margin
+                        {
+                            #[cfg(feature = "diag")]
+                            if diag_sample {
+                                crate::diag_count!(singular_extend_two);
+                            }
+                            2
+                        } else {
+                            #[cfg(feature = "diag")]
+                            if diag_sample {
+                                crate::diag_count!(singular_extend_one);
+                            }
+                            1
+                        };
+                    } else if singular_beta >= beta {
                         #[cfg(feature = "diag")]
                         if diag_sample {
-                            crate::diag_count!(singular_extend_two);
+                            crate::diag_count!(singular_multicut);
                         }
-                        2
-                    } else {
+                        return singular_beta;
+                    } else if ev.score >= beta {
                         #[cfg(feature = "diag")]
                         if diag_sample {
-                            crate::diag_count!(singular_extend_one);
+                            crate::diag_count!(singular_negative_extension);
                         }
-                        1
-                    };
-                } else if singular_beta >= beta {
-                    #[cfg(feature = "diag")]
-                    if diag_sample {
-                        crate::diag_count!(singular_multicut);
+                        extension = -1;
                     }
-                    return singular_beta;
-                } else if ev.score >= beta {
-                    #[cfg(feature = "diag")]
-                    if diag_sample {
-                        crate::diag_count!(singular_negative_extension);
-                    }
-                    extension = -1;
                 }
             }
 
@@ -1781,6 +1999,11 @@ impl Searcher {
             board.make_move_with_check(mv, mv_gives_check);
             self.shared.tt.prefetch(board.hash());
             let mut new_depth = depth - 1 + extension;
+            #[cfg(feature = "b3proof")]
+            debug_assert!(
+                (-3..=3).contains(&extension) && (extension == 0 || new_depth >= 1),
+                "extension {extension} at depth {depth}"
+            );
             #[cfg(feature = "diag")]
             if diag_sample {
                 crate::diag_add!(
@@ -1930,7 +2153,21 @@ impl Searcher {
                         gives_check: mv_gives_check,
                         child_cutoffs: self.td.stack[ply + 1].cutoff_count,
                         parent_reduction: self.td.stack.back(ply, 1).reduction,
+                        #[cfg(feature = "b3proof")]
+                        singular_gap: tt_move_score
+                            .zip(singular_score)
+                            .map(|(tt_score, excluded_score)| tt_score - excluded_score),
                     });
+                    #[cfg(all(feature = "b3proof", feature = "diag"))]
+                    if let Some((tt_score, excluded_score)) = tt_move_score.zip(singular_score) {
+                        trace_decision!(
+                            self,
+                            ply,
+                            "lmr_singular move {mv} tt_move_score {tt_score} \
+                             singular_score {excluded_score} term {}",
+                            self.lmr_singular_term(Some(tt_score - excluded_score))
+                        );
+                    }
                     let reduced_depth = reduced_depth(new_depth, reduction, NODE::PV);
                     crate::diag_count!(lmr_applied);
                     #[cfg(test)]
@@ -2057,6 +2294,10 @@ impl Searcher {
 
             if self.td.stopped || self.td.quit {
                 return 0;
+            }
+            #[cfg(feature = "b3proof")]
+            if mv == tt_move {
+                tt_move_score = Some(score);
             }
 
             let move_nodes = if NODE::ROOT {
@@ -2545,6 +2786,8 @@ mod tests {
             gives_check: false,
             child_cutoffs: 0,
             parent_reduction: 0,
+            #[cfg(feature = "b3proof")]
+            singular_gap: None,
         }
     }
 
@@ -2847,6 +3090,22 @@ mod tests {
         }),
     ];
 
+    /// The proof-search arm's categorical switches.
+    #[cfg(feature = "b3proof")]
+    const PROOF_SWITCHES: &[(&str, SetSwitch)] = &[
+        ("CoreNmpNodes", |s, v| {
+            s.cfg.proof.nmp_nodes = v;
+        }),
+        ("CoreProbcutNodes", |s, v| {
+            s.cfg.proof.probcut_nodes = v;
+        }),
+        ("CoreProbcutTtServed", |s, v| {
+            s.cfg.proof.probcut_tt_served = v;
+        }),
+    ];
+    #[cfg(not(feature = "b3proof"))]
+    const PROOF_SWITCHES: &[(&str, SetSwitch)] = &[];
+
     /// Every switch at both values leaves no reduction on the stack after
     /// the search unwinds and a root PV made of legal moves, from a quiet
     /// middlegame root and from a root in check.
@@ -2856,7 +3115,7 @@ mod tests {
             "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
         ];
-        for &(name, set) in SWITCHES {
+        for &(name, set) in SWITCHES.iter().chain(PROOF_SWITCHES) {
             for value in 0..=1 {
                 for fen in roots {
                     let mut searcher = Searcher::default();
@@ -3143,12 +3402,20 @@ mod tests {
         for nodes in 0..=1 {
             let mut searcher = Searcher::default();
             searcher.cfg.proof.nmp_nodes = nodes;
-            let mut board = Board::from_fen(WHITE_FAR_AHEAD).expect("valid FEN");
-            let score =
-                searcher.search_root_window(&mut board, 8, -INF_SCORE, INF_SCORE, &mut || {
-                    SearchEvent::None
-                });
-            assert!(score.abs() < INF_SCORE);
+            let mut board = Board::from_fen(
+                "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            )
+            .expect("valid FEN");
+            for depth in 1..=10 {
+                let score = searcher.search_root_window(
+                    &mut board,
+                    depth,
+                    -INF_SCORE,
+                    INF_SCORE,
+                    &mut || SearchEvent::None,
+                );
+                assert!(score.abs() < INF_SCORE);
+            }
             assert!(
                 !searcher.td.null_move_plies.is_empty(),
                 "the tree must try null moves"
@@ -3351,6 +3618,134 @@ mod tests {
         assert_eq!(served.td.probcut_searches, 0);
         let (_, _, searched) = probcut_probe(|_| {}, stored, 0);
         assert!(searched.td.probcut_searches > 0);
+    }
+
+    /// A singular extension is one to three plies for every input and never
+    /// shrinks as the exclusion score falls further below the singular beta.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn a_singular_extension_is_one_to_three_plies_and_grows_with_the_gap() {
+        let searcher = Searcher::default();
+        for pv in [false, true] {
+            for tt_was_pv in [false, true] {
+                for quiet_tt in [false, true] {
+                    for corr_abs in [0, 50, 400, 3_000] {
+                        let mut last = 1;
+                        for below in 1..600 {
+                            let extension = searcher
+                                .singular_extension(below, pv, tt_was_pv, quiet_tt, corr_abs);
+                            assert!((1..=3).contains(&extension));
+                            assert!(extension >= last, "shrank at {below}");
+                            last = extension;
+                        }
+                        assert_eq!(last, 3, "a deep enough fail-low extends three plies");
+                    }
+                }
+            }
+        }
+        // On a PV node the two-ply bar is the PV term plus the new-PV term.
+        let p = &searcher.cfg.proof;
+        let bar = p.sing_double_pv + p.sing_double_not_tt_pv;
+        assert_eq!(searcher.singular_extension(bar, true, false, false, 0), 1);
+        assert_eq!(
+            searcher.singular_extension(bar + 1, true, false, false, 0),
+            2
+        );
+    }
+
+    /// A multi-cut needs an exclusion fail-high short of the decisive band and
+    /// returns a score between beta and it, never decisive, even against a
+    /// losing beta.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn a_multicut_never_returns_a_decisive_score() {
+        assert_eq!(multicut_score(99, 100, 412), None, "below beta");
+        assert_eq!(multicut_score(TB_WIN_SCORE, 100, 412), None, "decisive");
+        assert_eq!(multicut_score(MATE_SCORE - 5, 100, 412), None, "a mate");
+        assert_eq!(multicut_score(1_124, 100, 412), Some(1_124 - 412));
+        for beta in [-MATE_SCORE + 10, -TB_WIN_SCORE, -500, 0, 700] {
+            for score in [beta, beta + 1, beta + 300, TB_WIN_SCORE - 1] {
+                if score < beta || is_decisive(score) {
+                    continue;
+                }
+                let cut = multicut_score(score, beta, 412).expect("a multi-cut");
+                assert!(!is_decisive(cut), "{score} against {beta} returned {cut}");
+                assert!(cut <= score && cut >= beta.max(-TB_WIN_SCORE + 1));
+            }
+        }
+    }
+
+    /// The low-depth singular extension applies only at an expected cut node
+    /// at depth 7 or less, out of check, with the estimate the margin below
+    /// alpha.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn ldse_applies_only_at_shallow_cut_nodes_well_below_alpha() {
+        let searcher = Searcher::default();
+        let margin = searcher.cfg.proof.ldse_margin;
+        let below = -margin;
+        assert!(searcher.ldse_applies(7, false, true, below, 0));
+        assert!(searcher.ldse_applies(1, false, true, below - 500, 0));
+        assert!(!searcher.ldse_applies(8, false, true, below, 0), "depth 8");
+        assert!(!searcher.ldse_applies(7, true, true, below, 0), "in check");
+        assert!(
+            !searcher.ldse_applies(7, false, false, below, 0),
+            "not a cut node"
+        );
+        assert!(
+            !searcher.ldse_applies(7, false, true, below + 1, 0),
+            "too close to alpha"
+        );
+    }
+
+    /// The LMR singular term is zero unless both scores exist and the gap
+    /// passes the offset, grows with the gap and stops at the cap; it moves
+    /// the late-move reduction by exactly its value.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_lmr_singular_term_needs_both_scores_and_is_capped() {
+        let searcher = Searcher::default();
+        let p = &searcher.cfg.proof;
+        assert_eq!(searcher.lmr_singular_term(None), 0);
+        assert_eq!(searcher.lmr_singular_term(Some(p.lmr_singular_offset)), 0);
+        assert_eq!(searcher.lmr_singular_term(Some(-5_000)), 0);
+        assert_eq!(
+            searcher.lmr_singular_term(Some(p.lmr_singular_offset + 128)),
+            p.lmr_singular_slope.min(p.lmr_singular_cap)
+        );
+        assert_eq!(searcher.lmr_singular_term(Some(60_000)), p.lmr_singular_cap);
+
+        let gap = p.lmr_singular_offset + 100;
+        let without = searcher.late_move_reduction(&quiet_late_move());
+        let with = searcher.late_move_reduction(&LateMoveInputs {
+            singular_gap: Some(gap),
+            ..quiet_late_move()
+        });
+        assert_eq!(with - without, searcher.lmr_singular_term(Some(gap)));
+    }
+
+    /// A middlegame search runs singular searches and extends or reduces
+    /// first moves, so the debug build's extension-range assertion is
+    /// exercised; the search unwinds with no reduction left on the stack.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn singular_decisions_run_in_a_middlegame_search() {
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .expect("valid FEN");
+        for depth in 1..=10 {
+            let score =
+                searcher.search_root_window(&mut board, depth, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            assert!(score.abs() < INF_SCORE);
+        }
+        assert!(searcher.td.singular_searches > 0, "no singular search ran");
+        assert!(searcher.td.extended_nodes > 0, "no first move was extended");
+        for ply in 0..MAX_PLY {
+            assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
+        }
     }
 
     #[test]

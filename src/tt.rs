@@ -748,7 +748,9 @@ impl TtProbe {
     }
 
     /// Seed a singular-extension verification window: a lower-or-exact bound
-    /// within `depth_margin` plies and a non-mate score.
+    /// within `depth_margin` plies and a non-mate score. The proof-search arm
+    /// admits its singular candidates by its own rule.
+    #[cfg(any(test, not(feature = "b3proof")))]
     #[inline(always)]
     pub(crate) fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
         self.depth >= depth - depth_margin

@@ -682,6 +682,37 @@ search_params! {
     /// plies shallower already clears it; 0 does not.
     probcut_tt_served = 0, "CoreProbcutTtServed", 0..=1;
     probcut_tt_margin = 208, "CoreProbcutTtMargin", 50..=600;
+
+    // Singular extensions, multi-cut, low-depth singular extension.
+    /// The singular margin is `margin * (exact ? ceil(depth/4) : depth)`,
+    /// plus `margin * depth` at a PV-line node searched with a null window;
+    /// Rarog's fitted `4 * depth` is the seed.
+    singular_margin = 4, "CoreSingularMargin", 1..=12;
+    /// A singular move extends twice when its exclusion score falls this far
+    /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
+    /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128`.
+    sing_double_pv = 89, "CoreSingDoublePv", 0..=300;
+    sing_double_not_tt_pv = 22, "CoreSingDoubleNotTtPv", 0..=100;
+    sing_double_quiet = 7, "CoreSingDoubleQuiet", 0..=50;
+    sing_double_corr = 7, "CoreSingDoubleCorr", 0..=50;
+    /// Three times at this margin, the same terms plus a base.
+    sing_triple_pv = 105, "CoreSingTriplePv", 0..=350;
+    sing_triple_not_tt_pv = 26, "CoreSingTripleNotTtPv", 0..=100;
+    sing_triple_quiet = 9, "CoreSingTripleQuiet", 0..=50;
+    sing_triple_corr = 7, "CoreSingTripleCorr", 0..=50;
+    sing_triple_base = 16, "CoreSingTripleBase", 0..=80;
+    /// A multi-cut returns this many 1024ths of the way from its score to
+    /// beta.
+    sing_multicut_lerp = 412, "CoreSingMulticutLerp", 0..=1024;
+    /// A cut node at depth 7 or less with no singular candidate extends its
+    /// first move when the estimate is this far below alpha.
+    ldse_margin = 11, "CoreLdseMargin", 0..=100;
+    /// Late moves at a node whose TT move beat the exclusion search reduce
+    /// more: `clamp(slope * (tt_move_score - singular_score - offset)/128, 0,
+    /// cap)`, in 1024ths of a ply.
+    lmr_singular_slope = 1_085, "CoreLmrSingularSlope", 0..=3072;
+    lmr_singular_offset = 85, "CoreLmrSingularOffset", 0..=300;
+    lmr_singular_cap = 2_021, "CoreLmrSingularCap", 0..=4096;
 }
 
 #[cfg(test)]
