@@ -340,10 +340,9 @@ pub mod counters {
         singular_negative_clamped,
         // Proof-search arm: exclusion searches whose only legal move was the
         // excluded one (they return alpha); positive singular or low-depth
-        // singular extensions refused because the ply reached twice the
-        // iteration's depth.
+        // singular extensions cut short by the line's extension budget.
         singular_lone_move,
-        singular_extension_ply_bound,
+        singular_extension_truncated,
         iir_applied,
         iir_pv,
         iir_no_tt_move,

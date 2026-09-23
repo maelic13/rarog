@@ -114,6 +114,11 @@ pub(super) struct StackEntry {
     /// The piece `mv` captured, if any.
     #[cfg(feature = "b2core")]
     pub(super) captured: Option<Piece>,
+    /// Positive extensions taken along the line from the root up to and
+    /// including the move made at this ply; the child reads it as its own
+    /// spent budget.
+    #[cfg(feature = "b3proof")]
+    pub(super) extension_spent: i32,
 }
 
 #[cfg(not(feature = "b2core"))]
@@ -152,6 +157,8 @@ impl Default for StackEntry {
             threats: crate::board::Bitboard::EMPTY,
             #[cfg(feature = "b2core")]
             captured: None,
+            #[cfg(feature = "b3proof")]
+            extension_spent: 0,
         }
     }
 }

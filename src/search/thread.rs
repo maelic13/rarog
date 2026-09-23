@@ -82,10 +82,13 @@ pub(super) struct ThreadData {
     pub(super) singular_searches: u64,
     #[cfg(all(test, feature = "b3proof"))]
     pub(super) extended_nodes: u64,
-    /// The deepest ply at which a positive extension was applied, and the
-    /// iteration depth it was applied under.
+    /// The most any node's spent extension budget exceeded its iteration's
+    /// depth (zero or less when the budget holds), and the extensions the
+    /// budget cut short.
     #[cfg(all(test, feature = "b3proof"))]
-    pub(super) deepest_positive_extension: Option<(usize, i32)>,
+    pub(super) budget_overrun: i32,
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) budget_truncations: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(all(test, feature = "b2core"))]
@@ -142,7 +145,9 @@ impl Default for ThreadData {
             #[cfg(all(test, feature = "b3proof"))]
             extended_nodes: 0,
             #[cfg(all(test, feature = "b3proof"))]
-            deepest_positive_extension: None,
+            budget_overrun: i32::MIN,
+            #[cfg(all(test, feature = "b3proof"))]
+            budget_truncations: 0,
             #[cfg(all(test, feature = "b2core"))]
             lmr_at_root: 0,
             #[cfg(all(test, feature = "b2core"))]

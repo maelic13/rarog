@@ -263,12 +263,30 @@ impl Searcher {
         let new_pv = i32::from(pv && !tt_was_pv);
         let double = p.sing_double_pv * i32::from(pv) + p.sing_double_not_tt_pv * new_pv
             - p.sing_double_quiet * i32::from(quiet_tt)
-            - p.sing_double_corr * corr_abs / 128;
+            - p.sing_double_corr * corr_abs / 128
+            + p.sing_double_base;
         let triple = p.sing_triple_pv * i32::from(pv) + p.sing_triple_not_tt_pv * new_pv
             - p.sing_triple_quiet * i32::from(quiet_tt)
             - p.sing_triple_corr * corr_abs / 128
             + p.sing_triple_base;
         1 + i32::from(below > double) + i32::from(below > triple)
+    }
+
+    /// The part of a positive extension the line's budget still allows: the
+    /// extensions taken from the root may sum to the iteration's depth and no
+    /// more, so an extension at the edge is truncated, never refused whole.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn within_extension_budget(&mut self, extension: i32, spent: i32) -> i32 {
+        let granted = extension.min(self.td.root_depth - spent).max(0);
+        if granted < extension {
+            crate::diag_count!(singular_extension_truncated);
+            #[cfg(test)]
+            {
+                self.td.budget_truncations += 1;
+            }
+        }
+        granted
     }
 
     /// Whether a node without a singular candidate extends its first move:
@@ -881,6 +899,18 @@ impl Searcher {
         // enough lower or exact bound with a score short of the decisive
         // band. The null move stays off such a node; the singular search
         // reads it.
+        // The positive extensions the line to this node has taken: its moves
+        // may take more only up to the iteration's depth, so no line grows
+        // deeper than twice the iteration plus quiescence.
+        #[cfg(feature = "b3proof")]
+        let extension_spent = self.td.stack.back(ply, 1).extension_spent;
+        #[cfg(all(test, feature = "b3proof"))]
+        {
+            self.td.budget_overrun = self
+                .td
+                .budget_overrun
+                .max(extension_spent - self.td.root_depth.max(0));
+        }
         #[cfg(feature = "b3proof")]
         let potential_singularity = !self.ablated(6)
             && depth
@@ -957,6 +987,7 @@ impl Searcher {
                     crate::diag_count!(nmp_bound_shortcut);
                 }
                 self.td.stack[ply].laterality = 0;
+                self.td.stack[ply].extension_spent = extension_spent;
                 #[cfg(test)]
                 self.td.null_move_plies.push(ply);
                 board.make_null_move();
@@ -1405,6 +1436,7 @@ impl Searcher {
                     // input. Written explicitly rather than left stale.
                     self.push_move(board, ply, mv, probcut_piece);
                     self.record_move_order(ply, 0);
+                    self.td.stack[ply].extension_spent = extension_spent;
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
                     let mut score = -self.quiescence::<NonPv, _>(
@@ -1549,10 +1581,6 @@ impl Searcher {
         // move by one instead.
         #[cfg(feature = "b3proof")]
         let mut node_extension = 0;
-        // Positive extensions stop at twice the iteration's depth, so no line
-        // can keep growing deeper than its parent to the ply cap.
-        #[cfg(feature = "b3proof")]
-        let extension_room = infra::to_i32(ply) < 2 * self.td.root_depth;
         #[cfg(feature = "b3proof")]
         let mut singular_score: Option<i32> = None;
         #[cfg(feature = "b3proof")]
@@ -1611,10 +1639,7 @@ impl Searcher {
                     !is_noisy(tt_move),
                     corr_abs,
                 );
-                if !extension_room {
-                    crate::diag_count!(singular_extension_ply_bound);
-                    node_extension = 0;
-                }
+                node_extension = self.within_extension_budget(node_extension, extension_spent);
                 #[cfg(feature = "diag")]
                 if diag_sample && node_extension > 0 {
                     match node_extension {
@@ -1664,36 +1689,24 @@ impl Searcher {
             && !self.ablated(6)
             && self.ldse_applies(depth, in_check, cut_node, eval_for_pruning, alpha)
         {
-            if !extension_room {
-                crate::diag_count!(singular_extension_ply_bound);
-            }
+            node_extension = self.within_extension_budget(1, extension_spent);
             #[cfg(feature = "diag")]
-            if diag_sample && extension_room {
+            if diag_sample && node_extension > 0 {
                 crate::diag_count!(ldse_applied);
             }
             trace_decision!(
                 self,
                 ply,
-                "ldse depth {depth} estimated {eval_for_pruning} alpha {alpha} margin {}",
+                "ldse depth {depth} estimated {eval_for_pruning} alpha {alpha} margin {} \
+                 spent {extension_spent} granted {node_extension}",
                 self.cfg.proof.ldse_margin
             );
-            node_extension = i32::from(extension_room);
         }
         #[cfg(feature = "b3proof")]
         let mut tt_move_score: Option<i32> = None;
         #[cfg(all(test, feature = "b3proof"))]
-        {
-            if node_extension != 0 {
-                self.td.extended_nodes += 1;
-            }
-            if node_extension > 0
-                && self
-                    .td
-                    .deepest_positive_extension
-                    .is_none_or(|(deepest, _)| ply > deepest)
-            {
-                self.td.deepest_positive_extension = Some((ply, self.td.root_depth));
-            }
+        if node_extension != 0 {
+            self.td.extended_nodes += 1;
         }
 
         let mut move_picker = if NODE::ROOT {
@@ -2028,6 +2041,10 @@ impl Searcher {
 
             self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
+            #[cfg(feature = "b3proof")]
+            {
+                self.td.stack[ply].extension_spent = extension_spent + extension.max(0);
+            }
             let nodes_before_move = if NODE::ROOT { self.td.nodes } else { 0 };
             // The check predicate is cheap here (node masks and two bitboard
             // tests) and lets `make_move` skip `calculate_checkers` for the
@@ -3694,7 +3711,7 @@ mod tests {
         }
         // On a PV node the two-ply bar is the PV term plus the new-PV term.
         let p = &searcher.cfg.proof;
-        let bar = p.sing_double_pv + p.sing_double_not_tt_pv;
+        let bar = p.sing_double_pv + p.sing_double_not_tt_pv + p.sing_double_base;
         assert_eq!(searcher.singular_extension(bar, true, false, false, 0), 1);
         assert_eq!(
             searcher.singular_extension(bar + 1, true, false, false, 0),
@@ -3858,18 +3875,36 @@ mod tests {
         assert_eq!(score, singular_beta - 1);
     }
 
-    /// Positive extensions stop at twice the iteration's depth: from the two
-    /// bench positions whose singular lines once ran to the ply cap, an
-    /// iterative search extends, and never at a ply of `2 * root_depth` or
-    /// more. The selective depth itself is not bounded this way: a line may
-    /// have gained depth before that ply.
+    /// The budget grants a positive extension in full while the line has
+    /// room, truncates it at the edge, and grants nothing once the line has
+    /// spent the iteration's depth.
     #[cfg(feature = "b3proof")]
     #[test]
-    fn positive_extensions_stop_at_twice_the_iteration_depth() {
+    fn the_extension_budget_truncates_at_the_edge_and_then_grants_nothing() {
+        let mut searcher = Searcher::default();
+        searcher.td.root_depth = 10;
+        assert_eq!(searcher.within_extension_budget(3, 0), 3);
+        assert_eq!(searcher.within_extension_budget(3, 7), 3);
+        assert_eq!(searcher.within_extension_budget(3, 8), 2, "truncated");
+        assert_eq!(searcher.within_extension_budget(1, 9), 1);
+        assert_eq!(searcher.within_extension_budget(1, 10), 0, "spent");
+        assert_eq!(searcher.within_extension_budget(3, 10), 0, "spent");
+        assert_eq!(searcher.td.budget_truncations, 3);
+    }
+
+    /// Along every line the positive extensions taken from the root never
+    /// sum past the iteration's depth: from the two bench positions whose
+    /// singular lines once ran to the ply cap, iterative searches extend,
+    /// hit the budget's edge, and no node is ever reached with more spent
+    /// than its iteration allows.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn no_line_spends_more_than_the_iteration_depth_on_extensions() {
         let forced_lines = [
             "2r3k1/1q2Rp1p/p2p2p1/1p1P4/1Pp1P3/2Q5/1P4PP/6K1 w - - 0 1",
             "8/8/p1p5/1p5p/1P5P/P1P5/8/K1k5 w - - 0 1",
         ];
+        let mut truncations = 0;
         for fen in forced_lines {
             let mut searcher = Searcher::default();
             let mut board = Board::from_fen(fen).expect("valid FEN");
@@ -3882,16 +3917,16 @@ mod tests {
                     &mut || SearchEvent::None,
                 );
                 assert!(score.abs() < INF_SCORE);
-                if let Some((ply, root_depth)) = searcher.td.deepest_positive_extension {
-                    assert!(
-                        infra::to_i32(ply) < 2 * root_depth,
-                        "extended at ply {ply} under depth {root_depth} from {fen}"
-                    );
-                }
-                searcher.td.deepest_positive_extension = None;
+                assert!(
+                    searcher.td.budget_overrun <= 0,
+                    "a line overspent by {} at depth {iteration} from {fen}",
+                    searcher.td.budget_overrun
+                );
             }
             assert!(searcher.td.extended_nodes > 0, "no extension from {fen}");
+            truncations += searcher.td.budget_truncations;
         }
+        assert!(truncations > 0, "the budget never bound");
     }
 
     /// A middlegame search runs singular searches and extends or reduces

@@ -694,7 +694,9 @@ search_params! {
     singular_floor = 0, "CoreSingularFloor", 0..=1;
     /// A singular move extends twice when its exclusion score falls this far
     /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
-    /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128`.
+    /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128
+    /// + base`; the base, zero as in the donor, sets the bar off the PV.
+    sing_double_base = 0, "CoreSingDoubleBase", -100..=200;
     sing_double_pv = 89, "CoreSingDoublePv", 0..=300;
     sing_double_not_tt_pv = 22, "CoreSingDoubleNotTtPv", 0..=100;
     sing_double_quiet = 7, "CoreSingDoubleQuiet", 0..=50;
