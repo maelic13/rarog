@@ -717,6 +717,13 @@ search_params! {
     lmr_singular_slope = 1_085, "CoreLmrSingularSlope", 0..=3072;
     lmr_singular_offset = 85, "CoreLmrSingularOffset", 0..=300;
     lmr_singular_cap = 2_021, "CoreLmrSingularCap", 0..=4096;
+
+    // Internal iterative reduction.
+    /// Categorical, never an SPSA coordinate. 1 reduces as the accepted
+    /// search does (from `CoreIirMinDepth`, no TT move or, off the PV, one
+    /// too shallow); 0 never; 2 as Stockfish does (not at an expected
+    /// all-node, not at the root, from depth 6, no TT move only).
+    iir_policy = 1, "CoreIirPolicy", 0..=2;
 }
 
 #[cfg(test)]

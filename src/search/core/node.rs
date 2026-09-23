@@ -233,6 +233,29 @@ impl Searcher {
         }
     }
 
+    /// Whether internal iterative reduction takes a ply off this node, by
+    /// `CoreIirPolicy`. 1, the accepted search's: from `CoreIirMinDepth`,
+    /// with no TT move, or off the PV line with one too shallow to order by.
+    /// 0: never. 2, the Stockfish form: off the root, not at an expected
+    /// all-node, from depth 6, with no TT move only.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn iir_applies(
+        &self,
+        pv: bool,
+        root: bool,
+        cut_node: bool,
+        depth: i32,
+        tt_move_null: bool,
+        tt_too_shallow: bool,
+    ) -> bool {
+        match self.cfg.proof.iir_policy {
+            0 => false,
+            2 => !root && (pv || cut_node) && depth >= 6 && tt_move_null,
+            _ => depth >= self.cfg.core.iir_min_depth && (tt_move_null || (!pv && tt_too_shallow)),
+        }
+    }
+
     /// Whether ProbCut's population takes this node: every node off the PV
     /// line at `CoreProbcutNodes = 0`, expected cut nodes only at 1.
     #[cfg(feature = "b3proof")]
@@ -663,11 +686,19 @@ impl Searcher {
         }
 
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
-        if !self.ablated(4)
-            && excluded.is_null()
-            && depth >= self.cfg.core.iir_min_depth
-            && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)))
-        {
+        #[cfg(not(feature = "b3proof"))]
+        let iir = depth >= self.cfg.core.iir_min_depth
+            && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)));
+        #[cfg(feature = "b3proof")]
+        let iir = self.iir_applies(
+            NODE::PV,
+            NODE::ROOT,
+            cut_node,
+            depth,
+            tt_move.is_null(),
+            ev.too_shallow_to_order(depth),
+        );
+        if !self.ablated(4) && excluded.is_null() && iir {
             #[cfg(feature = "diag")]
             if diag_sample {
                 crate::diag_count!(iir_applied);
@@ -3114,6 +3145,13 @@ mod tests {
         ("CoreProbcutTtServed", |s, v| {
             s.cfg.proof.probcut_tt_served = v;
         }),
+        ("CoreSingularFloor", |s, v| {
+            s.cfg.proof.singular_floor = v;
+        }),
+        // 0 and 1; the Stockfish form, 2, has its own test.
+        ("CoreIirPolicy", |s, v| {
+            s.cfg.proof.iir_policy = v;
+        }),
     ];
     #[cfg(not(feature = "b3proof"))]
     const PROOF_SWITCHES: &[(&str, SetSwitch)] = &[];
@@ -3789,6 +3827,101 @@ mod tests {
             0,
             "no node of a depth-4 tree is a candidate at 1"
         );
+    }
+
+    /// `CoreIirPolicy`: 0 never reduces; 1 is the accepted rule (from
+    /// `CoreIirMinDepth`, no TT move anywhere, or off the PV with a TT move
+    /// too shallow to order by); 2 reduces only off the root, not at an
+    /// all-node, from depth 6, and only without a TT move.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn iir_policy_selects_the_accepted_the_stockfish_or_no_rule() {
+        let mut searcher = Searcher::default();
+        let min = searcher.cfg.core.iir_min_depth;
+        let iir = |s: &Searcher, pv, root, cut, depth, no_move, shallow| {
+            s.iir_applies(pv, root, cut, depth, no_move, shallow)
+        };
+        assert_eq!(
+            searcher.cfg.proof.iir_policy, 1,
+            "the accepted rule is the default"
+        );
+        assert!(iir(&searcher, false, false, false, min, true, false));
+        assert!(!iir(&searcher, false, false, false, min - 1, true, false));
+        assert!(
+            iir(&searcher, false, false, false, min, false, true),
+            "shallow TT move"
+        );
+        assert!(
+            !iir(&searcher, true, false, false, min, false, true),
+            "not on the PV"
+        );
+        assert!(
+            iir(&searcher, true, true, false, min, true, false),
+            "the root with no move"
+        );
+
+        searcher.cfg.proof.iir_policy = 0;
+        for depth in 1..40 {
+            assert!(!iir(&searcher, false, false, true, depth, true, true));
+        }
+
+        searcher.cfg.proof.iir_policy = 2;
+        assert!(
+            iir(&searcher, false, false, true, 6, true, false),
+            "cut node"
+        );
+        assert!(
+            iir(&searcher, true, false, false, 6, true, false),
+            "PV node"
+        );
+        assert!(
+            !iir(&searcher, false, false, false, 20, true, false),
+            "all-node"
+        );
+        assert!(
+            !iir(&searcher, false, false, true, 5, true, false),
+            "depth 5"
+        );
+        assert!(
+            !iir(&searcher, false, false, true, 9, false, true),
+            "a TT move, shallow"
+        );
+        assert!(
+            !iir(&searcher, true, true, false, 9, true, false),
+            "the root"
+        );
+    }
+
+    /// The Stockfish IIR form keeps the search sound: from a quiet root and a
+    /// root in check, no reduction is left on the stack and the PV is legal.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_stockfish_iir_form_keeps_the_search_sound() {
+        for fen in [
+            "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+        ] {
+            let mut searcher = Searcher::default();
+            searcher.cfg.proof.iir_policy = 2;
+            let root = Board::from_fen(fen).expect("valid FEN");
+            let mut board = root.clone();
+            let score =
+                searcher.search_root_window(&mut board, 8, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            assert!(score.abs() < INF_SCORE, "{fen}");
+            assert_eq!(board.to_fen(), root.to_fen());
+            for ply in 0..MAX_PLY {
+                assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
+            }
+            let mut line = root.clone();
+            for &mv in &searcher.td.pv_table[0][..searcher.td.pv_len[0].min(MAX_PLY)] {
+                let legal = line
+                    .parse_move(&mv.to_string())
+                    .unwrap_or_else(|| panic!("illegal PV move {mv} at {fen}"));
+                line.make_move(legal);
+            }
+        }
     }
 
     /// A middlegame search runs singular searches and extends or reduces
