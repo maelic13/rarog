@@ -61,6 +61,10 @@ pub(super) struct ThreadData {
     /// search start. Per thread: a helper verifies its own null moves.
     #[cfg(feature = "b3proof")]
     pub(super) nmp_min_ply: i32,
+    /// The depth of the iteration this thread is searching; positive
+    /// extensions stop at twice it. Zero before any root search.
+    #[cfg(feature = "b3proof")]
+    pub(super) root_depth: i32,
     /// The plies at which a null move was made, for the tests of its gates.
     #[cfg(all(test, feature = "b3proof"))]
     pub(super) null_move_plies: Vec<usize>,
@@ -78,6 +82,10 @@ pub(super) struct ThreadData {
     pub(super) singular_searches: u64,
     #[cfg(all(test, feature = "b3proof"))]
     pub(super) extended_nodes: u64,
+    /// The deepest ply at which a positive extension was applied, and the
+    /// iteration depth it was applied under.
+    #[cfg(all(test, feature = "b3proof"))]
+    pub(super) deepest_positive_extension: Option<(usize, i32)>,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(all(test, feature = "b2core"))]
@@ -119,6 +127,8 @@ impl Default for ThreadData {
             root_delta: 1,
             #[cfg(feature = "b3proof")]
             nmp_min_ply: 0,
+            #[cfg(feature = "b3proof")]
+            root_depth: 0,
             #[cfg(all(test, feature = "b3proof"))]
             null_move_plies: Vec::new(),
             #[cfg(all(test, feature = "b3proof"))]
@@ -131,6 +141,8 @@ impl Default for ThreadData {
             singular_searches: 0,
             #[cfg(all(test, feature = "b3proof"))]
             extended_nodes: 0,
+            #[cfg(all(test, feature = "b3proof"))]
+            deepest_positive_extension: None,
             #[cfg(all(test, feature = "b2core"))]
             lmr_at_root: 0,
             #[cfg(all(test, feature = "b2core"))]
