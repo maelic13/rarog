@@ -334,11 +334,10 @@ pub mod counters {
         lmr_singular_term,
         // Proof-search arm, the singular population: attempts at expected
         // cut nodes; extensions at nodes off the PV, where the two-ply bar is
-        // at most zero; multi-cuts whose singular beta already reached beta,
-        // the only ones the accepted core's rule takes.
+        // at most zero; negative extensions held to a one-ply child (depth 4).
         singular_attempt_cut_node,
         singular_extend_non_pv,
-        singular_multicut_head_rule,
+        singular_negative_clamped,
         iir_applied,
         iir_pv,
         iir_no_tt_move,

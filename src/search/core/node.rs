@@ -879,7 +879,12 @@ impl Searcher {
         // reads it.
         #[cfg(feature = "b3proof")]
         let potential_singularity = !self.ablated(6)
-            && depth >= 5 + i32::from(tt_pv)
+            && depth
+                >= if self.cfg.proof.singular_floor == 0 {
+                    4
+                } else {
+                    5 + i32::from(tt_pv)
+                }
             && ev.depth >= depth - self.cfg.params.singular_tt_depth_margin
             && matches!(ev.bound, Some(Bound::Lower | Bound::Exact))
             && !is_decisive(ev.score);
@@ -1531,10 +1536,11 @@ impl Searcher {
         // exclusion search beat can lose its first slot. The TT move is
         // searched against a margin below its stored score with itself
         // excluded. Everything failing low marks it singular: it extends one
-        // to three plies. An exclusion fail-high at beta is a multi-cut and
-        // returns a softened score. One that beat the stored score demotes
-        // the TT move to the ordinary picker order. Otherwise a stored score
-        // at beta, or a cut node, reduces it three plies. With no singular
+        // to three plies. With the singular beta at or above beta, the
+        // exclusion fail-high is a multi-cut and returns a softened score.
+        // One that beat the stored score demotes the TT move to the ordinary
+        // picker order. Otherwise a stored score at beta, or a cut node,
+        // reduces it three plies, keeping a one-ply child. With no singular
         // candidate, a shallow cut node well below alpha extends its first
         // move by one instead.
         #[cfg(feature = "b3proof")]
@@ -1608,14 +1614,15 @@ impl Searcher {
                         crate::diag_count!(singular_extend_non_pv);
                     }
                 }
-            } else if let Some(cut) = multicut_score(score, beta, self.cfg.proof.sing_multicut_lerp)
+            } else if singular_beta >= beta
+                && let Some(cut) = multicut_score(score, beta, self.cfg.proof.sing_multicut_lerp)
             {
+                // Only a window at or above beta proves the cut: an exclusion
+                // fail-high below beta is a fail-soft guess, and taking it
+                // measured worse at driving a won endgame.
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_multicut);
-                    if singular_beta >= beta {
-                        crate::diag_count!(singular_multicut_head_rule);
-                    }
                 }
                 trace_decision!(
                     self,
@@ -1630,11 +1637,16 @@ impl Searcher {
                 }
                 tt_move = Move::NULL;
             } else if ev.score >= beta || cut_node {
+                // Three plies, but never below one ply of main search: from
+                // depth 4 the TT move keeps a one-ply child.
+                node_extension = (-3).max(2 - depth);
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_negative_extension);
+                    if node_extension > -3 {
+                        crate::diag_count!(singular_negative_clamped);
+                    }
                 }
-                node_extension = -3;
             }
         } else if !NODE::ROOT
             && !self.ablated(6)
@@ -3722,6 +3734,61 @@ mod tests {
             ..quiet_late_move()
         });
         assert_eq!(with - without, searcher.lmr_singular_term(Some(gap)));
+    }
+
+    /// `CoreSingularFloor`: a depth-4 node with a deep enough stored lower
+    /// bound and a TT move runs the singular search at 0 (from depth 4) and
+    /// not at 1 (from depth 5, 6 on a PV line). At 1 nothing in the probe's
+    /// tree can be a candidate: without a singular extension at the probe no
+    /// child reaches depth 5.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_singular_floor_switch_sets_the_least_candidate_depth() {
+        let singular_searches_at_depth_4 = |floor: i32| {
+            let mut searcher = Searcher::default();
+            searcher.cfg.proof.singular_floor = floor;
+            let mut board = Board::from_fen(
+                "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            )
+            .expect("valid FEN");
+            let estimate = searcher.corrected_eval(&board, 1);
+            // Beta above the stored score keeps reverse futility, the null
+            // move, ProbCut and the table cutoff out of the way.
+            let beta = estimate + 50;
+            searcher.shared.tt.store(TtStore {
+                key: board.hash(),
+                depth: 4,
+                score: estimate,
+                bound: Bound::Lower,
+                mv: board.parse_move("d2d3").expect("legal move"),
+                ply: 1,
+                static_eval: VALUE_NONE,
+                is_pv: false,
+            });
+            let score = searcher.negamax::<NonPv, _>(
+                &mut board,
+                4,
+                beta - 1,
+                beta,
+                1,
+                false,
+                Move::NULL,
+                true,
+                1,
+                &mut || SearchEvent::None,
+            );
+            assert!(score.abs() < INF_SCORE);
+            searcher.td.singular_searches
+        };
+        assert!(
+            singular_searches_at_depth_4(0) > 0,
+            "depth 4 is a candidate at 0"
+        );
+        assert_eq!(
+            singular_searches_at_depth_4(1),
+            0,
+            "no node of a depth-4 tree is a candidate at 1"
+        );
     }
 
     /// A middlegame search runs singular searches and extends or reduces

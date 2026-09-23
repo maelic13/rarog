@@ -688,6 +688,10 @@ search_params! {
     /// plus `margin * depth` at a PV-line node searched with a null window;
     /// Rarog's fitted `4 * depth` is the seed.
     singular_margin = 4, "CoreSingularMargin", 1..=12;
+    /// Categorical, never an SPSA coordinate. The least depth of a singular
+    /// candidate: 0 from depth 4, the accepted search's; 1 from depth 5, 6
+    /// on a PV line, the donor's.
+    singular_floor = 0, "CoreSingularFloor", 0..=1;
     /// A singular move extends twice when its exclusion score falls this far
     /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
     /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128`.
