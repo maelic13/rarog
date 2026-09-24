@@ -1288,11 +1288,11 @@ diagnostics; two rejections stop B.
       **+18.4 ± 9.4 Elo** (+30.1 ± 15.2 nElo, 2,000 games, 0 faults, recount
       equal; RAR-S79) against the head, above the registered +5 target:
       the cluster proceeds to B.3.3. P1 (+5 ± 12) missed in magnitude on
-      the good side. The four categoricals on the 2,000-game list
-      (`CoreSingularFloor=1` first, then `CoreNmpNodes=1`,
-      `CoreProbcutTtServed=1`, `SingularTtDepthMargin=2`) are played before
-      B.3.3's sweep, each about 22 minutes, so the tune starts from settled
-      switches. The zero-game half is in `analysis/b32_screens_2026-09-23.md`.
+      the good side. The four categoricals (RAR-S80) were played the
+      same day: `SingularTtDepthMargin=2` is the one adoption (+12.9 ± 9.4
+      alone; the pair with `CoreProbcutTtServed=1` read +3.6 ± 9.2, so that
+      switch stays at 0); `CoreSingularFloor=1` and `CoreNmpNodes=1` stay at 0
+      at `3+0.03` and at `10+0.1`. B.3.3 starts from these defaults. The zero-game half is in `analysis/b32_screens_2026-09-23.md`.
       - At or above target: WAC 228 (100k) and 268 (400k), agreement 43/50;
         branching 1.789.
       - The deep-iteration cost screen passes on all five positions.
@@ -1322,7 +1322,11 @@ diagnostics; two rejections stop B.
       categorical run only where the screens disagree; then the 2,000-game
       unfitted paired run against the head (maintainer-run), which governs.
       Deliverable `analysis/b32_screens_<date>.md` with a review.
-    - **B.3.3 Sweep and SPSA — `V`.** Curvature sweep of `CoreNmpBase`,
+    - **B.3.3 Sweep and SPSA — `V`.** First, one engine commit bakes
+      `SingularTtDepthMargin=2` where RAR-S80 measured it: the `b3proof`
+      consumer, as a proof-owned coordinate with the head's shared default 3
+      and its tripwire untouched and the off arm exact; the arm's
+      fingerprint is re-declared. Then the curvature sweep of `CoreNmpBase`,
       `CoreNmpREval`, `CoreProbcutBase`, `CoreSingularMargin` and
       `CoreLmrSingularOffset` (0.5x–2x, bench and WAC at 100k, classification
       frozen first); if curved, the 35-coordinate surface (the three LMR
@@ -1431,8 +1435,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.2 | GAME_GATE | V | **Paired run played 2026-09-24: +18.4 ± 9.4 Elo, above the +5 target, so B.3.3 opens; four categorical 2,000-game runs remain on the maintainer's list.** Zero-game half done 2026-09-23 (`analysis/b32_screens_2026-09-23.md`). Quality at or above target: WAC 100k 228, 400k 268, agreement 43. Branching 1.789 inside. Cost screen passes (0.31×–2.26×). Three floors fail: depth-14 nodes 3.11×, four of the head's 87 canaries lost, time-to-depth 1.134× (pooled NPS −8.20%). Bit sweep recorded (bit 4 does not terminate at depthpv 10). No categorical dominates; four go to the 2,000-game list (NmpNodes, ProbcutTtServed, SingularTtDepthMargin, SingularFloor). **Next: the 2,000-game paired run (maintainer), dry run passed; it governs** (floor −40, target +5) |
-| B.3.3 | RESEARCH | V | Curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
+| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Opens 2026-09-24** with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
