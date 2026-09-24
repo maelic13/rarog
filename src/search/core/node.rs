@@ -919,7 +919,7 @@ impl Searcher {
                 } else {
                     5 + i32::from(tt_pv)
                 }
-            && ev.depth >= depth - self.cfg.params.singular_tt_depth_margin
+            && ev.depth >= depth - self.cfg.proof.singular_tt_depth_margin
             && matches!(ev.bound, Some(Bound::Lower | Bound::Exact))
             && !is_decisive(ev.score);
 

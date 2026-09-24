@@ -692,6 +692,11 @@ search_params! {
     /// candidate: 0 from depth 4, the accepted search's; 1 from depth 5, 6
     /// on a PV line, the donor's.
     singular_floor = 0, "CoreSingularFloor", 0..=1;
+    /// A stored lower bound seeds a singular candidate only when it is at
+    /// most this many plies shallower than the node; 2 here, not the
+    /// accepted search's `SingularTtDepthMargin` of 3, because 2 measured
+    /// +12.9 ± 9.4 Elo on this arm in 2,000 games (RAR-S80).
+    singular_tt_depth_margin = 2, "CoreSingularTtDepthMargin", 0..=4;
     /// A singular move extends twice when its exclusion score falls this far
     /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
     /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128
