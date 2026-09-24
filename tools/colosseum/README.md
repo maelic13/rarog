@@ -34,6 +34,7 @@ or CPU-topology change on this host — and `calibrate-null.toml` is what runs i
 | `sprt-repair.toml` | a repair of unknown sign | `[-5, 5]` |
 | `sprt-wide.toml` | a genuinely large prior, stated in the registration | `[0, 10]` |
 | `match-fixed.toml` | a measurement with an interval, never an acceptance | 2,000 games |
+| `match-fixed-ltc.toml` | the same at the direction-check control `10+0.1` (with `-BaseMs 10000 -IncrementMs 100`) | 1,000 games |
 | `spsa-tune.toml` | a tune | horizon per registration |
 | `calibrate-null.toml` | the null pair, on its trigger | 30,000 games |
 | `gauntlet.toml` | a rating gauntlet against a fixed field | per event |

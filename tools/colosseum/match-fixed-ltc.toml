@@ -1,0 +1,15 @@
+# A fixed-length match at the direction-check time control (PLAN D.1, E.1):
+# 10+0.1, the same policy otherwise. 1,000 games resolve about +-14 Elo.
+#
+#   ./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/match-fixed-ltc.toml \r
+#     -BaseMs 10000 -IncrementMs 100 -Games 1000 ...
+
+extend = "match-fixed.toml"
+
+[options]
+games = 1000
+
+a-base-ms = 10000
+a-increment-ms = 100
+b-base-ms = 10000
+b-increment-ms = 100
