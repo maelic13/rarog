@@ -153,6 +153,22 @@ try {
     Invoke-Case -Name "tune build entered in a gate" -Expect "tune build" `
         -Arguments (Merge-Arguments $base @{ EngineA = $tune.Engine; NameA = "tuneArm" })
 
+    # A categorical A/B on one tune build waives the PGO-gate rule, and only
+    # then: same executable both sides, differing by options, match mode.
+    $catTune = Copy-Arm -Source $TuneEngine -Name "catTune"
+    $categorical = @{
+        Mode = "match"; EngineA = $catTune; EngineB = $catTune; NameA = "alt"; NameB = "base"
+        OptionsA = @("CoreRfpLinear=30"); Games = 200; Seed = 7; CategoricalTuneBuild = $true
+        Dir = (Join-Path $scratch "categorical"); DryRun = $true; AllowBusyHost = $true
+    }
+    Invoke-Case -Name "control: a categorical on one tune build" -Expect "" -Arguments $categorical
+    Invoke-Case -Name "categorical waiver with two binaries" -Expect "ONE binary" `
+        -Arguments (Merge-Arguments $categorical @{ EngineB = $armB; NameB = "armB" })
+    Invoke-Case -Name "categorical waiver in a gate" -Expect "match only" `
+        -Arguments (Merge-Arguments $categorical @{ Mode = "sprt"; MaxPairs = 100 } -Remove @("Games"))
+    Invoke-Case -Name "categorical waiver with equal options" -Expect "differ by UCI options" `
+        -Arguments (Merge-Arguments $categorical @{ OptionsA = @() })
+
     $otherCompiler = Copy-Arm -Source $EngineB -Name "otherCompiler"
     Set-Sidecar -EnginePath $otherCompiler -Fields @{ rustc = "rustc 1.97.0 (not the pinned toolchain)" }
     Invoke-Case -Name "arms built by different compilers" -Expect "COMPILER MISMATCH" `

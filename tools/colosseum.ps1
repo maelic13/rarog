@@ -60,6 +60,13 @@
     benched. AGENTS.md's one failure mode is a stale binary measured, and a
     fingerprint is the cheapest thing that catches it.
 
+.PARAMETER CategoricalTuneBuild
+    A categorical A/B on ONE tune build: the same executable on both sides,
+    differing only by UCI options (which exist only under `tune`). Waives the
+    rule that a gate binary is a PGO build, because a same-binary comparison
+    carries no build offset; `match` mode only, and both sidecars must still
+    be bench-verified tune builds. The manifest records the waiver.
+
 .PARAMETER AllowBusyHost
     Record the host as busy and run anyway. For a throwaway smoke only; say why
     in the registration. The manifest carries the waiver.
@@ -106,6 +113,7 @@ param(
     [string]$ExpectRevision = "",
     [long[]]$ExpectBench = @(),
     [switch]$AllowDirtyTree,
+    [switch]$CategoricalTuneBuild,
     [switch]$AllowBusyHost,
     [switch]$DryRun,
     [double]$MaxHostBusyPercent = 15,
@@ -230,9 +238,18 @@ if (-not (Test-Path -LiteralPath $Book)) { throw "Not found: $Book" }
 $Book = (Resolve-Path -LiteralPath $Book).Path
 
 # ─── Guard 4: sidecar provenance, per arm ─────────────────────────────────
+if ($CategoricalTuneBuild) {
+    if ($Mode -ne "match") { throw "-CategoricalTuneBuild is for -Mode match only: a categorical is a fixed-length read, never a gate." }
+    if ($engines[0].Path -ne $engines[1].Path) {
+        throw ("-CategoricalTuneBuild requires ONE binary on both sides (a same-binary A/B carries no build offset); " +
+               "got $($engines[0].Path) and $($engines[1].Path).")
+    }
+    if (($OptionsA -join '|') -eq ($OptionsB -join '|')) { throw "-CategoricalTuneBuild needs the two sides to differ by UCI options." }
+    Write-Host "  Categorical A/B on one tune build: the PGO-gate rule is waived and recorded." -ForegroundColor Yellow
+}
 $manifests = @{}
 foreach ($arm in $engines) {
-    $kind = if ($Mode -eq "spsa") { "tune" } else { "gate" }
+    $kind = if ($Mode -eq "spsa" -or $CategoricalTuneBuild) { "tune" } else { "gate" }
     $manifests[$arm.Label] = Assert-EngineProvenance -Path $arm.Path -Label $arm.Label -Kind $kind `
         -RequireManifest:($Mode -eq "spsa") -RequireBinaryHash:($Mode -eq "spsa") `
         -AllowDirtyTree:$AllowDirtyTree -ExpectRevision $ExpectRevision
@@ -356,8 +373,20 @@ switch ($Mode) {
                   if ($Games -gt 0) { $commandArgs += @('--games', "$Games") } }
     "spsa"      { $commandArgs += @($engines[0].Path, '--total-games', "$TotalGames") }
 }
-foreach ($option in $OptionsA) { if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") { $commandArgs += @('--a-option', $option) } }
-foreach ($option in $OptionsB) { if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") { $commandArgs += @('--b-option', $option) } }
+# A side-specific option list on the command line REPLACES the run file's list
+# for that side (Colosseum's command-line-over-run-file rule applies to the
+# whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
+# Threads. The shared options are therefore restated ahead of the arm's own,
+# unless the arm sets them itself; the policy check reads the result.
+$sharedOptions = @("Hash=$Hash", "Threads=$Threads")
+function Get-SideOptions { param([string[]]$Own)
+    $names = @($Own | ForEach-Object { ($_ -split '=', 2)[0].Trim().ToLowerInvariant() })
+    @($sharedOptions | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
+}
+if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
+    if ($OptionsA.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsA)) { $commandArgs += @('--a-option', $option) } }
+    if ($OptionsB.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsB)) { $commandArgs += @('--b-option', $option) } }
+}
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
 $commandArgs += @('--seed', "$Seed", '--dir', $Dir)
 if ($ExtraArgs.Count -gt 0) { $commandArgs += $ExtraArgs }
@@ -564,6 +593,7 @@ if ($Mode -eq "spsa") {
     $lines.Add("tune_r_end:       $($resolved.r_end)")
 }
 $lines.Add("host_busy_percent: $(if ($null -eq $hostState.BusyPercent) { 'unreadable' } else { '{0:N1}' -f $hostState.BusyPercent })")
+$lines.Add("categorical:      $(if ($CategoricalTuneBuild) { 'one tune build on both sides, options A vs B (-CategoricalTuneBuild)' } else { 'no' })")
 $lines.Add("host_idle_waived: $($hostState.Waived)$(if ($hostState.Reasons.Count -gt 0) { " (" + ($hostState.Reasons -join '; ') + ")" })")
 $lines.Add("dry_run_json:     $dryPath")
 $lines.Add("dry_run_sha256:   $(Get-HarnessSha256 $dryPath)")
