@@ -1209,7 +1209,8 @@ diagnostics; two rejections stop B.
       3 (`c1bec33`) and amendment 4's lone-move `alpha` return and IIR
       shrink (`90a7f87`); the per-line extension budget (`9bf6717`)
       replaced amendment 4's ply bound. **Final fingerprints:**
-      - arm **7,479,114 / EBF 2.467** (`bench 13`);
+      - arm **7,479,114 / EBF 2.467** (`bench 13`) at B.3.1's close;
+        since B.3.3's bake of `CoreSingularTtDepthMargin=2` (`3ca9aab`, RAR-S80) the arm reads **7,978,292 / EBF 2.465**;
       - off arm 7,185,678 / 2.444, all 40 lines;
       - `--no-default-features` 7,601,220 / 2.474.
 
@@ -1322,7 +1323,22 @@ diagnostics; two rejections stop B.
       categorical run only where the screens disagree; then the 2,000-game
       unfitted paired run against the head (maintainer-run), which governs.
       Deliverable `analysis/b32_screens_<date>.md` with a review.
-    - **B.3.3 Sweep and SPSA — `V`.** First, one engine commit bakes
+    - **B.3.3 Sweep and SPSA — `V`. Bake and sweep done 2026-09-24; SPSA
+      surface held.** The bake is `3ca9aab`: arm **7,978,292 / EBF 2.465**,
+      equal on all 40 lines to the old arm with `SingularTtDepthMargin=2`,
+      with the off arm exact. The curvature sweep
+      (`analysis/b33_sweep_2026-09-24.md`, rule frozen in `e72b86f`) finds
+      three of seven coordinates curved (`CoreNmpREval`, `CoreProbcutBase`,
+      `CoreSingularMargin`, all on the WAC leg), three monotone and
+      `CoreLmrSingularOffset` flat. The SPSA configuration is not
+      written, for two reasons. First, the packet's 35-coordinate list
+      predates amendment 5, which adds `CoreSingDoubleBase`: the count
+      is 36, and the choice is RAR-S81's. Second, **it depends on
+      RAR-S78.** B.2.7's running re-tune covers all 82 `CoreParams`
+      coordinates the arm inherits. Its bake re-seeds the three LMR bases
+      on this surface and every fixed `Core*` value, and moves the arm's
+      fingerprint again, so `config_b33` is generated after that bake.
+      Registered scope: first, one engine commit bakes
       `SingularTtDepthMargin=2` where RAR-S80 measured it: the `b3proof`
       consumer, as a proof-owned coordinate with the head's shared default 3
       and its tripwire untouched and the off arm exact; the arm's
@@ -1435,7 +1451,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Opens 2026-09-24** with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
+| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's bake (B.2.7 re-seeds every inherited `CoreParams` value) and on the surface count, 35 in the packet's list and 36 with amendment 5's `CoreSingDoubleBase`; RAR-S81 then registers the tune.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
