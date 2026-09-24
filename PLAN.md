@@ -1332,12 +1332,21 @@ diagnostics; two rejections stop B.
       `CoreSingularMargin`, all on the WAC leg), three monotone and
       `CoreLmrSingularOffset` flat. The SPSA configuration is not
       written, for two reasons. First, the packet's 35-coordinate list
-      predates amendment 5, which adds `CoreSingDoubleBase`: the count
-      is 36, and the choice is RAR-S81's. Second, **it depends on
+      predates amendment 5, which adds `CoreSingDoubleBase`: **the count
+      is 36** (decided 2026-09-24: amendment 5 governs, and a monotone
+      fixed-node read is a gradient for the tune to use, not a reason to
+      pin the coordinate). Second, **it depends on
       RAR-S78.** B.2.7's running re-tune covers all 82 `CoreParams`
       coordinates the arm inherits. Its bake re-seeds the three LMR bases
       on this surface and every fixed `Core*` value, and moves the arm's
-      fingerprint again, so `config_b33` is generated after that bake.
+      fingerprint again, so `config_b33` is generated after that bake
+      (or after RAR-S78's gate rejects theta, in which case the seeds are
+      the current defaults). **The tune proceeds** (decided 2026-09-24):
+      three of seven sweep coordinates curve, which is what PLAN rule 4
+      asks for; the bench-node peak at the default and the rough WAC
+      surface lower the confidence that the SPSA finds much, and RAR-S81's
+      prediction says so, but they are not the flat or monotone surface
+      that would argue against the tune.
       Registered scope: first, one engine commit bakes
       `SingularTtDepthMargin=2` where RAR-S80 measured it: the `b3proof`
       consumer, as a proof-owned coordinate with the head's shared default 3
@@ -1345,7 +1354,7 @@ diagnostics; two rejections stop B.
       fingerprint is re-declared. Then the curvature sweep of `CoreNmpBase`,
       `CoreNmpREval`, `CoreProbcutBase`, `CoreSingularMargin` and
       `CoreLmrSingularOffset` (0.5x–2x, bench and WAC at 100k, classification
-      frozen first); if curved, the 35-coordinate surface (the three LMR
+      frozen first); if curved, the 36-coordinate surface (the three LMR
       bases the new term lands on included) on Colosseum at
       15 × 30 from its own registration, maintainer-run; theta baked in one
       engine commit.
@@ -1451,7 +1460,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
-| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's bake (B.2.7 re-seeds every inherited `CoreParams` value) and on the surface count, 35 in the packet's list and 36 with amendment 5's `CoreSingDoubleBase`; RAR-S81 then registers the tune.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 35-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
+| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; RAR-S81 then registers it.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
