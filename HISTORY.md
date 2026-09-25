@@ -59,7 +59,12 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
-- **2026-09-20 — PLAN B.2 CLOSED.** B.2.3's SPSA finished at N = 5,000
+- **2026-09-25 — PLAN B.2.7 CLOSED, B.2 closed with it.** The Colosseum re-tune
+  of all 82 `CoreParams` coordinates from B.2.3's theta (RAR-S78, 150,000
+  games) was baked at **7,435,006 / EBF 2.457** and accepted by its `[0,3]`
+  gate at +13.1 ± 5.4 Elo in 3,081 pairs. Ten coordinates moved a full
+  step, led by LMR terms B.2.3 had left near their seeds.
+- **2026-09-20 — PLAN B.2 CLOSED (first close; reopened for B.2.7).** B.2.3's SPSA finished at N = 5,000
   (160,000 games) and its theta was baked; B.2.4a (+65.09 ± 23.26) and B.2.4b
   (+138.60 ± 30.66) accepted the fitted selectivity core, which became the
   default build at **7,185,678 / EBF 2.444**. RAR-S77 measured the tune's last
