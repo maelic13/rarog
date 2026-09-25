@@ -1,0 +1,218 @@
+{
+  "CoreNmpBase": {
+    "value": 150,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "CoreNmpDepth": {
+    "value": 4,
+    "min_value": 0,
+    "max_value": 20,
+    "step": 2
+  },
+  "CoreNmpTtPv": {
+    "value": 50,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreNmpImprovement": {
+    "value": 43,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreNmpCutoff": {
+    "value": 10,
+    "min_value": 0,
+    "max_value": 60,
+    "step": 4
+  },
+  "CoreNmpRBase": {
+    "value": 4407,
+    "min_value": 2048,
+    "max_value": 8192,
+    "step": 384
+  },
+  "CoreNmpRImproving": {
+    "value": 917,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreNmpRDepth": {
+    "value": 265,
+    "min_value": 64,
+    "max_value": 640,
+    "step": 36
+  },
+  "CoreNmpREval": {
+    "value": 1044,
+    "min_value": 0,
+    "max_value": 3072,
+    "step": 192
+  },
+  "CoreNmpRClamp": {
+    "value": 542,
+    "min_value": 128,
+    "max_value": 1536,
+    "step": 88
+  },
+  "CoreNmpVerifyDepth": {
+    "value": 16,
+    "min_value": 4,
+    "max_value": 32,
+    "step": 2
+  },
+  "CoreProbcutBase": {
+    "value": 180,
+    "min_value": 50,
+    "max_value": 400,
+    "step": 22
+  },
+  "CoreProbcutImproving": {
+    "value": 39,
+    "min_value": 0,
+    "max_value": 150,
+    "step": 9
+  },
+  "CoreProbcutMoveCap": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 16,
+    "step": 2
+  },
+  "CoreProbcutDepthDiv": {
+    "value": 146,
+    "min_value": 48,
+    "max_value": 512,
+    "step": 29
+  },
+  "CoreProbcutAdjust": {
+    "value": 90,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreProbcutLerp": {
+    "value": 276,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreSingularMargin": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 12,
+    "step": 2
+  },
+  "CoreSingDoubleBase": {
+    "value": 0,
+    "min_value": -100,
+    "max_value": 200,
+    "step": 19
+  },
+  "CoreSingDoublePv": {
+    "value": 89,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreSingDoubleNotTtPv": {
+    "value": 22,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreSingDoubleQuiet": {
+    "value": 7,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingDoubleCorr": {
+    "value": 7,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTriplePv": {
+    "value": 105,
+    "min_value": 0,
+    "max_value": 350,
+    "step": 22
+  },
+  "CoreSingTripleNotTtPv": {
+    "value": 26,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreSingTripleQuiet": {
+    "value": 9,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTripleCorr": {
+    "value": 7,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTripleBase": {
+    "value": 16,
+    "min_value": 0,
+    "max_value": 80,
+    "step": 5
+  },
+  "CoreSingMulticutLerp": {
+    "value": 412,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLdseMargin": {
+    "value": 11,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreLmrSingularSlope": {
+    "value": 1085,
+    "min_value": 0,
+    "max_value": 3072,
+    "step": 192
+  },
+  "CoreLmrSingularOffset": {
+    "value": 85,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreLmrSingularCap": {
+    "value": 2021,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "CoreLmrQuiet": {
+    "value": 1421,
+    "min_value": 0,
+    "max_value": 6144,
+    "step": 384
+  },
+  "CoreLmrNoisy": {
+    "value": 779,
+    "min_value": 0,
+    "max_value": 6144,
+    "step": 384
+  },
+  "CoreLmrCutNode": {
+    "value": 2354,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  }
+}
