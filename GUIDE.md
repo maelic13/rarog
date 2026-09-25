@@ -116,8 +116,9 @@ iterations, measured +4.43 ± 2.90 in RAR-S77. B.2.2 closed on 2026-09-15:
 **Colosseum CLI is the main harness** since 2026-09-21 (B.2.6.2): gates, fixed
 matches, tunes, null pairs and gauntlets run through `tools/colosseum.ps1` from
 the committed run files, with the runner pinned by revision and SHA-256 —
-since 2026-09-22 the published `cli-v0.1.0` (B.2.6.3), which resolves Rarog's
-run files identically to the build the adoption evidence was gathered on.
+since 2026-09-25 the published `cli-v0.2.0` (`ca05dfa`; `cli-v0.1.0` from
+2026-09-22 to then), which resolves Rarog's run files to policy in every
+checked field and passes the 40-case guard suite.
 fastchess, weather-factory, `sprt.ps1` and `spsa.ps1` stay installed, working
 and documented as the backup and the second opinion until at least release
 2.5.0; PROCESS's *Harness* section holds the cross-check triggers. The two

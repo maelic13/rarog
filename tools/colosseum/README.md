@@ -114,16 +114,24 @@ from its registration cannot be tuned by accident.
 `colosseum.pin.json` names the source revision and the SHA-256. Only the hash
 can be enforced — a stripped release executable does not carry its revision —
 so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
-mismatch rather than substituting a build. Since 2026-09-22 the pin is the
-published release `cli-v0.1.0` (`40a15b1b`): its `archive` entry carries the
+mismatch rather than substituting a build. Since 2026-09-25 the pin is the
+published release `cli-v0.2.0` (`ca05dfa2`; `cli-v0.1.0` at `40a15b1b` from
+2026-09-22 until then): its `archive` entry carries the
 asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
 later release is an edit to that one file.
 
-The released 0.1.0 reports the same version string as the local build that
-preceded it, so the hash is the only identity that separates them — and it
-resolves these run files to a configuration identical to that build's in all
-439 dry-run fields.
+The released 0.1.0 reported the same version string as the local build that
+preceded it, so the hash is the only identity that separates builds; 0.2.0
+reports its own version, and the hash stays the enforced identity. Each
+re-pin is qualified the same way: `setup_tools.ps1` verifies both digests,
+`tools/diag/test_colosseum_guards.ps1` passes, and the wrapper's `sprt`,
+`match` and `spsa` dry runs resolve to policy in every checked field. 0.2.0
+adds `spsa history` (the centre vector per iteration, read-only, live), the
+`--seed-from` tune start (finished runs only; the wrapper does not expose it
+yet), an option-drop warning kept in the run record, and resume reporting
+fixes; its `history` output on the finished B.2.7 run rounds to that run's
+`tuned-options.txt` on all 82 coordinates.
 
 ## The backup path
 
