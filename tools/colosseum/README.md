@@ -128,7 +128,8 @@ re-pin is qualified the same way: `setup_tools.ps1` verifies both digests,
 `tools/diag/test_colosseum_guards.ps1` passes, and the wrapper's `sprt`,
 `match` and `spsa` dry runs resolve to policy in every checked field. 0.2.0
 adds `spsa history` (the centre vector per iteration, read-only, live), the
-`--seed-from` tune start (finished runs only; the wrapper does not expose it
+`--seed-from` tune start (finished runs only; the wrapper's `-SeedFrom` since
+2026-09-25, with its own source checks and manifest line; it does not expose it
 yet), an option-drop warning kept in the run record, and resume reporting
 fixes; its `history` output on the finished B.2.7 run rounds to that run's
 `tuned-options.txt` on all 82 coordinates.

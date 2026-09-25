@@ -493,6 +493,10 @@ cargo xtask verify-isa --arch pext
 # A tune: 15 slots, 30 games per iteration, budget in games (RAR-M62)
 ./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
   -Iterations <N> -TotalGames <N*30> -Seed <n> -Dir tools/results/<experiment>
+# The next block of the same tune (PLAN rule 7c): seeded from the finished block
+./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
+  -Iterations <N> -TotalGames <N*30> -Seed <n+1> -SeedFrom tools/results/<block n> `
+  -Dir tools/results/<block n+1>
 
 # Null pair, only after a runner, scheduler or topology change (RAR-M03)
 ./tools/colosseum.ps1 -Mode calibrate -EngineA <same.exe> -EngineB <same.exe> `

@@ -142,8 +142,10 @@ gating. The rules below decide order and acceptance in this roadmap.
    last block's rounded centres as theta; never more than three blocks
    without a new registration. Block size, count and ceiling are registered
    before the first game and never change after it. Nothing is baked
-   between blocks; a later block's seeds live in its own config group,
-   listed as historical for the audit. Maintainer decision 2026-09-25.
+   between blocks; a later block starts through `colosseum.ps1 -SeedFrom`
+   from the previous block's run directory, on the same config group and
+   tune file, and the wrapper refuses an unfinished source, another binary
+   or another surface. Maintainer decision 2026-09-25.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
@@ -1177,9 +1179,9 @@ diagnostics; two rejections stop B.
       41 of 82 within half a step of theta_5000 (registered read: at least
       60, so 'already at the optimum' is not supported); 9 of the 65 moved a
       full step (registered: at most 10, supported); 8 of the 17 continued
-      at least half a step in their RAR-S75 direction at N (the first-third
-      read could not be taken: Colosseum exports the final centres and the
-      per-game journal, not the per-iteration centres). Theta baked
+      at least half a step in their RAR-S75 direction at N, and 4 of 17 at
+      iteration 1,667 (read the same day from `spsa history`; `result.json`
+      had carried every iteration's centres all along). Theta baked
       `52c46df` (7,435,006 / EBF 2.457; the `b3proof` arm 7,721,657 / EBF
       2.456); the gate binary and its SPRT are in RAR-S78. **Gate H1 accepted
       2026-09-25 at 3,081 pairs, +13.1 ± 5.4 Elo (+20.9 ± 8.7 nElo), 0
