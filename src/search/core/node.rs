@@ -2917,6 +2917,10 @@ mod tests {
         let search = |guards: i32| {
             let mut searcher = Searcher::default();
             searcher.cfg.core.razor_guards = guards;
+            // The position evaluates near -927; the margin is pinned so the
+            // fixture stays below it whatever the fitted defaults become.
+            searcher.cfg.core.razor_base = 288;
+            searcher.cfg.core.razor_square = 143;
             let mut board = Board::from_fen(fen).expect("valid FEN");
             searcher.shared.tt.store(TtStore {
                 key: board.hash(),
