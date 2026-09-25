@@ -5,17 +5,17 @@
     "and every wrapper run actually enforce, because a revision cannot be read back",
     "out of a stripped executable. The released 0.1.0 reports the same version string",
     "as the local build that preceded it, so the hash is the only identity that",
-    "distinguishes them.",
-    "",
+    "out of a stripped executable. 0.2.0 reports its own version string, but the hash",
+    "stays the enforced identity.",
     "`archive` is the published asset: `sha256` there is the digest GitHub serves for",
     "the asset itself (this release has no SHA256SUMS file), checked on download,",
     "while the top-level `sha256` is checked on the extracted executable. Re-pinning",
     "to a later release is an edit to this file and to nothing else in the tree."
   ],
-  "revision": "40a15b1be4f93fd35d2c23bf6f7ed78ec72add28",
-  "sha256": "27FF817A39809B0494A6C49357000190C98B65F3D373AB8A43F9B971D9FB7F19",
-  "version": "colosseum-cli 0.1.0",
-  "pinned_utc": "2026-09-22",
+  "revision": "ca05dfa2ac92e91a134bdea534c6d3659a28e811",
+  "sha256": "5A4ECEDBF34A69ECA4D5D1F1E110D163D7C2015B7548D34E4CDA622EE5ABC408",
+  "version": "colosseum-cli 0.2.0",
+  "pinned_utc": "2026-09-25",
   "source": {
     "kind": "release-archive",
     "repository": "https://github.com/maelic13/colosseum",
@@ -23,10 +23,10 @@
     "artifact": "target/release/colosseum-cli.exe"
   },
   "archive": {
-    "tag": "cli-v0.1.0",
-    "asset": "colosseum-cli-0.1.0-windows-x64.zip",
-    "url": "https://github.com/maelic13/colosseum/releases/download/cli-v0.1.0/colosseum-cli-0.1.0-windows-x64.zip",
-    "sha256": "BE7D3A330500E6F846554A544243747829D90099888A7AA99961D8F2D3CF10F7",
-    "size_bytes": 2795969
+    "tag": "cli-v0.2.0",
+    "asset": "colosseum-cli-0.2.0-windows-x64.zip",
+    "url": "https://github.com/maelic13/colosseum/releases/download/cli-v0.2.0/colosseum-cli-0.2.0-windows-x64.zip",
+    "sha256": "597E1CB8CCBAA018A18152EBDC07462426DD7A574EC6145E3F2279D253AC7CA0",
+    "size_bytes": 2836550
   }
 }
