@@ -424,9 +424,12 @@ Before any SPSA:
    coordinate returning to its seed may be inactive; an omitted high-activity
    coordinate can invalidate the proposed full tune. The full tune starts from
    accepted engine defaults.
-7. Choose and register the immutable horizon from gradient quality, integer
-   resolution and compute budget. `StopAfter` may stage a review without
-   changing that horizon or games per iteration.
+7. Register the tune as blocks (PLAN rule 7c): 2,000 iterations × 30 games
+   each, a later block seeded from the previous block's rounded centres
+   with a fresh schedule and the same steps, a movement stop rule (at
+   least three coordinates moved a full step in the block, or stop) and a
+   ceiling of three blocks. Block size, rule and ceiling never change
+   after the first game; a block is never cut short to read it.
 8. Run `./tools/audit_spsa_coverage.ps1` and register surface, fixed values,
    iterations, games per iteration, slots, the budget in games, gain and
    estimator before launch. On Colosseum the shape is **15 slots and 30 games
@@ -434,9 +437,9 @@ Before any SPSA:
    `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
    registered surface for that horizon and `--check` refuses a file that has
    drifted from it.
-9. Complete the final theta without post-hoc checkpoint selection; bake it
-   into a fresh clean PGO binary and run a paired SPRT, then LTC/4T where
-   appropriate.
+9. Theta is the last completed block's rounded final centres, without
+   post-hoc checkpoint selection; bake it into a fresh clean PGO binary
+   and run a paired SPRT, then LTC/4T where appropriate.
 
 ### Opening book
 

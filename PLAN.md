@@ -125,6 +125,26 @@ gating. The rules below decide order and acceptance in this roadmap.
    what horizon, and what the gate would otherwise measure. Maintainer
    decision 2026-09-20. The whole-surface refit stays at B.6.
 
+7c. **A tune runs in blocks with a movement stop rule, not on one horizon.**
+   RAR-S75 ran 5,000 iterations and its last 1,100 were worth +4.43 ± 2.90;
+   restarting the same 82 coordinates from its endpoint with a fresh gain
+   schedule (RAR-S78, another 5,000) gained +13.1 ± 5.4, carried by
+   coordinates the first run had barely moved. The limit was the decaying
+   gain, not the games: a coordinate whose gradient appears only after
+   others have moved receives it when the schedule is spent, and the right
+   horizon cannot be predicted because it depends on how far the seeds are
+   from the optimum. So a registered tune is a sequence of blocks, each
+   2,000 iterations × 30 games on Colosseum (60,000 games, about 12.5 h),
+   each started from the previous block's rounded centres with a fresh
+   schedule, the same surface and the same steps. After each block, count
+   the coordinates that moved at least one step from the block's seeds: at
+   least three, and the next block runs; fewer, and the tune stops with the
+   last block's rounded centres as theta; never more than three blocks
+   without a new registration. Block size, count and ceiling are registered
+   before the first game and never change after it. Nothing is baked
+   between blocks; a later block's seeds live in its own config group,
+   listed as historical for the audit. Maintainer decision 2026-09-25.
+
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
    exchange rate. Counters, node counts, EBF, tactical suites and fit loss
@@ -1370,9 +1390,11 @@ diagnostics; two rejections stop B.
       `CoreNmpREval`, `CoreProbcutBase`, `CoreSingularMargin` and
       `CoreLmrSingularOffset` (0.5x–2x, bench and WAC at 100k, classification
       frozen first); if curved, the 36-coordinate surface (the three LMR
-      bases the new term lands on included) on Colosseum at
-      15 × 30 from its own registration, maintainer-run; theta baked in one
-      engine commit.
+      bases the new term lands on included) on Colosseum in blocks of
+      2,000 × 30 under rule 7c (RAR-S81, registered 2026-09-25: up to three
+      blocks, about 12.5 h each, a movement stop rule, a read-only
+      2,000-game diagnostic after each block), maintainer-run; theta baked
+      in one engine commit.
     - **B.3.4 Gate — `V`.** Fitted `b3proof` PGO build against the accepted
       head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
       registered with binaries and hashes before any game; H1 flips the
@@ -1474,7 +1496,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; RAR-S81 then registers it.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
+| B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; **RAR-S81 registered 2026-09-25** on the B.2.7 head: blocks of 2,000 × 30 under rule 7c, up to three; next, generate `config_b33`/`fixed_b33` and the Colosseum files, build the tune binary, audit, dry run (`V`), then block 1 is the maintainer's.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5 | RESEARCH | I2 | Waits for B.4 |
