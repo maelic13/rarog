@@ -11,10 +11,10 @@ c_end = 11.5142
 
 [[parameters]]
 name = "CoreNmpDepth"
-initial = 4
+initial = 16
 min = 0
-max = 20
-c_end = 0.9211
+max = 80
+c_end = 2.3028
 
 [[parameters]]
 name = "CoreNmpTtPv"
@@ -73,13 +73,6 @@ max = 1536
 c_end = 40.5301
 
 [[parameters]]
-name = "CoreNmpVerifyDepth"
-initial = 16
-min = 4
-max = 32
-c_end = 0.9211
-
-[[parameters]]
 name = "CoreProbcutBase"
 initial = 180
 min = 50
@@ -123,9 +116,16 @@ c_end = 29.4764
 
 [[parameters]]
 name = "CoreSingularMargin"
+initial = 64
+min = 4
+max = 192
+c_end = 5.5268
+
+[[parameters]]
+name = "CoreSingExactSpan"
 initial = 4
-min = 1
-max = 12
+min = 2
+max = 16
 c_end = 0.9211
 
 [[parameters]]

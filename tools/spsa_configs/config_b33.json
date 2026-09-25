@@ -6,10 +6,10 @@
     "step": 25
   },
   "CoreNmpDepth": {
-    "value": 4,
+    "value": 16,
     "min_value": 0,
-    "max_value": 20,
-    "step": 2
+    "max_value": 80,
+    "step": 5
   },
   "CoreNmpTtPv": {
     "value": 50,
@@ -59,12 +59,6 @@
     "max_value": 1536,
     "step": 88
   },
-  "CoreNmpVerifyDepth": {
-    "value": 16,
-    "min_value": 4,
-    "max_value": 32,
-    "step": 2
-  },
   "CoreProbcutBase": {
     "value": 180,
     "min_value": 50,
@@ -102,9 +96,15 @@
     "step": 64
   },
   "CoreSingularMargin": {
+    "value": 64,
+    "min_value": 4,
+    "max_value": 192,
+    "step": 12
+  },
+  "CoreSingExactSpan": {
     "value": 4,
-    "min_value": 1,
-    "max_value": 12,
+    "min_value": 2,
+    "max_value": 16,
     "step": 2
   },
   "CoreSingDoubleBase": {
