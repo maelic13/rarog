@@ -240,6 +240,60 @@ try {
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
+    # -SeedFrom (PLAN rule 7c): a block starts only from a FINISHED tune of the
+    # same binary on the same surface. The negatives use a forged result.json
+    # in the shape cli-v0.2.0 writes; the wrapper refuses before the CLI runs.
+    $tuneSha = (Get-FileHash -Algorithm SHA256 -LiteralPath $tune.Engine).Hash.ToUpperInvariant()
+    $b23 = Get-Content -LiteralPath (Join-Path $repo "tools\spsa_configs\config_b23core.json") -Raw | ConvertFrom-Json
+    function New-SeedSource([string]$Name, [hashtable]$Overrides = @{}, [switch]$NoResult) {
+        $dir = Join-Path $scratch "seed-$Name"
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        if ($NoResult) { return $dir }
+        $parameters = @($b23.PSObject.Properties | ForEach-Object {
+            [pscustomobject]@{ name = $_.Name; original = $_.Value.value; estimate = [double]$_.Value.value
+                               tuned = $_.Value.value; min = $_.Value.min_value; max = $_.Value.max_value } })
+        $doc = @{
+            engine_sha256 = $tuneSha.ToLowerInvariant()
+            driver = @{ status = "completed" }
+            tuned_result = @{ completed_iterations = 5000; settings = @{ iterations = 5000; games_per_iteration = 30 }
+                              parameters = $parameters }
+        }
+        foreach ($key in $Overrides.Keys) {
+            $path = $key -split '\.'
+            $node = $doc
+            for ($i = 0; $i -lt $path.Count - 1; $i++) { $node = $node[$path[$i]] }
+            $node[$path[-1]] = $Overrides[$key]
+        }
+        $doc | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $dir "result.json") -Encoding utf8
+        $dir
+    }
+    Invoke-Case -Name "seed source without a result" -Expect "SEED SOURCE" `
+        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "empty" -NoResult) })
+    Invoke-Case -Name "seed source stopped before its horizon" -Expect "SEED SOURCE NOT COMPLETED" `
+        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "short" @{ "tuned_result.completed_iterations" = 1240; "driver.status" = "stopped" }) })
+    Invoke-Case -Name "seed source tuned on another binary" -Expect "SEED SOURCE BINARY" `
+        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "other" @{ "engine_sha256" = ("0" * 64) }) })
+    $fewer = @($b23.PSObject.Properties | Select-Object -Skip 1 | ForEach-Object {
+        [pscustomobject]@{ name = $_.Name; original = $_.Value.value; estimate = [double]$_.Value.value
+                           tuned = $_.Value.value; min = $_.Value.min_value; max = $_.Value.max_value } })
+    Invoke-Case -Name "seed source on another surface" -Expect "SEED SOURCE SURFACE" `
+        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "surface" @{ "tuned_result.parameters" = $fewer }) })
+    Invoke-Case -Name "-SeedFrom in a gate" -Expect "ignores" `
+        -Arguments (Merge-Arguments $base @{ SeedFrom = (New-SeedSource "gate") })
+    # The positive control needs a real finished Colosseum tune of a staged tune
+    # build; B.2.7's run and binary serve when this host still holds them, at the
+    # horizon its committed tune file was generated for (--check refuses another).
+    $b27Run = Join-Path $repo "tools\results\b27all-spsa"
+    $b27Tune = "tools/test_engines/rarog-b27core-tune.exe"
+    if ((Test-Path -LiteralPath (Join-Path $b27Run "result.json")) -and (Test-Path -LiteralPath (Join-Path $repo $b27Tune))) {
+        Invoke-Case -Name "control: a block seeded from a finished tune" -Expect "" `
+            -Arguments (Merge-Arguments $tune @{ Engine = (Copy-Arm -Source $b27Tune -Name "b27Arm"); ConfigGroup = "b27all"
+                                                 Iterations = 5000; TotalGames = 150000; SeedFrom = $b27Run
+                                                 Dir = (Join-Path $scratch "block2") })
+    } else {
+        Write-Host "  SKIP  control: a block seeded from a finished tune (B.2.7's run or binary not staged)" -ForegroundColor Yellow
+    }
+
     # A gauntlet resolves through `tournament run`, whose dry run names the
     # command and its clock differently from the two-arm commands; the first
     # gauntlet through the wrapper was refused by its own policy check.

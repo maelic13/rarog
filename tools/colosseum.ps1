@@ -42,7 +42,8 @@
     match     -> a fixed-length measurement with an interval. Decides nothing.
     calibrate -> the null pair, owed only on a runner, scheduler or topology
                  change (RAR-M03). Requires byte-identical binaries.
-    spsa      -> a tune. Needs -ConfigGroup, -Iterations and -TotalGames.
+    spsa      -> a tune. Needs -ConfigGroup, -Iterations and -TotalGames;
+                 -SeedFrom <run dir> starts a block from a finished tune (PLAN rule 7c).
     gauntlet  -> a rating gauntlet; participants are passed in -ExtraArgs.
 
 .PARAMETER Bracket
@@ -59,6 +60,12 @@
     the binary benched; this is where the registration says what it should have
     benched. AGENTS.md's one failure mode is a stale binary measured, and a
     fingerprint is the cheapest thing that catches it.
+
+.PARAMETER SeedFrom
+    A finished tune's run directory. The new block starts from its rounded
+    final values (Colosseum's --seed-from) with a fresh schedule, the same
+    surface and the same steps; the source must be completed, tuned on this
+    same binary and on this same surface, and the manifest records it.
 
 .PARAMETER CategoricalTuneBuild
     A categorical A/B on ONE tune build: the same executable on both sides,
@@ -100,6 +107,7 @@ param(
     [int]$Games = 0,
     [int]$TotalGames = 0,
     [string]$ConfigGroup = "",
+    [string]$SeedFrom = "",
     [int]$Iterations = 0,
     [int]$Seed = 0,
     [string[]]$OptionsA = @(),
@@ -149,16 +157,19 @@ $modeIgnores = switch ($Mode) {
     "sprt"      { @{ Games = "-Games sizes a fixed match; an SPRT is capped by -MaxPairs"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
+                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon" } }
     "match"     { @{ MaxPairs = "-MaxPairs caps an SPRT; a fixed match is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a fixed match has none"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
+                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon" } }
     "calibrate" { @{ MaxPairs = "-MaxPairs caps an SPRT; a null pair is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a null pair has none"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
+                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon" } }
     "spsa"      { @{ MaxPairs = "-MaxPairs caps an SPRT; a tune is sized by -TotalGames"
                      Games = "-Games sizes a fixed match; a tune is sized by -TotalGames"
@@ -169,6 +180,7 @@ $modeIgnores = switch ($Mode) {
                      Bracket = "-Bracket selects SPRT bounds"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
+                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon"
                      EngineA = "gauntlet participants are passed in -ExtraArgs"
                      EngineB = "gauntlet participants are passed in -ExtraArgs" } }
@@ -309,6 +321,7 @@ foreach ($arm in $engines) {
 
 # ─── Guard 8: the tune surface belongs to this binary and this horizon ────
 $surfaceFiles = @()
+$seedSource = $null
 if ($Mode -eq "spsa") {
     $configs = Join-Path $PSScriptRoot "spsa_configs"
     $surfacePath = Join-Path $configs "config_$ConfigGroup.json"
@@ -338,6 +351,45 @@ if ($Mode -eq "spsa") {
         $(if (Test-Path $fixedPath) { $fixedPath })
         (Join-Path $configs "colosseum\$ConfigGroup.tune.toml")
     ) | Where-Object { $_ }
+
+    # ─── Guard 8b: a block is seeded only from a FINISHED tune of this binary ──
+    # PLAN rule 7c: a later block starts from the previous block's rounded
+    # centres; a block cut short does not seed the next, and every block of one
+    # tune runs the same binary on the same surface. The CLI refuses an
+    # unfinished source too; this guard names the reason before it is invoked.
+    if ($SeedFrom) {
+        $SeedFrom = [System.IO.Path]::GetFullPath($SeedFrom, (Get-Location).Path)
+        $seedResultPath = Join-Path $SeedFrom "result.json"
+        if (-not (Test-Path -LiteralPath $seedResultPath)) {
+            throw "SEED SOURCE: $SeedFrom has no result.json; only a finished tune's run directory seeds a block."
+        }
+        $seedResult = Get-Content -LiteralPath $seedResultPath -Raw | ConvertFrom-Json
+        $seedStatus = "$($seedResult.driver.status)"
+        $seedDone = [int]$seedResult.tuned_result.completed_iterations
+        $seedHorizon = [int]$seedResult.tuned_result.settings.iterations
+        if ($seedStatus -ne "completed" -or $seedDone -ne $seedHorizon) {
+            throw ("SEED SOURCE NOT COMPLETED: $SeedFrom is '$seedStatus' at $seedDone of $seedHorizon iterations; " +
+                   "a block cut short does not seed the next (PLAN rule 7c).")
+        }
+        $tuneSha = (Get-HarnessSha256 $engines[0].Path).ToUpperInvariant()
+        if ("$($seedResult.engine_sha256)".ToUpperInvariant() -ne $tuneSha) {
+            throw ("SEED SOURCE BINARY: $SeedFrom was tuned on $($seedResult.engine_sha256), not this tune build " +
+                   "($tuneSha); every block of one tune runs the same binary.")
+        }
+        $seedNames = @($seedResult.tuned_result.parameters | ForEach-Object { $_.name })
+        $surfaceNames = @($surface.PSObject.Properties.Name)
+        if (($seedNames -join '|') -ne ($surfaceNames -join '|')) {
+            throw ("SEED SOURCE SURFACE: $SeedFrom tuned [$($seedNames -join ', ')], not config_$ConfigGroup.json's " +
+                   "coordinates in its order.")
+        }
+        $seedSource = [pscustomobject]@{
+            Directory = $SeedFrom; ResultPath = $seedResultPath
+            ResultSha256 = (Get-HarnessSha256 $seedResultPath).ToUpperInvariant()
+            Iterations = $seedDone; Tuned = @{}
+        }
+        foreach ($p in $seedResult.tuned_result.parameters) { $seedSource.Tuned[$p.name] = [int64]$p.tuned }
+        Write-Host "  Seed source verified: $SeedFrom, $seedDone iterations, same tune build, same surface"
+    }
 }
 
 # ─── The command ──────────────────────────────────────────────────────────
@@ -373,6 +425,7 @@ switch ($Mode) {
                   if ($Games -gt 0) { $commandArgs += @('--games', "$Games") } }
     "spsa"      { $commandArgs += @($engines[0].Path, '--total-games', "$TotalGames") }
 }
+if ($Mode -eq "spsa" -and $SeedFrom) { $commandArgs += @('--seed-from', $SeedFrom) }
 # A side-specific option list on the command line REPLACES the run file's list
 # for that side (Colosseum's command-line-over-run-file rule applies to the
 # whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
@@ -504,6 +557,22 @@ if ($Mode -eq "spsa") {
     if ([int]$resolved.settings.iterations -ne $Iterations) {
         Add-Violation "tune horizon is $($resolved.settings.iterations) iterations, expected $Iterations"
     }
+
+    if ($seedSource) {
+        $seeded = $resolved.tune.seeded_from
+        if (-not $seeded) {
+            Add-Violation "seed source not applied: the resolved tune carries no seeded_from"
+        } elseif ("$($seeded.result_sha256)".ToUpperInvariant() -ne $seedSource.ResultSha256) {
+            Add-Violation "seed source result.json hash is $($seeded.result_sha256), expected $($seedSource.ResultSha256)"
+        }
+        foreach ($p in $resolved.tune.parameters) {
+            if ([int64]$p.initial -ne $seedSource.Tuned[$p.name]) {
+                Add-Violation "$($p.name) starts at $($p.initial), not the seed source's $($seedSource.Tuned[$p.name])"
+            }
+        }
+    } elseif ($resolved.tune.seeded_from) {
+        Add-Violation "the resolved tune is seeded from $($resolved.tune.seeded_from.run_directory) without -SeedFrom"
+    }
 }
 
 # Placement: every slot must sit on a game core. Windows services most device
@@ -591,6 +660,7 @@ if ($Mode -eq "spsa") {
     $lines.Add("tune_surface:     $ConfigGroup, $($resolved.tune.parameters.Count) coordinates")
     $lines.Add("tune_horizon:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $($resolved.total_games) games")
     $lines.Add("tune_r_end:       $($resolved.r_end)")
+    $lines.Add("seed_from:        $(if ($seedSource) { "$($seedSource.Directory) ($($seedSource.Iterations) iterations; result.json sha256 $($seedSource.ResultSha256))" } else { 'none (seeds are the engine defaults)' })")
 }
 $lines.Add("host_busy_percent: $(if ($null -eq $hostState.BusyPercent) { 'unreadable' } else { '{0:N1}' -f $hostState.BusyPercent })")
 $lines.Add("categorical:      $(if ($CategoricalTuneBuild) { 'one tune build on both sides, options A vs B (-CategoricalTuneBuild)' } else { 'no' })")
