@@ -332,7 +332,7 @@ if ($Mode -eq "spsa") {
 
     $names = @($surface.PSObject.Properties.Name)
     if ($fixed) { $names += @($fixed.PSObject.Properties.Name) }
-    Assert-CoreSurfaceArm -Names $names -Flavor $manifests["tune"].flavor -ConfigGroup $ConfigGroup
+    Assert-CoreSurfaceArm -Names $names -Advertised $advertised["tune"] -Flavor $manifests["tune"].flavor -ConfigGroup $ConfigGroup
 
     $tuned = @(Assert-TuneSurface -Advertised $advertised["tune"] -Surface $surface `
         -Iterations $Iterations -Label (Split-Path $engines[0].Path -Leaf) -Fixed $fixed)

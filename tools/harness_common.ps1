@@ -738,20 +738,26 @@ function Assert-EngineArmEquality {
 }
 
 function Assert-CoreSurfaceArm {
-    # The selectivity core's coordinates exist only in a `b2core` build. An
-    # off-arm binary would tune a different search under the same names or fail
-    # late on a missing option, so the arm is checked before anything is copied.
+    # The Core* coordinates exist only in the arm that compiles them (`b2core`,
+    # a default feature since B.2.4b, and the `b3proof` arm on top of it). A
+    # flavor string no longer says which binary carries them, so the arm is
+    # judged by the options it actually advertises: an off-arm binary would tune
+    # a different search under the same names or fail late on a missing option.
     param(
         [Parameter(Mandatory)][string[]]$Names,
+        [Parameter(Mandatory)][object[]]$Advertised,
         [string]$Flavor,
         [Parameter(Mandatory)][string]$ConfigGroup
     )
 
+    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
+    $advertisedNames = @($Advertised | ForEach-Object { & $normalize $_.Name })
     $core = @($Names | Where-Object { $_ -like "Core*" })
-    if ($core.Count -gt 0 -and $Flavor -notlike "*b2core*") {
-        throw ("Config group '$ConfigGroup' names selectivity-core options ($($core[0]) and " +
-               "$($core.Count - 1) more), but the tune binary's flavor is '$Flavor'. " +
-               "Build it with ./tools/build_test.ps1 -Tune -Features b2core.")
+    $missing = @($core | Where-Object { $advertisedNames -notcontains (& $normalize $_) })
+    if ($missing.Count -gt 0) {
+        throw ("Config group '$ConfigGroup' names selectivity-core options ($($missing[0]) and " +
+               "$($missing.Count - 1) more) that the tune binary (flavor '$Flavor') does not advertise. " +
+               "Build the arm that carries them: ./tools/build_test.ps1 -Tune -Features b2core (or b3proof).")
     }
 }
 
