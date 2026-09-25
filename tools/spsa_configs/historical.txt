@@ -2,3 +2,5 @@
 # registration's and are kept as evidence, so audit_spsa_coverage.ps1 does not
 # compare them with the engine's defaults. One group per line.
 b23core   # RAR-S75, final theta baked in 14a7079
+b27all    # RAR-S78, final theta baked in 52c46df
+b27core   # RAR-S78 design not run; seeds are theta_5000, superseded by the b27all bake

@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's HCE by **about 329 Elo** | RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **7,185,678 / EBF 2.444**: the B.2.3-fitted selectivity core, the default build since B.2.4b accepted it (2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search at 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **7,435,006 / EBF 2.457**: the selectivity core with RAR-S78's re-tuned theta baked (`52c46df`, 2026-09-25; the gate decides whether it stays, and H0 restores 7,185,678 / EBF 2.444, the B.2.3-fitted core that was the default since B.2.4b, 2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search at 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -1151,7 +1151,17 @@ diagnostics; two rejections stop B.
       same travel budget per coordinate as RAR-S75; `rarog-b27core-tune.exe`
       at 7,185,678; gate `[0,3]` against the B.2.4b head, cap 40,000
       pairs. Predictions frozen in the row. About 31 to 33 hours of tune
-      and up to 15 of gate, both maintainer-run.
+      and up to 15 of gate, both maintainer-run. **Tune finished
+      2026-09-24** (`tools/results/b27all-spsa/`, 150,000 games, 0 faults,
+      4,921 games per hour in the final session): no coordinate at a rail;
+      41 of 82 within half a step of theta_5000 (registered read: at least
+      60, so 'already at the optimum' is not supported); 9 of the 65 moved a
+      full step (registered: at most 10, supported); 8 of the 17 continued
+      at least half a step in their RAR-S75 direction at N (the first-third
+      read could not be taken: Colosseum exports the final centres and the
+      per-game journal, not the per-iteration centres). Theta baked
+      `52c46df` (7,435,006 / EBF 2.457; the `b3proof` arm 7,721,657 / EBF
+      2.456); the gate binary and its SPRT are in RAR-S78.
     - **B.2.8 First-search stalls — `I1`, CLOSED 2026-09-19
       (RAR-M59).** Added by maintainer decision after a harness lead. The
       KPK bitbase was built inside the first search that reached KPK (about
@@ -1210,7 +1220,7 @@ diagnostics; two rejections stop B.
       shrink (`90a7f87`); the per-line extension budget (`9bf6717`)
       replaced amendment 4's ply bound. **Final fingerprints:**
       - arm **7,479,114 / EBF 2.467** (`bench 13`) at B.3.1's close;
-        since B.3.3's bake of `CoreSingularTtDepthMargin=2` (`3ca9aab`, RAR-S80) the arm reads **7,978,292 / EBF 2.465**;
+        since B.3.3's bake of `CoreSingularTtDepthMargin=2` (`3ca9aab`, RAR-S80) the arm reads **7,978,292 / EBF 2.465**; on the B.2.7-baked head (`52c46df`) it reads 7,721,657 / EBF 2.456 and the off arm 7,435,006 / EBF 2.457;
       - off arm 7,185,678 / 2.444, all 40 lines;
       - `--no-default-features` 7,601,220 / 2.474.
 
@@ -1459,7 +1469,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.2.7 | IMPLEMENTED | V | **Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
+| B.2.7 | GAME_GATE | V | **Tune finished 2026-09-24 (150,000 games, 0 faults, no rail): 41 of 82 within half a step of theta_5000, 10 moved a full step (the shallow-TT, exact-bound and alpha-gap LMR terms lead); theta baked `52c46df` (7,435,006 / EBF 2.457), `rarog-b27all-core-pext-pgo.exe` built; the `[0,3]` SPRT vs the B.2.4b head, cap 40,000 pairs, is the maintainer's to run (RAR-S78).** Fully registered 2026-09-22 (RAR-S78), amended the same day before any game to all 82 coordinates restarted at theta_5000 with RAR-S75's steps (coupling), N = 5,000 × 30 games, r_end 0.0031, binary and dry run in the row; the tune is the maintainer's to run.** Added 2026-09-19 (RAR-S78, design registered): Colosseum re-tune of the coordinates at least one step from their seeds at N = 5,000; full registration before launch; B.2.4b passed 2026-09-20 and B.2.6 closed 2026-09-22, so it is the next executable leaf: register, then hand over the tune |
 | B.3.3 | READY_FOR_IMPLEMENTATION | V | **Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; RAR-S81 then registers it.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
