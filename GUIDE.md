@@ -35,14 +35,16 @@ generations change; do not rewrite the roadmap. These are maintainer
 judgments, not measured rankings. An investigation leaf (`R3`) spawns the
 implementation and measurement sub-steps under its step.
 
-| Class | Capability | GPT | Claude |
-|---|---|---|---|
-| `R3` | Frontier causal/architecture research | GPT-6 Astra — Extra High | Claude Fable 5.1 — High |
-| `R2` | Bounded correctness-sensitive reasoning | GPT-5.6 Sol — High | Claude Opus 5 — High |
-| `I2` | Difficult implementation | GPT-5.6 Sol — High | Claude Opus 5 — High |
-| `I1` | Well-specified implementation | GPT-5.6 Terra — Medium | Claude Sonnet 5 — Medium |
-| `M` | Mechanical/docs/provenance | GPT-5.6 Terra — Medium | Claude Sonnet 5 — Medium |
-| `V` | Verification/measurement | GPT-5.6 Sol — High | Claude Sonnet 5 — High |
+| Class | Capability | Model — thinking mode |
+|---|---|---|
+| `R3` | Frontier causal/architecture research | Claude Fable 5.1 — High |
+| `R2` | Bounded correctness-sensitive reasoning | Claude Opus 5 — High |
+| `I2` | Difficult implementation | Claude Opus 5 — High |
+| `I1` | Well-specified implementation | Claude Sonnet 5 — Medium |
+| `M` | Mechanical/docs/provenance | Claude Sonnet 5 — Medium |
+| `V` | Verification/measurement | Claude Sonnet 5 — High |
+
+Claude models only, by maintainer decision 2026-09-25.
 
 ### Reusable research prompt
 

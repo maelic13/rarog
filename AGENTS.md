@@ -304,9 +304,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   block and restate them rather than referring back. Routine internal checks do
   not become the maintainer's chores. Always name the next executable leaf.
 - When reporting the next step, use its PLAN capability class and GUIDE's
-  mapping to recommend one GPT model and one Claude model, each with its own
-  thinking mode (`GPT: <model> — <mode>; Claude: <model> — <mode>`) and a brief
-  task-specific reason. Prefer the least costly model judged sufficient and
+  mapping to recommend one Claude model with its thinking mode
+  (`Claude: <model> — <mode>`) and a brief task-specific reason; Claude
+  models only, by maintainer decision 2026-09-25. Prefer the least costly model judged sufficient and
   reserve deeper review for unresolved design, interaction or correctness
   questions; choose each mode independently at the lowest sufficient effort;
   never substitute newer models, and say so when a mode name is unknown rather
