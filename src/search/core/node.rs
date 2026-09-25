@@ -272,6 +272,49 @@ impl Searcher {
         1 + i32::from(below > double) + i32::from(below > triple)
     }
 
+    /// How many plies of depth the singular margin spans: the whole depth,
+    /// or `CoreSingExactSpan` sixteenths of it, rounded up, when the stored
+    /// bound is exact.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn singular_span(&self, depth: i32, exact: bool) -> i32 {
+        if exact {
+            (depth * self.cfg.proof.sing_exact_span + 15) / 16
+        } else {
+            depth
+        }
+    }
+
+    /// How far below the stored score the singular beta sits, in evaluation
+    /// units: `CoreSingularMargin` sixteenths per ply of span, plus as much
+    /// per ply of depth at a PV-line node searched with a null window.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn singular_margin(&self, depth: i32, exact: bool, tt_pv_null_window: bool) -> i32 {
+        let k = self.cfg.proof.singular_margin;
+        (self.singular_span(depth, exact) * k + depth * k * i32::from(tt_pv_null_window)) / 16
+    }
+
+    /// The TT move's negative extension after an exclusion fail-high that
+    /// neither cut nor demoted it, before the one-ply floor: three plies when
+    /// the stored score is at or above beta; at an expected cut node
+    /// otherwise three, or two under `CoreSingNegCut` 1; none elsewhere.
+    #[cfg(feature = "b3proof")]
+    #[inline(always)]
+    fn negative_singular_extension(&self, tt_score_at_beta: bool, cut_node: bool) -> Option<i32> {
+        if tt_score_at_beta {
+            Some(-3)
+        } else if cut_node {
+            Some(if self.cfg.proof.sing_neg_cut == 0 {
+                -3
+            } else {
+                -2
+            })
+        } else {
+            None
+        }
+    }
+
     /// The part of a positive extension the line's budget still allows: the
     /// extensions taken from the root may sum to the iteration's depth and no
     /// more, so an extension at the edge is truncated, never refused whole.
@@ -326,7 +369,7 @@ impl Searcher {
     #[inline(always)]
     fn nmp_margin(&self, depth: i32, tt_pv: bool, improvement: i32, child_cutoffs: i32) -> i32 {
         let p = &self.cfg.proof;
-        (p.nmp_base - p.nmp_depth * depth + p.nmp_tt_pv * i32::from(tt_pv)
+        (p.nmp_base - p.nmp_depth * depth / 4 + p.nmp_tt_pv * i32::from(tt_pv)
             - p.nmp_improvement * improvement / 1024
             - p.nmp_cutoff * i32::from(child_cutoffs < 2))
         .max(2)
@@ -1593,13 +1636,8 @@ impl Searcher {
             if diag_sample && cut_node {
                 crate::diag_count!(singular_attempt_cut_node);
             }
-            let k = self.cfg.proof.singular_margin;
-            let span = if ev.bound == Some(Bound::Exact) {
-                (depth + 3) / 4
-            } else {
-                depth
-            };
-            let margin = span * k + depth * k * i32::from(tt_pv && !NODE::PV);
+            let margin =
+                self.singular_margin(depth, ev.bound == Some(Bound::Exact), tt_pv && !NODE::PV);
             let singular_beta = ev.score - margin;
             let singular_depth = (depth - 1) / 2;
             #[cfg(test)]
@@ -1673,14 +1711,16 @@ impl Searcher {
                     crate::diag_count!(singular_ttmove_demoted);
                 }
                 tt_move = Move::NULL;
-            } else if ev.score >= beta || cut_node {
-                // Three plies, but never below one ply of main search: from
-                // depth 4 the TT move keeps a one-ply child.
-                node_extension = (-3).max(2 - depth);
+            } else if let Some(negative) =
+                self.negative_singular_extension(ev.score >= beta, cut_node)
+            {
+                // Never below one ply of main search: from depth 4 the TT
+                // move keeps a one-ply child.
+                node_extension = negative.max(2 - depth);
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(singular_negative_extension);
-                    if node_extension > -3 {
+                    if node_extension > negative {
                         crate::diag_count!(singular_negative_clamped);
                     }
                 }
@@ -3172,6 +3212,9 @@ mod tests {
         ("CoreSingularFloor", |s, v| {
             s.cfg.proof.singular_floor = v;
         }),
+        ("CoreSingNegCut", |s, v| {
+            s.cfg.proof.sing_neg_cut = v;
+        }),
     ];
     #[cfg(not(feature = "b3proof"))]
     const PROOF_SWITCHES: &[(&str, SetSwitch)] = &[];
@@ -3559,7 +3602,7 @@ mod tests {
         let margin = |depth, tt_pv, improvement, cutoffs| {
             searcher.nmp_margin(depth, tt_pv, improvement, cutoffs)
         };
-        assert_eq!(margin(8, false, 0, 2), p.nmp_base - 8 * p.nmp_depth);
+        assert_eq!(margin(8, false, 0, 2), p.nmp_base - 8 * p.nmp_depth / 4);
         assert_eq!(margin(8, true, 0, 2) - margin(8, false, 0, 2), p.nmp_tt_pv);
         assert_eq!(
             margin(8, false, 0, 2) - margin(8, false, 0, 1),
@@ -3721,6 +3764,76 @@ mod tests {
             searcher.singular_extension(bar + 1, true, false, false, 0),
             2
         );
+    }
+
+    /// `CoreSingNegCut`: after an exclusion fail-high at an expected cut node
+    /// whose stored score is below beta, the TT move is shortened by three
+    /// plies at 0 and by two at 1; with the stored score at or above beta it
+    /// is three at both, and a node that is neither gets none.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_negative_extension_switch_splits_cut_nodes_from_beta() {
+        let mut searcher = Searcher::default();
+        for (switch, cut_node_only) in [(0, -3), (1, -2)] {
+            searcher.cfg.proof.sing_neg_cut = switch;
+            let negative = |at_beta, cut| searcher.negative_singular_extension(at_beta, cut);
+            assert_eq!(
+                negative(false, true),
+                Some(cut_node_only),
+                "cut node at {switch}"
+            );
+            assert_eq!(
+                negative(true, true),
+                Some(-3),
+                "at beta, cut node, at {switch}"
+            );
+            assert_eq!(negative(true, false), Some(-3), "at beta at {switch}");
+            assert_eq!(negative(false, false), None, "neither at {switch}");
+        }
+    }
+
+    /// `CoreSingularMargin` in sixteenths: 64 reproduces the fitted `4 * span`
+    /// margin (plus `4 * depth` at a PV-line null-window node) for exact and
+    /// non-exact bounds, and 16 gives exactly a quarter of it.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_singular_margin_in_sixteenths_reproduces_four_per_ply_at_64() {
+        let mut searcher = Searcher::default();
+        assert_eq!(searcher.cfg.proof.singular_margin, 64);
+        for depth in 4..=20 {
+            for exact in [false, true] {
+                for tt_pv in [false, true] {
+                    let span = if exact { (depth + 3) / 4 } else { depth };
+                    let fitted = span * 4 + depth * 4 * i32::from(tt_pv);
+                    searcher.cfg.proof.singular_margin = 64;
+                    assert_eq!(searcher.singular_margin(depth, exact, tt_pv), fitted);
+                    searcher.cfg.proof.singular_margin = 16;
+                    assert_eq!(
+                        4 * searcher.singular_margin(depth, exact, tt_pv),
+                        fitted,
+                        "depth {depth} exact {exact} tt_pv {tt_pv}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// `CoreSingExactSpan` 4 spans a quarter of the depth rounded up, the
+    /// fitted exact-bound span; a non-exact bound spans the whole depth.
+    #[cfg(feature = "b3proof")]
+    #[test]
+    fn the_exact_span_at_4_is_a_quarter_of_the_depth_rounded_up() {
+        let searcher = Searcher::default();
+        assert_eq!(searcher.cfg.proof.sing_exact_span, 4);
+        for depth in 4..=20 {
+            let quarter_up = depth / 4 + i32::from(depth % 4 != 0);
+            assert_eq!(
+                searcher.singular_span(depth, true),
+                quarter_up,
+                "depth {depth}"
+            );
+            assert_eq!(searcher.singular_span(depth, false), depth);
+        }
     }
 
     /// A multi-cut needs an exclusion fail-high short of the decisive band and

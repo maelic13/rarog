@@ -639,11 +639,12 @@ search_params! {
     /// node off the PV line (`!tt_pv`), the population Rarog measured; 1 at
     /// expected cut nodes only, PV-line cut nodes included.
     nmp_nodes = 0, "CoreNmpNodes", 0..=1;
-    /// Entry margin above beta: `max(2, base - depth_term * depth +
+    /// Entry margin above beta: `max(2, base - depth_term * depth/4 +
     /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
-    /// (child cutoffs < 2))`, evaluation units.
+    /// (child cutoffs < 2))`, evaluation units; the depth term is in
+    /// quarters of a unit per ply.
     nmp_base = 150, "CoreNmpBase", 0..=400;
-    nmp_depth = 4, "CoreNmpDepth", 0..=20;
+    nmp_depth = 16, "CoreNmpDepth", 0..=80;
     nmp_tt_pv = 50, "CoreNmpTtPv", 0..=200;
     nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
     nmp_cutoff = 10, "CoreNmpCutoff", 0..=60;
@@ -684,10 +685,14 @@ search_params! {
     probcut_tt_margin = 208, "CoreProbcutTtMargin", 50..=600;
 
     // Singular extensions, multi-cut, low-depth singular extension.
-    /// The singular margin is `margin * (exact ? ceil(depth/4) : depth)`,
-    /// plus `margin * depth` at a PV-line node searched with a null window;
-    /// Rarog's fitted `4 * depth` is the seed.
-    singular_margin = 4, "CoreSingularMargin", 1..=12;
+    /// The singular margin is `(margin * span + margin * depth * (PV-line
+    /// node searched with a null window)) / 16`: sixteenths of an
+    /// evaluation unit per ply of span. 64 is Rarog's fitted `4 * depth`;
+    /// both donors convert to about 8.
+    singular_margin = 64, "CoreSingularMargin", 4..=192;
+    /// The span of the margin when the stored bound is exact, in sixteenths
+    /// of the depth, rounded up; a non-exact bound spans the whole depth.
+    sing_exact_span = 4, "CoreSingExactSpan", 2..=16;
     /// Categorical, never an SPSA coordinate. The least depth of a singular
     /// candidate: 0 from depth 4, the accepted search's; 1 from depth 5, 6
     /// on a PV line, the donor's.
@@ -715,6 +720,13 @@ search_params! {
     /// A multi-cut returns this many 1024ths of the way from its score to
     /// beta.
     sing_multicut_lerp = 412, "CoreSingMulticutLerp", 0..=1024;
+    /// Categorical, never an SPSA coordinate. An exclusion search that
+    /// fails high without a multi-cut or a demotion shortens the TT move:
+    /// at 0 by three plies when the TT score is at or above beta or at an
+    /// expected cut node; at 1 by three plies when the TT score is at or
+    /// above beta and by two at a cut node otherwise, the donor's split.
+    /// Either leaves the TT move at least one ply of main search.
+    sing_neg_cut = 0, "CoreSingNegCut", 0..=1;
     /// A cut node at depth 7 or less with no singular candidate extends its
     /// first move when the estimate is this far below alpha.
     ldse_margin = 11, "CoreLdseMargin", 0..=100;
