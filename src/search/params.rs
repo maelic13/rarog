@@ -466,17 +466,17 @@ search_params! {
 
     // Correction update and blend.
     /// Update slope in 128ths: `bonus = slope * depth * residual / 128`.
-    corr_update_slope = 203, "CoreCorrUpdateSlope", 32..=512;
+    corr_update_slope = 211, "CoreCorrUpdateSlope", 32..=512;
     /// Clamps of one update, in table units (64 per evaluation unit).
-    corr_update_min = -2_047, "CoreCorrUpdateMin", -8192..=-256;
-    corr_update_max = 1_184, "CoreCorrUpdateMax", 128..=8192;
+    corr_update_min = -1_742, "CoreCorrUpdateMin", -8192..=-256;
+    corr_update_max = 925, "CoreCorrUpdateMax", 128..=8192;
     /// Blend weights of the six tables, in 128ths.
-    corr_weight_pawn = 136, "CoreCorrWeightPawn", 0..=384;
-    corr_weight_minor = 63, "CoreCorrWeightMinor", 0..=384;
-    corr_weight_non_pawn_white = 131, "CoreCorrWeightNonPawnWhite", 0..=384;
-    corr_weight_non_pawn_black = 110, "CoreCorrWeightNonPawnBlack", 0..=384;
-    corr_weight_cont2 = 138, "CoreCorrWeightCont2", 0..=384;
-    corr_weight_cont4 = 138, "CoreCorrWeightCont4", 0..=384;
+    corr_weight_pawn = 121, "CoreCorrWeightPawn", 0..=384;
+    corr_weight_minor = 42, "CoreCorrWeightMinor", 0..=384;
+    corr_weight_non_pawn_white = 122, "CoreCorrWeightNonPawnWhite", 0..=384;
+    corr_weight_non_pawn_black = 127, "CoreCorrWeightNonPawnBlack", 0..=384;
+    corr_weight_cont2 = 165, "CoreCorrWeightCont2", 0..=384;
+    corr_weight_cont4 = 147, "CoreCorrWeightCont4", 0..=384;
     /// Categorical, never an SPSA coordinate. 1 trains the correction on a
     /// decisive (mate-range or tablebase-range) result as the donors do; 0
     /// refuses a result at or beyond the tablebase-win band at both training
@@ -489,7 +489,7 @@ search_params! {
     corr_train_excluded = 1, "CoreCorrTrainExcluded", 0..=1;
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
-    eval_material_scale = 27, "CoreEvalMaterialScale", -64..=64;
+    eval_material_scale = 26, "CoreEvalMaterialScale", -64..=64;
     /// Rule-50 damping, in percent of `eval * min(clock, 100) / 199`. The
     /// evaluator's own damping is compiled out under the core, so the eval the
     /// table stores does not depend on the clock and the search damps it here.
@@ -497,8 +497,8 @@ search_params! {
 
     // Node-level pruning.
     /// Razoring margin `base + square * depth^2`, evaluation units.
-    razor_base = 288, "CoreRazorBase", 50..=800;
-    razor_square = 143, "CoreRazorSquare", 20..=400;
+    razor_base = 306, "CoreRazorBase", 50..=800;
+    razor_square = 157, "CoreRazorSquare", 20..=400;
     /// Categorical, never an SPSA coordinate. 1 keeps razoring off a node on
     /// a PV line (`tt_pv`) and above depth 3, as the accepted search does; 0
     /// razors as the donor does.
@@ -506,19 +506,19 @@ search_params! {
     /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
     /// unthreatened + constant`, floored at 2.
-    rfp_square = 135, "CoreRfpSquare", 0..=320;
-    rfp_linear = 17, "CoreRfpLinear", 0..=200;
-    rfp_improvement = 75, "CoreRfpImprovement", 0..=512;
-    rfp_correction = 212, "CoreRfpCorrection", 0..=2048;
-    rfp_threat = 28, "CoreRfpThreat", 0..=120;
-    rfp_constant = -26, "CoreRfpConstant", -100..=100;
+    rfp_square = 144, "CoreRfpSquare", 0..=320;
+    rfp_linear = 14, "CoreRfpLinear", 0..=200;
+    rfp_improvement = 40, "CoreRfpImprovement", 0..=512;
+    rfp_correction = 139, "CoreRfpCorrection", 0..=2048;
+    rfp_threat = 21, "CoreRfpThreat", 0..=120;
+    rfp_constant = -36, "CoreRfpConstant", -100..=100;
     /// Reverse-futility return, in 1024ths of the way from the estimate to beta.
-    rfp_lerp = 648, "CoreRfpLerp", 0..=1024;
+    rfp_lerp = 586, "CoreRfpLerp", 0..=1024;
     /// Hindsight: a parent reduction (1024ths of a ply) at or above this
     /// deepens a child whose eval says the parent's opponent got worse.
-    hindsight_deepen_reduction = 1_924, "CoreHindsightDeepenReduction", 512..=6144;
+    hindsight_deepen_reduction = 1_676, "CoreHindsightDeepenReduction", 512..=6144;
     /// Hindsight: an eval swing above this reduces a reduced child one ply.
-    hindsight_reduce_margin = 26, "CoreHindsightReduceMargin", 0..=200;
+    hindsight_reduce_margin = 28, "CoreHindsightReduceMargin", 0..=200;
     /// Internal iterative reduction: the least depth at which a missing or
     /// shallow TT move costs a ply.
     iir_min_depth = 4, "CoreIirMinDepth", 2..=10;
@@ -526,76 +526,76 @@ search_params! {
     // Move-loop pruning.
     /// Late-move pruning count, in 1024ths: `(base + improvement *
     /// improvement/16 + square * depth^2 + history * history/1024) / 1024`.
-    lmp_base = 2_407, "CoreLmpBase", 0..=8192;
-    lmp_improvement = 62, "CoreLmpImprovement", 0..=400;
-    lmp_square = 615, "CoreLmpSquare", 256..=4096;
-    lmp_history = 59, "CoreLmpHistory", 0..=400;
+    lmp_base = 2_888, "CoreLmpBase", 0..=8192;
+    lmp_improvement = 76, "CoreLmpImprovement", 0..=400;
+    lmp_square = 402, "CoreLmpSquare", 256..=4096;
+    lmp_history = 75, "CoreLmpHistory", 0..=400;
     /// Quiet futility value: `eval + base + linear * depth + history *
     /// history/1024 + above_beta * (eval >= beta) + correction * |corr|/1024`.
-    fp_base = 129, "CoreFpBase", -100..=500;
-    fp_linear = 54, "CoreFpLinear", 10..=300;
-    fp_history = 51, "CoreFpHistory", 0..=200;
-    fp_eval_above_beta = 45, "CoreFpEvalAboveBeta", 0..=200;
-    fp_correction = 138, "CoreFpCorrection", 0..=2048;
+    fp_base = 144, "CoreFpBase", -100..=500;
+    fp_linear = 50, "CoreFpLinear", 10..=300;
+    fp_history = 44, "CoreFpHistory", 0..=200;
+    fp_eval_above_beta = 40, "CoreFpEvalAboveBeta", 0..=200;
+    fp_correction = 161, "CoreFpCorrection", 0..=2048;
     /// Bad-noisy futility value: `eval + base + linear * depth + history *
     /// history/1024 + victim value`.
-    bnfp_base = 51, "CoreBnfpBase", -100..=400;
-    bnfp_linear = 54, "CoreBnfpLinear", 10..=300;
-    bnfp_history = 40, "CoreBnfpHistory", 0..=200;
+    bnfp_base = 37, "CoreBnfpBase", -100..=400;
+    bnfp_linear = 49, "CoreBnfpLinear", 10..=300;
+    bnfp_history = 36, "CoreBnfpHistory", 0..=200;
     /// History pruning below `-slope * depth`.
-    hp_slope = 963, "CoreHpSlope", 100..=4000;
+    hp_slope = 1_019, "CoreHpSlope", 100..=4000;
     /// SEE-pruning allowance for quiets: `min(0, -square * depth^2 + linear *
     /// depth - history * history/1024 + constant)`, SEE units.
-    see_quiet_square = 8, "CoreSeeQuietSquare", 0..=40;
-    see_quiet_linear = 34, "CoreSeeQuietLinear", 0..=200;
-    see_quiet_history = 19, "CoreSeeQuietHistory", 0..=120;
-    see_quiet_constant = 10, "CoreSeeQuietConstant", -100..=100;
+    see_quiet_square = 7, "CoreSeeQuietSquare", 0..=40;
+    see_quiet_linear = 31, "CoreSeeQuietLinear", 0..=200;
+    see_quiet_history = 18, "CoreSeeQuietHistory", 0..=120;
+    see_quiet_constant = 13, "CoreSeeQuietConstant", -100..=100;
     /// SEE-pruning allowance for noisy moves: `min(0, -square * depth^2 -
     /// linear * depth - history * history/1024 + constant)`.
-    see_noisy_square = 6, "CoreSeeNoisySquare", 0..=40;
-    see_noisy_linear = 6, "CoreSeeNoisyLinear", 0..=200;
-    see_noisy_history = 36, "CoreSeeNoisyHistory", 0..=120;
-    see_noisy_constant = 22, "CoreSeeNoisyConstant", -100..=100;
+    see_noisy_square = 5, "CoreSeeNoisySquare", 0..=40;
+    see_noisy_linear = 12, "CoreSeeNoisyLinear", 0..=200;
+    see_noisy_history = 33, "CoreSeeNoisyHistory", 0..=120;
+    see_noisy_constant = 31, "CoreSeeNoisyConstant", -100..=100;
 
     // Late-move reductions, in 1024ths of a ply.
-    lmr_log = 188, "CoreLmrLog", 0..=1024;
-    lmr_improvement = 395, "CoreLmrImprovement", 0..=2048;
+    lmr_log = 150, "CoreLmrLog", 0..=1024;
+    lmr_improvement = 411, "CoreLmrImprovement", 0..=2048;
     /// Bounds of the improvement term, in reduction units. Seeded at the
     /// donor's values; converting them to Rarog's evaluation scale measured
     /// worse (RAR-S74), so the fit decides them.
-    lmr_improvement_clamp_lo = -189, "CoreLmrImprovementClampLo", -1024..=0;
-    lmr_improvement_clamp_hi = 974, "CoreLmrImprovementClampHi", 0..=4096;
-    lmr_correction = 3_774, "CoreLmrCorrection", 0..=8192;
-    lmr_exact = 1_433, "CoreLmrExact", 0..=4096;
-    lmr_tt_score_below_alpha = 409, "CoreLmrTtScoreBelowAlpha", 0..=2048;
-    lmr_tt_shallow = 261, "CoreLmrTtShallow", 0..=2048;
-    lmr_quiet = 1_808, "CoreLmrQuiet", 0..=6144;
-    lmr_quiet_history = 302, "CoreLmrQuietHistory", 0..=1024;
-    lmr_alpha_gap = 352, "CoreLmrAlphaGap", 0..=2048;
+    lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
+    lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
+    lmr_correction = 3_505, "CoreLmrCorrection", 0..=8192;
+    lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
+    lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
+    lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;
+    lmr_quiet = 1_421, "CoreLmrQuiet", 0..=6144;
+    lmr_quiet_history = 316, "CoreLmrQuietHistory", 0..=1024;
+    lmr_alpha_gap = 195, "CoreLmrAlphaGap", 0..=2048;
     /// Bounds of `alpha - estimated score` in the quiet term, evaluation
     /// units, seeded at the donor's values like the improvement bounds.
-    lmr_alpha_gap_lo = -79, "CoreLmrAlphaGapLo", -512..=0;
-    lmr_alpha_gap_hi = 102, "CoreLmrAlphaGapHi", 0..=512;
-    lmr_noisy = 1_063, "CoreLmrNoisy", 0..=6144;
-    lmr_noisy_history = 117, "CoreLmrNoisyHistory", 0..=1024;
-    lmr_critical_ply = 145, "CoreLmrCriticalPly", 0..=512;
-    lmr_pv = 525, "CoreLmrPv", 0..=2048;
-    lmr_pv_window = 340, "CoreLmrPvWindow", 0..=2048;
-    lmr_non_pv = 272, "CoreLmrNonPv", -1024..=1024;
-    lmr_laterality = 27, "CoreLmrLaterality", 0..=256;
-    lmr_tt_pv = 322, "CoreLmrTtPv", 0..=2048;
-    lmr_tt_pv_score = 624, "CoreLmrTtPvScore", 0..=2048;
-    lmr_tt_pv_depth = 675, "CoreLmrTtPvDepth", 0..=2048;
-    lmr_cut_node = 2_182, "CoreLmrCutNode", 0..=4096;
-    lmr_cut_node_no_tt_move = 2_263, "CoreLmrCutNodeNoTtMove", 0..=4096;
-    lmr_gives_check = 968, "CoreLmrGivesCheck", 0..=4096;
-    lmr_child_cutoffs = 1_053, "CoreLmrChildCutoffs", 0..=4096;
-    lmr_child_cutoffs_all_node = 340, "CoreLmrChildCutoffsAllNode", 0..=2048;
-    lmr_parent = 128, "CoreLmrParent", 0..=1024;
+    lmr_alpha_gap_lo = -69, "CoreLmrAlphaGapLo", -512..=0;
+    lmr_alpha_gap_hi = 84, "CoreLmrAlphaGapHi", 0..=512;
+    lmr_noisy = 779, "CoreLmrNoisy", 0..=6144;
+    lmr_noisy_history = 182, "CoreLmrNoisyHistory", 0..=1024;
+    lmr_critical_ply = 171, "CoreLmrCriticalPly", 0..=512;
+    lmr_pv = 399, "CoreLmrPv", 0..=2048;
+    lmr_pv_window = 306, "CoreLmrPvWindow", 0..=2048;
+    lmr_non_pv = 358, "CoreLmrNonPv", -1024..=1024;
+    lmr_laterality = 24, "CoreLmrLaterality", 0..=256;
+    lmr_tt_pv = 179, "CoreLmrTtPv", 0..=2048;
+    lmr_tt_pv_score = 571, "CoreLmrTtPvScore", 0..=2048;
+    lmr_tt_pv_depth = 633, "CoreLmrTtPvDepth", 0..=2048;
+    lmr_cut_node = 2_354, "CoreLmrCutNode", 0..=4096;
+    lmr_cut_node_no_tt_move = 2_073, "CoreLmrCutNodeNoTtMove", 0..=4096;
+    lmr_gives_check = 1_030, "CoreLmrGivesCheck", 0..=4096;
+    lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
+    lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
+    lmr_parent = 130, "CoreLmrParent", 0..=1024;
     /// Re-search a reduced move one ply deeper when it beats the best score
     /// by more than this, one ply shallower when by less than this.
-    lmr_research_deeper = 27, "CoreLmrResearchDeeper", 0..=200;
-    lmr_research_shallower = -3, "CoreLmrResearchShallower", -50..=50;
+    lmr_research_deeper = 35, "CoreLmrResearchDeeper", 0..=200;
+    lmr_research_shallower = -1, "CoreLmrResearchShallower", -50..=50;
     /// Categorical, never an SPSA coordinate. 1 searches the first move of a
     /// non-PV, non-root node out of check through the donor's full-depth
     /// branch, which may take one or two plies off it; 0 searches it at full
@@ -609,20 +609,20 @@ search_params! {
 
     // History update policy, history units.
     /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.
-    hist_quiet_bonus_slope = 184, "CoreHistQuietBonusSlope", 32..=512;
-    hist_quiet_bonus_cap = 1_686, "CoreHistQuietBonusCap", 256..=4096;
+    hist_quiet_bonus_slope = 173, "CoreHistQuietBonusSlope", 32..=512;
+    hist_quiet_bonus_cap = 1_532, "CoreHistQuietBonusCap", 256..=4096;
     /// Quiet malus `min(slope * depth, cap) - 46 - 31 * quiets searched`.
-    hist_quiet_malus_slope = 175, "CoreHistQuietMalusSlope", 32..=512;
-    hist_quiet_malus_cap = 1_141, "CoreHistQuietMalusCap", 256..=4096;
+    hist_quiet_malus_slope = 197, "CoreHistQuietMalusSlope", 32..=512;
+    hist_quiet_malus_cap = 1_405, "CoreHistQuietMalusCap", 256..=4096;
     /// Search-order fade of the quiet malus: the i-th quiet gets
     /// `1024^2 / (1024 + scale * i)^2` of it.
-    hist_malus_index_scale = 36, "CoreHistMalusIndexScale", 0..=256;
-    hist_cont_bonus_cap = 1_085, "CoreHistContBonusCap", 256..=4096;
-    hist_noisy_bonus_cap = 875, "CoreHistNoisyBonusCap", 256..=4096;
+    hist_malus_index_scale = 42, "CoreHistMalusIndexScale", 0..=256;
+    hist_cont_bonus_cap = 1_051, "CoreHistContBonusCap", 256..=4096;
+    hist_noisy_bonus_cap = 894, "CoreHistNoisyBonusCap", 256..=4096;
     /// Quiet bonus to a TT move that cuts: `min(190 * depth - 81, cap)`.
-    hist_tt_cutoff_bonus_cap = 1_720, "CoreHistTtCutoffBonusCap", 256..=4096;
+    hist_tt_cutoff_bonus_cap = 1_727, "CoreHistTtCutoffBonusCap", 256..=4096;
     /// Base of the fail-low reward factor for the parent's quiet move.
-    hist_fail_low_base = 93, "CoreHistFailLowBase", 0..=400;
+    hist_fail_low_base = 92, "CoreHistFailLowBase", 0..=400;
 }
 
 // The proof-search cluster's coordinates, on the `b3proof` arm only, so the
