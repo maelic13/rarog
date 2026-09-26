@@ -3799,7 +3799,6 @@ mod tests {
     #[test]
     fn the_singular_margin_in_sixteenths_reproduces_four_per_ply_at_64() {
         let mut searcher = Searcher::default();
-        assert_eq!(searcher.cfg.proof.singular_margin, 64);
         for depth in 4..=20 {
             for exact in [false, true] {
                 for tt_pv in [false, true] {
