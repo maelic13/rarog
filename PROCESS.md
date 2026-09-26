@@ -429,7 +429,9 @@ Before any SPSA:
    with a fresh schedule and the same steps, a movement stop rule (at
    least three coordinates moved a full step in the block, or stop) and a
    ceiling of three blocks. Block size, rule and ceiling never change
-   after the first game; a block is never cut short to read it.
+   after the first game; a block is never cut short to read it. The
+   movement count saves unattended compute only; a watched tune may run
+   every registered block regardless (PLAN rule 7c, amended 2026-09-26).
 8. Run `./tools/audit_spsa_coverage.ps1` and register surface, fixed values,
    iterations, games per iteration, slots, the budget in games, gain and
    estimator before launch. On Colosseum the shape is **15 slots and 30 games

@@ -145,7 +145,13 @@ gating. The rules below decide order and acceptance in this roadmap.
    between blocks; a later block starts through `colosseum.ps1 -SeedFrom`
    from the previous block's run directory, on the same config group and
    tune file, and the wrapper refuses an unfinished source, another binary
-   or another surface. Maintainer decision 2026-09-25.
+   or another surface. Maintainer decision 2026-09-25. **Amended 2026-09-26:**
+   the count is a device for saving unattended compute, never a reason to
+   end a tune the maintainer is watching: RAR-S82's block 1 ended with one
+   coordinate two steps out and still travelling and eleven at half a step,
+   and the count said stop. A chained launch may run every registered block
+   unconditionally; theta stays the last completed block, and a block cut
+   short never counts. A tune is judged by its gate, not by its movement.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
