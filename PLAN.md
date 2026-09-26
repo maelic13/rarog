@@ -1408,6 +1408,25 @@ diagnostics; two rejections stop B.
       registered with binaries and hashes before any game; H1 flips the
       default, H0 or the cap rejects the cluster as a unit (PLAN rule 6) and
       the bit sweep record says what B.6 may carry.
+    - **B.3.5 Ponder race: a `ponderhit` or `stop` that arrives at once after
+      `go ponder` loses the `bestmove` — `I2`.** Added 2026-09-26 by maintainer
+      decision from a report off another machine
+      (`analysis/ponder_race_report_2026-09-26.md`, verbatim): with
+      `Ponder=true`, a `ponderhit` written back to back with `go ponder`
+      leaves the engine pondering without a clock, and a `stop` written the
+      same way leaves the `go` unanswered; both forfeit on time in a GUI,
+      and both were seen in a 120+1 Colosseum tournament. The two sites the
+      report names exist in `dev`: `prepare_search` clears the `ponderhit`
+      flag as the search starts, and the `go` handler skips a `go` whose
+      `prepare_search` fails without a `bestmove`. Runs after B.3.4 closes
+      so cluster 2's gate binary is not rebuilt mid-gate. Contract: exactly
+      one `bestmove` per `go`, whenever `stop` or `ponderhit` arrives; a
+      `ponderhit` recorded before the search thread starts converts that
+      search, never a later one. Order: reproduce the three scenarios with a
+      driver that writes the two lines in one `stdin` write (Threads 1 and
+      4), fix, add the race as a test that fails on the old code, then
+      deterministic qualification (fmt, clippy, debug and release tests) and
+      a short ponder-on match as the smoke; bench unchanged, no game gate.
 - **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
   TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
   moves, SEE pruning by margin, TT write on exit, check evasions only when
@@ -1526,6 +1545,7 @@ class until they open.
 |---|---|---|---|
 | B.3.3 | IMPLEMENTED | V | **2026-09-26: RAR-S82's block 1 read +12.0 ± 9.5 over the untuned arm and +44.2 ± 9.6 over the B.2.7 head; its theta with the measured margin (`1·d`, +24.2 ± 9.4) is baked as the arm's defaults (`94cc1cf`, arm 14,331,872) and RAR-S83's two-block tune runs from there (`rarog-b33m-tune.exe`), the maintainer's.** Earlier: RAR-S81's block 1 stopped 2026-09-25 at iteration 940 with the singular margin on its rail; research amendment 7 (`75569fa`) rescales the margin, adds `CoreSingExactSpan` and the categorical `CoreSingNegCut`, fixes `CoreNmpVerifyDepth`; RAR-S82 registers two 2,000-game reads and the three-block tune on `rarog-b33r-tune.exe` (7,721,657), dry runs at policy; the reads then the chain are the maintainer's.** Earlier: handed over 2026-09-25: `rarog-b33-tune.exe` (sha256 `B83F854A…`, 7,721,657), config/fixed/Colosseum files committed, audit clean, block-1 dry run at policy (RAR-S81). Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; **RAR-S81 registered 2026-09-25** on the B.2.7 head: blocks of 2,000 × 30 under rule 7c, up to three; next, generate `config_b33`/`fixed_b33` and the Colosseum files, build the tune binary, audit, dry run (`V`), then block 1 is the maintainer's.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
+| B.3.5 | RESEARCH | I2 | Added 2026-09-26: `ponderhit`/`stop` written back to back with `go ponder` loses the `bestmove` (report filed in `analysis/ponder_race_report_2026-09-26.md`); reproduce, fix with a failing-then-passing race test, deterministic qualification; after B.3.4 |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
