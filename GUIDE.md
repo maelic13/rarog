@@ -202,6 +202,7 @@ is the numbering: release first, baselines on the released binary.
     - [ ] **B.3.4** Gate: SPRT `[0,3]` vs the accepted head, cap 20,000 pairs (maintainer-run); default flip — **RESEARCH / V**
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; research card on the search's never-fitted piece-value scale (RAR-M19); SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV; keeps B.2.0.2's MultiPV contract; SPRT `[0,3]` — **RESEARCH / I2**
+    - [ ] **B.5.1** Research cards from the Gyatso read (2026-09-26): TT-hit history bonus, draw-score randomisation; after B.5, before B.6; `[0,3]` for a survivor — **RESEARCH / R2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
 - [ ] **B.7** Search speed pass on the new modules; pooled-PGO floor +0.5% per change — **RESEARCH / I1**
 - [ ] **B.8** Cleanup: dead parameters, old picker, unconsumed provenance, ownerless diagnostics — **RESEARCH / I1**

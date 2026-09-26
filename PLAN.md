@@ -1461,6 +1461,26 @@ diagnostics; two rejections stop B.
   time-to-depth replaces pooled NPS as the speed screen (aspiration and
   iterative-deepening changes move the tree); the curvature sweep precedes
   any SPSA.
+    - **B.5.1 Two post-cluster candidates from the Gyatso read — `R2`, then
+      `V`.** Added 2026-09-26 from a reading of GyatsoChess
+      (`analysis/gyatso_read_2026-09-26.md`; Gyatso is a reading, not a
+      donor, and the donor form of both is Stockfish's). Neither belongs to a
+      cluster and both touch a shared signal, so each gets its own research
+      card after B.5 closes and before B.6 fixes the SPSA surface. (a)
+      **TT-hit history bonus**: on a TT cutoff with a lower bound and a quiet
+      TT move, the move receives a reduced history bonus (Gyatso: half the
+      depth bonus). Rarog's TT-cutoff path writes no history. A producer
+      change on the main history, so the card maps its consumers (ordering,
+      the LMR history term, history pruning) and screens ordering counters
+      at stride 1 before any game. (b) **Draw-score randomisation**:
+      repetition and rule-50 returns take a small node-derived offset
+      (Gyatso ±2, Stockfish ±1) instead of a fixed draw score. The card
+      weighs the ledger's perturbation evidence (RAR-S54, RAR-S62, RAR-S64)
+      against RAR-S67's stop, and notes that the bench samples one
+      realisation, so only games can screen it. Each card ends
+      `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`; a survivor gets a
+      registered `[0,3]` SPRT on the B.5 head and its constant may join
+      B.6's surface. Neither is implemented inside a cluster's gate window.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
@@ -1501,7 +1521,7 @@ class until they open.
 | B.3.3 | IMPLEMENTED | V | **RAR-S81's block 1 stopped 2026-09-25 at iteration 940 with the singular margin on its rail; research amendment 7 (`75569fa`) rescales the margin, adds `CoreSingExactSpan` and the categorical `CoreSingNegCut`, fixes `CoreNmpVerifyDepth`; RAR-S82 registers two 2,000-game reads and the three-block tune on `rarog-b33r-tune.exe` (7,721,657), dry runs at policy; the reads then the chain are the maintainer's.** Earlier: handed over 2026-09-25: `rarog-b33-tune.exe` (sha256 `B83F854A…`, 7,721,657), config/fixed/Colosseum files committed, audit clean, block-1 dry run at policy (RAR-S81). Bake `3ca9aab` (arm 7,978,292 / EBF 2.465) and sweep done 2026-09-24: 3 of 7 curved (`analysis/b33_sweep_2026-09-24.md`). SPSA configs held on RAR-S78's outcome (B.2.7 re-seeds every inherited `CoreParams` value); the surface is 36 (amendment 5's `CoreSingDoubleBase` included) and the tune proceeds, both decided 2026-09-24; **RAR-S81 registered 2026-09-25** on the B.2.7 head: blocks of 2,000 × 30 under rule 7c, up to three; next, generate `config_b33`/`fixed_b33` and the Colosseum files, build the tune binary, audit, dry run (`V`), then block 1 is the maintainer's.** Opened 2026-09-24 with one engine commit that bakes `SingularTtDepthMargin=2` as the `b3proof` arm's own default (RAR-S80) and re-declares the arm's fingerprint; then the curvature sweep of five coordinates, then the 36-coordinate SPSA on Colosseum if curved (maintainer-run), theta baked |
 | B.3.4 | RESEARCH | V | SPRT `[0,3]` vs the accepted head, cap 20,000 pairs, registered with binaries before any game; H1 flips the default |
 | B.4 | RESEARCH | I2 | Waits for B.3 |
-| B.5 | RESEARCH | I2 | Waits for B.4 |
+| B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7 | RESEARCH | I1 | After B.6 or its skip |
 | B.8 | RESEARCH | I1 | After B.7 |
@@ -1861,6 +1881,15 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   and export contracts; data format, deduplication and split policy; the first
   architecture (768×N perspective network with output buckets); the cost
   ledger inherited from the board audit. Frozen handoffs for F.1–F.4.
+  **Calibration point (2026-09-26, `analysis/gyatso_read_2026-09-26.md`):**
+  a single-bucket 768×1024 perspective net with horizontal king mirroring,
+  one output and squared clipped ReLU, trained on its author's own data and
+  driven by a search simpler than Rarog's accepted core, holds official CCRL
+  3258 at 40/15 and 3341 at blitz (Gyatso 1.5). The first architecture here
+  is at least that; the ladder in F.7 starts above it. Gyatso's data
+  pipeline (node-limited self-play with soft and hard caps, an opening book
+  sampled by inverse use-count, viriformat output) is a compact reference
+  for the data-format contract F.0 fixes for F.2.
 - **F.1 Board events and accumulator scaffolding — `I2`.** Behaviour-neutral
   for the HCE: factual move deltas, evaluator-owned stacks, validity and
   refresh semantics, randomized unwind tests, exact fingerprint, pooled NPS
@@ -1868,6 +1897,9 @@ datagen baseline and the fallback until F.9 replaces it in releases.
 - **F.2 Data generation at scale — `V`.** 30–60M unique positions from the
   classical head under the adjudication-off profile, by-game splits,
   manifests, tablebase and hard-position cohorts; hashes frozen. Maintainer-run.
+  The generator follows F.0's contract; node-limited play with soft and hard
+  caps and inverse-use-count book sampling are the reference forms
+  (`analysis/gyatso_read_2026-09-26.md`).
 - **F.3 Trainer hardening and baseline nets — `I2`, then `V`.** Deterministic
   pipeline, two seeds per configuration, validation selects, frozen test
   reports once.
