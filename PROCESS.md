@@ -460,6 +460,10 @@ mismatch.
 - A touched dormant switch must be removed, kept inert with a named owner, or
   separately gated. It is never activated opportunistically.
 - Borderline results are not accumulated as hidden debt. Accept or revert.
+- One gate, one read. An SPRT's verdict and its estimate at the stop are the
+  record; no fixed match of the same pair runs beside it. Only when the SPRT
+  stops under 2,000 games may a longer match be discussed, and it is
+  registered then, not in advance (maintainer decision 2026-09-27).
 - Tune and non-PGO results are diagnostics; final-PGO games decide promotion.
 - A correctness exception names the invariant, the tests and the incomplete
   strength evidence.
