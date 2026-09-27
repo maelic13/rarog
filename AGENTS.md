@@ -213,8 +213,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   Commit after each finished and verified step. No `Co-Authored-By` trailers.
   Never relax a correctness test in the commit whose change made it fail; fix
   its precondition in its own commit, with the justifying measurement.
-- Never push, tag, publish or merge to `master`; the maintainer does, on
-  instruction. Do not amend or rewrite a commit that has left this machine.
+- Never push, create a release tag, publish or merge to `master`; the
+  maintainer does, on instruction. Do not amend or rewrite a commit that has
+  left this machine. Archive tags follow *Evidence*.
 - Most of the tree is CRLF. A scripted edit preserves the file's existing line
   endings, asserts each anchor is present exactly once, and re-reads the
   region afterwards; a mixed-ending file or a silently unmatched anchor is a
@@ -237,12 +238,27 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   checks never depend on this machine's private outputs. Never force-add
   evidence. Untracking uses `git rm --cached`, keeps the local bytes, and
   authorises neither deleting evidence nor rewriting history.
-- A ledger row reproduces its artifact without the branch it came from: the
-  recipe (exact values, or a small diff) plus a fingerprint proving a rebuild
-  matched. A bare SHA is not evidence; keep recipes with the evidence, not
-  only in branch history (RAR-S54).
-- Before deleting a branch or tag, check what the ledger cites on it
-  (`git branch -a --contains <sha>`; an empty answer means dangling).
+- Information lives in the tracked documents, not in refs. A ledger row, PLAN
+  record or analysis states what changed, why, the result and the decision,
+  and carries the exact recipe (values inline, or a small patch file in Git)
+  plus a fingerprint proving a rebuild matched. A hash, branch or tag is at
+  most a pointer beside that information, never its only carrier (RAR-S54;
+  on 2026-09-27, 71 cited commits were on no ref,
+  `analysis/ledger_commits_2026-09-27.md`).
+- Only where exactness is needed and a recipe is impractical (an
+  implementation too large to be a patch, or the base a patch applies to)
+  is a commit preserved, and then by an annotated tag named
+  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch. The
+  citing document names the tag, why it exists and the condition that
+  retires it. Neither a plain `git push` nor `--follow-tags` sends a tag on a
+  commit outside the pushed branches: after creating one, tell the
+  maintainer and give `git push origin <tag>`; pushing stays theirs.
+- No mess: a throwaway work branch is deleted once its information is
+  recorded or its commit tagged, and at each phase close tags and branches
+  are reviewed and any whose retirement condition fired are removed. Before
+  removing one, check what still cites it and whether anything else holds
+  its commits (`git for-each-ref --contains <sha>`; empty means it would
+  dangle). Deleting a remote tag or branch is the maintainer's command.
 
 ## Gating
 
