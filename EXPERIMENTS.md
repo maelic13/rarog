@@ -18,6 +18,12 @@ retired open leaves onto the current lettered roadmap. Rows from RAR-M45 on
 cite the current roadmap. Records too long for a row live in
 `analysis/ledger_records_2026-09-14.md` or in a cited analysis packet.
 
+**Commit note.** 71 commits the rows cite by hash are on no branch or tag
+(the development line before the 2.4.0 squash, and deleted experiment
+branches). `analysis/ledger_commits_2026-09-27.md` lists each with its date,
+subject, citing rows and where its recipe lives, and names the local bundle
+that holds every one of them.
+
 ## Contents
 
 - [1. How to use this ledger](#1-how-to-use-this-ledger)

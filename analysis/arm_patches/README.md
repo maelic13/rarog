@@ -37,3 +37,10 @@ already carries all seven values and both bench fingerprints inline in its row.
 That line is **not** removed by `git gc`: it is unreachable from any ref but
 still held by the reflog, and only expiring the reflog would drop it. Nothing
 in this clean-up expired a reflog.
+
+**Superseded 2026-09-27:** the reflog is no longer the safeguard. That line
+and every other unreachable commit are preserved in the bundle recorded in
+`../ledger_commits_2026-09-27.md`, which also lists every cited commit outside
+the refs, so the reflog may be expired without losing anything the bundle
+holds. The six patches here still apply: their bases are reachable from the
+`arm/*` tags.

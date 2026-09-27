@@ -98,6 +98,7 @@ commit that adds it.
 | [`hce_maturity_2026-08-25.md`](hce_maturity_2026-08-25.md) | Rarog HCE maturity against the classical Stockfish reference | Record | cited by PLAN or another analysis |
 | [`hce_residuals_2026-09-01.md`](hce_residuals_2026-09-01.md) | Post-fit residual audit of the accepted HCE — 2026-09-01 (PLAN 4.9.1) | Record | RAR-E09 |
 | [`king_square_cache_2026-09-08.md`](king_square_cache_2026-09-08.md) | King-square caching — RAR-M37 / 4.11b.12 | Record | RAR-M37 |
+| [`ledger_commits_2026-09-27.md`](ledger_commits_2026-09-27.md) | Ledger-cited commits outside every branch: date, subject, citing rows and recipe for each of 71, and the local bundle holding all of them | Record | `EXPERIMENTS.md` commit note; `arm_patches/` |
 | [`mate_drive_promotion_closure_2026-09-06.md`](mate_drive_promotion_closure_2026-09-06.md) | 4.11.9 mate-drive promotion closure -- RAR-M23 | Record | RAR-M23 |
 | [`movegen_2026-09-07.md`](movegen_2026-09-07.md) | Move generation optimization — RAR-M31 / 4.11b.8 | Record | RAR-M31 |
 | [`node_budget_2026-09-04.md`](node_budget_2026-09-04.md) | What a move actually costs at 3+0.03 (PLAN 4.10.6) | Record | cited by PLAN or another analysis |
