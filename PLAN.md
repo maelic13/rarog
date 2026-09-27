@@ -1427,6 +1427,27 @@ diagnostics; two rejections stop B.
       4), fix, add the race as a test that fails on the old code, then
       deterministic qualification (fmt, clippy, debug and release tests) and
       a short ponder-on match as the smoke; bench unchanged, no game gate.
+      **Done 2026-09-27 (`ef1a24b`).** Reproduced with both lines in one
+      `stdin` write in scenarios A, B and C at Threads 1 and 4, 12 of 12
+      unanswered. The mechanisms, from instrumented runs: `stop` advanced
+      the epoch before the engine thread took the queued `go`, so
+      `run_go`'s stale-epoch check returned without a `bestmove` (not
+      `prepare_search`, as the report guessed); `ponderhit` was erased by
+      `prepare_search`, so the search pondered without a clock or waited
+      at its depth cap. `EngineControl` now scopes both signals by epoch:
+      `stop` marks the latest epoch stopped without advancing it, a
+      replacing command stops every earlier one, `ponderhit` records the
+      epoch it belongs to and only that search takes it, and
+      `prepare_search` clears nothing. Race tests in `tests/uci_process.rs`
+      (both signals, Threads 1 and 4, every scenario) fail on the old code
+      and pass on the new; two guards keep a stray `stop` or `ponderhit`
+      from reaching a later `go`. The `ponderhit` budget sits above every
+      scenario's clock, because at Threads 4 scenario B uses its 5.9 s hard
+      limit in most runs, with or without the race. Bench 12,897,901 / EBF
+      2.523 and `--no-default-features` 7,601,220 / EBF 2.474, both exact;
+      fmt, clippy at zero warnings, debug and release tests pass. The
+      ponder-on smoke match is handed to the maintainer; a failure there
+      reopens this leaf.
 - **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
   TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
   moves, SEE pruning by margin, TT write on exit, check evasions only when
@@ -1543,8 +1564,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.3.5 | RESEARCH | I2 | Added 2026-09-26: `ponderhit`/`stop` written back to back with `go ponder` loses the `bestmove` (report filed in `analysis/ponder_race_report_2026-09-26.md`); reproduce, fix with a failing-then-passing race test, deterministic qualification; after B.3.4 |
-| B.4 | RESEARCH | I2 | Waits for B.3 |
+| B.4 | RESEARCH | I2 | Eligible: B.3 closed 2026-09-27; research card first |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7 | RESEARCH | I1 | After B.6 or its skip |

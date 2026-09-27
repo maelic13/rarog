@@ -59,6 +59,12 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-27 — PLAN B.3.5 CLOSED, B.3 closed with it.** `go ponder` with
+  `ponderhit` or `stop` in the same write never got a `bestmove`: a `stop`
+  made the queued `go` stale and a `ponderhit` was erased as the search
+  started. Both signals are scoped to their `go`'s epoch (`ef1a24b`), with
+  race tests at Threads 1 and 4 that fail on the old code; bench unchanged
+  at 12,897,901 / EBF 2.523.
 - **2026-09-27 — PLAN B.3.4 CLOSED: cluster 2 accepted.** The `b3proof` arm (NMP
   with a verification region, ProbCut with the TT gate, graded singular
   extensions with Rarog's multi-cut rule, the −3 negative extension, LDSE, the
