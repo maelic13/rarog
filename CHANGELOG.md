@@ -42,6 +42,15 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **`multipv`** is on every line, so a parser meets one line shape.
 - **`SyzygyPath value <empty>`**, which GUIs send when they echo the advertised
   default, no longer tries to load tablebases from a folder of that name.
+- **No `bestmove` after an instant `ponderhit` or `stop`.** When a GUI sent
+  `ponderhit` or `stop` immediately after `go ponder`, as it does when the
+  opponent replies at once, the engine lost it: after `ponderhit` it pondered
+  without a clock, and after `stop` it skipped the search and never answered.
+  Either lost the game on time. Both now reach the search they follow, even
+  before it starts, and never a later one.
+- **An unreachable triple check was accepted.** A FEN whose side to move is in
+  check from more than two pieces is now rejected like any other invalid FEN;
+  no move gives three checks at once.
 
 ## [2.4.0] - 2026-09-11
 
