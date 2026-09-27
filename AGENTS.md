@@ -38,6 +38,14 @@ that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
   change the experiment after exposure, or rescue a weak candidate by changing
   its neighbours. If a material premise is false, keep useful instrumentation,
   record the contradiction and return the leaf to `RESEARCH`.
+- Per-node code (negamax, qsearch, move picking, movegen, make/unmake, eval,
+  SEE, TT probes) does not allocate, clone a `Board`, take a lock, touch an
+  `Arc`, or pass or return a large value by copy (check the assembly for
+  `memcpy`). Ownership is solved with `&mut` borrows, make/unmake and
+  per-thread arrays, never by a clone that satisfies the borrow checker. An
+  exception states its reason in one sentence and carries an NPS measurement
+  by PROCESS's method. A shared atomic states what it signals and which search
+  it belongs to. B.7.1's allocation test checks the first clause.
 - Donor engines teach mechanisms, contracts, dependencies, failure modes and
   methods. What may cross is `PROCESS.md`, *The independence boundary*. Neither
   similarity nor a copied value is acceptance evidence.
