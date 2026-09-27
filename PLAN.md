@@ -1542,6 +1542,25 @@ diagnostics; two rejections stop B.
   search not on the bench), pooled-PGO NPS with a +0.5% floor per change,
   exact fingerprint. The 4.11b lesson stands: a bench-column win is a screen,
   not a result.
+    - **B.7.1 Allocation guard — `I1`, READY_FOR_IMPLEMENTATION, test
+      only; may land any time, must land before B.7.** Added 2026-09-27 by
+      maintainer decision, after a read-only audit of the per-node code
+      found no allocation, `Board` clone, lock or `Arc` outside search
+      setup, iteration output and tests; it turns AGENTS' per-node rule into
+      a check. Contract: an integration test installs a counting global
+      allocator and searches fixed positions at two depths several plies
+      apart, at Threads 1 and Threads 4, with a silent sink. Allocations may
+      come from search setup and from each iteration, so the test asserts
+      that the growth from the shallow to the deep search stays within a
+      small per-iteration budget fixed in the test, while the node count
+      grows by at least an order of magnitude; one allocation per node
+      fails it. Start from a short game history, so the board's undo
+      history (reserved at 128 entries or its existing capacity) cannot
+      reallocate inside the window and read as a false positive. Live wire:
+      a deliberately planted per-node allocation (a `Vec` in qsearch) must
+      fail the test, checked once and reverted. No engine change: exact
+      fingerprint; debug and release tests, fmt, clippy. B.7 then uses it as
+      its floor.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -1574,7 +1593,7 @@ class until they open.
 | B.4 | RESEARCH | I2 | Eligible: B.3 closed 2026-09-27; research card first |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
-| B.7 | RESEARCH | I1 | After B.6 or its skip |
+| B.7.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-27: counting-allocator test that per-node code never allocates; any time before B.7. B.7's own row, after B.6 or its skip, returns as sub-steps when it opens |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 

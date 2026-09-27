@@ -132,6 +132,7 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| B.7.1 allocation guard (added 2026-09-27) | Any time: a test only, it depends on nothing in B.4–B.6; schedule it between leaves, not inside a registered experiment's window | B.7 |
 | E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
@@ -206,6 +207,7 @@ is the numbering: release first, baselines on the released binary.
     - [ ] **B.5.1** Research cards from the Gyatso read (2026-09-26): TT-hit history bonus, draw-score randomisation; after B.5, before B.6; `[0,3]` for a survivor — **RESEARCH / R2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
 - [ ] **B.7** Search speed pass on the new modules; pooled-PGO floor +0.5% per change — **RESEARCH / I1**
+    - [ ] **B.7.1** Allocation guard: a counting-allocator test that allocations grow per iteration, never per node; may land any time before B.7 (added 2026-09-27) — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **B.8** Cleanup: dead parameters, old picker, unconsumed provenance, ownerless diagnostics — **RESEARCH / I1**
 - [ ] **B.9** Checkpoint: G(0), depth/EBF, NPS, conversion, pool gauntlet; remove `ablate`; freeze the search head — **RESEARCH / V**
 
