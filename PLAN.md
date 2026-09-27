@@ -1534,6 +1534,48 @@ diagnostics; two rejections stop B.
       `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`; a survivor gets a
       registered `[0,3]` SPRT on the B.5 head and its constant may join
       B.6's surface. Neither is implemented inside a cluster's gate window.
+    - **B.5.2 Tablebase root, in-search probes and PV, the Stockfish way —
+      `R2`, then `I2` and a tablebase gate.** Added 2026-09-27 by maintainer
+      decision from a report of the Basilisk 1.10.1 work (BAS-C13); the
+      starting record is `analysis/tb_root_pv_2026-09-27.md`. **Defect,
+      verified the same day** on the default build: at a tablebase root
+      Rarog prints a one-move PV, sends `bestmove` without a ponder move and
+      shows the internal tablebase value as `cp 31743`
+      (`7r/5R2/8/2k1PB2/8/4K3/8/8 w`, `8/P4k2/8/1N6/1P2B1K1/8/8/8 w`,
+      `1r6/R7/6k1/8/8/5PP1/6K1/8 w`, at fixed depth and on a clock). From
+      the source: the root is cut to the single DTZ-preferred move, and the
+      in-search WDL probe returns at every tablebase child and stores an
+      exact entry with no move. **Target:** Stockfish's solution as read at
+      official `0a215d6c`: DTZ root ranking with repetition and rule-50 moves
+      as draws and DTZ order where DTZ equals distance to mate; the whole
+      best-ranked group searched, grouped by rank under MultiPV; in-search
+      probing off at a DTZ tablebase root and otherwise bound-correct (win a
+      lower bound, loss an upper bound, return only on a cutoff, only after
+      a zeroing move); the displayed score mapped to `cp ±20000 ∓ plies` at
+      UCI output only, since pruning keys off `TB_WIN_SCORE`; the two-step
+      PV extension with DTZ-ordered ranks for step 2 and the Move Overhead
+      time box under a clock; the ponder move from `pv[1]`. Fathom's
+      `root_probe_dtz` ranks every clean win equally, so step 2 ranks from
+      `tb_probe_root_impl`'s per-move WDL and DTZ. **Investigation first,
+      no engine change:** confirm the mechanism by instrumented fixed-depth
+      runs; settle each part's semantics against Rarog's contracts (TT
+      bounds for tablebase values, mate distance against the tablebase band,
+      draw scores, B.2.0.2's MultiPV contract, the probe options, B.3.5's
+      one `bestmove` per `go`); establish whether a root DTZ probe may run
+      while helpers probe WDL (the vendored header says `tb_probe_root` is
+      not thread safe); measure the extension's cost at the 10 ms default
+      Move Overhead; choose a test fixture CI can run (small pawnless
+      tables) or document a local-only test; write the implementation
+      handoff with the report's KQvK tests. It ends `READY_FOR_IMPLEMENTATION`
+      or `NO_CHANGE` per part. **Strength:** nothing measured so far can
+      move, because no harness run file sets `SyzygyPath`; with tablebases
+      the root changes only choose among result-keeping moves, and the
+      in-search semantics may move search from larger positions by a small
+      amount of unknown sign. The maintainer designs a tablebase-enabled
+      gate for the implementation when it is ready; the investigation
+      proposes what it must see. **Order:** the investigation may run
+      between leaves; the implementation follows B.5's cluster gate, whose
+      root code it touches, and lands before B.9 freezes the search head.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
@@ -1614,6 +1656,7 @@ class until they open.
 |---|---|---|---|
 | B.4 | RESEARCH | I2 | Eligible: B.3 closed 2026-09-27; research card first |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
+| B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |

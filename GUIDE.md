@@ -132,6 +132,7 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| B.5.2 tablebase root and PV investigation (added 2026-09-27) | Any time between leaves: reads, source and fixed-depth runs only, no games; its implementation waits for B.5's gate | B.9 freezes the search head |
 | E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
@@ -204,6 +205,7 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **B.4** Cluster 3 — quiescence: TT, corrected stand-pat, LMP, SEE margin; first-ply check generation measured against B.2's mate-threat canaries; research card on the search's never-fitted piece-value scale (RAR-M19); SPRT `[0,3]` — **RESEARCH / I2**
 - [ ] **B.5** Cluster 4 — root, aspiration, iterative deepening, PV; keeps B.2.0.2's MultiPV contract; SPRT `[0,3]` — **RESEARCH / I2**
     - [ ] **B.5.1** Research cards from the Gyatso read (2026-09-26): TT-hit history bonus, draw-score randomisation; after B.5, before B.6; `[0,3]` for a survivor — **RESEARCH / R2**
+    - [ ] **B.5.2** Tablebase root, in-search probes and PV the Stockfish way (one-move PV, no ponder move, `cp 31743` at a tablebase root; added 2026-09-27): investigation first, then implementation after B.5's gate and before B.9, accepted by a tablebase-enabled gate — **RESEARCH / R2**
 - [ ] **B.6** Joint search SPSA, only if curvature justifies it — **RESEARCH / V**
 - [ ] **B.7** Search speed pass on the new modules; pooled-PGO floor +0.5% per change — **RESEARCH / I1**
     - [x] **B.7.1** Allocation guard: a counting-allocator test that allocations grow per iteration, never per node (`8836013`); at most about 25 per iteration per thread against a budget of 64, all at the root node; a planted per-node allocation fails it — DONE 2026-09-27

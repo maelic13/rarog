@@ -68,9 +68,12 @@ commit that adds it.
 | [`consolidation_2026-09-10.md`](consolidation_2026-09-10.md) | Codebase consolidation analysis — PLAN A.6 | Deliverable | A.6 |
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |
+| [`gyatso_read_2026-09-26.md`](gyatso_read_2026-09-26.md) | A reading of GyatsoChess: two post-cluster candidates (TT-hit history bonus, draw-score randomisation) | Deliverable | B.5.1 |
 | [`ledger_records_2026-09-14.md`](ledger_records_2026-09-14.md) | Ledger records moved out of EXPERIMENTS.md, 2026-09-14 | Deliverable | `EXPERIMENTS.md` |
+| [`ponder_race_report_2026-09-26.md`](ponder_race_report_2026-09-26.md) | The ponder race as reported: `ponderhit` or `stop` right after `go ponder` loses the `bestmove` | Deliverable | B.3.5 |
 | [`repository_review_2026-09.md`](repository_review_2026-09.md) | Repository and document review — PLAN B.2.0.1 | Deliverable | B.2.0.1, E.1 |
 | [`search_programme_2026-09-13.md`](search_programme_2026-09-13.md) | Search programme investigation — PLAN B.0 | Deliverable | B.0, B.1–B.3 |
+| [`tb_root_pv_2026-09-27.md`](tb_root_pv_2026-09-27.md) | Tablebase root, in-search probes and PV: Rarog's verified defect and Stockfish's solution at `0a215d6c`, the investigation's starting record | Deliverable | B.5.2 |
 | [`time_forfeit_2026-09-09.md`](time_forfeit_2026-09-09.md) | Time forfeits at `3+0.03` — diagnosis and repair (PLAN A.3.3, RAR-R11) | Deliverable | A.3.3 |
 | [`uci_info_review_2026-09-16.md`](uci_info_review_2026-09-16.md) | UCI `info` line conformance against Stockfish and Reckless — PLAN B.2.5, D.3 | Deliverable | B.2.5, D.3 |
 | [`universal_binary_2026-09.md`](universal_binary_2026-09.md) | Universal x86-64 binary — design record and deferral | Deliverable | A.4, G.2 |
