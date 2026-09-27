@@ -116,11 +116,8 @@ impl Engine {
                 options.board.clone(),
                 options,
                 emit_info,
-                || match control.poll_search() {
+                || match control.poll_search(epoch) {
                     SearchControl::Quit => SearchEvent::Quit,
-                    SearchControl::Stop if epoch == 0 || control.current_epoch() != epoch => {
-                        SearchEvent::Stop
-                    }
                     SearchControl::Stop => SearchEvent::Stop,
                     SearchControl::PonderHit => SearchEvent::PonderHit,
                     SearchControl::None => SearchEvent::None,
@@ -140,7 +137,7 @@ impl Engine {
         }
 
         loop {
-            match self.control.poll_search() {
+            match self.control.poll_search(epoch) {
                 SearchControl::Quit => return SearchExit::Quit,
                 SearchControl::Stop | SearchControl::PonderHit => return SearchExit::Stop,
                 SearchControl::None => thread::sleep(Duration::from_millis(1)),
@@ -542,6 +539,7 @@ mod tests {
     #[test]
     fn bestmove_wait_blocks_ponder_search_until_ponderhit() {
         let (engine, _commands, control) = engine_fixture();
+        let epoch = control.start_replacing_search();
         let mut options = SearchOptions::default();
         options.limits.ponder = true;
         let (done_tx, done_rx) = mpsc::channel();
@@ -549,7 +547,7 @@ mod tests {
         thread::Builder::new()
             .stack_size(crate::infra::THREAD_STACK_SIZE)
             .spawn(move || {
-                let exit = engine.wait_until_bestmove_allowed(&options, 0, false);
+                let exit = engine.wait_until_bestmove_allowed(&options, epoch, false);
                 done_tx.send(exit).expect("wait result should be sent");
             })
             .expect("spawn wait thread");

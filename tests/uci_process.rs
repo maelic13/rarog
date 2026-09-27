@@ -90,6 +90,19 @@ impl UciSession {
         self.stdin.flush().expect("command should be flushed");
     }
 
+    /// Write several commands in one `write_all`, so the engine reads them back
+    /// to back, as it does when a GUI's opponent replies at once.
+    fn send_together(&mut self, commands: &[&str]) {
+        let batch: String = commands
+            .iter()
+            .map(|command| format!("{command}\n"))
+            .collect();
+        self.stdin
+            .write_all(batch.as_bytes())
+            .expect("commands should be written");
+        self.stdin.flush().expect("commands should be flushed");
+    }
+
     fn expect_line_containing(&self, needle: &str, timeout: Duration) -> String {
         self.collect_until_line_containing(needle, timeout)
             .pop()
@@ -97,20 +110,31 @@ impl UciSession {
     }
 
     fn collect_until_line_containing(&self, needle: &str, timeout: Duration) -> Vec<String> {
+        self.try_collect_until_line_containing(needle, timeout)
+            .unwrap_or_else(|seen| panic!("timed out waiting for `{needle}`; seen: {seen:?}"))
+    }
+
+    /// Lines up to and including the first containing `needle`, or every line
+    /// seen before the timeout or the end of output.
+    fn try_collect_until_line_containing(
+        &self,
+        needle: &str,
+        timeout: Duration,
+    ) -> Result<Vec<String>, Vec<String>> {
         let deadline = Instant::now() + timeout;
         let mut seen = Vec::new();
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                panic!("timed out waiting for `{needle}`; seen: {seen:?}");
+                return Err(seen);
             }
             match self.stdout_rx.recv_timeout(remaining) {
                 Ok(line) if line.contains(needle) => {
                     seen.push(line);
-                    return seen;
+                    return Ok(seen);
                 }
                 Ok(line) => seen.push(line),
-                Err(err) => panic!("timed out waiting for `{needle}` ({err}); seen: {seen:?}"),
+                Err(_) => return Err(seen),
             }
         }
     }
@@ -327,6 +351,136 @@ fn threaded_ponderhit_after_spent_movetime_does_not_restart_search_clock() {
     session.send("ponderhit");
 
     session.expect_line_containing("bestmove", Duration::from_millis(750));
+    session.quit();
+}
+
+/// The ponder-race report's positions: a middlegame mate, a tablebase ending
+/// and an opening, so the race cannot hang on the position.
+const PONDER_RACE_SCENARIOS: [(&str, &str, &str); 3] = [
+    (
+        "A",
+        "position fen 6k1/8/4p1P1/2p2p1P/P2p1q2/Q7/1r2n1K1/6R1 b - - 4 55",
+        "go ponder wtime 13537 btime 6905 winc 1000 binc 1000",
+    ),
+    (
+        "B",
+        "position fen 5B2/P7/2k5/8/8/3B2K1/8/8 b - - 0 82",
+        "go ponder wtime 6493 btime 7249 winc 1000 binc 1000",
+    ),
+    (
+        "C",
+        "position startpos moves e2e4 e7e5 g1f3 b8c6 f1b5 a7a6",
+        "go ponder wtime 10000 btime 10000 winc 1000 binc 1000",
+    ),
+];
+
+/// `go ponder` with its `ponderhit` or `stop` in the same write must still end
+/// in exactly one `bestmove`, and leave the engine answering. A `ponderhit` the
+/// engine loses ponders without a clock and a `go` it drops prints nothing, so
+/// either fault times out at any budget. Every scenario runs, and the failure
+/// names each one that went unanswered with what the engine printed instead.
+fn assert_ponder_race_answers(threads: usize, release: &str, budget: Duration) {
+    let mut unanswered = Vec::new();
+    for (scenario, position, go) in PONDER_RACE_SCENARIOS {
+        let mut session = UciSession::start();
+        session.send("uci");
+        session.expect_line_containing("uciok", wait(15));
+        session.send(&format!("setoption name Threads value {threads}"));
+        session.send("setoption name Ponder value true");
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send(position);
+        session.send_together(&[go, release]);
+
+        match session.try_collect_until_line_containing("bestmove", budget) {
+            Ok(_) => {
+                session.assert_no_line_containing("bestmove", Duration::from_millis(300));
+                session.send("isready");
+                session.expect_line_containing("readyok", wait(5));
+                session.quit();
+            }
+            Err(seen) => {
+                let info_lines = seen.iter().filter(|line| line.starts_with("info")).count();
+                unanswered.push(format!(
+                    "scenario {scenario}: no bestmove in {budget:?} after `{release}`; \
+                     {info_lines} info lines, last {:?}",
+                    seen.last()
+                ));
+            }
+        }
+    }
+    assert!(
+        unanswered.is_empty(),
+        "Threads {threads}, `go ponder` then `{release}` in one write:\n{}",
+        unanswered.join("\n")
+    );
+}
+
+/// After `ponderhit` the search runs on the mover's clock, and may use most of
+/// it: at Threads 4 scenario B reaches its 5.9 s hard limit in most runs. The
+/// budget is above every scenario's clock, so only an engine that never answers
+/// fails, and a slower build needs no more.
+const PONDERHIT_RACE_BUDGET: Duration = Duration::from_secs(12);
+
+#[test]
+fn ponderhit_written_with_go_ponder_starts_the_clock() {
+    assert_ponder_race_answers(1, "ponderhit", PONDERHIT_RACE_BUDGET);
+}
+
+#[test]
+fn threaded_ponderhit_written_with_go_ponder_starts_the_clock() {
+    assert_ponder_race_answers(4, "ponderhit", PONDERHIT_RACE_BUDGET);
+}
+
+#[test]
+fn stop_written_with_go_ponder_still_answers_the_go() {
+    assert_ponder_race_answers(1, "stop", wait(2));
+}
+
+#[test]
+fn threaded_stop_written_with_go_ponder_still_answers_the_go() {
+    assert_ponder_race_answers(4, "stop", wait(2));
+}
+
+/// A `ponderhit` belongs to the `go ponder` it follows: one already spent, or
+/// one that arrives with no search, must not release the next ponder search.
+#[test]
+fn ponderhit_never_converts_a_later_ponder_search() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos moves e2e4");
+    session.send("go ponder depth 1");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.send("ponderhit");
+    session.expect_line_containing("bestmove", wait(2));
+
+    session.send("ponderhit");
+    session.send("position startpos moves e2e4 e7e5");
+    session.send("go ponder depth 1");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.assert_no_line_containing("bestmove", Duration::from_millis(200));
+
+    session.send("stop");
+    session.expect_line_containing("bestmove", wait(2));
+    session.quit();
+}
+
+/// A `stop` with no search running belongs to no `go`, so the next one searches
+/// to its limit.
+#[test]
+fn stop_with_no_search_does_not_stop_the_next_go() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send_together(&["stop", "go depth 4"]);
+
+    let lines = session.collect_until_line_containing("bestmove", wait(5));
+    assert!(
+        lines.iter().any(|line| line.starts_with("info depth 4 ")),
+        "the go after a stray stop should reach its depth: {lines:?}"
+    );
     session.quit();
 }
 

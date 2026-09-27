@@ -7,53 +7,58 @@ use std::sync::{
 
 use crate::search_options::{EngineOptions, SearchOptions};
 
+/// Signals from the protocol thread to the search. Every command that starts a
+/// search takes a new epoch, and `stop` and `ponderhit` are scoped to the latest
+/// one: they reach that search even when they arrive before the engine thread
+/// starts it, and never reach a later one.
 #[derive(Default)]
 pub struct EngineControl {
-    stop: AtomicBool,
     quit: AtomicBool,
-    ponderhit: AtomicBool,
+    /// Searches with an epoch below this one are stopped.
+    stopped_below: AtomicU64,
+    /// The epoch a pending `ponderhit` belongs to; 0 when none is pending,
+    /// since issued epochs start at 1.
+    ponderhit: AtomicU64,
     searching: AtomicBool,
     epoch: AtomicU64,
 }
 
 impl EngineControl {
+    /// Stop the latest search, started or still queued, without replacing it:
+    /// a queued `go` still runs and answers with its `bestmove`.
     pub(crate) fn request_stop(&self) -> u64 {
-        let epoch = self.next_epoch();
-        self.stop.store(true, Ordering::Release);
+        let epoch = self.current_epoch();
+        self.stopped_below.fetch_max(epoch + 1, Ordering::AcqRel);
         epoch
     }
 
     pub(crate) fn request_quit(&self) -> u64 {
         let epoch = self.next_epoch();
         self.quit.store(true, Ordering::Release);
-        self.stop.store(true, Ordering::Release);
         epoch
     }
 
+    /// Convert the latest search, started or still queued.
     pub(crate) fn request_ponderhit(&self) {
-        self.ponderhit.store(true, Ordering::Release);
+        self.ponderhit
+            .store(self.current_epoch(), Ordering::Release);
     }
 
+    /// Take the epoch for a new search command and stop every earlier search.
     pub(crate) fn start_replacing_search(&self) -> u64 {
         let epoch = self.next_epoch();
-        if self.searching.swap(true, Ordering::AcqRel) {
-            self.stop.store(true, Ordering::Release);
-        }
+        self.searching.store(true, Ordering::Release);
+        self.stopped_below.fetch_max(epoch, Ordering::AcqRel);
         epoch
     }
 
+    /// False when a later command replaced this one before it started. Clears
+    /// no signal: one that arrived since the command was issued belongs to it.
     pub(crate) fn prepare_search(&self, epoch: u64) -> bool {
         if epoch != 0 && self.current_epoch() != epoch {
             return false;
         }
-        self.stop.store(false, Ordering::Release);
-        self.ponderhit.store(false, Ordering::Release);
         self.searching.store(true, Ordering::Release);
-        if epoch != 0 && self.current_epoch() != epoch {
-            self.stop.store(true, Ordering::Release);
-            self.searching.store(false, Ordering::Release);
-            return false;
-        }
         true
     }
 
@@ -71,12 +76,19 @@ impl EngineControl {
         self.searching.load(Ordering::Acquire)
     }
 
-    pub(crate) fn poll_search(&self) -> SearchControl {
+    /// Epoch 0 is a search outside the protocol's numbering, as in unit tests:
+    /// any stop reaches it and no `ponderhit` converts it.
+    pub(crate) fn poll_search(&self, epoch: u64) -> SearchControl {
         if self.quit.load(Ordering::Acquire) {
             SearchControl::Quit
-        } else if self.stop.load(Ordering::Acquire) {
+        } else if epoch < self.stopped_below.load(Ordering::Acquire) {
             SearchControl::Stop
-        } else if self.ponderhit.swap(false, Ordering::AcqRel) {
+        } else if epoch != 0
+            && self
+                .ponderhit
+                .compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+        {
             SearchControl::PonderHit
         } else {
             SearchControl::None
@@ -178,21 +190,78 @@ mod tests {
     use super::*;
 
     #[test]
-    fn search_preparation_rejects_stale_epochs() {
+    fn search_preparation_rejects_replaced_epochs() {
         let control = EngineControl::default();
-        let stale_epoch = control.start_replacing_search();
+        let replaced_epoch = control.start_replacing_search();
+        let current_epoch = control.start_replacing_search();
+
+        assert!(!control.prepare_search(replaced_epoch));
+        assert!(matches!(
+            control.poll_search(replaced_epoch),
+            SearchControl::Stop
+        ));
+        control.finish_search_if_current(replaced_epoch);
+        assert!(control.is_searching());
+
+        assert!(control.prepare_search(current_epoch));
+        assert!(matches!(
+            control.poll_search(current_epoch),
+            SearchControl::None
+        ));
+        control.finish_search_if_current(current_epoch);
+        assert!(!control.is_searching());
+    }
+
+    #[test]
+    fn stop_before_the_search_starts_stops_it_without_replacing_it() {
+        let control = EngineControl::default();
+        let epoch = control.start_replacing_search();
         let stop_epoch = control.request_stop();
 
-        assert_ne!(stale_epoch, stop_epoch);
-        assert!(!control.prepare_search(stale_epoch));
-        assert!(control.is_searching());
+        assert_eq!(stop_epoch, epoch);
+        assert!(control.prepare_search(epoch));
+        assert!(matches!(control.poll_search(epoch), SearchControl::Stop));
         control.finish_search_if_current(stop_epoch);
         assert!(!control.is_searching());
 
-        let current_epoch = control.start_replacing_search();
-        assert!(control.prepare_search(current_epoch));
-        assert!(control.is_searching());
-        control.finish_search_if_current(current_epoch);
-        assert!(!control.is_searching());
+        let next_epoch = control.start_replacing_search();
+        assert!(control.prepare_search(next_epoch));
+        assert!(matches!(
+            control.poll_search(next_epoch),
+            SearchControl::None
+        ));
+    }
+
+    #[test]
+    fn ponderhit_before_the_search_starts_converts_that_search_once() {
+        let control = EngineControl::default();
+        let epoch = control.start_replacing_search();
+        control.request_ponderhit();
+
+        assert!(control.prepare_search(epoch));
+        assert!(matches!(
+            control.poll_search(epoch),
+            SearchControl::PonderHit
+        ));
+        assert!(matches!(control.poll_search(epoch), SearchControl::None));
+    }
+
+    #[test]
+    fn ponderhit_never_reaches_a_later_search() {
+        let control = EngineControl::default();
+        control.request_ponderhit();
+        let first_epoch = control.start_replacing_search();
+        assert!(matches!(
+            control.poll_search(first_epoch),
+            SearchControl::None
+        ));
+
+        control.request_ponderhit();
+        let second_epoch = control.start_replacing_search();
+        assert!(control.prepare_search(second_epoch));
+        assert!(matches!(
+            control.poll_search(second_epoch),
+            SearchControl::None
+        ));
     }
 }
