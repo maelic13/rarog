@@ -1561,6 +1561,28 @@ diagnostics; two rejections stop B.
       fail the test, checked once and reverted. No engine change: exact
       fingerprint; debug and release tests, fmt, clippy. B.7 then uses it as
       its floor.
+      **Done 2026-09-27 (`8836013`).** `tests/allocation_guard.rs` searches
+      four bench positions from a cleared state at depths 5 and 13, Threads
+      1 and 4: the deep search must have 10x the nodes and may add at most
+      64 allocations per extra iteration per thread. Measured at most about
+      25 while nodes grow 28x to over 900x. A backtrace of every allocation
+      in a depth-13 search put all of them at the root node, about five per
+      root visit (the filtered root moves collected into a new `Vec` on
+      every visit, not only under `searchmoves`, and the scored root list
+      growing), plus the reported line; nothing below the root allocates.
+      The undo history needs no care from the test: `search_impl` reserves
+      `MAX_PLY` of headroom before the search. Live wire: an allocation at
+      every qsearch node made 30,417 against a budget of 512, and one at
+      about one `negamax` node in a hundred made 1,976; both failed, both
+      reverted. Bench 12,897,901 unchanged; fmt, clippy, debug and release
+      tests, and the guard also passes on `--no-default-features`.
+    - **B.7.2 Speed pass — `I1`, then `V`.** The throughput work B.7
+      describes, after B.6 or its skip, measured by PROCESS's NPS method
+      with B.7.1's guard as the floor. One candidate is already located:
+      the root node rebuilds its filtered and scored move lists in fresh
+      `Vec`s on every visit; filling a reused list removes about five
+      allocations per root visit. Its value is expected to be below the
+      +0.5% floor on its own.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -1593,7 +1615,7 @@ class until they open.
 | B.4 | RESEARCH | I2 | Eligible: B.3 closed 2026-09-27; research card first |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
-| B.7.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-09-27: counting-allocator test that per-node code never allocates; any time before B.7. B.7's own row, after B.6 or its skip, returns as sub-steps when it opens |
+| B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 

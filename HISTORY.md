@@ -59,6 +59,11 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-27 — PLAN B.7.1 CLOSED: allocation guard.** A counting-allocator
+  test (`8836013`) holds per-node search code to AGENTS' no-allocation rule:
+  allocations may grow per iteration, never per node, and a planted
+  per-node allocation fails it. Every allocation left in a search is at the
+  root node; B.7's own work moved to B.7.2.
 - **2026-09-27 — PLAN B.3.5 CLOSED, B.3 closed with it.** `go ponder` with
   `ponderhit` or `stop` in the same write never got a `bestmove`: a `stop`
   made the queued `go` stale and a `ponderhit` was erased as the search
