@@ -53,7 +53,7 @@ b2core = []
 # version string carries `+b3proof`.
 b3proof = ["b2core"]
 
-default = ["b2core"]
+default = ["b2core", "b3proof"]
 # Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
