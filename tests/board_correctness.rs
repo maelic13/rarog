@@ -1266,6 +1266,19 @@ fn fen_rejects_positions_where_side_not_to_move_is_in_check() {
 }
 
 #[test]
+fn fen_rejects_a_triple_check_and_keeps_a_double_check() {
+    // Knight d6, bishop a4 and rook e1 all check e8; no move gives three checks.
+    assert!(
+        Board::from_fen("4k3/8/3N4/8/B7/8/8/K3R3 b - - 0 1").is_err(),
+        "a triple check is unreachable and must be rejected"
+    );
+    // Knight d6 and rook e1: a discovered double check, which is reachable.
+    let board = Board::from_fen("4k3/8/3N4/8/8/8/8/K3R3 b - - 0 1")
+        .expect("a double check is a legal position");
+    assert!(board.is_in_check());
+}
+
+#[test]
 fn ep_capture_removes_pawn_from_correct_square() {
     // After 1.e4 d5 2.e5 f5, the en passant capture e5xf6 removes the f5 pawn
     let mut board = Board::starting_position();

@@ -552,6 +552,16 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+#[test]
+fn a_triple_check_fen_is_a_critical_exit_before_any_search() {
+    let output = run_rarog("position fen 4k3/8/3N4/8/B7/8/8/K3R3 b - - 0 1\ngo depth 1\n");
+
+    assert_eq!(output.status.code(), Some(1), "status: {:?}", output.status);
+    let out = stdout(&output);
+    assert!(out.contains("info string CRITICAL ERROR"), "stdout: {out}");
+    assert!(!out.contains("bestmove"), "stdout: {out}");
+}
+
 /// The `<empty>` placeholder a GUI echoes back means no path, so the engine
 /// says nothing about tablebases; a genuine path that holds none still does.
 #[test]

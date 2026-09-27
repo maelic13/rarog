@@ -2094,6 +2094,17 @@ impl Board {
             return Err("side not to move may not be in check".to_string());
         }
 
+        // No move gives three checks at once (a discovered double check is the
+        // most), so a third checker makes the position unreachable.
+        let to_move = self.side_to_move;
+        if self
+            .attackers_to_color(self.king_sq(to_move), self.occupied(), !to_move)
+            .count()
+            > 2
+        {
+            return Err("side to move may not be in check from more than two pieces".to_string());
+        }
+
         Ok(())
     }
 
