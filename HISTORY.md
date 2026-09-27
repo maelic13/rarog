@@ -59,6 +59,14 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-27 — PLAN B.3.4 CLOSED: cluster 2 accepted.** The `b3proof` arm (NMP
+  with a verification region, ProbCut with the TT gate, graded singular
+  extensions with Rarog's multi-cut rule, the −3 negative extension, LDSE, the
+  LMR singular term, a per-line extension budget), fitted by RAR-S82/S83 in
+  blocks from the measured singular margin, passed its `[0,3]` gate against
+  the B.2.7 head at 804 pairs, **+50.5 ± 10.9 Elo** (RAR-S84), and became the
+  default build at **12,897,901 / EBF 2.523**. B.3.5 (the ponder race) stays open
+  under B.3.
 - **2026-09-25 — PLAN B.2.7 CLOSED, B.2 closed with it.** The Colosseum re-tune
   of all 82 `CoreParams` coordinates from B.2.3's theta (RAR-S78, 150,000
   games) was baked at **7,435,006 / EBF 2.457** and accepted by its `[0,3]`
