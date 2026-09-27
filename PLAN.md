@@ -1445,9 +1445,16 @@ diagnostics; two rejections stop B.
       scenario's clock, because at Threads 4 scenario B uses its 5.9 s hard
       limit in most runs, with or without the race. Bench 12,897,901 / EBF
       2.523 and `--no-default-features` 7,601,220 / EBF 2.474, both exact;
-      fmt, clippy at zero warnings, debug and release tests pass. The
-      ponder-on smoke match is handed to the maintainer; a failure there
-      reopens this leaf.
+      fmt, clippy at zero warnings, debug and release tests pass. Smoke,
+      played by the maintainer the same day: the fixed PGO build
+      `rarog-b35ponder-pext-pgo.exe` (sha256 `EC838F64…`, 12,897,901)
+      against the unfixed B.3.4 gate binary, `--ponder`, one core per
+      engine, 400 games at `3+0.03`, 0 faults and 0 time losses on
+      either side, every game a normal termination, recount equal
+      (`tools/results/b35-ponder-smoke`). The unfixed side lost nothing
+      either, so the race did not fire in live play at this control: the
+      smoke shows the fix breaks nothing under pondering, and the race
+      tests are what show it is fixed.
 - **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
   TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
   moves, SEE pruning by margin, TT write on exit, check evasions only when
