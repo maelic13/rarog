@@ -266,6 +266,36 @@ pub mod counters {
         q_check_nodes,
         q_check_moves_scored,
         q_check_moves_tried,
+        // B.4 research: where the quiescence search spends and prunes, all
+        // EXACT and Rarog-only. `q_qply0` counts entries from the main
+        // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose
+        // entry carries the PV bit a depth-0 store would clear.
+        q_qply0,
+        q_tt_hit_pv,
+        q_tt_hit_pv_shallow,
+        // The interior estimate refined by a stored bound, split by the
+        // entry's origin: depth 0 is a quiescence result.
+        est_refined_from_q,
+        est_refined_from_q_lower,
+        est_refined_from_q_upper,
+        q_stand_pat_refined,
+        q_delta_prune,
+        q_capture_considered,
+        q_capture_searched,
+        q_futility_skip,
+        q_count_skip,
+        q_see_threshold_skip,
+        q_bad_floor_skip,
+        // Unit census: the verdict of a margin consumer that mixes the
+        // search's 100/320/330/500/900 scale with evaluation units, re-read
+        // with the evaluator's middlegame material; each counts one verdict
+        // that would change, at the consumer's own threshold.
+        q_delta_flip_eval_units,
+        q_futility_flip_eval_units,
+        q_see_flip_eval_units,
+        probcut_see_flip_eval_units,
+        main_see_flip_eval_units,
+        bnfp_flip_eval_units,
         // NMP/ProbCut/singular/IIR cooperation.
         nmp_attempt,
         nmp_sample_cut,

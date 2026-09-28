@@ -10,6 +10,18 @@ use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
 use super::movepick::{MovePicker, Stage, diversify_root_scores, is_noisy, pick_next};
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
+/// The evaluator's middlegame material, for the diag census of the margin
+/// consumers that compare the search's own piece scale with evaluation
+/// units (a 900-unit queen against an 1131-unit one).
+#[cfg(feature = "diag")]
+const EVAL_UNIT_SEE_VALUES: crate::board::SeeValues =
+    crate::board::SeeValues::new(88, 394, 418, 537, 1131, 20_000);
+
+#[cfg(feature = "diag")]
+fn eval_unit_value(piece: Piece) -> i32 {
+    EVAL_UNIT_SEE_VALUES.as_array()[piece as usize]
+}
+
 /// Razoring stays away from decisive windows: alpha must be below this.
 const RAZOR_ALPHA_LIMIT: i32 = 936;
 
@@ -826,6 +838,15 @@ impl Searcher {
             ev.refine_eval(static_eval, 0)
         };
         #[cfg(feature = "diag")]
+        if !in_check && eval_for_pruning != static_eval && ev.depth == 0 {
+            crate::diag_count!(est_refined_from_q);
+            match ev.bound {
+                Some(Bound::Lower) => crate::diag_count!(est_refined_from_q_lower),
+                Some(Bound::Upper) => crate::diag_count!(est_refined_from_q_upper),
+                _ => {}
+            }
+        }
+        #[cfg(feature = "diag")]
         if diag_sample
             && eval_for_pruning != VALUE_NONE
             && static_eval != VALUE_NONE
@@ -1277,6 +1298,15 @@ impl Searcher {
                     }
                     let picked = pick_next(scored.as_mut_slice(), index);
                     let mv = picked.mv;
+                    #[cfg(feature = "diag")]
+                    if board.see_ge_with_values(
+                        mv,
+                        see_threshold,
+                        crate::board::PRODUCTION_SEE_VALUES,
+                    ) != board.see_ge_with_values(mv, see_threshold, EVAL_UNIT_SEE_VALUES)
+                    {
+                        crate::diag_count!(probcut_see_flip_eval_units);
+                    }
                     if !board.see_ge(mv, see_threshold) {
                         continue;
                     }
@@ -1461,6 +1491,15 @@ impl Searcher {
                     }
                     let picked = pick_next(scored.as_mut_slice(), index);
                     let mv = picked.mv;
+                    #[cfg(feature = "diag")]
+                    if board.see_ge_with_values(
+                        mv,
+                        see_threshold,
+                        crate::board::PRODUCTION_SEE_VALUES,
+                    ) != board.see_ge_with_values(mv, see_threshold, EVAL_UNIT_SEE_VALUES)
+                    {
+                        crate::diag_count!(probcut_see_flip_eval_units);
+                    }
                     if !board.see_ge(mv, see_threshold) {
                         continue;
                     }
@@ -1945,6 +1984,13 @@ impl Searcher {
                     && noisy_futility_value <= alpha
                 {
                     crate::diag_count!(bad_noisy_futility);
+                    #[cfg(feature = "diag")]
+                    if noisy_futility_value - captured_piece.map_or(0, piece_value)
+                        + captured_piece.map_or(0, eval_unit_value)
+                        > alpha
+                    {
+                        crate::diag_count!(bnfp_flip_eval_units);
+                    }
                     trace_decision!(
                         self,
                         ply,
@@ -1983,6 +2029,20 @@ impl Searcher {
                         + core.see_noisy_constant)
                         .min(0)
                 };
+                #[cfg(feature = "diag")]
+                if !is_quiet
+                    && board.see_ge_quiet_aware_with_values(
+                        mv,
+                        threshold,
+                        crate::board::PRODUCTION_SEE_VALUES,
+                    ) != board.see_ge_quiet_aware_with_values(
+                        mv,
+                        threshold,
+                        EVAL_UNIT_SEE_VALUES,
+                    )
+                {
+                    crate::diag_count!(main_see_flip_eval_units);
+                }
                 if !board.see_ge_quiet_aware(mv, threshold) {
                     if is_quiet {
                         crate::diag_count!(quiet_see_prune);
@@ -2614,6 +2674,10 @@ impl Searcher {
 
         let in_check = board.is_in_check();
         crate::diag_count!(qnodes);
+        #[cfg(feature = "diag")]
+        if qply == 0 {
+            crate::diag_count!(q_qply0);
+        }
         let hash = board.hash();
         #[cfg(feature = "diag")]
         let diag_q_sample = crate::diag::sampled(hash, ply + qply, crate::diag::SAMPLE_QSEARCH);
@@ -2632,6 +2696,15 @@ impl Searcher {
             crate::diag_count!(q_tt_hit);
             if ev.cutoff_score(0, alpha, beta).is_some() {
                 crate::diag_count!(q_tt_cut);
+            }
+        }
+        #[cfg(feature = "diag")]
+        if ev.pv_line(false) {
+            crate::diag_count!(q_tt_hit_pv);
+            // A depth-0 store replaces a same-position entry unless it is
+            // at least four plies deeper (tt.rs), so these lose the PV bit.
+            if ev.depth < 4 {
+                crate::diag_count!(q_tt_hit_pv_shallow);
             }
         }
         // Depth 0 is the whole admission bar here: any stored entry outranks a
@@ -2664,7 +2737,13 @@ impl Searcher {
             q_raw_static_eval = raw_stand_pat;
             // Refine the stand pat with a bound-consistent TT score, as the
             // main search refines its estimate.
+            #[cfg(feature = "diag")]
+            let corrected_stand_pat = stand_pat;
             let stand_pat = ev.refine_eval(stand_pat, 0);
+            #[cfg(feature = "diag")]
+            if stand_pat != corrected_stand_pat {
+                crate::diag_count!(q_stand_pat_refined);
+            }
             stand_pat_for_pruning = stand_pat;
             if stand_pat >= beta {
                 #[cfg(feature = "diag")]
@@ -2694,6 +2773,11 @@ impl Searcher {
                 alpha = stand_pat;
             }
             if board.occupied_count() > 8 && stand_pat + piece_value(Piece::Queen) + 200 < alpha {
+                crate::diag_count!(q_delta_prune);
+                #[cfg(feature = "diag")]
+                if stand_pat + eval_unit_value(Piece::Queen) + 200 >= alpha {
+                    crate::diag_count!(q_delta_flip_eval_units);
+                }
                 // Reached only when `stand_pat < alpha`, so `alpha` here is still
                 // the caller's bound and `stand_pat` is the honest lower figure.
                 return stand_pat;
@@ -2741,12 +2825,22 @@ impl Searcher {
             if !in_check {
                 let mut gives_check = None;
                 tactical_count += 1;
+                crate::diag_count!(q_capture_considered);
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
                     && stand_pat_for_pruning + board.captured_piece(mv).map_or(0, piece_value) + 150
                         <= alpha
                     && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 {
+                    crate::diag_count!(q_futility_skip);
+                    #[cfg(feature = "diag")]
+                    if stand_pat_for_pruning
+                        + board.captured_piece(mv).map_or(0, eval_unit_value)
+                        + 150
+                        > alpha
+                    {
+                        crate::diag_count!(q_futility_flip_eval_units);
+                    }
                     continue;
                 }
                 if !mv.is_promo()
@@ -2754,6 +2848,7 @@ impl Searcher {
                     && picked.see < 0
                     && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 {
+                    crate::diag_count!(q_count_skip);
                     continue;
                 }
                 if !mv.is_promo() {
@@ -2762,16 +2857,31 @@ impl Searcher {
                             self.cfg.params.qs_see_clamp_lo,
                             self.cfg.params.qs_see_clamp_hi,
                         );
+                    #[cfg(feature = "diag")]
+                    if board.see_ge_with_values(
+                        mv,
+                        see_threshold,
+                        crate::board::PRODUCTION_SEE_VALUES,
+                    ) != board.see_ge_with_values(mv, see_threshold, EVAL_UNIT_SEE_VALUES)
+                    {
+                        crate::diag_count!(q_see_flip_eval_units);
+                    }
                     if !board.see_ge(mv, see_threshold) {
+                        crate::diag_count!(q_see_threshold_skip);
                         continue;
                     }
                 }
                 if picked.see < 0 && !board.see_ge(mv, self.cfg.params.qs_see_bad_floor) {
+                    crate::diag_count!(q_bad_floor_skip);
                     continue;
                 }
             }
             let moving_piece = board.moving_piece(mv);
             self.push_move(board, ply, mv, moving_piece);
+            #[cfg(feature = "diag")]
+            if !in_check {
+                crate::diag_count!(q_capture_searched);
+            }
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
