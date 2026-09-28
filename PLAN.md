@@ -1455,48 +1455,76 @@ diagnostics; two rejections stop B.
       either, so the race did not fire in live play at this control: the
       smoke shows the fix breaks nothing under pondering, and the race
       tests are what show it is fixed.
-- **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Reckless-shaped qsearch:
-  TT cutoff, corrected stand-pat, fail-high interpolation, LMP at three
-  moves, SEE pruning by margin, TT write on exit, check evasions only when
-  in check. Target: Rarog's qsearch share (62% larger than the oracle's per
-  interior node) without losing tactical suite results at equal nodes. SPRT
-  `[0,3]`. **Dependency on B.2, recorded from Manta's MAN-S36 review:**
-  count-based late-move skipping, low-depth unverified null cutoffs and
-  zero-depth reduced probes all assume that a mate threat by a *quiet* move
-  stays visible one ply later; a captures-only quiescence makes that false,
-  and Manta's core was blind to WAC.001's mate in two through depth nine
-  until direct quiet checks were generated at the first quiescence ply.
-  Rarog's quiescence today generates captures only unless in check, and B.2
-  makes pruning aggressive before B.4 touches quiescence. Therefore B.2's
-  canaries include mate threats by quiet moves, B.4 may not remove any
-  first-ply check generation B.2 turned out to rely on, and "check evasions
-  only when in check" is measured against those canaries, not assumed from
-  the donor. **Screens: rule 8's cluster ladder**, registered before
-  implementation; under its canary regression rule a quiet mate-threat
-  canary the baseline solves may not be lost. The paired run governs, and
-  the curvature sweep precedes any SPSA. **Research card, added
-  2026-09-17 (maintainer decision; RAR-M19): the search's piece-value
-  scale.** The evaluator's material is Texel-fitted (middlegame
-  88/394/418/537/1131, endgame 123/239/290/486/930, refit four times);
-  the search carries a separate, never-fitted vector `PIECE_VALUES` =
-  100/320/330/500/900 that feeds SEE (`PRODUCTION_SEE_VALUES`), capture
-  and promotion ordering in both pickers, the quiescence delta margin
-  (`stand_pat + queen + 200`), the bad-noisy futility's victim term, the
-  corrected eval's material scale and the ProbCut SEE gap; B.2's SEE
-  thresholds are seeded on it (donor ×0.75). Ordering consumers need only
-  a self-consistent scale; the margin consumers compare it with
-  evaluation units, where a 900-unit queen meets an 1131-unit one. B.4
-  owns the decision because the delta margin and the SEE thresholds are
-  its mechanisms: (1) audit each consumer for ordering-only against
-  margin use; (2) decide whether the five values plus the delta margin
-  join B.4's SPSA surface as coordinates (Stockfish fits its
-  `PieceValue` by SPSA; Manta parameterises SEE), or whether the margin
-  consumers switch to the evaluator's units with the ordering scale left
-  fixed; (3) if fitted, the same scale must feed every consumer, and
-  `CROSS_ENGINE_SEE_VALUES` stays frozen for the benchmark. The HCE
-  vector stays Texel's (C.1–C.4). Zero-game evidence first: the SEE
-  census and the qsearch delta-prune counters at stride 1 on the accepted
-  head, then a registered A/B if a margin consumer changes units.
+- **B.4 Cluster 3 — quiescence — `I2`, then `V`.** Researched on the
+  cluster-2 head 2026-09-28 (`analysis/b4_research_2026-09-28.md`, RAR-S85).
+  **The card's size premise is stale**: the "62% larger" quiescence was
+  B.1's; the head reads **0.33 qnodes per interior node against the
+  oracle's 0.58** (depth 8) and 0.326 on `bench 13`, so B.4 is not a size
+  cluster and the donors' quiescence is the bigger one. What B.4 owns is the
+  quality of what the quiescence hands back and the fit of its margins: the
+  quiescence writes 36% of all TT stores, and 21% of the interior estimate's
+  refinements (`refine_eval(static_eval, 0)`, no depth guard) come from
+  depth-0 entries, 93% of them raw fail-soft Lower bounds that both donors
+  interpolate toward beta before storing. Of the card's seven mechanisms
+  four are in place (TT cutoff, corrected stand pat, TT write on exit,
+  evasions only in check); fail-high interpolation is absent; the count rule
+  is dead (2,961 fires per bench); the SEE threshold is applied to checking
+  captures and recaptures, which the donors exempt. Two findings join the
+  cluster as the same contract: depth-0 stores write `is_pv: false` and
+  overwrite shallow PV entries (9,371 probes per bench), and `QsSeeClampLo`
+  is dead by dominance of the bad floor. The four quiescence coordinates
+  were last fitted in Phase 7.2 and were in none of B.2's or B.3's surfaces;
+  the liveness sweep shows three live and curved with the defaults in a WAC
+  valley (`QsSeeClampHi = 0` solves 238 at 100k against 232). **First-ply
+  quiet checks are not owed**: Manta measured that component F alone did
+  not rescue its canary (the losses were an interior count skip and an
+  unfitted reverse-futility cut), and the head passes 27 of the 37
+  quiet-check canaries and 66 of the 85 quiet-move ones; the obligation is
+  the canary rule, none of the 91 solved canaries lost. **RAR-M19 decided**:
+  the ordering scale stays 100/320/330/500/900 and no consumer switches to
+  evaluation units (a switch would move 5.1% of B.2's fitted capture SEE
+  prunes and 4.7% of B.3's ProbCut gates); the quiescence margins become
+  coordinates and absorb the scale, with the delta prune, where 55% of
+  verdicts are unit-sensitive, watched by the sweep. Contract Q1–Q9,
+  hypotheses H1–H4, the interaction map (the `est` coupling to B.2's RFP
+  and B.3's margins is first-order and is why the unfitted read's sign is
+  uncertain), predictions P1–P8 and stop rules are in the packet. SPRT
+  `[0,3]`. **Dependency on B.2, recorded from Manta's MAN-S36 review**
+  (kept as the canary rule): count-based late-move skipping, low-depth
+  unverified null cutoffs and zero-depth reduced probes assume that a mate
+  threat by a *quiet* move stays visible one ply later; B.2's canaries
+  include mate threats by quiet moves and B.4 may not lose one the head
+  solves. Screens: rule 8's ladder, registered in the packet.
+    - **B.4.1 Implement behind `b4quiet` — `I2`.** T1 the PV bit on the
+      three quiescence stores and the two interpolations (`QsStandPatLerp`
+      700, `QsCutoffLerp` 540, of 1024; decisive scores excluded; the
+      `≥ beta` verdict unchanged by construction); T2 the count rule
+      `QsCountLimit` 3 with check, recapture and promotion exemptions
+      replacing the dead `> 6 && see < 0`, the SEE threshold exempting
+      checking captures and recaptures, `QsSeeClampLo` deleted,
+      `QsFutilityMargin` 150 and `QsDeltaMargin` 200 as coordinates; T3
+      `CoreQsEvasionPrune` and T4 `CoreQsNoisyHistory` as switches. Off
+      arm exact at 12,897,901 and the legacy search at 7,601,220 after
+      every step; the arm's fingerprint and stride-1 counters recorded per
+      step against P3–P5; rules R1–R7 and Q1–Q9 bind.
+    - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
+      branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
+      at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
+      lost, qnodes per interior node in [0.25, 0.58], time-to-depth ≤ 1.05×,
+      the deep-iteration cost screen ≤ 2×; the component ablation; the two
+      categoricals by zero-game screens; the 2,000-game unfitted paired run
+      (maintainer-run), floor −30, target +5; the paired run governs.
+    - **B.4.3 Sweep and fit — `V`.** Curvature sweep on `QsSeeMargin`,
+      `QsSeeClampHi`, `QsStandPatLerp`, `QsFutilityMargin`, `QsDeltaMargin`
+      (classification frozen first); if curved, the SPSA on Colosseum over
+      the eight live coordinates in rule-7c blocks (maintainer-run); theta
+      baked in one engine commit.
+    - **B.4.4 Gate — `V`.** Fitted `b4quiet` PGO build against the accepted
+      head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
+      registered with binaries and hashes before any game; H1 flips the
+      default and deletes the cfg, H0 or the cap rejects the cluster as a
+      unit (PLAN rule 6); the PV-bit repair alone may then be re-registered
+      as a repair with a symmetric bracket.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   **Note from B.3 (2026-09-23):** at deep iterations (depth 19 and up on
   bench position 11) the accepted search already runs lines to `MAX_PLY − 1`
@@ -1654,7 +1682,10 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4 | RESEARCH | I2 | Eligible: B.3 closed 2026-09-27; research card first |
+| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Implement behind `b4quiet` in T-steps with counters per step; off arm exact |
+| B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
+| B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
+| B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |

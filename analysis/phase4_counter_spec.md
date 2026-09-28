@@ -371,3 +371,19 @@ list rather than a rediscovery.
   reading — fewer nodes is better — is the one that has already cost Rarog Elo.
 - Values from different suites, depths or node budgets are not comparable. The
   4.2 suite is versioned for this reason.
+
+## B.4 quiescence and unit-census counters (2026-09-28)
+
+Rarog-only, **exact** (not sampled), added for B.4's research
+(`analysis/b4_research_2026-09-28.md`); never differenced against the oracle.
+
+| Counter | Increments |
+|---|---|
+| `q_qply0` | Quiescence entries at qply 0: from the depth-0 dispatch, razoring and ProbCut |
+| `q_tt_hit_pv`, `q_tt_hit_pv_shallow` | Quiescence probes whose entry carries the PV bit; of those, entries shallower than 4 plies, which a depth-0 store overwrites |
+| `q_stand_pat_refined` | Stand pat changed by the TT refinement |
+| `q_delta_prune` | The `stand_pat + queen + margin < alpha` exit |
+| `q_capture_considered`, `q_capture_searched` | Captures entering the out-of-check loop; captures made |
+| `q_futility_skip`, `q_count_skip`, `q_see_threshold_skip`, `q_bad_floor_skip` | The four out-of-check prune stages, per capture |
+| `est_refined_from_q`, `_lower`, `_upper` | Interior `eval_for_pruning` refined by a depth-0 entry, by bound |
+| `*_flip_eval_units` (`q_delta`, `q_futility`, `q_see`, `probcut_see`, `main_see`, `bnfp`) | The consumer's verdict re-read with the evaluator's middlegame material (88/394/418/537/1131) differs from the production verdict at the same threshold |
