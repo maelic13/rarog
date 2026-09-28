@@ -52,6 +52,13 @@ b2core = []
 # it; with the feature off the search is the accepted core exactly. The
 # version string carries `+b3proof`.
 b3proof = ["b2core"]
+# B.4's quiescence cluster on the accepted head: the PV bit kept on depth-0
+# stores, fail-high interpolation toward beta, the donor count rule and SEE
+# exemptions, margins as coordinates, evasion pruning and quiescence noisy
+# history as switches (analysis/b4_research_2026-09-28.md). Off by default
+# until its gate accepts it; with the feature off the search is the accepted
+# head exactly. The version string carries `+b4quiet`.
+b4quiet = ["b3proof"]
 
 default = ["b2core", "b3proof"]
 # Search diagnostics: exact events plus deterministic sampled

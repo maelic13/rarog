@@ -44,6 +44,22 @@ const fn is_decisive(score: i32) -> bool {
     is_win(score) || is_loss(score)
 }
 
+/// A quiescence fail-high moved `lerp` 1024ths of the way from `score` to
+/// `beta`, so the bound the interior reads as its estimate is not the raw
+/// overshoot of a depth-0 window. A decisive score or beta is left alone, so
+/// no mate is moved or invented, and the result stays `>= beta`, so no
+/// caller's verdict changes.
+#[cfg(feature = "b4quiet")]
+fn fail_high_toward_beta(score: i32, beta: i32, lerp: i32) -> i32 {
+    debug_assert!(score >= beta);
+    if is_decisive(score) || is_decisive(beta) {
+        return score;
+    }
+    let value = score + (beta - score) * lerp / 1024;
+    debug_assert!(value >= beta, "an interpolated fail-high stays a fail-high");
+    value
+}
+
 /// What a null-move cutoff returns: the null search's score, but never a win
 /// the reduced search did not prove and never less than beta, which the
 /// verification established when the null search ran against a lower bound
@@ -2691,6 +2707,12 @@ impl Searcher {
         let original_alpha = alpha;
         let tt_entry = self.shared.tt.probe(hash);
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
+        // A depth-0 store replaces a shallow entry, so it keeps the PV bit the
+        // line or an earlier search gave the position.
+        #[cfg(feature = "b4quiet")]
+        let q_store_pv = ev.pv_line(NODE::PV);
+        #[cfg(not(feature = "b4quiet"))]
+        let q_store_pv = false;
         #[cfg(feature = "diag")]
         if diag_q_sample && ev.hit {
             crate::diag_count!(q_tt_hit);
@@ -2751,6 +2773,9 @@ impl Searcher {
                     crate::diag_count!(q_stand_pat_cut);
                     crate::diag_count!(q_stand_pat_store);
                 }
+                #[cfg(feature = "b4quiet")]
+                let stand_pat =
+                    fail_high_toward_beta(stand_pat, beta, self.cfg.quiet.qs_stand_pat_lerp);
                 // A stand-pat fail-high is stored as a depth-0 lower bound.
                 // Suppressing these stores measured worse: TT cutoffs fell
                 // faster than the tree shrank.
@@ -2762,7 +2787,7 @@ impl Searcher {
                     mv: Move::NULL,
                     ply,
                     static_eval: q_raw_static_eval,
-                    is_pv: false,
+                    is_pv: q_store_pv,
                 });
                 return stand_pat;
             }
@@ -2896,6 +2921,8 @@ impl Searcher {
                     crate::diag_count!(q_move_cut);
                     crate::diag_count!(q_move_store);
                 }
+                #[cfg(feature = "b4quiet")]
+                let score = fail_high_toward_beta(score, beta, self.cfg.quiet.qs_cutoff_lerp);
                 self.shared.tt.store(TtStore {
                     key: hash,
                     depth: 0,
@@ -2904,7 +2931,7 @@ impl Searcher {
                     mv,
                     ply,
                     static_eval: q_raw_static_eval,
-                    is_pv: false,
+                    is_pv: q_store_pv,
                 });
                 return score;
             }
@@ -2944,7 +2971,7 @@ impl Searcher {
             mv: best_move,
             ply,
             static_eval: q_raw_static_eval,
-            is_pv: false,
+            is_pv: q_store_pv,
         });
         alpha
     }
@@ -4177,6 +4204,44 @@ mod tests {
         for ply in 0..MAX_PLY {
             assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
         }
+    }
+
+    #[cfg(feature = "b4quiet")]
+    #[test]
+    fn fail_high_interpolation_keeps_the_verdict_and_leaves_decisive_scores() {
+        assert_eq!(fail_high_toward_beta(300, 100, 0), 300);
+        assert_eq!(fail_high_toward_beta(300, 100, 512), 200);
+        assert_eq!(fail_high_toward_beta(300, 100, 1024), 100);
+        for lerp in [0, 1, 540, 700, 1023, 1024] {
+            for (score, beta) in [(101, 100), (5_000, -5_000), (-200, -301)] {
+                assert!(fail_high_toward_beta(score, beta, lerp) >= beta);
+            }
+        }
+        let win = TB_WIN_SCORE + 7;
+        assert_eq!(fail_high_toward_beta(win, 100, 700), win);
+        assert_eq!(fail_high_toward_beta(300, -TB_WIN_SCORE, 700), 300);
+    }
+
+    /// On a PV line the quiescence's depth-0 store keeps the PV bit; off it,
+    /// the store carries none, as before.
+    #[test]
+    fn quiescence_store_keeps_the_pv_bit_only_on_the_b4quiet_arm() {
+        let fen = "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1";
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("valid FEN");
+        searcher.quiescence::<Pv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+            SearchEvent::None
+        });
+        let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
+        assert_eq!(entry.is_pv_node(), cfg!(feature = "b4quiet"));
+
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("valid FEN");
+        searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+            SearchEvent::None
+        });
+        let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
+        assert!(!entry.is_pv_node());
     }
 
     #[test]

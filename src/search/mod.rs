@@ -51,6 +51,8 @@ use node::build_lmr_table;
 use params::CoreParams;
 #[cfg(feature = "b3proof")]
 use params::ProofParams;
+#[cfg(feature = "b4quiet")]
+use params::QuietParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
 use stack::{PlyArray, StackEntry};
@@ -217,6 +219,8 @@ struct SearchConfig {
     core: CoreParams,
     #[cfg(feature = "b3proof")]
     proof: ProofParams,
+    #[cfg(feature = "b4quiet")]
+    quiet: QuietParams,
     lmr_table: Box<[[i32; 64]; 64]>,
     /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
     /// it only when the parameters change.
@@ -236,6 +240,8 @@ impl Default for SearchConfig {
             core: CoreParams::default(),
             #[cfg(feature = "b3proof")]
             proof: ProofParams::default(),
+            #[cfg(feature = "b4quiet")]
+            quiet: QuietParams::default(),
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -580,6 +586,10 @@ impl Searcher {
         {
             self.cfg.proof = engine_options.proof_params.clone();
             self.td.nmp_min_ply = 0;
+        }
+        #[cfg(feature = "b4quiet")]
+        {
+            self.cfg.quiet = engine_options.quiet_params.clone();
         }
         let table_key = (
             self.cfg.params.lmr_table_base,

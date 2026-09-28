@@ -738,6 +738,19 @@ search_params! {
     lmr_singular_cap = 2_051, "CoreLmrSingularCap", 0..=4096;
 }
 
+// The quiescence cluster's coordinates and switches, on the `b4quiet` arm
+// only. The interpolations are in 1024ths of the way from a fail-high score
+// to beta: 0 keeps the fail-soft score, 1024 is fail-hard.
+#[cfg(feature = "b4quiet")]
+search_params! {
+    struct QuietParams, generated_quiet_param_checks;
+
+    /// A stand-pat fail-high is stored and returned this far toward beta.
+    qs_stand_pat_lerp = 700, "QsStandPatLerp", 0..=1024;
+    /// A capture's fail-high is stored and returned this far toward beta.
+    qs_cutoff_lerp = 540, "QsCutoffLerp", 0..=1024;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -3,6 +3,8 @@ use crate::board::{Board, Move};
 use crate::search::params::CoreParams;
 #[cfg(feature = "b3proof")]
 use crate::search::params::ProofParams;
+#[cfg(feature = "b4quiet")]
+use crate::search::params::QuietParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
@@ -44,6 +46,9 @@ pub struct EngineOptions {
     /// The proof-search cluster's coordinates.
     #[cfg(feature = "b3proof")]
     pub proof_params: ProofParams,
+    /// The quiescence cluster's coordinates and switches.
+    #[cfg(feature = "b4quiet")]
+    pub quiet_params: QuietParams,
 }
 
 impl Default for EngineOptions {
@@ -60,6 +65,8 @@ impl Default for EngineOptions {
             core_params: CoreParams::default(),
             #[cfg(feature = "b3proof")]
             proof_params: ProofParams::default(),
+            #[cfg(feature = "b4quiet")]
+            quiet_params: QuietParams::default(),
         }
     }
 }
@@ -198,6 +205,8 @@ impl SearchOptions {
         opts.extend(CoreParams::uci_option_strings());
         #[cfg(all(feature = "tune", feature = "b3proof"))]
         opts.extend(ProofParams::uci_option_strings());
+        #[cfg(all(feature = "tune", feature = "b4quiet"))]
+        opts.extend(QuietParams::uci_option_strings());
         opts
     }
 
@@ -470,6 +479,14 @@ impl SearchOptions {
                 if self
                     .engine
                     .proof_params
+                    .set_uci_option(&option_name, &value)
+                {
+                    return OptionUpdate::Engine;
+                }
+                #[cfg(all(feature = "tune", feature = "b4quiet"))]
+                if self
+                    .engine
+                    .quiet_params
                     .set_uci_option(&option_name, &value)
                 {
                     return OptionUpdate::Engine;
