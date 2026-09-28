@@ -1507,6 +1507,19 @@ diagnostics; two rejections stop B.
       arm exact at 12,897,901 and the legacy search at 7,601,220 after
       every step; the arm's fingerprint and stride-1 counters recorded per
       step against P3–P5; rules R1–R7 and Q1–Q9 bind.
+      **Returned to `RESEARCH` 2026-09-28 at T1 by the packet's stop rule**
+      (the packet's *B.4.1 implementation record*): T1 (`ac018d4`, arm
+      14,066,619, off arm and legacy exact) keeps WAC at 232 but loses
+      three of the head's 91 canaries (WAC.017, .056, .133) and gains
+      three; the rule's re-read at the Stockfish pair loses three
+      (89/116). A zero-game split shows each component alone loses
+      canaries (the PV bit alone four, interpolation alone two, with WAC
+      238), so the research pass decides whether the canary rule
+      separates tactical loss from tree churn, Q1's form (Reckless's
+      PV-subtree marking against Stockfish's stored bit), and the seeds.
+      P3 missed three of four for mechanism and instrument reasons, none
+      wiring. T2–T4 are not built; T1 stays in the tree behind the
+      feature, off by default.
     - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
       branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
       at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
@@ -1682,7 +1695,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Implement behind `b4quiet` in T-steps with counters per step; off arm exact |
+| B.4.1 | RESEARCH | R2 | Returned 2026-09-28 at T1 by the canary stop rule (T1 in `ac018d4`, off by default); the research pass decides the canary rule's churn baseline, Q1's form and the seeds before T2–T4 |
 | B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
 | B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
