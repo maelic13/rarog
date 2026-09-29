@@ -2944,23 +2944,13 @@ impl Searcher {
                     {
                         crate::diag_count!(q_see_flip_eval_units);
                     }
-                    #[cfg(not(feature = "b4quiet"))]
+                    // Every non-promotion capture is held to the threshold,
+                    // checking captures and recaptures included: exempting checks
+                    // searched non-losing checking captures far below alpha and
+                    // moved shallow iterations on mate canaries.
                     if !board.see_ge(mv, see_threshold) {
                         crate::diag_count!(q_see_threshold_skip);
                         continue;
-                    }
-                    // A recapture or a checking capture is not held to the
-                    // threshold; the bad floor below still applies to it.
-                    #[cfg(feature = "b4quiet")]
-                    if !board.see_ge(mv, see_threshold) {
-                        if is_recapture {
-                            crate::diag_count!(q_recapture_exempt);
-                        } else if move_gives_check(board, &mut node_ci, mv, &mut gives_check) {
-                            crate::diag_count!(q_check_exempt);
-                        } else {
-                            crate::diag_count!(q_see_threshold_skip);
-                            continue;
-                        }
                     }
                 }
                 if picked.see < 0 && !board.see_ge(mv, self.cfg.params.qs_see_bad_floor) {

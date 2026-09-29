@@ -291,9 +291,9 @@ pub mod counters {
         q_count_skip,
         q_see_threshold_skip,
         q_bad_floor_skip,
-        // A capture the count rule or the SEE threshold would have skipped,
+        // A capture the count rule would have skipped past its limit,
         // searched because it recaptures on the previous move's square or
-        // gives check; counted at each rule it escapes.
+        // gives check.
         q_recapture_exempt,
         q_check_exempt,
         // Unit census: the verdict of a margin consumer that mixes the
