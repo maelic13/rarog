@@ -12,7 +12,7 @@
   "CoreProbcutTtServed": 0,
   "CoreSingularFloor": 0,
   "CoreSingNegCut": 0,
-  "CoreQsEvasionPrune": 0,
+  "CoreQsEvasionPrune": 1,
   "CoreQsNoisyHistory": 0,
   "CoreCorrUpdateSlope": 211,
   "CoreCorrUpdateMin": -1742,
