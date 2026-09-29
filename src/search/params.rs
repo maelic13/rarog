@@ -507,7 +507,7 @@ search_params! {
     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
     /// unthreatened + constant`, floored at 2.
     rfp_square = 144, "CoreRfpSquare", 0..=320;
-    rfp_linear = 14, "CoreRfpLinear", 0..=200;
+    rfp_linear = 14, "CoreRfpLinear", -100..=200;
     rfp_improvement = 40, "CoreRfpImprovement", 0..=512;
     rfp_correction = 139, "CoreRfpCorrection", 0..=2048;
     rfp_threat = 21, "CoreRfpThreat", 0..=120;
