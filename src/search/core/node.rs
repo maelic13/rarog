@@ -856,6 +856,10 @@ impl Searcher {
         #[cfg(feature = "diag")]
         if !in_check && eval_for_pruning != static_eval && ev.depth == 0 {
             crate::diag_count!(est_refined_from_q);
+            crate::diag_add!(
+                est_refined_from_q_delta_sum,
+                u64::from(eval_for_pruning.saturating_sub(static_eval).unsigned_abs())
+            );
             match ev.bound {
                 Some(Bound::Lower) => crate::diag_count!(est_refined_from_q_lower),
                 Some(Bound::Upper) => crate::diag_count!(est_refined_from_q_upper),
@@ -2800,10 +2804,16 @@ impl Searcher {
             if stand_pat > alpha {
                 alpha = stand_pat;
             }
-            if board.occupied_count() > 8 && stand_pat + piece_value(Piece::Queen) + 200 < alpha {
+            #[cfg(feature = "b4quiet")]
+            let delta_margin = self.cfg.quiet.qs_delta_margin;
+            #[cfg(not(feature = "b4quiet"))]
+            let delta_margin = 200;
+            if board.occupied_count() > 8
+                && stand_pat + piece_value(Piece::Queen) + delta_margin < alpha
+            {
                 crate::diag_count!(q_delta_prune);
                 #[cfg(feature = "diag")]
-                if stand_pat + eval_unit_value(Piece::Queen) + 200 >= alpha {
+                if stand_pat + eval_unit_value(Piece::Queen) + delta_margin >= alpha {
                     crate::diag_count!(q_delta_flip_eval_units);
                 }
                 // Reached only when `stand_pat < alpha`, so `alpha` here is still
@@ -2843,6 +2853,14 @@ impl Searcher {
         // capture-only qnode that never tests for check never builds them.
         let mut node_ci: Option<CheckInfo> = None;
         let mut tactical_count = 0usize;
+        // A capture on the square the previous move landed on is a recapture;
+        // a null move lands nowhere.
+        #[cfg(feature = "b4quiet")]
+        let recapture_square = ply
+            .checked_sub(1)
+            .map(|parent| self.td.stack[parent].mv)
+            .filter(|prev| !prev.is_null())
+            .map(Move::to_sq);
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
             #[cfg(feature = "diag")]
@@ -2854,9 +2872,15 @@ impl Searcher {
                 let mut gives_check = None;
                 tactical_count += 1;
                 crate::diag_count!(q_capture_considered);
+                #[cfg(feature = "b4quiet")]
+                let futility_margin = self.cfg.quiet.qs_futility_margin;
+                #[cfg(not(feature = "b4quiet"))]
+                let futility_margin = 150;
                 if !mv.is_promo()
                     && stand_pat_for_pruning != VALUE_NONE
-                    && stand_pat_for_pruning + board.captured_piece(mv).map_or(0, piece_value) + 150
+                    && stand_pat_for_pruning
+                        + board.captured_piece(mv).map_or(0, piece_value)
+                        + futility_margin
                         <= alpha
                     && !move_gives_check(board, &mut node_ci, mv, &mut gives_check)
                 {
@@ -2864,13 +2888,14 @@ impl Searcher {
                     #[cfg(feature = "diag")]
                     if stand_pat_for_pruning
                         + board.captured_piece(mv).map_or(0, eval_unit_value)
-                        + 150
+                        + futility_margin
                         > alpha
                     {
                         crate::diag_count!(q_futility_flip_eval_units);
                     }
                     continue;
                 }
+                #[cfg(not(feature = "b4quiet"))]
                 if !mv.is_promo()
                     && tactical_count > 6
                     && picked.see < 0
@@ -2879,7 +2904,32 @@ impl Searcher {
                     crate::diag_count!(q_count_skip);
                     continue;
                 }
+                // Late captures are skipped unless they recapture or check, the
+                // exemptions tested only for a capture the count would skip.
+                #[cfg(feature = "b4quiet")]
+                let is_recapture = recapture_square == Some(mv.to_sq());
+                #[cfg(feature = "b4quiet")]
+                if !mv.is_promo()
+                    && infra::to_i32(tactical_count) > self.cfg.quiet.qs_count_limit
+                    && !is_loss(stand_pat_for_pruning)
+                {
+                    if is_recapture {
+                        crate::diag_count!(q_recapture_exempt);
+                    } else if move_gives_check(board, &mut node_ci, mv, &mut gives_check) {
+                        crate::diag_count!(q_check_exempt);
+                    } else {
+                        crate::diag_count!(q_count_skip);
+                        continue;
+                    }
+                }
                 if !mv.is_promo() {
+                    // `alpha >= stand_pat` here, so the threshold never falls below
+                    // `-QsSeeMargin` and only its upper clamp can act.
+                    #[cfg(feature = "b4quiet")]
+                    let see_threshold =
+                        (alpha - stand_pat_for_pruning - self.cfg.params.qs_see_margin)
+                            .min(self.cfg.params.qs_see_clamp_hi);
+                    #[cfg(not(feature = "b4quiet"))]
                     let see_threshold =
                         (alpha - stand_pat_for_pruning - self.cfg.params.qs_see_margin).clamp(
                             self.cfg.params.qs_see_clamp_lo,
@@ -2894,9 +2944,23 @@ impl Searcher {
                     {
                         crate::diag_count!(q_see_flip_eval_units);
                     }
+                    #[cfg(not(feature = "b4quiet"))]
                     if !board.see_ge(mv, see_threshold) {
                         crate::diag_count!(q_see_threshold_skip);
                         continue;
+                    }
+                    // A recapture or a checking capture is not held to the
+                    // threshold; the bad floor below still applies to it.
+                    #[cfg(feature = "b4quiet")]
+                    if !board.see_ge(mv, see_threshold) {
+                        if is_recapture {
+                            crate::diag_count!(q_recapture_exempt);
+                        } else if move_gives_check(board, &mut node_ci, mv, &mut gives_check) {
+                            crate::diag_count!(q_check_exempt);
+                        } else {
+                            crate::diag_count!(q_see_threshold_skip);
+                            continue;
+                        }
                     }
                 }
                 if picked.see < 0 && !board.see_ge(mv, self.cfg.params.qs_see_bad_floor) {

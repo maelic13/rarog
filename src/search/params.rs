@@ -749,6 +749,16 @@ search_params! {
     qs_stand_pat_lerp = 583, "QsStandPatLerp", 0..=1024;
     /// A capture's fail-high is stored and returned this far toward beta.
     qs_cutoff_lerp = 562, "QsCutoffLerp", 0..=1024;
+    /// Captures after this many at a node are skipped unless they give check,
+    /// recapture on the previous move's square or promote, while the stand pat
+    /// is not a loss.
+    qs_count_limit = 3, "QsCountLimit", 2..=8;
+    /// A capture is skipped when the stand pat, its victim and this margin
+    /// cannot reach alpha; evaluation units over the search's piece scale.
+    qs_futility_margin = 150, "QsFutilityMargin", 0..=400;
+    /// With more than eight pieces on the board, the stand pat, a queen and
+    /// this margin below alpha end the node.
+    qs_delta_margin = 200, "QsDeltaMargin", 0..=800;
 }
 
 #[cfg(test)]

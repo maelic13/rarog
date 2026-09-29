@@ -278,6 +278,11 @@ pub mod counters {
         est_refined_from_q,
         est_refined_from_q_lower,
         est_refined_from_q_upper,
+        // |estimate - static eval| summed over the depth-0-origin refinements:
+        // the total a quiescence bound moves the estimate by, which a mean
+        // over the refined population cannot show once small refinements
+        // drop out of it.
+        est_refined_from_q_delta_sum,
         q_stand_pat_refined,
         q_delta_prune,
         q_capture_considered,
@@ -286,6 +291,11 @@ pub mod counters {
         q_count_skip,
         q_see_threshold_skip,
         q_bad_floor_skip,
+        // A capture the count rule or the SEE threshold would have skipped,
+        // searched because it recaptures on the previous move's square or
+        // gives check; counted at each rule it escapes.
+        q_recapture_exempt,
+        q_check_exempt,
         // Unit census: the verdict of a margin consumer that mixes the
         // search's 100/320/330/500/900 scale with evaluation units, re-read
         // with the evaluator's middlegame material; each counts one verdict
