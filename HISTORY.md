@@ -59,6 +59,14 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-09-29 — PLAN B.4.1 CLOSED: the quiescence cluster implemented behind
+  `b4quiet`.** The PV bit carried on depth-0 stores (Stockfish form), fail-high
+  interpolation at 583 / 562, the count rule with check and recapture escapes,
+  the SEE threshold on every capture, margins as coordinates, and evasion
+  pruning and quiescence noisy history as switches, both off by the canary
+  rule; two research amendments on the way (the PV-subtree marking and the
+  check exemption each lost canaries). The arm reads 10,226,874 / EBF 2.519,
+  WAC 236 / 270, time-to-depth 0.85×; its paired run is B.4.2's.
 - **2026-09-27 — PLAN B.7.1 CLOSED: allocation guard.** A counting-allocator
   test (`8836013`) holds per-node search code to AGENTS' no-allocation rule:
   allocations may grow per iteration, never per node, and a planted

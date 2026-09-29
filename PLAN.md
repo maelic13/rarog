@@ -1545,6 +1545,11 @@ diagnostics; two rejections stop B.
       10,226,874 / EBF 2.519, WAC 236, canaries 92 with none lost. T3, T4
       and B.4.2 unchanged; **back to `READY_FOR_IMPLEMENTATION`**, resuming
       at the T2 amendment.
+      **Done 2026-09-29** (the packet's *implementation record, closing*):
+      T2 amended (`77f5676`, 10,226,874, its frozen check met exactly), T3
+      (`ca1c208`, `CoreQsEvasionPrune` default off: on, it lost three
+      canaries) and T4 (`b734caa`, `CoreQsNoisyHistory` default off), each
+      qualified; the arm at its defaults is T2.
     - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
       branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
       at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
@@ -1552,6 +1557,16 @@ diagnostics; two rejections stop B.
       the deep-iteration cost screen ≤ 2×; the component ablation; the two
       categoricals by zero-game screens; the 2,000-game unfitted paired run
       (maintainer-run), floor −30, target +5; the paired run governs.
+      **Zero-game half read 2026-09-29** on `rarog-b41arm-pext-pgo.exe` and
+      `rarog-b41off-pext-pgo.exe` (both `b734caa`): branching 1.871, WAC
+      236 / 270 (targets met), canaries 92 with none lost, qnodes per
+      interior node 0.311, time-to-depth 0.85× (target met, NPS −6.75%);
+      three floors fail, as B.3.2's did: depth-14 nodes 4.03× the oracle,
+      agreement 39, and the cost screen on b15 (2.51×; the other four at
+      most 1.09×). The categoricals are decided at zero games (both off).
+      The 2,000-game unfitted paired run is the maintainer's: arm against
+      `rarog-b33gate-pext-pgo.exe`, `match-fixed`, seed 20261008, run
+      directory `b41-paired` (the packet holds the command), dry-run at policy.
     - **B.4.3 Sweep and fit — `V`.** Curvature sweep on `QsSeeMargin`,
       `QsSeeClampHi`, `QsStandPatLerp`, `QsFutilityMargin`, `QsDeltaMargin`
       (classification frozen first); if curved, the SPSA on Colosseum over
@@ -1720,8 +1735,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Research amendment 2 (2026-09-29): Q4's exemptions dropped, Q3 and seed 3 kept; the T2 commit must reproduce 10,226,874 / WAC 236 / canaries 92 none lost, then T3, T4 and the B.4.2 handover |
-| B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
+| B.4.2 | GAME_GATE | V | Zero-game half read 2026-09-29 (targets met on WAC and time-to-depth; floors failed on depth-14 nodes, agreement and b15's cost); the 2,000-game unfitted paired run is the maintainer's, dry-run at policy; floor −30, target +5 |
 | B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
