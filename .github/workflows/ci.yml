@@ -86,6 +86,14 @@ jobs:
       - name: cargo clippy (--features b3proof,diag,tune)
         run: cargo clippy --all-targets --features b3proof,diag,tune -- -D warnings
 
+      # The quiescence candidate lives behind `b4quiet`; with diag and tune
+      # its counters and `QuietParams` UCI plumbing compile too.
+      - name: cargo clippy (--features b4quiet)
+        run: cargo clippy --all-targets --features b4quiet -- -D warnings
+
+      - name: cargo clippy (--features b4quiet,diag,tune)
+        run: cargo clippy --all-targets --features b4quiet,diag,tune -- -D warnings
+
       - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -150,6 +158,15 @@ jobs:
             cargo test -p rarog --release --features b3proof
           else
             cargo test -p rarog --features b3proof
+          fi
+
+      - name: cargo test — engine, b4quiet candidate (${{ matrix.profile }})
+        shell: bash
+        run: |
+          if [ "${{ matrix.profile }}" = "release" ]; then
+            cargo test -p rarog --release --features b4quiet
+          else
+            cargo test -p rarog --features b4quiet
           fi
 
       - name: cargo test — tooling crates
