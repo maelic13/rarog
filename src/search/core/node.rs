@@ -44,6 +44,11 @@ const fn is_decisive(score: i32) -> bool {
     is_win(score) || is_loss(score)
 }
 
+/// The noisy-history bonus a quiescence fail-high earns: Reckless's flat
+/// bonus, unscaled because both engines cap the noisy table at 12,800.
+#[cfg(feature = "b4quiet")]
+const QS_NOISY_HISTORY_BONUS: i32 = 100;
+
 /// A quiescence fail-high moved `lerp` 1024ths of the way from `score` to
 /// `beta`, so the bound the interior reads as its estimate is not the raw
 /// overshoot of a depth-0 window. A decisive score or beta is left alone, so
@@ -2994,6 +2999,18 @@ impl Searcher {
                 if diag_q_sample {
                     crate::diag_count!(q_move_cut);
                     crate::diag_count!(q_move_store);
+                }
+                #[cfg(feature = "b4quiet")]
+                if self.cfg.quiet.qs_noisy_history != 0 && is_noisy(mv) {
+                    crate::diag_count!(q_history_bonus);
+                    self.td.hist.update_noisy(
+                        threats.all,
+                        board.side_to_move(),
+                        moving_piece,
+                        mv.to_sq(),
+                        board.captured_piece(mv),
+                        QS_NOISY_HISTORY_BONUS,
+                    );
                 }
                 #[cfg(feature = "b4quiet")]
                 let score = fail_high_toward_beta(score, beta, self.cfg.quiet.qs_cutoff_lerp);

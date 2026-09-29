@@ -269,6 +269,9 @@ pub mod counters {
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
+        // A noisy-history bonus given to a capture or promotion that failed
+        // high in the quiescence.
+        q_history_bonus,
         // B.4 research: where the quiescence search spends and prunes, all
         // EXACT and Rarog-only. `q_qply0` counts entries from the main
         // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose

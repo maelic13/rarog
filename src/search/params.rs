@@ -763,6 +763,10 @@ search_params! {
     /// skipped once a searched evasion scores better than a loss; captures
     /// and promotions are still searched. 0: every evasion is searched.
     qs_evasion_prune = 0, "CoreQsEvasionPrune", 0..=1;
+    /// Categorical, never an SPSA coordinate. 1: a capture or promotion that
+    /// fails high in the quiescence gets a flat noisy-history bonus. 0: the
+    /// quiescence writes no history.
+    qs_noisy_history = 0, "CoreQsNoisyHistory", 0..=1;
 }
 
 #[cfg(test)]
