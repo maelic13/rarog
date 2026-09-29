@@ -1533,6 +1533,18 @@ diagnostics; two rejections stop B.
       captures the exemption releases, a premise rather than wiring. The
       pass decides Q4's check exemption and restates P4; T3, T4 and the
       B.4.2 handover wait.
+      **Research amendment 2, 2026-09-29 (zero games):** the check
+      exemption loses WAC.069 and WAC.170 at every floor tried
+      (`see_ge(−36)`, `see_ge(0)`), so Q4's SEE-threshold exemptions are
+      dropped entirely (no exemption: bench 10,226,874, WAC 236, canaries
+      92, none lost; the recapture half alone 230 / 92 with the counters
+      tied); Q3 keeps its exemptions and `QsCountLimit` stays 3 (at 2 every
+      variant loses a canary). P4's share and qnode windows are withdrawn
+      as a mechanism premise (the three filters cover the same losing
+      captures). The T2 commit at the amended contract must reproduce
+      10,226,874 / EBF 2.519, WAC 236, canaries 92 with none lost. T3, T4
+      and B.4.2 unchanged; **back to `READY_FOR_IMPLEMENTATION`**, resuming
+      at the T2 amendment.
     - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
       branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
       at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
@@ -1708,7 +1720,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.1 | RESEARCH | R2 | Returned 2026-09-29 at T2: T1 amended (`853bf7b`) meets its check; T2 (`c064856`) loses WAC.069 and .170 on the check half of Q4's SEE-threshold exemption; the pass decides Q4 and restates P4 before T3 |
+| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Research amendment 2 (2026-09-29): Q4's exemptions dropped, Q3 and seed 3 kept; the T2 commit must reproduce 10,226,874 / WAC 236 / canaries 92 none lost, then T3, T4 and the B.4.2 handover |
 | B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
 | B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
