@@ -759,6 +759,10 @@ search_params! {
     /// With more than eight pieces on the board, the stand pat, a queen and
     /// this margin below alpha end the node.
     qs_delta_margin = 200, "QsDeltaMargin", 0..=800;
+    /// Categorical, never an SPSA coordinate. 1: in check, quiet evasions are
+    /// skipped once a searched evasion scores better than a loss; captures
+    /// and promotions are still searched. 0: every evasion is searched.
+    qs_evasion_prune = 0, "CoreQsEvasionPrune", 0..=1;
 }
 
 #[cfg(test)]

@@ -2861,8 +2861,21 @@ impl Searcher {
             .map(|parent| self.td.stack[parent].mv)
             .filter(|prev| !prev.is_null())
             .map(Move::to_sq);
+        // The best evasion score searched so far; quiet evasions stop once it
+        // is not a loss, since a defence already exists.
+        #[cfg(feature = "b4quiet")]
+        let mut evasion_best = -INF_SCORE;
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
+            #[cfg(feature = "b4quiet")]
+            if in_check
+                && self.cfg.quiet.qs_evasion_prune != 0
+                && !is_noisy(picked.mv)
+                && !is_loss(evasion_best)
+            {
+                crate::diag_count!(q_evasion_skip);
+                continue;
+            }
             #[cfg(feature = "diag")]
             if in_check {
                 crate::diag_count!(q_check_moves_tried);
@@ -2971,6 +2984,10 @@ impl Searcher {
             self.clear_move(ply);
             if self.td.stopped || self.td.quit {
                 return 0;
+            }
+            #[cfg(feature = "b4quiet")]
+            if in_check {
+                evasion_best = evasion_best.max(score);
             }
             if score >= beta {
                 #[cfg(feature = "diag")]

@@ -266,6 +266,9 @@ pub mod counters {
         q_check_nodes,
         q_check_moves_scored,
         q_check_moves_tried,
+        // A quiet evasion skipped because the side in check already has a
+        // line that is not a loss.
+        q_evasion_skip,
         // B.4 research: where the quiescence search spends and prunes, all
         // EXACT and Rarog-only. `q_qply0` counts entries from the main
         // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose
