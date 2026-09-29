@@ -2707,10 +2707,13 @@ impl Searcher {
         let original_alpha = alpha;
         let tt_entry = self.shared.tt.probe(hash);
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
-        // A depth-0 store replaces a shallow entry, so it keeps the PV bit the
-        // line or an earlier search gave the position.
+        // A depth-0 store replaces a shallow entry, so it carries on the PV bit
+        // an earlier search stored for the position rather than clearing it.
+        // It does not mark the node's own PV-ness: the quiescence passes its
+        // node type to every child, so that would mark the whole subtree
+        // under a PV node and move the shallow iterations it vetoes pruning in.
         #[cfg(feature = "b4quiet")]
-        let q_store_pv = ev.pv_line(NODE::PV);
+        let q_store_pv = ev.pv_line(false);
         #[cfg(not(feature = "b4quiet"))]
         let q_store_pv = false;
         #[cfg(feature = "diag")]
@@ -4222,22 +4225,40 @@ mod tests {
         assert_eq!(fail_high_toward_beta(300, -TB_WIN_SCORE, 700), 300);
     }
 
-    /// On a PV line the quiescence's depth-0 store keeps the PV bit; off it,
-    /// the store carries none, as before.
+    /// The quiescence's depth-0 store carries on a PV bit an earlier search
+    /// stored for the position, on the `b4quiet` arm only; it never marks a
+    /// position on its own, even at a PV node.
     #[test]
-    fn quiescence_store_keeps_the_pv_bit_only_on_the_b4quiet_arm() {
+    fn quiescence_store_keeps_a_stored_pv_bit_only_on_the_b4quiet_arm() {
         let fen = "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1";
         let mut searcher = Searcher::default();
         let mut board = Board::from_fen(fen).expect("valid FEN");
-        searcher.quiescence::<Pv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+        // A shallow PV entry that cannot cut the full window: the quiescence
+        // searches and its depth-0 store replaces it.
+        searcher.shared.tt.store(TtStore {
+            key: board.hash(),
+            depth: 1,
+            score: 5_000,
+            bound: Bound::Upper,
+            mv: Move::NULL,
+            ply: 1,
+            static_eval: VALUE_NONE,
+            is_pv: true,
+        });
+        searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
             SearchEvent::None
         });
         let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
+        assert_eq!(
+            entry.bound(),
+            Some(Bound::Exact),
+            "the quiescence's store replaced the entry"
+        );
         assert_eq!(entry.is_pv_node(), cfg!(feature = "b4quiet"));
 
         let mut searcher = Searcher::default();
         let mut board = Board::from_fen(fen).expect("valid FEN");
-        searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+        searcher.quiescence::<Pv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
             SearchEvent::None
         });
         let entry = searcher.shared.tt.probe(board.hash()).expect("stored");

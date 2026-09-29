@@ -746,9 +746,9 @@ search_params! {
     struct QuietParams, generated_quiet_param_checks;
 
     /// A stand-pat fail-high is stored and returned this far toward beta.
-    qs_stand_pat_lerp = 700, "QsStandPatLerp", 0..=1024;
+    qs_stand_pat_lerp = 583, "QsStandPatLerp", 0..=1024;
     /// A capture's fail-high is stored and returned this far toward beta.
-    qs_cutoff_lerp = 540, "QsCutoffLerp", 0..=1024;
+    qs_cutoff_lerp = 562, "QsCutoffLerp", 0..=1024;
 }
 
 #[cfg(test)]
