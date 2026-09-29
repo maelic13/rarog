@@ -1567,11 +1567,27 @@ diagnostics; two rejections stop B.
       The 2,000-game unfitted paired run is the maintainer's: arm against
       `rarog-b33gate-pext-pgo.exe`, `match-fixed`, seed 20261008, run
       directory `b41-paired` (the packet holds the command), dry-run at policy.
-    - **B.4.3 Sweep and fit — `V`.** Curvature sweep on `QsSeeMargin`,
-      `QsSeeClampHi`, `QsStandPatLerp`, `QsFutilityMargin`, `QsDeltaMargin`
-      (classification frozen first); if curved, the SPSA on Colosseum over
-      the eight live coordinates in rule-7c blocks (maintainer-run); theta
-      baked in one engine commit.
+      **Closed 2026-09-29.** The paired run read **+0.7 ± 9.3 Elo** in
+      2,000 games (0 faults), between the floor and the target, so the
+      component ablation was run: the failed floors belong to the
+      interpolation pair (both off: depth-14 nodes 3.02×, agreement 43,
+      but WAC.017 lost), through the interior estimate that B.2's reverse
+      futility and razoring were fitted on; no variant is a better arm. The
+      implementation was reviewed against the contract with no defect, and
+      CI gained the `b4quiet` steps. Review decision: proceed to B.4.3.
+    - **B.4.3 Sweep and fit — `V`.** Amended 2026-09-29 before any sweep
+      point (the packet's *B.4.2 record*): the interpolation lands on the
+      estimate's first consumers, so they join the surface as B.3.3's LMR
+      bases did. Curvature sweep on seven coordinates, `QsSeeMargin`,
+      `QsSeeClampHi`, `QsStandPatLerp`, `QsFutilityMargin`, `QsDeltaMargin`,
+      `CoreRfpConstant`, `CoreRfpSquare`, with `bench 13`, WAC at 100k and
+      the depth-14 node ratio per point (classification frozen first); if
+      curved, the SPSA on Colosseum over twelve coordinates, the eight
+      `Qs*` plus `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpConstant` and
+      `CoreRazorBase` seeded at the head's values, in rule-7c blocks of
+      60,000 games (maintainer-run, about ten and a half hours a block);
+      theta baked in one engine commit. Flat or monotone on all seven
+      closes the cluster `NO_CHANGE`.
     - **B.4.4 Gate — `V`.** Fitted `b4quiet` PGO build against the accepted
       head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
       registered with binaries and hashes before any game; H1 flips the
@@ -1735,8 +1751,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.2 | GAME_GATE | V | Zero-game half read 2026-09-29 (targets met on WAC and time-to-depth; floors failed on depth-14 nodes, agreement and b15's cost); the 2,000-game unfitted paired run is the maintainer's, dry-run at policy; floor −30, target +5 |
-| B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
+| B.4.3 | READY_FOR_IMPLEMENTATION | V | B.4.2 closed 2026-09-29 (paired run +0.7 ± 9.3, ablation and review done): curvature sweep on seven coordinates (zero games, the agent's), then the twelve-coordinate SPSA if curved (maintainer-run) |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
