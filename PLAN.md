@@ -1608,6 +1608,12 @@ diagnostics; two rejections stop B.
       rule) are played before block 1, since a pinned switch is invisible to
       the tune. The six shared coordinates are baked only on the gate's
       branch.
+      **RAR-S87 read 2026-09-29:** evasion pruning +7.8 ± 9.4 Elo,
+      adopted by the rule and fixed at 1 on both sides of the tune;
+      quiescence history −4.7 ± 9.4, stays off. With the switch on all
+      fourteen coordinates are live and the estimate's consumers keep their
+      ranking; the final files pass the conversion check, the coverage
+      audit and the dry run. Block 1 is ready to launch.
     - **B.4.4 Gate — `V`.** Fitted `b4quiet` PGO build against the accepted
       head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
       registered with binaries and hashes before any game; H1 flips the
@@ -1771,7 +1777,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.3 | GAME_GATE | V | Sweep read 2026-09-29 (three of seven curved); RAR-S86 amended before any game: fourteen coordinates, `CoreRfpLinear` off its rail, tune binary `8F84CB1E…`; RAR-S87's two categorical reads first (about 21 minutes each), then block 1 (60,000 games, about ten and a half hours), the maintainer's, blocks decided one at a time under rule 7c |
+| B.4.3 | GAME_GATE | V | RAR-S87 read 2026-09-29: `CoreQsEvasionPrune` adopted (+7.8 ± 9.4), history off (−4.7 ± 9.4); RAR-S86's block 1 ready: fourteen coordinates, the switch fixed at 1, tune binary `8F84CB1E…`, 60,000 games (about ten and a half hours), the maintainer's; blocks decided one at a time under rule 7c |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
