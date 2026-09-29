@@ -30,7 +30,11 @@ param(
     [int]$Threads = 1,
     [int]$PositionLimit = 0,
     [string]$OutFile = "",
-    [int]$TimeoutMs = 1800000
+    [int]$TimeoutMs = 1800000,
+    # Further UCI options as Name=Value, set after Hash and Threads at every
+    # depth. Each must be advertised by the engine, or the run stops before
+    # it starts: a misspelt or compiled-out option cannot pass as a result.
+    [string[]]$Options = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,6 +52,15 @@ foreach ($option in @("Hash", "Threads")) {
         throw "Engine does not advertise required UCI option '$option'."
     }
 }
+$extraOptions = @(foreach ($spec in $Options) {
+    $name, $value = $spec -split '=', 2
+    $name = "$name".Trim()
+    if (-not $name -or $null -eq $value) { throw "Option '$spec' is not Name=Value." }
+    if (-not (Test-EngineSupportsOption -Path $Engine -Name $name)) {
+        throw "Engine does not advertise UCI option '$name'."
+    }
+    [ordered]@{ name = $name; value = "$value".Trim() }
+})
 
 $fens = @(Get-Content -LiteralPath $Positions | ForEach-Object {
     $fen = ($_ -split '\s+;\s+', 2)[0].Trim()
@@ -114,6 +127,9 @@ try {
     Write-Host "Engine:    $Engine"
     Write-Host "Positions: $($fens.Count) from $(Split-Path -Leaf $Positions)"
     Write-Host "Hash:      $Hash MiB   Threads: $Threads"
+    if ($extraOptions.Count -gt 0) {
+        Write-Host ("Options:   " + (($extraOptions | ForEach-Object { "$($_.name)=$($_.value)" }) -join ' '))
+    }
     $header = "{0,5} {1,16} {2,10} {3,12}" -f "depth", "nodes", "ratio", "time_ms"
     Write-Host "`n$header"
     Write-Host ("-" * $header.Length)
@@ -123,6 +139,9 @@ try {
         Send-ProfileCommand "uci"; [void](Wait-ProfileLine '^uciok\s*$' 30000)
         Send-ProfileCommand "setoption name Hash value $Hash"
         Send-ProfileCommand "setoption name Threads value $Threads"
+        foreach ($option in $extraOptions) {
+            Send-ProfileCommand "setoption name $($option.name) value $($option.value)"
+        }
         Send-ProfileCommand "isready"; [void](Wait-ProfileLine '^readyok\s*$' 30000)
         $total = [int64]0
         $started = [DateTime]::UtcNow
@@ -235,6 +254,7 @@ try {
             position_count = $fens.Count
             hash_mb = $Hash
             threads = $Threads
+            options = @($extraOptions)
             min_depth = $MinDepth
             max_depth = $MaxDepth
             geometric_mean_ratio = $geometric
