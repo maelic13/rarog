@@ -68,7 +68,7 @@ c_end = 9.2114
 [[parameters]]
 name = "CoreRfpLinear"
 initial = 14
-min = 0
+min = -100
 max = 200
 c_end = 5.9874
 
@@ -85,3 +85,17 @@ initial = 306
 min = 50
 max = 800
 c_end = 21.6468
+
+[[parameters]]
+name = "CoreRazorSquare"
+initial = 157
+min = 20
+max = 400
+c_end = 11.0537
+
+[[parameters]]
+name = "CoreNmpBase"
+initial = 170
+min = 0
+max = 400
+c_end = 11.5142

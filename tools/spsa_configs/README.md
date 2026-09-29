@@ -13,12 +13,15 @@ exempts them from the audit's seed checks.
 
 - **Arm:** `b4quiet` at 10,226,874 / EBF 2.519 (engine `b734caa`). Build the
   binary with `./tools/build_test.ps1 -Suffix b43 -Tune -Features b4quiet`.
-- **`config_b43.json`**, twelve coordinates: the eight `Qs*` (`QsSeeMargin`,
-  `QsSeeClampHi`, `QsSeeBadFloor`, `QsFutilityMargin`, `QsDeltaMargin`,
-  `QsCountLimit`, `QsStandPatLerp`, `QsCutoffLerp`) and `CoreRfpSquare`,
-  `CoreRfpLinear`, `CoreRfpConstant`, `CoreRazorBase`; value the engine
-  default, min/max the declared range, step `max(2, round((max - min) / 16))`
-  half away from zero.
+- **`config_b43.json`**, fourteen coordinates (RAR-S86 as amended before any
+  game): the eight `Qs*` (`QsSeeMargin`, `QsSeeClampHi`, `QsSeeBadFloor`,
+  `QsFutilityMargin`, `QsDeltaMargin`, `QsCountLimit`, `QsStandPatLerp`,
+  `QsCutoffLerp`) and the direct consumers of the interior estimate,
+  `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpConstant`, `CoreRazorBase`,
+  `CoreRazorSquare`, `CoreNmpBase`; value the engine default, min/max the
+  declared range, step `max(2, round((max - min) / 16))` half away from zero,
+  except `CoreRfpLinear`, whose range was widened to `-100..=200` to take the
+  seed off its lower rail and whose step stays the 13 of every earlier tune.
 - **`fixed_b43.json`:** Hash 64, Threads 1, MultiPV 1; the twelve core,
   proof and quiescence switches at their defaults (`CoreQsEvasionPrune` and
   `CoreQsNoisyHistory` off, as the canary rule decided); every other `Core*`
