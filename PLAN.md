@@ -1509,17 +1509,19 @@ diagnostics; two rejections stop B.
       step against P3–P5; rules R1–R7 and Q1–Q9 bind.
       **Returned to `RESEARCH` 2026-09-28 at T1 by the packet's stop rule**
       (the packet's *B.4.1 implementation record*): T1 (`ac018d4`, arm
-      14,066,619, off arm and legacy exact) keeps WAC at 232 but loses
-      three of the head's 91 canaries (WAC.017, .056, .133) and gains
-      three; the rule's re-read at the Stockfish pair loses three
-      (89/116). A zero-game split shows each component alone loses
-      canaries (the PV bit alone four, interpolation alone two, with WAC
-      238), so the research pass decides whether the canary rule
-      separates tactical loss from tree churn, Q1's form (Reckless's
-      PV-subtree marking against Stockfish's stored bit), and the seeds.
-      P3 missed three of four for mechanism and instrument reasons, none
-      wiring. T2–T4 are not built; T1 stays in the tree behind the
-      feature, off by default.
+      14,066,619, off arm and legacy exact) kept WAC at 232 but lost three
+      of the head's 91 canaries and gained three; each component alone lost
+      some. **Research amendment 1, 2026-09-29 (zero games):** the canary
+      rule is kept, having lost 0 canaries in twelve behaviour-neutral
+      perturbations of the head; Q1 becomes the Stockfish form
+      (`is_pv: ev.pv_line(false)`, the stored bit only, since Reckless's
+      `NODE::PV` marking of the quiescence subtree is what shifted WAC.133
+      from depth 3 to 5); Q2's seeds become the Stockfish pair 583 / 562
+      (700 / 540 loses WAC.170 with or without the bit). The amended T1
+      reads bench 10,953,303, WAC 235, canaries 92 with none lost, and the
+      commit at the amended contract must reproduce those three numbers.
+      Q8 gains `est_refined_from_q_delta_sum`. T2–T4 unchanged; **back to
+      `READY_FOR_IMPLEMENTATION`**, resuming at the T1 amendment, then T2.
     - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
       branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
       at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
@@ -1695,7 +1697,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.1 | RESEARCH | R2 | Returned 2026-09-28 at T1 by the canary stop rule (T1 in `ac018d4`, off by default); the research pass decides the canary rule's churn baseline, Q1's form and the seeds before T2–T4 |
+| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Research amendment 1 (2026-09-29): rule kept, Q1 Stockfish form, Q2 seeds 583 / 562; the T1 commit must reproduce 10,953,303 / WAC 235 / canaries 92 none lost, then T2–T4 |
 | B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
 | B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
