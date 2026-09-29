@@ -1588,6 +1588,15 @@ diagnostics; two rejections stop B.
       60,000 games (maintainer-run, about ten and a half hours a block);
       theta baked in one engine commit. Flat or monotone on all seven
       closes the cluster `NO_CHANGE`.
+      **Sweep read 2026-09-29** (`analysis/b43_sweep_2026-09-29.md`, rule
+      frozen at `1b7256d`): `QsSeeClampHi`, `QsDeltaMargin` and
+      `QsStandPatLerp` curved, the other four monotone, every wire live;
+      the depth-14 leg was re-run after the 1× wire exposed a
+      `branching_profile.ps1` parsing defect on diag builds (fixed in
+      `983795f`). By the rule the SPSA follows: **RAR-S86 registered**,
+      surface `b43` (twelve coordinates, `fca935d`), tune binary
+      `rarog-b43-tune.exe` (10,226,874), block 1 dry-run at policy; the
+      blocks are the maintainer's, decided one at a time.
     - **B.4.4 Gate — `V`.** Fitted `b4quiet` PGO build against the accepted
       head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
       registered with binaries and hashes before any game; H1 flips the
@@ -1751,7 +1760,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.3 | READY_FOR_IMPLEMENTATION | V | B.4.2 closed 2026-09-29 (paired run +0.7 ± 9.3, ablation and review done): curvature sweep on seven coordinates (zero games, the agent's), then the twelve-coordinate SPSA if curved (maintainer-run) |
+| B.4.3 | GAME_GATE | V | Sweep read 2026-09-29: three of seven curved, so the twelve-coordinate SPSA follows (RAR-S86, surface `b43`, tune binary `82E08BF4…`); block 1 dry-run at policy, the maintainer's to run, blocks decided one at a time under rule 7c. Earlier: B.4.2 closed 2026-09-29 (paired run +0.7 ± 9.3, ablation and review done): curvature sweep on seven coordinates (zero games, the agent's), then the twelve-coordinate SPSA if curved (maintainer-run) |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
