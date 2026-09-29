@@ -1522,6 +1522,17 @@ diagnostics; two rejections stop B.
       commit at the amended contract must reproduce those three numbers.
       Q8 gains `est_refined_from_q_delta_sum`. T2–T4 unchanged; **back to
       `READY_FOR_IMPLEMENTATION`**, resuming at the T1 amendment, then T2.
+      **Resumed 2026-09-29, returned to `RESEARCH` at T2** (the packet's
+      implementation record, continued): the T1 amendment (`853bf7b`)
+      meets its frozen check exactly (10,953,303, WAC 235, canaries 92,
+      none lost); T2 (`c064856`, arm 11,193,176) loses WAC.069 and
+      WAC.170, and a zero-game split puts both on the check half of Q4's
+      SEE-threshold exemption (no exemption: WAC 236, 92 canaries; the
+      recapture half alone: 230, 92). P4's searched-share and qnode
+      windows miss because the kept bad floor catches 196k of the
+      captures the exemption releases, a premise rather than wiring. The
+      pass decides Q4's check exemption and restates P4; T3, T4 and the
+      B.4.2 handover wait.
     - **B.4.2 Diagnostics — `V`.** The packet's registered screens:
       branching in [1.70, 1.90], depth-14 nodes ≤ 3.2× the oracle, WAC ≥ 229
       at 100k and ≥ 262 at 400k, agreement ≥ 42, none of the 91 canaries
@@ -1697,7 +1708,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.1 | READY_FOR_IMPLEMENTATION | I2 | Research amendment 1 (2026-09-29): rule kept, Q1 Stockfish form, Q2 seeds 583 / 562; the T1 commit must reproduce 10,953,303 / WAC 235 / canaries 92 none lost, then T2–T4 |
+| B.4.1 | RESEARCH | R2 | Returned 2026-09-29 at T2: T1 amended (`853bf7b`) meets its check; T2 (`c064856`) loses WAC.069 and .170 on the check half of Q4's SEE-threshold exemption; the pass decides Q4 and restates P4 before T3 |
 | B.4.2 | RESEARCH | V | Registered screens, ablation, categoricals, the unfitted paired run (maintainer-run); after B.4.1 |
 | B.4.3 | RESEARCH | V | Curvature sweep on five coordinates, SPSA if curved (maintainer-run); after B.4.2 |
 | B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
