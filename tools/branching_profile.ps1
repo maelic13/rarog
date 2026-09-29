@@ -154,7 +154,9 @@ try {
             $lines = Wait-ProfileLine '^bestmove\b' $TimeoutMs
             $nodes = [int64]0
             foreach ($line in $lines) {
-                if ($line -match '^info .*\bnodes\s+(\d+)') { $nodes = [int64]$Matches[1] }
+                # Search lines only: a diagnostic build ends its search with
+                # `info string diag nodes N`, a different counter.
+                if ($line -match '^info (?!string\b).*\bnodes\s+(\d+)') { $nodes = [int64]$Matches[1] }
             }
             if ($nodes -le 0) { throw "No node count for depth $depth on: $fen" }
             $positionRows[$positionIndex].nodes["$depth"] = $nodes
