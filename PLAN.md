@@ -1768,6 +1768,12 @@ diagnostics; two rejections stop B.
       four-coordinate tune of the loop from the current values; none closes
       the question `NO_CHANGE`. The slower-control read is reported and
       changes no default by itself.
+      **Closed 2026-09-30, `NO_CHANGE`:** delta 12 read +2.1 ± 9.2,
+      delta 45 −25.4 ± 9.2, one retry at `10+0.1` −18.3 ± 8.5. No
+      direction; the current loop sits at or next to the top of a surface
+      that falls steeply toward wider windows at both time controls. No
+      tune. **B.5's cluster verdict is `NO_CHANGE`: the root is kept as it
+      stands**, so B.5.1's cards, B.5.2 and B.5.4 are eligible.
     - **B.5.4 Optimism, a research card — `R2`.** The donors bias the
       corrected evaluation by a term from the root's average score
       (Reckless `113·avg/(|avg| + 201)`). No measurement here and no
@@ -1856,7 +1862,6 @@ class until they open.
 |---|---|---|---|
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
-| B.5.5 | GAME_GATE | V | RAR-S90 registered 2026-09-30 after B.5.3's gate rejected one-retry aspiration (−18.3 ± 6.9): `AspirationDelta` 12 and 45 by option at `3+0.03`, and the rejected candidate at `10+0.1`; 2,000 games each, dry-run at policy; the maintainer's to run |
 | B.5.4 | RESEARCH | R2 | Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
