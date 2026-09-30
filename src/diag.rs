@@ -48,6 +48,10 @@ pub mod counters {
         qnodes,
         // Check-node cost.
         nodes_in_check,
+        // Draws (repetition, rule 50, material) returned below the root, in
+        // the main search and in the quiescence.
+        draw_return,
+        q_draw_return,
         // A stale PV bit vetoes pruning at a non-PV node.
         tt_pv_veto,
         // Forward-pruning families (successful cutoffs / skips).

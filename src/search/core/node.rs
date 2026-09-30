@@ -576,6 +576,17 @@ impl Searcher {
             && (self.cfg.core.corr_train_excluded != 0 || excluded.is_null())
     }
 
+    /// The score of a draw met below the root. Under `CoreDrawJitter` it
+    /// varies within two units of zero with the node count, which keeps a
+    /// single-threaded search deterministic.
+    #[inline(always)]
+    fn draw_score(&self) -> i32 {
+        if self.cfg.core.draw_jitter == 0 {
+            return 0;
+        }
+        i32::try_from(self.td.nodes % 5).unwrap_or(0) - 2
+    }
+
     /// Record the order index of the move about to be searched at `ply` and
     /// the line's accumulated lateness: the parent's laterality plus
     /// [`laterality_step`] of this move's index.
@@ -611,7 +622,8 @@ impl Searcher {
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 
         if !NODE::ROOT && board.can_declare_draw_in_search() {
-            return 0;
+            crate::diag_count!(draw_return);
+            return self.draw_score();
         }
 
         let in_check = board.is_in_check();
@@ -2694,7 +2706,8 @@ impl Searcher {
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 
         if board.can_declare_draw_in_search() {
-            return 0;
+            crate::diag_count!(q_draw_return);
+            return self.draw_score();
         }
 
         let in_check = board.is_in_check();

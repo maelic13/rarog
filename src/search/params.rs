@@ -623,6 +623,12 @@ search_params! {
     hist_tt_cutoff_bonus_cap = 1_727, "CoreHistTtCutoffBonusCap", 256..=4096;
     /// Base of the fail-low reward factor for the parent's quiet move.
     hist_fail_low_base = 92, "CoreHistFailLowBase", 0..=400;
+
+    // Draw score.
+    /// Categorical, never an SPSA coordinate. 1: a repetition, rule-50 or
+    /// insufficient-material draw met below the root scores `nodes % 5 - 2`,
+    /// so drawn lines do not all tie at exactly zero; 0: it scores 0.
+    draw_jitter = 0, "CoreDrawJitter", 0..=1;
 }
 
 // The proof-search cluster's coordinates, on the `b3proof` arm only, so the
