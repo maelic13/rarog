@@ -266,6 +266,24 @@ pub mod counters {
         q_check_nodes,
         q_check_moves_scored,
         q_check_moves_tried,
+        // B.5 research, all EXACT and Rarog-only. The aspiration loop's cost:
+        // nodes of every root window search from depth 4, and of those that
+        // failed low or high and were searched again.
+        asp_search_nodes,
+        asp_fail_low_nodes,
+        asp_fail_high_nodes,
+        // How a serial search ended, and what the interrupted iteration
+        // knew when the root fell back to the last completed one: a root
+        // move had raised alpha in the interrupted window (the same move as
+        // the completed best, or a new one), none had, an earlier window of
+        // that iteration had failed high on a new move, or had failed low.
+        root_searches,
+        root_stop_mid_iteration,
+        root_stop_partial_same,
+        root_stop_partial_new_best,
+        root_stop_partial_none,
+        root_stop_after_fail_high_new,
+        root_stop_after_fail_low,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
