@@ -5,3 +5,4 @@ b23core   # RAR-S75, final theta baked in 14a7079
 b27all    # RAR-S78, final theta baked in 52c46df
 b27core   # RAR-S78 design not run; seeds are theta_5000, superseded by the b27all bake
 b33       # RAR-S83, block-2 theta baked into all 36 coordinates in f53ca7d
+b43       # RAR-S86, block-1 theta baked on fourteen coordinates with CoreQsEvasionPrune on

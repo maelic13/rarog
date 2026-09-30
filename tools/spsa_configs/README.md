@@ -3,13 +3,12 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **The live group is `b43`**
-(PLAN B.4.3,
-RAR-S86). `b23core`, `b27all`, `b27core` and `b33` are historical: their
+options applied to both sides at fixed values. **No group is live**: `b43` (PLAN B.4.3, RAR-S86) was baked on 2026-09-30
+after RAR-S88 accepted it. `b23core`, `b27all`, `b27core`, `b33` and `b43` are historical: their
 thetas are baked, their seeds are kept as evidence, and `historical.txt`
 exempts them from the audit's seed checks.
 
-## `b43` — B.4.3, the quiescence cluster and the estimate's first consumers
+## `b43` — B.4.3, the quiescence cluster and the estimate's first consumers (historical)
 
 - **Arm:** `b4quiet` at 10,226,874 / EBF 2.519 (engine `b734caa`). Build the
   binary with `./tools/build_test.ps1 -Suffix b43 -Tune -Features b4quiet`.
