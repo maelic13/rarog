@@ -72,8 +72,10 @@ const ALLOCATIONS_PER_ITERATION_PER_THREAD: u64 = 64;
 /// allocation could hide inside the budget.
 const MIN_NODE_GROWTH: u64 = 10;
 
-/// Bench positions of different kinds.
-const POSITIONS: [usize; 4] = [0, 12, 25, 30];
+/// Bench positions of different kinds. Each must keep growing between the two
+/// depths on every search this crate builds; a position the search solves
+/// early (a forced mate) stops growing and cannot expose a per-node allocation.
+const POSITIONS: [usize; 4] = [0, 12, 25, 33];
 
 /// Allocations and nodes of one search from a cleared state, so the hash table
 /// of an earlier search cannot shrink the tree. The board is built and the
