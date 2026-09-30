@@ -1614,12 +1614,26 @@ diagnostics; two rejections stop B.
       fourteen coordinates are live and the estimate's consumers keep their
       ranking; the final files pass the conversion check, the coverage
       audit and the dry run. Block 1 is ready to launch.
+      **Closed 2026-09-30.** Block 1 (60,000 games, 0 faults, no rail)
+      moved one coordinate a full step (`QsFutilityMargin` 150 → 178) and
+      the rest less than half a step, so the stop rule ends the tune; block
+      2, started for idle time and stopped at iteration 470, does not
+      count. Theta is block 1's rounded centres; with evasion pruning on
+      it reads 11,171,726 / EBF 2.512. The bake is a recipe
+      (`analysis/b43_gate_bake.patch`) applied on a throwaway branch for
+      the gate binary and lands on `dev` only if B.4.4 accepts.
     - **B.4.4 Gate — `V`.** Fitted `b4quiet` PGO build against the accepted
       head, Colosseum `sprt-default` `[0,3]` nElo, cap 20,000 pairs,
       registered with binaries and hashes before any game; H1 flips the
       default and deletes the cfg, H0 or the cap rejects the cluster as a
       unit (PLAN rule 6); the PV-bit repair alone may then be re-registered
       as a repair with a symmetric bracket.
+      **Registered 2026-09-30 (RAR-S88):** candidate
+      `rarog-b43gate-pext-pgo.exe` (`B2CE604C…`, 11,171,726: theta and
+      evasion pruning baked) against the off arm of the same source,
+      `rarog-b41off-pext-pgo.exe` (12,897,901), seed 387, dry-run at
+      policy; the maintainer's. On H1 the allocation guard's precondition
+      is repaired in its own commit before the bake lands.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   **Note from B.3 (2026-09-23):** at deep iterations (depth 19 and up on
   bench position 11) the accepted search already runs lines to `MAX_PLY − 1`
@@ -1777,8 +1791,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.3 | GAME_GATE | V | RAR-S87 read 2026-09-29: `CoreQsEvasionPrune` adopted (+7.8 ± 9.4), history off (−4.7 ± 9.4); RAR-S86's block 1 ready: fourteen coordinates, the switch fixed at 1, tune binary `8F84CB1E…`, 60,000 games (about ten and a half hours), the maintainer's; blocks decided one at a time under rule 7c |
-| B.4.4 | RESEARCH | V | Gate `[0,3]`, cap 20,000 pairs, registered with binaries before any game (maintainer-run); after B.4.3 |
+| B.4.4 | GAME_GATE | V | RAR-S88 registered 2026-09-30: `rarog-b43gate-pext-pgo.exe` (11,171,726, theta and evasion pruning baked) against `rarog-b41off-pext-pgo.exe` (12,897,901), `[0,3]`, cap 20,000 pairs, dry-run at policy; the maintainer's to run |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
