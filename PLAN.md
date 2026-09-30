@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's HCE by **about 329 Elo** | RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **12,897,901 / EBF 2.523**: cluster 2 (`b3proof`: NMP with a verification region, ProbCut, graded singular extensions, multi-cut, negative extension, LDSE, the LMR singular term) with RAR-S83's theta, accepted by RAR-S84's gate on 2026-09-27 at +50.5 ± 10.9 Elo and the default since `f53ca7d`; before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search at 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **11,171,726 / EBF 2.512**: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search, which reads 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -1634,6 +1634,17 @@ diagnostics; two rejections stop B.
       `rarog-b41off-pext-pgo.exe` (12,897,901), seed 387, dry-run at
       policy; the maintainer's. On H1 the allocation guard's precondition
       is repaired in its own commit before the bake lands.
+      **H1 accepted 2026-09-30 at 10,705 pairs, +4.4 ± 2.9 Elo** (+7.0 ±
+      4.7 nElo, 0 faults). Landed: the allocation guard's position 30,
+      which the candidate solves too early to grow, replaced by 33
+      (`e5f61b5`); theta, evasion pruning and the default feature in
+      `5a5c150`: default 11,171,726 / EBF 2.512, the previous head's search
+      14,047,177 / EBF 2.542 on the shared coordinates' fitted values, the
+      legacy search 7,590,542 / EBF 2.473 (it shares three quiescence
+      thresholds). **B.4 is closed.** Carried to B.6: `QsFutilityMargin`
+      was still rising when the tune stopped; `QsCountLimit` is better
+      read as a switch by games; `CoreQsNoisyHistory` stays an undecided
+      switch.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
   **Note from B.3 (2026-09-23):** at deep iterations (depth 19 and up on
   bench position 11) the accepted search already runs lines to `MAX_PLY − 1`
@@ -1791,7 +1802,6 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.4.4 | GAME_GATE | V | RAR-S88 registered 2026-09-30: `rarog-b43gate-pext-pgo.exe` (11,171,726, theta and evasion pruning baked) against `rarog-b41off-pext-pgo.exe` (12,897,901), `[0,3]`, cap 20,000 pairs, dry-run at policy; the maintainer's to run |
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
