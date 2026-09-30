@@ -1701,6 +1701,28 @@ diagnostics; two rejections stop B.
       `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`; a survivor gets a
       registered `[0,3]` SPRT on the B.5 head and its constant may join
       B.6's surface. Neither is implemented inside a cluster's gate window.
+      **Researched 2026-09-30** (`analysis/b51_research_2026-09-30.md`).
+      **(a) closes `NO_CHANGE`, false premise:** the default search has
+      given the bonus since B.2 (`295ced2`) in Reckless's form (a quiet TT
+      move cutting at or above beta, reached through one of the parent's
+      first four moves: `min(190·d − 81, CoreHistTtCutoffBonusCap)` quiet,
+      `min(96·d − 73, 1206)` continuation), gated by B.2.4 and fitted by
+      B.2.3 and B.2.7 (cap 1,727, off its rails); only the legacy search
+      lacks it. It fires at 1.1% of interior nodes, 27% of lower-bound TT
+      cutoffs. Gyatso's and Stockfish's forms differ, but no defect in this
+      producer has been measured. Retry on a measured defect in the quiet
+      history's producers, or if B.6 finds the cap at a rail.
+      **(b) is built behind `CoreDrawJitter`** (default 0, Reckless's
+      `nodes % 5 − 2` at the draw returns of the core's `negamax` below the
+      root and `quiescence`; `edc69ad`, fingerprint exact with it off).
+      Draws are 0.28% of the bench's visited nodes. In RAR-M63's gauntlet,
+      19.5% of games end by repetition or rule 50, and after a flat-draw
+      root the outcomes are symmetric (1,554 won, 1,558 lost), so no
+      blindness defect is measured. The ledger gives no prior (RAR-S67's
+      stop note). **RAR-S91 registers the one 2,000-game categorical read**
+      (RAR-S80's rule; predicted +1 ± 10 Elo, adopted with probability
+      0.2). A survivor is promoted and gets a `[0,3]` SPRT; any other
+      result closes it `NO_CHANGE`.
     - **B.5.2 Tablebase root, in-search probes and PV, the Stockfish way —
       `R2`, then `I2` and a tablebase gate.** Added 2026-09-27 by maintainer
       decision from a report of the Basilisk 1.10.1 work (BAS-C13); the
@@ -1860,7 +1882,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
+| B.5.1 | RESEARCH | V | Card (a), the TT-cutoff history bonus, closed `NO_CHANGE` 2026-09-30: the premise was false, since the default search has had it since B.2. Card (b), draw-score randomisation, is built behind `CoreDrawJitter` and waits on RAR-S91's 2,000-game read (maintainer). `[0,3]` SPRT for a survivor; before B.6 |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
 | B.5.4 | RESEARCH | R2 | Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |

@@ -65,6 +65,10 @@ jitter. Where the two differ, Rarog's form is the more elaborate one.
    lower bound and a quiet TT move, Gyatso gives that move half the depth
    bonus. Rarog's TT-cutoff path writes no history. Stockfish's form is the
    donor reference.
+   **Correction, 2026-09-30 (B.5.1):** that is true only of the legacy
+   search. The default search has given this bonus since B.2 (`295ced2`)
+   in Reckless's form, gated and fitted, so the card closed `NO_CHANGE`
+   (`analysis/b51_research_2026-09-30.md`).
 2. **Draw-score randomisation** (search card, B.5.1): repetition and
    rule-50 returns are `nodes mod 5 − 2` instead of a fixed draw score.
    Rarog returns a fixed score. Stockfish's form is `1 − (nodes & 2)`.
