@@ -1646,6 +1646,25 @@ diagnostics; two rejections stop B.
       read as a switch by games; `CoreQsNoisyHistory` stays an undecided
       switch.
 - **B.5 Cluster 4 — root, aspiration, iterative deepening — `I2`, then `V`.**
+  **Researched on the cluster-3 head 2026-09-30**
+  (`analysis/b5_research_2026-09-30.md`, RAR-S89). The root's measured
+  defect is the aspiration loop: 61% of `bench 13`'s root-window nodes, 70%
+  at depth 15 and 46% under a `3000+30` clock are spent in windows that
+  fail and are searched again, because a failed side widens slowly around
+  the original centre on constants fitted for the 2.3 search. One existing
+  value repairs it: `AspMaxFails` 20 → 1 (the first failure opens that
+  side), which reads `bench 13` 0.55×, depth-14 nodes 1.97× the oracle
+  against 4.18× (the floor B.3.2 and B.4.2 failed), WAC 241 / 275 against
+  232 / 266 and +0.3 ply under a clock with 9% fewer nodes. The donors'
+  form (re-centre, shallower fail-high re-search) reaches the same tree and
+  is worse at fixed nodes, so it is not implemented; under one retry the
+  window's width and the reduction's window term are flat, so nothing is
+  fitted. Interrupted iterations discard a new best move in 0.3% of
+  searches (no change; retry if D.1 raises mid-iteration stops above 10%);
+  no bound on deep-iteration line growth (the loop multiplied it); root
+  LMR relief confirmed retired. Optimism has no evidence here and no
+  consumer slot, and is filed as its own card (B.5.4). Multi-PV's contract
+  is unchanged and its tests run on the candidate.
   **Note from B.3 (2026-09-23):** at deep iterations (depth 19 and up on
   bench position 11) the accepted search already runs lines to `MAX_PLY − 1`
   through mechanisms B.2 shares with the B.3 arm (LMR's reduced depth up to
@@ -1724,6 +1743,23 @@ diagnostics; two rejections stop B.
       proposes what it must see. **Order:** the investigation may run
       between leaves; the implementation follows B.5's cluster gate, whose
       root code it touches, and lands before B.9 freezes the search head.
+    - **B.5.3 Gate: one-retry aspiration — `V`.** Registered 2026-09-30
+      (RAR-S89): `rarog-b5gate-pext-pgo.exe` (`AspMaxFails = 1`, recipe
+      `analysis/b5_gate_bake.patch`, bench 6,192,452) against the head
+      built from the same source, `rarog-b5head-pext-pgo.exe`
+      (11,171,726); Colosseum `sprt-default` `[0,3]` nElo, cap 20,000
+      pairs, seed 388; the maintainer's. H1 bakes the value and re-declares
+      the fingerprint; the three growth coordinates then go to B.8 as dead.
+      H0 or the cap bakes nothing; a `10+0.1` read is the retry trigger.
+      Runs before B.5.1, B.5.2's implementation and B.5.4.
+    - **B.5.4 Optimism, a research card — `R2`.** The donors bias the
+      corrected evaluation by a term from the root's average score
+      (Reckless `113·avg/(|avg| + 201)`). No measurement here and no
+      consumer slot in `core/correction.rs`; it is a producer into every
+      evaluation-unit margin B.2 to B.4 fitted. The card builds it behind
+      a switch, reads the margins' populations at stride 1 and one
+      2,000-game categorical run (RAR-S80's rule), and ends
+      `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`. After B.5.3, before B.6.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
@@ -1804,6 +1840,8 @@ class until they open.
 |---|---|---|---|
 | B.5.1 | RESEARCH | R2 | Two research cards (TT-hit history bonus, draw-score randomisation) after B.5 closes and before B.6 fixes the surface; `[0,3]` for a survivor. B.5's own cluster row returns as sub-steps when it opens |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
+| B.5.3 | GAME_GATE | V | RAR-S89 registered 2026-09-30: one-retry aspiration (`rarog-b5gate-pext-pgo.exe`, 6,192,452) against the head (`rarog-b5head-pext-pgo.exe`, 11,171,726), `[0,3]`, cap 20,000 pairs, dry-run at policy; the maintainer's to run |
+| B.5.4 | RESEARCH | R2 | Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |

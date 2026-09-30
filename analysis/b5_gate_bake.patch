@@ -1,0 +1,13 @@
+diff --git a/src/search/params.rs b/src/search/params.rs
+index b3eee46..bab7bc9 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -135,7 +135,7 @@ search_params! {
+     /// The interesting direction is DOWN — engines that re-search a bounded
+     /// number of times before opening fully spend far fewer nodes on a
+     /// runaway iteration — which is exactly what the tune explores.
+-    asp_max_fails = 20, "AspMaxFails", 1..=32;
++    asp_max_fails = 1, "AspMaxFails", 1..=32;
+ 
+     /// Futility pruning base margin.
+     /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
