@@ -107,8 +107,8 @@ gating. The rules below decide order and acceptance in this roadmap.
    record.** Registration in `EXPERIMENTS.md` before any games: hypothesis,
    baseline SHA, bracket, cap, stop rule and the frozen prediction. Bounds
    default to `[0,3]` nElo; a large prior uses `[0,10]` or `[3,10]` and says
-   why; a removal or unknown-sign repair uses a loss-permitting or symmetric
-   bracket. Never change a gate after seeing games.
+   why; a removal uses a loss-permitting bracket, and a repair the gate of
+   its case in AGENTS' *Gating*. Never change a gate after seeing games.
 6. **Two rejected clusters in one programme stop it** and force a new evidence
    audit before a third is built.
 7. **Every strength A/B runs with adjudication off**, at `3+0.03`, 1T, Hash 64,

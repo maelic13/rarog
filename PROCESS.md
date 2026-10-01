@@ -120,7 +120,8 @@ games until the end destroys attribution and lets losing structures hide.
    candidate scope, expected direction, gate, cap and stop rule, before games.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;
-   unknown-sign repairs need a symmetric one. Size from RAR-M10 at the
+   a repair takes the gate of its case in AGENTS' *Gating* (none, a
+   registered 2,000-game harm read, or `[-5,5]`). Size from RAR-M10 at the
    EXPECTED value before choosing (`tools/spsa_convergence_model.py`).
 3. **Implement** — the smallest dependency-complete cluster. Substeps may be
    compiled and diagnosed separately, but are not expected to pass standalone
@@ -489,13 +490,15 @@ cargo xtask verify-isa --arch pext
 
 ```powershell
 # MAIN PATH — Colosseum. The gate: [0,3] nElo, the default bracket; -Bracket
-# removal | repair | wide for the three registered alternatives. The cap comes
-# from RAR-M10 at the EXPECTED value, before any game is played.
+# removal | repair | wide for the three registered alternatives (repair is
+# [-5,5], AGENTS' third repair case). The cap comes from RAR-M10 at the
+# EXPECTED value, before any game is played.
 ./tools/colosseum.ps1 -Mode sprt -EngineA <candidate.exe> -EngineB <baseline.exe> `
   -NameA candidate -NameB baseline -MaxPairs <cap> -Seed <n> `
   -ExpectRevision <sha> -Dir tools/results/<experiment>
 
-# A measurement with an interval, which decides nothing
+# A measurement with an interval, which decides nothing, except as the
+# registered 2,000-game harm read of AGENTS' second repair case
 ./tools/colosseum.ps1 -Mode match -EngineA <a.exe> -EngineB <b.exe> `
   -Games 2000 -Seed <n> -Dir tools/results/<name>
 

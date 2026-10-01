@@ -270,8 +270,22 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   and say why; a wide bracket resolves a large effect fast (RAR-S57, `[3,10]`,
   2,838 games). Compute the games at the expected value from RAR-M10 first.
 - A removal or simplification uses a bracket that permits a small loss
-  (`[-1.75, 0.25]`); a repair of unknown sign uses a symmetric one (RAR-S62,
-  `[-5,5]`).
+  (`[-1.75, 0.25]`). A repair is gated by what it can change:
+  1. One that reproduces the fingerprint in the rated configuration needs no
+     strength gate; it gets an activation and correctness read where it is
+     active.
+  2. One expected near zero, where a small loss is acceptable for
+     correctness, takes a pre-registered 2,000-game fixed read with a harm
+     rule; the registration states the threshold and its power. Scaled from
+     RAR-S94's interval (±17.3 nElo at 1,552 games) the standard error is
+     about 7.8 nElo; a 5% false alarm at true zero puts the threshold near
+     −13 nElo, which catches a true −5 with probability 0.16, −10 with 0.36,
+     −20 with 0.82 and −25 with 0.94. "Kept" therefore means no harm beyond
+     roughly −20 nElo.
+  3. One that changes shared search or evaluation signals in the rated
+     configuration, or could be large either way, keeps the symmetric
+     `[-5,5]` with its cap (RAR-S62; about 12,000 games), which excludes
+     harm near −5.
 - Both harnesses run the pentanomial GSPRT (`model=normalized`); the gap to
   fishtest is bounds and budget, not the test. A registered experiment names
   its runner and never changes it mid-way.
