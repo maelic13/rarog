@@ -173,14 +173,6 @@ fn select_parallel_result(
         .map(|(index, result)| (index, result.clone()))
 }
 
-/// Whether the pool must print the winning thread's line. Index 0 is the main
-/// thread, whose line every `info` so far already described; any other index is
-/// a helper the vote chose, and its line has never been printed. With no result
-/// at all there is nothing to report.
-fn voted_line_needs_reporting(voted_index: Option<usize>) -> bool {
-    voted_index.is_some_and(|index| index != 0)
-}
-
 fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
     result.depth > 0 && root_moves.contains(&result.bestmove)
 }
@@ -462,7 +454,6 @@ impl Searcher {
         } else {
             select_parallel_result(&helper_results, root_moves)
         };
-        let voted_index = voted.as_ref().map(|(index, _)| *index);
         let mut best = voted.map(|(_, result)| result).unwrap_or(SearchResult {
             bestmove: root_moves[0],
             pondermove: Move::NULL,
@@ -492,11 +483,10 @@ impl Searcher {
         } else {
             SearchExit::Stop
         };
-        // The vote can choose a helper's move, and only the main thread prints.
-        // Report the winner's own line so the last `info` line always describes
-        // the move `bestmove` names (GitHub issue #1).
-        if emit_info && voted_line_needs_reporting(voted_index) {
-            self.send_voted_info_line(&best);
+        // Only the main thread prints, and its last line need not describe the
+        // move the vote chose; report the winner's line where it does not.
+        if emit_info {
+            self.report_result_line(&best);
         }
         self.finish_tb_line(&mut best, lines, emit_info);
         self.shared.leave_pool();
@@ -637,20 +627,6 @@ mod tests {
 
         assert_eq!(selected.bestmove, d2d4);
         assert_eq!(index, 1);
-    }
-
-    #[test]
-    fn only_a_helpers_line_is_reported_after_the_vote() {
-        assert!(
-            !voted_line_needs_reporting(Some(0)),
-            "the main thread already printed its line"
-        );
-        assert!(voted_line_needs_reporting(Some(1)));
-        assert!(voted_line_needs_reporting(Some(7)));
-        assert!(
-            !voted_line_needs_reporting(None),
-            "no result, nothing to report"
-        );
     }
 
     /// The winner's own line is what the pool reports, so a result carries the

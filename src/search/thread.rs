@@ -1,5 +1,7 @@
 //! Per-thread search state.
 
+use std::cell::Cell;
+
 use crate::board::{Board, Move};
 use crate::eval::Evaluator;
 
@@ -43,6 +45,9 @@ pub(super) struct ThreadData {
     /// The root, kept by the reporting thread when tables are loaded, for
     /// extending reported lines through them.
     pub(super) tb_root_board: Option<Board>,
+    /// The first move of line 1 in the last `info` line this thread printed,
+    /// so the search can tell whether that line describes its `bestmove`.
+    pub(super) last_reported_move: Cell<Move>,
     /// Index of the MultiPV line being searched; 0 outside MultiPV, where the
     /// root reads and writes the table as an ordinary node.
     pub(super) multipv_line: usize,
@@ -129,6 +134,7 @@ impl Default for ThreadData {
             root_move_records: Vec::new(),
             tb_root_scores: Vec::new(),
             tb_root_board: None,
+            last_reported_move: Cell::new(Move::NULL),
             multipv_line: 0,
             hist: HistoryTables::default(),
             corr: CorrectionTables::default(),

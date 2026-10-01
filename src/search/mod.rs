@@ -551,6 +551,9 @@ impl Searcher {
         } else {
             self.search_root(board, root_moves, emit_info, poll)
         };
+        if emit_info {
+            self.report_result_line(&result);
+        }
         self.finish_tb_line(&mut result, lines, emit_info);
         result
     }
@@ -766,6 +769,7 @@ impl Searcher {
         self.td.root_iteration_nodes = 0;
         self.td.tb_root_scores.clear();
         self.td.tb_root_board = None;
+        self.td.last_reported_move.set(Move::NULL);
         self.td.root_best_nodes = 0;
         self.td.root_best_effort = 0.0;
         self.td.optimism = [0; 2];
@@ -1621,6 +1625,11 @@ impl Searcher {
         let nps = nps(nodes, elapsed_ms);
         let hashfull = self.hashfull();
         for (index, line) in lines.iter().enumerate() {
+            if index == 0 {
+                self.td
+                    .last_reported_move
+                    .set(line.pv.first().copied().unwrap_or(Move::NULL));
+            }
             let bound = match line.bound {
                 RootBound::Exact => "",
                 RootBound::Lower => " lowerbound",
@@ -1890,6 +1899,9 @@ impl Searcher {
         bound: RootBound,
         pv: &[Move],
     ) {
+        self.td
+            .last_reported_move
+            .set(pv.first().copied().unwrap_or(Move::NULL));
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
@@ -1919,11 +1931,13 @@ impl Searcher {
         ));
     }
 
-    /// The pool's chosen line, printed when the vote did not choose the line
-    /// this thread already reported. Without it `bestmove` can name a move no
-    /// printed `info` line mentions (GitHub issue #1).
-    pub(super) fn send_voted_info_line(&self, result: &SearchResult) {
-        if result.pv.is_empty() {
+    /// Before `bestmove`: print the result's own line unless the last `info`
+    /// line already describes its move. That line can name another move: an
+    /// iteration stopped after a window failed high or low on a move it never
+    /// confirmed leaves that move's bound line last, and the pool's vote can
+    /// choose a helper's move no line mentioned (GitHub issue #1).
+    pub(super) fn report_result_line(&self, result: &SearchResult) {
+        if result.pv.is_empty() || self.td.last_reported_move.get() == result.bestmove {
             return;
         }
         self.send_full_info_line(
@@ -2007,6 +2021,40 @@ mod tests {
         fn line(&self, line: &str) {
             self.0.lock().unwrap().push(line.to_string());
         }
+    }
+
+    /// `bestmove` must be the move the last `info` line names. A stopped
+    /// iteration can leave another move's bound line last, as can a vote for
+    /// a helper: the result's own line is printed then, and only then.
+    #[test]
+    fn the_result_line_is_printed_only_when_the_last_line_names_another_move() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let result = SearchResult {
+            bestmove: d2d4,
+            pondermove: Move::NULL,
+            score: 31,
+            depth: 13,
+            pv: vec![d2d4],
+            seldepth: 20,
+            nodes: 1,
+            tb_hits: 0,
+            elapsed_ms: 0,
+            exit: SearchExit::Stop,
+            ponderhit: false,
+        };
+        // The last line is a fail-high on e2e4 that the iteration never
+        // confirmed before it was stopped.
+        searcher.send_shown_info_line(14, 20, 41, RootBound::Lower, &[e2e4]);
+        searcher.report_result_line(&result);
+        let printed = lines.lock().unwrap().clone();
+        assert_eq!(printed.len(), 2, "{printed:?}");
+        assert!(printed[1].ends_with(" pv d2d4"), "{printed:?}");
+        // The last line now names d2d4, so nothing more is printed.
+        searcher.report_result_line(&result);
+        assert_eq!(lines.lock().unwrap().len(), 2);
     }
 
     #[test]

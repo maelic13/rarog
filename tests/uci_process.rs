@@ -771,6 +771,33 @@ fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
     session.quit();
 }
 
+/// The same contract without threads or a clock, where it is deterministic: a
+/// node budget that stops an iteration just after a window failed high on a
+/// new move left that move's `lowerbound` line last while `bestmove` named the
+/// previous depth's move (`go nodes 9770` to `12467` here). The search now
+/// prints its result's own line before `bestmove` whenever they differ.
+#[test]
+fn a_stopped_fail_high_line_is_followed_by_the_line_of_the_move_played() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    let fen = "position fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+    for nodes in (9_000..=13_000).step_by(500) {
+        session.send("ucinewgame");
+        session.send(fen);
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send(&format!("go nodes {nodes}"));
+        let lines = session.collect_until_line_containing("bestmove", wait(20));
+        let (pv_move, best) = last_pv_and_bestmove(&lines);
+        assert_eq!(
+            pv_move, best,
+            "the last info line must describe the move played (go nodes {nodes}): {lines:?}"
+        );
+    }
+    session.quit();
+}
+
 /// The engine's own `time` for a `go depth 4` from a lone-pawn KPK position,
 /// read from the last `info depth` line.
 fn kpk_search_ms(session: &mut UciSession) -> u64 {
