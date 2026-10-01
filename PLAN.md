@@ -1950,6 +1950,43 @@ diagnostics; two rejections stop B.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
+  **Researched 2026-10-01** (`analysis/b6_research_2026-10-01.md`,
+  RAR-S95; zero games). The surface is 123 coordinates: 74 last fitted by
+  RAR-S78, 35 by RAR-S83, 14 by RAR-S86.
+  - **The journals show no gradient left where each tune stopped.** A
+    sign-walk statistic over every iteration's centres reads RAR-S78's
+    first half above its null (p 0.004) and its second half inside it
+    (p 0.52); both B.3.3 blocks and B.4.3's block are inside theirs.
+    `QsFutilityMargin` is the one coordinate still travelling (`z` +3.4).
+    Of eight coordinates re-fitted after a cluster landed, one moved
+    (`CoreLmrQuiet`).
+  - **The read cannot see a small gain.** It would miss an effect half the
+    size of RAR-S78's, and RAR-S77 measured +4.43 ± 2.90 Elo from a tail
+    with no full-step mover.
+  - **Consumers have moved since RAR-S78:** quiet futility pruning fires
+    1.42 times as often per interior node, history pruning 1.14, the
+    hindsight increase 0.85, LMR's deeper re-search 1.24; the correction
+    residual is 1.16 times as large. That selects a surface; it has not
+    forecast movement (0 of 3 in RAR-S86).
+  - **No WAC curvature sweep was run:** on this search it mispredicted
+    every tune movement it was asked about (RAR-S86) and the sign of a gate
+    (RAR-S89).
+
+  **Recommended `NO_CHANGE`; the maintainer decides.** No instrument shows
+  a misfit, and the estimate of a restart's gain, +3 ± 3 Elo, is a judgment
+  from the series RAR-S78, RAR-S83, RAR-S86, about a third of it under what
+  `[0,3]` can bank. Running it costs 12.5 hours a block, up to three, and
+  a gate of about 36,000 games at a true +3 Elo or 70,000 at +2. The
+  whole-surface re-fit goes to C.10, where the evaluation will have moved
+  every population. If run instead: one rule-7c block on the 123
+  coordinates from the head's defaults, registered first.
+  Carried items: `QsFutilityMargin` and `ProbCutSeeGapScale` to C.10;
+  `LazyMargin` to C; `QsCountLimit`, `CoreQsNoisyHistory`,
+  `CoreNmpVerifyDepth`, `NmpMinNonPawnPieces` and `CoreEvalRule50Damping`
+  stay; `CoreIirMinDepth` has never been read by games here, and a pair of
+  2,000-game reads (3 and 6 against 4) is offered, not recommended;
+  `CoreLmpSquare`'s range floor is widened before any tune that includes
+  it.
 - **B.7 Search speed pass — `I1`, then `V`.** Behaviour-neutral throughput
   work on the new modules (allocation, layout, prefetch, inlining measured in
   search not on the bench), pooled-PGO NPS with a +0.5% floor per change,
@@ -2072,7 +2109,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.6 | RESEARCH | V | Conditional on curvature evidence |
+| B.6 | RESEARCH | V | Researched 2026-10-01 (RAR-S95): `NO_CHANGE` recommended, the re-fit to C.10; the maintainer's decision pending |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
@@ -2228,6 +2265,13 @@ loss).
 - **C.10 Search re-fit after the new evaluation — `V`.** The search's
   cp-valued margins were fitted on the B-era scale. One joint SPSA over the
   registered cp coordinates, PGO, SPRT `[0,3]`.
+  **Input from B.6 (2026-10-01, a proposal until B.6 closes):** select the
+  surface by the firing-rate check against the B-era head, not by
+  "cp-valued" alone: a mechanism whose rate per interior node has moved 10%
+  or more joins with its coordinates, the non-cp families (LMR, histories,
+  corrections) included. `QsFutilityMargin` arrives with a measured
+  direction (rising from 178) and `ProbCutSeeGapScale` unfitted;
+  `CoreLmpSquare`'s range floor is widened first.
 - **C.11 Checkpoint — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch), conversion instrument,
