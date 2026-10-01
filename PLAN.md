@@ -1723,6 +1723,12 @@ diagnostics; two rejections stop B.
       (RAR-S80's rule; predicted +1 ± 10 Elo, adopted with probability
       0.2). A survivor is promoted and gets a `[0,3]` SPRT; any other
       result closes it `NO_CHANGE`.
+      **Closed 2026-10-01.** RAR-S91 read −1.2 ± 9.4 Elo (−2.0 ± 15.2
+      nElo; 520-953-527, [37, 237, 455, 238, 33]; 2,000 games, 0 faults,
+      the registered binary, idle host), between −5 and +5: card (b) is `NO_CHANGE` at this budget
+      (insufficient evidence, not refutation). The switch stays 0 and
+      B.8 removes it. Retry only on a measured draw defect. **B.5.1 is
+      closed.**
     - **B.5.2 Tablebase root, in-search probes and PV, the Stockfish way —
       `R2`, then `I2` and a tablebase gate.** Added 2026-09-27 by maintainer
       decision from a report of the Basilisk 1.10.1 work (BAS-C13); the
@@ -1796,7 +1802,10 @@ diagnostics; two rejections stop B.
       that falls steeply toward wider windows at both time controls. No
       tune. **B.5's cluster verdict is `NO_CHANGE`: the root is kept as it
       stands**, so B.5.1's cards, B.5.2 and B.5.4 are eligible.
-    - **B.5.4 Optimism, a research card — `R2`.** The donors bias the
+    - **B.5.4 Optimism, a research card — `R3`** (escalated from `R2` by
+      maintainer decision 2026-10-01: optimism feeds every
+      evaluation-unit margin three clusters fitted, so this is a
+      cross-cluster interaction question). The donors bias the
       corrected evaluation by a term from the root's average score
       (Reckless `113·avg/(|avg| + 201)`). No measurement here and no
       consumer slot in `core/correction.rs`; it is a producer into every
@@ -1882,9 +1891,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.5.1 | RESEARCH | V | Card (a), the TT-cutoff history bonus, closed `NO_CHANGE` 2026-09-30: the premise was false, since the default search has had it since B.2. Card (b), draw-score randomisation, is built behind `CoreDrawJitter` and waits on RAR-S91's 2,000-game read (maintainer). `[0,3]` SPRT for a survivor; before B.6 |
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
-| B.5.4 | RESEARCH | R2 | Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
+| B.5.4 | RESEARCH | R3 | Escalated from `R2` 2026-10-01 by maintainer decision. Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
