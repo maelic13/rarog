@@ -1866,6 +1866,7 @@ diagnostics; two rejections stop B.
             on that move, before `bestmove d1h1`, a capture into the 6-man
             tables, where the extension's first call is a DTZ root probe on
             files the search never reads. The loss is the candidate's own.
+            *Repaired 2026-10-01 in `b2c98c8`* (D.3, done out of band).
 
           **Closed 2026-10-01 by the maintainer; B.5.2.1 kept.** The
           maintainer first chose a predictive box (start no ply that the
@@ -1984,7 +1985,8 @@ diagnostics; two rejections stop B.
   `LazyMargin` to C; `QsCountLimit`, `CoreQsNoisyHistory`,
   `CoreNmpVerifyDepth`, `NmpMinNonPawnPieces` and `CoreEvalRule50Damping`
   stay; `CoreIirMinDepth` has never been read by games here, and a pair of
-  2,000-game reads (3 and 6 against 4) is offered, not recommended;
+  2,000-game reads (3 and 6 against 4) is registered as RAR-S96 by
+  maintainer decision, the leaf's one open obligation;
   `CoreLmpSquare`'s range floor is widened before any tune that includes
   it.
 - **B.7 Search speed pass — `I1`, then `V`.** Behaviour-neutral throughput
@@ -2366,6 +2368,23 @@ loss).
     `threaded_bestmove…` test). Output only, both fingerprints exact.
   - `2326153`: the legacy search compiles again; `d754577`'s optimism call
     needed `b2core`, and CI builds that arm.
+  - `b2c98c8`: the tablebase PV extension starts under a clock only when
+    at least ten move overheads remain before the hard ceiling once the
+    search has ended (100 ms at the default, about twice the largest
+    blocked read measured, 54 ms). RAR-S94's forfeit came from the
+    extension running at 58 ms; the old skip engaged only below about
+    52 ms. The donors: Reckless has no extension; Stockfish gives it the
+    same half-overhead box, checked after every probe, at each iteration's
+    output inside the search's own time, with no guard against one blocked
+    read. Rarog keeps its one extension after the search, the form RAR-S94
+    measured, and adds the start rule. A unit test holds the rule at the
+    forfeited move's numbers; on two 6-man roots at `100+30` the old binary
+    extends and the fixed one does not, and at `3000+30` both print the
+    same line. Both fingerprints exact. RAR-S97 is its maintainer-run
+    correctness read.
+  - `488d34a`: a tablebase root score prints without a bound (6 of 14 such
+    lines carried one at a KQvK root, `go depth 8`; none now), as the donor
+    prints it. Output only, both fingerprints exact.
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
@@ -2375,20 +2394,16 @@ loss).
   probes are reads the page cache misses (151 GB of tables against 128 GB
   of RAM); concurrent engines stretch the tail without raising its rate
   (`analysis/artifacts/b52-box-replay-2026-10-01/`).
-  **Inputs from the 2026-10-01 audit of B.5.2.1** (source read at
-  `473fc37`; nothing implemented):
-  - The extension's short-clock skip keys on the reserve deciding the hard
-    limit, which happens only below 5.25 overheads of clock (about 52 ms).
-    `time.rs`'s two comments say 52 overheads. A candidate rule: start the
-    extension only when the clock leaves a stated margin before the hard
-    ceiling once the search has ended; the largest stalls measured are 44
-    and 54 ms.
-  - A tablebase display score prints with a bound suffix (14 of 71 lines
-    read `score cp 20000 upperbound` or `lowerbound` at KQvK under
-    `60000+600`); the donor prints tablebase scores as exact.
+  **Left from the 2026-10-01 audit of B.5.2.1** (the short-clock skip and
+  the bound suffix are repaired above):
   - The extension gates on the loaded tables' size, not on
     `SyzygyProbeLimit`, which the root ranking and the in-search probes
-    honour (read from `syzygy::rank_root_moves`, not reproduced).
+    honour (read from `syzygy::rank_root_moves`, not reproduced; the
+    committed 3-man fixture cannot show it, so it waits for a test that
+    can).
+  - A read blocked for longer than the start rule's margin plus the reserve
+    (120 ms at the defaults) still loses on time; `go movetime` names no
+    clock, so the rule does not apply there.
   Deterministic tests; zero crashes over the pool tournaments. Owns the last
   move of the target layout: `engine.rs`, `engine_command.rs`,
   `uci_protocol.rs`, `search_options.rs` and `bench.rs`/`wac.rs` go under
