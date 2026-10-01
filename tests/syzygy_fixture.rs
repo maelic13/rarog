@@ -229,16 +229,24 @@ fn multi_threaded_multipv_reports_distinct_legal_lines() {
 }
 
 /// `stop` or `ponderhit` written with `go ponder` in one write at a tablebase
-/// root: exactly one `bestmove` per `go`, with a legal ponder move.
+/// root: exactly one `bestmove` per `go`, with a legal move and ponder move.
+/// An `isready` after each answer bounds the check without waiting on the
+/// clock: the engine handles commands in order, so a second `bestmove` for
+/// the same `go` would arrive before `readyok`.
 #[test]
 fn a_tablebase_root_answers_each_go_once_under_ponder_races() {
     use std::io::{BufRead, BufReader, Write};
     use std::process::{Command, Stdio};
     use std::sync::mpsc;
 
-    let scale = if cfg!(debug_assertions) { 8 } else { 1 };
+    let patience = Duration::from_secs(if cfg!(debug_assertions) { 60 } else { 10 });
     let fen = "4k3/8/8/8/8/8/8/3QK3 w - - 0 1";
-    for (follow, threads) in [("ponderhit", 1), ("stop", 1), ("ponderhit", 4), ("stop", 4)] {
+    let mut root = Board::from_fen(fen).expect("valid FEN");
+    for uci in ["e1e2", "e8e7"] {
+        let mv = root.parse_move(uci).expect("legal");
+        root.make_move(mv);
+    }
+    for threads in [1, 4] {
         let mut child = Command::new(env!("CARGO_BIN_EXE_rarog"))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -255,49 +263,55 @@ fn a_tablebase_root_answers_each_go_once_under_ponder_races() {
                 }
             }
         });
-        let batch = format!(
+        let mut send = |text: String| {
+            stdin.write_all(text.as_bytes()).expect("write");
+            stdin.flush().expect("flush");
+        };
+        // Lines up to and including the first that starts with `prefix`.
+        let until = |prefix: &str| {
+            let mut seen = Vec::new();
+            loop {
+                let line = rx
+                    .recv_timeout(patience)
+                    .unwrap_or_else(|_| panic!("no `{prefix}` at Threads {threads}: {seen:?}"));
+                let done = line.starts_with(prefix);
+                seen.push(line);
+                if done {
+                    return seen;
+                }
+            }
+        };
+        send(format!(
             "setoption name SyzygyPath value {}\nsetoption name Ponder value true\n\
-             setoption name Threads value {threads}\nisready\nposition fen {fen} moves e1e2 e8e7\n\
-             go ponder wtime 2000 btime 2000 winc 20 binc 20\n{follow}\n",
+             setoption name Threads value {threads}\nisready\n",
             fixture_path()
-        );
-        stdin.write_all(batch.as_bytes()).expect("write");
-        stdin.flush().expect("flush");
-        let deadline = Duration::from_secs(10 * scale);
-        let mut bestmoves = Vec::new();
-        let start = std::time::Instant::now();
-        while start.elapsed() < deadline {
-            match rx.recv_timeout(Duration::from_millis(200)) {
-                Ok(line) if line.starts_with("bestmove") => bestmoves.push(line),
-                Ok(_) => {}
-                Err(_) if !bestmoves.is_empty() => break,
-                Err(_) => {}
+        ));
+        until("readyok");
+        for follow in ["ponderhit", "stop"] {
+            // The race: the reply follows `go ponder` in the same write.
+            send(format!(
+                "position fen {fen} moves e1e2 e8e7\n\
+                 go ponder wtime 300 btime 300 winc 10 binc 10\n{follow}\n"
+            ));
+            let answer = until("bestmove");
+            send("isready\n".to_string());
+            let extra: Vec<String> = until("readyok")
+                .into_iter()
+                .filter(|line| line.starts_with("bestmove"))
+                .collect();
+            assert!(
+                extra.is_empty(),
+                "{follow} at Threads {threads}: {answer:?} then {extra:?}"
+            );
+            let tokens: Vec<&str> = answer.last().expect("answer").split_whitespace().collect();
+            let best = root.parse_move(tokens[1]).expect("a legal bestmove");
+            if let Some(&ponder) = tokens.get(3) {
+                let mut after = root.clone();
+                after.make_move(best);
+                assert!(after.parse_move(ponder).is_some(), "{answer:?}");
             }
         }
-        // Nothing more may follow the answer.
-        std::thread::sleep(Duration::from_millis(300 * scale));
-        while let Ok(line) = rx.try_recv() {
-            if line.starts_with("bestmove") {
-                bestmoves.push(line);
-            }
-        }
-        let _ = stdin.write_all(b"quit\n");
+        send("quit\n".to_string());
         let _ = child.wait();
-        assert_eq!(
-            bestmoves.len(),
-            1,
-            "{follow} at Threads {threads}: {bestmoves:?}"
-        );
-        let mut board = Board::from_fen(fen).expect("valid FEN");
-        for uci in ["e1e2", "e8e7"] {
-            let mv = board.parse_move(uci).expect("legal");
-            board.make_move(mv);
-        }
-        let tokens: Vec<&str> = bestmoves[0].split_whitespace().collect();
-        let best = board.parse_move(tokens[1]).expect("legal bestmove");
-        if let Some(&ponder) = tokens.get(3) {
-            board.make_move(best);
-            assert!(board.parse_move(ponder).is_some(), "{bestmoves:?}");
-        }
     }
 }
