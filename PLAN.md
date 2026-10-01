@@ -1771,6 +1771,64 @@ diagnostics; two rejections stop B.
       proposes what it must see. **Order:** the investigation may run
       between leaves; the implementation follows B.5's cluster gate, whose
       root code it touches, and lands before B.9 freezes the search head.
+      **Investigated 2026-10-01** (`analysis/b52_research_2026-10-01.md`,
+      zero games, no engine commit). **Three mechanisms make the one-move
+      PV**, not two:
+      (1) the root is cut to the DTZ-preferred move;
+      (2) the single-legal-move shortcut reads that cut set as a forced
+      move and ends the search after depth 2, so KQvK reports `cp 635`;
+      (3) the in-search probe returns at once at a zeroing child.
+      Without (1) and (3) the searched PVs are full with a ponder move,
+      before any extension. **A contract defect:** probed tablebase values
+      (`TB_WIN_SCORE − ply`) sit below `is_win`'s threshold, so none is
+      decisive; the TT adjusts and downgrades only the mate band; and the
+      rule-50 downgrade of a mate (31,871) lands inside the decisive band.
+      Stockfish's layout (`TB_VALUE = MATE_SCORE − MAX_PLY − 1`, the TT
+      over the whole band, downgrade to `±(TB_WIN_SCORE − 1)`) repairs all
+      three; the bench never reaches the downgrade (fingerprint exact).
+      **A clock interaction:** without the cut, a tablebase root searches
+      into Rarog's won-endgame time sink (rec3 30,330 ms, exactly its hard
+      maximum at `60000+600`; Stockfish 19 5,553 ms), so the hard limit at
+      a DTZ root is the optimum (measured: exactly the optimum, PVs full at
+      fixed depth). **Fathom is safe for a root DTZ probe beside helper WDL
+      probes:** the source is double-checked locked, and about 53 million
+      checked probes under concurrent DTZ walks, five runs from cold tables,
+      gave zero mismatches, with a planted fault caught. **The extension
+      costs** 1.3–1.6 ms for 3-man lines and 5.6–7.5 ms warm (up to 27 ms
+      cold) for the record's 6-man lines against a 5 ms box at the default
+      Move Overhead, so under a clock it runs once, on the `bestmove` line,
+      and is skipped in a time scramble. **CI fixture:** KQvK and KRvK,
+      14,080 bytes, reproduce the defect class; whether to commit them is
+      the maintainer's licence decision. Verdict:
+      `READY_FOR_IMPLEMENTATION` for the root ranking and set, the
+      bound-correct probe, the band and TT, the display, the extension, the
+      ponder move and the fixture tests, as one unit; `NO_CHANGE` for a
+      probe lock, cursed-win draw scores and the probe-depth refinement.
+        - **B.5.2.1 Implementation — `I2`.** The handoff in the research
+          record: Rust-side DTZ ranks from `tb_probe_root_impl`'s per-move
+          results (`rankDTZ` forced when DTZ is DTM, threefold and rule-50
+          moves as DTZ 0); the whole best-ranked group as the root set
+          (B.2.0.2's clamp unchanged); the single-move shortcut keyed on
+          legal moves; in-search probing off at a DTZ root in every thread,
+          otherwise bound-correct with the TT store at `depth + 6`; P3's
+          band and TT mapping; the UCI display (`cp ±(20000 − distance)`,
+          root display scores); the hard limit equal to the optimum at a
+          DTZ root; the two-step extension (once at `bestmove` under a
+          clock, boxed at `Move Overhead / (2 · MultiPV)`, skipped where
+          the time reserve binds; every iteration without a clock); the
+          ponder move from `pv[1]`. Bench exact without tables; fixture and
+          local 6-man tests; a timing check under `60000+600`; ponder-on
+          smoke. Behind no feature flag: nothing changes without tables
+          except the rule-50 downgrade, which the bench never reaches.
+        - **B.5.2.2 Tablebase-enabled gate — `V`.** Designed and run by the
+          maintainer. It must see an identical Syzygy path on both sides;
+          an activation read (tablebase-root and in-search hit shares,
+          time per move at tablebase roots, extension notices); conversion
+          of tablebase-won roots; zero time losses; one `bestmove` per `go`
+          with pondering on; and, for strength, a repair bracket `[-5,5]`
+          on the standard book with tables, cap from RAR-M10. Frozen
+          prediction: 0 ± 3 Elo, every clean tablebase win converted, no
+          time loss.
     - **B.5.3 Gate: one-retry aspiration — `V`.** Registered 2026-09-30
       (RAR-S89): `rarog-b5gate-pext-pgo.exe` (`AspMaxFails = 1`, recipe
       `analysis/b5_gate_bake.patch`, bench 6,192,452) against the head
@@ -1899,7 +1957,9 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
+| B.5.2 | READY_FOR_IMPLEMENTATION | I2 | Investigated 2026-10-01 (`analysis/b52_research_2026-10-01.md`): seven parts ready as one unit, three `NO_CHANGE`; implementation B.5.2.1, then the tablebase-enabled gate B.5.2.2; before B.9 |
+| B.5.2.1 | READY_FOR_IMPLEMENTATION | I2 | The research record's handoff: ranks, root set, bound-correct probe, band and TT, display, time cap, extension, ponder move, fixture tests; bench exact without tables |
+| B.5.2.2 | RESEARCH | V | The maintainer designs the tablebase-enabled gate from the record's requirements; repair bracket `[-5,5]` proposed; after B.5.2.1 |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
@@ -2082,6 +2142,15 @@ loss).
   count normalised by helper count, so worker count cannot multiply wall
   time. Each item is ticked as present, absent or different in Rarog before
   the donor shape is chosen; the list is a checklist, not a design to copy.
+  **Research input, measured 2026-10-01 by B.5.2**
+  (`analysis/b52_research_2026-10-01.md`): in won endgames without
+  tablebases, an aspiration cascade of fail-highs on a rising evaluation
+  makes an iteration outlive the optimum, and the move ends only at the
+  hard maximum. At `60000+600`, rec1 took 32,305 ms (maximum 32,304; the
+  last `info` at 3,744 ms) and KRvK 11,251 ms (maximum 11,250, stalled at a
+  downgraded mate value). Stockfish 19 took 5.6–6.4 s and about 1 s on the
+  same positions. B.5.2 contains it at tablebase roots only; the general
+  case is this leaf's.
 - **D.2 Lazy SMP quality — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
