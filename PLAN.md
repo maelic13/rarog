@@ -1850,17 +1850,30 @@ diagnostics; two rejections stop B.
 
           **Two registered stop conditions fired by their letter:**
           - 50 candidate moves (0.23%) exceeded optimum plus the 5 ms box,
-            by 1–19 ms past the box. That is the one-ply overrun the record
-            documented, which the frozen rule did not allow for.
+            by 1–19 ms past the box. The extension's overrun, which the
+            frozen rule did not allow for. *Corrected 2026-10-01 by a
+            replay of the 50 (`analysis/artifacts/b52-box-replay-2026-10-01/`):*
+            not one documented cold ply. The search ends within 0.7 ms of
+            the optimum; one Fathom root call takes up to 16 ms, and not
+            repeatably for the same position (2.5, 0.4 and 16.2 ms on three
+            runs).
           - One candidate time loss in RAR-S94: a 7-man root not in the
             tables, 58 ms left, the process held off the CPU for 54 ms with
             641 page faults. That is consistent with a cold table read in an
             in-search probe both binaries share.
 
-          **Not closed; maintainer decision pending:** either close with
-          the rule's mis-specification recorded, or reopen B.5.2.1 for a
-          predictive box (start no ply that the slowest ply so far could
-          not finish) and re-run RAR-S93 (about 2 minutes). The cold-read
+          **Not closed; maintainer decision pending.** The maintainer chose
+          a predictive box (start no ply that the slowest ply so far could
+          not finish) and a RAR-S93 re-run on 2026-10-01; its premise failed
+          before implementation. Replayed on the same plies it leaves 17 of
+          the 29 engine-side overruns in 143 replayed extensions, because
+          the slow call is not predictable from earlier ones. A box checked
+          between Fathom calls can overrun by one call, so it cannot meet
+          the frozen rule. The options are: close with the rule recorded as
+          unsatisfiable for such a box; run no extension under a clock (the
+          ponder move falls back to the TT); or make the extension stop
+          waiting for a call at the deadline, which is a new mechanism and
+          goes back to `RESEARCH`. The cold-read
           stall is D.3's (Syzygy probe policy). It must see an identical Syzygy path on both sides;
           an activation read (tablebase-root and in-search hit shares,
           time per move at tablebase roots, extension notices); conversion
@@ -2045,7 +2058,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.5.2 | GAME_GATE | V | Implemented 2026-10-01 (B.5.2.1); waits on RAR-S93 and RAR-S94; before B.9 |
-| B.5.2.2 | GAME_GATE | V | Played 2026-10-01: RAR-S93 converted 453/453 on both sides; RAR-S94 H1 at 776 pairs, +11.4 ± 8.5 Elo. Two stop conditions fired by their letter (50 moves over optimum plus box, by the documented one-ply overrun; one cold-read time loss at a 7-man root); closure waits on the maintainer |
+| B.5.2.2 | GAME_GATE | V | Played 2026-10-01: RAR-S93 converted 453/453 on both sides; RAR-S94 H1 at 776 pairs, +11.4 ± 8.5 Elo. Two stop conditions fired by their letter (50 moves over optimum plus box, by single Fathom calls of up to 16 ms that no box between calls can predict; one cold-read time loss at a 7-man root); closure waits on the maintainer: the predictive box's premise failed in a replay before implementation |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
