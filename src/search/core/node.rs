@@ -660,18 +660,38 @@ impl Searcher {
         if diag_sample {
             crate::diag_count!(sampled_main_nodes);
         }
-        if let Some(score) = self.syzygy_wdl_score(board, depth, ply, excluded) {
-            self.shared.tt.store(TtStore {
-                key: hash,
-                depth,
-                score,
-                bound: Bound::Exact,
-                mv: Move::NULL,
-                ply,
-                static_eval: VALUE_NONE,
-                is_pv: NODE::PV,
-            });
-            return score;
+        // A tablebase result ends the node only where it decides the window;
+        // at a PV node a win otherwise raises the floor the moves must beat
+        // and a loss caps what they may claim.
+        let mut tb_floor = None;
+        let mut tb_cap = None;
+        if let Some((score, bound)) = self.syzygy_wdl_bound(board, depth, ply, excluded) {
+            let decides = match bound {
+                Bound::Exact => true,
+                Bound::Lower => score >= beta,
+                Bound::Upper => score <= alpha,
+            };
+            if decides {
+                self.shared.tt.store(TtStore {
+                    key: hash,
+                    depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
+                    score,
+                    bound,
+                    mv: Move::NULL,
+                    ply,
+                    static_eval: VALUE_NONE,
+                    is_pv: NODE::PV,
+                });
+                return score;
+            }
+            if NODE::PV {
+                if bound == Bound::Lower {
+                    tb_floor = Some(score);
+                    alpha = alpha.max(score);
+                } else {
+                    tb_cap = Some(score);
+                }
+            }
         }
         let tt_entry = self.shared.tt.probe(hash);
         // Main thread only: if helpers' work reaches the thread that owns the
@@ -2521,6 +2541,12 @@ impl Searcher {
                 self.td.pv_len[ply] = child_len;
 
                 if score >= beta {
+                    let score = tb_cap.map_or(score, |cap| score.min(cap));
+                    let cut_bound = if score >= beta {
+                        Bound::Lower
+                    } else {
+                        Bound::Exact
+                    };
                     self.td.stack[ply].cutoff_count += 1;
                     if excluded.is_null() {
                         // `searched` already counts this move, so 1 means the
@@ -2551,7 +2577,7 @@ impl Searcher {
                                 key: hash,
                                 depth,
                                 score,
-                                bound: Bound::Lower,
+                                bound: cut_bound,
                                 mv,
                                 ply,
                                 static_eval: raw_static_eval,
@@ -2616,7 +2642,18 @@ impl Searcher {
             };
         }
 
-        let bound = if best_score > original_alpha {
+        // A tablebase win no move beat stands as what it is, a lower bound;
+        // a tablebase loss caps whatever the moves claimed.
+        let floor_holds = tb_floor.is_some_and(|floor| best_score <= floor);
+        if let Some(floor) = tb_floor {
+            best_score = best_score.max(floor);
+        }
+        if let Some(cap) = tb_cap {
+            best_score = best_score.min(cap);
+        }
+        let bound = if floor_holds {
+            Bound::Lower
+        } else if best_score > original_alpha {
             Bound::Exact
         } else {
             Bound::Upper

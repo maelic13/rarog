@@ -685,8 +685,20 @@ impl Searcher {
             .copied()
             .filter(|&mv| rank_of(mv) == Some(best_rank))
             .collect();
-        self.shared.syzygy.root.ranked_from = candidates.len();
+        self.apply_tb_root(TbRootDecision {
+            ranked_from: candidates.len(),
+            search_probes_off: ranking.dtz || best_rank <= 0,
+        });
         Some(root_moves)
+    }
+
+    /// Adopt the root's tablebase decision; every thread of the search calls
+    /// it with the main thread's decision after its own reset.
+    fn apply_tb_root(&mut self, decision: TbRootDecision) {
+        self.shared.syzygy.root = decision;
+        if decision.search_probes_off {
+            self.shared.syzygy.largest = 0;
+        }
     }
 
     fn search_root<P: FnMut() -> SearchEvent + ?Sized>(
@@ -1436,6 +1448,27 @@ impl Searcher {
         let wdl = syzygy::probe_wdl(board, self.shared.syzygy.fifty_move_rule)?;
         self.record_tb_hit();
         Some(self.score_from_syzygy_wdl(wdl, ply))
+    }
+
+    /// The in-search probe as a bound: a tablebase win is a lower bound and a
+    /// loss an upper bound, since the search may find a faster mate or a
+    /// slower loss than the tables' distance; a draw, cursed and blessed
+    /// results included under the rule-50 option, is exact.
+    #[cfg(feature = "b2core")]
+    fn syzygy_wdl_bound(
+        &mut self,
+        board: &Board,
+        depth: i32,
+        ply: usize,
+        excluded: Move,
+    ) -> Option<(i32, crate::tt::Bound)> {
+        let score = self.syzygy_wdl_score(board, depth, ply, excluded)?;
+        let bound = match score.signum() {
+            1 => crate::tt::Bound::Lower,
+            -1 => crate::tt::Bound::Upper,
+            _ => crate::tt::Bound::Exact,
+        };
+        Some((score, bound))
     }
 
     fn can_probe_syzygy(&self, board: &Board, depth: i32) -> bool {

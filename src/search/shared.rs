@@ -38,6 +38,10 @@ pub(super) struct TbRootDecision {
     /// group, or 0 when the tables did not rank this root. The single-move
     /// shortcut reads it: a best group of one is not a forced move.
     pub(super) ranked_from: usize,
+    /// No in-search probe this search: DTZ ranked the root, so the ranking
+    /// already keeps the result and a probe would only rush the search into
+    /// a zeroing move; or WDL ranked it and the root is not winning.
+    pub(super) search_probes_off: bool,
 }
 
 /// What every thread of one search reads in common. Each thread holds its own

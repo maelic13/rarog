@@ -300,7 +300,7 @@ impl Searcher {
             false,
             true,
         );
-        self.shared.syzygy.root = tb_root;
+        self.apply_tb_root(tb_root);
         self.search_root(root, legal_moves, false, poll)
     }
 
