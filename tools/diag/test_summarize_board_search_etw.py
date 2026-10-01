@@ -86,6 +86,19 @@ class SearchClassificationTests(unittest.TestCase):
         ]
         self.assertEqual(MODULE.classify_search(functions), "see")
 
+    def test_attack_queries_are_charged_to_their_consumer(self) -> None:
+        inside_see = [
+            "rarog::board::board::Board::attackers_to_color",
+            "rarog::board::board::Board::see_ge_impl",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(inside_see), "see")
+        inside_node = [
+            "rarog::board::board::Board::is_attacked_with_occ",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(inside_node), "search_node")
+
     def test_nearest_named_mechanism_wins(self) -> None:
         functions = [
             "rarog::search::history::HistoryTables::quiet",

@@ -335,14 +335,15 @@ SEARCH_REGIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "::captured_piece",
         ),
     ),
+    # Attack queries (`attackers_to*`, `is_attacked*`) are shared geometry:
+    # SEE, legality and the node all call them, so they stay transparent and
+    # are charged to that consumer.
     (
         "check_queries",
         (
             "::gives_check",
             "::check_info",
             "::calculate_checkers",
-            "::is_attacked",
-            "::attackers_to",
             "::compute_pinned",
         ),
     ),
