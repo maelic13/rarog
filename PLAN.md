@@ -2069,6 +2069,47 @@ diagnostics; two rejections stop B.
       fingerprint exact. *Stop rule:* if no located mechanism clears the
       ceiling, B.7.2 closes `NO_CHANGE` without implementation. The
       evidence layer is NPS; no Elo is claimed.
+      **Profiled 2026-10-01 (RAR-P27, `analysis/b72_profile_2026-10-01.md`).**
+      256,177 samples, every engine sample resolved. Corrected shares
+      (`a6fa72c`, attack queries charged to their consumer): move ordering
+      25.4%, evaluation 21.2%, search node 12.0%, TT 8.2%, generation
+      7.2%, SEE 4.8%, make/unmake 4.5%, evaluation correction 3.9%,
+      history 3.8%, check queries 1.7%, and `vcruntime` copies outside
+      the module 5.1%. The prediction missed on ordering (29.2% with
+      history, against 6–14%) and evaluation (21.2%, against 30–45%):
+      mechanism misses, explained below. Board work, correction and
+      tablebases hit.
+      *Located:*
+      - `pick_next` is 13.4% of samples. Over `bench`, 60% of its
+        scanned elements and 64% of its picks come after `skip_quiets`,
+        when no direct check or promotion is left to emit: work that
+        produces nothing.
+      - The scored move list is returned by value: six 4,104-byte
+        `memcpy` calls per node, 2.9% of samples, against AGENTS'
+        per-node rule.
+      *Candidates:*
+      1. Quiet-stage early exit when skipping with no survivor left.
+         Exact by construction; ceiling about +8.7%; predicted +4% to
+         +9% pooled-PGO NPS.
+      2. Build the list in place. Exact; ceiling about +3.0%;
+         predicted +1% to +3%.
+      3. Conditional: the scan's layout, decided by a re-profile after
+         1 and 2.
+      Not candidates:
+      - Quiet scoring: `skip_quiets` is never set when quiets are
+        generated, so it has no exact lazy path.
+      - The TT probe: already prefetched after make.
+      - Evaluation: Phase C re-implements it.
+      - Evaluation correction: no single mechanism.
+      - The root node's `Vec` allocations: no allocator frames sampled,
+        so dropped.
+      **`READY_FOR_IMPLEMENTATION`** for 1 and 2:
+      - one engine commit each, each with a test that the picker's
+        emitted sequence is unchanged;
+      - each measured on its own by `nps_build_pool.ps1` and
+        interleaved `nps_multibuild.ps1` against the +0.5% floor;
+      - each also needs an exact bench, debug and release tests, fmt,
+        clippy and the allocation guard.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2145,7 +2186,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | RESEARCH | I1 | Eligible: B.6 was skipped on 2026-10-01; B.7.1's allocation guard is its floor. Whole-search profile registered 2026-10-01 (protocol, prediction, candidate rule); the elevated ETW capture is the maintainer's |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Profiled 2026-10-01 (RAR-P27): two exact candidates, the quiet-stage early exit (ceiling about +8.7%) and the in-place scored list (about +3.0%), each an engine commit measured against the +0.5% floor; the scan layout waits for a re-profile |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
