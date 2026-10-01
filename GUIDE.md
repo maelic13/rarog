@@ -132,8 +132,6 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| RAR-S96: two 2,000-game reads of `CoreIirMinDepth` (3 and 6 against 4), registered 2026-10-01, B.6's carried coordinate | The maintainer plays them (about 20 minutes each); a direction registers a `[0,3]` gate, none closes it `NO_CHANGE` | B.9 freezes the search head |
-| RAR-S97: activation and correctness read of the tablebase extension's start rule (`b2c98c8`), registered 2026-10-01 | The maintainer plays it (about 2 minutes) | B.9 |
 | E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |

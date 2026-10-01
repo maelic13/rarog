@@ -1985,8 +1985,10 @@ diagnostics; two rejections stop B.
   `LazyMargin` to C; `QsCountLimit`, `CoreQsNoisyHistory`,
   `CoreNmpVerifyDepth`, `NmpMinNonPawnPieces` and `CoreEvalRule50Damping`
   stay; `CoreIirMinDepth` has never been read by games here, and a pair of
-  2,000-game reads (3 and 6 against 4) is registered as RAR-S96 by
-  maintainer decision, the leaf's one open obligation;
+  2,000-game reads (3 and 6 against 4) was registered as RAR-S96 by
+  maintainer decision and played 2026-10-01: −4.5 ± 9.3 Elo at 3 and
+  +3.0 ± 9.2 at 6, neither a direction, so 4 stays (`NO_CHANGE`; C.10
+  reads it as a switch before its first block);
   `CoreLmpSquare`'s range floor is widened before any tune that includes
   it.
 - **B.7 Search speed pass — `I1`, then `V`.** Behaviour-neutral throughput
@@ -2380,8 +2382,9 @@ loss).
     measured, and adds the start rule. A unit test holds the rule at the
     forfeited move's numbers; on two 6-man roots at `100+30` the old binary
     extends and the fixed one does not, and at `3000+30` both print the
-    same line. Both fingerprints exact. RAR-S97 is its maintainer-run
-    correctness read.
+    same line. Both fingerprints exact. RAR-S97, its correctness read
+    against the old binary on the endgame cohort, played 2026-10-01 with no
+    defect: every clean win converted by both, no time loss, no fault.
   - `488d34a`: a tablebase root score prints without a bound (6 of 14 such
     lines carried one at a KQvK root, `go depth 8`; none now), as the donor
     prints it. Output only, both fingerprints exact.
