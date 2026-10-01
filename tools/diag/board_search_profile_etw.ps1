@@ -163,7 +163,9 @@ try {
         # Each report is checked against its OWN contract.  The per-address one
         # must be unresolved and finely grained; the symbolized one must have
         # named frames, which is the only place a PDB failure is detectable.
-        $reportText = Get-Content -LiteralPath $report -Raw
+        # Compared as text without markup: newer xperf wraps module and
+        # function names in links (`exe</a>!<a ...>***unknown***`).
+        $reportText = (Get-Content -LiteralPath $report -Raw) -replace '<[^>]+>', ''
         if ($reportText -notmatch [regex]::Escape($processName + "!***unknown***")) {
             throw ("per-address report for $cohort resolved symbols; xperf aggregated " +
                    "by function and inline attribution is lost")
