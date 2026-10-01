@@ -100,6 +100,18 @@ class RecountTests(unittest.TestCase):
         self.assertTrue(result["comparable"])
         self.assertFalse(result["agrees"])
 
+    def test_a_sample_with_every_pair_split_reports_without_a_normalised_elo(self):
+        # 750 split pairs: the score is one half, the variance zero.
+        estimates = colosseum_recount.estimates([0, 0, 750, 0, 0])
+        self.assertNotIn("nelo", estimates)
+        line = colosseum_recount.estimate_line(estimates)
+        self.assertIn("Elo +0.00 +/- 0.00", line)
+        self.assertIn("nElo undefined", line)
+        # A sample with spread reports both.
+        line = colosseum_recount.estimate_line(colosseum_recount.estimates([34, 253, 452, 227, 34]))
+        self.assertIn("Elo -4.52 +/- 9.33", line)
+        self.assertIn("nElo -7.37 +/- 15.23", line)
+
     def test_a_run_with_no_count_anywhere_is_not_comparable(self):
         result = colosseum_recount.recount(write_run(self.dir, record_pentanomial=[0] * 5))
         self.assertFalse(result["comparable"])

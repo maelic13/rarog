@@ -135,13 +135,24 @@ def estimates(counts: list[int]) -> dict:
     standard_error = sigma / math.sqrt(total)
     result = {"pairs": total, "mu": mu, "sigma": sigma}
     if 0 < mu < 1:
-        result["elo"] = -400 * math.log10(1 / mu - 1)
+        # Adding zero turns the negative zero of an even score into zero.
+        result["elo"] = -400 * math.log10(1 / mu - 1) + 0.0
         result["elo_error"] = 1.96 * standard_error * 400 / (math.log(10) * mu * (1 - mu))
     if sigma > 0:
         scale = 800 / (math.log(10) * math.sqrt(2))
         result["nelo"] = (mu - 0.5) / sigma * scale
         result["nelo_error"] = 1.96 * standard_error / sigma * scale
     return result
+
+
+def estimate_line(result: dict) -> str:
+    """The estimators a sample supports: Elo needs a score strictly between 0
+    and 1, nElo a nonzero variance (every pair split has none)."""
+    elo = (f"Elo {result['elo']:+.2f} +/- {result['elo_error']:.2f}"
+           if "elo" in result else "Elo undefined (score at 0 or 1)")
+    nelo = (f"nElo {result['nelo']:+.2f} +/- {result['nelo_error']:.2f}"
+            if "nelo" in result else "nElo undefined (zero variance)")
+    return f"{elo}   {nelo}"
 
 
 def recount(directory: pathlib.Path) -> dict:
@@ -216,9 +227,8 @@ def main() -> int:
                   f"{result['recorded_source']} {result['recorded_pentanomial']}  "
                   + (f"agrees: {result['agrees']}" if result["comparable"]
                      else "(this schema records no pentanomial to compare)"))
-            if "elo" in result:
-                print(f"  Elo {result['elo']:+.2f} +/- {result['elo_error']:.2f}   "
-                      f"nElo {result['nelo']:+.2f} +/- {result['nelo_error']:.2f}")
+            if result.get("pairs"):
+                print(f"  {estimate_line(result)}")
             print(f"  terminations {result['terminations']}  faults: {result['faults']}  "
                   f"wall {result['seconds']}s")
             print()
