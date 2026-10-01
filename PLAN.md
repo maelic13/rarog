@@ -1859,8 +1859,13 @@ diagnostics; two rejections stop B.
             runs).
           - One candidate time loss in RAR-S94: a 7-man root not in the
             tables, 58 ms left, the process held off the CPU for 54 ms with
-            641 page faults. That is consistent with a cold table read in an
-            in-search probe both binaries share.
+            641 page faults. It was read as a cold table read in an
+            in-search probe both binaries share. *Corrected 2026-10-01 from
+            the failed-games record:* the stall was in the PV extension. The
+            candidate printed the extension's "requires more time" notice
+            on that move, before `bestmove d1h1`, a capture into the 6-man
+            tables, where the extension's first call is a DTZ root probe on
+            files the search never reads. The loss is the candidate's own.
 
           **Closed 2026-10-01 by the maintainer; B.5.2.1 kept.** The
           maintainer first chose a predictive box (start no ply that the
@@ -1871,7 +1876,11 @@ diagnostics; two rejections stop B.
           between Fathom calls can overrun by one call, so the frozen rule
           is recorded as unsatisfiable for such a box. The overrun is
           bounded by one call, and where the time reserve binds the box is
-          0. Not taken: no extension under a clock (the ponder move would
+          0. *Corrected 2026-10-01:* the reserve binds only below 5.25
+          overheads of clock (about 52 ms; `0.8097·t − overhead` exceeds
+          `t − 2·overhead` only there), not 52 overheads as `time.rs`'s
+          comments and the research record say, so the extension ran at
+          58 ms in RAR-S94's forfeited move. Not taken: no extension under a clock (the ponder move would
           fall back to the TT), and an extension that stops waiting at the
           deadline (a new mechanism; `RESEARCH` if ever wanted).
           **Cause of the slow calls** (same artifacts): the 151 GB of
@@ -2301,12 +2310,28 @@ loss).
   - `2326153`: the legacy search compiles again; `d754577`'s optimism call
     needed `b2core`, and CI builds that arm.
 
-  **Input from B.5.2.2:** a cold Syzygy page read can hold an in-search
-  probe for about 54 ms (one RAR-S94 time loss at 58 ms on the clock).
-  Probe policy under a short clock is this leaf's. Slow probes are reads
-  the page cache misses (151 GB of tables against 128 GB of RAM);
-  concurrent engines stretch the tail without raising its rate
+  **Input from B.5.2.2:** a table read the page cache misses held the PV
+  extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
+  on time at 58 ms of clock (the failed-games record shows the extension's
+  notice on that move; the same stall in an in-search probe is inferred,
+  not observed). Probe policy under a short clock is this leaf's. Slow
+  probes are reads the page cache misses (151 GB of tables against 128 GB
+  of RAM); concurrent engines stretch the tail without raising its rate
   (`analysis/artifacts/b52-box-replay-2026-10-01/`).
+  **Inputs from the 2026-10-01 audit of B.5.2.1** (source read at
+  `473fc37`; nothing implemented):
+  - The extension's short-clock skip keys on the reserve deciding the hard
+    limit, which happens only below 5.25 overheads of clock (about 52 ms).
+    `time.rs`'s two comments say 52 overheads. A candidate rule: start the
+    extension only when the clock leaves a stated margin before the hard
+    ceiling once the search has ended; the largest stalls measured are 44
+    and 54 ms.
+  - A tablebase display score prints with a bound suffix (14 of 71 lines
+    read `score cp 20000 upperbound` or `lowerbound` at KQvK under
+    `60000+600`); the donor prints tablebase scores as exact.
+  - The extension gates on the loaded tables' size, not on
+    `SyzygyProbeLimit`, which the root ranking and the in-search probes
+    honour (read from `syzygy::rank_root_moves`, not reproduced).
   Deterministic tests; zero crashes over the pool tournaments. Owns the last
   move of the target layout: `engine.rs`, `engine_command.rs`,
   `uci_protocol.rs`, `search_options.rs` and `bench.rs`/`wac.rs` go under
