@@ -127,6 +127,33 @@ pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
     tail[0]
 }
 
+/// The quiet stage's next move, best first from `quiets[*index..]`. While
+/// skipping, only moves that survive a skip are emitted, and once none is left
+/// the stage ends without selecting: every further selection would be
+/// discarded, and nothing reads the quiets afterwards. Measured on `bench`,
+/// those selections were 60% of all the picker's scanning.
+fn next_quiet(
+    quiets: &mut [ScoredMove],
+    index: &mut usize,
+    survivors_left: &mut usize,
+    skip_quiets: bool,
+) -> Option<ScoredMove> {
+    while *index < quiets.len() {
+        if skip_quiets && *survivors_left == 0 {
+            return None;
+        }
+        let picked = pick_next(quiets, *index);
+        *index += 1;
+        if picked.survives_skip {
+            *survivors_left -= 1;
+        }
+        if !skip_quiets || picked.survives_skip {
+            return Some(picked);
+        }
+    }
+    None
+}
+
 pub(super) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(m.score));
     if offset < moves.len() {
@@ -190,6 +217,8 @@ pub(super) enum MovePicker {
         quiet_index: usize,
         bad_index: usize,
         good_noisy_emitted: usize,
+        /// Quiet-list moves not yet selected that survive a skip.
+        survivors_left: usize,
         /// Pinned set from capture generation, reused for the quiets.
         pinned: Bitboard,
         tt_move: Move,
@@ -231,6 +260,7 @@ impl MovePicker {
             quiet_index: 0,
             bad_index: 0,
             good_noisy_emitted: 0,
+            survivors_left: 0,
             pinned,
             tt_move,
             stage: Stage::TtMove,
@@ -290,6 +320,7 @@ impl MovePicker {
                 quiet_index,
                 bad_index,
                 good_noisy_emitted,
+                survivors_left,
                 pinned,
                 tt_move,
                 stage,
@@ -332,7 +363,7 @@ impl MovePicker {
                     Stage::GenerateQuiets => {
                         let mut quiets = MoveList::new();
                         board.generate_legal_quiets_pinned_into(*pinned, &mut quiets);
-                        searcher.append_quiet_moves(
+                        *survivors_left = searcher.append_quiet_moves(
                             board,
                             threats,
                             quiets.as_slice(),
@@ -343,13 +374,13 @@ impl MovePicker {
                         *stage = Stage::Quiets;
                     }
                     Stage::Quiets => {
-                        while *noisy_len + *quiet_index < moves.len() {
-                            let picked =
-                                pick_next(&mut moves.as_mut_slice()[*noisy_len..], *quiet_index);
-                            *quiet_index += 1;
-                            if !skip_quiets || picked.survives_skip {
-                                return Some(picked);
-                            }
+                        if let Some(picked) = next_quiet(
+                            &mut moves.as_mut_slice()[*noisy_len..],
+                            quiet_index,
+                            survivors_left,
+                            skip_quiets,
+                        ) {
+                            return Some(picked);
                         }
                         *stage = Stage::BadNoisy;
                     }
@@ -469,6 +500,7 @@ impl Searcher {
 
     /// Score and append quiet moves: histories, continuation terms, and the
     /// threat, check, offense and king-wall terms of the moving piece.
+    /// Returns how many of them survive a skip.
     fn append_quiet_moves(
         &self,
         board: &Board,
@@ -477,12 +509,13 @@ impl Searcher {
         tt_move: Move,
         ply: usize,
         out: &mut ScoredMoveList,
-    ) {
+    ) -> usize {
         if quiets.is_empty() {
-            return;
+            return 0;
         }
         let ctx = self.quiet_context(board, threats, ply);
         let hist = &self.td.hist;
+        let mut survivors = 0;
         for &mv in quiets {
             if mv == tt_move {
                 continue;
@@ -490,13 +523,16 @@ impl Searcher {
             if mv.is_promo() {
                 let score = QUIET_PROMOTION_OFFSET + self.noisy_score(board, threats, mv);
                 out.push_quiet(mv, score, 0, 0, true);
+                survivors += 1;
                 continue;
             }
             let (score, pruning_history) = self.quiet_score(board, threats, &ctx, hist, mv);
             let direct_check =
                 ctx.check_squares[board.moving_piece(mv) as usize].contains(mv.to_sq());
             out.push_quiet(mv, score, 0, pruning_history, direct_check);
+            survivors += usize::from(direct_check);
         }
+        survivors
     }
 
     /// Ordering score and pruning history of one quiet move.
@@ -625,6 +661,72 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The quiet stage without the early exit: select every remaining quiet,
+    /// emit it unless skipping and it does not survive.
+    fn next_quiet_reference(
+        quiets: &mut [ScoredMove],
+        index: &mut usize,
+        skip_quiets: bool,
+    ) -> Option<ScoredMove> {
+        while *index < quiets.len() {
+            let picked = pick_next(quiets, *index);
+            *index += 1;
+            if !skip_quiets || picked.survives_skip {
+                return Some(picked);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn quiet_early_exit_emits_what_the_full_selection_emits() {
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut random = move |bound: u64| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state % bound
+        };
+        let mut selections_saved = 0;
+        for _ in 0..2_000 {
+            let len = usize::try_from(random(40)).expect("small");
+            // Scores from six values, so ties are common.
+            let quiets: Vec<ScoredMove> = (0..len)
+                .map(|i| ScoredMove {
+                    mv: Move(u16::try_from(i + 1).expect("small")),
+                    score: i32::try_from(random(6)).expect("small") - 3,
+                    survives_skip: random(5) == 0,
+                    ..ScoredMove::default()
+                })
+                .collect();
+            // As in the search: skipping starts after some emitted move, or
+            // never, and does not stop.
+            let skip_from =
+                usize::try_from(random(u64::try_from(len).expect("small") + 2)).expect("small");
+            let mut survivors_left = quiets.iter().filter(|m| m.survives_skip).count();
+            let (mut fast, mut slow) = (quiets.clone(), quiets);
+            let (mut fast_index, mut slow_index) = (0, 0);
+            let mut emitted = 0;
+            loop {
+                let skip = emitted >= skip_from;
+                let fast_move =
+                    next_quiet(&mut fast, &mut fast_index, &mut survivors_left, skip).map(|m| m.mv);
+                let slow_move =
+                    next_quiet_reference(&mut slow, &mut slow_index, skip).map(|m| m.mv);
+                assert_eq!(
+                    fast_move, slow_move,
+                    "emission {emitted}, skip from {skip_from}"
+                );
+                if fast_move.is_none() {
+                    break;
+                }
+                emitted += 1;
+            }
+            selections_saved += slow_index - fast_index;
+        }
+        assert!(selections_saved > 0, "the early exit never fired");
+    }
 
     fn drain(
         picker: &mut MovePicker,
