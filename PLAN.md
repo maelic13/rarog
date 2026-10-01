@@ -2143,12 +2143,33 @@ diagnostics; two rejections stop B.
         - **B.7.2.5 Candidate 2, the in-place scored list — `I1`.** Fill
           the scored move list in the picker's own storage through `&mut`
           instead of returning it by value. The disassembly must show no
-          4,104-byte `memcpy` left in per-node code.
+          4,104-byte `memcpy` left in per-node code. **Done 2026-10-01
+          (`0d95763`):**
+          - the scoring functions append to a caller's list;
+          - the staged picker is built empty where it lives and fills
+            its noisy moves through `&mut self`. Returning a filled
+            picker still copied it (4,184 bytes), so construction is
+            split;
+          - in the pext PGO disassembly the large copies differ from
+            the parent's in exactly the three per-node sites, which
+            are gone. The root's full-picker copy stays (once per
+            iteration).
         - **B.7.2.6 Candidate 2, deterministic qualification — `V`.**
           Exact bench and legacy bench, fmt, clippy at zero warnings,
-          debug and release suites with the allocation guard.
+          debug and release suites with the allocation guard. **Done
+          2026-10-01:** bench 11,171,726 and legacy 7,590,542 exact;
+          fmt; clippy at zero warnings; debug 376 and release 377 tests.
         - **B.7.2.7 Candidate 2, pooled-PGO NPS — `V`.** As B.7.2.4,
-          against the floor and the frozen +1% to +3% prediction.
+          against the floor and the frozen +1% to +3% prediction. Its
+          baseline is candidate 1, so each change is read alone. Both
+          reads and B.7.2.8's capture are one overnight run,
+          `analysis/artifacts/b72-nps-c1/overnight.ps1`:
+          - pools of four PGO builds each: `dda5112`, `5fe42cf`,
+            `0d95763`, hashes in their manifests;
+          - 20 interleaved cycles per read;
+          - it waits for an idle host;
+          - the ETW capture of `0d95763` runs only in an elevated
+            window.
         - **B.7.2.8 Re-profile and decide — `V`.** The same ETW capture
           after candidates 1 and 2 (maintainer, elevated). Then either
           the scan layout (candidate 3) goes forward under the candidate
@@ -2230,11 +2251,9 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Profiled 2026-10-01 (RAR-P27): two exact candidates, the quiet-stage early exit (ceiling about +8.7%) and the in-place scored list (about +3.0%), each an engine commit measured against the +0.5% floor; the scan layout waits for a re-profile |
-| B.7.2.4 | LOCAL_QUALIFIED | V | Candidate 1 qualified locally (`5fe42cf`); the pooled-PGO NPS read needs an idle host |
-| B.7.2.5 | READY_FOR_IMPLEMENTATION | I1 | After B.7.2.4 |
-| B.7.2.6 | READY_FOR_IMPLEMENTATION | V | Qualifies B.7.2.5 |
-| B.7.2.7 | READY_FOR_IMPLEMENTATION | V | Measures B.7.2.5 |
-| B.7.2.8 | RESEARCH | V | After B.7.2.4 and B.7.2.7 |
+| B.7.2.4 | LOCAL_QUALIFIED | V | Candidate 1 qualified locally (`5fe42cf`); its NPS read is in the overnight run |
+| B.7.2.7 | LOCAL_QUALIFIED | V | Candidate 2 qualified locally (`0d95763`); its NPS read is in the overnight run |
+| B.7.2.8 | RESEARCH | V | Capture staged in the overnight run (elevated window); then the decision on candidate 3 |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
