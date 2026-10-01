@@ -1992,12 +1992,33 @@ diagnostics; two rejections stop B.
   - the `uci_process` ponder and clock tests (up to 12 s), which time the
     clock by design.
 
-  Proposals, none applied:
-  - move the KBNK playouts and the WAC floor into an ignored long tier run
-    by `tools/` or nightly, keeping the static KBNK corner test in the
-    suite;
-  - trim the `root_abort` and allocation sweeps in debug builds only;
-  - keep the clock tests.
+  Decided by the maintainer 2026-10-01 and applied (`4aced11`):
+  - **Long tier.** The KBNK playouts and the WAC floor carry
+    `#[ignore = "<reason>"]`; the static KBNK corner test stays in the
+    suite. The tier runs where it cannot be forgotten: a CI step in the
+    release leg with default features runs exactly these two by name with
+    `--ignored` and fails unless two ran (a filter that matched nothing would
+    pass), and PROCESS's *Common commands* names the same command for release
+    qualification. No other ignored test existed to sweep in. Both pass by
+    that command, about 7 s in release.
+  - **Allocation guard.** The contract is the release binary's, so release
+    keeps depth 13; debug searches to depth 11, in about a third of the
+    time. The trimmed tree still grows at least 22-fold over depth 5 (the
+    bound is 10), and at `RAROG_DIAG_SAMPLE_STRIDE=1` the trimmed workload
+    fires 213 of the 265 diag counters against 211 for the full one. The
+    two that fire only at depth 13 have no code path of their own:
+    `nmp_cut_d13_plus` is a depth band of `nmp_cut`, which fires, and
+    `eg_kpkp` is a census entry for a reference endgame family.
+  - **`root_abort` sweeps unchanged.** Debug is the leg where the internal
+    assertions fire, so a debug-only trim would cut exactly the coverage the
+    sweeps exist for. They may be trimmed later only with a count showing
+    the shorter sweep reaches the same distinct abort sites, and then in
+    both builds.
+  - **Clock tests in `uci_process` unchanged**: they time the clock by
+    design.
+
+  Serial suite time, summed per test binary, before and after: debug
+  262.9 s to 178.3 s, release 42.1 s to 34.0 s.
 
   The B.5.2.1 tests were held to the same criteria. The ponder-race test
   now drains with `isready` instead of sleeping (`bb877d8`, 2.4 s to

@@ -474,6 +474,9 @@ mismatch.
 cargo fmt --check
 cargo test -p rarog
 cargo test -p rarog --release
+# Long tier, for release qualification: the two play measurements ignored in the
+# suite, by exact name (CI's release leg runs the same command). Two must pass.
+cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor
 cargo test -p xtask
 # The texel tuner is its own workspace, so `texel` never unifies into the engine.
 cargo test --manifest-path tools/texel-tuner/Cargo.toml
