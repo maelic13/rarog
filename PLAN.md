@@ -1842,7 +1842,26 @@ diagnostics; two rejections stop B.
           `rarog-b52cand-pext-pgo.exe` (`13AA4824…`) and
           `rarog-b52base-pext-pgo.exe` (`A7C9EE6C…`); dry runs at policy;
           the maintainer's. Designed and run by the
-          maintainer. It must see an identical Syzygy path on both sides;
+          maintainer.
+          **Played 2026-10-01.**
+          - **RAR-S93:** 100% tablebase-root moves; 453 of 453 clean wins
+            converted by each side; 0 faults.
+          - **RAR-S94:** H1 at 776 pairs, +11.4 ± 8.5 Elo.
+
+          **Two registered stop conditions fired by their letter:**
+          - 50 candidate moves (0.23%) exceeded optimum plus the 5 ms box,
+            by 1–19 ms past the box. That is the one-ply overrun the record
+            documented, which the frozen rule did not allow for.
+          - One candidate time loss in RAR-S94: a 7-man root not in the
+            tables, 58 ms left, the process held off the CPU for 54 ms with
+            641 page faults. That is consistent with a cold table read in an
+            in-search probe both binaries share.
+
+          **Not closed; maintainer decision pending:** either close with
+          the rule's mis-specification recorded, or reopen B.5.2.1 for a
+          predictive box (start no ply that the slowest ply so far could
+          not finish) and re-run RAR-S93 (about 2 minutes). The cold-read
+          stall is D.3's (Syzygy probe policy). It must see an identical Syzygy path on both sides;
           an activation read (tablebase-root and in-search hit shares,
           time per move at tablebase roots, extension notices); conversion
           of tablebase-won roots; zero time losses; one `bestmove` per `go`
@@ -1979,7 +1998,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.5.2 | GAME_GATE | V | Implemented 2026-10-01 (B.5.2.1); waits on RAR-S93 and RAR-S94; before B.9 |
-| B.5.2.2 | GAME_GATE | V | RAR-S93 (the activation read on the endgame cohort, correctness rule) then RAR-S94 (the `[-5,5]` gate with tables, cap 6,000 pairs); binaries built, dry runs at policy, the maintainer's |
+| B.5.2.2 | GAME_GATE | V | Played 2026-10-01: RAR-S93 converted 453/453 on both sides; RAR-S94 H1 at 776 pairs, +11.4 ± 8.5 Elo. Two stop conditions fired by their letter (50 moves over optimum plus box, by the documented one-ply overrun; one cold-read time loss at a 7-man root); closure waits on the maintainer |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
