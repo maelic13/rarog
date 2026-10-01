@@ -1972,14 +1972,14 @@ diagnostics; two rejections stop B.
     every tune movement it was asked about (RAR-S86) and the sign of a gate
     (RAR-S89).
 
-  **Recommended `NO_CHANGE`; the maintainer decides.** No instrument shows
-  a misfit, and the estimate of a restart's gain, +3 ± 3 Elo, is a judgment
-  from the series RAR-S78, RAR-S83, RAR-S86, about a third of it under what
-  `[0,3]` can bank. Running it costs 12.5 hours a block, up to three, and
-  a gate of about 36,000 games at a true +3 Elo or 70,000 at +2. The
-  whole-surface re-fit goes to C.10, where the evaluation will have moved
-  every population. If run instead: one rule-7c block on the 123
-  coordinates from the head's defaults, registered first.
+  **Closed 2026-10-01 by the maintainer: `NO_CHANGE`, no joint tune now;
+  the joint search SPSA is C.10,** after the classical evaluation, where
+  the maintainer expects the optimum to have moved. The reasons recorded
+  with the recommendation: no instrument shows a misfit, and the estimate
+  of a restart's gain, +3 ± 3 Elo, is a judgment from the series RAR-S78,
+  RAR-S83, RAR-S86, about a third of it under what `[0,3]` can bank;
+  running it would cost 12.5 hours a block, up to three, and a gate of
+  about 36,000 games at a true +3 Elo or 70,000 at +2.
   Carried items: `QsFutilityMargin` and `ProbCutSeeGapScale` to C.10;
   `LazyMargin` to C; `QsCountLimit`, `CoreQsNoisyHistory`,
   `CoreNmpVerifyDepth`, `NmpMinNonPawnPieces` and `CoreEvalRule50Damping`
@@ -2109,8 +2109,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.6 | RESEARCH | V | Researched 2026-10-01 (RAR-S95): `NO_CHANGE` recommended, the re-fit to C.10; the maintainer's decision pending |
-| B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
+| B.7.2 | RESEARCH | I1 | Eligible: B.6 was skipped on 2026-10-01; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
@@ -2262,16 +2261,30 @@ loss).
 - **C.9 HCE SPSA of nonlinear residue — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
-- **C.10 Search re-fit after the new evaluation — `V`.** The search's
-  cp-valued margins were fitted on the B-era scale. One joint SPSA over the
-  registered cp coordinates, PGO, SPRT `[0,3]`.
-  **Input from B.6 (2026-10-01, a proposal until B.6 closes):** select the
-  surface by the firing-rate check against the B-era head, not by
-  "cp-valued" alone: a mechanism whose rate per interior node has moved 10%
-  or more joins with its coordinates, the non-cp families (LMR, histories,
-  corrections) included. `QsFutilityMargin` arrives with a measured
-  direction (rising from 178) and `ProbCutSeeGapScale` unfitted;
-  `CoreLmpSquare`'s range floor is widened first.
+- **C.10 Joint search SPSA after the new evaluation — `V`.** The search
+  was fitted on the B-era evaluation: its cp-valued margins sit on that
+  scale, and a new evaluation moves every node population the other
+  coordinates were fitted on. This is the whole-surface search tune B.6
+  left for here (maintainer decision 2026-10-01, RAR-S95): one joint SPSA
+  on the frozen classical evaluation, search coordinates only (rule 2),
+  registered by PROCESS's go/no-go procedure in rule-7c blocks, PGO bake,
+  SPRT `[0,3]`.
+  - **Surface:** every cp-valued margin, plus every mechanism whose firing
+    rate per interior node has moved 10% or more against the B.9 head
+    (stride-1 `bench 13` dumps of both heads), with its coordinates; the
+    non-cp families (LMR, histories, corrections) are in by that test, not
+    by default. B.6's surface of 123 coordinates is the starting list
+    (`analysis/b6_research_2026-10-01.md`).
+  - **Seeds:** the C head's defaults; a value a registered game read has
+    shown better replaces its default.
+  - **Carried from B.6:** `QsFutilityMargin` with a measured direction
+    (rising from 178); `ProbCutSeeGapScale`, never fitted on this search;
+    `CoreLmpSquare`'s range floor (256) widened first; `QsCountLimit` and
+    any other discrete threshold read as a switch by games before block 1,
+    never pinned.
+  - **Skip rule:** none by a zero-game read. If the firing-rate check
+    moves no mechanism by 10% and the cp scale ratio against the B era is
+    within 5%, the leaf records that and asks the maintainer.
 - **C.11 Checkpoint — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch), conversion instrument,
