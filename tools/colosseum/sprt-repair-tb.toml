@@ -1,0 +1,10 @@
+# B.5.2.2's gate: a repair of unknown sign with tablebases configured, the
+# symmetric [-5, 5] nElo bracket on the standard book (RAR-S62's form). Both
+# sides probe the same local 3-6-man set; colosseum.ps1 refuses a run whose
+# sides differ and records the path with its file counts.
+
+extend = "sprt-repair.toml"
+
+[options]
+a-option = ["Hash=64", "Threads=1", "SyzygyPath=D:/chess/tablebases/syzygy3456"]
+b-option = ["Hash=64", "Threads=1", "SyzygyPath=D:/chess/tablebases/syzygy3456"]

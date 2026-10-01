@@ -1,0 +1,16 @@
+# B.5.2.2's activation read: the tablebase work exercised on every move.
+# Every opening of the endgame cohort (788 positions, 3 to 6 men) starts inside
+# the tables, so both sides play from a tablebase root throughout. 1,500 games
+# stay under the book's 1,576-game span, so no opening repeats. Both sides
+# probe the same local 3-6-man set; colosseum.ps1 refuses a run whose sides
+# differ and records the path with its file counts.
+#
+#   ./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/tb-activation.toml #     -Book tools/books/endgame_cohort_v1.epd -EngineA <a.exe> -EngineB <b.exe> ...
+
+extend = "match-fixed.toml"
+
+[options]
+games = 1500
+book = "../books/endgame_cohort_v1.epd"
+a-option = ["Hash=64", "Threads=1", "SyzygyPath=D:/chess/tablebases/syzygy3456"]
+b-option = ["Hash=64", "Threads=1", "SyzygyPath=D:/chess/tablebases/syzygy3456"]

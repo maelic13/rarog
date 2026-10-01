@@ -191,6 +191,18 @@ try {
     Invoke-Case -Name "a parameter the mode cannot honour" -Expect "ignores" `
         -Arguments (Merge-Arguments $base @{ Games = 500 })
 
+    $fixtureTables = Join-Path $repo "tests\fixtures\syzygy"
+    $emptyTables = Join-Path $scratch "no-tables"
+    New-Item -ItemType Directory -Path $emptyTables | Out-Null
+    Invoke-Case -Name "control: the same tables on both sides" -Expect "" `
+        -Arguments (Merge-Arguments $base @{ OptionsA = @("SyzygyPath=$fixtureTables")
+                                              OptionsB = @("SyzygyPath=$fixtureTables") })
+    Invoke-Case -Name "tables on one side only" -Expect "SyzygyPath differs" `
+        -Arguments (Merge-Arguments $base @{ OptionsA = @("SyzygyPath=$fixtureTables") })
+    Invoke-Case -Name "a tablebase folder with no tables" -Expect "holds no .rtbw" `
+        -Arguments (Merge-Arguments $base @{ OptionsA = @("SyzygyPath=$emptyTables")
+                                              OptionsB = @("SyzygyPath=$emptyTables") })
+
     Invoke-Case -Name "conditions off Rarog's policy" -Expect "not Rarog's policy" `
         -Arguments (Merge-Arguments $base @{ Hash = 128 })
 

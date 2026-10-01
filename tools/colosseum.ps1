@@ -509,6 +509,33 @@ foreach ($pair in $optionSets) {
     if ([int]$options.Hash.value -ne $Hash) { Add-Violation "$name Hash is $($options.Hash.value), expected $Hash" }
     if ([int]$options.Threads.value -ne $Threads) { Add-Violation "$name Threads is $($options.Threads.value), expected $Threads" }
 }
+# Tablebases: a side that probes must probe the same tables as the other, and
+# the tables must be there, or the two sides play different games without a
+# word in the record. The manifest names the path with its file counts.
+$syzygyBySide = @{}
+foreach ($pair in $optionSets) {
+    $value = $pair[1].PSObject.Properties | Where-Object { $_.Name -eq 'SyzygyPath' } |
+        ForEach-Object { "$($_.Value.value)" }
+    $syzygyBySide[$pair[0]] = "$value"
+}
+$syzygyPaths = @($syzygyBySide.Values | Sort-Object -Unique)
+$syzygyPath = ""
+$syzygyRecord = "none"
+if ($syzygyPaths.Count -gt 1) {
+    $sides = ($syzygyBySide.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name)='$($_.Value)'" }) -join ', '
+    Add-Violation "SyzygyPath differs between the sides ($sides)"
+} elseif ($syzygyPaths.Count -eq 1 -and $syzygyPaths[0]) {
+    $syzygyPath = $syzygyPaths[0]
+    $wdlFiles = 0; $dtzFiles = 0
+    foreach ($folder in ($syzygyPath -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        if (Test-Path -LiteralPath $folder -PathType Container) {
+            $wdlFiles += @(Get-ChildItem -LiteralPath $folder -Filter '*.rtbw' -File).Count
+            $dtzFiles += @(Get-ChildItem -LiteralPath $folder -Filter '*.rtbz' -File).Count
+        }
+    }
+    if ($wdlFiles -eq 0) { Add-Violation "SyzygyPath '$syzygyPath' holds no .rtbw tables" }
+    $syzygyRecord = "$syzygyPath ($wdlFiles WDL, $dtzFiles DTZ files)"
+}
 if ($Mode -eq 'gauntlet') {
     # Participants carry their options in the plan. Hash is Rarog's policy;
     # a thread option is engine-specific (`Threads`, `Max CPUs`), so each
@@ -601,7 +628,7 @@ if ($slotCpus.Count -gt 0 -and $offGameCores.Count -gt 0) {
 if ($violations.Count -gt 0) {
     Write-Host ""
     foreach ($violation in $violations) { Write-Host "  POLICY: $violation" -ForegroundColor Red }
-    throw ("The resolved configuration is not Rarog's policy ($($violations.Count) field(s) above). " +
+    throw ("The resolved configuration is not Rarog's policy ($($violations.Count) field(s): $($violations -join '; ')). " +
            "Fix the run file or the command line; do not run a measurement under conditions the " +
            "ledger cannot reproduce. Dry run: $dryPath")
 }
@@ -640,6 +667,7 @@ $lines.Add("runner:           $($cli.Path)")
 $lines.Add("runner_version:   $($cli.Version)")
 $lines.Add("runner_sha256:    $($cli.Sha256)")
 $lines.Add("runner_revision:  $($cli.Pin.revision)")
+$lines.Add("syzygy:           $syzygyRecord")
 $lines.Add("book:             $Book")
 $lines.Add("book_sha256:      $(Get-HarnessSha256 $Book)")
 $lines.Add("opening_order:    $($resolved.openings.order)")
