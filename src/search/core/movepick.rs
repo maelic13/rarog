@@ -237,34 +237,46 @@ impl MovePicker {
         }
     }
 
-    pub(super) fn staged(
-        searcher: &Searcher,
-        board: &mut Board,
-        threats: &Threats,
-        tt_move: Move,
-        ply: usize,
-    ) -> Self {
-        let mut noisy = MoveList::new();
-        let pinned = board.generate_legal_captures_pinned_into(&mut noisy);
-        let mut moves = ScoredMoveList::new();
-        for &mv in noisy.as_slice() {
-            if mv != tt_move {
-                moves.push(mv, searcher.noisy_score(board, threats, mv), 0, 0);
-            }
-        }
+    /// A staged picker with no moves yet; [`Self::fill_noisy`] adds them.
+    /// The picker is built where it lives and filled there: a filled 4 KB
+    /// list moved into place was copied at every node.
+    #[inline(always)]
+    pub(super) fn staged(tt_move: Move, ply: usize) -> Self {
         Self::Staged {
-            noisy_len: moves.len(),
-            moves,
+            moves: ScoredMoveList::new(),
+            noisy_len: 0,
             bad_len: 0,
             noisy_index: 0,
             quiet_index: 0,
             bad_index: 0,
             good_noisy_emitted: 0,
             survivors_left: 0,
-            pinned,
+            pinned: Bitboard::EMPTY,
             tt_move,
             stage: Stage::TtMove,
             ply,
+        }
+    }
+
+    /// Generate and score the staged picker's noisy moves into its own list;
+    /// the full picker already holds its moves.
+    pub(super) fn fill_noisy(&mut self, searcher: &Searcher, board: &mut Board, threats: &Threats) {
+        if let Self::Staged {
+            moves,
+            noisy_len,
+            pinned,
+            tt_move,
+            ..
+        } = self
+        {
+            let mut noisy = MoveList::new();
+            *pinned = board.generate_legal_captures_pinned_into(&mut noisy);
+            for &mv in noisy.as_slice() {
+                if mv != *tt_move {
+                    moves.push(mv, searcher.noisy_score(board, threats, mv), 0, 0);
+                }
+            }
+            *noisy_len = moves.len();
         }
     }
 
@@ -601,7 +613,8 @@ impl Searcher {
     }
 
     /// Score a whole move list for the full picker: TT move, good noisy
-    /// moves, quiets, bad noisy moves.
+    /// moves, quiets, bad noisy moves. Appends to the caller's list: the list
+    /// is 4 KB, and returning it by value copied it at every node.
     pub(super) fn score_moves(
         &self,
         board: &Board,
@@ -609,8 +622,8 @@ impl Searcher {
         moves: &[Move],
         tt_move: Move,
         ply: usize,
-    ) -> ScoredMoveList {
-        let mut scored = ScoredMoveList::new();
+        scored: &mut ScoredMoveList,
+    ) {
         let mut ctx = None;
         for &mv in moves {
             if mv == tt_move {
@@ -629,19 +642,18 @@ impl Searcher {
                 scored.push(mv, score, 0, history);
             }
         }
-        scored
     }
 
     /// Score captures and promotions for quiescence and ProbCut: SEE sign
-    /// first, then the noisy score.
+    /// first, then the noisy score. Appends to the caller's list.
     pub(super) fn score_tactical_moves(
         &self,
         board: &Board,
         threats: &Threats,
         moves: &[Move],
         tt_move: Move,
-    ) -> ScoredMoveList {
-        let mut scored = ScoredMoveList::new();
+        scored: &mut ScoredMoveList,
+    ) {
         for &mv in moves {
             let good = !mv.is_capture() || board.see_ge(mv, 0);
             let noisy = self.noisy_score(board, threats, mv);
@@ -654,7 +666,6 @@ impl Searcher {
             };
             scored.push(mv, score, see, 0);
         }
-        scored
     }
 }
 
@@ -728,6 +739,19 @@ mod tests {
         assert!(selections_saved > 0, "the early exit never fired");
     }
 
+    /// A staged picker with its noisy moves, as the search builds it.
+    fn staged_filled(
+        searcher: &Searcher,
+        board: &mut Board,
+        threats: &Threats,
+        tt_move: Move,
+        ply: usize,
+    ) -> MovePicker {
+        let mut picker = MovePicker::staged(tt_move, ply);
+        picker.fill_noisy(searcher, board, threats);
+        picker
+    }
+
     fn drain(
         picker: &mut MovePicker,
         searcher: &Searcher,
@@ -764,7 +788,7 @@ mod tests {
             legal.sort_unstable_by_key(|m| m.0);
             let tt_candidates = [Move::NULL, legal[0], legal[legal.len() - 1]];
             for tt in tt_candidates {
-                let mut staged = MovePicker::staged(&searcher, &mut board, &threats, tt, 0);
+                let mut staged = staged_filled(&searcher, &mut board, &threats, tt, 0);
                 let mut got: Vec<Move> = drain(&mut staged, &searcher, &mut board, &threats)
                     .into_iter()
                     .map(|(mv, _)| mv)
@@ -772,7 +796,8 @@ mod tests {
                 got.sort_unstable_by_key(|m| m.0);
                 assert_eq!(got, legal, "staged picker, fen {fen}, tt {tt}");
 
-                let scored = searcher.score_moves(&board, &threats, &legal, tt, 0);
+                let mut scored = ScoredMoveList::new();
+                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored);
                 let mut full = MovePicker::full(scored, tt);
                 let mut got: Vec<Move> = drain(&mut full, &searcher, &mut board, &threats)
                     .into_iter()
@@ -800,7 +825,7 @@ mod tests {
             let mut board = Board::from_fen(fen).expect("valid FEN");
             let threats = board.threats();
             let legal = board.generate_legal_moves();
-            let mut picker = MovePicker::staged(&searcher, &mut board, &threats, legal[0], 0);
+            let mut picker = staged_filled(&searcher, &mut board, &threats, legal[0], 0);
             let emitted = drain(&mut picker, &searcher, &mut board, &threats);
             assert_eq!(emitted[0].0, legal[0], "fen {fen}");
             let emitted = &emitted[1..];
@@ -826,7 +851,7 @@ mod tests {
         let threats = board.threats();
         let losing = board.parse_move("c3d5").expect("legal capture");
         assert!(!board.see_ge(losing, 0));
-        let mut picker = MovePicker::staged(&searcher, &mut board, &threats, Move::NULL, 0);
+        let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let emitted = drain(&mut picker, &searcher, &mut board, &threats);
         let position = emitted
             .iter()
@@ -848,7 +873,7 @@ mod tests {
         let mut board = Board::from_fen("4k3/8/4p3/3p4/8/2N5/8/4K3 w - - 0 1").expect("valid FEN");
         let threats = board.threats();
         let losing = board.parse_move("c3d5").expect("legal capture");
-        let mut picker = MovePicker::staged(&searcher, &mut board, &threats, Move::NULL, 0);
+        let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let mut emitted = Vec::new();
         let mut skip = false;
         while let Some(picked) = picker.next(&searcher, &mut board, &threats, skip) {
@@ -880,7 +905,7 @@ mod tests {
         let mut board = Board::from_fen("4k3/1P6/8/8/8/8/8/R3K3 w - - 0 1").expect("valid FEN");
         let threats = board.threats();
         let check_info = board.check_info();
-        let mut picker = MovePicker::staged(&searcher, &mut board, &threats, Move::NULL, 0);
+        let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let first = picker
             .next(&searcher, &mut board, &threats, false)
             .expect("a quiet first");
@@ -914,8 +939,8 @@ mod tests {
         let board = Board::from_fen("4k3/8/8/2p5/3N4/8/8/K6R w - - 0 1").expect("valid FEN");
         let threats = board.threats();
         let legal = board.generate_legal_moves();
-        let scored_list = searcher.score_moves(&board, &threats, &legal, Move::NULL, 0);
-        let mut scored = scored_list;
+        let mut scored = ScoredMoveList::new();
+        searcher.score_moves(&board, &threats, &legal, Move::NULL, 0, &mut scored);
         let score_of = |uci: &str, scored: &mut ScoredMoveList| {
             let mv = board.parse_move(uci).expect("legal");
             scored

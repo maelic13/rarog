@@ -7,7 +7,9 @@ use crate::infra;
 use crate::tt::{Bound, TtProbe, TtStore};
 
 use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
-use super::movepick::{MovePicker, Stage, diversify_root_scores, is_noisy, pick_next};
+use super::movepick::{
+    MovePicker, ScoredMoveList, Stage, diversify_root_scores, is_noisy, pick_next,
+};
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
 /// The evaluator's middlegame material, for the diag census of the margin
@@ -1374,8 +1376,14 @@ impl Searcher {
                     };
                 let mut captures = MoveList::new();
                 board.generate_legal_captures_into(&mut captures);
-                let mut scored =
-                    self.score_tactical_moves(board, &threats, captures.as_slice(), tt_move);
+                let mut scored = ScoredMoveList::new();
+                self.score_tactical_moves(
+                    board,
+                    &threats,
+                    captures.as_slice(),
+                    tt_move,
+                    &mut scored,
+                );
                 let mut searched_here = 0i32;
                 for index in 0..scored.len() {
                     if searched_here >= move_cap {
@@ -1567,8 +1575,14 @@ impl Searcher {
                 let base_depth = (depth - 4 - improving_i).max(0);
                 let mut captures = MoveList::new();
                 board.generate_legal_captures_into(&mut captures);
-                let mut scored =
-                    self.score_tactical_moves(board, &threats, captures.as_slice(), tt_move);
+                let mut scored = ScoredMoveList::new();
+                self.score_tactical_moves(
+                    board,
+                    &threats,
+                    captures.as_slice(),
+                    tt_move,
+                    &mut scored,
+                );
                 let mut searched_here = 0i32;
                 for index in 0..scored.len() {
                     if searched_here >= move_cap {
@@ -1900,7 +1914,8 @@ impl Searcher {
                 legal_moves.as_slice()
             };
 
-            let mut scored = self.score_moves(board, &threats, legal_moves, tt_move, ply);
+            let mut scored = ScoredMoveList::new();
+            self.score_moves(board, &threats, legal_moves, tt_move, ply, &mut scored);
             // Order the root list from the pool's view: a move another thread
             // already proved at a deeper depth goes first. The rotation below
             // diversifies on top of it.
@@ -1919,8 +1934,9 @@ impl Searcher {
             }
             MovePicker::full(scored, tt_move)
         } else {
-            MovePicker::staged(self, board, &threats, tt_move, ply)
+            MovePicker::staged(tt_move, ply)
         };
+        move_picker.fill_noisy(self, board, &threats);
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
         let mut searched = 0usize;
@@ -2918,11 +2934,12 @@ impl Searcher {
 
         let mut best_move = Move::NULL;
         let threats = board.threats();
-        let mut scored = if in_check {
-            self.score_moves(board, &threats, moves.as_slice(), tt_move, ply)
+        let mut scored = ScoredMoveList::new();
+        if in_check {
+            self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
         } else {
-            self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move)
-        };
+            self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
+        }
         // How many evasions each in-check qnode scores.
         #[cfg(feature = "diag")]
         if in_check {
