@@ -1820,7 +1820,28 @@ diagnostics; two rejections stop B.
           local 6-man tests; a timing check under `60000+600`; ponder-on
           smoke. Behind no feature flag: nothing changes without tables
           except the rule-50 downgrade, which the bench never reaches.
-        - **B.5.2.2 Tablebase-enabled gate — `V`.** Designed and run by the
+          **Done 2026-10-01** (`9354903` to `51b3fca`, fixture `6a475fc`,
+          tooling `ddeffc7`; the record's implementation section). Bench
+          11,171,726 / EBF 2.512 after every commit. **The stop rule fired
+          once:** moving every band value by ply in the table changed the
+          bench (11,189,746). ProbCut's one-sided `!is_win(beta)` guard
+          lets a fail-hard quiescence store window bounds inside the band,
+          so the band is reachable without tables. The table therefore
+          keeps band values as stored; tablebase distances in it stay
+          path-relative, with no rule-50 downgrade, as before. Separating
+          them is an open card needing its own measurement. Checks: seven
+          fixture tests in CI (also from a clean checkout), the local 6-man
+          test, every tablebase root within its optimum plus the box at
+          `60000+600`, and a 200-cycle scripted ponder smoke with tables
+          (0 failures, wire proved). One pre-existing flaky threaded-output
+          test failed once without tables and passed 30 reruns.
+        - **B.5.2.2 Tablebase-enabled gate — `V`.** **Registered
+          2026-10-01:** RAR-S93, the activation read (endgame cohort,
+          1,500 games, correctness rule), then RAR-S94, the `[-5,5]` gate
+          with tables on UHO (cap 6,000 pairs). Binaries
+          `rarog-b52cand-pext-pgo.exe` (`13AA4824…`) and
+          `rarog-b52base-pext-pgo.exe` (`A7C9EE6C…`); dry runs at policy;
+          the maintainer's. Designed and run by the
           maintainer. It must see an identical Syzygy path on both sides;
           an activation read (tablebase-root and in-search hit shares,
           time per move at tablebase roots, extension notices); conversion
@@ -1957,9 +1978,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.5.2 | READY_FOR_IMPLEMENTATION | I2 | Investigated 2026-10-01 (`analysis/b52_research_2026-10-01.md`): seven parts ready as one unit, three `NO_CHANGE`; implementation B.5.2.1, then the tablebase-enabled gate B.5.2.2; before B.9 |
-| B.5.2.1 | READY_FOR_IMPLEMENTATION | I2 | The research record's handoff: ranks, root set, bound-correct probe, band and TT, display, time cap, extension, ponder move, fixture tests; bench exact without tables |
-| B.5.2.2 | RESEARCH | V | The maintainer designs the tablebase-enabled gate from the record's requirements; repair bracket `[-5,5]` proposed; after B.5.2.1 |
+| B.5.2 | GAME_GATE | V | Implemented 2026-10-01 (B.5.2.1); waits on RAR-S93 and RAR-S94; before B.9 |
+| B.5.2.2 | GAME_GATE | V | RAR-S93 (the activation read on the endgame cohort, correctness rule) then RAR-S94 (the `[-5,5]` gate with tables, cap 6,000 pairs); binaries built, dry runs at policy, the maintainer's |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
