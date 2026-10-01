@@ -2110,6 +2110,49 @@ diagnostics; two rejections stop B.
         interleaved `nps_multibuild.ps1` against the +0.5% floor;
       - each also needs an exact bench, debug and release tests, fmt,
         clippy and the allocation guard.
+      The checklist below numbers every step, checks included; a check
+      step carries the state of the candidate it qualifies.
+        - **B.7.2.1 Candidate 1, the quiet-stage early exit — `I1`.**
+          Count the quiets that survive a skip when they are appended;
+          under `skip_quiets` with none left, leave the stage without
+          selecting. A unit test drives the new quiet stage against the
+          old loop as its oracle. **Done 2026-10-01 (`5fe42cf`):**
+          - the test covers 2,000 random lists with tied scores and a
+            skip from a random emission, and requires identical
+            emissions and that the exit fires;
+          - a planted exit on any skip fails it.
+        - **B.7.2.2 Candidate 1, live wire — `V`.** A counter build over
+          `bench` must show the picker's work fall by exactly the removed
+          selections. **Done 2026-10-01:**
+          - scanned elements fell from 578,629,253 to 231,776,254;
+          - selections fell from 41,073,150 to 14,801,505;
+          - both equal the prediction to the unit.
+        - **B.7.2.3 Candidate 1, deterministic qualification — `V`.**
+          **Done 2026-10-01:**
+          - bench 11,171,726 / EBF 2.512, legacy 7,590,542 / 2.473, both
+            exact;
+          - `cargo fmt --check`, and `cargo clippy --all-features
+            --all-targets` at zero warnings;
+          - debug 376 and release 377 tests pass (2 ignored, the long
+            tier), the allocation guard and the picker tests included.
+        - **B.7.2.4 Candidate 1, pooled-PGO NPS — `V`.**
+          `nps_build_pool.ps1` for the head before `5fe42cf` and for
+          `5fe42cf`, then interleaved `nps_multibuild.ps1` on an idle host,
+          read against the +0.5% floor and the frozen +4% to +9%
+          prediction.
+        - **B.7.2.5 Candidate 2, the in-place scored list — `I1`.** Fill
+          the scored move list in the picker's own storage through `&mut`
+          instead of returning it by value. The disassembly must show no
+          4,104-byte `memcpy` left in per-node code.
+        - **B.7.2.6 Candidate 2, deterministic qualification — `V`.**
+          Exact bench and legacy bench, fmt, clippy at zero warnings,
+          debug and release suites with the allocation guard.
+        - **B.7.2.7 Candidate 2, pooled-PGO NPS — `V`.** As B.7.2.4,
+          against the floor and the frozen +1% to +3% prediction.
+        - **B.7.2.8 Re-profile and decide — `V`.** The same ETW capture
+          after candidates 1 and 2 (maintainer, elevated). Then either
+          the scan layout (candidate 3) goes forward under the candidate
+          rule, or B.7.2 closes.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2187,6 +2230,11 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Profiled 2026-10-01 (RAR-P27): two exact candidates, the quiet-stage early exit (ceiling about +8.7%) and the in-place scored list (about +3.0%), each an engine commit measured against the +0.5% floor; the scan layout waits for a re-profile |
+| B.7.2.4 | LOCAL_QUALIFIED | V | Candidate 1 qualified locally (`5fe42cf`); the pooled-PGO NPS read needs an idle host |
+| B.7.2.5 | READY_FOR_IMPLEMENTATION | I1 | After B.7.2.4 |
+| B.7.2.6 | READY_FOR_IMPLEMENTATION | V | Qualifies B.7.2.5 |
+| B.7.2.7 | READY_FOR_IMPLEMENTATION | V | Measures B.7.2.5 |
+| B.7.2.8 | RESEARCH | V | After B.7.2.4 and B.7.2.7 |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
