@@ -88,6 +88,7 @@ fn winning_moves(fen: &str) -> Vec<Move> {
 #[test]
 fn fixture_tablebase_root_probes_display_and_extension() {
     kqvk_win_reports_the_tablebase_score_and_a_mate_line();
+    a_tablebase_score_is_never_printed_as_a_bound();
     kqvk_loss_reports_a_tablebase_loss_and_a_ponder_move();
     kqvk_near_the_rule50_horizon_shows_a_cursed_win();
     a_capture_into_the_tables_is_scored_through_in_search_probes();
@@ -123,6 +124,20 @@ fn kqvk_win_reports_the_tablebase_score_and_a_mate_line() {
         pv_second,
         "ponder is the PV's second move"
     );
+}
+
+/// The tables' score is exact however a window failed, so no line shows it as
+/// a bound. This root's aspiration windows fail from depth 5 on.
+fn a_tablebase_score_is_never_printed_as_a_bound() {
+    let fen = "8/8/8/8/8/2k5/8/KQ6 w - - 0 1";
+    let (raw, _, _) = search(fen, |o| o.limits.depth = Some(8));
+    let shown: Vec<&String> = raw
+        .iter()
+        .filter(|line| line.contains(" score cp 20000 "))
+        .collect();
+    assert!(shown.len() >= 8, "a line per iteration at least: {raw:#?}");
+    let bounded: Vec<&&String> = shown.iter().filter(|line| line.contains("bound")).collect();
+    assert!(bounded.is_empty(), "{bounded:#?}");
 }
 
 /// KQ v K, black to move: a tablebase loss, still a ponder move and a legal

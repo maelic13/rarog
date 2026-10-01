@@ -1585,11 +1585,11 @@ impl Searcher {
         }
     }
 
-    /// The score a line prints: at a tablebase root its move's display score,
-    /// unless the search proved a mate; otherwise the search's own.
-    fn displayed_score(&self, root_move: Option<&Move>, score: i32) -> i32 {
+    /// The tables' display score for a root move where it replaces the
+    /// search's: at a tablebase root, unless the search proved a mate.
+    fn tb_root_score(&self, root_move: Option<&Move>, score: i32) -> Option<i32> {
         if score.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY) {
-            return score;
+            return None;
         }
         root_move
             .and_then(|mv| {
@@ -1598,7 +1598,23 @@ impl Searcher {
                     .iter()
                     .find(|(tb_move, _)| tb_move == mv)
             })
-            .map_or(score, |&(_, display)| display)
+            .map(|&(_, display)| display)
+    }
+
+    /// The score a line prints: the tables' where they replace the search's,
+    /// otherwise the search's own.
+    fn displayed_score(&self, root_move: Option<&Move>, score: i32) -> i32 {
+        self.tb_root_score(root_move, score).unwrap_or(score)
+    }
+
+    /// The bound a line prints: none beside the tables' score, which is exact
+    /// whichever way the search's window failed.
+    fn displayed_bound(&self, root_move: Option<&Move>, score: i32, bound: RootBound) -> RootBound {
+        if self.tb_root_score(root_move, score).is_some() {
+            RootBound::Exact
+        } else {
+            bound
+        }
     }
 
     /// What a line prints: its displayed score and PV. Without a clock the PV
@@ -1630,7 +1646,7 @@ impl Searcher {
                     .last_reported_move
                     .set(line.pv.first().copied().unwrap_or(Move::NULL));
             }
-            let bound = match line.bound {
+            let bound = match self.displayed_bound(line.pv.first(), line.score, line.bound) {
                 RootBound::Exact => "",
                 RootBound::Lower => " lowerbound",
                 RootBound::Upper => " upperbound",
@@ -1886,6 +1902,7 @@ impl Searcher {
         bound: RootBound,
         pv: &[Move],
     ) {
+        let bound = self.displayed_bound(pv.first(), score, bound);
         let (shown, pv) = self.shown_line(pv, score);
         self.send_shown_info_line(depth, seldepth, shown, bound, &pv);
     }
@@ -2055,6 +2072,31 @@ mod tests {
         // The last line now names d2d4, so nothing more is printed.
         searcher.report_result_line(&result);
         assert_eq!(lines.lock().unwrap().len(), 2);
+    }
+
+    /// A tablebase score is exact however the search's window failed, so its
+    /// line carries no bound; a searched score keeps the bound it has.
+    #[test]
+    fn a_tablebase_root_score_prints_without_a_bound() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        searcher.td.tb_root_scores = vec![(e2e4, TB_VALUE)];
+        searcher.send_full_info_line(5, 11, 41, RootBound::Upper, &[e2e4]);
+        searcher.send_full_info_line(5, 11, 41, RootBound::Upper, &[d2d4]);
+        // A mate the search proved is its own score and keeps its bound.
+        searcher.send_full_info_line(5, 11, MATE_SCORE - 3, RootBound::Lower, &[e2e4]);
+        let printed = lines.lock().unwrap().clone();
+        assert!(printed[0].contains(" score cp 20000 nodes "), "{printed:?}");
+        assert!(
+            printed[1].contains(" score cp 41 upperbound nodes "),
+            "{printed:?}"
+        );
+        assert!(
+            printed[2].contains(" score mate 2 lowerbound nodes "),
+            "{printed:?}"
+        );
     }
 
     #[test]
