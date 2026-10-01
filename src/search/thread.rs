@@ -37,6 +37,9 @@ pub(super) struct ThreadData {
     /// records below so move-membership and SMP hot reads stay cache-compact.
     pub(super) root_moves: Vec<Move>,
     pub(super) root_move_records: Vec<RootMove>,
+    /// At a tablebase root, each legal move's displayed score; empty
+    /// elsewhere. Only the reporting thread fills it.
+    pub(super) tb_root_scores: Vec<(Move, i32)>,
     /// Index of the MultiPV line being searched; 0 outside MultiPV, where the
     /// root reads and writes the table as an ordinary node.
     pub(super) multipv_line: usize,
@@ -121,6 +124,7 @@ impl Default for ThreadData {
             stack: PlyArray::new(StackEntry::default()),
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
+            tb_root_scores: Vec::new(),
             multipv_line: 0,
             hist: HistoryTables::default(),
             corr: CorrectionTables::default(),

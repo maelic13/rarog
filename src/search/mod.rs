@@ -347,11 +347,19 @@ fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
     u128::from(nodes) * 1000 / elapsed_ms.max(1)
 }
 
+/// What a tablebase win at the root prints, in centipawns; one less per ply
+/// further from the root, so a GUI reads a decided game, not a 300-pawn
+/// evaluation.
+const TB_DISPLAY_CP: i32 = 20_000;
+
 fn format_score(score: i32) -> String {
     if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
         format!("mate {}", (MATE_SCORE - score + 1) / 2)
     } else if score <= -MATE_SCORE + infra::to_i32(MAX_PLY) {
         format!("mate -{}", (MATE_SCORE + score + 1) / 2)
+    } else if score.abs() >= TB_WIN_SCORE {
+        let cp = TB_DISPLAY_CP - (TB_VALUE - score.abs());
+        format!("cp {}", score.signum() * cp)
     } else {
         format!("cp {score}")
     }
@@ -601,6 +609,7 @@ impl Searcher {
         }
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.root_iteration_nodes = 0;
+        self.td.tb_root_scores.clear();
         self.td.root_best_nodes = 0;
         self.td.root_best_effort = 0.0;
         self.td.optimism = [0; 2];
@@ -684,6 +693,16 @@ impl Searcher {
             .copied()
             .filter(|&mv| rank_of(mv) == Some(best_rank))
             .collect();
+        let use_rule50 = self.shared.syzygy.fifty_move_rule;
+        self.td.tb_root_scores.clear();
+        self.td
+            .tb_root_scores
+            .extend(ranking.moves.iter().map(|ranked| {
+                (
+                    ranked.mv,
+                    syzygy::display_score(ranked.rank, ranking.dtz, use_rule50),
+                )
+            }));
         self.apply_tb_root(TbRootDecision {
             ranked_from: candidates.len(),
             search_probes_off: ranking.dtz || best_rank <= 0,
@@ -1397,6 +1416,22 @@ impl Searcher {
         }
     }
 
+    /// The score a line prints: at a tablebase root its move's display score,
+    /// unless the search proved a mate; otherwise the search's own.
+    fn displayed_score(&self, root_move: Option<&Move>, score: i32) -> i32 {
+        if score.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+            return score;
+        }
+        root_move
+            .and_then(|mv| {
+                self.td
+                    .tb_root_scores
+                    .iter()
+                    .find(|(tb_move, _)| tb_move == mv)
+            })
+            .map_or(score, |&(_, display)| display)
+    }
+
     /// One `info` line per reported MultiPV line, numbered from 1.
     fn send_multipv_info(&self, lines: &[ReportedLine]) {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
@@ -1422,7 +1457,7 @@ impl Searcher {
                 line.depth.max(1),
                 line.seldepth,
                 index + 1,
-                format_score(line.score),
+                format_score(self.displayed_score(line.pv.first(), line.score)),
                 bound,
                 nodes,
                 nps,
@@ -1661,6 +1696,7 @@ impl Searcher {
         bound: RootBound,
         pv: &[Move],
     ) {
+        let shown = self.displayed_score(pv.first(), score);
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
@@ -1679,7 +1715,7 @@ impl Searcher {
             "info depth {} seldepth {} multipv 1 score {}{} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
             depth,
             seldepth,
-            format_score(score),
+            format_score(shown),
             bound,
             nodes,
             nps,

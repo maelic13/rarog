@@ -332,6 +332,34 @@ pub(crate) fn rank_root_moves(
     Some(ranking)
 }
 
+/// The score a ranked root move shows, in search units: a clean win the
+/// tablebase value at the root, a win the rule-50 counter may spoil 1 to 49
+/// centipawns growing toward the real win, a draw 0, losses mirrored. A WDL
+/// ranking knows no distance, so its cursed results show 2.
+pub(crate) fn display_score(rank: i32, dtz: bool, use_rule50: bool) -> i32 {
+    use crate::tt::TB_VALUE;
+    const PAWN: i32 = 100;
+    if !dtz {
+        return match rank {
+            0 => 0,
+            rank if rank.abs() >= MAX_DTZ || !use_rule50 => rank.signum() * TB_VALUE,
+            rank => rank.signum() * 2,
+        };
+    }
+    let bound = if use_rule50 { MAX_DTZ / 2 - 100 } else { 1 };
+    if rank >= bound {
+        TB_VALUE
+    } else if rank > 0 {
+        (rank - (MAX_DTZ / 2 - 200)).max(3) * PAWN / 200
+    } else if rank == 0 {
+        0
+    } else if rank > -bound {
+        (rank + (MAX_DTZ / 2 - 200)).min(-3) * PAWN / 200
+    } else {
+        -TB_VALUE
+    }
+}
+
 fn rank_by_dtz(board: &Board, use_rule50: bool, rank_dtz: bool) -> Option<RootRanking> {
     let pos = tb_position(board);
     let mut results = [TB_RESULT_FAILED; TB_MAX_MOVES + 1];
