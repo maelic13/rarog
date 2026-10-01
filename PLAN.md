@@ -1862,18 +1862,24 @@ diagnostics; two rejections stop B.
             641 page faults. That is consistent with a cold table read in an
             in-search probe both binaries share.
 
-          **Not closed; maintainer decision pending.** The maintainer chose
-          a predictive box (start no ply that the slowest ply so far could
-          not finish) and a RAR-S93 re-run on 2026-10-01; its premise failed
-          before implementation. Replayed on the same plies it leaves 17 of
-          the 29 engine-side overruns in 143 replayed extensions, because
-          the slow call is not predictable from earlier ones. A box checked
-          between Fathom calls can overrun by one call, so it cannot meet
-          the frozen rule. The options are: close with the rule recorded as
-          unsatisfiable for such a box; run no extension under a clock (the
-          ponder move falls back to the TT); or make the extension stop
-          waiting for a call at the deadline, which is a new mechanism and
-          goes back to `RESEARCH`. The cold-read
+          **Closed 2026-10-01 by the maintainer; B.5.2.1 kept.** The
+          maintainer first chose a predictive box (start no ply that the
+          slowest ply so far could not finish); its premise failed in a
+          replay before implementation: on the same plies it leaves 17 of
+          the 29 engine-side overruns in 143 replayed extensions, because a
+          slow call is not predictable from earlier ones. A box checked
+          between Fathom calls can overrun by one call, so the frozen rule
+          is recorded as unsatisfiable for such a box. The overrun is
+          bounded by one call, and where the time reserve binds the box is
+          0. Not taken: no extension under a clock (the ponder move would
+          fall back to the TT), and an extension that stops waiting at the
+          deadline (a new mechanism; `RESEARCH` if ever wanted).
+          **Cause of the slow calls** (same artifacts): the 151 GB of
+          tables do not fit the host's 128 GB of RAM, and slow calls fall
+          as the page cache warms (root calls over 5 ms: 0.38% on a cold
+          pass, 0.04% after a warm one, one engine). Fourteen engines at
+          once do not raise that rate but stretch the worst call from 14
+          to 44 ms. The cold-read
           stall is D.3's (Syzygy probe policy). It must see an identical Syzygy path on both sides;
           an activation read (tablebase-root and in-search hit shares,
           time per move at tablebase roots, extension notices); conversion
@@ -2057,8 +2063,6 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.5.2 | GAME_GATE | V | Implemented 2026-10-01 (B.5.2.1); waits on RAR-S93 and RAR-S94; before B.9 |
-| B.5.2.2 | GAME_GATE | V | Played 2026-10-01: RAR-S93 converted 453/453 on both sides; RAR-S94 H1 at 776 pairs, +11.4 ± 8.5 Elo. Two stop conditions fired by their letter (50 moves over optimum plus box, by single Fathom calls of up to 16 ms that no box between calls can predict; one cold-read time loss at a 7-man root); closure waits on the maintainer: the predictive box's premise failed in a replay before implementation |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
@@ -2299,7 +2303,10 @@ loss).
 
   **Input from B.5.2.2:** a cold Syzygy page read can hold an in-search
   probe for about 54 ms (one RAR-S94 time loss at 58 ms on the clock).
-  Probe policy under a short clock is this leaf's.
+  Probe policy under a short clock is this leaf's. Slow probes are reads
+  the page cache misses (151 GB of tables against 128 GB of RAM);
+  concurrent engines stretch the tail without raising its rate
+  (`analysis/artifacts/b52-box-replay-2026-10-01/`).
   Deterministic tests; zero crashes over the pool tournaments. Owns the last
   move of the target layout: `engine.rs`, `engine_command.rs`,
   `uci_protocol.rs`, `search_options.rs` and `bench.rs`/`wac.rs` go under
