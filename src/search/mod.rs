@@ -944,6 +944,7 @@ impl Searcher {
             }
             // Optimism for this iteration, from the running average of the
             // completed scores (the donors' form); zero before the first.
+            #[cfg(feature = "b2core")]
             self.set_optimism(board.side_to_move(), completed_depth, prev_avg_score);
             // Termination by construction: see `Aspiration`.
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
@@ -1226,6 +1227,7 @@ impl Searcher {
     /// score, the other side by the negative, both zero while the switch is
     /// off or no iteration has completed. The consumer is the corrected
     /// evaluation, which weights it by the material on the board.
+    #[cfg(feature = "b2core")]
     fn set_optimism(&mut self, root_side: Color, completed_depth: usize, avg: f64) {
         let p = &self.cfg.core;
         let value = if p.optimism == 0 || completed_depth == 0 {
