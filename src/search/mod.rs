@@ -707,6 +707,13 @@ impl Searcher {
             ranked_from: candidates.len(),
             search_probes_off: ranking.dtz || best_rank <= 0,
         });
+        // DTZ has decided the result, and the search only chooses among
+        // result-equal moves, so it may not run past the soft budget: a won
+        // ending's fail-high cascade otherwise runs to the hard limit (30 s of
+        // a 60 s clock measured on a rook ending).
+        if ranking.dtz && self.cfg.limits.optimum_ms.is_finite() {
+            self.cfg.limits.maximum_ms = self.cfg.limits.optimum_ms;
+        }
         Some(root_moves)
     }
 
