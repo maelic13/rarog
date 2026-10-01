@@ -1813,6 +1813,13 @@ diagnostics; two rejections stop B.
       a switch, reads the margins' populations at stride 1 and one
       2,000-game categorical run (RAR-S80's rule), and ends
       `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`. After B.5.3, before B.6.
+      **Card written and the switch built 2026-10-01**
+      (`analysis/b54_research_2026-10-01.md`, `d754577`): `CoreOptimism`
+      default off and neutral, `CoreOptimismScale` 52 and `CoreOptimismDiv`
+      92 (Reckless's values at the 0.457 ratio), the material weighting
+      `(1200 + material)/21000`; on, the bench needs 29% more nodes and
+      reverse futility, razoring and ProbCut fire less. RAR-S92 registers
+      the 2,000-game read; the maintainer's.
 - **B.6 Search SPSA — `V`.** One joint SPSA over the coordinates the four
   clusters left live, only if B.0's curvature evidence and the cluster
   results justify it. Registered surface; PGO bake; SPRT `[0,3]`.
@@ -1892,7 +1899,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.5.2 | RESEARCH | R2 | Added 2026-09-27: tablebase root, in-search probes and PV the Stockfish way; investigation first (`analysis/tb_root_pv_2026-09-27.md`), any time between leaves; implementation after B.5's gate, before B.9, accepted by a tablebase-enabled gate the maintainer designs |
-| B.5.4 | RESEARCH | R3 | Escalated from `R2` 2026-10-01 by maintainer decision. Optimism as a research card: switch experiment, stride-1 populations, one categorical game read; after B.5.3, before B.6 |
+| B.5.4 | GAME_GATE | R3 | Card written and the switch built 2026-10-01 (`d754577`); RAR-S92's 2,000-game read of `CoreOptimism=1` is the maintainer's; rule RAR-S80's |
 | B.6 | RESEARCH | V | Conditional on curvature evidence |
 | B.7.2 | RESEARCH | I1 | After B.6 or its skip; B.7.1's allocation guard is its floor |
 | B.8 | RESEARCH | I1 | After B.7 |
