@@ -58,7 +58,12 @@ static GLOBAL: CountingAllocator = CountingAllocator;
 
 /// Plies between the two searches; each extra ply is one more iteration.
 const SHALLOW_DEPTH: u32 = 5;
-const DEEP_DEPTH: u32 = 13;
+/// The contract is the release binary's, so release searches the full depth.
+/// Debug stops two plies short, in about a third of the time: that tree
+/// still grows more than twentyfold and fires every per-node diag counter the
+/// full one does, except a depth band of the null-move cut and an endgame
+/// census entry with no code path of its own.
+const DEEP_DEPTH: u32 = if cfg!(debug_assertions) { 11 } else { 13 };
 
 /// Allocations one iteration may add, per searching thread. The root node
 /// builds its move lists on every visit and each iteration reports a line;

@@ -86,6 +86,7 @@ fn aspiration_terminates_on_sudden_mate_scores() {
 }
 
 #[test]
+#[ignore = "long tier: 300-position tactics floor at fixed depth; run by name with --ignored in release (PROCESS, Common commands)"]
 fn wac_solved_count_stays_above_floor() {
     let positions = wac_positions();
     assert_eq!(positions.len(), 300);

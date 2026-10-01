@@ -142,6 +142,27 @@ jobs:
             cargo test -p rarog
           fi
 
+      # The long tier: tests ignored in the suite because they measure play
+      # rather than check a contract, run here by exact name so no other
+      # ignored test is swept in. Two must run: a filter that matched nothing
+      # would pass with zero tests. PROCESS's "Common commands" names the same
+      # command for release qualification.
+      - name: cargo test — long tier, default features (release)
+        if: matrix.profile == 'release'
+        shell: bash
+        run: |
+          status=0
+          cargo test -p rarog --release --test endgames --test wac -- --ignored --exact \
+            kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor \
+            > long-tier.log 2>&1 || status=$?
+          cat long-tier.log
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          ran=$(grep -c '^test .* \.\.\. ok' long-tier.log || true)
+          if [ "$ran" -ne 2 ]; then
+            echo "::error::the long tier ran $ran tests, expected 2"
+            exit 1
+          fi
+
       - name: cargo test — engine, legacy search (${{ matrix.profile }})
         shell: bash
         run: |

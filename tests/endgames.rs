@@ -310,6 +310,7 @@ fn syzygy_drawn_positions_are_never_claimed_as_forced_mate() {
 }
 
 #[test]
+#[ignore = "long tier: engine playouts to mate, a strength measurement; run by name with --ignored in release (PROCESS, Common commands)"]
 fn kbnk_positions_are_driven_to_mate() {
     // Thin-sample refusal (PLAN 4.10.4). Without a count, an EPD that stopped
     // producing `kbnk-mate` rows -- a rename, a parse change, a bad filter --
