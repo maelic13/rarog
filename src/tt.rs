@@ -9,6 +9,16 @@ use crate::eval::{MATE_SCORE, VALUE_NONE};
 use crate::infra;
 
 const MAX_PLY: i32 = 128;
+/// The decisive band's floor: a tablebase win or anything better. Below
+/// the mate band (`MATE_SCORE - MAX_PLY` and up) lies the tablebase band,
+/// `TB_VALUE - ply` for a win found `ply` plies from the root. Window
+/// arithmetic near mate scores also lands in it (a fail-hard quiescence
+/// stores ProbCut's `beta + margin` at a losing beta), so the table keeps
+/// the band's values as stored: moving them by ply changes the search
+/// without tablebases.
+pub(crate) const TB_WIN_SCORE: i32 = MATE_SCORE - 2 * MAX_PLY;
+/// A tablebase win at the root; one below the mate band.
+pub(crate) const TB_VALUE: i32 = MATE_SCORE - MAX_PLY - 1;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
 // Bit 0x08 is free and deliberately unused, so the 4-bit age arithmetic
@@ -574,6 +584,8 @@ fn current_entry(entry: TtEntry, age: u8) -> bool {
     entry.is_occupied() && (entry.flag_age & AGE_MASK) == age
 }
 
+/// A mate score is stored as its distance from the node rather than from the
+/// root. Tablebase-band values are stored as they are; see [`TB_WIN_SCORE`].
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {
     if score >= MATE_SCORE - MAX_PLY {
         score + crate::infra::to_i32(ply)
@@ -584,15 +596,19 @@ pub fn score_to_tt(score: i32, ply: usize) -> i32 {
     }
 }
 
+/// The inverse of [`score_to_tt`]. A mate further away than the rule-50
+/// counter allows may be false, through the counter or a graph-history path,
+/// so it reads back as the highest score that is not decisive.
 pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
+    let horizon = 100 - i32::from(halfmove_clock.min(100));
     if score >= MATE_SCORE - MAX_PLY {
-        if MATE_SCORE - score > 100 - halfmove_clock.min(100) as i32 {
-            return MATE_SCORE - MAX_PLY - 1;
+        if MATE_SCORE - score > horizon {
+            return TB_WIN_SCORE - 1;
         }
         score - crate::infra::to_i32(ply)
     } else if score <= -MATE_SCORE + MAX_PLY {
-        if MATE_SCORE + score > 100 - halfmove_clock.min(100) as i32 {
-            return -MATE_SCORE + MAX_PLY + 1;
+        if MATE_SCORE + score > horizon {
+            return -TB_WIN_SCORE + 1;
         }
         score + crate::infra::to_i32(ply)
     } else {
@@ -1013,8 +1029,50 @@ mod tests {
         AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, LocalTable, PV_BIT, TranspositionTable, TtEntry,
         TtStorage, entry_quality,
     };
-    use super::{Bound, TtProbe};
+    use super::{Bound, TB_VALUE, TB_WIN_SCORE, TtProbe, score_from_tt, score_to_tt};
     use crate::eval::{MATE_SCORE, VALUE_NONE};
+
+    #[test]
+    fn decisive_scores_round_trip_through_the_table_at_any_ply() {
+        for ply in [0usize, 1, 127] {
+            let p = i32::try_from(ply).expect("small ply");
+            for score in [
+                TB_VALUE - p,
+                -(TB_VALUE - p),
+                MATE_SCORE - p - 3,
+                -(MATE_SCORE - p - 3),
+                TB_WIN_SCORE - 1,
+                -(TB_WIN_SCORE - 1),
+                0,
+                731,
+            ] {
+                assert_eq!(
+                    score_from_tt(score_to_tt(score, ply), ply, 0),
+                    score,
+                    "{score} at {ply}"
+                );
+            }
+        }
+        // Every tablebase value at every ply is decisive and below the mates.
+        for ply in 0..128 {
+            let win = TB_VALUE - ply;
+            assert!((TB_WIN_SCORE..MATE_SCORE - 128).contains(&win), "{win}");
+        }
+    }
+
+    #[test]
+    fn a_mate_beyond_the_rule50_horizon_reads_back_as_not_decisive() {
+        // A mate in 10 plies stored at the node: on the horizon at clock 90 and
+        // kept; past it at 91 and below the decisive band.
+        let (stored, ply) = (MATE_SCORE - 10, 3usize);
+        let p = i32::try_from(ply).expect("small ply");
+        assert_eq!(score_from_tt(stored, ply, 90), stored - p);
+        assert_eq!(score_from_tt(stored, ply, 91), TB_WIN_SCORE - 1);
+        assert_eq!(score_from_tt(-stored, ply, 90), -stored + p);
+        assert_eq!(score_from_tt(-stored, ply, 91), -TB_WIN_SCORE + 1);
+        // A tablebase-band value passes through unchanged at any clock.
+        assert_eq!(score_from_tt(TB_VALUE - 10, ply, 99), TB_VALUE - 10);
+    }
 
     /// Build a probe directly, bypassing `from_entry`, so a case can be stated
     /// without constructing a table and a matching key.

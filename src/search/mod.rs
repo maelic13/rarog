@@ -45,6 +45,7 @@ use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
+use crate::tt::{TB_VALUE, TB_WIN_SCORE};
 
 use node::build_lmr_table;
 #[cfg(feature = "b2core")]
@@ -72,8 +73,6 @@ const JITTER_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 const JITTER_STRIDE: u64 = 0x2545_F491_4F6C_DD1D;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // const-evaluated; MAX_PLY = 128
-const TB_WIN_SCORE: i32 = MATE_SCORE - (MAX_PLY as i32) * 2;
 /// Where a searcher writes its protocol output: the `info` line of each
 /// completed iteration and `info string` notices. The search formats lines and
 /// never touches stdout itself; the engine layer decides where they go.
@@ -1486,13 +1485,11 @@ impl Searcher {
 
     fn score_from_syzygy_wdl(&self, wdl: Wdl, ply: usize) -> i32 {
         match wdl {
-            Wdl::Win => TB_WIN_SCORE - infra::to_i32(ply),
-            Wdl::CursedWin if !self.shared.syzygy.fifty_move_rule => {
-                TB_WIN_SCORE - infra::to_i32(ply)
-            }
-            Wdl::Loss => -TB_WIN_SCORE + infra::to_i32(ply),
+            Wdl::Win => TB_VALUE - infra::to_i32(ply),
+            Wdl::CursedWin if !self.shared.syzygy.fifty_move_rule => TB_VALUE - infra::to_i32(ply),
+            Wdl::Loss => -TB_VALUE + infra::to_i32(ply),
             Wdl::BlessedLoss if !self.shared.syzygy.fifty_move_rule => {
-                -TB_WIN_SCORE + infra::to_i32(ply)
+                -TB_VALUE + infra::to_i32(ply)
             }
             Wdl::BlessedLoss | Wdl::Draw | Wdl::CursedWin => 0,
         }
