@@ -586,7 +586,9 @@ impl Searcher {
             result.pondermove = result.pv[1];
         }
         if emit_info {
-            if result.pv != searched {
+            // Without a clock the last iteration already printed this line
+            // extended; under a clock it is printed once here.
+            if result.pv != searched && deadline.is_some() {
                 self.send_shown_info_line(
                     result.depth.max(1),
                     result.seldepth,
