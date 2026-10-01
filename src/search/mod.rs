@@ -59,7 +59,9 @@ use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootD
 use stack::{PlyArray, StackEntry};
 use thread::ThreadData;
 use threads::WorkerPool;
-use time::{RuntimeLimits, compute_runtime_limits, tm_effort_factor, tm_instability_factor};
+use time::{
+    RuntimeLimits, TbExtension, compute_runtime_limits, tm_effort_factor, tm_instability_factor,
+};
 
 const MAX_DEPTH: usize = 100;
 
@@ -561,7 +563,7 @@ impl Searcher {
     /// Before `bestmove`: when the reported line's displayed score is a
     /// tablebase result, extend it through the tables, take the ponder move
     /// from it and print it. Under a clock the line gets its share of the
-    /// box, and none where the time reserve decided the hard limit.
+    /// box, and nothing when the clock is too short to risk a table read.
     fn finish_tb_line(&mut self, result: &mut SearchResult, lines: usize, emit_info: bool) {
         let Some(root) = self.td.tb_root_board.take() else {
             return;
@@ -573,13 +575,11 @@ impl Searcher {
         if !is_tb_band(shown) {
             return;
         }
-        let deadline = match self.cfg.limits.tb_extension_ms {
-            None => None,
-            Some(box_ms) => {
+        let deadline = match self.cfg.limits.tb_extension(self.elapsed_ms()) {
+            TbExtension::Skip => return,
+            TbExtension::Unbounded => None,
+            TbExtension::Boxed(box_ms) => {
                 let per_line = box_ms / f64::from(u32::try_from(lines).unwrap_or(u32::MAX));
-                if per_line <= 0.0 {
-                    return;
-                }
                 Some(Instant::now() + Duration::from_secs_f64(per_line / 1000.0))
             }
         };

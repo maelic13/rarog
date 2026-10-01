@@ -25,9 +25,44 @@ pub(super) struct RuntimeLimits {
     /// otherwise never sees.
     pub(super) analysis_mode: bool,
     /// The tablebase PV extension's time box in milliseconds, shared by the
-    /// reported lines; 0 where the time reserve decided the hard limit, and
-    /// `None` without a clock, where it runs unbounded.
+    /// reported lines; `None` without a clock, where it runs unbounded.
     pub(super) tb_extension_ms: Option<f64>,
+    /// The latest elapsed time at which the extension may still start: the
+    /// clock's hard ceiling less [`TB_EXTENSION_SLACK_OVERHEADS`] overheads.
+    /// Infinite where no clock is known.
+    pub(super) tb_extension_latest_start_ms: f64,
+}
+
+/// What the tablebase PV extension may spend once the search has ended.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(super) enum TbExtension {
+    /// The clock is too short to risk a table read.
+    Skip,
+    /// This many milliseconds, shared by the reported lines.
+    Boxed(f64),
+    /// No clock: it runs to the end of the line.
+    Unbounded,
+}
+
+/// Clock the extension must leave before the hard ceiling, in move overheads.
+/// The box is checked between table probes, and one probe is a blocking read
+/// no box can bound: a page the cache misses held one for 54 ms in a game and
+/// 44 ms in a replay under load. Ten overheads, 100 ms at the default, is
+/// about twice that, on top of the reserve the ceiling already keeps.
+const TB_EXTENSION_SLACK_OVERHEADS: f64 = 10.0;
+
+impl RuntimeLimits {
+    /// The extension's allowance when the search ended `elapsed_ms` into the
+    /// move, measured as the hard limit measures it.
+    pub(super) fn tb_extension(&self, elapsed_ms: f64) -> TbExtension {
+        match self.tb_extension_ms {
+            None => TbExtension::Unbounded,
+            Some(box_ms) if box_ms > 0.0 && elapsed_ms <= self.tb_extension_latest_start_ms => {
+                TbExtension::Boxed(box_ms)
+            }
+            Some(_) => TbExtension::Skip,
+        }
+    }
 }
 
 impl Default for RuntimeLimits {
@@ -41,6 +76,7 @@ impl Default for RuntimeLimits {
             movetime_mode: false,
             analysis_mode: false,
             tb_extension_ms: None,
+            tb_extension_latest_start_ms: f64::INFINITY,
         }
     }
 }
@@ -68,6 +104,7 @@ pub(super) fn compute_runtime_limits(
     let analysis_mode = options.infinite || options.ponder;
     // The extension spends at most half of Move Overhead, as the donor does.
     let mut tb_extension_ms = None;
+    let mut tb_extension_latest_start_ms = f64::INFINITY;
 
     if options.move_time > 0 {
         // Fixed movetime: use the full budget as the hard limit (the
@@ -137,10 +174,12 @@ pub(super) fn compute_runtime_limits(
             //
             // Guarantee an absolute reserve of `2*overhead` on top of the
             // percentage reserve: never schedule a hard limit past
-            // `time - 2*overhead`. This only binds when `time < ~52*overhead`
-            // (≈520 ms at the default 10 ms overhead) — i.e. only in genuine
-            // time scrambles, where playing a hair faster costs ~no Elo — and
-            // leaves normal-time allocation untouched.
+            // `time - 2*overhead`. This only binds when
+            // `0.8097*time - overhead > time - 2*overhead`, below about 5.25
+            // overheads of clock (≈52 ms at the default 10 ms overhead) —
+            // i.e. only in genuine time scrambles, where playing a hair
+            // faster costs ~no Elo — and leaves normal-time allocation
+            // untouched.
             // The reserve must also cover SCHEDULER STARVATION when
             // running multi-threaded. Measured in real Threads=4 games
             // (latency sidecar over an instrumented null match): the search's
@@ -159,13 +198,8 @@ pub(super) fn compute_runtime_limits(
             };
             let min_reserve = 2.0 * overhead + smp_reserve;
             let hard_ceiling = (time as f64 - min_reserve).max(1.0);
-            // Where the reserve sets the hard limit the clock is too short to
-            // spend on a longer PV.
-            tb_extension_ms = Some(if maximum_ms > hard_ceiling {
-                0.0
-            } else {
-                overhead / 2.0
-            });
+            tb_extension_ms = Some(overhead / 2.0);
+            tb_extension_latest_start_ms = hard_ceiling - TB_EXTENSION_SLACK_OVERHEADS * overhead;
             maximum_ms = maximum_ms.min(hard_ceiling);
             optimum_ms = optimum_ms.min(maximum_ms);
         }
@@ -179,6 +213,7 @@ pub(super) fn compute_runtime_limits(
         movetime_mode,
         analysis_mode,
         tb_extension_ms,
+        tb_extension_latest_start_ms,
     }
 }
 
@@ -385,7 +420,7 @@ mod tests {
     fn clock_normal_time_allocation_is_not_throttled_by_reserve() {
         // At normal remaining time the `2*overhead` reserve must NOT bind:
         // maximum_ms stays at the SF percentage cap (0.8097*time - overhead),
-        // which is the smaller (binding) limit whenever time > ~52*overhead.
+        // which is the smaller (binding) limit above about 5.25 overheads.
         let engine = EngineOptions {
             move_overhead: 10.0,
             ..EngineOptions::default()
@@ -407,6 +442,92 @@ mod tests {
             lim.maximum_ms,
             percentage_cap
         );
+    }
+
+    #[test]
+    fn the_reserve_decides_the_hard_limit_only_below_about_five_overheads() {
+        let clock = |time: usize| {
+            limits(
+                126,
+                &SearchLimits {
+                    white_time: time,
+                    white_increment: 30,
+                    ..SearchLimits::default()
+                },
+            )
+        };
+        // Overhead 10: the reserve cap is `time - 20`, the percentage cap
+        // `0.8097 * time - 10`; they cross near 52 ms.
+        assert_eq!(clock(50).maximum_ms, 30.0);
+        assert!(clock(60).maximum_ms < 40.0, "{}", clock(60).maximum_ms);
+    }
+
+    #[test]
+    fn the_tablebase_extension_starts_only_with_clock_to_spare() {
+        let clock = |time: usize, threads: usize| {
+            compute_runtime_limits(
+                &SearchLimits {
+                    white_time: time,
+                    white_increment: 30,
+                    ..SearchLimits::default()
+                },
+                &EngineOptions {
+                    move_overhead: 10.0,
+                    threads,
+                    ..EngineOptions::default()
+                },
+                Color::White,
+                126,
+                64,
+            )
+        };
+        // A game was lost on time here: 58 ms on the clock, the search over at
+        // 25 ms, then one table read that took 54 ms.
+        assert_eq!(clock(58, 1).tb_extension(25.0), TbExtension::Skip);
+        // With clock to spare the line gets half an overhead.
+        assert_eq!(clock(3_000, 1).tb_extension(100.0), TbExtension::Boxed(5.0));
+        // The boundary is ten overheads before the hard ceiling: 300 - 20 - 100.
+        assert_eq!(clock(300, 1).tb_extension(180.0), TbExtension::Boxed(5.0));
+        assert_eq!(clock(300, 1).tb_extension(180.5), TbExtension::Skip);
+        // More threads keep a larger reserve, so the boundary moves with it.
+        assert_eq!(clock(300, 4).tb_extension(150.0), TbExtension::Boxed(5.0));
+        assert_eq!(clock(300, 4).tb_extension(150.5), TbExtension::Skip);
+    }
+
+    #[test]
+    fn the_tablebase_extension_is_unbounded_without_a_clock_and_boxed_under_movetime() {
+        let depth_only = limits(
+            0,
+            &SearchLimits {
+                depth: Some(12),
+                ..SearchLimits::default()
+            },
+        );
+        assert_eq!(depth_only.tb_extension(1e9), TbExtension::Unbounded);
+        // `go movetime` names no clock to protect; the box alone applies.
+        let movetime = limits(
+            0,
+            &SearchLimits {
+                move_time: 100,
+                ..SearchLimits::default()
+            },
+        );
+        assert_eq!(movetime.tb_extension(100.0), TbExtension::Boxed(5.0));
+        // No overhead, no box.
+        let no_overhead = compute_runtime_limits(
+            &SearchLimits {
+                move_time: 100,
+                ..SearchLimits::default()
+            },
+            &EngineOptions {
+                move_overhead: 0.0,
+                ..EngineOptions::default()
+            },
+            Color::White,
+            0,
+            64,
+        );
+        assert_eq!(no_overhead.tb_extension(0.0), TbExtension::Skip);
     }
 
     #[test]
