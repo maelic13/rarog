@@ -2037,6 +2037,38 @@ diagnostics; two rejections stop B.
       `Vec`s on every visit; filling a reused list removes about five
       allocations per root visit. Its value is expected to be below the
       +0.5% floor on its own.
+      **Profile registered 2026-10-01, before any sample.** No
+      whole-search profile exists: RAR-M30 and RAR-M36 attributed only
+      board work (about 23.6% together, on a search three clusters old).
+      *Instrument:* `tools/diag/board_search_profile_etw.ps1` (ETW, the
+      five frozen cohorts, 600,000 nodes, 5 repeats, 8 kHz, as RAR-M36)
+      on the shipped configuration: `cargo xtask build --arch pext --pgo`
+      at `b45bf6f` with `CARGO_PROFILE_RELEASE_DEBUG=2`, bench 11,171,726,
+      SHA-256 `1230d569…0d5aea`, PDB `ae8b5d31…a79b22`
+      (`analysis/artifacts/b72-profile-2026-10-01/`). Read by
+      `summarize_board_search_etw.py --scheme search` (`8e9d77e`): each
+      sample goes to the nearest named mechanism on its inline chain
+      (tablebases, evaluation, evaluation correction, TT, SEE, move
+      generation, make/unmake, check queries, move ordering, history,
+      the search node), with out-of-line board helpers and runtime as
+      fallbacks; `--scheme board` on the same traces is the comparison
+      with RAR-M36. The capture needs an elevated shell: the
+      maintainer's.
+      *Prediction, frozen* (share of process samples, five cohorts
+      pooled): evaluation is the largest region, 30–45%; the search node
+      12–25%; board work (generation, make/unmake, checks, SEE) 18–28%;
+      move ordering and history together 6–14%; TT 3–8%; evaluation
+      correction 1–4%; out-of-line board helpers and runtime under 5%;
+      tablebases 0 (none configured).
+      *Candidate rule, fixed here:* a candidate needs a located hot
+      function or loop, a mechanism for a local speedup with an estimate
+      `s`, and an Amdahl ceiling `share × (1 − 1/s)` of at least +0.5%
+      (at `s` = 1.25 the share must be at least 2.5%). At most three go
+      forward, ranked by ceiling; each is then measured by PROCESS's
+      pooled-PGO NPS method against the floor and must keep the
+      fingerprint exact. *Stop rule:* if no located mechanism clears the
+      ceiling, B.7.2 closes `NO_CHANGE` without implementation. The
+      evidence layer is NPS; no Elo is claimed.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2113,7 +2145,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | RESEARCH | I1 | Eligible: B.6 was skipped on 2026-10-01; B.7.1's allocation guard is its floor |
+| B.7.2 | RESEARCH | I1 | Eligible: B.6 was skipped on 2026-10-01; B.7.1's allocation guard is its floor. Whole-search profile registered 2026-10-01 (protocol, prediction, candidate rule); the elevated ETW capture is the maintainer's |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
