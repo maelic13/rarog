@@ -603,6 +603,7 @@ impl Searcher {
         self.td.root_iteration_nodes = 0;
         self.td.root_best_nodes = 0;
         self.td.root_best_effort = 0.0;
+        self.td.optimism = [0; 2];
         if age_tt {
             self.shared.tt.new_search();
         }
@@ -778,6 +779,9 @@ impl Searcher {
             {
                 window_center = pool_score;
             }
+            // Optimism for this iteration, from the running average of the
+            // completed scores (the donors' form); zero before the first.
+            self.set_optimism(board.side_to_move(), completed_depth, prev_avg_score);
             // Termination by construction: see `Aspiration`.
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
             // The move an earlier window of this iteration failed high on,
@@ -1046,6 +1050,23 @@ impl Searcher {
             },
             ponderhit: self.td.ponderhit,
         }
+    }
+
+    /// Set this thread's optimism for the coming iteration: the root's side
+    /// leans by `scale * avg / (|avg| + div)` toward its running average
+    /// score, the other side by the negative, both zero while the switch is
+    /// off or no iteration has completed. The consumer is the corrected
+    /// evaluation, which weights it by the material on the board.
+    fn set_optimism(&mut self, root_side: Color, completed_depth: usize, avg: f64) {
+        let p = &self.cfg.core;
+        let value = if p.optimism == 0 || completed_depth == 0 {
+            0
+        } else {
+            let avg = infra::score_from_f64(avg);
+            p.optimism_scale * avg / (avg.abs() + p.optimism_div)
+        };
+        self.td.optimism[root_side as usize] = value;
+        self.td.optimism[(!root_side) as usize] = -value;
     }
 
     /// The between-iteration soft time target: the optimum scaled by the

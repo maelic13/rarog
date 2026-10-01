@@ -20,6 +20,13 @@ pub fn index(x: u64) -> usize {
     x as usize
 }
 
+/// `f64 → i32` for a score average: rounded to the nearest whole unit and
+/// clamped to the score range, so the cast cannot truncate.
+#[inline(always)]
+pub fn score_from_f64(x: f64) -> i32 {
+    x.round().clamp(-32_000.0, 32_000.0) as i32
+}
+
 /// Domain-bounded narrowing to `i32` (plies, depths, counts, bit indices).
 #[inline(always)]
 pub(crate) fn to_i32<T: SmallInt>(x: T) -> i32 {

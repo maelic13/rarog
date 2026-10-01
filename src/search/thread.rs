@@ -53,6 +53,10 @@ pub(super) struct ThreadData {
     pub(super) root_iteration_nodes: u64,
     pub(super) root_best_nodes: u64,
     pub(super) root_best_effort: f64,
+    /// Optimism by colour, evaluation units: set at each iteration's start
+    /// from the root's running average score, zero until the first
+    /// iteration completes and whenever `CoreOptimism` is off.
+    pub(super) optimism: [i32; 2],
     /// Width of the root window of the current aspiration step.
     #[cfg(feature = "b2core")]
     pub(super) root_delta: i32,
@@ -126,6 +130,7 @@ impl Default for ThreadData {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
+            optimism: [0; 2],
             #[cfg(feature = "b2core")]
             root_delta: 1,
             #[cfg(feature = "b3proof")]

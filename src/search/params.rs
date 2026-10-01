@@ -494,6 +494,17 @@ search_params! {
     /// evaluator's own damping is compiled out under the core, so the eval the
     /// table stores does not depend on the clock and the search damps it here.
     eval_rule50_damping = 100, "CoreEvalRule50Damping", 0..=150;
+    /// Categorical, never an SPSA coordinate. 1: the corrected evaluation
+    /// leans toward the root's running average score (the donors' optimism:
+    /// `scale * avg / (|avg| + div)` for the root's side, its negative for
+    /// the other, weighted by the material on the board); 0: it does not.
+    optimism = 0, "CoreOptimism", 0..=1;
+    /// Optimism's saturation, evaluation units: Reckless's 113 at the
+    /// measured 0.457 scale ratio.
+    optimism_scale = 52, "CoreOptimismScale", 0..=200;
+    /// Optimism's half-saturation point, evaluation units: Reckless's 201 at
+    /// the 0.457 ratio.
+    optimism_div = 92, "CoreOptimismDiv", 10..=400;
 
     // Node-level pruning.
     /// Razoring margin `base + square * depth^2`, evaluation units.
