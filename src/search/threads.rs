@@ -498,6 +498,7 @@ impl Searcher {
         if emit_info && voted_line_needs_reporting(voted_index) {
             self.send_voted_info_line(&best);
         }
+        self.finish_tb_line(&mut best, lines, emit_info);
         self.shared.leave_pool();
         best
     }

@@ -24,6 +24,10 @@ pub(super) struct RuntimeLimits {
     /// time must not fire. Set from `SearchLimits`, which the searcher
     /// otherwise never sees.
     pub(super) analysis_mode: bool,
+    /// The tablebase PV extension's time box in milliseconds, shared by the
+    /// reported lines; 0 where the time reserve decided the hard limit, and
+    /// `None` without a clock, where it runs unbounded.
+    pub(super) tb_extension_ms: Option<f64>,
 }
 
 impl Default for RuntimeLimits {
@@ -36,6 +40,7 @@ impl Default for RuntimeLimits {
             maximum_ms: f64::INFINITY,
             movetime_mode: false,
             analysis_mode: false,
+            tb_extension_ms: None,
         }
     }
 }
@@ -61,6 +66,8 @@ pub(super) fn compute_runtime_limits(
     let mut maximum_ms = f64::INFINITY;
     let mut movetime_mode = false;
     let analysis_mode = options.infinite || options.ponder;
+    // The extension spends at most half of Move Overhead, as the donor does.
+    let mut tb_extension_ms = None;
 
     if options.move_time > 0 {
         // Fixed movetime: use the full budget as the hard limit (the
@@ -77,6 +84,7 @@ pub(super) fn compute_runtime_limits(
         optimum_ms = movetime;
         maximum_ms = movetime;
         movetime_mode = true;
+        tb_extension_ms = Some(engine_options.move_overhead / 2.0);
     } else {
         let (time, increment) = match side_to_move {
             Color::White => (options.white_time, options.white_increment),
@@ -151,6 +159,13 @@ pub(super) fn compute_runtime_limits(
             };
             let min_reserve = 2.0 * overhead + smp_reserve;
             let hard_ceiling = (time as f64 - min_reserve).max(1.0);
+            // Where the reserve sets the hard limit the clock is too short to
+            // spend on a longer PV.
+            tb_extension_ms = Some(if maximum_ms > hard_ceiling {
+                0.0
+            } else {
+                overhead / 2.0
+            });
             maximum_ms = maximum_ms.min(hard_ceiling);
             optimum_ms = optimum_ms.min(maximum_ms);
         }
@@ -163,6 +178,7 @@ pub(super) fn compute_runtime_limits(
         maximum_ms,
         movetime_mode,
         analysis_mode,
+        tb_extension_ms,
     }
 }
 

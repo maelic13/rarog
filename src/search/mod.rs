@@ -38,7 +38,7 @@ mod threads;
 mod time;
 
 use std::sync::atomic::Ordering;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
@@ -352,6 +352,11 @@ fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
 /// evaluation.
 const TB_DISPLAY_CP: i32 = 20_000;
 
+/// A tablebase result, not a mate: what the PV extension follows.
+fn is_tb_band(score: i32) -> bool {
+    (TB_WIN_SCORE..=TB_VALUE).contains(&score.abs())
+}
+
 fn format_score(score: i32) -> String {
     if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
         format!("mate {}", (MATE_SCORE - score + 1) / 2)
@@ -520,6 +525,9 @@ impl Searcher {
         };
 
         let syzygy_root_moves = self.syzygy_root_moves(&board, root_candidates);
+        if syzygy::largest() > 0 {
+            self.td.tb_root_board = Some(board.clone());
+        }
         let root_moves = syzygy_root_moves.as_deref().unwrap_or(root_candidates);
 
         if ALLOW_PARALLEL {
@@ -538,10 +546,155 @@ impl Searcher {
         }
 
         let lines = engine_options.multi_pv.clamp(1, root_moves.len());
-        if lines > 1 {
-            return self.search_root_multipv(board, root_moves, lines, emit_info, poll);
+        let mut result = if lines > 1 {
+            self.search_root_multipv(board, root_moves, lines, emit_info, poll)
+        } else {
+            self.search_root(board, root_moves, emit_info, poll)
+        };
+        self.finish_tb_line(&mut result, lines, emit_info);
+        result
+    }
+
+    /// Before `bestmove`: when the reported line's displayed score is a
+    /// tablebase result, extend it through the tables, take the ponder move
+    /// from it and print it. Under a clock the line gets its share of the
+    /// box, and none where the time reserve decided the hard limit.
+    fn finish_tb_line(&mut self, result: &mut SearchResult, lines: usize, emit_info: bool) {
+        let Some(root) = self.td.tb_root_board.take() else {
+            return;
+        };
+        let Some(&first) = result.pv.first() else {
+            return;
+        };
+        let shown = self.displayed_score(Some(&first), result.score);
+        if !is_tb_band(shown) {
+            return;
         }
-        self.search_root(board, root_moves, emit_info, poll)
+        let deadline = match self.cfg.limits.tb_extension_ms {
+            None => None,
+            Some(box_ms) => {
+                let per_line = box_ms / f64::from(u32::try_from(lines).unwrap_or(u32::MAX));
+                if per_line <= 0.0 {
+                    return;
+                }
+                Some(Instant::now() + Duration::from_secs_f64(per_line / 1000.0))
+            }
+        };
+        let searched = result.pv.clone();
+        let (shown, ran_out) = self.extend_tb_line(&root, &mut result.pv, shown, deadline);
+        if result.pv.len() > 1 {
+            result.pondermove = result.pv[1];
+        }
+        if emit_info {
+            if result.pv != searched {
+                self.send_shown_info_line(
+                    result.depth.max(1),
+                    result.seldepth,
+                    shown,
+                    RootBound::Exact,
+                    &result.pv,
+                );
+            }
+            if ran_out {
+                self.notice(format_args!(
+                    "Syzygy based PV extension requires more time, increase Move Overhead as needed."
+                ));
+            }
+        }
+    }
+
+    /// Extend `pv` through the tables. First keep the searched moves while
+    /// each keeps the best rank and no arbiter's draw or repetition appears;
+    /// then follow the tables to mate, wins ordered by distance and ties
+    /// broken toward the opponent's fewest replies (a capture reply counts a
+    /// hundred). Returns the score to show, 0 if the line ends in a draw, and
+    /// whether `deadline` cut it short.
+    fn extend_tb_line(
+        &self,
+        root: &Board,
+        pv: &mut Vec<Move>,
+        shown: i32,
+        deadline: Option<Instant>,
+    ) -> (i32, bool) {
+        let out_of_time = || deadline.is_some_and(|deadline| Instant::now() >= deadline);
+        let Some(&first) = pv.first() else {
+            return (shown, false);
+        };
+        if out_of_time() {
+            return (shown, true);
+        }
+        let rule50 = self.shared.syzygy.fifty_move_rule;
+        let mut board = root.clone();
+        board.make_move(first);
+        let mut kept = 1;
+        while kept < pv.len() {
+            let Some(mv) = board.legal_move(pv[kept]) else {
+                break;
+            };
+            if let Some(ranking) = syzygy::rank_root_moves(&board, rule50, false) {
+                let best = ranking.moves[0].rank;
+                if ranking
+                    .moves
+                    .iter()
+                    .find(|ranked| ranked.mv == mv)
+                    .map(|ranked| ranked.rank)
+                    != Some(best)
+                {
+                    break;
+                }
+                board.make_move(mv);
+                if board.is_arbiter_draw(rule50) || board.has_repeated_position() {
+                    board.unmake_move(mv);
+                    break;
+                }
+                kept += 1;
+                if out_of_time() {
+                    break;
+                }
+            } else {
+                // Outside the tables the searched move stands.
+                board.make_move(mv);
+                kept += 1;
+            }
+        }
+        pv.truncate(kept);
+        while pv.len() < 4 * MAX_PLY && !board.is_arbiter_draw(rule50) && !out_of_time() {
+            let Some(ranking) = syzygy::rank_root_moves(&board, rule50, true) else {
+                break;
+            };
+            if !ranking.dtz {
+                break;
+            }
+            let best = ranking.moves[0].rank;
+            let mut chosen: Option<(i32, Move)> = None;
+            for ranked in ranking
+                .moves
+                .iter()
+                .take_while(|ranked| ranked.rank == best)
+            {
+                board.make_move(ranked.mv);
+                let replies: i32 = board
+                    .generate_legal_movelist()
+                    .iter()
+                    .map(|reply| if reply.is_capture() { 100 } else { 1 })
+                    .sum();
+                board.unmake_move(ranked.mv);
+                if chosen.is_none_or(|(fewest, _)| replies < fewest) {
+                    chosen = Some((replies, ranked.mv));
+                }
+            }
+            let Some((_, mv)) = chosen else {
+                break;
+            };
+            board.make_move(mv);
+            pv.push(mv);
+        }
+        let shown = if board.is_arbiter_draw(rule50) {
+            0
+        } else {
+            shown
+        };
+        (shown, out_of_time())
     }
 
     fn reset_search_state(
@@ -610,6 +763,7 @@ impl Searcher {
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.root_iteration_nodes = 0;
         self.td.tb_root_scores.clear();
+        self.td.tb_root_board = None;
         self.td.root_best_nodes = 0;
         self.td.root_best_effort = 0.0;
         self.td.optimism = [0; 2];
@@ -1439,6 +1593,22 @@ impl Searcher {
             .map_or(score, |&(_, display)| display)
     }
 
+    /// What a line prints: its displayed score and PV. Without a clock the PV
+    /// is extended through the tables at every report; under a clock only the
+    /// line reported with `bestmove` is, in [`Self::finish_tb_line`].
+    fn shown_line(&self, pv: &[Move], score: i32) -> (i32, Vec<Move>) {
+        let shown = self.displayed_score(pv.first(), score);
+        let mut line = pv.to_vec();
+        if self.cfg.limits.tb_extension_ms.is_none()
+            && is_tb_band(shown)
+            && let Some(root) = self.td.tb_root_board.as_ref()
+        {
+            let (shown, _) = self.extend_tb_line(root, &mut line, shown, None);
+            return (shown, line);
+        }
+        (shown, line)
+    }
+
     /// One `info` line per reported MultiPV line, numbered from 1.
     fn send_multipv_info(&self, lines: &[ReportedLine]) {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
@@ -1452,8 +1622,8 @@ impl Searcher {
                 RootBound::Lower => " lowerbound",
                 RootBound::Upper => " upperbound",
             };
-            let pv = line
-                .pv
+            let (shown, line_pv) = self.shown_line(&line.pv, line.score);
+            let pv = line_pv
                 .iter()
                 .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
@@ -1464,7 +1634,7 @@ impl Searcher {
                 line.depth.max(1),
                 line.seldepth,
                 index + 1,
-                format_score(self.displayed_score(line.pv.first(), line.score)),
+                format_score(shown),
                 bound,
                 nodes,
                 nps,
@@ -1703,7 +1873,19 @@ impl Searcher {
         bound: RootBound,
         pv: &[Move],
     ) {
-        let shown = self.displayed_score(pv.first(), score);
+        let (shown, pv) = self.shown_line(pv, score);
+        self.send_shown_info_line(depth, seldepth, shown, bound, &pv);
+    }
+
+    /// One full `info` line with the score already in its displayed form.
+    fn send_shown_info_line(
+        &self,
+        depth: usize,
+        seldepth: usize,
+        shown: i32,
+        bound: RootBound,
+        pv: &[Move],
+    ) {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();

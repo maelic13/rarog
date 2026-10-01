@@ -1,6 +1,6 @@
 //! Per-thread search state.
 
-use crate::board::Move;
+use crate::board::{Board, Move};
 use crate::eval::Evaluator;
 
 use super::correction::CorrectionTables;
@@ -40,6 +40,9 @@ pub(super) struct ThreadData {
     /// At a tablebase root, each legal move's displayed score; empty
     /// elsewhere. Only the reporting thread fills it.
     pub(super) tb_root_scores: Vec<(Move, i32)>,
+    /// The root, kept by the reporting thread when tables are loaded, for
+    /// extending reported lines through them.
+    pub(super) tb_root_board: Option<Board>,
     /// Index of the MultiPV line being searched; 0 outside MultiPV, where the
     /// root reads and writes the table as an ordinary node.
     pub(super) multipv_line: usize,
@@ -125,6 +128,7 @@ impl Default for ThreadData {
             root_moves: Vec::new(),
             root_move_records: Vec::new(),
             tb_root_scores: Vec::new(),
+            tb_root_board: None,
             multipv_line: 0,
             hist: HistoryTables::default(),
             corr: CorrectionTables::default(),
