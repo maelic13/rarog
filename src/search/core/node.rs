@@ -65,6 +65,39 @@ fn fail_high_toward_beta(score: i32, beta: i32, lerp: i32) -> i32 {
     value
 }
 
+/// What an in-search tablebase result does at a node.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum TbVerdict {
+    /// It decides the window: store it with its bound and return it.
+    Return,
+    /// A win below beta at a PV node: the moves must beat it.
+    Floor,
+    /// A loss above alpha at a PV node: it caps what the moves may claim.
+    Cap,
+    /// A bound that decides nothing at a node off the PV.
+    Search,
+}
+
+/// A tablebase result ends the node only where it decides the window: a draw
+/// always, a win (a lower bound) at or above beta, a loss (an upper bound) at
+/// or below alpha. Otherwise only a PV node keeps it, as a floor or a cap.
+fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bool) -> TbVerdict {
+    let decides = match bound {
+        Bound::Exact => true,
+        Bound::Lower => score >= beta,
+        Bound::Upper => score <= alpha,
+    };
+    if decides {
+        TbVerdict::Return
+    } else if !pv {
+        TbVerdict::Search
+    } else if bound == Bound::Lower {
+        TbVerdict::Floor
+    } else {
+        TbVerdict::Cap
+    }
+}
+
 /// What a null-move cutoff returns: the null search's score, but never a win
 /// the reduced search did not prove and never less than beta, which the
 /// verification established when the null search ran against a lower bound
@@ -666,31 +699,26 @@ impl Searcher {
         let mut tb_floor = None;
         let mut tb_cap = None;
         if let Some((score, bound)) = self.syzygy_wdl_bound(board, depth, ply, excluded) {
-            let decides = match bound {
-                Bound::Exact => true,
-                Bound::Lower => score >= beta,
-                Bound::Upper => score <= alpha,
-            };
-            if decides {
-                self.shared.tt.store(TtStore {
-                    key: hash,
-                    depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
-                    score,
-                    bound,
-                    mv: Move::NULL,
-                    ply,
-                    static_eval: VALUE_NONE,
-                    is_pv: NODE::PV,
-                });
-                return score;
-            }
-            if NODE::PV {
-                if bound == Bound::Lower {
+            match tb_verdict(score, bound, alpha, beta, NODE::PV) {
+                TbVerdict::Return => {
+                    self.shared.tt.store(TtStore {
+                        key: hash,
+                        depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
+                        score,
+                        bound,
+                        mv: Move::NULL,
+                        ply,
+                        static_eval: VALUE_NONE,
+                        is_pv: NODE::PV,
+                    });
+                    return score;
+                }
+                TbVerdict::Floor => {
                     tb_floor = Some(score);
                     alpha = alpha.max(score);
-                } else {
-                    tb_cap = Some(score);
                 }
+                TbVerdict::Cap => tb_cap = Some(score),
+                TbVerdict::Search => {}
             }
         }
         let tt_entry = self.shared.tt.probe(hash);
@@ -4345,6 +4373,45 @@ mod tests {
         for ply in 0..MAX_PLY {
             assert_eq!(searcher.td.stack[ply].reduction, 0, "ply {ply}");
         }
+    }
+
+    #[test]
+    fn a_tablebase_result_ends_the_node_only_where_it_decides_the_window() {
+        let (alpha, beta) = (-50, 50);
+        let win = TB_WIN_SCORE + 40;
+        // A draw is exact: it always decides.
+        for pv in [false, true] {
+            assert_eq!(
+                tb_verdict(0, Bound::Exact, alpha, beta, pv),
+                TbVerdict::Return
+            );
+        }
+        // A win at or above beta cuts; below beta it is a floor at a PV node.
+        assert_eq!(
+            tb_verdict(win, Bound::Lower, alpha, beta, false),
+            TbVerdict::Return
+        );
+        assert_eq!(
+            tb_verdict(win, Bound::Lower, -win - 1, win + 1, false),
+            TbVerdict::Search
+        );
+        assert_eq!(
+            tb_verdict(win, Bound::Lower, -win - 1, win + 1, true),
+            TbVerdict::Floor
+        );
+        // A loss at or below alpha cuts; above alpha it is a cap at a PV node.
+        assert_eq!(
+            tb_verdict(-win, Bound::Upper, alpha, beta, true),
+            TbVerdict::Return
+        );
+        assert_eq!(
+            tb_verdict(-win, Bound::Upper, -win - 1, win, false),
+            TbVerdict::Search
+        );
+        assert_eq!(
+            tb_verdict(-win, Bound::Upper, -win - 1, win, true),
+            TbVerdict::Cap
+        );
     }
 
     #[cfg(feature = "b4quiet")]
