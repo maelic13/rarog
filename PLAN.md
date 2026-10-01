@@ -1978,6 +1978,32 @@ diagnostics; two rejections stop B.
   included, are deleted here unless B.2–B.5 named them. Every remaining
   `#[expect]` must still fire (the lint wall reports unfulfilled ones);
   `search_options.rs`'s single `#[allow]` keeps its written reason or goes.
+  **Test-suite audit, 2026-10-01 (input, maintainer's decision).** Every
+  test was timed on its own, at `bb877d8`: 374 tests, 49 s serial in release
+  and 298 s in debug. 300 run under 0.5 s in debug. Twelve take 71% of the
+  debug time:
+  - `endgames::kbnk_positions_are_driven_to_mate` (57 s) plays engine
+    playouts until mate at several node budgets: a strength measurement in
+    the unit suite;
+  - `wac_solved_count_stays_above_floor` (20 s) is a tactics floor over 300
+    positions;
+  - `allocation_guard` (20 s);
+  - four `root_abort` sweeps (13–18 s each);
+  - the `uci_process` ponder and clock tests (up to 12 s), which time the
+    clock by design.
+
+  Proposals, none applied:
+  - move the KBNK playouts and the WAC floor into an ignored long tier run
+    by `tools/` or nightly, keeping the static KBNK corner test in the
+    suite;
+  - trim the `root_abort` and allocation sweeps in debug builds only;
+  - keep the clock tests.
+
+  The B.5.2.1 tests were held to the same criteria. The ponder-race test
+  now drains with `isready` instead of sleeping (`bb877d8`, 2.4 s to
+  0.19 s). The rest run in 0.01–1.9 s, check chess facts (tablebase WDL and
+  DTZ, mate, the rule-50 band, legality) or protocol contracts, and one,
+  `go nodes`, is deterministic.
 - **B.9 Checkpoint — `V`.** Re-measure the deficit meters: RAR-O-series
   equal-time G(0) against the oracle, fixed-node depth and EBF, the
   reference-anchored geometric branching factor from B.2.2 (the durable
@@ -2228,6 +2254,18 @@ loss).
 - **D.3 Engine lifecycle and protocol robustness — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
+  **Done out of band, 2026-10-01:**
+  - `97ea52d`: the last `info` line now always describes `bestmove`. An
+    iteration stopped after a window failed high or low on an unconfirmed
+    move left that move's bound line last, serially under `go nodes` (now a
+    deterministic test) and at Threads 8 under a clock (the flaky
+    `threaded_bestmove…` test). Output only, both fingerprints exact.
+  - `2326153`: the legacy search compiles again; `d754577`'s optimism call
+    needed `b2core`, and CI builds that arm.
+
+  **Input from B.5.2.2:** a cold Syzygy page read can hold an in-search
+  probe for about 54 ms (one RAR-S94 time loss at 58 ms on the clock).
+  Probe policy under a short clock is this leaf's.
   Deterministic tests; zero crashes over the pool tournaments. Owns the last
   move of the target layout: `engine.rs`, `engine_command.rs`,
   `uci_protocol.rs`, `search_options.rs` and `bench.rs`/`wac.rs` go under
