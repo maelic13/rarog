@@ -44,6 +44,9 @@ tools/books/*
 !tools/books/.gitkeep
 *.rtbw
 *.rtbz
+# ...except the small committed test fixture (tests/fixtures/syzygy/README.md).
+!tests/fixtures/syzygy/*.rtbw
+!tests/fixtures/syzygy/*.rtbz
 
 # Python caches / virtualenvs
 __pycache__/

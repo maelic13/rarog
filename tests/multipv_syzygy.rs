@@ -135,3 +135,51 @@ fn a_drawn_tablebase_root_reports_only_the_drawing_moves() {
     assert!(drawing.contains(&bestmove));
     assert_eq!(report[0], bestmove);
 }
+
+/// The record's six-man positions (B.5.2): each reports a tablebase win, a
+/// ponder move and a PV legal to its end. Local only: needs the 6-man set.
+#[test]
+fn the_six_man_record_positions_report_a_win_a_ponder_move_and_a_legal_line() {
+    let Some(path) = tables() else { return };
+    if syzygy::largest() < 6 {
+        eprintln!("skipped: RAROG_SYZYGY_PATH={path} holds no 6-man tables");
+        return;
+    }
+    for fen in [
+        "7r/5R2/8/2k1PB2/8/4K3/8/8 w - - 0 86",
+        "8/P4k2/8/1N6/1P2B1K1/8/8/8 w - - 7 81",
+        "1r6/R7/6k1/8/8/5PP1/6K1/8 w - - 6 72",
+    ] {
+        let output = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&output))));
+        let board = Board::from_fen(fen).expect("valid FEN");
+        let mut options = SearchOptions {
+            board: board.clone(),
+            ..SearchOptions::default()
+        };
+        options.engine.syzygy.path = path.clone();
+        options.limits.depth = Some(10);
+        searcher.configure(&options.engine);
+        let result = searcher.search(board.clone(), &options, true, || SearchEvent::None);
+        let raw = output.lock().expect("recorder lock").clone();
+        let line = raw
+            .iter()
+            .rev()
+            .find(|line| line.starts_with("info depth") && line.contains(" pv "))
+            .expect("an info line");
+        assert!(
+            line.contains(" score cp 20000 ") || line.contains(" score mate "),
+            "{fen}: {line}"
+        );
+        assert!(!result.pondermove.is_null(), "{fen}: {raw:#?}");
+        let mut played = board.clone();
+        let pv = line.split(" pv ").nth(1).expect("pv");
+        assert!(pv.split_whitespace().count() > 1, "{fen}: {line}");
+        for uci in pv.split_whitespace() {
+            let mv = played
+                .parse_move(uci)
+                .unwrap_or_else(|| panic!("{fen}: illegal {uci} in {line}"));
+            played.make_move(mv);
+        }
+    }
+}

@@ -7,3 +7,7 @@ analysis/artifacts/see-normalized-20260907/** -text -whitespace
 
 # Stored arm recipes must stay byte-exact: a CRLF round-trip breaks `git apply`.
 analysis/arm_patches/*.patch -text -whitespace
+
+# Committed Syzygy tables are binary test fixtures; never convert them.
+tests/fixtures/syzygy/*.rtbw -text -diff
+tests/fixtures/syzygy/*.rtbz -text -diff
