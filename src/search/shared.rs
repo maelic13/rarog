@@ -14,6 +14,9 @@ pub(super) struct SyzygySettings {
     pub(super) fifty_move_rule: bool,
     /// Largest usable piece count: the loaded tables capped by `probe_limit`.
     pub(super) largest: usize,
+    /// The root's tablebase decision, made once by the main thread before
+    /// any helper starts and handed to every helper.
+    pub(super) root: TbRootDecision,
 }
 
 impl Default for SyzygySettings {
@@ -23,8 +26,18 @@ impl Default for SyzygySettings {
             probe_limit: 7,
             fifty_move_rule: true,
             largest: 0,
+            root: TbRootDecision::default(),
         }
     }
+}
+
+/// What the tables decided at the root, for every thread of one search.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct TbRootDecision {
+    /// Moves the root could choose from before the ranking kept its best
+    /// group, or 0 when the tables did not rank this root. The single-move
+    /// shortcut reads it: a best group of one is not a forced move.
+    pub(super) ranked_from: usize,
 }
 
 /// What every thread of one search reads in common. Each thread holds its own

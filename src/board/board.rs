@@ -1145,6 +1145,46 @@ impl Board {
         self.halfmove_clock >= 4 && self.is_repetition(2)
     }
 
+    /// The arbiter's draws a move can reach at the tablebase root: a
+    /// claimable threefold, or with `rule50` a rule-50 draw. The search's
+    /// aggressive twofold does not count here, because a root move ranked as
+    /// a draw is one the game would score as a draw.
+    pub fn is_arbiter_draw(&self, rule50: bool) -> bool {
+        (rule50 && self.is_rule50_draw()) || self.is_threefold_repetition()
+    }
+
+    /// Whether any position since the last zeroing move, at least four plies
+    /// back from the oldest, repeats an earlier one in that window. A winning
+    /// side that has already repeated must make progress by distance to
+    /// zeroing, not merely keep the win.
+    pub fn has_repetition_since_zeroing(&self) -> bool {
+        let window = usize::from(self.halfmove_clock).min(self.history.len());
+        let hash_at = |plies_back: usize| {
+            if plies_back == 0 {
+                self.hash
+            } else {
+                self.history[self.history.len() - plies_back].hash
+            }
+        };
+        (0..=window.saturating_sub(4)).any(|newer| {
+            (newer + 4..=window)
+                .step_by(2)
+                .any(|older| hash_at(older) == hash_at(newer))
+        }) && window >= 4
+    }
+
+    /// Whether distance to zeroing is distance to mate here: no pawns, and
+    /// three men, or four with neither queen nor rook.
+    pub fn dtz_is_dtm(&self) -> bool {
+        let pawns = self.pieces(Color::White, Piece::Pawn) | self.pieces(Color::Black, Piece::Pawn);
+        let heavy = self.pieces(Color::White, Piece::Queen)
+            | self.pieces(Color::Black, Piece::Queen)
+            | self.pieces(Color::White, Piece::Rook)
+            | self.pieces(Color::Black, Piece::Rook);
+        let men = self.occupied_count();
+        !pawns.any() && (men == 3 || (men == 4 && !heavy.any()))
+    }
+
     pub fn has_non_pawn_material(&self, color: Color) -> bool {
         (self.pieces(color, Piece::Knight)
             | self.pieces(color, Piece::Bishop)

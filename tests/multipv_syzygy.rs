@@ -64,12 +64,32 @@ fn search(path: &str, fen: &str, lines: usize) -> (Vec<String>, Vec<String>, Str
 }
 
 #[test]
-fn a_won_tablebase_root_reports_one_line() {
+fn a_won_tablebase_root_reports_its_best_ranked_group() {
     let Some(path) = tables() else { return };
-    // KQ v K: the root keeps only the tablebase's preferred winning move.
+    // KQ v K: distance to zeroing is distance to mate, so the root keeps the
+    // fastest wins only, a strict subset of the winning moves, and reports
+    // one line per kept move however many lines are asked for.
     let fen = "8/8/8/4k3/8/8/8/3QK3 w - - 0 1";
-    let (firsts, raw, bestmove) = search(&path, fen, 5);
-    assert_eq!(firsts.len(), 1, "one reported line: {raw:#?}");
+    let board = Board::from_fen(fen).expect("valid FEN");
+    let winning: Vec<String> = board
+        .generate_legal_moves()
+        .iter()
+        .filter(|&&mv| {
+            let mut after = board.clone();
+            after.make_move(mv);
+            syzygy::probe_wdl(&after, false) == Some(Wdl::Loss)
+        })
+        .map(ToString::to_string)
+        .collect();
+    let (firsts, raw, bestmove) = search(&path, fen, 40);
+    assert!(!firsts.is_empty(), "{raw:#?}");
+    assert!(
+        firsts.len() < winning.len(),
+        "DTZ ranking must keep fewer than the {} winning moves: {firsts:?}",
+        winning.len()
+    );
+    assert!(firsts.iter().all(|mv| winning.contains(mv)), "{firsts:?}");
+    assert!(firsts.contains(&bestmove), "{raw:#?}");
     assert!(
         raw.iter().any(|line| !line.contains(" tbhits 0 ")),
         "{raw:#?}"

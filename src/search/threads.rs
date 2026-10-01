@@ -12,7 +12,7 @@ use crate::search_options::{EngineOptions, SearchLimits};
 use crate::tt::TranspositionTable;
 
 use super::movepick::ScoredMoveList;
-use super::shared::{RootBound, STOP_QUIT, STOP_SEARCH, SharedContext};
+use super::shared::{RootBound, STOP_QUIT, STOP_SEARCH, SharedContext, TbRootDecision};
 use super::{MAX_PLY, SearchEvent, SearchExit, SearchResult, Searcher, TB_WIN_SCORE};
 
 struct WorkerJob {
@@ -25,6 +25,8 @@ struct WorkerJob {
     pub(super) root_move_offset: usize,
     /// Helper index (1-based); seeds the per-thread reduction jitter.
     pub(super) thread_id: usize,
+    /// The main thread's tablebase decision for this root.
+    pub(super) tb_root: TbRootDecision,
     pub(super) shared_state: Arc<SharedContext>,
     result_tx: Sender<SearchResult>,
 }
@@ -238,6 +240,7 @@ impl Searcher {
             &job.limits,
             &job.engine_options,
             job.root_moves.as_ref(),
+            job.tb_root,
             poll,
         );
         self.shared.leave_pool();
@@ -274,6 +277,7 @@ impl Searcher {
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         legal_moves: &[Move],
+        tb_root: TbRootDecision,
         poll: &mut P,
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
@@ -296,6 +300,7 @@ impl Searcher {
             false,
             true,
         );
+        self.shared.syzygy.root = tb_root;
         self.search_root(root, legal_moves, false, poll)
     }
 
@@ -349,6 +354,7 @@ impl Searcher {
                 hash_mb: self.shared.hash_mb,
                 root_move_offset: offset,
                 thread_id: index + 1,
+                tb_root: self.shared.syzygy.root,
                 shared_state: Arc::clone(&shared_state),
                 result_tx: result_tx.clone(),
             };

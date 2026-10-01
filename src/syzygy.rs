@@ -18,6 +18,8 @@ const TB_RESULT_WDL_MASK: u32 = 0x0000_000F;
 const TB_RESULT_TO_MASK: u32 = 0x0000_03F0;
 const TB_RESULT_FROM_MASK: u32 = 0x0000_FC00;
 const TB_RESULT_PROMOTES_MASK: u32 = 0x0007_0000;
+const TB_RESULT_DTZ_MASK: u32 = 0xFFF0_0000;
+const TB_RESULT_DTZ_SHIFT: u32 = 20;
 const TB_RESULT_WDL_SHIFT: u32 = 0;
 const TB_RESULT_TO_SHIFT: u32 = 4;
 const TB_RESULT_FROM_SHIFT: u32 = 10;
@@ -58,23 +60,6 @@ unsafe extern "C" {
         turn: bool,
         results: *mut c_uint,
     ) -> c_uint;
-    fn tb_probe_root_dtz(
-        white: u64,
-        black: u64,
-        kings: u64,
-        queens: u64,
-        rooks: u64,
-        bishops: u64,
-        knights: u64,
-        pawns: u64,
-        rule50: c_uint,
-        castling: c_uint,
-        ep: c_uint,
-        turn: bool,
-        has_repeated: bool,
-        use_rule50: bool,
-        results: *mut TbRootMovesRaw,
-    ) -> c_int;
     fn tb_probe_root_wdl(
         white: u64,
         black: u64,
@@ -150,19 +135,6 @@ pub struct RootMove {
 pub struct RootProbe {
     pub(crate) wdl: Wdl,
     pub best_move: Option<RootMove>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RootMoveProbe {
-    pub(crate) root_move: RootMove,
-    pub rank: i32,
-    pub score: i32,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RootMoveProbes {
-    pub(crate) used_dtz: bool,
-    pub moves: Vec<RootMoveProbe>,
 }
 
 #[derive(Copy, Clone)]
@@ -318,21 +290,152 @@ pub fn probe_root(board: &Board, use_rule50: bool) -> Option<RootProbe> {
     })
 }
 
-pub(crate) fn probe_root_moves(
+/// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
+/// distance to zeroing when moves are ordered by it; a win the rule-50
+/// counter may spoil ranks below `MAX_DTZ / 2`; losses mirror wins.
+pub(crate) const MAX_DTZ: i32 = 1 << 18;
+
+/// One root move and its rank, higher better.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct RankedMove {
+    pub(crate) mv: Move,
+    pub(crate) rank: i32,
+}
+
+/// The root's legal moves ranked by the tables, best first (stable among
+/// equals). `dtz` says whether DTZ ranked them; otherwise WDL did, and the
+/// search may still need its in-search probes to make progress.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct RootRanking {
+    pub(crate) dtz: bool,
+    pub(crate) moves: Vec<RankedMove>,
+}
+
+/// Rank every legal root move. With `rank_dtz`, wins are ordered by distance
+/// to zeroing; that is forced where distance to zeroing is distance to mate.
+/// A move into a claimable threefold, or with `use_rule50` a rule-50 draw,
+/// ranks as a draw: Fathom does not see the game history. `None` when the
+/// root is not in the tables or a probe fails.
+pub(crate) fn rank_root_moves(
     board: &Board,
     use_rule50: bool,
-    has_repeated: bool,
-) -> Option<RootMoveProbes> {
+    rank_dtz: bool,
+) -> Option<RootRanking> {
     if !can_probe(board, use_rule50, true) {
         return None;
     }
+    let mut ranking = rank_by_dtz(board, use_rule50, rank_dtz || board.dtz_is_dtm())
+        .or_else(|| rank_by_wdl(board, use_rule50))?;
+    ranking
+        .moves
+        .sort_by_key(|ranked| std::cmp::Reverse(ranked.rank));
+    Some(ranking)
+}
 
+fn rank_by_dtz(board: &Board, use_rule50: bool, rank_dtz: bool) -> Option<RootRanking> {
+    let pos = tb_position(board);
+    let mut results = [TB_RESULT_FAILED; TB_MAX_MOVES + 1];
+    // SAFETY: FFI into Fathom. `results` holds TB_MAX_MOVES + 1 entries, enough
+    // for every legal move and the terminator Fathom writes after them.
+    let root = unsafe {
+        tb_probe_root_impl(
+            pos.white,
+            pos.black,
+            pos.kings,
+            pos.queens,
+            pos.rooks,
+            pos.bishops,
+            pos.knights,
+            pos.pawns,
+            pos.rule50,
+            pos.ep,
+            pos.turn,
+            results.as_mut_ptr(),
+        )
+    };
+    if root == TB_RESULT_FAILED {
+        return None;
+    }
+    let cnt50 = i32::from(board.halfmove_clock());
+    let repeated = board.has_repetition_since_zeroing();
+    let mut after = board.clone();
+    let mut moves = Vec::new();
+    for &result in results
+        .iter()
+        .take_while(|&&result| result != TB_RESULT_FAILED)
+    {
+        let mv = legal_move_from_root_probe(board, root_move_from_result(result)?)?;
+        let distance = i32::try_from((result & TB_RESULT_DTZ_MASK) >> TB_RESULT_DTZ_SHIFT).ok()?;
+        // Fathom reports the move's result from the root side's view and
+        // the absolute distance; the sign follows the result.
+        let mut dtz = match wdl_from_raw((result & TB_RESULT_WDL_MASK) >> TB_RESULT_WDL_SHIFT)? {
+            Wdl::Win | Wdl::CursedWin => distance,
+            Wdl::Loss | Wdl::BlessedLoss => -distance,
+            Wdl::Draw => 0,
+        };
+        after.make_move(mv);
+        if after.halfmove_clock() != 0 && after.is_arbiter_draw(use_rule50) {
+            dtz = 0;
+        }
+        after.unmake_move(mv);
+        moves.push(RankedMove {
+            mv,
+            rank: dtz_rank(dtz, cnt50, repeated, rank_dtz),
+        });
+    }
+    (!moves.is_empty()).then_some(RootRanking { dtz: true, moves })
+}
+
+/// Better moves rank higher. Certain wins rank equally unless `rank_dtz`;
+/// losses rank equally unless a rule-50 draw is in sight.
+fn dtz_rank(dtz: i32, cnt50: i32, repeated: bool, rank_dtz: bool) -> i32 {
+    let order = if rank_dtz { dtz } else { 0 };
+    if dtz > 0 {
+        if dtz + cnt50 <= 99 && !repeated {
+            MAX_DTZ - order
+        } else {
+            MAX_DTZ / 2 - (dtz + cnt50)
+        }
+    } else if dtz < 0 {
+        if -dtz * 2 + cnt50 < 100 {
+            -MAX_DTZ - order
+        } else {
+            -MAX_DTZ / 2 + (-dtz + cnt50)
+        }
+    } else {
+        0
+    }
+}
+
+/// The fallback when DTZ tables are missing: Fathom's per-move WDL ranks,
+/// mapped onto the DTZ scale (a win `MAX_DTZ`, a cursed win `MAX_DTZ − 101`).
+fn rank_by_wdl(board: &Board, use_rule50: bool) -> Option<RootRanking> {
+    let probe = probe_root_moves_wdl(board, use_rule50)?;
+    let mut after = board.clone();
+    let mut moves = Vec::new();
+    for &(root_move, fathom_rank) in &probe {
+        let mv = legal_move_from_root_probe(board, root_move)?;
+        after.make_move(mv);
+        let drawn = after.is_arbiter_draw(use_rule50);
+        after.unmake_move(mv);
+        let rank = match fathom_rank {
+            _ if drawn => 0,
+            0 => 0,
+            rank if rank.abs() >= 1000 => rank.signum() * MAX_DTZ,
+            rank => rank.signum() * (MAX_DTZ - 101),
+        };
+        moves.push(RankedMove { mv, rank });
+    }
+    (!moves.is_empty()).then_some(RootRanking { dtz: false, moves })
+}
+
+fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove, i32)>> {
     let pos = tb_position(board);
     let mut results = TbRootMovesRaw::default();
     // SAFETY: FFI into Fathom. `results` is a live, default-initialised
     // `TbRootMovesRaw` that outlives the call and is only written by Fathom.
-    let dtz_ok = unsafe {
-        tb_probe_root_dtz(
+    let ok = unsafe {
+        tb_probe_root_wdl(
             pos.white,
             pos.black,
             pos.kings,
@@ -345,53 +448,20 @@ pub(crate) fn probe_root_moves(
             0,
             pos.ep,
             pos.turn,
-            has_repeated,
             use_rule50,
             &mut results,
         )
     };
-    let used_dtz = dtz_ok != 0;
-    if !used_dtz {
-        results = TbRootMovesRaw::default();
-        // SAFETY: see the DTZ probe above — same live `results` buffer.
-        let wdl_ok = unsafe {
-            tb_probe_root_wdl(
-                pos.white,
-                pos.black,
-                pos.kings,
-                pos.queens,
-                pos.rooks,
-                pos.bishops,
-                pos.knights,
-                pos.pawns,
-                pos.rule50,
-                0,
-                pos.ep,
-                pos.turn,
-                use_rule50,
-                &mut results,
-            )
-        };
-        if wdl_ok == 0 {
-            return None;
-        }
+    if ok == 0 {
+        return None;
     }
-
     let len = (results.size as usize).min(TB_MAX_MOVES);
-    let mut moves = Vec::new();
-    for result in results.moves.iter().take(len) {
-        moves.push(RootMoveProbe {
-            root_move: root_move_from_tb_move(result.mv)?,
-            rank: result.tb_rank,
-            score: result.tb_score,
-        });
-    }
-
-    if moves.is_empty() {
-        None
-    } else {
-        Some(RootMoveProbes { used_dtz, moves })
-    }
+    results
+        .moves
+        .iter()
+        .take(len)
+        .map(|result| Some((root_move_from_tb_move(result.mv)?, result.tb_rank)))
+        .collect()
 }
 
 pub(crate) fn legal_move_from_root_probe(board: &Board, root_move: RootMove) -> Option<Move> {
@@ -484,7 +554,6 @@ mod tests {
 
     use crate::board::Square;
     use std::fs;
-    use std::path::Path;
     use std::sync::{LazyLock, Mutex};
 
     static TEST_SYZYGY_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -592,32 +661,6 @@ mod tests {
         assert_eq!(tablebase_file_counts(&path), (2, 1));
 
         let _ = fs::remove_dir_all(base);
-    }
-
-    #[test]
-    fn probe_root_moves_uses_local_syzygy_tables_when_available() {
-        let _guard = TEST_SYZYGY_LOCK.lock().expect("syzygy test lock poisoned");
-        let path = "D:\\chess\\Syzygy345";
-        if !Path::new(path).join("KQvK.rtbw").exists()
-            || !Path::new(path).join("KQvK.rtbz").exists()
-        {
-            return;
-        }
-
-        assert!(initialize(path) >= 3);
-        let board = Board::from_fen("k7/8/2KQ4/8/8/8/8/8 w - - 0 1").expect("valid FEN");
-        let root = probe_root_moves(&board, true, false).expect("root TB probe succeeds");
-
-        assert!(root.used_dtz);
-        assert!(
-            root.moves.iter().any(|probe| {
-                legal_move_from_root_probe(&board, probe.root_move)
-                    .is_some_and(|mv| mv.to_string() == "c6c7")
-            }),
-            "expected KQvK root probe to include c6c7"
-        );
-
-        initialize("");
     }
 
     #[test]

@@ -54,7 +54,7 @@ use params::ProofParams;
 #[cfg(feature = "b4quiet")]
 use params::QuietParams;
 use params::SearchParams;
-use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared};
+use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootDecision};
 use stack::{PlyArray, StackEntry};
 use thread::ThreadData;
 use threads::WorkerPool;
@@ -577,6 +577,7 @@ impl Searcher {
         self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
         self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
+        self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
         #[cfg(feature = "b2core")]
         {
@@ -658,65 +659,34 @@ impl Searcher {
         }
     }
 
-    fn syzygy_root_moves(&mut self, board: &Board, legal_moves: &[Move]) -> Option<Vec<Move>> {
+    /// The root set the tables allow: every candidate of the best rank, in
+    /// the candidates' order, or `None` when the tables do not rank this root.
+    /// The whole group stays, so the search chooses among result-equal moves;
+    /// a move the tables prefer is not a forced move.
+    fn syzygy_root_moves(&mut self, board: &Board, candidates: &[Move]) -> Option<Vec<Move>> {
         if !self.can_probe_syzygy_root(board)
             || board.can_declare_draw()
             || self.cfg.limits.nodes > 0
         {
             return None;
         }
-
-        let probe = syzygy::probe_root_moves(
-            board,
-            self.shared.syzygy.fifty_move_rule,
-            board.has_repeated_position(),
-        )?;
+        let ranking = syzygy::rank_root_moves(board, self.shared.syzygy.fifty_move_rule, false)?;
         self.record_tb_hit();
-
-        let mut tb_moves = Vec::new();
-        for probe_move in &probe.moves {
-            let Some(mv) = syzygy::legal_move_from_root_probe(board, probe_move.root_move) else {
-                continue;
-            };
-            if legal_moves.contains(&mv) {
-                tb_moves.push((mv, probe_move.rank, probe_move.score));
-            }
-        }
-
-        let best_rank = tb_moves.iter().map(|(_, rank, _)| *rank).max()?;
-        let preferred_move = if probe.used_dtz && best_rank != 0 {
-            syzygy::probe_root(board, self.shared.syzygy.fifty_move_rule)
-                .and_then(|probe| probe.best_move)
-                .and_then(|root_move| syzygy::legal_move_from_root_probe(board, root_move))
-        } else {
-            None
+        let rank_of = |mv: Move| {
+            ranking
+                .moves
+                .iter()
+                .find(|ranked| ranked.mv == mv)
+                .map(|ranked| ranked.rank)
         };
-
-        if best_rank != 0
-            && let Some(preferred_move) = preferred_move
-            && tb_moves
-                .iter()
-                .any(|(tb_move, rank, _)| *tb_move == preferred_move && *rank == best_rank)
-        {
-            self.record_tb_hit();
-            return Some(vec![preferred_move]);
-        }
-
-        let mut root_moves = Vec::with_capacity(legal_moves.len());
-        for &legal_move in legal_moves {
-            if tb_moves
-                .iter()
-                .any(|(tb_move, rank, _)| *tb_move == legal_move && *rank == best_rank)
-            {
-                root_moves.push(legal_move);
-            }
-        }
-
-        if root_moves.is_empty() {
-            None
-        } else {
-            Some(root_moves)
-        }
+        let best_rank = candidates.iter().filter_map(|&mv| rank_of(mv)).max()?;
+        let root_moves: Vec<Move> = candidates
+            .iter()
+            .copied()
+            .filter(|&mv| rank_of(mv) == Some(best_rank))
+            .collect();
+        self.shared.syzygy.root.ranked_from = candidates.len();
+        Some(root_moves)
     }
 
     fn search_root<P: FnMut() -> SearchEvent + ?Sized>(
@@ -921,7 +891,13 @@ impl Searcher {
             // a clock but keeps searching under `go infinite`. Fixed-depth and
             // fixed-node searches keep the shortcut (bench relies on it, and
             // `go depth N` on a forced move is still a move request).
-            if legal_moves.len() == 1 && depth >= 2 && !self.cfg.limits.analysis_mode {
+            // A tablebase root keeps its best-ranked group; the shortcut reads
+            // the moves it could choose from before that cut.
+            let root_choices = match self.shared.syzygy.root.ranked_from {
+                0 => legal_moves.len(),
+                ranked_from => ranked_from,
+            };
+            if root_choices == 1 && depth >= 2 && !self.cfg.limits.analysis_mode {
                 break;
             }
 
