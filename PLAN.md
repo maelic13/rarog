@@ -2279,7 +2279,7 @@ diagnostics; two rejections stop B.
           all four together) against the head's pool
           (`analysis/artifacts/b72-nps-c1/c2`, source `0d95763`, the head's
           engine source), 20 interleaved cycles each, idle host, about
-          three hours. The arms' pools come from a scratch tree, so the
+          three and a half hours (the dry run timed a cycle). The arms' pools come from a scratch tree, so the
           screen chooses candidates and accepts nothing.
           *Rule, fixed here:* an arm at +0.5% or more with its 95% lower
           bound above 0 goes forward: its own engine commit, deterministic
@@ -2378,7 +2378,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13) is open |
-| B.7.2.13 | READY_FOR_IMPLEMENTATION | V | Audit screen of four exact candidates (TT prefetch before make, static attack tables, history-row prefetch, correction-slot prefetch), registered 2026-10-02 (RAR-P30); the maintainer's idle-host run, about three hours |
+| B.7.2.13 | READY_FOR_IMPLEMENTATION | V | Audit screen of four exact candidates (TT prefetch before make, static attack tables, history-row prefetch, correction-slot prefetch), registered 2026-10-02 (RAR-P30); the maintainer's idle-host run, about three and a half hours |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
