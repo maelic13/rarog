@@ -90,6 +90,21 @@ understates what a change is worth elsewhere. RAR-P31's verdicts stand.
   three or more the read is repeated, not interpreted.
 - About 14 minutes instead of 43.
 
+**Made two steps by the maintainer the same day**, who found six cycles
+still long for one comparison. Most changes are far from the floor and need
+less:
+- **Step 1:** two cycles, about 6 minutes, ±0.41%. Accepted at +0.9% or
+  more, closed at +0.1% or less.
+- **Step 2, only in between:** four more cycles, six in all, decided as
+  above at +0.5% with the lower bound above 0.
+- A no-regression check mirrors the thresholds around −0.5%.
+- Two cycles cannot absorb a disturbed one: they must agree within 1% per
+  arm, or step 1 is repeated.
+
+B.7's three accepted changes (+8.85%, +6.93%, +1.69%) would each have been
+decided by step 1; only the correction-slot prefetch (+0.37%) would have
+gone to step 2.
+
 Not chosen: more builds an arm (eight builds and three cycles reach ±0.22%
 in 16 minutes, but every arm then costs eight PGO builds); four cycles (the
 median absorbs only one disturbed cycle).

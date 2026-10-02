@@ -288,20 +288,35 @@ NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
 by about 0.36%, and keep compilation, profiling and unrelated load off the
 match host. **The read, revised 2026-10-02 (RAR-P32,
-`analysis/nps_method_study_2026-10-02.md`):** four pext PGO builds an arm
-from clean trees; six interleaved cycles of `bench 13 3`, each reading the
-best of its three runs, one warm-up reading per build, every run archived.
-The estimate is the difference between the arms' means of per-build medians,
-its interval a t-interval on the per-build medians (about ±0.30% on a quiet
-host; twenty cycles reach ±0.25%, because the builds set the limit). A cycle
-in which an arm's mean is more than 1% from that arm's median cycle is
-disturbed: the medians absorb two of six, and with three or more the read is
-repeated, not interpreted. About 14 minutes. `nps_multibuild.ps1`'s
-bootstrap interval is not this interval and is not quoted as one; the tool
-is brought to this read before its first use. Roughly 2 Elo per 1% NPS at `3+0.03` — **for SMALL deltas only.**
-That figure does not extrapolate: applied to the oracle's 1.80x NPS deficit it
-predicts 160 Elo, where the standard ~60 Elo per doubling gives ~51. Above a
-few percent, convert through doublings and say which conversion was used.
+`analysis/nps_method_study_2026-10-02.md`; two steps by maintainer
+decision):** four pext PGO builds an arm from clean trees, interleaved
+cycles of `bench 13 3`, each reading the best of its three runs, one warm-up
+reading per build, every run archived. The estimate is the difference
+between the arms' means of per-build medians, its interval a t-interval on
+the per-build medians.
+- **Step 1, two cycles, about 6 minutes (±0.4%).** At +0.9% or more the
+  change is accepted; at +0.1% or less it closes `NO_CHANGE`.
+- **Step 2, only in between: four more cycles, six in all, about 8 more
+  minutes (±0.3%).** Accepted at +0.5% or more with the lower bound above 0.
+- **A no-regression check** on a neutral change uses the same steps against
+  −0.5%: step 1 passes at −0.1% or above and fails at −0.9% or below.
+- **Disturbance:** load moves whole cycles by 2% to 4%. In step 1 the two
+  cycles of an arm must agree within 1%, or the step is repeated; over six
+  cycles a cycle more than 1% from its arm's median cycle is disturbed, the
+  medians absorb two, and with three or more the read is repeated.
+
+Twenty cycles reach only ±0.25%, because the builds set the limit, not the
+cycles. `nps_multibuild.ps1`'s bootstrap interval is not this interval and
+is not quoted as one; the tool is brought to this read before its first use.
+
+Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
+behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
+(+16.7% inside the games) for +35.5 ± 9.0 (RAR-S98). That is about 145 Elo a
+doubling over this range, well above the textbook 60, which predicted +15
+for the second pass. Nothing is measured beyond +18% or at a slower control:
+there, convert through doublings and say which figure was used (the oracle's
+1.80x NPS deficit reads 51 Elo at 60 a doubling and about 120 at this
+engine's own rate, and neither is measured).
 
 ### Matched ablation (deficit decomposition)
 
