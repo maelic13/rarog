@@ -2352,14 +2352,29 @@ diagnostics; two rejections stop B.
           over many positions the hint equals the real key after the
           make for every plain move or capture that changes no castling
           right and sets no en-passant square.
+          **Done 2026-10-02 (`a42fadc`):** the recipe at its two sites,
+          with comments; the test walks depth 3 from five roots and
+          checks the hint on over 50,000 moves, and fails when the
+          en-passant term is planted out of the hint.
         - **B.7.2.15 A, deterministic qualification — `V`.** Bench
           11,171,726 / EBF 2.512 and legacy 7,590,542 / EBF 2.473 exact
           (a change is a stop: revert and record), fmt, clippy at zero
           warnings, debug and release suites with the allocation guard,
           and the live wire: the new prefetch instructions at the two
           sites in the pext PGO disassembly, against the baseline's.
+          **Done 2026-10-02:** bench 11,171,726 / 2.512 and legacy
+          7,590,542 / 2.473 exact; fmt; clippy zero; debug 377 and
+          release 378 tests with the allocation guard; `prefetcht0` 20 →
+          34 in each of the four pool builds, and in a symbols build of
+          the same source the new ones sit in the inlined `push_move`
+          after the new line (line attribution in PGO code is
+          approximate).
         - **B.7.2.16 A, pooled-PGO NPS — `V`.** Against the c2 pool, by
-          the rule above.
+          the rule above. **Done 2026-10-02: +1.69% (95% CI +1.56% ..
+          +1.89%), accepted;** inside the frozen +0.91% to +2.41%. Host
+          2.0% CPU before and 4.6% after; a first attempt was stopped
+          at the maintainer's request before it measured anything
+          (`a/read-aborted-1`).
         - **B.7.2.17 I, the correction-slot prefetch — `I1`.** Prefetch
           the child's six slots after the make at the same two sites,
           through the slot function the read uses.
@@ -2448,10 +2463,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31) |
-| B.7.2.14 | READY_FOR_IMPLEMENTATION | I1 | A, the TT prefetch before the make: one engine commit at the recipe's two sites, with the hint's exactness test |
-| B.7.2.15 | READY_FOR_IMPLEMENTATION | V | A's deterministic qualification and disassembly live wire |
-| B.7.2.16 | READY_FOR_IMPLEMENTATION | V | A's pooled-PGO read against the c2 pool, by RAR-P31's rule |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31); A accepted at +1.69% (`a42fadc`), I next |
 | B.7.2.17 | READY_FOR_IMPLEMENTATION | I1 | I, the correction-slot prefetch, built over the head as it stands after A |
 | B.7.2.18 | READY_FOR_IMPLEMENTATION | V | I's deterministic qualification and disassembly live wire |
 | B.7.2.19 | READY_FOR_IMPLEMENTATION | V | I's pooled-PGO read against the head's pool, by RAR-P31's rule |
