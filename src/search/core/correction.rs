@@ -140,28 +140,6 @@ impl Searcher {
         }
     }
 
-    /// Ask for the slots the position at `ply` will read, through the same
-    /// slot function as the read. Called once the move leading to it is made
-    /// and pushed, so its keys and its continuation contexts are final.
-    #[inline(always)]
-    pub(super) fn prefetch_correction(&self, board: &Board, ply: usize) {
-        let slots = self.correction_slots(board, ply);
-        let tables = &self.td.corr;
-        let fetch = |table: &[i16], slot: usize| {
-            crate::tt::prefetch_ptr(table.as_ptr().wrapping_add(slot));
-        };
-        fetch(&tables.pawn[..], slots.pawn);
-        fetch(&tables.minor[..], slots.minor);
-        fetch(&tables.non_pawn[0][..], slots.non_pawn[0]);
-        fetch(&tables.non_pawn[1][..], slots.non_pawn[1]);
-        if let Some(slot) = slots.continuation[0] {
-            fetch(&tables.continuation_2[..], slot);
-        }
-        if let Some(slot) = slots.continuation[1] {
-            fetch(&tables.continuation_4[..], slot);
-        }
-    }
-
     /// The correction for the position at `ply`, in evaluation units: the
     /// weighted sum of the six tables.
     pub(super) fn correction_value(&self, board: &Board, ply: usize) -> i32 {
