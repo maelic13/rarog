@@ -1,0 +1,115 @@
+diff --git a/src/board/attacks.rs b/src/board/attacks.rs
+index 6da80e2..b41c624 100644
+--- a/src/board/attacks.rs
++++ b/src/board/attacks.rs
+@@ -4,7 +4,8 @@
+ /// Sliding pieces (bishop, rook, queen) use either magic bitboards or a
+ /// compile-time PEXT table layout, initialized at startup via `LazyLock`.
+ use crate::infra;
+-use std::sync::LazyLock;
++use std::cell::UnsafeCell;
++use std::sync::Once;
+ 
+ use super::bitboard::Bitboard;
+ use super::piece::Color;
+@@ -21,11 +22,42 @@ pub struct AttackTables {
+     pub(crate) king_attacks: [Bitboard; 64],
+     bishop: [SliderEntry; 64],
+     rook: [SliderEntry; 64],
+-    bishop_table: Vec<Bitboard>,
+-    rook_table: Vec<Bitboard>,
++    bishop_table: [Bitboard; BISHOP_TABLE_SIZE],
++    rook_table: [Bitboard; ROOK_TABLE_SIZE],
+ }
+ 
+-pub static ATTACKS: LazyLock<AttackTables> = LazyLock::new(AttackTables::init);
++/// Sum over squares of `2^popcount(mask)`.
++const BISHOP_TABLE_SIZE: usize = 5_248;
++const ROOK_TABLE_SIZE: usize = 102_400;
++
++struct Storage(UnsafeCell<AttackTables>);
++// SAFETY (prototype): written once by `initialize`, before any reader.
++unsafe impl Sync for Storage {}
++static STORAGE: Storage = Storage(UnsafeCell::new(AttackTables::EMPTY));
++static BUILT: Once = Once::new();
++
++/// Reads the static tables with no state check.
++pub struct AttackHandle;
++
++impl std::ops::Deref for AttackHandle {
++    type Target = AttackTables;
++
++    #[inline(always)]
++    fn deref(&self) -> &AttackTables {
++        // SAFETY (prototype): see `Storage`.
++        unsafe { &*STORAGE.0.get() }
++    }
++}
++
++pub static ATTACKS: AttackHandle = AttackHandle;
++
++/// Build the tables; every later call returns at once.
++pub fn initialize() {
++    BUILT.call_once(|| {
++        // SAFETY (prototype): `call_once` gives this closure exclusive access.
++        unsafe { AttackTables::init_into(&mut *STORAGE.0.get()) }
++    });
++}
+ 
+ #[derive(Copy, Clone)]
+ struct SliderEntry {
+@@ -153,7 +185,17 @@ impl AttackTables {
+     // Initialization
+     // -----------------------------------------------------------------------
+ 
+-    fn init() -> Self {
++    const EMPTY: Self = Self {
++        pawn_attacks: [[Bitboard::EMPTY; 64]; 2],
++        knight_attacks: [Bitboard::EMPTY; 64],
++        king_attacks: [Bitboard::EMPTY; 64],
++        bishop: [SliderEntry::empty(); 64],
++        rook: [SliderEntry::empty(); 64],
++        bishop_table: [Bitboard::EMPTY; BISHOP_TABLE_SIZE],
++        rook_table: [Bitboard::EMPTY; ROOK_TABLE_SIZE],
++    };
++
++    fn init_into(tables: &mut Self) {
+         let pawn_attacks = Self::init_pawn_attacks();
+         let knight_attacks = Self::init_knight_attacks();
+         let king_attacks = Self::init_king_attacks();
+@@ -215,15 +257,13 @@ impl AttackTables {
+             }
+         }
+ 
+-        Self {
+-            pawn_attacks,
+-            knight_attacks,
+-            king_attacks,
+-            bishop: bishop_entries,
+-            rook: rook_entries,
+-            bishop_table,
+-            rook_table,
+-        }
++        tables.pawn_attacks = pawn_attacks;
++        tables.knight_attacks = knight_attacks;
++        tables.king_attacks = king_attacks;
++        tables.bishop = bishop_entries;
++        tables.rook = rook_entries;
++        tables.bishop_table.copy_from_slice(&bishop_table);
++        tables.rook_table.copy_from_slice(&rook_table);
+     }
+ 
+     fn init_pawn_attacks() -> [[Bitboard; 64]; 2] {
+diff --git a/src/lib.rs b/src/lib.rs
+index 978ec7b..c54beb5 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -24,7 +24,7 @@ compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing r
+ /// inside the first search that needs it and charged to that search's clock,
+ /// so the engine builds them all before it reads a command.
+ pub fn initialize_tables() {
+-    std::sync::LazyLock::force(&board::ATTACKS);
++    board::attacks::initialize();
+     kpk::initialize();
+ }
+ 

@@ -1,0 +1,51 @@
+diff --git a/src/board/board.rs b/src/board/board.rs
+index 5bcdc73..e82789d 100644
+--- a/src/board/board.rs
++++ b/src/board/board.rs
+@@ -515,6 +515,26 @@ impl Board {
+         self.hash
+     }
+ 
++    /// The key the position will have after `mv`, exact for a plain move or
++    /// capture that changes no castling right and sets no en-passant square,
++    /// and only a guess otherwise. A hint for prefetching, nothing else.
++    #[inline(always)]
++    pub fn key_after_hint(&self, mv: Move) -> u64 {
++        let zob = &ZOBRIST;
++        let us = self.side_to_move;
++        let (from, to) = (mv.from_sq(), mv.to_sq());
++        let piece = self.piece_type_at_unchecked(from);
++        let mut key =
++            self.hash ^ zob.side() ^ zob.piece(us, piece, from) ^ zob.piece(us, piece, to);
++        if self.ep_sq != 255 {
++            key ^= zob.ep(Square(self.ep_sq).file());
++        }
++        if mv.flags() == CAPTURE {
++            key ^= zob.piece(!us, self.piece_type_at_unchecked(to), to);
++        }
++        key
++    }
++
+     #[inline(always)]
+     pub fn occupied_count(&self) -> u32 {
+         self.all_occ.count()
+diff --git a/src/search/core/node.rs b/src/search/core/node.rs
+index 58a0bc9..b6ac824 100644
+--- a/src/search/core/node.rs
++++ b/src/search/core/node.rs
+@@ -2240,6 +2240,7 @@ impl Searcher {
+                 }
+             }
+ 
++            self.shared.tt.prefetch(board.key_after_hint(mv));
+             self.push_move(board, ply, mv, moving_piece);
+             self.record_move_order(ply, move_count);
+             #[cfg(feature = "b3proof")]
+@@ -3071,6 +3072,7 @@ impl Searcher {
+                     continue;
+                 }
+             }
++            self.shared.tt.prefetch(board.key_after_hint(mv));
+             let moving_piece = board.moving_piece(mv);
+             self.push_move(board, ply, mv, moving_piece);
+             #[cfg(feature = "diag")]

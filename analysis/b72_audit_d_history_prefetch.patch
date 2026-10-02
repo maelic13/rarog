@@ -1,0 +1,76 @@
+diff --git a/src/search/core/history.rs b/src/search/core/history.rs
+index fd6b648..4a0a2c8 100644
+--- a/src/search/core/history.rs
++++ b/src/search/core/history.rs
+@@ -167,6 +167,24 @@ impl HistoryTables {
+         (crate::infra::index(pawn_key) & (PAWN_HISTORY_SIZE - 1)) * PIECE_TO_SIZE
+     }
+ 
++    /// Prefetch the rows quiet scoring reads for `stm` at this node: its half
++    /// of the pawn-history row and of each continuation row. A half row is
++    /// 384 entries, 768 bytes; thirteen lines cover it at any alignment.
++    #[inline(always)]
++    pub(super) fn prefetch_quiet_rows(&self, pawn_row: usize, contexts: &[Option<usize>], stm: Color) {
++        let half = stm as usize * 6 * 64;
++        let fetch = |table: &[i16], base: usize| {
++            let start = table.as_ptr().wrapping_add(base + half).cast::<u8>();
++            for line in 0..13 {
++                crate::tt::prefetch_ptr(start.wrapping_add(line * 64));
++            }
++        };
++        fetch(&self.pawn[..], pawn_row);
++        for context in contexts.iter().flatten() {
++            fetch(&self.cont[..], *context);
++        }
++    }
++
+     #[inline(always)]
+     pub(super) fn pawn(&self, pawn_row: usize, color: Color, piece: Piece, to: Square) -> i32 {
+         i32::from(self.pawn[pawn_row + piece_to(color, piece, to)])
+diff --git a/src/search/core/movepick.rs b/src/search/core/movepick.rs
+index 4ef052f..c66fbe4 100644
+--- a/src/search/core/movepick.rs
++++ b/src/search/core/movepick.rs
+@@ -373,6 +373,7 @@ impl MovePicker {
+                         *stage = Stage::GenerateQuiets;
+                     }
+                     Stage::GenerateQuiets => {
++                        searcher.prefetch_quiet_histories(board, *ply);
+                         let mut quiets = MoveList::new();
+                         board.generate_legal_quiets_pinned_into(*pinned, &mut quiets);
+                         *survivors_left = searcher.append_quiet_moves(
+@@ -510,6 +511,21 @@ impl Searcher {
+         }
+     }
+ 
++    /// Ask for the history rows the quiets' scoring reads, before the quiets
++    /// are generated, so the rows arrive while generation runs.
++    #[inline(always)]
++    fn prefetch_quiet_histories(&self, board: &Board, ply: usize) {
++        let mut cont = [None; 4];
++        for (slot, back) in CONT_PLY_BACK.into_iter().take(4).enumerate() {
++            cont[slot] = self.cont_context_back(ply, back);
++        }
++        self.td.hist.prefetch_quiet_rows(
++            HistoryTables::pawn_row(board.pawn_key()),
++            &cont,
++            board.side_to_move(),
++        );
++    }
++
+     /// Score and append quiet moves: histories, continuation terms, and the
+     /// threat, check, offense and king-wall terms of the moving piece.
+     /// Returns how many of them survive a skip.
+diff --git a/src/tt.rs b/src/tt.rs
+index e50148b..dc3aed3 100644
+--- a/src/tt.rs
++++ b/src/tt.rs
+@@ -527,7 +527,7 @@ impl TranspositionTable {
+ }
+ 
+ #[inline(always)]
+-fn prefetch_ptr<T>(ptr: *const T) {
++pub(crate) fn prefetch_ptr<T>(ptr: *const T) {
+     // SAFETY: `_mm_prefetch` is a pure cache hint — it never dereferences the
+     // pointer, so ANY address (dangling or null) is sound. It is `unsafe` only
+     // because `std::arch` intrinsics require the target feature, and SSE is

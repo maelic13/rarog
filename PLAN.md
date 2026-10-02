@@ -2228,6 +2228,79 @@ diagnostics; two rejections stop B.
         - **B.7.2.12 Candidate 3, pooled-PGO NPS — `V`.** Against
           `0d95763`'s pool, the +0.5% floor and the frozen prediction
           of +0.5% to +2.5%.
+          **Candidate 3 closed 2026-10-02, `NO_CHANGE`, by the maintainer
+          (B.7.2.10–B.7.2.12 not done).** The audit below adds, on the same
+          recorded tails and the engine's own 16-byte entries
+          (`tools/results/b72-audit-20261002/scan_run1.log`, host in use,
+          a screen): the scan with both updates as unpredictable selects
+          `s` = 1.03; a packed 64-bit key 0.95, with two accumulators 0.91;
+          the picked entry read before the swap 1.07. The scan is not
+          bound by branch misprediction, the audit's own hypothesis, and
+          no variant reaches the 1.1 bound.
+        - **B.7.2.13 Audit screen: four further exact candidates — `V`.**
+          Added 2026-10-02 at the maintainer's request for an audit; the
+          registered limit of three candidates is his to lift. The
+          re-profile read by source line and by inline caller
+          (`tools/results/b72-audit-20261002/`: `line_drill.py`,
+          `callers.py`) locates four mechanisms the function table hides:
+          - **A, the TT probe waits for its line.** `probe_local`'s first
+            load is 6.89% of samples (TT region 9.46%). The prefetch is
+            issued after `make_move`; a key predicted before it (exact
+            for a plain move or capture) gains the check predicate and
+            the make as lead time, in the main loop and in quiescence.
+          - **B, every attack lookup checks a `LazyLock`.** The state
+            check is 0.71% of samples and the slider tables' `Vec`
+            pointer 0.55%, spread over SEE, check queries, generation,
+            ordering and evaluation. One static with fixed arrays needs
+            neither. The prototype fills it at startup through an
+            `UnsafeCell` and is not shippable; the shippable form builds
+            the same static at compile time.
+          - **D, quiet scoring reads cold history rows.** `quiet_score`
+            is 8.97% of samples, 6.07% on the two lines that load the
+            pawn and continuation histories (0.8 MB and 4.7 MB tables).
+            The rows are known before the quiets are generated; the
+            prototype prefetches the side to move's half of each (five
+            rows, thirteen lines each) at `GenerateQuiets`.
+          - **I, the correction reads six slots of 26 MB of tables.**
+            `correction_value` is 2.45% of samples, all on its loads;
+            the non-pawn and minor slots change with almost every move.
+            The prototype prefetches the child's six slots once the move
+            is made and pushed.
+
+          Each prototype is a prefetch or a table layout, so it cannot
+          change the search; each reproduces `bench` 11,171,726. Recipes:
+          `analysis/b72_audit_a_tt_prefetch.patch`,
+          `b72_audit_b_static_attacks.patch`,
+          `b72_audit_d_history_prefetch.patch`,
+          `b72_audit_i_correction_prefetch.patch`, on `b727b9b`.
+          *Screen, registered before any pooled read:*
+          `tools/results/b72-audit-20261002/screen.ps1`, PROCESS's
+          pooled-PGO method: four pext PGO builds per arm (A, B, D, I and
+          all four together) against the head's pool
+          (`analysis/artifacts/b72-nps-c1/c2`, source `0d95763`, the head's
+          engine source), 20 interleaved cycles each, idle host, about
+          three hours. The arms' pools come from a scratch tree, so the
+          screen chooses candidates and accepts nothing.
+          *Rule, fixed here:* an arm at +0.5% or more with its 95% lower
+          bound above 0 goes forward: its own engine commit, deterministic
+          qualification and an acceptance read from a clean pool. An arm
+          whose upper bound is under +0.5% closes `NO_CHANGE`. Between
+          the two the maintainer decides; the bundle's read is what a
+          joint acceptance of small positive arms would rest on.
+          *Predictions, frozen:* A +0.5% to +3% (below the floor with
+          probability 0.35); B +0.3% to +1.5% (0.5); D −0.5% to +3%
+          (0.5); I +0.3% to +2% (0.45); all four +1.5% to +7% (0.1),
+          less than the sum because the prefetches compete for the same
+          fill buffers. A screen of plain builds on a host in use read
+          nothing (±3%), and is no evidence either way.
+          *Not candidates, found by the same read:* the SEE (5.5%)
+          recomputes its attacker set and a king-safety query at every
+          recapture, but an exact rewrite is not small and has its own
+          contract oracle; the evaluation cache's probe (0.85%) could
+          be prefetched with the TT's and belongs to Phase C's
+          restructure; under a skip the picker still selects every
+          quiet above the next survivor (17% of the remaining scans),
+          which has no exact shortcut with the swap's tie order.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2304,10 +2377,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3, the scan layout, waits on its falsifier B.7.2.9 |
-| B.7.2.10 | READY_FOR_IMPLEMENTATION | I1 | Waits on the maintainer: B.7.2.9 read s = 1.114 and 1.099, straddling 1.1; recommended NO_CHANGE, which would close B.7.2 |
-| B.7.2.11 | READY_FOR_IMPLEMENTATION | V | Qualifies B.7.2.10 |
-| B.7.2.12 | READY_FOR_IMPLEMENTATION | V | Measures B.7.2.10 |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13) is open |
+| B.7.2.13 | READY_FOR_IMPLEMENTATION | V | Audit screen of four exact candidates (TT prefetch before make, static attack tables, history-row prefetch, correction-slot prefetch), registered 2026-10-02 (RAR-P30); the maintainer's idle-host run, about three hours |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
