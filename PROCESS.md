@@ -287,7 +287,18 @@ topology change, never for a symmetric adjudication toggle (RAR-M03).
 NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
 by about 0.36%, and keep compilation, profiling and unrelated load off the
-match host. Roughly 2 Elo per 1% NPS at `3+0.03` — **for SMALL deltas only.**
+match host. **The read, revised 2026-10-02 (RAR-P32,
+`analysis/nps_method_study_2026-10-02.md`):** four pext PGO builds an arm
+from clean trees; six interleaved cycles of `bench 13 3`, each reading the
+best of its three runs, one warm-up reading per build, every run archived.
+The estimate is the difference between the arms' means of per-build medians,
+its interval a t-interval on the per-build medians (about ±0.30% on a quiet
+host; twenty cycles reach ±0.25%, because the builds set the limit). A cycle
+in which an arm's mean is more than 1% from that arm's median cycle is
+disturbed: the medians absorb two of six, and with three or more the read is
+repeated, not interpreted. About 14 minutes. `nps_multibuild.ps1`'s
+bootstrap interval is not this interval and is not quoted as one; the tool
+is brought to this read before its first use. Roughly 2 Elo per 1% NPS at `3+0.03` — **for SMALL deltas only.**
 That figure does not extrapolate: applied to the oracle's 1.80x NPS deficit it
 predicts 160 Elo, where the standard ~60 Elo per doubling gives ~51. Above a
 few percent, convert through doublings and say which conversion was used.

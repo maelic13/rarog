@@ -132,6 +132,8 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| RAR-S98: the B.7 speed pass in games, the head against the head before B.7, `[0,3]`, registered 2026-10-02 | The maintainer plays it (about 30 to 60 minutes); H0 or the cap stops B.8 until explained | B.8 lands its first deletion |
+| The NPS tool at the revised read (RAR-P32: archive every run, per-build medians, t-interval, disturbance guard) | Before the first NPS read | B.8's before-and-after reading |
 | E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |

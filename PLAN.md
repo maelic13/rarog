@@ -2410,7 +2410,11 @@ diagnostics; two rejections stop B.
       scored list (+6.93%) and the TT prefetch before the make
       (+1.69%), each read over the one before, bench 11,171,726
       throughout. NPS is the evidence layer; the game check of the
-      whole pass is registered separately.
+      whole pass is registered as RAR-S98 (the head against the head
+      before B.7, `[0,3]`, the maintainer's run). The NPS read itself
+      was shortened after this leaf (RAR-P32, PROCESS): six cycles
+      and per-build medians instead of twenty cycles and a pooled
+      bootstrap.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
