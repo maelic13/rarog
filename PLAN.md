@@ -2377,16 +2377,30 @@ diagnostics; two rejections stop B.
           (`a/read-aborted-1`).
         - **B.7.2.17 I, the correction-slot prefetch — `I1`.** Prefetch
           the child's six slots after the make at the same two sites,
-          through the slot function the read uses.
+          through the slot function the read uses. **Done 2026-10-02
+          (`a459132`), reverted (`bec1292`) by B.7.2.19.**
         - **B.7.2.18 I, deterministic qualification — `V`.** As
-          B.7.2.15.
+          B.7.2.15. **Done 2026-10-02:** bench and legacy exact; fmt;
+          clippy zero; debug 377 and release 378 tests; `prefetcht0` 34
+          → 118 in each pool build, the six slots at each of A's 14
+          sites, every one attributed to its `fetch` line in the
+          symbols build.
         - **B.7.2.19 I, pooled-PGO NPS — `V`.** Against the head's pool
-          when I is built, by the rule above.
+          when I is built, by the rule above. **Done 2026-10-02: +0.37%
+          (95% CI +0.17% .. +0.56%) against A's pool, under the +0.5%
+          floor; reverted in `bec1292`, `NO_CHANGE`.** Inside the frozen
+          −0.29% to +0.75%. Host 11.4% CPU before and 21.6% after: load
+          arrived near the end of the read, a confound recorded in
+          RAR-P31 that the rule leaves no outcome for.
         - **B.7.2.20 The total — `V`.** One read of the final head's pool
           against the c2 pool. When the final head's engine source is an
           accepted arm's, that arm's pool is read without a rebuild; with
           no arm accepted there is nothing to read. Prediction: A's
-          interval, plus I's if I is accepted.
+          interval, plus I's if I is accepted. **Done 2026-10-02:** the
+          final head `bec1292` has `a42fadc`'s engine source, so A's
+          pool was read again against the c2 pool: **+1.78% (95% CI
+          +0.92% .. +2.56%)**, inside the prediction and agreeing with
+          A's own read (+1.69%). CPU 10.6% before and 3.0% after.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2463,11 +2477,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31); A accepted at +1.69% (`a42fadc`), I next |
-| B.7.2.17 | READY_FOR_IMPLEMENTATION | I1 | I, the correction-slot prefetch, built over the head as it stands after A |
-| B.7.2.18 | READY_FOR_IMPLEMENTATION | V | I's deterministic qualification and disassembly live wire |
-| B.7.2.19 | READY_FOR_IMPLEMENTATION | V | I's pooled-PGO read against the head's pool, by RAR-P31's rule |
-| B.7.2.20 | READY_FOR_IMPLEMENTATION | V | The total: the final head's pool against the c2 pool |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31); A accepted at +1.69% (`a42fadc`), I reverted at +0.37% (`bec1292`), total +1.78%; the sweep's acceptance waits on the auditor's verification and the maintainer |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
