@@ -231,6 +231,13 @@ is the numbering: release first, baselines on the released binary.
         - [x] **B.7.2.11** Candidate 3 deterministic qualification: not needed, candidate 3 closed — DONE 2026-10-02
         - [x] **B.7.2.12** Candidate 3 pooled-PGO NPS: not needed, candidate 3 closed — DONE 2026-10-02
         - [x] **B.7.2.13** Audit screen (RAR-P30), 20 cycles each against the head's pool: A (TT prefetch before make) **+1.48%** (CI +0.91% .. +2.41%) forward; I (correction-slot prefetch) +0.14% (−0.29% .. +0.75%) between, implemented after A by the maintainer's decision; D (history-row prefetch) −1.87% and B (static attack tables) −0.49% close `NO_CHANGE`; all four +1.71% — DONE 2026-10-02
+        - [ ] **B.7.2.14** A, the TT prefetch before the make, with the hint's exactness test (RAR-P31) — **READY_FOR_IMPLEMENTATION / I1**
+        - [ ] **B.7.2.15** A deterministic qualification: exact bench and legacy bench, fmt, clippy zero, debug and release suites, disassembly live wire — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.7.2.16** A pooled-PGO NPS against the c2 pool: accepted at +0.5% or more with the lower bound above 0, else reverted; prediction +0.91% to +2.41% — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.7.2.17** I, the correction-slot prefetch, over the head after A — **READY_FOR_IMPLEMENTATION / I1**
+        - [ ] **B.7.2.18** I deterministic qualification, as B.7.2.15 — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.7.2.19** I pooled-PGO NPS against the head's pool, same rule; prediction −0.29% to +0.75% — **READY_FOR_IMPLEMENTATION / V**
+        - [ ] **B.7.2.20** The total: the final head's pool against the c2 pool — **READY_FOR_IMPLEMENTATION / V**
 - [ ] **B.8** Cleanup: dead parameters, old picker, unconsumed provenance, ownerless diagnostics — **RESEARCH / I1**
 - [ ] **B.9** Checkpoint: G(0), depth/EBF, NPS, conversion, pool gauntlet; remove `ablate`; freeze the search head — **RESEARCH / V**
 

@@ -2323,6 +2323,55 @@ diagnostics; two rejections stop B.
           and a pointer load were not removable cost; the bundle landed
           inside its range at the low end, but the parts did not add.
           The acceptance reads are B.7.2.14 onward (RAR-P31).
+
+        *Acceptance reads of the screen's survivors, registered
+        2026-10-02 before any acceptance build (RAR-P31).* Order: the
+        forward arm, then the between arm, each group by screen
+        estimate: A, then I. Each arm is one engine commit with the
+        recipe's mechanism at the recipe's sites and nothing else,
+        measured over the head as it stands when the arm is built: A
+        against the c2 pool (`analysis/artifacts/b72-nps-c1/c2`,
+        `0d95763`'s engine source); I against A's pool if A is accepted,
+        else against the c2 pool. *Method:* `nps_build_pool.ps1 -Arch
+        pext -Builds 4 -ExpectFingerprint 11171726` from a clean tree,
+        then `nps_multibuild.ps1 -Cycles 20 -Repeats 3`, idle host (CPU
+        and engine or build processes checked before every read; if
+        busy, wait). Pools and logs under
+        `analysis/artifacts/b72-audit-nps/`, hashes in each pool's
+        manifest. *Rule, fixed here:* an arm is accepted when its delta
+        is +0.5% or more and its 95% lower bound is above 0; otherwise
+        its commit is reverted in its own commit and the arm closes
+        `NO_CHANGE`. There is no third outcome. *Predictions, frozen
+        from the screen's intervals:* A +0.91% to +2.41%; I −0.29% to
+        +0.75%, its point under the floor, so it closes `NO_CHANGE` with
+        probability about 0.8.
+        - **B.7.2.14 A, the TT prefetch before the make — `I1`.**
+          `Board::key_after_hint` and one prefetch from it before the
+          move is pushed in the main loop and before the make in
+          quiescence; the exact prefetch after the make stays. Test:
+          over many positions the hint equals the real key after the
+          make for every plain move or capture that changes no castling
+          right and sets no en-passant square.
+        - **B.7.2.15 A, deterministic qualification — `V`.** Bench
+          11,171,726 / EBF 2.512 and legacy 7,590,542 / EBF 2.473 exact
+          (a change is a stop: revert and record), fmt, clippy at zero
+          warnings, debug and release suites with the allocation guard,
+          and the live wire: the new prefetch instructions at the two
+          sites in the pext PGO disassembly, against the baseline's.
+        - **B.7.2.16 A, pooled-PGO NPS — `V`.** Against the c2 pool, by
+          the rule above.
+        - **B.7.2.17 I, the correction-slot prefetch — `I1`.** Prefetch
+          the child's six slots after the make at the same two sites,
+          through the slot function the read uses.
+        - **B.7.2.18 I, deterministic qualification — `V`.** As
+          B.7.2.15.
+        - **B.7.2.19 I, pooled-PGO NPS — `V`.** Against the head's pool
+          when I is built, by the rule above.
+        - **B.7.2.20 The total — `V`.** One read of the final head's pool
+          against the c2 pool. When the final head's engine source is an
+          accepted arm's, that arm's pool is read without a rebuild; with
+          no arm accepted there is nothing to read. Prediction: A's
+          interval, plus I's if I is accepted.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2399,7 +2448,14 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE` |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31) |
+| B.7.2.14 | READY_FOR_IMPLEMENTATION | I1 | A, the TT prefetch before the make: one engine commit at the recipe's two sites, with the hint's exactness test |
+| B.7.2.15 | READY_FOR_IMPLEMENTATION | V | A's deterministic qualification and disassembly live wire |
+| B.7.2.16 | READY_FOR_IMPLEMENTATION | V | A's pooled-PGO read against the c2 pool, by RAR-P31's rule |
+| B.7.2.17 | READY_FOR_IMPLEMENTATION | I1 | I, the correction-slot prefetch, built over the head as it stands after A |
+| B.7.2.18 | READY_FOR_IMPLEMENTATION | V | I's deterministic qualification and disassembly live wire |
+| B.7.2.19 | READY_FOR_IMPLEMENTATION | V | I's pooled-PGO read against the head's pool, by RAR-P31's rule |
+| B.7.2.20 | READY_FOR_IMPLEMENTATION | V | The total: the final head's pool against the c2 pool |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
