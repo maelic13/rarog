@@ -515,6 +515,26 @@ impl Board {
         self.hash
     }
 
+    /// The key the position will have after `mv`, exact for a plain move or
+    /// capture that changes no castling right and sets no en-passant square,
+    /// and only a guess otherwise. A hint for prefetching, nothing else.
+    #[inline(always)]
+    pub fn key_after_hint(&self, mv: Move) -> u64 {
+        let zob = &ZOBRIST;
+        let us = self.side_to_move;
+        let (from, to) = (mv.from_sq(), mv.to_sq());
+        let piece = self.piece_type_at_unchecked(from);
+        let mut key =
+            self.hash ^ zob.side() ^ zob.piece(us, piece, from) ^ zob.piece(us, piece, to);
+        if self.ep_sq != 255 {
+            key ^= zob.ep(Square(self.ep_sq).file());
+        }
+        if mv.flags() == CAPTURE {
+            key ^= zob.piece(!us, self.piece_type_at_unchecked(to), to);
+        }
+        key
+    }
+
     #[inline(always)]
     pub fn occupied_count(&self) -> u32 {
         self.all_occ.count()
@@ -2686,5 +2706,55 @@ mod tests {
                 "{uci}: is_legal must agree with legal_move"
             );
         }
+    }
+
+    /// The prefetch hint is the real key after the make for every plain move
+    /// or capture that changes no castling right and sets no en-passant
+    /// square, over every position of a depth-3 walk from several roots. The
+    /// walk must also reach the excluded moves, or the exclusions are untested.
+    #[test]
+    fn key_after_hint_is_exact_for_plain_moves_and_captures() {
+        #[derive(Default)]
+        struct Seen {
+            exact: u64,
+            castling_changed: u64,
+            ep_set: u64,
+        }
+        fn walk(board: &mut Board, depth: u32, seen: &mut Seen) {
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                let hint = board.key_after_hint(mv);
+                let castling = board.castling();
+                let plain = matches!(mv.flags(), QUIET | DOUBLE_PUSH | CAPTURE);
+                board.make_move(mv);
+                if plain {
+                    if board.castling() != castling {
+                        seen.castling_changed += 1;
+                    } else if board.ep_square().is_some() {
+                        seen.ep_set += 1;
+                    } else {
+                        assert_eq!(hint, board.hash(), "{mv} reaching {}", board.to_fen());
+                        seen.exact += 1;
+                    }
+                }
+                walk(board, depth - 1, seen);
+                board.unmake_move(mv);
+            }
+        }
+        let mut seen = Seen::default();
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 3, &mut seen);
+        }
+        assert!(seen.exact > 50_000, "only {} exact cases", seen.exact);
+        assert!(seen.castling_changed > 0 && seen.ep_set > 0);
     }
 }

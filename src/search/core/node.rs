@@ -2240,6 +2240,11 @@ impl Searcher {
                 }
             }
 
+            // The child's cluster is asked for before the make, from a key
+            // that is exact for most moves, so the line arrives during the
+            // check test and the make; the exact prefetch after the make
+            // covers the rest.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
             #[cfg(feature = "b3proof")]
@@ -3071,6 +3076,8 @@ impl Searcher {
                     continue;
                 }
             }
+            // As in the main loop: the child's cluster early, from the hint.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             let moving_piece = board.moving_piece(mv);
             self.push_move(board, ply, mv, moving_piece);
             #[cfg(feature = "diag")]
