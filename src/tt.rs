@@ -527,7 +527,7 @@ impl TranspositionTable {
 }
 
 #[inline(always)]
-fn prefetch_ptr<T>(ptr: *const T) {
+pub(crate) fn prefetch_ptr<T>(ptr: *const T) {
     // SAFETY: `_mm_prefetch` is a pure cache hint — it never dereferences the
     // pointer, so ANY address (dangling or null) is sound. It is `unsafe` only
     // because `std::arch` intrinsics require the target feature, and SSE is

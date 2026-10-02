@@ -2258,6 +2258,7 @@ impl Searcher {
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
             self.shared.tt.prefetch(board.hash());
+            self.prefetch_correction(board, ply + 1);
             let mut new_depth = depth - 1 + extension;
             #[cfg(feature = "b3proof")]
             debug_assert!(
@@ -3086,6 +3087,7 @@ impl Searcher {
             }
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
+            self.prefetch_correction(board, ply + 1);
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);
