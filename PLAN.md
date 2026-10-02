@@ -2206,9 +2206,11 @@ diagnostics; two rejections stop B.
           - the sampling build recorded 536,249 of `bench`'s 17,159,959
             calls, mean tail 13.84; every variant selected the same
             entry on all of them;
-          - the same loop over contiguous scores read **`s` = 1.114 and
-            1.099** in two runs, straddling 1.1; maximum-then-position
-            read 0.77;
+          - the same loop over contiguous scores read **`s` = 1.106 and
+            1.093** in two runs on an idle host (1.8–4.0% CPU), straddling
+            1.1; maximum-then-position read 0.76. Two earlier runs, 1.114
+            and 1.099, were taken at 9–12% load with a video playing, and
+            are superseded; they agree within run-to-run spread;
           - the ceiling is about +0.6%, before the second array's
             building cost (copy-only 10.5 → 15.5 ns per tail), which
             makes the layout slower overall in the microbenchmark.
