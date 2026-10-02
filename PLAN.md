@@ -2201,6 +2201,19 @@ diagnostics; two rejections stop B.
           - **Rule:** `s` ≥ 1.25 sends it on; `s` < 1.1 (ceiling under
             0.6%) closes candidate 3 `NO_CHANGE`; between the two, the
             maintainer decides.
+          **Done 2026-10-02 (RAR-P29,
+          `analysis/artifacts/b72-c3-falsifier/`):**
+          - the sampling build recorded 536,249 of `bench`'s 17,159,959
+            calls, mean tail 13.84; every variant selected the same
+            entry on all of them;
+          - the same loop over contiguous scores read **`s` = 1.114 and
+            1.099** in two runs, straddling 1.1; maximum-then-position
+            read 0.77;
+          - the ceiling is about +0.6%, before the second array's
+            building cost (copy-only 10.5 → 15.5 ns per tail), which
+            makes the layout slower overall in the microbenchmark.
+          The rule leaves the decision to the maintainer. The
+          recommendation is `NO_CHANGE`.
         - **B.7.2.10 Candidate 3, scores held contiguously — `I1`.** The
           scored list keeps scores in their own array beside the moves.
           The selection scans that array, and the swap moves both. The
@@ -2290,8 +2303,7 @@ class until they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3, the scan layout, waits on its falsifier B.7.2.9 |
-| B.7.2.9 | RESEARCH | V | Candidate 3's falsifier: the scan's local speedup on recorded list lengths, before any engine change |
-| B.7.2.10 | READY_FOR_IMPLEMENTATION | I1 | Only if B.7.2.9 gives s >= 1.25, or the maintainer sends it on |
+| B.7.2.10 | READY_FOR_IMPLEMENTATION | I1 | Waits on the maintainer: B.7.2.9 read s = 1.114 and 1.099, straddling 1.1; recommended NO_CHANGE, which would close B.7.2 |
 | B.7.2.11 | READY_FOR_IMPLEMENTATION | V | Qualifies B.7.2.10 |
 | B.7.2.12 | READY_FOR_IMPLEMENTATION | V | Measures B.7.2.10 |
 | B.8 | RESEARCH | I1 | After B.7 |
