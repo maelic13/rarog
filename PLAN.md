@@ -2401,6 +2401,16 @@ diagnostics; two rejections stop B.
           pool was read again against the c2 pool: **+1.78% (95% CI
           +0.92% .. +2.56%)**, inside the prediction and agreeing with
           A's own read (+1.69%). CPU 10.6% before and 3.0% after.
+      **B.7.2 and B.7 closed 2026-10-02 by the maintainer.** The
+      auditor verified the sweep from the artifacts (RAR-P31's
+      record): registration before the builds, pools and diffs
+      identical to their records, the hint test failing under three
+      planted defects, qualification reproduced on the final head.
+      Accepted: the quiet-stage early exit (+8.85%), the in-place
+      scored list (+6.93%) and the TT prefetch before the make
+      (+1.69%), each read over the one before, bench 11,171,726
+      throughout. NPS is the evidence layer; the game check of the
+      whole pass is registered separately.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2477,8 +2487,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE`; their acceptance reads are registered (RAR-P31); A accepted at +1.69% (`a42fadc`), I reverted at +0.37% (`bec1292`), total +1.78%; the sweep's acceptance waits on the auditor's verification and the maintainer |
-| B.8 | RESEARCH | I1 | After B.7 |
+| B.8 | RESEARCH | I1 | Eligible: B.7 closed 2026-10-02; an NPS reading before and after guards the cleanup's layout effect |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
 ## Phase C — Evaluation programme
