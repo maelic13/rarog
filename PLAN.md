@@ -2301,6 +2301,28 @@ diagnostics; two rejections stop B.
           restructure; under a skip the picker still selects every
           quiet above the next survivor (17% of the remaining scans),
           which has no exact shortcut with the swap's tie order.
+          **Done 2026-10-02 (RAR-P30, `screen.log` 08:39–12:30, CPU
+          4.2–14.2% at the arm boundaries):**
+          - all four **+1.71%** (95% CI +0.88% .. +2.34%);
+          - **A +1.48%** (+0.91% .. +2.41%): forward;
+          - **I +0.14%** (−0.29% .. +0.75%): between, so by the
+            maintainer's decision of 2026-10-02 it is implemented and
+            measured after A;
+          - **D −1.87%** (−2.36% .. −1.48%): `NO_CHANGE`;
+          - **B −0.49%** (−1.00% .. +0.07%): `NO_CHANGE`.
+
+          In every arm the four candidate builds move together. The
+          bundle is not the sum of its parts (−0.74%), an interaction or
+          a per-source layout effect the screen cannot separate.
+          *Calibration against the frozen predictions:* A hit,
+          mid-range; I fell below its range at the point, a magnitude
+          miss its interval leaves unresolved; D missed in sign beyond
+          its range, because the audit priced the loads' latency and not
+          the 65 prefetches per quiet generation nor the lines they
+          evict; B missed in sign, the samples on a predictable check
+          and a pointer load were not removable cost; the bundle landed
+          inside its range at the low end, but the parts did not add.
+          The acceptance reads are B.7.2.14 onward (RAR-P31).
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2377,8 +2399,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13) is open |
-| B.7.2.13 | READY_FOR_IMPLEMENTATION | V | Audit screen of four exact candidates (TT prefetch before make, static attack tables, history-row prefetch, correction-slot prefetch), registered 2026-10-02 (RAR-P30); the maintainer's idle-host run, about three and a half hours |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3 closed `NO_CHANGE` by the maintainer the same day; the audit's screen (B.7.2.13, RAR-P30) sends A forward, I between, D and B `NO_CHANGE` |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
