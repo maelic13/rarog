@@ -2139,7 +2139,9 @@ diagnostics; two rejections stop B.
           `nps_build_pool.ps1` for the head before `5fe42cf` and for
           `5fe42cf`, then interleaved `nps_multibuild.ps1` on an idle host,
           read against the +0.5% floor and the frozen +4% to +9%
-          prediction.
+          prediction. **Done 2026-10-02 (RAR-P28): +8.85%, 95% CI +8.17%
+          to +9.48%,** 20 cycles on an idle host; above the floor, inside
+          the prediction at its upper end. Accepted.
         - **B.7.2.5 Candidate 2, the in-place scored list — `I1`.** Fill
           the scored move list in the picker's own storage through `&mut`
           instead of returning it by value. The disassembly must show no
@@ -2170,10 +2172,47 @@ diagnostics; two rejections stop B.
           - it waits for an idle host;
           - the ETW capture of `0d95763` runs only in an elevated
             window.
+          **Done 2026-10-02 (RAR-P28): +6.93%, 95% CI +6.38% to +7.68%,**
+          over candidate 1. Accepted. The prediction missed in magnitude:
+          the caller table credited the per-node copies with 2.92% of
+          samples, but the re-profile shows them taking 4.23%, and `bench`
+          gains more than the cohorts do.
         - **B.7.2.8 Re-profile and decide — `V`.** The same ETW capture
           after candidates 1 and 2 (maintainer, elevated). Then either
           the scan layout (candidate 3) goes forward under the candidate
-          rule, or B.7.2 closes.
+          rule, or B.7.2 closes. **Done 2026-10-02 (RAR-P28).** The same
+          protocol on `0d95763`: 231,374 samples against 256,177 for the
+          same nodes (−9.7%).
+          - Move ordering lost 6.50% of the old total and the `vcruntime`
+            copies 4.23%; no other region moved by more than 0.72%.
+          - `pick_next` is still 6.26% of samples. At `s` = 1.25 the
+            ceiling is about +1.3%, so candidate 3 qualifies under the
+            rule on its share. Its local speedup is unmeasured, so it
+            goes forward behind a falsifier (B.7.2.9).
+          - Still not candidates: `quiet_score` 7.3% innermost and the
+            TT probe 7.2%, for the reasons RAR-P27 gives.
+        - **B.7.2.9 Candidate 3 falsifier, the scan's local speedup —
+          `V`.** Before any engine change:
+          - record the quiet- and noisy-list lengths `pick_next` sees
+            over `bench` (counter build);
+          - time the current 16-byte-entry scan against a prototype that
+            scans scores held contiguously, with the same first-maximum
+            rule, over that length distribution.
+          - **Rule:** `s` ≥ 1.25 sends it on; `s` < 1.1 (ceiling under
+            0.6%) closes candidate 3 `NO_CHANGE`; between the two, the
+            maintainer decides.
+        - **B.7.2.10 Candidate 3, scores held contiguously — `I1`.** The
+          scored list keeps scores in their own array beside the moves.
+          The selection scans that array, and the swap moves both. The
+          emitted sequence must be unchanged: the oracle test of
+          B.7.2.1, the picker tests and an exact bench.
+        - **B.7.2.11 Candidate 3, deterministic qualification — `V`.**
+          Exact bench and legacy bench, fmt, clippy at zero warnings,
+          debug and release suites with the allocation guard, and no
+          new large copy in the pext PGO disassembly.
+        - **B.7.2.12 Candidate 3, pooled-PGO NPS — `V`.** Against
+          `0d95763`'s pool, the +0.5% floor and the frozen prediction
+          of +0.5% to +2.5%.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2250,10 +2289,11 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Profiled 2026-10-01 (RAR-P27): two exact candidates, the quiet-stage early exit (ceiling about +8.7%) and the in-place scored list (about +3.0%), each an engine commit measured against the +0.5% floor; the scan layout waits for a re-profile |
-| B.7.2.4 | LOCAL_QUALIFIED | V | Candidate 1 qualified locally (`5fe42cf`); its NPS read is in the overnight run |
-| B.7.2.7 | LOCAL_QUALIFIED | V | Candidate 2 qualified locally (`0d95763`); its NPS read is in the overnight run |
-| B.7.2.8 | RESEARCH | V | Capture staged in the overnight run (elevated window); then the decision on candidate 3 |
+| B.7.2 | READY_FOR_IMPLEMENTATION | I1 | Candidates 1 and 2 accepted 2026-10-02 (RAR-P28: +8.85% and +6.93% NPS, bench exact); candidate 3, the scan layout, waits on its falsifier B.7.2.9 |
+| B.7.2.9 | RESEARCH | V | Candidate 3's falsifier: the scan's local speedup on recorded list lengths, before any engine change |
+| B.7.2.10 | READY_FOR_IMPLEMENTATION | I1 | Only if B.7.2.9 gives s >= 1.25, or the maintainer sends it on |
+| B.7.2.11 | READY_FOR_IMPLEMENTATION | V | Qualifies B.7.2.10 |
+| B.7.2.12 | READY_FOR_IMPLEMENTATION | V | Measures B.7.2.10 |
 | B.8 | RESEARCH | I1 | After B.7 |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
