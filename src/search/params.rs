@@ -164,13 +164,6 @@ search_params! {
     /// keep covering the boundary.
     nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
 
-    /// Paired-ablation mask, one bit per mechanism, 0 = shipped behaviour:
-    /// 0 razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
-    /// hindsight reductions, 5 move-loop pruning (late-move, quiet and
-    /// bad-noisy futility, history and SEE pruning), 6 singular extensions,
-    /// 7 late-move reductions.
-    /// Only consulted when built with `--features ablate`.
-    ablation_mask = 0, "AblationMask", 0..=255;
     /// 4.7c PROBCUT MOVE FILTER. Two constants for the entry contract of the
     /// speculative capture search; both are categorical-frozen defaults awaiting
     /// the cluster fit, not tuned values.

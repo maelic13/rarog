@@ -1612,21 +1612,6 @@ impl Searcher {
         }
     }
 
-    /// True when mechanism `bit` is ablated. Const `false` without the
-    /// feature, so every guard below folds away in a shipped build.
-    #[cfg(feature = "ablate")]
-    #[inline]
-    fn ablated(&self, bit: u32) -> bool {
-        (self.cfg.params.ablation_mask >> bit) & 1 == 1
-    }
-
-    #[cfg(not(feature = "ablate"))]
-    #[inline]
-    #[expect(clippy::unused_self, reason = "mirrors the ablate-feature signature")]
-    fn ablated(&self, _bit: u32) -> bool {
-        false
-    }
-
     fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
         let total_nodes = self.record_node();
         if let Some(shared_state) = self.shared.pool()

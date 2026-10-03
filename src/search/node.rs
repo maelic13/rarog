@@ -661,8 +661,7 @@ impl Searcher {
         }
 
         // IIR: reduce depth when we lack a good TT entry to guide move ordering
-        if !self.ablated(4)
-            && excluded.is_null()
+        if excluded.is_null()
             && depth >= self.cfg.core.iir_min_depth
             && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)))
         {
@@ -789,7 +788,7 @@ impl Searcher {
         // say the position got worse for the parent's opponent after a large
         // reduction, search one ply deeper; if both say it got better for the
         // side that was reduced against, one ply shallower.
-        if !self.ablated(4) && !NODE::ROOT && !in_check && excluded.is_null() {
+        if !NODE::ROOT && !in_check && excluded.is_null() {
             let parent = *self.td.stack.back(ply, 1);
             if parent.static_eval != VALUE_NONE {
                 let eval_delta = static_eval + parent.static_eval;
@@ -824,8 +823,7 @@ impl Searcher {
         // the node asks quiescence. Not on a PV line, not when alpha is
         // already a decisive-looking score, not when a quiet TT move or a
         // fail-high entry says there is more here.
-        if !self.ablated(0)
-            && !NODE::PV
+        if !NODE::PV
             && !in_check
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
@@ -848,7 +846,7 @@ impl Searcher {
         // the position improves, widens with the correction's size (an eval
         // the tables keep moving is less trusted) and relaxes when no piece
         // of ours stands attacked. Returns a score pulled toward beta.
-        if !self.ablated(1) && !tt_pv && !in_check && excluded.is_null() {
+        if !tt_pv && !in_check && excluded.is_null() {
             let core = &self.cfg.core;
             let unthreatened = (threats.all & board.color_occ(board.side_to_move())).is_empty();
             let margin = (core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
@@ -889,8 +887,7 @@ impl Searcher {
                 .budget_overrun
                 .max(extension_spent - self.td.root_depth.max(0));
         }
-        let potential_singularity = !self.ablated(6)
-            && depth >= 4
+        let potential_singularity = depth >= 4
             && ev.depth >= depth - self.cfg.proof.singular_tt_depth_margin
             && matches!(ev.bound, Some(Bound::Lower | Bound::Exact))
             && !is_decisive(ev.score);
@@ -906,7 +903,6 @@ impl Searcher {
         // fail-high at beta returns unverified and one below it is dropped,
         // so verifications never nest.
         if !NODE::ROOT
-            && !self.ablated(2)
             && allow_null
             && depth >= 3
             && !in_check
@@ -1075,13 +1071,7 @@ impl Searcher {
         // it is repeated at the full depth. A cut stores a lower bound with
         // its move and returns a score pulled toward beta; a decisive score
         // is returned and stored as proved.
-        if !NODE::ROOT
-            && !self.ablated(3)
-            && !in_check
-            && excluded.is_null()
-            && !is_win(beta)
-            && !tt_pv
-        {
+        if !NODE::ROOT && !in_check && excluded.is_null() && !is_win(beta) && !tt_pv {
             let improving_i = i32::from(improving);
             let probcut_beta =
                 beta + self.cfg.proof.probcut_base - self.cfg.proof.probcut_improving * improving_i;
@@ -1390,7 +1380,6 @@ impl Searcher {
                 }
             }
         } else if !NODE::ROOT
-            && !self.ablated(6)
             && self.ldse_applies(depth, in_check, cut_node, eval_for_pruning, alpha)
         {
             node_extension = self.within_extension_budget(1, extension_spent);
@@ -1519,7 +1508,7 @@ impl Searcher {
             // Move-loop pruning. Never at the root, never in check, and only
             // once a move has produced a non-losing score, so the first move
             // and every move while all scores are mated are searched.
-            if !NODE::ROOT && !in_check && best_score > -TB_WIN_SCORE && !self.ablated(5) {
+            if !NODE::ROOT && !in_check && best_score > -TB_WIN_SCORE {
                 let core = &self.cfg.core;
                 let is_direct_check = node_ci
                     .get_or_insert_with(|| board.check_info())
@@ -1744,7 +1733,7 @@ impl Searcher {
             } else {
                 // Late-move reductions: every move after the first, from depth
                 // 2; never at the root or in check.
-                if !self.ablated(7) && !NODE::ROOT && !in_check && depth >= 2 {
+                if !NODE::ROOT && !in_check && depth >= 2 {
                     let tt_valid = ev.bound.is_some();
                     let reduction = self.late_move_reduction(&LateMoveInputs {
                         depth,
