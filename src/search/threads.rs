@@ -371,46 +371,6 @@ impl Searcher {
         }
         self.td.root_move_offset = 0;
 
-        #[cfg(feature = "diag")]
-        if let Some(main) = helper_results.first() {
-            let min_depth = helper_results
-                .iter()
-                .map(|result| result.depth)
-                .min()
-                .unwrap_or(0);
-            let max_depth = helper_results
-                .iter()
-                .map(|result| result.depth)
-                .max()
-                .unwrap_or(0);
-            let min_score = helper_results
-                .iter()
-                .map(|result| result.score)
-                .min()
-                .unwrap_or(0);
-            let max_score = helper_results
-                .iter()
-                .map(|result| result.score)
-                .max()
-                .unwrap_or(0);
-            let disagreements = helper_results
-                .iter()
-                .filter(|result| result.bestmove != main.bestmove)
-                .count();
-            crate::diag_add!(
-                worker_best_disagreement,
-                u64::try_from(disagreements).unwrap_or(u64::MAX)
-            );
-            crate::diag_add!(
-                worker_depth_spread_sum,
-                u64::try_from(max_depth.saturating_sub(min_depth)).unwrap_or(u64::MAX)
-            );
-            crate::diag_add!(
-                worker_score_spread_sum,
-                u64::from(max_score.saturating_sub(min_score).unsigned_abs())
-            );
-        }
-
         // Every helper has been joined above, so the counters are now
         // complete and this is the one legitimate dump point for a parallel go.
         crate::diag::dump();

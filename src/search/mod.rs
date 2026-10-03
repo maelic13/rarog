@@ -885,7 +885,6 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
-        crate::diag_count!(root_searches);
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -914,12 +913,6 @@ impl Searcher {
             }
             // Termination by construction: see `Aspiration`.
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
-            // The move an earlier window of this iteration failed high on,
-            // and whether one failed low: what a fallback discards.
-            #[cfg(feature = "diag")]
-            let mut iteration_fail_high_move = Move::NULL;
-            #[cfg(feature = "diag")]
-            let mut iteration_failed_low = false;
 
             loop {
                 #[cfg(feature = "diag")]
@@ -934,25 +927,6 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 let window_nodes = self.td.nodes.saturating_sub(window_nodes_before);
                 if self.td.stopped || self.td.quit {
-                    #[cfg(feature = "diag")]
-                    {
-                        crate::diag_count!(root_stop_mid_iteration);
-                        if self.td.pv_len[0] == 0 {
-                            crate::diag_count!(root_stop_partial_none);
-                        } else if self.td.pv_table[0][0] == bestmove {
-                            crate::diag_count!(root_stop_partial_same);
-                        } else {
-                            crate::diag_count!(root_stop_partial_new_best);
-                        }
-                        if !iteration_fail_high_move.is_null()
-                            && iteration_fail_high_move != bestmove
-                        {
-                            crate::diag_count!(root_stop_after_fail_high_new);
-                        }
-                        if iteration_failed_low {
-                            crate::diag_count!(root_stop_after_fail_low);
-                        }
-                    }
                     break;
                 }
                 #[cfg(feature = "diag")]
@@ -975,11 +949,7 @@ impl Searcher {
                 // dynamics.
                 if score <= window.alpha {
                     crate::diag_count!(asp_fail_low);
-                    #[cfg(feature = "diag")]
-                    {
-                        crate::diag_add!(asp_fail_low_nodes, window_nodes);
-                        iteration_failed_low = true;
-                    }
+                    crate::diag_add!(asp_fail_low_nodes, window_nodes);
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Upper, bestmove);
                     }
@@ -988,13 +958,7 @@ impl Searcher {
                 }
                 if score >= window.beta {
                     crate::diag_count!(asp_fail_high);
-                    #[cfg(feature = "diag")]
-                    {
-                        crate::diag_add!(asp_fail_high_nodes, window_nodes);
-                        if self.td.pv_len[0] > 0 {
-                            iteration_fail_high_move = self.td.pv_table[0][0];
-                        }
-                    }
+                    crate::diag_add!(asp_fail_high_nodes, window_nodes);
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }

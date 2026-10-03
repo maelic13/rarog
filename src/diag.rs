@@ -56,10 +56,6 @@ pub mod counters {
         tt_pv_veto,
         // Forward-pruning families (successful cutoffs / skips).
         rfp_cut,
-        // Reverse-futility cutoffs by depth band (selectivity core).
-        rfp_cut_d1_3,
-        rfp_cut_d4_7,
-        rfp_cut_d8_plus,
         // Hindsight reductions: a reduced child searched deeper or shallower.
         hindsight_up,
         hindsight_down,
@@ -78,30 +74,12 @@ pub mod counters {
         // Selectivity core: nodes whose quiets were skipped by late-move or
         // quiet-futility pruning, and the per-move prunes it adds.
         skip_quiets_nodes,
-        // Quiet TT moves rewarded at a TT cutoff (selectivity core).
-        tt_cutoff_quiet_bonus,
         quiet_see_prune,
-        history_pruned,
-        bad_noisy_futility,
         // LMR reduction and its verification re-search.
         lmr_applied,
-        // Late moves whose reduction rounds to zero plies.
-        node_lmr_zero_reduction,
-        // Audit of the reduction floor. `lmr_reduction` is
-        // `(r >> 10).clamp(0, new_depth)`, so both ends silently discard
-        // information:
-        //   node_lmr_qs_clamped -- reduction reached new_depth, so the "reduced
-        //     search" ran at depth 0 and was answered by quiescence. That
-        //     is a prune wearing a reduction's name, and it is counted
-        //     nowhere in the pruning family.
-        node_lmr_qs_clamped,
         lmr_research,
-        // Selectivity core: reductions clamped to one ply, reductions that
-        // extend, and re-searches made deeper or shallower.
+        // Reductions clamped to one ply.
         lmr_floor_hits,
-        lmr_extended,
-        lmr_research_deeper,
-        lmr_research_shallower,
         // History / correction learning events. `cutoff_quiet + cutoff_capture`
         // is also the count of every beta cutoff at a real (non-excluded)
         // interior node, i.e. the DENOMINATOR of the ordering metric below.
@@ -124,32 +102,8 @@ pub mod counters {
         // numerator and denominator always cover the same node set.
         cutoff_first_move,
         correction_updates,
-        corr_on_capture,
-        // Continuation-correction training admitted at the context two and
-        // four plies back (selectivity core; trained before it is read).
-        corr_cont2_admitted,
-        corr_cont4_admitted,
-        // The same admissions by the training node's remaining depth: 1, 2,
-        // 3, 4 to 6, 7 and more. Each set sums to its total above.
-        corr_cont2_admitted_d1,
-        corr_cont2_admitted_d2,
-        corr_cont2_admitted_d3,
-        corr_cont2_admitted_d4_6,
-        corr_cont2_admitted_d7_plus,
-        corr_cont4_admitted_d1,
-        corr_cont4_admitted_d2,
-        corr_cont4_admitted_d3,
-        corr_cont4_admitted_d4_6,
-        corr_cont4_admitted_d7_plus,
-        // Residual MAGNITUDE by attribution class, exact.
-        //
-        // The premise behind capture-weighted correction updates is that a
-        // capture-caused residual is less trustworthy evidence for a
-        // positional correction. These give the mean
-        // |residual| for each class; if the two means are close, the premise is
-        // wrong and neither knob should move off its baseline.
-        corr_resid_capture_n,
-        corr_resid_capture_sum,
+        // Residual magnitude of quiet-caused residuals, exact: the mean
+        // |residual| is `corr_resid_quiet_sum / corr_resid_quiet_n`.
         corr_resid_quiet_n,
         corr_resid_quiet_sum,
         // Residual by HALFMOVE-CLOCK context. A new correction context needs
@@ -182,41 +136,7 @@ pub mod counters {
         // with thread count; if it is flat, the helpers are searching in vain.
         main_tt_probes,
         main_tt_hits,
-        // Lazy-eval safety audit. On every lazy skip the full eval is
-        // ALSO computed (served score unchanged) and the two are compared.
-        // `lazy_delta_sum / lazy_fires` = mean |full − cheap| in internal cp;
-        // `lazy_delta_max` is a running maximum (fetch_max, not fetch_add).
-        lazy_fires,
-        lazy_delta_sum,
-        lazy_delta_max,
-        // The cheap score exceeded LazyMargin by construction; a sign flip
-        // means the full eval DISAGREES ABOUT WHO IS BETTER — the failure
-        // lazy eval promises cannot happen. A margin crossing is the softer
-        // event: |full| <= LazyMargin, i.e. the position was not actually
-        // decided. Both bucketed by the max king-danger index seen in the
-        // full pass (low 0-9 / mid 10-19 / high 20-29 / extreme 30+) and by
-        // game-phase quartile (q1 = endgame .. q4 = middlegame) as the
-        // material signature.
-        lazy_sign_flips,
-        lazy_margin_crossings,
-        lazy_flip_danger_low,
-        lazy_flip_danger_mid,
-        lazy_flip_danger_high,
-        lazy_flip_danger_extreme,
-        lazy_flip_phase_q1,
-        lazy_flip_phase_q2,
-        lazy_flip_phase_q3,
-        lazy_flip_phase_q4,
-        lazy_cross_danger_low,
-        lazy_cross_danger_mid,
-        lazy_cross_danger_high,
-        lazy_cross_danger_extreme,
-        lazy_cross_phase_q1,
-        lazy_cross_phase_q2,
-        lazy_cross_phase_q3,
-        lazy_cross_phase_q4,
         // Sampled node and TT outcome map.
-        sampled_main_nodes,
         sampled_qnodes,
         tt_sample_hit,
         tt_sample_miss,
@@ -257,18 +177,9 @@ pub mod counters {
         q_move_store,
         q_tail_exact_store,
         q_tail_upper_store,
-        // SIZING a staged in-check qsearch.
-        //
-        // An in-check qnode generates every evasion and scores ALL of them
-        // before picking any, so a node that cuts on its first move paid for
-        // the rest. Staging would emit the TT move before scoring anything —
-        // order-identical, since `score_moves` already gives it a dominating
-        // score — but it is only worth building if the scoring is genuinely
-        // wasted. `scored - tried` is exactly that waste, and these are EXACT
-        // (in-check qnodes are a small population; sampling them would add
-        // noise to the one number that decides whether to build it).
-        q_check_nodes,
-        q_check_moves_scored,
+        // Evasions tried at in-check qnodes, EXACT. An in-check qnode scores
+        // every evasion before picking any, so the scored count minus this
+        // is what a staged in-check quiescence would save.
         q_check_moves_tried,
         // B.5 research, all EXACT and Rarog-only. The aspiration loop's cost:
         // nodes of every root window search from depth 4, and of those that
@@ -276,24 +187,9 @@ pub mod counters {
         asp_search_nodes,
         asp_fail_low_nodes,
         asp_fail_high_nodes,
-        // How a serial search ended, and what the interrupted iteration
-        // knew when the root fell back to the last completed one: a root
-        // move had raised alpha in the interrupted window (the same move as
-        // the completed best, or a new one), none had, an earlier window of
-        // that iteration had failed high on a new move, or had failed low.
-        root_searches,
-        root_stop_mid_iteration,
-        root_stop_partial_same,
-        root_stop_partial_new_best,
-        root_stop_partial_none,
-        root_stop_after_fail_high_new,
-        root_stop_after_fail_low,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
-        // A noisy-history bonus given to a capture or promotion that failed
-        // high in the quiescence.
-        q_history_bonus,
         // B.4 research: where the quiescence search spends and prunes, all
         // EXACT and Rarog-only. `q_qply0` counts entries from the main
         // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose
@@ -340,10 +236,6 @@ pub mod counters {
         nmp_verify_attempt,
         nmp_verify_pass,
         nmp_verify_fail,
-        // An NMP cutoff whose RETURNED SCORE is mate-range, i.e. a mate
-        // this node never proved by a real line. The search clamps it to beta
-        // (as Stockfish does); this counts how often the clamp fires.
-        nmp_cut_unproven_mate,
         // `nmp_cut` by the node's depth: 6 and below, 7 to 12, 13 and more.
         // Each set sums to `nmp_cut`.
         nmp_cut_d3_6,
@@ -364,24 +256,18 @@ pub mod counters {
         probcut_nodes,
         probcut_attempt,
         probcut_qpass,
-        probcut_tt_store,
         // Proof searches, per node: refused by the stored score
         // (below `probcut_beta`, or decisive) or, without one, by the
-        // estimate below beta; refused for a quiet TT move (cut-node
-        // population); returned by a stored lower bound before any capture
-        // (`CoreProbcutTtServed`). Per move: a shallow verification that
+        // estimate below beta. Per move: a shallow verification that
         // failed its raised bound and was repeated at the full depth.
         probcut_tt_gate_reject,
-        probcut_quiet_tt_reject,
-        probcut_tt_served,
         probcut_deeper_research,
-        // What a qsearch pass is verified by, both arms, per move. A pass at
-        // base depth 0 (depth 4, or 5 while improving, on the proof arm;
-        // depth 4 on the accepted core) is verified by nothing deeper than
-        // the qsearch it already passed. `probcut_verify` counts passes
+        // What a qsearch pass is verified by, per move. A pass at base depth
+        // 0 (depth 4, or 5 while improving) is verified by nothing deeper
+        // than the qsearch it already passed. `probcut_verify` counts passes
         // verified by a search of at least one ply, `probcut_verify_fail`
-        // those that then failed, `probcut_verify_raised` (proof arm) those
-        // verified shallower than the base against a raised bound.
+        // those that then failed, `probcut_verify_raised` those verified
+        // shallower than the base against a raised bound.
         probcut_qpass_base0,
         probcut_verify,
         probcut_verify_raised,
@@ -428,16 +314,8 @@ pub mod counters {
         best_rank_4_7,
         best_rank_8_plus,
         prune_shadow_moves,
-        prune_shadow_lmp,
-        prune_shadow_futility,
-        prune_shadow_see,
-        prune_shadow_check_exempt,
-        prune_shadow_overlap_two_plus,
-        prospective_depth_sum,
         reduction_depth_sum,
         // Correction attribution and hashed-table quality.
-        corr_sample_updates,
-        corr_sample_abs_sum,
         corr_slot_first,
         corr_slot_repeat,
         corr_slot_collision,
@@ -446,9 +324,6 @@ pub mod counters {
         root_iterations,
         root_best_changes,
         root_interrupted_fallback,
-        worker_best_disagreement,
-        worker_depth_spread_sum,
-        worker_score_spread_sum,
         // Endgame-family occurrence in the SEARCH TREE, which differs from
         // occurrence on the board in real games: a bare-king minor mate drive
         // can leave `bench 13` byte-identical (no bench tree reaches one at
@@ -714,32 +589,6 @@ mod correction_probe {
 #[inline]
 pub(crate) fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
     correction_probe::record(source, index, key, value);
-}
-
-/// Side-channel: `eval_king_safety` records the danger-table index it
-/// reads, so the dual-eval comparison can bucket its findings by king danger
-/// without threading a return value through the whole eval stack. A
-/// thread-local (not an atomic) because each `Evaluator` runs on one thread —
-/// this keeps worker threads from smearing each other's buckets.
-#[cfg(feature = "diag")]
-pub mod lazy_probe {
-    use std::cell::Cell;
-
-    thread_local! {
-        static MAX_DANGER_IDX: Cell<usize> = const { Cell::new(0) };
-    }
-
-    pub fn reset() {
-        MAX_DANGER_IDX.with(|c| c.set(0));
-    }
-
-    pub fn record(idx: usize) {
-        MAX_DANGER_IDX.with(|c| c.set(c.get().max(idx)));
-    }
-
-    pub fn max() -> usize {
-        MAX_DANGER_IDX.with(Cell::get)
-    }
 }
 
 /// Increment a diagnostic counter by name. Expands to nothing without the

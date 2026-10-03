@@ -551,10 +551,6 @@ impl Searcher {
         let hash = board.hash();
         #[cfg(feature = "diag")]
         let diag_sample = crate::diag::sampled(hash, ply, crate::diag::SAMPLE_MAIN);
-        #[cfg(feature = "diag")]
-        if diag_sample {
-            crate::diag_count!(sampled_main_nodes);
-        }
         // A tablebase result ends the node only where it decides the window;
         // at a PV node a win otherwise raises the floor the moves must beat
         // and a loss caps what they may claim.
@@ -644,7 +640,6 @@ impl Searcher {
                 && let Some(mv) = ev.mv.and_then(|mv| board.legal_move(mv))
                 && !is_noisy(mv)
             {
-                crate::diag_count!(tt_cutoff_quiet_bonus);
                 let stm = board.side_to_move();
                 let piece = board.moving_piece(mv);
                 let quiet_bonus = (190 * depth - 81).min(self.cfg.core.hist_tt_cutoff_bonus_cap);
@@ -884,12 +879,6 @@ impl Searcher {
                 && eval_for_pruning < TB_WIN_SCORE
             {
                 crate::diag_count!(rfp_cut);
-                #[cfg(feature = "diag")]
-                match depth {
-                    ..=3 => crate::diag_count!(rfp_cut_d1_3),
-                    4..=7 => crate::diag_count!(rfp_cut_d4_7),
-                    _ => crate::diag_count!(rfp_cut_d8_plus),
-                }
                 let score = eval_for_pruning + (beta - eval_for_pruning) * core.rfp_lerp / 1024;
                 trace_decision!(
                     self,
@@ -1036,9 +1025,6 @@ impl Searcher {
                 if score >= null_bound && !is_loss(score) {
                     let in_region = self.td.nmp_min_ply > 0;
                     if score >= beta && (depth < self.cfg.proof.nmp_verify_depth || in_region) {
-                        if is_win(score) {
-                            crate::diag_count!(nmp_cut_unproven_mate);
-                        }
                         return null_cutoff_score(score, beta);
                     }
                     if !in_region {
@@ -1084,9 +1070,6 @@ impl Searcher {
                         );
                         if verified >= beta {
                             crate::diag_count!(nmp_verify_pass);
-                            if is_win(score) {
-                                crate::diag_count!(nmp_cut_unproven_mate);
-                            }
                             return null_cutoff_score(score, beta);
                         }
                         crate::diag_count!(nmp_verify_fail);
@@ -1302,10 +1285,6 @@ impl Searcher {
                             static_eval: raw_static_eval,
                             is_pv: tt_pv,
                         });
-                        #[cfg(feature = "diag")]
-                        if diag_sample {
-                            crate::diag_count!(probcut_tt_store);
-                        }
                         #[cfg(test)]
                         {
                             self.td.probcut_cuts += 1;
@@ -1647,7 +1626,6 @@ impl Searcher {
                     && move_picker.stage() == Stage::BadNoisy
                     && noisy_futility_value <= alpha
                 {
-                    crate::diag_count!(bad_noisy_futility);
                     #[cfg(feature = "diag")]
                     if noisy_futility_value - captured_piece.map_or(0, piece_value)
                         + captured_piece.map_or(0, eval_unit_value)
@@ -1670,7 +1648,6 @@ impl Searcher {
                 // History pruning: a quiet whose history is far below zero at
                 // shallow depth.
                 if is_quiet && depth < 5 && history < -core.hp_slope * depth {
-                    crate::diag_count!(history_pruned);
                     trace_decision!(
                         self,
                         ply,
@@ -1750,13 +1727,6 @@ impl Searcher {
                 (-3..=3).contains(&extension) && (extension == 0 || new_depth >= 1),
                 "extension {extension} at depth {depth}"
             );
-            #[cfg(feature = "diag")]
-            if diag_sample {
-                crate::diag_add!(
-                    prospective_depth_sum,
-                    u64::try_from(new_depth.max(0)).unwrap_or(0)
-                );
-            }
             let mut score;
 
             if searched == 0 {
@@ -1852,11 +1822,6 @@ impl Searcher {
                         if new_depth - reduction / 1024 < 1 {
                             crate::diag_count!(lmr_floor_hits);
                         }
-                        if reduced_depth > new_depth {
-                            crate::diag_count!(lmr_extended);
-                        } else if reduced_depth == new_depth {
-                            crate::diag_count!(node_lmr_zero_reduction);
-                        }
                         crate::diag_add!(
                             reduction_depth_sum,
                             u64::try_from(new_depth - reduced_depth).unwrap_or(0)
@@ -1895,12 +1860,6 @@ impl Searcher {
                             !NODE::ROOT && score > best_score + self.cfg.core.lmr_research_deeper;
                         let shallower = !NODE::ROOT
                             && score < best_score + self.cfg.core.lmr_research_shallower;
-                        if deeper {
-                            crate::diag_count!(lmr_research_deeper);
-                        }
-                        if shallower {
-                            crate::diag_count!(lmr_research_shallower);
-                        }
                         new_depth += i32::from(deeper) - i32::from(shallower);
                         if new_depth > reduced_depth {
                             crate::diag_count!(lmr_research);
@@ -2342,15 +2301,6 @@ impl Searcher {
             self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
         } else {
             self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
-        }
-        // How many evasions each in-check qnode scores.
-        #[cfg(feature = "diag")]
-        if in_check {
-            crate::diag_count!(q_check_nodes);
-            crate::diag_add!(
-                q_check_moves_scored,
-                u64::try_from(scored.len()).unwrap_or(u64::MAX)
-            );
         }
         // Per-node check masks, built lazily as in the main search; a
         // capture-only qnode that never tests for check never builds them.

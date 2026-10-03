@@ -228,8 +228,6 @@ impl Searcher {
         let tables = &mut self.td.corr;
         #[cfg(feature = "diag")]
         if crate::diag::sampled(board.hash(), ply, crate::diag::SAMPLE_CORRECTION) {
-            crate::diag_count!(corr_sample_updates);
-            crate::diag_add!(corr_sample_abs_sum, u64::from(diff.unsigned_abs()));
             crate::diag::record_correction_slot(
                 0,
                 slots.pawn,
@@ -256,27 +254,9 @@ impl Searcher {
         apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, KEYED_MAX);
         apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
         if let Some(slot) = slots.continuation[0] {
-            crate::diag_count!(corr_cont2_admitted);
-            #[cfg(feature = "diag")]
-            match depth {
-                ..=1 => crate::diag_count!(corr_cont2_admitted_d1),
-                2 => crate::diag_count!(corr_cont2_admitted_d2),
-                3 => crate::diag_count!(corr_cont2_admitted_d3),
-                4..=6 => crate::diag_count!(corr_cont2_admitted_d4_6),
-                _ => crate::diag_count!(corr_cont2_admitted_d7_plus),
-            }
             apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
         }
         if let Some(slot) = slots.continuation[1] {
-            crate::diag_count!(corr_cont4_admitted);
-            #[cfg(feature = "diag")]
-            match depth {
-                ..=1 => crate::diag_count!(corr_cont4_admitted_d1),
-                2 => crate::diag_count!(corr_cont4_admitted_d2),
-                3 => crate::diag_count!(corr_cont4_admitted_d3),
-                4..=6 => crate::diag_count!(corr_cont4_admitted_d4_6),
-                _ => crate::diag_count!(corr_cont4_admitted_d7_plus),
-            }
             apply_bonus(&mut tables.continuation_4[slot], bonus, CONT_MAX);
         }
     }
