@@ -2529,6 +2529,36 @@ diagnostics; two rejections stop B.
   included, are deleted here unless B.2–B.5 named them. Every remaining
   `#[expect]` must still fire (the lint wall reports unfulfilled ones);
   `search_options.rs`'s single `#[allow]` keeps its written reason or goes.
+  **Inventory, 2026-10-03, written before the first deletion.** The
+  deletion's record is the register `analysis/b8_removed_2026-10-03.md`:
+  one entry per removed item, with what it did, where it lived, how it was
+  decided, the last commit that holds it (`10d0e83`, whose engine source
+  equals `a42fadc`'s), and what a retry would need. Classes, one engine
+  commit each, in this order, each leaving `bench 13` at exactly
+  11,171,726 / EBF 2.512 (and the legacy 7,590,542 / 2.473 until class 1
+  removes it):
+  1. the B.1 search (`--no-default-features`, `+legacy`, four files and
+     every `cfg(not(feature = "b2core"))` block) with the `b2core`
+     umbrella;
+  2. `b3proof` and `b4quiet` folded into the only search, their off
+     branches deleted, the features, matrix, CI legs and flavours with
+     them;
+  3. dead coordinates: the 33 `SearchParams` names only the B.1 search
+     reads, `QsSeeClampLo`, and any name the reader search finds dead
+     after class 2;
+  4. the fourteen decided switches folded to their defaults (RAR-S74,
+     S80, S87, S91, S92 and B.3.2's screens);
+  5. the diagnostics without an owner: 63 of 265 counters by the owner
+     test, `lazy_probe` with `diag_lazy_dual`, and `correction_probe` with
+     the B.1 search; recomputed after class 4;
+  6. the dead PVS guard, after a counter build over bench shows it never
+     fires.
+
+  Evidence plumbing was already removed by B.1 (checked: none left), and
+  the lint suppressions are checked last. The proofs are reader searches
+  with the deleted code excluded
+  (`tools/results/b8-cleanup-20261003/`), the compiler's dead-code lint
+  after each class, and the exact fingerprint.
   **Test-suite audit, 2026-10-01 (input, maintainer's decision).** Every
   test was timed on its own, at `bb877d8`: 374 tests, 49 s serial in release
   and 298 s in debug. 300 run under 0.5 s in debug. Twelve take 71% of the
