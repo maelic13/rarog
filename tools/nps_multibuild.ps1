@@ -1,5 +1,10 @@
 # Multi-build PGO A/B: pools N independent PGO builds per arm.
 #
+# Superseded for acceptance reads by tools/nps_read.py (the two-step read of
+# PROCESS, RAR-P32): it archives every run and reports a per-build interval.
+# This script's bootstrap interval resamples readings, not builds, and is not
+# the uncertainty of a source change. Kept for comparison with earlier rows.
+#
 # A single PGO build per arm carries a fixed per-binary offset of ~0.4% (a null
 # pair of identical source measured -0.36%, CI -0.75..-0.06). Pooling several
 # independent builds per arm averages that profile luck out, which is the only
