@@ -64,97 +64,6 @@ pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 
 /// Frozen `cross-engine-board-v1` comparison scale.
 pub const CROSS_ENGINE_SEE_VALUES: SeeValues = SeeValues::new(100, 300, 300, 500, 900, 20_000);
 
-/// What a static exchange carries from one recapture to the next.
-///
-/// The exchange only ever removes pieces from its occupancy. A removal
-/// unblocks nothing except along the ray from the target through the removed
-/// square, and the removed piece attacked the target, so it stood on that ray
-/// (a pawn, bishop or queen on a diagonal, a rook or queen on a line) or, as a
-/// knight, on no ray. So the attacker set is built once and extended by the
-/// sliders behind each removed piece, and it equals the set recomputed from
-/// scratch at every step. A king's capture ends the exchange.
-struct SeeExchange {
-    target: Square,
-    occ: Bitboard,
-    /// Every piece of either colour that attacks `target` under `occ`.
-    attackers: Bitboard,
-    diagonal: Bitboard,
-    orthogonal: Bitboard,
-    /// The recapturing side's king query, by colour, built on first use.
-    kings: [Option<KingWatch>; 2],
-}
-
-/// The enemy attackers of one king, kept across an exchange. The leapers
-/// depend on the occupancy only through the final mask. The sliders depend on
-/// it only through the squares on the king's eight rays, so they are reused
-/// until the occupancy differs there from the one they were computed under.
-#[derive(Clone, Copy)]
-struct KingWatch {
-    /// The king's queen attacks on an empty board.
-    rays: Bitboard,
-    leapers: Bitboard,
-    sliders: Bitboard,
-    /// The occupancy `sliders` was computed under.
-    seen: Bitboard,
-}
-
-impl SeeExchange {
-    fn new(board: &Board, target: Square, occ: Bitboard) -> Self {
-        let both = |piece| board.pieces(Color::White, piece) | board.pieces(Color::Black, piece);
-        let queens = both(Piece::Queen);
-        Self {
-            target,
-            occ,
-            attackers: board.attackers_to(target, occ) & occ,
-            diagonal: both(Piece::Bishop) | queens,
-            orthogonal: both(Piece::Rook) | queens,
-            kings: [None; 2],
-        }
-    }
-
-    /// Take the recapturer on `from` off the board and add the sliders its
-    /// removal reveals.
-    fn remove(&mut self, from: Square, piece: Piece) {
-        let atk = &*ATTACKS;
-        let square = Bitboard::from(from);
-        self.occ ^= square;
-        self.attackers ^= square;
-        if matches!(piece, Piece::Pawn | Piece::Bishop | Piece::Queen) {
-            self.attackers |= atk.bishop(self.target, self.occ) & self.diagonal & self.occ;
-        }
-        if matches!(piece, Piece::Rook | Piece::Queen) {
-            self.attackers |= atk.rook(self.target, self.occ) & self.orthogonal & self.occ;
-        }
-    }
-
-    /// `attackers_to_color(king_sq(side), after, !side)`, from the side's
-    /// watch: `after` is the exchange occupancy with one candidate removed.
-    fn king_attackers(&mut self, board: &Board, side: Color, after: Bitboard) -> Bitboard {
-        let atk = &*ATTACKS;
-        let them = !side;
-        let king = board.king_sq(side);
-        let sliders = |occ| {
-            atk.bishop(king, occ)
-                & (board.pieces(them, Piece::Bishop) | board.pieces(them, Piece::Queen))
-                | atk.rook(king, occ)
-                    & (board.pieces(them, Piece::Rook) | board.pieces(them, Piece::Queen))
-        };
-        let watch = self.kings[side as usize].get_or_insert_with(|| KingWatch {
-            rays: atk.queen(king, Bitboard::EMPTY),
-            leapers: atk.pawn(side, king) & board.pieces(them, Piece::Pawn)
-                | atk.knight(king) & board.pieces(them, Piece::Knight)
-                | atk.king(king) & board.pieces(them, Piece::King),
-            sliders: sliders(after),
-            seen: after,
-        });
-        if ((watch.seen ^ after) & watch.rays).any() {
-            watch.sliders = sliders(after);
-            watch.seen = after;
-        }
-        (watch.leapers | watch.sliders) & after
-    }
-}
-
 // -----------------------------------------------------------------------
 // Unmake info — everything needed to undo a move
 // -----------------------------------------------------------------------
@@ -1465,23 +1374,26 @@ impl Board {
     /// occupancy. Original piece sets remain valid off `target`: every piece
     /// that moved there has had its source removed from `occ`. Keep target
     /// occupied as a ray blocker, but exclude its original (captured) occupant
-    /// from enemy attacks when checking the recapturer's king. A candidate
-    /// rejected for legality leaves only this step's candidates.
-    fn see_recapturer(&self, exchange: &mut SeeExchange, side: Color) -> Option<(Square, Piece)> {
-        let target = exchange.target;
-        let mut candidates = exchange.attackers & self.color_occ(side);
-        while candidates.any() {
-            let (from, piece) = self.least_valuable_attacker(candidates, side);
-            let after = exchange.occ ^ Bitboard::from(from);
-            let attackers = if piece == Piece::King {
-                self.attackers_to_color(target, after, !side)
+    /// from enemy attacks when checking the recapturer's king.
+    fn see_recapturer(
+        &self,
+        target: Square,
+        occ: Bitboard,
+        side: Color,
+    ) -> Option<(Square, Piece)> {
+        let mut attackers = self.attackers_to_color(target, occ, side);
+        while attackers.any() {
+            let (from, piece) = self.least_valuable_attacker(attackers, side);
+            let after = occ ^ Bitboard::from(from);
+            let king = if piece == Piece::King {
+                target
             } else {
-                exchange.king_attackers(self, side, after)
+                self.king_sq(side)
             };
-            if (attackers & !Bitboard::from(target)).is_empty() {
+            if (self.attackers_to_color(king, after, !side) & !Bitboard::from(target)).is_empty() {
                 return Some((from, piece));
             }
-            candidates ^= Bitboard::from(from);
+            attackers ^= Bitboard::from(from);
         }
         None
     }
@@ -1529,7 +1441,7 @@ impl Board {
         };
 
         let target = mv.to_sq();
-        let mut exchange = SeeExchange::new(self, target, self.see_occupancy(mv));
+        let mut occ = self.see_occupancy(mv);
         let mut side = self.side_to_move;
         let mut gains = [0i32; 32];
         let mut depth = 0usize;
@@ -1543,7 +1455,7 @@ impl Board {
         // A legal king capture ends the exchange; kings are never victims.
         while occupant != Piece::King {
             side = !side;
-            let Some((from, piece)) = self.see_recapturer(&mut exchange, side) else {
+            let Some((from, piece)) = self.see_recapturer(target, occ, side) else {
                 break;
             };
             let promoted = Self::see_recapture_piece(piece, target);
@@ -1551,7 +1463,7 @@ impl Board {
             depth += 1;
             gains[depth] = gain - gains[depth - 1];
             occupant = promoted;
-            exchange.remove(from, piece);
+            occ ^= Bitboard::from(from);
         }
 
         while depth > 0 {
@@ -1628,7 +1540,7 @@ impl Board {
         }
 
         let target = mv.to_sq();
-        let mut exchange = SeeExchange::new(self, target, self.see_occupancy(mv));
+        let mut occ = self.see_occupancy(mv);
         let mut side = self.side_to_move;
         let mut result = true;
         // We pass iff the opponent cannot gain >= gain - threshold + 1.
@@ -1638,7 +1550,7 @@ impl Board {
         let mut limit = gain - threshold + 1;
         while occupant != Piece::King {
             side = !side;
-            let Some((from, piece)) = self.see_recapturer(&mut exchange, side) else {
+            let Some((from, piece)) = self.see_recapturer(target, occ, side) else {
                 break;
             };
             let promoted = Self::see_recapture_piece(piece, target);
@@ -1650,7 +1562,7 @@ impl Board {
             limit = capture_gain - limit + 1;
             result = !result;
             occupant = promoted;
-            exchange.remove(from, piece);
+            occ ^= Bitboard::from(from);
         }
         result
     }
@@ -2844,183 +2756,5 @@ mod tests {
         }
         assert!(seen.exact > 50_000, "only {} exact cases", seen.exact);
         assert!(seen.castling_changed > 0 && seen.ep_set > 0);
-    }
-
-    /// The exchange as it was first written: the attackers of the target
-    /// recomputed from scratch at every step, and the recapturer's king asked
-    /// the full attack query for every candidate.
-    fn oracle_recapturer(
-        board: &Board,
-        target: Square,
-        occ: Bitboard,
-        side: Color,
-    ) -> Option<(Square, Piece)> {
-        let mut attackers = board.attackers_to_color(target, occ, side);
-        while attackers.any() {
-            let (from, piece) = board.least_valuable_attacker(attackers, side);
-            let after = occ ^ Bitboard::from(from);
-            let king = if piece == Piece::King {
-                target
-            } else {
-                board.king_sq(side)
-            };
-            if (board.attackers_to_color(king, after, !side) & !Bitboard::from(target)).is_empty() {
-                return Some((from, piece));
-            }
-            attackers ^= Bitboard::from(from);
-        }
-        None
-    }
-
-    fn oracle_see(board: &Board, mv: Move, values: SeeValues) -> i32 {
-        let Some(victim) = board.captured_piece(mv) else {
-            return if mv.is_promo() {
-                values.value(mv.promo_piece()) - values.value(Piece::Pawn)
-            } else {
-                0
-            };
-        };
-        let target = mv.to_sq();
-        let mut occ = board.see_occupancy(mv);
-        let mut side = board.side_to_move;
-        let mut gains = vec![values.value(victim)];
-        let mut occupant = board.moving_piece(mv);
-        if mv.is_promo() {
-            occupant = mv.promo_piece();
-            gains[0] += values.value(occupant) - values.value(Piece::Pawn);
-        }
-        while occupant != Piece::King {
-            side = !side;
-            let Some((from, piece)) = oracle_recapturer(board, target, occ, side) else {
-                break;
-            };
-            let promoted = Board::see_recapture_piece(piece, target);
-            let gain = values.value(occupant) + values.value(promoted) - values.value(piece);
-            gains.push(gain - gains[gains.len() - 1]);
-            occupant = promoted;
-            occ ^= Bitboard::from(from);
-        }
-        while gains.len() > 1 {
-            let last = gains.pop().expect("two or more gains");
-            let previous = gains.len() - 1;
-            gains[previous] = -last.max(-gains[previous]);
-        }
-        gains[0]
-    }
-
-    fn oracle_see_ge(
-        board: &Board,
-        mv: Move,
-        threshold: i32,
-        evaluate_quiet: bool,
-        values: SeeValues,
-    ) -> bool {
-        if !mv.is_capture() && !(evaluate_quiet && !mv.is_promo()) {
-            let gain = if mv.is_promo() {
-                values.value(mv.promo_piece()) - values.value(Piece::Pawn)
-            } else {
-                0
-            };
-            return gain >= threshold;
-        }
-        let mut gain = board
-            .captured_piece(mv)
-            .map_or(0, |piece| values.value(piece));
-        let mut occupant = board.moving_piece(mv);
-        if mv.is_promo() {
-            occupant = mv.promo_piece();
-            gain += values.value(occupant) - values.value(Piece::Pawn);
-        }
-        if gain < threshold {
-            return false;
-        }
-        let target = mv.to_sq();
-        let mut occ = board.see_occupancy(mv);
-        let mut side = board.side_to_move;
-        let mut result = true;
-        let mut limit = gain - threshold + 1;
-        while occupant != Piece::King {
-            side = !side;
-            let Some((from, piece)) = oracle_recapturer(board, target, occ, side) else {
-                break;
-            };
-            let promoted = Board::see_recapture_piece(piece, target);
-            let capture_gain =
-                values.value(occupant) + values.value(promoted) - values.value(piece);
-            if capture_gain < limit {
-                break;
-            }
-            limit = capture_gain - limit + 1;
-            result = !result;
-            occupant = promoted;
-            occ ^= Bitboard::from(from);
-        }
-        result
-    }
-
-    /// The incremental exchange answers every SEE question exactly as the
-    /// plain recomputation does: every legal move of every position of a
-    /// depth-3 walk from roots with pins, discovered checks, en passant,
-    /// promotions, x-rays and king recaptures, at several thresholds, with and
-    /// without the quiet-move exchange, on two value scales.
-    #[test]
-    fn incremental_see_matches_the_recomputed_exchange() {
-        const THRESHOLDS: [i32; 7] = [-900, -330, -100, 0, 1, 100, 400];
-        fn compare(board: &Board, mv: Move, compared: &mut u64) {
-            for values in [PRODUCTION_SEE_VALUES, CROSS_ENGINE_SEE_VALUES] {
-                assert_eq!(
-                    board.see_with_values(mv, values),
-                    oracle_see(board, mv, values),
-                    "see of {mv} in {}",
-                    board.to_fen()
-                );
-                *compared += 1;
-            }
-            for threshold in THRESHOLDS {
-                for evaluate_quiet in [false, true] {
-                    assert_eq!(
-                        board.see_ge_impl(mv, threshold, evaluate_quiet, PRODUCTION_SEE_VALUES),
-                        oracle_see_ge(board, mv, threshold, evaluate_quiet, PRODUCTION_SEE_VALUES),
-                        "see_ge({mv}, {threshold}, quiet {evaluate_quiet}) in {}",
-                        board.to_fen()
-                    );
-                    *compared += 1;
-                }
-            }
-        }
-        fn walk(board: &mut Board, depth: u32, compared: &mut u64) {
-            if depth == 0 {
-                return;
-            }
-            for mv in board.generate_legal_moves() {
-                compare(board, mv, compared);
-                board.make_move(mv);
-                walk(board, depth - 1, compared);
-                board.unmake_move(mv);
-            }
-        }
-        let mut compared = 0;
-        for fen in [
-            // Pins, castling, many captures.
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            // Pins along the rank and en passant that exposes a king.
-            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-            // Promotions and capture-promotions under checks.
-            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
-            // Discovered checks and a promotion on d8.
-            "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-            // En passant available.
-            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-            // Doubled rooks and queens: x-rays on files and diagonals.
-            "2rr2k1/1b1q1ppp/p3pn2/1p6/3P4/1BN1QN2/PP3PPP/2RR2K1 w - - 0 1",
-            // Kings in the exchange: defended and undefended king recaptures.
-            "3qk3/8/8/6B1/8/8/3Q4/3K4 w - - 0 1",
-        ] {
-            let mut board = Board::from_fen(fen).expect("valid FEN");
-            walk(&mut board, 3, &mut compared);
-        }
-        println!("{compared} SEE comparisons");
-        assert!(compared >= 100_000, "only {compared} comparisons");
     }
 }
