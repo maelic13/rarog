@@ -39,8 +39,10 @@ import statistics
 import sys
 from collections import defaultdict
 
-# fastchess writes each move as `{eval/depth time}`; eval may be a mate score.
-COMMENT = re.compile(r"\{([+-]?[\dM.]+)/(\d+)\s+([\d.]+)s\}")
+# fastchess writes each move as `{eval/depth time}`; eval may be a mate score,
+# and a game's last move carries the termination after a comma
+# (`{0.00/32 0.047s, Draw by 3-fold repetition}`), which is still a move.
+COMMENT = re.compile(r"\{([+-]?[\dM.]+)/(\d+)\s+([\d.]+)s(?:,[^}]*)?\}")
 TAG = re.compile(r'\[(\w+) "(.*)"\]')
 
 

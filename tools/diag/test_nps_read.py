@@ -147,6 +147,35 @@ class WireTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 nps_read.pool(directory)
 
+    def test_each_arm_is_read_at_its_own_fingerprint(self):
+        """The wiring, not the helper: a cycle hands every base build the
+        base pool's fingerprint and every candidate build the candidate's.
+        Reading both arms at one fingerprint would refuse every honest base
+        build (or accept a wrong one) and this would catch it."""
+        seen = []
+
+        def fake_read(exe, fingerprint):
+            seen.append((str(exe), fingerprint))
+            return [{"nodes": fingerprint, "ms": 1, "nps": 1}]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp)
+            builds = {"base": [out / "b0", out / "b1", out / "b2"], "cand": [out / "c0", out / "c1"]}
+            fingerprints = {"base": 7_601_220, "cand": HEAD}
+            rec = {"cycles": []}
+            original = nps_read.read
+            nps_read.read = fake_read
+            try:
+                nps_read.run_cycles(rec, out, builds, 2, fingerprints)
+            finally:
+                nps_read.read = original
+        self.assertEqual(len(seen), 2 * 5)
+        for exe, fingerprint in seen:
+            arm = "base" if pathlib.Path(exe).name.startswith("b") else "cand"
+            self.assertEqual(fingerprint, fingerprints[arm], exe)
+        self.assertEqual(sorted(rec["cycles"][0]["readings"]["base"]), ["0", "1", "2"])
+        self.assertEqual(rec["cycles"][0]["readings"]["base"]["1"][0]["nodes"], 7_601_220)
+
 
 class UnequalPoolTests(unittest.TestCase):
     def test_three_builds_against_four_use_five_degrees_of_freedom(self):

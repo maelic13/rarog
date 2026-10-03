@@ -23,7 +23,7 @@ PGN = """[White "A"]
 [Black "A"]
 [FEN "4k3/8/8/8/8/8/8/4K2R b K - 0 1"]
 
-1... Kd7 {+1.00/12 0.010s} 2. Kd2 {-1.00/22 0.020s} Ke7 {+M3/245 0.010s} 1/2-1/2
+1... Kd7 {+1.00/12 0.010s} 2. Kd2 {-1.00/22 0.020s} Ke7 {+M3/245 0.010s, Draw by 3-fold repetition} 1/2-1/2
 """
 
 
@@ -40,6 +40,13 @@ class DepthTests(unittest.TestCase):
         # Attributing as if White moved first gives A [10, 11, 22].
         self.assertEqual(depths["A"], [10, 11, 12, 245])
         self.assertEqual(depths["B"], [20, 22])
+
+    def test_the_last_move_with_the_termination_text_is_a_move(self):
+        # fastchess appends the termination to the final comment after a
+        # comma; dropping it would lose one move per game, the terminal one.
+        depths, times, _ = self.collect()
+        self.assertEqual(depths["A"][-1], 245)
+        self.assertEqual(times["A"][-1], 0.010)
 
     def test_mate_scores_are_flagged(self):
         _, _, mates = self.collect()
