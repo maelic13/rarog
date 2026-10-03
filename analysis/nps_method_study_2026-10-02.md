@@ -109,13 +109,16 @@ Not chosen: more builds an arm (eight builds and three cycles reach ±0.22%
 in 16 minutes, but every arm then costs eight PGO builds); four cycles (the
 median absorbs only one disturbed cycle).
 
-## Owed before the first use
+## The tool
 
-`nps_multibuild.ps1` archives nothing and reports the pooled median with a
-bootstrap interval. The revised read needs the tool to archive runs and
-report the estimate and interval above, with a test on this study's
-`raw.json` (it must reproduce the three deltas of finding 4). B.8's
-before-and-after reading is the first use.
+`tools/nps_read.py` (2026-10-03, with `tools/diag/test_nps_read.py`) runs the
+two-step read, archives every run and reports the estimate, the t-interval
+and the disturbed cycles. Fed this study's groups as arms (`tool_check.py`,
+`tool_check.txt`) it reproduces finding 4 over all six cycles: the null pair
+−0.05% (interval −0.46..+0.37, two disturbed cycles, closed), A over the
+base +2.10% (+1.52..+2.69, accepted), I over A +0.82% (+0.51..+1.14). A
+one-cycle smoke run on real pools (`smoke/`) exercised the live path. The
+first registered use is B.7.3's read.
 
 ## Calibration
 
