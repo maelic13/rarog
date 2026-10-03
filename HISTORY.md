@@ -59,6 +59,166 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-03 — PLAN B.9 CLOSED: the Phase B record; the search head frozen.**
+  The B.9 head (engine source `ee02ed1`, 11,171,726 / EBF 2.512, binary
+  `aac92114…` built at `24aefb4`) beats the frozen oracle by **+24.24 ± 8.01
+  Elo** (RAR-O04), where 2.4.0 lost by 247.97 ± 10.89 (RAR-O03): the measured
+  equal-time search deficit, the programme's target, is closed, a move of
+  +272.2 ± 13.5. It rates **3,286.5 ± 15.7** at 1T on the held scale against
+  2.4.0's 3,001 and passes every E.2 target at 1T, Houdini 3 at 55.4%
+  (RAR-M64). It runs 26.23% slower than 2.4.0 in pooled bench NPS (RAR-P35)
+  and about 2 plies shallower than the oracle in their games. Attributed Elo
+  per cluster from the gates: the selectivity core +65.09 and +138.60
+  (B.2.4a/b), the B.2.7 re-tune +13.1, cluster 2 +50.5, cluster 3 +4.4, the
+  speed pass +35.5 (sum +307 ± 42 over differing baselines), the tablebase
+  repair +11.4 with tables; directly, +272.4 head-to-head over 2.4.0. `ablate`
+  was removed. The budget table's B row (120–200 planned) is corrected to 272
+  ± 14 measured. PLAN B.9 holds the readings, the attribution table, the
+  calibration and the freeze. Also found while preparing B.9: RAR-O03's depth
+  figures had been mis-attributed, corrected in `e5d359e` and `408e3a9`.
+
+  GUIDE's checkpoint carried the B-phase closures in two cells until B.9
+  closed; they are moved here verbatim.
+
+  *Current step, as it read before B.9 closed:* **B.9** (`V`), `RESEARCH`: the
+  checkpoint (G(0), depth/EBF, NPS, conversion, pool gauntlet; remove
+  `ablate`; freeze the search head); not started. **B.8 closed 2026-10-03:**
+  the B.1 search, the arm features `b2core`, `b3proof` and `b4quiet`, 64 dead
+  coordinates, the fourteen decided switches, 73 unowned counters and the dead
+  PVS guard removed in eight engine commits, each at `bench 13` 11,171,726 /
+  EBF 2.512; the no-regression read (RAR-P34) +1.16% NPS (95% t-interval
+  +0.72% .. +1.59%); what each removed item did, how it was decided and how to
+  restore it is in `analysis/b8_removed_2026-10-03.md`; acceptance waits on
+  the auditor's verification. **B.7.3 closed 2026-10-03, `NO_CHANGE`
+  (RAR-P33):** the SEE recapturer's exact rewrite (`8fc8ff9`, oracle test of
+  4,411,664 comparisons, bench exact) read **−2.09%** NPS (95% t-interval
+  −2.34% .. −1.84%) against the head's pool, closed by step 1 of the two-step
+  read and reverted in `7e6e0ef`; B.7 closed with it. Phase C carries speed as
+  a secondary requirement from 2026-10-03 (PLAN, Phase C's goal). **B.7 closed
+  2026-10-02 by the maintainer, its sweep verified by the auditor from the
+  artifacts (RAR-P31), and confirmed in games (RAR-S98): H1 at 1,051 pairs,
+  +35.5 ± 9.0 Elo against the head before B.7, +16.7% nodes a second inside
+  the games.** The speed pass, B.7.2.1–B.7.2.20 on the board. **Accepted
+  (RAR-P28):** candidate 1, the quiet-stage early exit (`5fe42cf`), +8.85%
+  NPS; candidate 2, the in-place scored list (`0d95763`), +6.93% over it;
+  bench exact. The re-profile leaves `pick_next` at 6.26%. Candidate 3, the
+  scan layout, closed `NO_CHANGE` by the maintainer after its falsifier read
+  `s` = 1.106 and 1.093. **B.7.2.13, the audit's screen, done 2026-10-02
+  (RAR-P30):** the TT prefetch before the make (A) read +1.48% (CI +0.91% ..
+  +2.41%) and goes forward; the correction-slot prefetch (I) read +0.14%
+  (−0.29% .. +0.75%), between the bounds, and is implemented after A by the
+  maintainer's decision; the history-row prefetch (D, −1.87%) and the static
+  attack tables (B, −0.49%) close `NO_CHANGE`; all four together +1.71%.
+  **B.7.2.14–B.7.2.16 done 2026-10-02 (RAR-P31):** A (`a42fadc`) accepted at
+  +1.69% (95% CI +1.56% .. +1.89%), bench exact. **B.7.2.17–B.7.2.20 done
+  2026-10-02:** I read +0.37% over A, under the floor, and was reverted
+  (`bec1292`, `NO_CHANGE`); the total, A's pool against the c2 pool again,
+  +1.78% (+0.92% .. +2.56%). Profiled 2026-10-01 (RAR-P27,
+  `analysis/b72_profile_2026-10-01.md`). **B.6 closed 2026-10-01, `NO_CHANGE`,
+  by the maintainer** (RAR-S95, `analysis/b6_research_2026-10-01.md`): the
+  finished tunes' journals show no gradient left where each stopped (RAR-S78's
+  second half and every later block read as random walks; only
+  `QsFutilityMargin` still travels), a read that cannot see a gain of a few
+  Elo; a restart was estimated at +3 ± 3 Elo for 12.5 hours a block plus a
+  gate, so the joint search SPSA is C.10, after the classical evaluation.
+  **B.5 closed 2026-10-01 with B.5.2**: the maintainer kept B.5.2.1 (RAR-S93
+  converted 453 of 453 clean tablebase wins on both sides; RAR-S94 H1 at 776
+  pairs, +11.4 ± 8.5 Elo with tables). Two registered stop conditions had
+  fired by their letter. The box rule is recorded as unsatisfiable for a box
+  checked between Fathom calls: a replay put the 50 overruns on single calls
+  of up to 16 ms that the page cache misses, so a predictive box was not
+  built. The cold-table time loss at a 7-man root goes to D.3. Out of band
+  2026-10-01: the last `info` line always describes `bestmove` (`97ea52d`, the
+  flaky threaded test's cause, now with a deterministic test), the legacy
+  search builds again (`2326153`), and a test-suite audit is recorded under
+  B.8 for the maintainer's decision. **B.5.2.1 done 2026-10-01**: the root
+  keeps its DTZ-best group, probes are off at a DTZ root and bound-correct
+  elsewhere, tablebase values are decisive and print `cp ±20000`, the hard
+  limit is the optimum at a DTZ root, PVs extend through the tables and give
+  the ponder move; KQvK/KRvK are committed so CI tests it; bench 11,171,726
+  after every commit. The stop rule refuted moving band values by ply in the
+  table (window arithmetic reaches the band without tables), so the table
+  keeps them as stored. **B.5.2's investigation closed 2026-10-01,
+  `READY_FOR_IMPLEMENTATION`**: the one-move PV has three causes (the root
+  cut, the single-move shortcut stopping at depth 2, the at-once zeroing-child
+  probe); probed tablebase values were never decisive and the TT ignored their
+  band; without the cut a tablebase root fell into a won-endgame time sink (30
+  s of 60, D.1's input), so the root's hard limit becomes the optimum; Fathom
+  is safe for root DTZ probes beside helper WDL probes; the extension costs
+  1.3–7.5 ms warm. The fixture (KQvK, KRvK, 14,080 bytes) waits on the
+  maintainer's licence decision. **B.5.4 closed 2026-10-01, `NO_CHANGE`**:
+  optimism read −5.6 ± 9.4 Elo in RAR-S92's 2,000 games; the donors' gain did
+  not transfer to a classical evaluation. **B.5.1 closed 2026-10-01,
+  `NO_CHANGE` on both cards**: (a) the premise was false, because the default
+  search has given the TT-cutoff history bonus since B.2 in Reckless's form,
+  fitted twice; (b) draw-score randomisation (`CoreDrawJitter`) read −1.2 ±
+  9.4 Elo in RAR-S91's 2,000 games against a prediction of +1 ± 10, so it is
+  undecidable at this budget and stays off
+  (`analysis/b51_research_2026-09-30.md`). **B.5's root cluster closed
+  2026-09-30, `NO_CHANGE`**: one-retry aspiration was rejected at −18.3 ± 6.9
+  (RAR-S89) and lost the same at `10+0.1`; a window twice as wide read −25.4 ±
+  9.2 and a narrower one +2.1 ± 9.2 (RAR-S90), so the loop is kept and no tune
+  is owed; zero-game reads had pointed the other way. The research's inventory
+  leaves the time management multipliers (D.1) and six single coordinates
+  (B.6) as what was never re-fitted on this search
+  (`analysis/b5_research_2026-09-30.md`). **B.4 closed 2026-09-30**: RAR-S88's
+  gate accepted H1 at 10,705 pairs, +4.4 ± 2.9 Elo; theta baked, evasion
+  pruning on and `b4quiet` the default in `5a5c150` (11,171,726 / EBF 2.512).
+  **B.4.3 closed 2026-09-30**: the tune's block 1 moved one coordinate a full
+  step (`QsFutilityMargin` 150 → 178) and the stop rule ended it; evasion
+  pruning was adopted by RAR-S87 at +7.8 ± 9.4 Elo (quiescence history off at
+  −4.7 ± 9.4); the sweep read 2026-09-29 found `QsSeeClampHi`, `QsDeltaMargin`
+  and `QsStandPatLerp` curved, and the preparation's review added
+  `CoreRazorSquare` and `CoreNmpBase` and took `CoreRfpLinear` off its rail.
+  **B.4.2 closed 2026-09-29**: the unfitted paired run read +0.7 ± 9.3 Elo in
+  2,000 games; the component ablation puts the failed floors on the
+  interpolation pair through the estimate B.2's reverse futility was fitted
+  on, so the estimate's first consumers join B.4.3's surface; the
+  implementation was reviewed with no defect and CI covers the arm. **B.4.1
+  closed 2026-09-29**: the arm at its defaults reads 10,226,874 / EBF 2.519,
+  WAC 236 / 270, canaries 92 with none lost, time-to-depth 0.85×; floors
+  failed on depth-14 nodes, agreement and b15's cost, as B.3.2's did; T3 and
+  T4's switches default off by the canary rule. Earlier: **research amendment
+  1 closed 2026-09-29** (packet, RAR-S85) after T1 (`ac018d4`) tripped the
+  canary rule on 2026-09-28 — the rule is kept (0 of 12 neutral perturbations
+  of the head lose a canary), Q1 becomes the Stockfish stored-bit form, Q2's
+  seeds the Stockfish pair 583 / 562; the amended T1 reads bench 10,953,303,
+  WAC 235, canaries 92 with none of the 91 lost, and its commit must reproduce
+  those numbers. **B.4's research closed 2026-09-28** (RAR-S85,
+  `analysis/b4_research_2026-09-28.md`): on the cluster-2 head the quiescence
+  reads 0.33 qnodes per interior node against the oracle's 0.58, WAC 232/266
+  at 100k/400k, 91/116 canaries, branching 1.800; contract Q1–Q9, screens and
+  predictions registered; the diag counters landed in the engine commit. **B.3
+  closed 2026-09-27**: B.3.5's ponder race fixed in `ef1a24b` (bench
+  unchanged; ponder-on smoke 400 games, 0 faults). **B.3.4 closed
+  2026-09-27**: RAR-S84's gate accepted H1 at 804 pairs, +50.5 ± 10.9 Elo, the
+  direction read +48.1 ± 9.5; theta baked and `b3proof` the default in
+  `f53ca7d`. **B.2 closed 2026-09-25**: B.2.7's re-tune (RAR-S78) was baked
+  (`52c46df`, 7,435,006 / EBF 2.457) and its `[0,3]` gate accepted H1 at +13.1
+  ± 5.4 Elo in 3,081 pairs. **B.3.1** (cluster 2 implementation, `I2`) was
+  **implemented on 2026-09-23**: the `b3proof` arm reads 7,479,114 / EBF 2.467
+  with the off arm exact, and CI covers it
+  (`analysis/b3_research_2026-09-23.md`, *Final implementation record*).
+  **B.3.2** closed 2026-09-24 (paired run +18.4 ± 9.4 Elo; RAR-S80's
+  categoricals adopt `SingularTtDepthMargin=2` alone); **B.3.3**: the bake
+  (`3ca9aab`, arm 7,978,292 / EBF 2.465) and the curvature sweep are done (3
+  of 7 coordinates curved, `analysis/b33_sweep_2026-09-24.md`). B.2.6 closed
+  2026-09-22. **E.3.1** (tag-driven release flow, `I1`, added 2026-09-22) is
+  independent tooling that may land at any point before E.3
+
+  *Active experiment, as it read before B.9 closed:* **RAR-S73** (B.2
+  selectivity core: B.2.4a passed 2026-09-16, +65.09 ± 23.26; RAR-S75 finished
+  2026-09-20 (5,000 iterations, theta baked at 7,185,678); RAR-S76 peek at
+  3,900 +118.72 ± 10.62; RAR-M55 and RAR-M56 (B.2.3.2 closed: fitted +97.69,
+  unfitted −7.12 vs Rybka 4.1), **B.2.4b passed 2026-09-20, +138.60 ± 30.66**;
+  RAR-S77 (B.2.3.3) passed, +4.43 ± 2.90; RAR-S78 (B.2.7) tune finished
+  2026-09-24, theta baked, **gate H1 2026-09-25, +13.1 ± 5.4 Elo** in 3,081
+  pairs, B.2 closed; close-out audit 2026-09-21,
+  `analysis/b2_audit_2026-09-21.md`); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48
+  all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0
+  measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42
+  engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted
+  by RAR-M46 and the leaf needs re-scoping**
 - **2026-10-03 — PLAN B.8: the B.1 search deleted** in `84de712`, with the
   `b2core` umbrella that selected it. It was the 2.4.0 search that
   `--no-default-features` compiled; its last fingerprint was 7,590,542 /

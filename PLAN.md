@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's HCE by **about 329 Elo** | RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **11,171,726 / EBF 2.512**: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiles the superseded B.1 search, which reads 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deletes it | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **11,171,726 / EBF 2.512**: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -68,12 +68,16 @@ classical stage.
 
 | Programme | Measured deficit | Planned recovery | Basis |
 |---|---:|---:|---|
-| B search | 251 equal-time | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally |
+| B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 329 same-search | 100–160 | six families, whole-surface refits, endgame conversion |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
-| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules |
+| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C |
 
-If those bands are right the classical head lands within reach of Rybka 4.1
+**Corrected at B.9:** the search programme alone recovered more than its
+band, and the B.9 head scores at least 50% against all four E.2 targets at 1T
+(RAR-M64: Houdini 3 55.4%, rating 3,286.5 on the held scale); 4T is not
+measured. The C and D bands stand until their checkpoints. As first written:
+if those bands are right the classical head lands within reach of Rybka 4.1
 and Fritz 16 and near Critter; Houdini 3 may only fall in the NNUE stage. Each
 programme's checkpoint re-measures its deficit meter so a miss is seen as a
 miss and the budget above is corrected rather than defended.
@@ -2659,7 +2663,7 @@ diagnostics; two rejections stop B.
   frozen ±0.5% on the good side. The premise "compiled out or never
   executed" was wrong for the switches: each was read and branched on at
   every node even at its default.
-- **B.9 Checkpoint — `V`.** Re-measure the deficit meters: RAR-O-series
+- **B.9 Checkpoint — `V`, CLOSED 2026-10-03.** Re-measure the deficit meters: RAR-O-series
   equal-time G(0) against the oracle, fixed-node depth and EBF, the
   reference-anchored geometric branching factor from B.2.2 (the durable
   tree-shape number; node ratios at one depth overstate the gap because
@@ -2670,6 +2674,106 @@ diagnostics; two rejections stop B.
   table. Remove the `ablate` feature afterwards; archive the oracle branches
   as tags (A.2.2) if not already done. **Freeze the search head for C.**
 
+  *Readings on the B.9 head* (RAR-O04, RAR-M64, RAR-P35, registered in
+  `2a50bef` before any game; all three run 2026-10-03 on an idle host by
+  `analysis/artifacts/b9-checkpoint/run_all.ps1`):
+  - **G(0) +24.24 ± 8.01 Elo** against the oracle (2.4.0: −247.97 ± 10.89):
+    the measured search deficit is closed, a move of +272.2 ± 13.5; non-mate
+    depth in the games 14.65 against the oracle's 16.70;
+  - **pool gauntlet at 1T: 3,286.5 ± 15.7** on the held scale (2.4.0 3,001;
+    the cluster-2 head 3,233, RAR-M63); every E.2 target at 50% or more,
+    Houdini 3 55.4%, Critter 63.5%, Fritz 16 62.4%, Rybka 4.1 72.4%;
+  - **pooled NPS −26.23%** against the 2.4.0 release pool (95% −26.76% ..
+    −25.70%); in the gauntlet's games 1.86 against 2.70 M nps (0.69×);
+  - **fixed-node shape:** branching over depths 4–12 1.931 (2.4.0 1.689,
+    oracle 1.787), above B.2.2's screen window; median depth at 300k nodes
+    14 (2.4.0 16, oracle 19);
+  - **conversion:** 38 draws and 2 losses after a persistent piece-up in
+    2,400 games, 15.8 and 0.8 per 1,000 (2.4.0: 24.4 and 5.3 in 3,600 games
+    against a weaker field; losses-up fell outside both intervals, draws-up
+    within them).
+
+  *Attributed Elo per accepted cluster.* Each gate has its own baseline, the
+  previous accepted head, and its own harness, so the sum below adds
+  measurements of different pairings; the direct readings stand beside it.
+
+  | Cluster | Gate | Baseline | Elo |
+  |---|---|---|---:|
+  | B.2 core, unfitted | B.2.4a (RAR-S73) | the off arm at the same revision (the B.1 search) | +65.09 ± 23.26 |
+  | B.2 core, fitted | B.2.4b (RAR-S73) | the unfitted core | +138.60 ± 30.66 |
+  | B.2.7 re-tune | RAR-S78 | theta at 5,000 | +13.1 ± 5.4 |
+  | Cluster 2, proof searches and extensions (B.3) | RAR-S84 | the B.2.7 head | +50.5 ± 10.9 |
+  | Cluster 3, quiescence (B.4) | RAR-S88 | the cluster-2 head | +4.4 ± 2.9 |
+  | B.7 speed pass | RAR-S98 | the head before B.7 | +35.5 ± 9.0 |
+  | **Sum of the above** | | | **+307 ± 42** |
+  | B.5.2.1 tablebase repair, tables configured | RAR-S94 | the head before it | +11.4 ± 8.5, not in the sum |
+  | **Direct: head against 2.4.0** | RAR-M64, 400 games | Rarog 2.4.0 | **+272.4** (about +245 .. +308) |
+  | **Direct: G(0) move** | RAR-O03 → RAR-O04 | the oracle | **+272.2 ± 13.5** |
+
+  RAR-S77 (+4.43 ± 2.90) lies inside B.2.4b, whose fitted arm is theta at
+  5,000, and is not added. B.8's cleanup has no game (RAR-P34, +1.16% NPS).
+  The self-play sum reaches the direct pairing at about 0.89, inside the
+  intervals.
+
+  *The budget table* is corrected: the B row's recovery was 120–200 and
+  measured 272 ± 14; the speed row records what B.9's NPS says.
+
+  *Calibration across B.9's frozen predictions* (each in its ledger row):
+  G(0) missed in sign (−40 predicted; the discount below transitivity was
+  wrong, and transitivity held to 0.2 Elo); the gauntlet hit at its band's
+  top edge (3,255 predicted), with Houdini 3 missed (+37.5 against −10); NPS
+  hit (−24% predicted); depth hit for the head and missed for the oracle;
+  conversion draws hit, losses below the band. Both Elo misses were
+  pessimistic about how far self-play gains transfer to other opponents.
+
+  *The search head is frozen for Phase C.* Engine source `ee02ed1`; no engine
+  input (`src`, `Cargo.toml`, `Cargo.lock`, `build.rs`, the toolchain file,
+  `.cargo`) changed through `408e3a9`. The measured binary,
+  `tools/test_engines/rarog-b9head-pext-pgo.exe`, was built at `24aefb4`
+  (clean, `rustc 1.98.1`, pext PGO), SHA-256
+  `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`,
+  fingerprint **11,171,726 / EBF 2.512**. Phase C changes no search code and
+  no search coordinate except through C.10's joint tune. A C-phase change
+  that touches `src/search/` returns to the owner leaf with an explicit
+  reason recorded there, and is gated as a search change.
+
+  *Deviations from the B.9 prompt, each recorded in its row:* Rybka 4.1 in
+  place of Rybka 4; the gauntlet at the desktop event's Hash 128, 2,000 ms
+  margin and seed 42, changed after the first dry run and before any game;
+  predictions based on RAR-M63, the newer pool reference; the conversion
+  audit read the CLI run's own PGN (the desktop exporter was not needed);
+  the head's version string reads `2.5.0-dev` without its fingerprint; the
+  mate cohort of the shape note is the agent's definition; RAR-O03's depth
+  figures were found mis-attributed and corrected (`e5d359e`, `408e3a9`).
+  The oracle branches were already tags (`oracle/hybrid`,
+  `oracle/hybrid-ablate`, `oracle/hybrid-diag`).
+
+  *Findings for later owners, not acted on in B.9:* the head's branching
+  factor sits above the screen window B.2.2 registered and its tree is 3.75×
+  the oracle's at depth 12, yet it out-plays the oracle at 2 plies less; the
+  search costs a quarter of 2.4.0's speed. Speed is C's secondary
+  requirement; the whole-surface search tune is C.10.
+- **B.10 Release 2.5.0 — `M`.** Added 2026-10-03 by maintainer decision: 2.5.0
+  is released at the search checkpoint (it was to be cut at E.3; E.3's
+  version becomes 3.0.0 or 2.6.0). Modelled on A.7 and A.9: version bump
+  `2.5.0-dev` → `2.5.0`, behaviour-neutral, reproducing 11,171,726 / EBF
+  2.512; `CHANGELOG.md` from B.0–B.9 (HISTORY and the ledger rows cited
+  above); fmt, clippy, debug and release suites; per-tier PGO assets built,
+  fingerprinted and hashed; the release binary's bench equal to the B.9
+  head's. Cut by the maintainer pushing a `v2.5.0` tag: E.3.1's tag-driven
+  flow if it has landed, otherwise A.9's squash to `master`. The release
+  changes no search or evaluation. **Open for the maintainer before the
+  cut:** PLAN §4 gives 2.4.0 a rule (STC over its predecessor with the lower
+  bound above +25, positive LTC and 4T lower bounds) and 2.5.0 none; B.9
+  measured STC at 1T only (+272.4 head-to-head over 2.4.0 in RAR-M64), so
+  B.10 either registers LTC and 4T reads against 2.4.0 or records the
+  maintainer's waiver. AGENTS' clause that fastchess, weather-factory,
+  `sprt.ps1` and `spsa.ps1` stay "until at least release 2.5.0" falls due
+  for review at B.10; the decision is the maintainer's. Phase B closes with
+  B.10, and its tag-and-branch review (AGENTS, *Evidence*) runs then: local
+  branches `b33-block1-probe`, `b33-gate` and `diag/b23-theta3900`, the
+  `arm/*` and `oracle/*` tags.
+
 ### Active workflow register
 
 One row per open leaf in the active phases (A and B). The checker requires
@@ -2678,7 +2782,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.9 | RESEARCH | V | The current step since B.8 closed on 2026-10-03 (register `analysis/b8_removed_2026-10-03.md`, RAR-P34 +1.16% NPS, bench exact); closes the programme and freezes the search head |
+| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); open for the maintainer: the release rule's LTC and 4T reads or a waiver, and AGENTS' fastchess clause |
 
 ## Phase C — Evaluation programme
 
@@ -3046,7 +3150,8 @@ loss).
 - **E.3 Release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.5.0. The release is cut through the
+  is 3.0.0 if E.2 is met, else 2.6.0 (2.5.0 is cut at B.10, maintainer
+decision 2026-10-03). The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
