@@ -2609,6 +2609,56 @@ diagnostics; two rejections stop B.
   0.19 s). The rest run in 0.01–1.9 s, check chess facts (tablebase WDL and
   DTZ, mate, the rule-50 band, legality) or protocol contracts, and one,
   `go nodes`, is deterministic.
+  **Done 2026-10-03; the record is `analysis/b8_removed_2026-10-03.md`.**
+  Engine commits in order, every one at `bench 13` 11,171,726 / EBF 2.512:
+  - `84de712`: the B.1 search and `b2core` (the legacy 7,590,542 / EBF
+    2.473 retired with it);
+  - `07f22ed`: `b3proof` and `b4quiet` folded;
+  - `c77dc73`: 41 dead coordinates;
+  - `eb79e50`: the fourteen switches folded, with three coordinates only
+    their losing branches read;
+  - `274d5a0`: 73 diagnostics;
+  - `eca2e79`: the PVS guard (reached 0 times in 14,888 PV re-searches over
+    bench);
+  - `d028396`: the no-op table aging hook;
+  - `b36a2b2`: six more dead coordinates (four shadowed by live namesakes,
+    two feeding an LMR table nothing read) and two test-only TT helpers.
+
+  The inventory's first counts were corrected twice by the scripts' own
+  re-runs (`correction_probe` is live; ten more counters had no use site;
+  six more coordinates were dead), each correction recorded in the
+  register.
+
+  *What shrank:*
+  - `src` 31,487 → 26,110 lines;
+  - the shipped pext PGO binary 1,027,072 → 1,005,056 bytes (a pool build
+    each);
+  - the `tune` build's options 217 → 153 (coordinates 207 → 143);
+  - `diag` counters 265 → 192;
+  - suites 377 / 378 → 374 / 375 tests (debug / release).
+
+  *Verification on `b36a2b2`* (`analysis/artifacts/b8-nps/verify/summary.txt`,
+  every exit 0):
+  - fmt;
+  - clippy, all features and every CI leg, zero warnings;
+  - bench exact;
+  - board correctness and differential tests;
+  - debug and release suites with the allocation guard;
+  - the long tier (2 ran);
+  - xtask and texel-tuner tests;
+  - the Python tool tests (186);
+  - the Colosseum guards;
+  - the 16-configuration feature matrix;
+  - `tune`, `diag` (bench exact, all 192 counters dump) and `tune,ablate`
+    builds;
+  - the SPSA audit (clean);
+  - the PGO build `rarog-b8head-pext-pgo.exe` at the fingerprint.
+
+  *NPS (RAR-P34):* the no-regression read against `a42fadc`'s pool passed
+  at step 1, **+1.16%** (95% t-interval +0.72% .. +1.59%), outside the
+  frozen ±0.5% on the good side. The premise "compiled out or never
+  executed" was wrong for the switches: each was read and branched on at
+  every node even at its default.
 - **B.9 Checkpoint — `V`.** Re-measure the deficit meters: RAR-O-series
   equal-time G(0) against the oracle, fixed-node depth and EBF, the
   reference-anchored geometric branching factor from B.2.2 (the durable
@@ -2628,8 +2678,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.8 | RESEARCH | I1 | The current step since B.7.3 closed `NO_CHANGE` on 2026-10-03 (RAR-P33, −2.09% NPS, reverted); an NPS reading before and after guards the cleanup's layout effect |
-| B.9 | RESEARCH | V | Closes the programme; freezes the search head |
+| B.9 | RESEARCH | V | The current step since B.8 closed on 2026-10-03 (register `analysis/b8_removed_2026-10-03.md`, RAR-P34 +1.16% NPS, bench exact); closes the programme and freezes the search head |
 
 ## Phase C — Evaluation programme
 
@@ -2692,9 +2741,10 @@ loss).
   read partial sums; the producer's `attacks_from_sq` reads get the
   `debug_assert!` the 2026-08-19 audit asked for; `eval_params!` with its
   137 entries and the `tune`/`texel` I/O move to `eval/params.rs` and
-  `eval/trace.rs`; `src/kpk.rs` moves to `eval/endgame/`; `diag_lazy_dual`
-  and the 21 `lazy_*` counters stay only if the lazy path stays, since
-  `lazy_margin` is decided here. The `texel` trace-reconstruction test is
+  `eval/trace.rs`; `src/kpk.rs` moves to `eval/endgame/`; B.8 deleted `diag_lazy_dual`
+  and the 21 `lazy_*` counters (no owner), so if C.1 keeps a lazy path and
+  wants that instrument to decide `lazy_margin`, it restores them from
+  `10d0e83` (`analysis/b8_removed_2026-10-03.md`, entry 5). The `texel` trace-reconstruction test is
   part of the suite run, never a speed measurement.
 - **C.2 Datagen and label contract for the programme — `V`.** Generate the
   programme's corpus with the B.9 search under the adjudication-off datagen
