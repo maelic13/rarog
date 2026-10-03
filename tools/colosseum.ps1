@@ -23,7 +23,7 @@
       - -ExpectRevision, when given, matches both sidecars;
       - an SPSA surface names only options the tune binary advertises, as spins,
         at the engine's own defaults and ranges, still resolving at the horizon,
-        and a Core* surface requires a b2core tune build;
+        and a Core* surface requires a tune build that advertises them;
       - the configuration Colosseum resolves is Rarog's policy, field by field:
         no adjudication, the registered clock and margin, Hash and Threads, the
         UHO book in random order, automatic placement with a core of headroom,

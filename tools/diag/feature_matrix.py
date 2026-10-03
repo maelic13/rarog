@@ -20,10 +20,7 @@ compilation errors -- which is what a feature matrix is for -- at a fraction of
 the cost, so the whole matrix is runnable on demand rather than only in CI.
 
 Every configuration is checked with `--no-default-features`, so each subset is
-exactly the features it names. `b2core` is therefore an axis like any other:
-the subsets that include it are the accepted search, and the ones that omit it
-are the superseded B.1 search that `--no-default-features` still compiles until
-B.8 deletes it.
+exactly the features it names.
 
 Example:
 
@@ -43,7 +40,7 @@ import time
 # Cargo.toml by
 # `test_feature_matrix.py::test_the_matrix_covers_every_declared_feature`, so
 # adding a feature and forgetting to check it fails the suite.
-SHIPPED_FEATURES = ["b2core", "b3proof", "tune", "diag", "ablate", "texel"]
+SHIPPED_FEATURES = ["b3proof", "b4quiet", "tune", "diag", "ablate", "texel"]
 
 # Features that change what is MEASURED rather than only what is exposed. A
 # binary built with one of these must never be used for a strength number, and

@@ -20,8 +20,8 @@
         tools\weather-factory\main.py is missing (this script also auto-clones
         weather-factory if absent).
       - Build the tune binary: ./tools/build_test.ps1 -Suffix <s> -Tune
-        (add -Features b2core for a surface of the selectivity core's Core*
-        options; such a config is refused on any other tune build)
+        (a surface of the selectivity core's Core* options is refused on a
+        tune build that does not advertise them)
 
 .PARAMETER ConfigGroup
     Which registered parameter group to tune (selects

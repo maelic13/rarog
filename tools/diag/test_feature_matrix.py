@@ -69,7 +69,7 @@ class CombinationTests(unittest.TestCase):
         self.assertEqual(feature_matrix.describe(("tune", "diag")), "tune,diag")
 
     def test_every_check_starts_from_a_clean_slate(self):
-        """Without --no-default-features a subset would silently include b2core."""
+        """Without --no-default-features a subset would silently include the default features."""
         source = (feature_matrix.__file__ and open(feature_matrix.__file__, encoding="utf-8").read())
         self.assertIn('"--no-default-features"', source)
 

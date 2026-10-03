@@ -19,7 +19,7 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   picker, history and correction tables, with its ~100 constants fitted by a
   160,000-game SPSA. It was accepted over the previous search by two gates,
   +65.09 ± 23.26 Elo unfitted and +138.60 ± 30.66 Elo fitted against that.
-  `--no-default-features` still builds the previous search.
+  The previous search has been removed.
 
 ### Fixed
 

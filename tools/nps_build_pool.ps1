@@ -20,7 +20,7 @@ param(
     [Parameter(Mandatory = $true)][string]$OutDir,
     [int]$ExpectFingerprint = 7601220,
     [int]$Depth = 13,
-    # Cargo features for a candidate arm compiled behind a flag (`b2core`).
+    # Cargo features for a candidate arm compiled behind a flag.
     # Pass the arm's own fingerprint with -ExpectFingerprint.
     [string]$Features = "",
     # Local experimentation only. A pool built from an unidentifiable tree must

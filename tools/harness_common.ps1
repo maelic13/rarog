@@ -738,11 +738,12 @@ function Assert-EngineArmEquality {
 }
 
 function Assert-CoreSurfaceArm {
-    # The Core* coordinates exist only in the arm that compiles them (`b2core`,
-    # a default feature since B.2.4b, and the `b3proof` arm on top of it). A
-    # flavor string no longer says which binary carries them, so the arm is
-    # judged by the options it actually advertises: an off-arm binary would tune
-    # a different search under the same names or fail late on a missing option.
+    # The Core* coordinates exist only in a tune build of the selectivity core,
+    # every tune build since B.8 removed the B.1 search; an older binary may
+    # lack them. A flavor string does not say which binary carries them, so the
+    # binary is judged by the options it actually advertises: one without them
+    # would tune a different search under the same names or fail late on a
+    # missing option.
     param(
         [Parameter(Mandatory)][string[]]$Names,
         [Parameter(Mandatory)][object[]]$Advertised,
@@ -757,7 +758,7 @@ function Assert-CoreSurfaceArm {
     if ($missing.Count -gt 0) {
         throw ("Config group '$ConfigGroup' names selectivity-core options ($($missing[0]) and " +
                "$($missing.Count - 1) more) that the tune binary (flavor '$Flavor') does not advertise. " +
-               "Build the arm that carries them: ./tools/build_test.ps1 -Tune -Features b2core (or b3proof).")
+               "Build a tune binary of the current head: ./tools/build_test.ps1 -Tune.")
     }
 }
 

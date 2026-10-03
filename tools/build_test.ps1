@@ -21,7 +21,7 @@
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
     for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
     not depend on absolute NPS — both sides of each mini-match use the same
-    binary.  With -Features (a candidate arm such as `b2core`) it builds
+    binary.  With -Features (a candidate arm compiled behind a flag) it builds
     `--features tune,<Features>` and records the flavor `<Features>-tune`, so
     the manifest's bench fingerprint is that arm's own.
 
@@ -47,9 +47,9 @@
     Combine with -Features to tune a candidate arm compiled behind a flag.
 
 .PARAMETER Features
-    Cargo features for a candidate arm compiled behind a flag (`b2core`).
+    Cargo features for a candidate arm compiled behind a flag.
     For a PGO build they pass to xtask for both PGO builds; with -Tune they
-    join `tune` in the cargo build and name the flavor (`b2core-tune`). Either
+    join `tune` in the cargo build and name the flavor (`<Features>-tune`). Either
     way they are recorded in the build command and the verified bench
     fingerprint is the arm's own. `tune` and `texel` are refused: the first is
     implied by -Tune, the second bypasses the evaluation caches.

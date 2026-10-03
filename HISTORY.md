@@ -59,6 +59,10 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-03 — PLAN B.8: the B.1 search deleted** in `84de712`, with the
+  `b2core` umbrella that selected it. It was the 2.4.0 search that
+  `--no-default-features` compiled; its last fingerprint was 7,590,542 /
+  EBF 2.473, at `10d0e83` (the record: `analysis/b8_removed_2026-10-03.md`).
 - **2026-09-29 — PLAN B.4.1 CLOSED: the quiescence cluster implemented behind
   `b4quiet`.** The PV bit carried on depth-0 stores (Stockfish form), fail-high
   interpolation at 583 / 562, the count rule with check and recapture escapes,

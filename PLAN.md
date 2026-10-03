@@ -456,7 +456,8 @@ diagnostics; two rejections stop B.
       separate roles; the reviewer's acceptance is recorded before B.2.2.
       **Implemented and reviewer-accepted 2026-09-14 (RAR-S73,
       `analysis/b21_review_2026-09-14.md`); CLOSED.** The umbrella is the `b2core` Cargo feature over
-      `src/search/core/`; off, the engine is the B.1 behaviour exactly
+      the core's modules (then a `core/` subdirectory, moved into
+      `src/search/` when B.8 removed the umbrella); off, the engine is the B.1 behaviour exactly
       (7,601,220 / EBF 2.474 at every commit, pooled NPS −0.13% against the
       B.1 pool); on, it reads 4,706,910 / EBF 2.391 unfitted, with 80
       `CoreParams` coordinates. The review (class `R2`, a separate session)
@@ -2550,7 +2551,8 @@ diagnostics; two rejections stop B.
      S80, S87, S91, S92 and B.3.2's screens);
   5. the diagnostics without an owner: 63 of 265 counters by the owner
      test, `lazy_probe` with `diag_lazy_dual`, and `correction_probe` with
-     the B.1 search; recomputed after class 4;
+     the B.1 search (corrected after class 1: the core calls
+     `correction_probe` too, so it stays); recomputed after class 4;
   6. the dead PVS guard, after a counter build over bench shows it never
      fires.
 

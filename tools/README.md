@@ -30,7 +30,7 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 | Tool | Purpose | Used by |
 |---|---|---|
 | `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs | PROCESS "Harness"; every SPRT row up to B.2.5 |
-| `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a `b2core-tune` binary | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
+| `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a tune binary that advertises them | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
 | `pgn_result.ps1` | Recompute Elo, LOS and pentanomial counts from a fastchess PGN | re-reading a finished match |
 | `watch.ps1` | Console-noise filter for long fastchess and weather-factory runs | operator convenience |
 | `gauntlet.ps1` | The frozen Rarog 2.2.0 external gauntlet (hard-coded field) | historical; `colosseum.ps1 -Mode gauntlet` replaces it |
@@ -39,7 +39,7 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `build_test.ps1` | Build a PGO or tune test binary, of the default arm or a feature arm (`-Features b2core`), with a bench-verified provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; every gate and tune |
+| `build_test.ps1` | Build a PGO or tune test binary, of the default arm or a feature arm (`-Features <arm>`), with a bench-verified provenance sidecar into `tools/test_engines` | PROCESS "Common commands"; every gate and tune |
 | `harness_common.ps1` | One implementation of every guard both paths enforce — idle host, runner pin, sidecar provenance, flavour and compiler equality, advertised options, tune surface — plus the affinity list and adjudication profiles | dot-sourced by `colosseum.ps1`, `sprt.ps1`, `spsa.ps1`, `datagen.ps1`, `build_test.ps1` and others |
 | `setup_tools.ps1` | Stage the pinned Colosseum CLI, fastchess, the UHO book and the patched weather-factory | PROCESS "Toolchain and harness notes" |
 | `pgn_depth_at_nodes.py` | Per-engine reported depth and time per move from a fixed-nodes PGN | tree-shape comparisons at equal nodes |

@@ -68,12 +68,6 @@ jobs:
       - name: cargo clippy (--features texel)
         run: cargo clippy --all-targets --features texel -- -D warnings
 
-      # `b2core` is a default feature since B.2.4b, so every step above lints
-      # the accepted selectivity core. These two cover the superseded B.1
-      # search, which stays compilable until B.8 deletes it.
-      - name: cargo clippy (--no-default-features, the legacy search)
-        run: cargo clippy --all-targets --no-default-features -- -D warnings
-
       - name: cargo clippy (--features diag,tune)
         run: cargo clippy --all-targets --features diag,tune -- -D warnings
 
@@ -161,15 +155,6 @@ jobs:
           if [ "$ran" -ne 2 ]; then
             echo "::error::the long tier ran $ran tests, expected 2"
             exit 1
-          fi
-
-      - name: cargo test — engine, legacy search (${{ matrix.profile }})
-        shell: bash
-        run: |
-          if [ "${{ matrix.profile }}" = "release" ]; then
-            cargo test -p rarog --release --no-default-features
-          else
-            cargo test -p rarog --no-default-features
           fi
 
       - name: cargo test — engine, b3proof candidate (${{ matrix.profile }})
@@ -261,11 +246,6 @@ jobs:
       # commit, and a hardcoded constant would need editing constantly until
       # somebody just deleted the check. Cross-platform agreement, by contrast,
       # must hold forever regardless of what we change.
-      # The legacy search must agree across platforms too; it builds into its
-      # own target directory so the release binary above is untouched.
-      - name: Build release, legacy search
-        run: cargo build --release --no-default-features --target-dir target/legacy
-
       # The proof-search candidate must agree across platforms as well.
       - name: Build release, b3proof candidate
         run: cargo build --release --features b3proof --target-dir target/b3proof
@@ -283,12 +263,10 @@ jobs:
           }
           count "./target/release/rarog${{ matrix.ext }}" bench.log
           accepted=$nodes
-          count "./target/legacy/release/rarog${{ matrix.ext }}" bench-legacy.log
-          legacy=$nodes
           count "./target/b3proof/release/rarog${{ matrix.ext }}" bench-b3proof.log
           candidate=$nodes
-          echo "${{ matrix.label }} $accepted $legacy $candidate" > "nodes-${{ matrix.label }}.txt"
-          echo "$accepted nodes (legacy $legacy, b3proof $candidate) on ${{ matrix.label }}"
+          echo "${{ matrix.label }} $accepted $candidate" > "nodes-${{ matrix.label }}.txt"
+          echo "$accepted nodes (b3proof $candidate) on ${{ matrix.label }}"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -313,14 +291,14 @@ jobs:
       - name: All platforms must report the same node counts
         run: |
           cat nodes-*.txt
-          for column in 2 3 4; do
+          for column in 2 3; do
             counts=$(awk -v c=$column '{print $c}' nodes-*.txt | sort -u | wc -l)
             if [ "$counts" -ne 1 ]; then
               echo "::error::platforms disagree on bench node count (column $column) — see the table above"
               exit 1
             fi
           done
-          echo "all platforms agree: $(awk '{print $2, "legacy", $3, "b3proof", $4}' nodes-*.txt | sort -u)"
+          echo "all platforms agree: $(awk '{print $2, "b3proof", $3}' nodes-*.txt | sort -u)"
 
   features:
     name: feature builds
@@ -367,8 +345,7 @@ jobs:
       # subsets of the six declared features with
       # `cargo check --all-targets --no-default-features`, which catches the
       # same compilation errors far more cheaply than 32 builds. Every subset
-      # starts from a clean slate, so `b2core` is an axis like any other and
-      # the subsets without it cover the legacy search until B.8 deletes it.
+      # starts from a clean slate.
       #
       # Deliberately NOT `--all-features`: that is not a shipped configuration.
       # It enables `texel`, which bypasses the eval and pawn caches, and a

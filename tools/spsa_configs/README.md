@@ -106,7 +106,7 @@ time-control artifact that disappears in confirmation.
 Once PLAN names the experiment, its surface and gates:
 
 ```powershell
-./tools/build_test.ps1 -Suffix <name> -Tune            # add -Features b2core for a Core* surface
+./tools/build_test.ps1 -Suffix <name> -Tune
 ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -SetupOnly -Iterations <registered-N>
 ./tools/spsa.ps1 -ConfigGroup <group> -LaunchOnly -Iterations <registered-N>
 ```
