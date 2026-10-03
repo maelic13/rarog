@@ -70,7 +70,7 @@ leaf continues here, this is the mapping; everything else is history.
   and about 2 plies shallower than the oracle in their games. Attributed Elo
   per cluster from the gates: the selectivity core +65.09 and +138.60
   (B.2.4a/b), the B.2.7 re-tune +13.1, cluster 2 +50.5, cluster 3 +4.4, the
-  speed pass +35.5 (sum +307 ± 42 over differing baselines), the tablebase
+  speed pass +35.5 (sum +307 ± 41 over differing baselines), the tablebase
   repair +11.4 with tables; directly, +272.4 head-to-head over 2.4.0. `ablate`
   was removed. The budget table's B row (120–200 planned) is corrected to 272
   ± 14 measured. PLAN B.9 holds the readings, the attribution table, the

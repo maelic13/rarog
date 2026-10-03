@@ -2705,7 +2705,7 @@ diagnostics; two rejections stop B.
   | Cluster 2, proof searches and extensions (B.3) | RAR-S84 | the B.2.7 head | +50.5 ± 10.9 |
   | Cluster 3, quiescence (B.4) | RAR-S88 | the cluster-2 head | +4.4 ± 2.9 |
   | B.7 speed pass | RAR-S98 | the head before B.7 | +35.5 ± 9.0 |
-  | **Sum of the above** | | | **+307 ± 42** |
+  | **Sum of the above** | | | **+307 ± 41** |
   | B.5.2.1 tablebase repair, tables configured | RAR-S94 | the head before it | +11.4 ± 8.5, not in the sum |
   | **Direct: head against 2.4.0** | RAR-M64, 400 games | Rarog 2.4.0 | **+272.4** (about +245 .. +308) |
   | **Direct: G(0) move** | RAR-O03 → RAR-O04 | the oracle | **+272.2 ± 13.5** |
