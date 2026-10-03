@@ -108,23 +108,6 @@ fn multicut_score(score: i32, beta: i32, lerp: i32) -> Option<i32> {
         .then(|| (score + (beta - score) * lerp / 1024).max(-TB_WIN_SCORE + 1))
 }
 
-// Float-to-int truncation is the table formula's rounding, hence the scoped
-// cast allow. The root loop builds the table for either arm; this arm's
-// reductions do not read it.
-#[expect(clippy::cast_possible_truncation)]
-pub(super) fn build_lmr_table(base: i32, div: i32) -> Box<[[i32; 64]; 64]> {
-    let base_f = base as f64 / 1024.0;
-    let div_f = div as f64 / 1024.0;
-    let mut table = Box::new([[0i32; 64]; 64]);
-    for (depth, row) in table.iter_mut().enumerate().skip(1) {
-        for (searched, value) in row.iter_mut().enumerate().skip(1) {
-            *value =
-                (1024.0 * (base_f + (depth as f64).ln() * (searched as f64).ln() / div_f)) as i32;
-        }
-    }
-    table
-}
-
 /// A `negamax` frame's node type, resolved at compile time, so quiescence can
 /// know it is on a PV line without a new parameter. `cut_node` stays a runtime
 /// argument, so an all-node is `!PV && !cut_node`.

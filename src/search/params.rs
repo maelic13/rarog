@@ -137,15 +137,6 @@ search_params! {
     /// runaway iteration — which is exactly what the tune explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
 
-
-
-
-    /// LMP prune-margin base.
-    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
-    lmp_base = 80, "LmpBase", 30..=200;  // was 90 → 115 → 88 → 80
-
-
-
     // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
     // Exposed so the `config_see` SPSA can re-tune SEE's consumers alongside
     // the pin-aware `see_ge` (lesson 15: a more accurate SEE de-tunes the
@@ -160,21 +151,6 @@ search_params! {
     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
     qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
 
-
-    /// 4.3 arm B — how far below the node depth a TT entry may sit and still
-    /// seed a singular verification window (`ev.depth >= depth - margin`).
-    ///
-    /// 3 = current behaviour, and 3 is exactly the depth a same-node ProbCut
-    /// writes (`depth - 3`), so that signature is admitted at the boundary:
-    /// RAR-S22 measured 32 of 101 sampled attempts there. Margin 2 excludes the
-    /// whole `depth - 3` band, including legitimate full-search entries, but it
-    /// is not a provenance guarantee: a ProbCut entry produced by an earlier
-    /// deeper search can still qualify at a shallower consumer. RAR-S31 found
-    /// value 2 positive on a tune binary, but the ~3 Elo knob was parked under
-    /// the material-gain policy. B.1 removed 4.3c's persisted provenance.
-    singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
-
-
     /// Minimum non-pawn pieces the side to move must have for NMP.
     ///
     /// 1 = accepted baseline, i.e. exactly the existing
@@ -187,31 +163,6 @@ search_params! {
     /// reproduces it exactly and the `tests/zugzwang.rs` pawn-only assertions
     /// keep covering the boundary.
     nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
-
-
-
-    // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
-    // Applied to the 1024x-scaled LMR table base; `>> 10` gives integer ply.
-    // The default-equivalent seed set was 1024 / 0 / 1024 / 1024; current
-    // defaults are the Phase 2.5.1 clock-TC SPSA candidate pending SPRT.
-    /// Cut node: reduce more.
-    lmr_cut_node = 780, "LmrCutNode", 0..=2048;  // was 1024; Phase 2.4 candidate was 1138
-
-    // ── LMR table formula coefficients (in 1024ths) ──────────────────────────
-    // Table formula: 1024 * (base/1024 + ln(depth)*ln(move_idx) / (div/1024))
-    // The default-equivalent seed formula was 0.75 + ln*ln/2.25; current
-    // defaults are the Phase 2.5.1 clock-TC SPSA candidate pending SPRT.
-    /// Additive base constant (1024ths).
-    lmr_table_base = 646, "LmrTableBase", 384..=1536;  // was 768 (0.75 * 1024); Phase 2.4 was 738
-    /// Logarithm divisor (1024ths).
-    lmr_table_div = 2335, "LmrTableDiv", 1536..=3072;  // was 2304 (2.25 * 1024); Phase 2.4 was 2334
-
-    // ── Per-move quiet futility pruning (Phase 2.7) ──────────────────────────
-    // Centipawn-scaled; re-tuned in the Phase 4 SPSA wave after the eval
-    // re-fit.
-    /// Quiet futility base margin (cp).
-    fp_base = 211, "FpBase", 0..=400;
-
 
     /// Paired-ablation mask, one bit per mechanism, 0 = shipped behaviour:
     /// 0 razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
@@ -529,20 +480,12 @@ mod tests {
     fn search_params_defaults_are_sane() {
         let p = SearchParams::default();
         assert!(p.aspiration_delta > 0);
-        assert!(p.lmp_base > 0);
         assert!(p.qs_see_margin >= 0);
         assert!(p.qs_see_bad_floor <= 0);
-        // A bake that moves this default is changing play and owes an SPRT,
-        // so pin the inert value here: this assert is the tripwire.
-        assert_eq!(p.singular_tt_depth_margin, 3, "4.3 arm B must land inert");
         assert_eq!(
             p.nmp_min_non_pawn_pieces, 1,
             "4.4c material guard must reproduce has_non_pawn_material"
         );
-        assert!(p.lmr_cut_node >= 0);
-        assert!(p.lmr_table_base > 0);
-        assert!(p.lmr_table_div > 0);
-        assert!(p.fp_base > 0);
         assert!(p.lazy_margin > 0);
         assert!(p.tm_opt_scale > 0);
         assert!(p.tm_fall_base > 0);

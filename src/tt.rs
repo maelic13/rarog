@@ -666,14 +666,6 @@ impl TtProbe {
         is_pv || self.stored_pv
     }
 
-    /// An exact score is stored. Consumed by the accepted arm's LMR reduction
-    /// adjustment.
-    #[cfg(test)]
-    #[inline(always)]
-    pub(crate) fn is_exact(&self) -> bool {
-        matches!(self.bound, Some(Bound::Exact))
-    }
-
     /// Cut this node off outright: the score to return, or `None`. The caller
     /// owns the node-role guards (`!is_pv`, no excluded move); this covers only
     /// deep enough plus a bound that resolves the window.
@@ -737,17 +729,6 @@ impl TtProbe {
             Some(Bound::Upper) if self.score < base => self.score,
             _ => base,
         }
-    }
-
-    /// Seed a singular-extension verification window: a lower-or-exact bound
-    /// within `depth_margin` plies and a non-mate score. The proof-search arm
-    /// admits its singular candidates by its own rule.
-    #[cfg(test)]
-    #[inline(always)]
-    pub(crate) fn allows_singular(&self, depth: i32, depth_margin: i32) -> bool {
-        self.depth >= depth - depth_margin
-            && matches!(self.bound, Some(Bound::Lower | Bound::Exact))
-            && self.score.abs() < MATE_SCORE - MAX_PLY
     }
 
     /// Is the stored depth too shallow to guide move ordering? The evidence
@@ -1049,8 +1030,6 @@ mod tests {
         assert_eq!(miss.cutoff_score(0, -100, 100), None);
         assert_eq!(miss.refine_eval(42, 0), 42);
         assert_eq!(miss.refine_eval_bound_only(42), 42);
-        assert!(!miss.allows_singular(4, 3));
-        assert!(!miss.is_exact());
         assert_eq!(miss.depth, -1);
     }
 
@@ -1094,17 +1073,6 @@ mod tests {
             ..probe(Bound::Lower, 8, 0)
         };
         assert_eq!(none.refine_eval(30, 0), 30, "VALUE_NONE is rejected");
-    }
-
-    #[test]
-    fn singular_seed_needs_depth_a_lower_bound_and_a_non_mate_score() {
-        let probcut_shaped = probe(Bound::Lower, 5, 40);
-        assert!(probcut_shaped.allows_singular(8, 3));
-        assert!(!probcut_shaped.allows_singular(8, 2));
-        assert!(!probe(Bound::Lower, 4, 40).allows_singular(8, 3));
-        assert!(!probe(Bound::Upper, 8, 40).allows_singular(8, 3));
-        assert!(!probe(Bound::Lower, 8, MATE_SCORE - 10).allows_singular(8, 3));
-        assert!(!probe(Bound::Lower, 8, -MATE_SCORE + 10).allows_singular(8, 3));
     }
 
     #[test]
@@ -1230,7 +1198,6 @@ mod tests {
                 assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
                 assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
                 assert_eq!(probe.refine_eval(55, 0), 55);
-                assert!(!probe.allows_singular(8, 3));
                 assert!(tt.hashfull() == 0 || tt.hashfull() > 0);
             }
         }

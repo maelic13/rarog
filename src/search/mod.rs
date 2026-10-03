@@ -40,7 +40,6 @@ use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOpti
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE};
 
-use node::build_lmr_table;
 use params::CoreParams;
 use params::ProofParams;
 use params::QuietParams;
@@ -204,10 +203,6 @@ struct SearchConfig {
     core: CoreParams,
     proof: ProofParams,
     quiet: QuietParams,
-    lmr_table: Box<[[i32; 64]; 64]>,
-    /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
-    /// it only when the parameters change.
-    lmr_table_key: (i32, i32),
     limits: RuntimeLimits,
     start: Instant,
 }
@@ -216,8 +211,6 @@ impl Default for SearchConfig {
     fn default() -> Self {
         let params = SearchParams::default();
         Self {
-            lmr_table: build_lmr_table(params.lmr_table_base, params.lmr_table_div),
-            lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
             params,
             core: CoreParams::default(),
             proof: ProofParams::default(),
@@ -716,21 +709,9 @@ impl Searcher {
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
         self.cfg.core = engine_options.core_params.clone();
-        {
-            self.cfg.proof = engine_options.proof_params.clone();
-            self.td.nmp_min_ply = 0;
-        }
-        {
-            self.cfg.quiet = engine_options.quiet_params.clone();
-        }
-        let table_key = (
-            self.cfg.params.lmr_table_base,
-            self.cfg.params.lmr_table_div,
-        );
-        if table_key != self.cfg.lmr_table_key {
-            self.cfg.lmr_table = build_lmr_table(table_key.0, table_key.1);
-            self.cfg.lmr_table_key = table_key;
-        }
+        self.cfg.proof = engine_options.proof_params.clone();
+        self.td.nmp_min_ply = 0;
+        self.cfg.quiet = engine_options.quiet_params.clone();
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.root_iteration_nodes = 0;
         self.td.tb_root_scores.clear();
