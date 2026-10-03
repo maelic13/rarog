@@ -23,10 +23,6 @@ const WEIGHT_SCALE: i64 = 128;
 /// Material of the starting position in evaluation units, the point at which
 /// the material term of the corrected eval is neutral.
 const MATERIAL_REFERENCE: i64 = 8_000;
-/// Optimism's material weighting, `(base + material) / div` (see
-/// `corrected_eval_parts`).
-const OPTIMISM_MATERIAL_BASE: i64 = 1_200;
-const OPTIMISM_MATERIAL_DIV: i64 = 21_000;
 
 fn saturate(value: i64) -> i32 {
     i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
@@ -188,16 +184,6 @@ impl Searcher {
             let material = i64::from(material(board));
             eval += eval * i64::from(p.eval_material_scale) * (material - MATERIAL_REFERENCE)
                 / (64 * MATERIAL_REFERENCE);
-        }
-        if p.optimism != 0 {
-            // The donors weight optimism by the material left: Reckless adds
-            // `optimism * (1548 + material) / 27015` in its units, 0.44 of the
-            // optimism at the start position and 0.06 with no pieces. The
-            // same two weights on this material scale (8,000 at the start)
-            // give `(1200 + material) / 21000`.
-            let material = i64::from(material(board));
-            let optimism = i64::from(self.td.optimism[board.side_to_move() as usize]);
-            eval += optimism * (OPTIMISM_MATERIAL_BASE + material) / OPTIMISM_MATERIAL_DIV;
         }
         if p.eval_rule50_damping != 0 {
             let clock = i64::from(board.halfmove_clock().min(100));

@@ -61,10 +61,6 @@ pub(super) struct ThreadData {
     pub(super) root_iteration_nodes: u64,
     pub(super) root_best_nodes: u64,
     pub(super) root_best_effort: f64,
-    /// Optimism by colour, evaluation units: set at each iteration's start
-    /// from the root's running average score, zero until the first
-    /// iteration completes and whenever `CoreOptimism` is off.
-    pub(super) optimism: [i32; 2],
     /// Width of the root window of the current aspiration step.
     pub(super) root_delta: i32,
     /// While a null-move verification search runs, the first ply at which the
@@ -137,7 +133,6 @@ impl Default for ThreadData {
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
-            optimism: [0; 2],
             root_delta: 1,
             nmp_min_ply: 0,
             root_depth: 0,

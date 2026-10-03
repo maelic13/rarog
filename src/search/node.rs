@@ -43,10 +43,6 @@ const fn is_decisive(score: i32) -> bool {
     is_win(score) || is_loss(score)
 }
 
-/// The noisy-history bonus a quiescence fail-high earns: Reckless's flat
-/// bonus, unscaled because both engines cap the noisy table at 12,800.
-const QS_NOISY_HISTORY_BONUS: i32 = 100;
-
 /// A quiescence fail-high moved `lerp` 1024ths of the way from `score` to
 /// `beta`, so the bound the interior reads as its estimate is not the raw
 /// overshoot of a depth-0 window. A decisive score or beta is left alone, so
@@ -196,33 +192,6 @@ struct LateMoveInputs {
     singular_gap: Option<i32>,
 }
 
-/// The inputs of the full-depth branch's reduction for one move.
-#[derive(Copy, Clone)]
-struct FullDepthInputs {
-    depth: i32,
-    improvement: i32,
-    corr_abs: i32,
-    is_quiet: bool,
-    history: i32,
-    tt_pv: bool,
-    /// A stored result at least as deep as this node.
-    tt_deep: bool,
-    cut_node: bool,
-    tt_move_null: bool,
-    is_tt_move: bool,
-    /// Beta cutoffs among this node's children so far.
-    child_cutoffs: i32,
-    parent_reduction: i32,
-}
-
-/// The depth the full-depth branch searches a move at: one ply off from a
-/// reduction of 2621 units and two from 5579, never below one ply and never
-/// deeper than `new_depth`.
-fn full_depth_searched_depth(new_depth: i32, reduction: i32) -> i32 {
-    let plies = i32::from(reduction >= 2_621) + i32::from(reduction >= 5_579);
-    (new_depth - plies).max(new_depth.min(1))
-}
-
 /// The depth a reduced move is searched at: the reduction in whole plies,
 /// never below one ply of main search and never more than two plies above
 /// `new_depth`; a PV node searches its reduced moves two plies deeper.
@@ -281,28 +250,6 @@ impl Searcher {
         }
     }
 
-    /// Whether the null move's population takes this node: every node off
-    /// the PV line at `CoreNmpNodes = 0`, expected cut nodes only at 1.
-    #[inline(always)]
-    fn nmp_population(&self, pv: bool, cut_node: bool, tt_pv: bool) -> bool {
-        if self.cfg.proof.nmp_nodes == 0 {
-            !tt_pv
-        } else {
-            cut_node && !pv
-        }
-    }
-
-    /// Whether ProbCut's population takes this node: every node off the PV
-    /// line at `CoreProbcutNodes = 0`, expected cut nodes only at 1.
-    #[inline(always)]
-    fn probcut_population(&self, pv: bool, cut_node: bool, tt_pv: bool) -> bool {
-        if self.cfg.proof.probcut_nodes == 0 {
-            !tt_pv
-        } else {
-            cut_node && !pv
-        }
-    }
-
     /// How far a singular TT move extends, one to three plies, given how far
     /// its exclusion search fell below the singular beta (`below > 0`). The
     /// bars for two and three plies are higher on a PV node, higher still
@@ -352,21 +299,11 @@ impl Searcher {
 
     /// The TT move's negative extension after an exclusion fail-high that
     /// neither cut nor demoted it, before the one-ply floor: three plies when
-    /// the stored score is at or above beta; at an expected cut node
-    /// otherwise three, or two under `CoreSingNegCut` 1; none elsewhere.
+    /// the stored score is at or above beta, or at an expected cut node;
+    /// none elsewhere.
     #[inline(always)]
     fn negative_singular_extension(&self, tt_score_at_beta: bool, cut_node: bool) -> Option<i32> {
-        if tt_score_at_beta {
-            Some(-3)
-        } else if cut_node {
-            Some(if self.cfg.proof.sing_neg_cut == 0 {
-                -3
-            } else {
-                -2
-            })
-        } else {
-            None
-        }
+        (tt_score_at_beta || cut_node).then_some(-3)
     }
 
     /// The part of a positive extension the line's budget still allows: the
@@ -545,62 +482,6 @@ impl Searcher {
         r + spread - 59
     }
 
-    /// The donor's second reduction, for the moves late-move reductions do not
-    /// take (`CoreLmrFullDepth`), in 1024ths of a ply. Its constants are the
-    /// donor's seeds, converted where they bound evaluation units, and are
-    /// not coordinates. Reduces more: a quiet, a cut node (more without a TT
-    /// move), children that keep failing high, a parent that reduced far
-    /// more. Reduces less: improvement, a large correction, good history, a
-    /// PV line in the table (more when its entry is deep), the TT move.
-    fn full_depth_reduction(&self, i: &FullDepthInputs) -> i32 {
-        let mut r = 207 * i.depth.ilog2().cast_signed();
-        r -= (366 * i.improvement / 128).clamp(-94, 626);
-        r -= 2_255 * i.corr_abs / 1024;
-        if i.is_quiet {
-            r += 1_468 - 118 * i.history / 1024;
-        } else {
-            r += 940 - 63 * i.history / 1024;
-        }
-        if i.tt_pv {
-            r -= 844 + 1_129 * i32::from(i.tt_deep);
-        } else if i.cut_node {
-            r += 1_260 + 2_168 * i32::from(i.tt_move_null);
-        }
-        if i.child_cutoffs > 2 {
-            r += 1_394 + 258 * i32::from(!i.cut_node);
-        }
-        if i.is_tt_move {
-            r -= 3_002;
-        }
-        if i.parent_reduction > r + 590 {
-            r += 130;
-        }
-        let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
-        let spread = i32::try_from((self.td.nodes + thread * 26) % 128).unwrap_or(0);
-        r + spread - 56
-    }
-
-    /// Whether a node's result may train the correction, given the
-    /// categorical admission switches: a decisive score is admitted only when
-    /// `CoreCorrTrainDecisive` is set, a singular-exclusion node only when
-    /// `CoreCorrTrainExcluded` is.
-    #[inline(always)]
-    fn admits_correction_training(&self, score: i32, excluded: Move) -> bool {
-        (self.cfg.core.corr_train_decisive != 0 || score.abs() < TB_WIN_SCORE)
-            && (self.cfg.core.corr_train_excluded != 0 || excluded.is_null())
-    }
-
-    /// The score of a draw met below the root. Under `CoreDrawJitter` it
-    /// varies within two units of zero with the node count, which keeps a
-    /// single-threaded search deterministic.
-    #[inline(always)]
-    fn draw_score(&self) -> i32 {
-        if self.cfg.core.draw_jitter == 0 {
-            return 0;
-        }
-        i32::try_from(self.td.nodes % 5).unwrap_or(0) - 2
-    }
-
     /// Record the order index of the move about to be searched at `ply` and
     /// the line's accumulated lateness: the parent's laterality plus
     /// [`laterality_step`] of this move's index.
@@ -637,7 +518,7 @@ impl Searcher {
 
         if !NODE::ROOT && board.can_declare_draw_in_search() {
             crate::diag_count!(draw_return);
-            return self.draw_score();
+            return 0;
         }
 
         let in_check = board.is_in_check();
@@ -964,12 +845,10 @@ impl Searcher {
         // Razoring: far enough below alpha that only a tactic can help, so
         // the node asks quiescence. Not on a PV line, not when alpha is
         // already a decisive-looking score, not when a quiet TT move or a
-        // fail-high entry says there is more here. With the guards on, also
-        // not at a node the table places on a PV line and not above depth 3.
+        // fail-high entry says there is more here.
         if !self.ablated(0)
             && !NODE::PV
             && !in_check
-            && (self.cfg.core.razor_guards == 0 || (!tt_pv && depth <= 3))
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
             && alpha < RAZOR_ALPHA_LIMIT
@@ -1039,12 +918,7 @@ impl Searcher {
                 .max(extension_spent - self.td.root_depth.max(0));
         }
         let potential_singularity = !self.ablated(6)
-            && depth
-                >= if self.cfg.proof.singular_floor == 0 {
-                    4
-                } else {
-                    5 + i32::from(tt_pv)
-                }
+            && depth >= 4
             && ev.depth >= depth - self.cfg.proof.singular_tt_depth_margin
             && matches!(ev.bound, Some(Bound::Lower | Bound::Exact))
             && !is_decisive(ev.score);
@@ -1065,7 +939,7 @@ impl Searcher {
             && depth >= 3
             && !in_check
             && excluded.is_null()
-            && self.nmp_population(NODE::PV, cut_node, tt_pv)
+            && !tt_pv
             && !potential_singularity
             && !is_loss(beta)
             && !is_win(eval_for_pruning)
@@ -1240,47 +1114,21 @@ impl Searcher {
             && !in_check
             && excluded.is_null()
             && !is_win(beta)
-            && self.probcut_population(NODE::PV, cut_node, tt_pv)
+            && !tt_pv
         {
             let improving_i = i32::from(improving);
-            let tt_margin = self.cfg.proof.probcut_tt_margin;
-            if self.cfg.proof.probcut_tt_served != 0
-                && ev.bound == Some(Bound::Lower)
-                && ev.depth >= depth - 4
-                && !is_decisive(beta)
-                && !is_decisive(ev.score)
-                && ev.score >= beta + tt_margin
-            {
-                crate::diag_count!(probcut_tt_served);
-                trace_decision!(
-                    self,
-                    ply,
-                    "probcut_tt_served depth {depth} tt_depth {} tt_score {} beta {beta} \
-                     returns {}",
-                    ev.depth,
-                    ev.score,
-                    beta + tt_margin
-                );
-                return beta + tt_margin;
-            }
             let probcut_beta =
                 beta + self.cfg.proof.probcut_base - self.cfg.proof.probcut_improving * improving_i;
-            let quiet_tt_move =
-                self.cfg.proof.probcut_nodes != 0 && !tt_move.is_null() && !is_noisy(tt_move);
             let tt_gate = if ev.bound.is_some() {
                 ev.score >= probcut_beta && !is_decisive(ev.score)
             } else {
                 eval_for_pruning >= beta
             };
             #[cfg(feature = "diag")]
-            if diag_sample && depth >= 4 {
-                if quiet_tt_move {
-                    crate::diag_count!(probcut_quiet_tt_reject);
-                } else if !tt_gate {
-                    crate::diag_count!(probcut_tt_gate_reject);
-                }
+            if diag_sample && depth >= 4 && !tt_gate {
+                crate::diag_count!(probcut_tt_gate_reject);
             }
-            if depth >= 4 && !quiet_tt_move && tt_gate {
+            if depth >= 4 && tt_gate {
                 #[cfg(feature = "diag")]
                 if diag_sample {
                     crate::diag_count!(probcut_nodes);
@@ -1926,76 +1774,6 @@ impl Searcher {
                         last_critical_ply,
                         poll,
                     )
-                } else if self.cfg.core.lmr_full_depth != 0
-                    && !NODE::ROOT
-                    && !in_check
-                    && !self.ablated(7)
-                {
-                    // The donor's full-depth branch. Late-move reductions take
-                    // every later move from depth 2, and at depth 1 the one-ply
-                    // floor leaves nothing to take, so the moves it reaches are
-                    // the first moves of non-PV nodes. A fail-high on the
-                    // shortened search is verified at `new_depth`.
-                    let tt_valid = ev.bound.is_some();
-                    let reduction = self.full_depth_reduction(&FullDepthInputs {
-                        depth,
-                        improvement,
-                        corr_abs,
-                        is_quiet,
-                        history: if is_quiet {
-                            quiet_hist
-                        } else {
-                            self.td.hist.noisy(
-                                threats.all,
-                                !board.side_to_move(),
-                                moving_piece,
-                                mv.to_sq(),
-                                captured_piece,
-                            )
-                        },
-                        tt_pv,
-                        tt_deep: tt_valid && ev.depth >= depth,
-                        cut_node,
-                        tt_move_null: tt_move.is_null(),
-                        is_tt_move: mv == tt_move,
-                        child_cutoffs: self.td.stack[ply + 1].cutoff_count,
-                        parent_reduction: self.td.stack.back(ply, 1).reduction,
-                    });
-                    let searched_depth = full_depth_searched_depth(new_depth, reduction);
-                    trace_decision!(
-                        self,
-                        ply,
-                        "fds depth {depth} move {mv} units {reduction} new_depth {new_depth} \
-                         searched_depth {searched_depth} window {alpha} {beta}"
-                    );
-                    let mut first = -self.negamax::<NonPv, _>(
-                        board,
-                        searched_depth,
-                        -beta,
-                        -alpha,
-                        ply + 1,
-                        true,
-                        Move::NULL,
-                        !cut_node,
-                        last_critical_ply,
-                        poll,
-                    );
-                    if first > alpha && searched_depth < new_depth {
-                        search_count += 1;
-                        first = -self.negamax::<NonPv, _>(
-                            board,
-                            new_depth,
-                            -beta,
-                            -alpha,
-                            ply + 1,
-                            true,
-                            Move::NULL,
-                            !cut_node,
-                            last_critical_ply,
-                            poll,
-                        );
-                    }
-                    first
                 } else {
                     -self.negamax::<NonPv, _>(
                         board,
@@ -2012,11 +1790,8 @@ impl Searcher {
                 };
             } else {
                 // Late-move reductions: every move after the first, from depth
-                // 2; at the root and in check only under `CoreLmrCheckRoot`.
-                if !self.ablated(7)
-                    && (self.cfg.core.lmr_check_root != 0 || (!NODE::ROOT && !in_check))
-                    && depth >= 2
-                {
+                // 2; never at the root or in check.
+                if !self.ablated(7) && !NODE::ROOT && !in_check && depth >= 2 {
                     let tt_valid = ev.bound.is_some();
                     let reduction = self.late_move_reduction(&LateMoveInputs {
                         depth,
@@ -2290,11 +2065,7 @@ impl Searcher {
                     );
                     // A fail-high above the static eval with a quiet move
                     // trains the correction; see the node's end.
-                    if !in_check
-                        && !is_noisy(mv)
-                        && score > static_eval
-                        && self.admits_correction_training(score, excluded)
-                    {
+                    if !in_check && !is_noisy(mv) && score > static_eval {
                         self.train_correction(board, depth, score - static_eval, ply);
                     }
                     return score;
@@ -2357,7 +2128,6 @@ impl Searcher {
         if !in_check
             && !(bound == Bound::Exact && is_noisy(best_move))
             && !(bound == Bound::Upper && best_score >= static_eval)
-            && self.admits_correction_training(best_score, excluded)
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
         }
@@ -2428,7 +2198,7 @@ impl Searcher {
 
         if board.can_declare_draw_in_search() {
             crate::diag_count!(q_draw_return);
-            return self.draw_score();
+            return 0;
         }
 
         let in_check = board.is_in_check();
@@ -2598,11 +2368,7 @@ impl Searcher {
         let mut evasion_best = -INF_SCORE;
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
-            if in_check
-                && self.cfg.quiet.qs_evasion_prune != 0
-                && !is_noisy(picked.mv)
-                && !is_loss(evasion_best)
-            {
+            if in_check && !is_noisy(picked.mv) && !is_loss(evasion_best) {
                 crate::diag_count!(q_evasion_skip);
                 continue;
             }
@@ -2704,17 +2470,6 @@ impl Searcher {
                 if diag_q_sample {
                     crate::diag_count!(q_move_cut);
                     crate::diag_count!(q_move_store);
-                }
-                if self.cfg.quiet.qs_noisy_history != 0 && is_noisy(mv) {
-                    crate::diag_count!(q_history_bonus);
-                    self.td.hist.update_noisy(
-                        threats.all,
-                        board.side_to_move(),
-                        moving_piece,
-                        mv.to_sq(),
-                        board.captured_piece(mv),
-                        QS_NOISY_HISTORY_BONUS,
-                    );
                 }
                 let score = fail_high_toward_beta(score, beta, self.cfg.quiet.qs_cutoff_lerp);
                 self.shared.tt.store(TtStore {
@@ -2877,16 +2632,15 @@ mod tests {
     }
 
     /// A non-PV node whose table entry carries the PV bit, far below alpha
-    /// with no TT move and a quiet mate in one. Without the guards it razors
-    /// and quiescence, which does not play the quiet mate, returns a score
-    /// below alpha; with them the node searches and finds the mate.
+    /// with no TT move and a quiet mate in one: razoring takes it, and
+    /// quiescence, which does not play the quiet mate, returns a score below
+    /// alpha. A PV-line entry does not keep a node out of razoring.
     #[test]
-    fn razor_guards_keep_a_tt_pv_node_out_of_razoring() {
+    fn razoring_takes_a_tt_pv_node_below_the_margin() {
         // White is a queen and a rook down; Ra8 is mate on the back rank.
         let fen = "6k1/5ppp/7q/7r/8/8/1P6/R3K3 w - - 0 1";
-        let search = |guards: i32| {
+        let search = || {
             let mut searcher = Searcher::default();
-            searcher.cfg.core.razor_guards = guards;
             // The position evaluates near -927; the margin is pinned so the
             // fixture stays below it whatever the fitted defaults become.
             searcher.cfg.core.razor_base = 288;
@@ -2920,14 +2674,7 @@ mod tests {
                 &mut || SearchEvent::None,
             )
         };
-        assert!(
-            search(0) <= 0,
-            "guards 0 razors the tt_pv node into quiescence"
-        );
-        assert!(
-            search(1) >= MATE_SCORE - 3,
-            "guards 1 searches the tt_pv node and finds the mate"
-        );
+        assert!(search() <= 0, "the tt_pv node razors into quiescence");
     }
 
     #[test]
@@ -2944,19 +2691,13 @@ mod tests {
         assert_eq!(laterality_step(255), 6);
     }
 
-    /// Sets one categorical switch on a searcher.
-    type SetSwitch = fn(&mut Searcher, i32);
-
     /// A quiet mate in one searched at depth 1 with a window above the static
     /// eval and above the razoring limit: the mate fails high and is the
-    /// node's only training event. At
-    /// `CoreCorrTrainDecisive = 0` every correction table stays zero; at 1
-    /// the mate residual is trained.
+    /// node's only training event, and the mate residual is trained.
     #[test]
-    fn corr_train_decisive_zero_leaves_every_table_untouched_after_a_mate() {
-        let search = |decisive: i32| {
+    fn a_decisive_residual_trains_the_correction() {
+        let search = || {
             let mut searcher = Searcher::default();
-            searcher.cfg.core.corr_train_decisive = decisive;
             let mut board =
                 Board::from_fen("6k1/5ppp/8/8/8/8/1P6/R3K3 w - - 0 1").expect("valid FEN");
             assert!(searcher.td.corr.untouched());
@@ -2975,18 +2716,15 @@ mod tests {
             assert!(score >= TB_WIN_SCORE, "the mate is found: {score}");
             searcher.td.corr.untouched()
         };
-        assert!(search(0), "a decisive residual trained a table at 0");
-        assert!(!search(1), "the mate residual is trained at 1");
+        assert!(!search(), "the mate residual is trained");
     }
 
     /// The same node searched as a singular-exclusion search (a non-mating
-    /// pawn move excluded): at `CoreCorrTrainExcluded = 0` it trains nothing;
-    /// at 1 the fail-high trains the correction.
+    /// pawn move excluded): the fail-high trains the correction.
     #[test]
-    fn corr_train_excluded_zero_trains_nothing_at_a_singular_search() {
-        let search = |admit: i32| {
+    fn a_singular_exclusion_node_trains_the_correction() {
+        let search = || {
             let mut searcher = Searcher::default();
-            searcher.cfg.core.corr_train_excluded = admit;
             let mut board =
                 Board::from_fen("6k1/5ppp/8/8/8/8/1P6/R3K3 w - - 0 1").expect("valid FEN");
             let excluded = board.parse_move("b2b4").expect("legal pawn move");
@@ -3005,82 +2743,16 @@ mod tests {
             assert!(score > 1_000, "the node fails high: {score}");
             searcher.td.corr.untouched()
         };
-        assert!(search(0), "a singular-exclusion node trained a table at 0");
-        assert!(!search(1), "the singular-exclusion node trains at 1");
+        assert!(!search(), "the singular-exclusion node trains");
     }
 
-    /// A cut-node first move without a TT move, quiet, at depth 8.
-    fn cut_node_first_move() -> FullDepthInputs {
-        FullDepthInputs {
-            depth: 8,
-            improvement: 0,
-            corr_abs: 0,
-            is_quiet: true,
-            history: 0,
-            tt_pv: false,
-            tt_deep: false,
-            cut_node: true,
-            tt_move_null: true,
-            is_tt_move: false,
-            child_cutoffs: 0,
-            parent_reduction: 0,
-        }
-    }
-
-    /// Under `CoreLmrFullDepth` a non-PV first move is searched below
-    /// `new_depth` when its reduction reaches 2621 units (two plies below
-    /// from 5579) and at `new_depth` otherwise; the one-ply floor never
-    /// deepens a move.
+    /// Late-move reductions take no move at the root or at a node in check:
+    /// from a quiet root and from a root in check, neither kind of node
+    /// reduces a late move.
     #[test]
-    fn full_depth_branch_searches_a_first_move_below_new_depth_from_2621_units() {
-        assert_eq!(full_depth_searched_depth(8, 2_620), 8);
-        assert_eq!(full_depth_searched_depth(8, 2_621), 7);
-        assert_eq!(full_depth_searched_depth(8, 5_578), 7);
-        assert_eq!(full_depth_searched_depth(8, 5_579), 6);
-        assert_eq!(full_depth_searched_depth(2, 9_000), 1, "one-ply floor");
-        assert_eq!(full_depth_searched_depth(1, 9_000), 1, "one-ply floor");
-        assert_eq!(full_depth_searched_depth(0, 9_000), 0, "never deeper");
-        assert_eq!(full_depth_searched_depth(7, -9_000), 7, "never deeper");
-
-        let searcher = Searcher::default();
-        let reduction = |edit: &dyn Fn(&mut FullDepthInputs)| {
-            let mut inputs = cut_node_first_move();
-            edit(&mut inputs);
-            searcher.full_depth_reduction(&inputs)
-        };
-        // 207*3 + 1468 + 1260 + 2168 - 56 = 5461: one ply off.
-        assert_eq!(reduction(&|_| {}), 5_461);
-        assert_eq!(full_depth_searched_depth(9, reduction(&|_| {})), 8);
-        // Children that keep failing high push it past 5579: two plies.
-        let cutoffs = reduction(&|i| i.child_cutoffs = 3);
-        assert_eq!(cutoffs, 5_461 + 1_394);
-        assert_eq!(full_depth_searched_depth(9, cutoffs), 7);
-        // The TT move at a cut node that has one stays at full depth.
-        let tt_move = reduction(&|i| {
-            i.tt_move_null = false;
-            i.is_tt_move = true;
-        });
-        assert_eq!(tt_move, 5_461 - 2_168 - 3_002);
-        assert_eq!(full_depth_searched_depth(9, tt_move), 9);
-        // The improvement clamp is in Rarog's evaluation units.
-        assert_eq!(
-            reduction(&|_| {}) - reduction(&|i| i.improvement = 10_000),
-            626
-        );
-        assert_eq!(
-            reduction(&|_| {}) - reduction(&|i| i.improvement = -10_000),
-            -94
-        );
-    }
-
-    /// `CoreLmrCheckRoot` widens late-move reductions to the root and to
-    /// nodes in check: from a quiet root and from a root in check, a late
-    /// move is reduced at both kinds of node at 1 and at neither at 0.
-    #[test]
-    fn lmr_check_root_reduces_at_the_root_and_in_check_only_when_set() {
-        let run = |scope: i32, fen: &str| {
+    fn lmr_never_reduces_at_the_root_or_in_check() {
+        let run = |fen: &str| {
             let mut searcher = Searcher::default();
-            searcher.cfg.core.lmr_check_root = scope;
             let mut board = Board::from_fen(fen).expect("valid FEN");
             let score =
                 searcher.search_root_window(&mut board, 7, -INF_SCORE, INF_SCORE, &mut || {
@@ -3093,98 +2765,44 @@ mod tests {
         let checked = "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3";
         for fen in [quiet, checked] {
             assert_eq!(
-                run(0, fen),
+                run(fen),
                 (0, 0),
-                "no reduction at the root or in check at 0: {fen}"
+                "no reduction at the root or in check: {fen}"
             );
         }
-        let (root, _) = run(1, quiet);
-        assert!(root > 0, "the root reduces a late move at 1");
-        let (root_in_check, in_check) = run(1, checked);
-        assert!(
-            root_in_check > 0,
-            "a root in check reduces a late move at 1"
-        );
-        assert!(in_check > 0, "a node in check reduces a late move at 1");
     }
 
-    /// The categorical switches, each settable to 0 or 1 on a searcher.
-    const SWITCHES: &[(&str, SetSwitch)] = &[
-        ("CoreRazorGuards", |s, v| {
-            s.cfg.core.razor_guards = v;
-        }),
-        ("CoreCorrTrainDecisive", |s, v| {
-            s.cfg.core.corr_train_decisive = v;
-        }),
-        ("CoreCorrTrainExcluded", |s, v| {
-            s.cfg.core.corr_train_excluded = v;
-        }),
-        ("CoreLmrFullDepth", |s, v| {
-            s.cfg.core.lmr_full_depth = v;
-        }),
-        ("CoreLmrCheckRoot", |s, v| {
-            s.cfg.core.lmr_check_root = v;
-        }),
-    ];
-
-    /// The proof-search arm's categorical switches.
-    const PROOF_SWITCHES: &[(&str, SetSwitch)] = &[
-        ("CoreNmpNodes", |s, v| {
-            s.cfg.proof.nmp_nodes = v;
-        }),
-        ("CoreProbcutNodes", |s, v| {
-            s.cfg.proof.probcut_nodes = v;
-        }),
-        ("CoreProbcutTtServed", |s, v| {
-            s.cfg.proof.probcut_tt_served = v;
-        }),
-        ("CoreSingularFloor", |s, v| {
-            s.cfg.proof.singular_floor = v;
-        }),
-        ("CoreSingNegCut", |s, v| {
-            s.cfg.proof.sing_neg_cut = v;
-        }),
-    ];
-
-    /// Every switch at both values leaves no reduction on the stack after
-    /// the search unwinds and a root PV made of legal moves, from a quiet
-    /// middlegame root and from a root in check.
+    /// The search leaves no reduction on the stack after it unwinds and a
+    /// root PV made of legal moves, from a quiet middlegame root and from a
+    /// root in check.
     #[test]
-    fn switches_keep_reductions_unwinding_and_the_pv_legal() {
+    fn search_keeps_reductions_unwinding_and_the_pv_legal() {
         let roots = [
             "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             "rnbqk1nr/pppp1ppp/8/4p3/1b1PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
         ];
-        for &(name, set) in SWITCHES.iter().chain(PROOF_SWITCHES) {
-            for value in 0..=1 {
-                for fen in roots {
-                    let mut searcher = Searcher::default();
-                    set(&mut searcher, value);
-                    let root = Board::from_fen(fen).expect("valid FEN");
-                    let mut board = root.clone();
-                    let score = searcher.search_root_window(
-                        &mut board,
-                        7,
-                        -INF_SCORE,
-                        INF_SCORE,
-                        &mut || SearchEvent::None,
-                    );
-                    let context = format!("{name}={value} at {fen}");
-                    assert!(score.abs() < INF_SCORE, "{context}");
-                    assert_eq!(board.to_fen(), root.to_fen(), "{context}");
-                    for ply in 0..MAX_PLY {
-                        assert_eq!(searcher.td.stack[ply].reduction, 0, "{context}, ply {ply}");
-                    }
-                    let mut line = root.clone();
-                    let pv_len = searcher.td.pv_len[0].min(MAX_PLY);
-                    assert!(pv_len > 0, "{context}: empty root PV");
-                    for &mv in &searcher.td.pv_table[0][..pv_len] {
-                        let legal = line
-                            .parse_move(&mv.to_string())
-                            .unwrap_or_else(|| panic!("{context}: illegal PV move {mv}"));
-                        line.make_move(legal);
-                    }
-                }
+        for fen in roots {
+            let mut searcher = Searcher::default();
+            let root = Board::from_fen(fen).expect("valid FEN");
+            let mut board = root.clone();
+            let score =
+                searcher.search_root_window(&mut board, 7, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            let context = format!("at {fen}");
+            assert!(score.abs() < INF_SCORE, "{context}");
+            assert_eq!(board.to_fen(), root.to_fen(), "{context}");
+            for ply in 0..MAX_PLY {
+                assert_eq!(searcher.td.stack[ply].reduction, 0, "{context}, ply {ply}");
+            }
+            let mut line = root.clone();
+            let pv_len = searcher.td.pv_len[0].min(MAX_PLY);
+            assert!(pv_len > 0, "{context}: empty root PV");
+            for &mv in &searcher.td.pv_table[0][..pv_len] {
+                let legal = line
+                    .parse_move(&mv.to_string())
+                    .unwrap_or_else(|| panic!("{context}: illegal PV move {mv}"));
+                line.make_move(legal);
             }
         }
     }
@@ -3350,9 +2968,9 @@ mod tests {
     }
 
     /// The null move's gates, each from a node that takes the null move
-    /// with the gate open: the population switch, the PV line, an excluded
-    /// move, a verification region above the node, a node in check and the
-    /// consecutive-null guard.
+    /// with the gate open: its population (every node off the PV line), the
+    /// PV line, an excluded move, a verification region above the node, a
+    /// node in check and the consecutive-null guard.
     #[test]
     fn null_move_keeps_to_its_population_and_out_of_regions() {
         let base = NullProbe::new;
@@ -3366,37 +2984,12 @@ mod tests {
                 ..base()
             }
             .null_move_at_node(),
-            "an all node off the PV line takes it at CoreNmpNodes = 0"
-        );
-        let cut_nodes_only: fn(&mut Searcher) = |s| s.cfg.proof.nmp_nodes = 1;
-        assert!(
-            NullProbe {
-                setup: cut_nodes_only,
-                ..base()
-            }
-            .null_move_at_node(),
-            "a cut node takes it at CoreNmpNodes = 1"
+            "an all node off the PV line takes it"
         );
         assert!(
-            !NullProbe {
-                cut_node: false,
-                setup: cut_nodes_only,
-                ..base()
-            }
-            .null_move_at_node(),
-            "an all node does not at CoreNmpNodes = 1"
+            !NullProbe { pv: true, ..base() }.null_move_at_node(),
+            "a PV node never takes it"
         );
-        for setup in [|_: &mut Searcher| {}, cut_nodes_only] {
-            assert!(
-                !NullProbe {
-                    pv: true,
-                    setup,
-                    ..base()
-                }
-                .null_move_at_node(),
-                "a PV node never takes it"
-            );
-        }
         assert!(
             !NullProbe {
                 excluded: Some("a2a3"),
@@ -3431,35 +3024,28 @@ mod tests {
         );
     }
 
-    /// The root never takes a null move, at either population.
+    /// The root never takes a null move.
     #[test]
     fn the_root_never_takes_a_null_move() {
-        for nodes in 0..=1 {
-            let mut searcher = Searcher::default();
-            searcher.cfg.proof.nmp_nodes = nodes;
-            let mut board = Board::from_fen(
-                "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
-            )
-            .expect("valid FEN");
-            for depth in 1..=10 {
-                let score = searcher.search_root_window(
-                    &mut board,
-                    depth,
-                    -INF_SCORE,
-                    INF_SCORE,
-                    &mut || SearchEvent::None,
-                );
-                assert!(score.abs() < INF_SCORE);
-            }
-            assert!(
-                !searcher.td.null_move_plies.is_empty(),
-                "the tree must try null moves"
-            );
-            assert!(
-                !searcher.td.null_move_plies.contains(&0),
-                "CoreNmpNodes = {nodes}"
-            );
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .expect("valid FEN");
+        for depth in 1..=10 {
+            let score =
+                searcher.search_root_window(&mut board, depth, -INF_SCORE, INF_SCORE, &mut || {
+                    SearchEvent::None
+                });
+            assert!(score.abs() < INF_SCORE);
         }
+        assert!(
+            !searcher.td.null_move_plies.is_empty(),
+            "the tree must try null moves"
+        );
+        assert!(
+            !searcher.td.null_move_plies.contains(&0),
+            "the root took one"
+        );
     }
 
     /// With verification from depth 4, a middlegame search verifies null
@@ -3609,42 +3195,14 @@ mod tests {
         assert!(ev.score >= beta);
     }
 
-    /// No ProbCut search starts against a decisive beta, and at the cut-node
-    /// population none starts when the TT move is quiet; a capture TT move,
-    /// or the default population, lets it run.
+    /// No ProbCut search starts against a decisive beta; a quiet TT move
+    /// does not stop one.
     #[test]
-    fn probcut_refuses_a_decisive_beta_and_a_quiet_tt_move_at_cut_nodes() {
+    fn probcut_refuses_a_decisive_beta_and_runs_with_a_quiet_tt_move() {
         let (_, _, decisive) = probcut_probe(|_| {}, None, TB_WIN_SCORE + 1_000);
         assert_eq!(decisive.td.probcut_searches, 0, "decisive beta");
-
-        let cut_nodes_only: fn(&mut Searcher) = |s| s.cfg.proof.probcut_nodes = 1;
-        let quiet = Some((1, 200, "e1f1"));
-        let (_, _, vetoed) = probcut_probe(cut_nodes_only, quiet, 0);
-        assert_eq!(vetoed.td.probcut_searches, 0, "quiet TT move at a cut node");
-        let (_, _, capture) = probcut_probe(cut_nodes_only, Some((1, 200, "e4d5")), 0);
-        assert!(
-            capture.td.probcut_searches > 0,
-            "capture TT move at a cut node"
-        );
-        let (_, _, default) = probcut_probe(|_| {}, quiet, 0);
-        assert!(
-            default.td.probcut_searches > 0,
-            "quiet TT move, default population"
-        );
-    }
-
-    /// Under `CoreProbcutTtServed` a stored lower bound at most four plies
-    /// shallower that clears beta by the margin returns `beta + margin`
-    /// before any capture is searched; with the switch off the capture
-    /// search runs.
-    #[test]
-    fn a_tt_served_probcut_returns_the_margin_only_when_switched_on() {
-        let stored = Some((6, 300, "e1f1"));
-        let (score, beta, served) = probcut_probe(|s| s.cfg.proof.probcut_tt_served = 1, stored, 0);
-        assert_eq!(score, beta + served.cfg.proof.probcut_tt_margin);
-        assert_eq!(served.td.probcut_searches, 0);
-        let (_, _, searched) = probcut_probe(|_| {}, stored, 0);
-        assert!(searched.td.probcut_searches > 0);
+        let (_, _, quiet) = probcut_probe(|_| {}, Some((1, 200, "e1f1")), 0);
+        assert!(quiet.td.probcut_searches > 0, "quiet TT move");
     }
 
     /// A singular extension is one to three plies for every input and never
@@ -3679,29 +3237,17 @@ mod tests {
         );
     }
 
-    /// `CoreSingNegCut`: after an exclusion fail-high at an expected cut node
-    /// whose stored score is below beta, the TT move is shortened by three
-    /// plies at 0 and by two at 1; with the stored score at or above beta it
-    /// is three at both, and a node that is neither gets none.
+    /// After an exclusion fail-high the TT move is shortened by three plies
+    /// at an expected cut node or with the stored score at or above beta,
+    /// and a node that is neither gets none.
     #[test]
-    fn the_negative_extension_switch_splits_cut_nodes_from_beta() {
-        let mut searcher = Searcher::default();
-        for (switch, cut_node_only) in [(0, -3), (1, -2)] {
-            searcher.cfg.proof.sing_neg_cut = switch;
-            let negative = |at_beta, cut| searcher.negative_singular_extension(at_beta, cut);
-            assert_eq!(
-                negative(false, true),
-                Some(cut_node_only),
-                "cut node at {switch}"
-            );
-            assert_eq!(
-                negative(true, true),
-                Some(-3),
-                "at beta, cut node, at {switch}"
-            );
-            assert_eq!(negative(true, false), Some(-3), "at beta at {switch}");
-            assert_eq!(negative(false, false), None, "neither at {switch}");
-        }
+    fn the_negative_extension_is_three_plies_at_a_cut_node_or_at_beta() {
+        let searcher = Searcher::default();
+        let negative = |at_beta, cut| searcher.negative_singular_extension(at_beta, cut);
+        assert_eq!(negative(false, true), Some(-3), "cut node");
+        assert_eq!(negative(true, true), Some(-3), "at beta, cut node");
+        assert_eq!(negative(true, false), Some(-3), "at beta");
+        assert_eq!(negative(false, false), None, "neither");
     }
 
     /// `CoreSingularMargin` in sixteenths: 64 reproduces the fitted `4 * span`
@@ -3813,16 +3359,12 @@ mod tests {
         assert_eq!(with - without, searcher.lmr_singular_term(Some(gap)));
     }
 
-    /// `CoreSingularFloor`: a depth-4 node with a deep enough stored lower
-    /// bound and a TT move runs the singular search at 0 (from depth 4) and
-    /// not at 1 (from depth 5, 6 on a PV line). At 1 nothing in the probe's
-    /// tree can be a candidate: without a singular extension at the probe no
-    /// child reaches depth 5.
+    /// A depth-4 node with a deep enough stored lower bound and a TT move
+    /// runs the singular search: candidates start at depth 4.
     #[test]
-    fn the_singular_floor_switch_sets_the_least_candidate_depth() {
-        let singular_searches_at_depth_4 = |floor: i32| {
+    fn a_depth_4_node_runs_the_singular_search() {
+        let singular_searches_at_depth_4 = || {
             let mut searcher = Searcher::default();
-            searcher.cfg.proof.singular_floor = floor;
             let mut board = Board::from_fen(
                 "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             )
@@ -3856,15 +3398,7 @@ mod tests {
             assert!(score.abs() < INF_SCORE);
             searcher.td.singular_searches
         };
-        assert!(
-            singular_searches_at_depth_4(0) > 0,
-            "depth 4 is a candidate at 0"
-        );
-        assert_eq!(
-            singular_searches_at_depth_4(1),
-            0,
-            "no node of a depth-4 tree is a candidate at 1"
-        );
+        assert!(singular_searches_at_depth_4() > 0, "depth 4 is a candidate");
     }
 
     /// An exclusion search whose only legal move is the excluded one returns

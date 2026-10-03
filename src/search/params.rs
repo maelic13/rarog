@@ -287,16 +287,6 @@ search_params! {
     corr_weight_non_pawn_black = 127, "CoreCorrWeightNonPawnBlack", 0..=384;
     corr_weight_cont2 = 165, "CoreCorrWeightCont2", 0..=384;
     corr_weight_cont4 = 147, "CoreCorrWeightCont4", 0..=384;
-    /// Categorical, never an SPSA coordinate. 1 trains the correction on a
-    /// decisive (mate-range or tablebase-range) result as the donors do; 0
-    /// refuses a result at or beyond the tablebase-win band at both training
-    /// sites, as the accepted search does.
-    corr_train_decisive = 1, "CoreCorrTrainDecisive", 0..=1;
-    /// Categorical, never an SPSA coordinate. 1 trains the correction at a
-    /// singular-exclusion node as the donors do; 0 refuses training whenever
-    /// a move is excluded, at both training sites, as the accepted search
-    /// does.
-    corr_train_excluded = 1, "CoreCorrTrainExcluded", 0..=1;
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
     eval_material_scale = 26, "CoreEvalMaterialScale", -64..=64;
@@ -304,26 +294,11 @@ search_params! {
     /// evaluator's own damping is compiled out under the core, so the eval the
     /// table stores does not depend on the clock and the search damps it here.
     eval_rule50_damping = 100, "CoreEvalRule50Damping", 0..=150;
-    /// Categorical, never an SPSA coordinate. 1: the corrected evaluation
-    /// leans toward the root's running average score (the donors' optimism:
-    /// `scale * avg / (|avg| + div)` for the root's side, its negative for
-    /// the other, weighted by the material on the board); 0: it does not.
-    optimism = 0, "CoreOptimism", 0..=1;
-    /// Optimism's saturation, evaluation units: Reckless's 113 at the
-    /// measured 0.457 scale ratio.
-    optimism_scale = 52, "CoreOptimismScale", 0..=200;
-    /// Optimism's half-saturation point, evaluation units: Reckless's 201 at
-    /// the 0.457 ratio.
-    optimism_div = 92, "CoreOptimismDiv", 10..=400;
 
     // Node-level pruning.
     /// Razoring margin `base + square * depth^2`, evaluation units.
     razor_base = 295, "CoreRazorBase", 50..=800;
     razor_square = 167, "CoreRazorSquare", 20..=400;
-    /// Categorical, never an SPSA coordinate. 1 keeps razoring off a node on
-    /// a PV line (`tt_pv`) and above depth 3, as the accepted search does; 0
-    /// razors as the donor does.
-    razor_guards = 0, "CoreRazorGuards", 0..=1;
     /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
     /// unthreatened + constant`, floored at 2.
@@ -417,16 +392,6 @@ search_params! {
     /// by more than this, one ply shallower when by less than this.
     lmr_research_deeper = 35, "CoreLmrResearchDeeper", 0..=200;
     lmr_research_shallower = -1, "CoreLmrResearchShallower", -50..=50;
-    /// Categorical, never an SPSA coordinate. 1 searches the first move of a
-    /// non-PV, non-root node out of check through the donor's full-depth
-    /// branch, which may take one or two plies off it; 0 searches it at full
-    /// depth.
-    lmr_full_depth = 0, "CoreLmrFullDepth", 0..=1;
-    /// Categorical, never an SPSA coordinate. 1 gives late-move reductions
-    /// the donor's scope, the root and nodes in check included, with the
-    /// first move still unreduced and the one-ply floor kept; 0 never
-    /// reduces at the root or in check.
-    lmr_check_root = 0, "CoreLmrCheckRoot", 0..=1;
 
     // History update policy, history units.
     /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.
@@ -446,10 +411,6 @@ search_params! {
     hist_fail_low_base = 92, "CoreHistFailLowBase", 0..=400;
 
     // Draw score.
-    /// Categorical, never an SPSA coordinate. 1: a repetition, rule-50 or
-    /// insufficient-material draw met below the root scores `nodes % 5 - 2`,
-    /// so drawn lines do not all tie at exactly zero; 0: it scores 0.
-    draw_jitter = 0, "CoreDrawJitter", 0..=1;
 }
 
 // The proof-search cluster's coordinates. Seeds follow the core's rule: the
@@ -460,10 +421,6 @@ search_params! {
     struct ProofParams, generated_proof_param_checks;
 
     // Null move.
-    /// Categorical, never an SPSA coordinate. 0 tries the null move at every
-    /// node off the PV line (`!tt_pv`), the population Rarog measured; 1 at
-    /// expected cut nodes only, PV-line cut nodes included.
-    nmp_nodes = 0, "CoreNmpNodes", 0..=1;
     /// Entry margin above beta: `max(2, base - depth_term * depth/4 +
     /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
     /// (child cutoffs < 2))`, evaluation units; the depth term is in
@@ -485,10 +442,6 @@ search_params! {
     nmp_verify_depth = 16, "CoreNmpVerifyDepth", 4..=32;
 
     // ProbCut.
-    /// Categorical, never an SPSA coordinate. 0 runs ProbCut at every node
-    /// off the PV line (`!tt_pv`), the population Rarog measured; 1 at
-    /// expected cut nodes only, and not when the TT move is quiet.
-    probcut_nodes = 0, "CoreProbcutNodes", 0..=1;
     /// `probcut_beta = beta + base - improving_term * improving`, evaluation
     /// units; the base is Rarog's fitted `ProbCutMargin`.
     probcut_base = 177, "CoreProbcutBase", 50..=400;
@@ -503,11 +456,6 @@ search_params! {
     probcut_adjust = 105, "CoreProbcutAdjust", 0..=300;
     /// A cut returns this many 1024ths of the way from its score to beta.
     probcut_lerp = 240, "CoreProbcutLerp", 0..=1024;
-    /// Categorical, never an SPSA coordinate. 1 returns `beta + margin`
-    /// before the capture search when a stored lower bound at most four
-    /// plies shallower already clears it; 0 does not.
-    probcut_tt_served = 0, "CoreProbcutTtServed", 0..=1;
-    probcut_tt_margin = 208, "CoreProbcutTtMargin", 50..=600;
 
     // Singular extensions, multi-cut, low-depth singular extension.
     /// The singular margin is `(margin * span + margin * depth * (PV-line
@@ -518,10 +466,6 @@ search_params! {
     /// The span of the margin when the stored bound is exact, in sixteenths
     /// of the depth, rounded up; a non-exact bound spans the whole depth.
     sing_exact_span = 4, "CoreSingExactSpan", 2..=16;
-    /// Categorical, never an SPSA coordinate. The least depth of a singular
-    /// candidate: 0 from depth 4, the accepted search's; 1 from depth 5, 6
-    /// on a PV line, the donor's.
-    singular_floor = 0, "CoreSingularFloor", 0..=1;
     /// A stored lower bound seeds a singular candidate only when it is at
     /// most this many plies shallower than the node; 2 here, not the
     /// accepted search's `SingularTtDepthMargin` of 3, because 2 measured
@@ -545,13 +489,6 @@ search_params! {
     /// A multi-cut returns this many 1024ths of the way from its score to
     /// beta.
     sing_multicut_lerp = 383, "CoreSingMulticutLerp", 0..=1024;
-    /// Categorical, never an SPSA coordinate. An exclusion search that
-    /// fails high without a multi-cut or a demotion shortens the TT move:
-    /// at 0 by three plies when the TT score is at or above beta or at an
-    /// expected cut node; at 1 by three plies when the TT score is at or
-    /// above beta and by two at a cut node otherwise, the donor's split.
-    /// Either leaves the TT move at least one ply of main search.
-    sing_neg_cut = 0, "CoreSingNegCut", 0..=1;
     /// A cut node at depth 7 or less with no singular candidate extends its
     /// first move when the estimate is this far below alpha.
     ldse_margin = 8, "CoreLdseMargin", 0..=100;
@@ -582,14 +519,6 @@ search_params! {
     /// With more than eight pieces on the board, the stand pat, a queen and
     /// this margin below alpha end the node.
     qs_delta_margin = 205, "QsDeltaMargin", 0..=800;
-    /// Categorical, never an SPSA coordinate. 1: in check, quiet evasions are
-    /// skipped once a searched evasion scores better than a loss; captures
-    /// and promotions are still searched. 0: every evasion is searched.
-    qs_evasion_prune = 1, "CoreQsEvasionPrune", 0..=1;
-    /// Categorical, never an SPSA coordinate. 1: a capture or promotion that
-    /// fails high in the quiescence gets a flat noisy-history bonus. 0: the
-    /// quiescence writes no history.
-    qs_noisy_history = 0, "CoreQsNoisyHistory", 0..=1;
 }
 
 #[cfg(test)]
