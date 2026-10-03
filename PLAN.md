@@ -2417,6 +2417,55 @@ diagnostics; two rejections stop B.
       was shortened after this leaf (RAR-P32, PROCESS): two cycles
       first, four more only near the floor, and per-build medians,
       instead of twenty cycles and a pooled bootstrap.
+    - **B.7.3 SEE: the recapturer's attacker set and king query — `I1`,
+      `READY_FOR_IMPLEMENTATION`.** Added 2026-10-03 from the board-code
+      read of the re-profile by source line
+      (`tools/results/b72-audit-20261002/board_lines{1,2}.txt`; the
+      maintainer asked for the board after RAR-S98 put speed at about 2 Elo
+      per 1% NPS). The SEE is 5.58% of samples: 2.81% from the quiet-aware
+      pruning call in `negamax`, 1.33% from the good-noisy stage, 0.83% from
+      tactical scoring, 0.24% from quiescence. Of it, `see_recapturer` is
+      4.45%:
+      - **2.13%** recomputes `attackers_to_color(target, occ, side)` from
+        scratch at every recapture: seven piece-set loads and two slider
+        lookups a step. The standard form computes the attacker set once,
+        for both colours, and after each removal adds only what the removal
+        reveals: the diagonal sliders when a pawn, bishop or queen left,
+        the orthogonal ones when a rook or queen left, nothing for a
+        knight, and the exchange ends when a king captures. Removals are
+        the only occupancy change in an exchange, so the incremental set
+        equals the recomputed one at every step.
+      - **1.20%** asks the full attack query of the recapturer's king for
+        every candidate (the legal-SEE contract: a recapture that leaves
+        the king attacked is not available). The leaper part of that query
+        does not depend on occupancy beyond `& occ`, so it is computed once
+        a side; the slider part changes only when a square on the king's
+        eight rays is vacated, so it is recomputed only then, or when the
+        candidate's own square lies on those rays.
+      - 0.70% is `least_valuable_attacker`, a loop over the six piece types;
+        0.44% the loop itself.
+
+      **Contract:** every SEE result identical, which `tests/see_contract.rs`,
+      `tests/see_pins.rs` and the independent oracle
+      (`tools/diag/see_contract_oracle.py`, `verify_normalized_see.py`) check,
+      plus an exact bench and legacy bench. A differential over a large
+      position set between the old and the new `see_ge_impl` is the live
+      wire, and a planted defect (a missing x-ray update) must fail it. No
+      change to what the search asks of the SEE; AGENTS' per-node rule as
+      ever. **Ceiling:** 3.3% of samples at a local speedup near two gives
+      about +1.6% NPS. **Prediction, frozen:** +0.8% to +2.0% NPS, step 1 of
+      the two-step read decides it (under +0.1% with probability 0.1).
+      **Read:** PROCESS's two-step read, after the tool is at it, from a
+      clean pool against the head's.
+
+      **Read but not candidates** (each under the floor on its own): the
+      undo history's `Vec` push and pop in make and unmake (0.65%); the
+      per-square attack query for each king move in generation (0.80%, an
+      attack map with the king removed would cost about as much to build);
+      the TT move's legality check (1.11%, pseudo-legality plus king
+      safety, the donor's form); `Board::threats` (1.88%, piece iteration);
+      `add_move` (0.68%). The evaluation (24.3%) is Phase C's by the
+      requirement below.
 - **B.8 Cleanup — `I1`.** Remove dead parameters, unconsumed switches, the
   old `MovePicker`, evidence/provenance plumbing without a named consumer,
   and any diagnostic without an owner. Exact fingerprint; no game gate.
@@ -2493,7 +2542,8 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.8 | RESEARCH | I1 | Eligible: B.7 closed 2026-10-02; an NPS reading before and after guards the cleanup's layout effect |
+| B.7.3 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-10-03: the SEE recapturer's attacker set and king query, exact, ceiling about +1.6% NPS; after the NPS tool is at the two-step read |
+| B.8 | RESEARCH | I1 | After B.7.3; an NPS reading before and after guards the cleanup's layout effect |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
 ## Phase C — Evaluation programme
@@ -2504,6 +2554,19 @@ in Stockfish 11's classical shape where its conditioning is stronger, keeping
 ours where the evidence says ours is better, refitting the whole surface
 after every family cluster, and giving endgame handling its own bounded
 cluster.
+
+**Speed, a secondary requirement (maintainer decision 2026-10-03).**
+Strength is primary and stays so; the gates are equal-time, so a family that
+costs nodes pays for them in its own SPRT. What speed adds as a requirement:
+(1) C.1's restructure keeps pooled NPS inside ±0.5% as written; (2) every
+family cluster's design states its per-node cost (which inputs it shares,
+what it recomputes) before implementation, and prefers the shared attack-map
+and mobility producer to its own passes; (3) each accepted cluster's record
+carries a pooled-PGO NPS reading beside its gate, so the evaluation's cost is
+visible as it grows; (4) C.11 records the evaluation's share of search time
+against B.9's 24% of samples, and a share above it is explained there, not
+accepted silently. RAR-S98 measured about 2 Elo per 1% NPS at `3+0.03` on this
+engine, which is what a node spent in evaluation costs.
 
 **Why Stockfish 11 here.** Reckless has no hand-crafted evaluation. Stockfish
 11 is the last classical Stockfish and the reference the maturity record
