@@ -2501,6 +2501,15 @@ diagnostics; two rejections stop B.
       never measured. *Retry only* after a counter read of recapture
       steps per SEE call shows most calls reaching two or more, and then
       only in a form whose first step costs no more than today's.
+      **That counter read was taken the same day by the auditor** (a
+      scratch `diag` build over `bench`, bench unchanged;
+      `tools/results/b72-audit-20261002/see_steps.txt`): of 30.1M
+      recapturer calls, 62.5% are an exchange's first step, 31.6% its
+      second and 6.0% a later one; 1.4% of candidates are rejected for
+      legality and 6.5% of recaptures are by the king. A form that keeps
+      today's first step and saves only from the second has a ceiling
+      near +0.8% and would read about half of that: under the floor. The
+      retry trigger did not fire; B.7.3 stays closed.
 
       **Read but not candidates** (each under the floor on its own): the
       undo history's `Vec` push and pop in make and unmake (0.65%); the
