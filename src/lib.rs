@@ -28,18 +28,8 @@ pub fn initialize_tables() {
     kpk::initialize();
 }
 
-/// The engine version as reported to the user: the package version alone for
-/// the selectivity core without the later clusters.
-#[cfg(not(feature = "b3proof"))]
+/// The engine version as reported to the user.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// The engine version as reported to the user, with `+b3proof` for the
-/// candidate arm of the proof-search cluster, so a match binary names its arm.
-#[cfg(all(feature = "b3proof", not(feature = "b4quiet")))]
-pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+b3proof");
-/// The engine version with `+b4quiet` for the quiescence cluster's candidate
-/// arm, so a match binary names its arm.
-#[cfg(feature = "b4quiet")]
-pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+b4quiet");
 
 pub mod bench;
 pub mod board;

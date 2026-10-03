@@ -638,12 +638,10 @@ search_params! {
     draw_jitter = 0, "CoreDrawJitter", 0..=1;
 }
 
-// The proof-search cluster's coordinates, on the `b3proof` arm only, so the
-// accepted search advertises none of them. Seeds follow the core's rule: the
+// The proof-search cluster's coordinates. Seeds follow the core's rule: the
 // donor's shape, Rarog's own fitted magnitude where one exists, otherwise the
 // donor's value converted (evaluation units x0.457). Categoricals are
 // switches, never SPSA coordinates.
-#[cfg(feature = "b3proof")]
 search_params! {
     struct ProofParams, generated_proof_param_checks;
 
@@ -751,10 +749,8 @@ search_params! {
     lmr_singular_cap = 2_051, "CoreLmrSingularCap", 0..=4096;
 }
 
-// The quiescence cluster's coordinates and switches, on the `b4quiet` arm
-// only. The interpolations are in 1024ths of the way from a fail-high score
+// The quiescence cluster's coordinates and switches. The interpolations are in 1024ths of the way from a fail-high score
 // to beta: 0 keeps the fail-soft score, 1024 is fail-hard.
-#[cfg(feature = "b4quiet")]
 search_params! {
     struct QuietParams, generated_quiet_param_checks;
 

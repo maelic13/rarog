@@ -38,24 +38,7 @@ tune = []
 # shipped binary, and never in a strength gate except as the arm under test.
 # Production compiles every guard out entirely -- `ablated()` is a const `false`.
 ablate = []
-# B.3's proof searches and extensions on the selectivity core: null move with
-# a verification region, ProbCut's margin-scaled verification, graded singular
-# extensions with LDSE and the LMR margin term, and the IIR policy switch
-# (analysis/b3_research_2026-09-23.md). Off by default until its gate accepts
-# it; with the feature off the search is the accepted core exactly. The
-# version string carries `+b3proof`.
-b3proof = []
-# B.4's quiescence cluster: the stored PV bit kept on depth-0 stores,
-# fail-high interpolation toward beta, the donor count rule, margins as
-# coordinates, evasion pruning (on) and quiescence noisy history (off) as
-# switches (analysis/b4_research_2026-09-28.md). **On by default since its
-# gate accepted it, 2026-09-30** (RAR-S88, +4.4 ± 2.9 Elo). Without it
-# (`--no-default-features --features b3proof`) the quiescence is the previous
-# head's, on the shared coordinates' fitted values. The version string
-# carries `+b4quiet`.
-b4quiet = ["b3proof"]
-
-default = ["b3proof", "b4quiet"]
+default = []
 # Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe

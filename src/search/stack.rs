@@ -107,7 +107,6 @@ pub(super) struct StackEntry {
     /// Positive extensions taken along the line from the root up to and
     /// including the move made at this ply; the child reads it as its own
     /// spent budget.
-    #[cfg(feature = "b3proof")]
     pub(super) extension_spent: i32,
 }
 
@@ -126,7 +125,6 @@ impl Default for StackEntry {
             tt_move: Move::NULL,
             threats: crate::board::Bitboard::EMPTY,
             captured: None,
-            #[cfg(feature = "b3proof")]
             extension_spent: 0,
         }
     }

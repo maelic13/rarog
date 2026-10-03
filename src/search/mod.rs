@@ -42,9 +42,7 @@ use crate::tt::{TB_VALUE, TB_WIN_SCORE};
 
 use node::build_lmr_table;
 use params::CoreParams;
-#[cfg(feature = "b3proof")]
 use params::ProofParams;
-#[cfg(feature = "b4quiet")]
 use params::QuietParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootDecision};
@@ -204,9 +202,7 @@ impl RootMove {
 struct SearchConfig {
     params: SearchParams,
     core: CoreParams,
-    #[cfg(feature = "b3proof")]
     proof: ProofParams,
-    #[cfg(feature = "b4quiet")]
     quiet: QuietParams,
     lmr_table: Box<[[i32; 64]; 64]>,
     /// The `(base, div)` pair `lmr_table` was built from, so a search rebuilds
@@ -224,9 +220,7 @@ impl Default for SearchConfig {
             lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
             params,
             core: CoreParams::default(),
-            #[cfg(feature = "b3proof")]
             proof: ProofParams::default(),
-            #[cfg(feature = "b4quiet")]
             quiet: QuietParams::default(),
             limits: RuntimeLimits::default(),
             start: Instant::now(),
@@ -730,12 +724,10 @@ impl Searcher {
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
         self.cfg.core = engine_options.core_params.clone();
-        #[cfg(feature = "b3proof")]
         {
             self.cfg.proof = engine_options.proof_params.clone();
             self.td.nmp_min_ply = 0;
         }
-        #[cfg(feature = "b4quiet")]
         {
             self.cfg.quiet = engine_options.quiet_params.clone();
         }

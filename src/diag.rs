@@ -349,7 +349,7 @@ pub mod counters {
         nmp_cut_d3_6,
         nmp_cut_d7_12,
         nmp_cut_d13_plus,
-        // Proof-search arm (`b3proof`): a null move every other gate admitted
+        // Proof searches: a null move every other gate admitted
         // but a verification region refused; a null search run against the
         // stored lower bound below beta instead of beta; a verification whose
         // region covered at least one ply below the node and failed.
@@ -365,7 +365,7 @@ pub mod counters {
         probcut_attempt,
         probcut_qpass,
         probcut_tt_store,
-        // Proof-search arm (`b3proof`), per node: refused by the stored score
+        // Proof searches, per node: refused by the stored score
         // (below `probcut_beta`, or decisive) or, without one, by the
         // estimate below beta; refused for a quiet TT move (cut-node
         // population); returned by a stored lower bound before any capture
@@ -391,7 +391,7 @@ pub mod counters {
         singular_extend_two,
         singular_multicut,
         singular_negative_extension,
-        // Proof-search arm (`b3proof`): a singular move extended three
+        // Proof searches: a singular move extended three
         // plies; a TT move that lost its first slot because the exclusion
         // search beat its score; a low-depth singular extension of a cut
         // node's first move; a late-move reduction the singular margin term

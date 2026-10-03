@@ -1,8 +1,6 @@
 use crate::board::{Board, Move};
 use crate::search::params::CoreParams;
-#[cfg(feature = "b3proof")]
 use crate::search::params::ProofParams;
-#[cfg(feature = "b4quiet")]
 use crate::search::params::QuietParams;
 use crate::search::params::SearchParams;
 
@@ -42,10 +40,8 @@ pub struct EngineOptions {
     /// The selectivity core's coordinates.
     pub core_params: CoreParams,
     /// The proof-search cluster's coordinates.
-    #[cfg(feature = "b3proof")]
     pub proof_params: ProofParams,
     /// The quiescence cluster's coordinates and switches.
-    #[cfg(feature = "b4quiet")]
     pub quiet_params: QuietParams,
 }
 
@@ -60,9 +56,7 @@ impl Default for EngineOptions {
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
             core_params: CoreParams::default(),
-            #[cfg(feature = "b3proof")]
             proof_params: ProofParams::default(),
-            #[cfg(feature = "b4quiet")]
             quiet_params: QuietParams::default(),
         }
     }
@@ -200,9 +194,9 @@ impl SearchOptions {
         opts.extend(SearchParams::uci_option_strings());
         #[cfg(feature = "tune")]
         opts.extend(CoreParams::uci_option_strings());
-        #[cfg(all(feature = "tune", feature = "b3proof"))]
+        #[cfg(feature = "tune")]
         opts.extend(ProofParams::uci_option_strings());
-        #[cfg(all(feature = "tune", feature = "b4quiet"))]
+        #[cfg(feature = "tune")]
         opts.extend(QuietParams::uci_option_strings());
         opts
     }
@@ -472,7 +466,7 @@ impl SearchOptions {
                 if self.engine.core_params.set_uci_option(&option_name, &value) {
                     return OptionUpdate::Engine;
                 }
-                #[cfg(all(feature = "tune", feature = "b3proof"))]
+                #[cfg(feature = "tune")]
                 if self
                     .engine
                     .proof_params
@@ -480,7 +474,7 @@ impl SearchOptions {
                 {
                     return OptionUpdate::Engine;
                 }
-                #[cfg(all(feature = "tune", feature = "b4quiet"))]
+                #[cfg(feature = "tune")]
                 if self
                     .engine
                     .quiet_params

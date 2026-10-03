@@ -70,35 +70,33 @@ pub(super) struct ThreadData {
     /// While a null-move verification search runs, the first ply at which the
     /// null move is allowed again; zero outside a verification, and at every
     /// search start. Per thread: a helper verifies its own null moves.
-    #[cfg(feature = "b3proof")]
     pub(super) nmp_min_ply: i32,
     /// The depth of the iteration this thread is searching; positive
     /// extensions stop at twice it. Zero before any root search.
-    #[cfg(feature = "b3proof")]
     pub(super) root_depth: i32,
     /// The plies at which a null move was made, for the tests of its gates.
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) null_move_plies: Vec<usize>,
     /// Null-move verification searches started.
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) nmp_verifications: u64,
     /// ProbCut capture searches started, and ProbCut cutoffs.
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) probcut_searches: u64,
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) probcut_cuts: u64,
     /// Singular exclusion searches started, and nodes whose first move a
     /// singular or low-depth singular decision extended or reduced.
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) singular_searches: u64,
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) extended_nodes: u64,
     /// The most any node's spent extension budget exceeded its iteration's
     /// depth (zero or less when the budget holds), and the extensions the
     /// budget cut short.
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) budget_overrun: i32,
-    #[cfg(all(test, feature = "b3proof"))]
+    #[cfg(test)]
     pub(super) budget_truncations: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
@@ -141,25 +139,23 @@ impl Default for ThreadData {
             root_best_effort: 0.0,
             optimism: [0; 2],
             root_delta: 1,
-            #[cfg(feature = "b3proof")]
             nmp_min_ply: 0,
-            #[cfg(feature = "b3proof")]
             root_depth: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             null_move_plies: Vec::new(),
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             nmp_verifications: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             probcut_searches: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             probcut_cuts: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             singular_searches: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             extended_nodes: 0,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             budget_overrun: i32::MIN,
-            #[cfg(all(test, feature = "b3proof"))]
+            #[cfg(test)]
             budget_truncations: 0,
             #[cfg(test)]
             lmr_at_root: 0,
