@@ -100,14 +100,6 @@ impl HistoryTables {
         self.cont.fill(0);
     }
 
-    /// Between searches the tables keep their values: gravity alone bounds
-    /// them.
-    #[expect(
-        clippy::unused_self,
-        reason = "the search calls age() on either arm's tables"
-    )]
-    pub(super) fn age(&mut self) {}
-
     #[inline(always)]
     pub(super) fn quiet(&self, threats: Bitboard, stm: Color, mv: Move) -> i32 {
         let (from, to) = (mv.from_sq(), mv.to_sq());

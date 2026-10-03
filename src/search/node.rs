@@ -3021,7 +3021,6 @@ mod tests {
             board.side_to_move(),
             0,
             true,
-            false,
         );
         assert_eq!(
             searcher.td.nmp_min_ply, 0,

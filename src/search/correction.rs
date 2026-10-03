@@ -95,13 +95,6 @@ impl CorrectionTables {
         self.continuation_2.fill(0);
         self.continuation_4.fill(0);
     }
-
-    /// Between searches the tables keep their values.
-    #[expect(
-        clippy::unused_self,
-        reason = "the search calls age() on either arm's tables"
-    )]
-    pub(super) fn age(&mut self) {}
 }
 
 /// The slots one position reads and trains.

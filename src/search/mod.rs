@@ -468,14 +468,7 @@ impl Searcher {
 
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        self.reset_search_state(
-            limits,
-            engine_options,
-            root.side_to_move(),
-            game_ply,
-            true,
-            true,
-        );
+        self.reset_search_state(limits, engine_options, root.side_to_move(), game_ply, true);
 
         let board = root;
         let mut legal_moves = MoveList::new();
@@ -688,7 +681,6 @@ impl Searcher {
         side_to_move: Color,
         game_ply: u32,
         age_tt: bool,
-        age_history: bool,
     ) {
         // LazyMargin changes the raw evaluation function. The evaluator owns
         // its whole-eval cache, while the main searcher owns TT lifecycle and
@@ -748,10 +740,6 @@ impl Searcher {
         self.td.root_best_effort = 0.0;
         if age_tt {
             self.shared.tt.new_search();
-        }
-        if age_history {
-            self.td.hist.age();
-            self.td.corr.age();
         }
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);
@@ -2094,7 +2082,6 @@ mod tests {
             board.side_to_move(),
             0,
             true,
-            true,
         );
         let started = Instant::now();
         let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
@@ -2146,7 +2133,7 @@ mod tests {
             let mut searcher = Searcher::default();
             let mut options = EngineOptions::default();
             options.search_params.lazy_margin = LOW_MARGIN;
-            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
+            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
             let low_margin_score = searcher.raw_eval(&board);
 
             if shared {
@@ -2166,7 +2153,7 @@ mod tests {
             );
 
             options.search_params.lazy_margin = HIGH_MARGIN;
-            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true, false);
+            searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
             assert!(
                 searcher.shared.tt.probe(board.hash()).is_none(),
                 "LazyMargin change retained a {} TT evaluation",
@@ -2193,7 +2180,6 @@ mod tests {
             &options,
             board.side_to_move(),
             0,
-            false,
             false,
         );
 
@@ -2234,14 +2220,7 @@ mod tests {
             depth: Some(1),
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(
-            &limits,
-            &engine_options,
-            board.side_to_move(),
-            0,
-            true,
-            true,
-        );
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true);
 
         let result = searcher.search_root(board, &[forced], false, &mut || SearchEvent::None);
 
@@ -2288,7 +2267,6 @@ mod tests {
             &EngineOptions::default(),
             board.side_to_move(),
             0,
-            true,
             true,
         );
 
@@ -2357,7 +2335,6 @@ mod tests {
                 board.side_to_move(),
                 0,
                 true,
-                true,
             );
             assert!(
                 searcher.shared.pool().is_none(),
@@ -2396,7 +2373,6 @@ mod tests {
                 &EngineOptions::default(),
                 board.side_to_move(),
                 0,
-                true,
                 true,
             );
             searcher
@@ -2453,14 +2429,7 @@ mod tests {
             depth: Some(3),
             ..SearchLimits::default()
         };
-        searcher.reset_search_state(
-            &limits,
-            &engine_options,
-            board.side_to_move(),
-            0,
-            true,
-            true,
-        );
+        searcher.reset_search_state(&limits, &engine_options, board.side_to_move(), 0, true);
         searcher.shared.tt.store(TtStore {
             key: board.hash(),
             depth: 8,

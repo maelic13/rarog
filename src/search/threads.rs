@@ -266,7 +266,6 @@ impl Searcher {
             root.side_to_move(),
             game_ply,
             false,
-            true,
         );
         self.apply_tb_root(tb_root);
         self.search_root(root, legal_moves, false, poll)
