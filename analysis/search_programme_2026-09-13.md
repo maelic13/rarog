@@ -80,7 +80,9 @@ starved by evaluation noise it must compensate for with margins.
 
 **Question.** The 2.4.0 head loses 247.97 ± 10.89 Elo at equal time to the
 classical Stockfish search running Rarog's own evaluation (RAR-O03), at a
-depth deficit of only 0.97 ply. The matched ablation attributes 272 ± 18 of it
+depth deficit of only 0.97 ply (corrected 2026-10-03 to 1.3 non-mate plies by
+the mean; the reading mis-attributed Black-to-move openings, see RAR-O03).
+The matched ablation attributes 272 ± 18 of it
 to LMR plus shallow-depth pruning (marginal value, not headroom). Which
 mechanisms, in which shapes, carry the deficit, and how should the Reckless
 architecture be cut into clusters for this engine?

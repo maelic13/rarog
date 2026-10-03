@@ -240,7 +240,9 @@ leaf continues here, this is the mapping; everything else is history.
   against three of four targets, Rarog beats Basilisk 1.10.0 at 4T (**+25**)
   having lost at 1T, and the performance rating is 3034 against a frozen 3003.
   **A.8.3 (RAR-O03)** put G(0) at **−247.97 ± 10.89** with the evaluation
-  proved constant three ways, and found the depth gap is only **0.97 ply** — so
+  proved constant three ways, and found the depth gap is only **0.97 ply**
+  (corrected 2026-10-03 to 1.3 non-mate plies: the reading mis-attributed
+  Black-to-move openings; RAR-O03 carries the correction) — so
   most of a 248-Elo deficit is decision quality, not depth, which corroborates
   the matched ablation from an independent direction. **A.8.4 (RAR-M48)** set
   the speed baseline at **3.19 MNPS** pooled median with the instrument
