@@ -17,6 +17,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 import nps_read
 
 BENCH = 2_000_000.0
+HEAD = 11_171_726
 
 
 def record(base, cand, no_regression=False):
@@ -35,7 +36,7 @@ def record(base, cand, no_regression=False):
         for name, rows in (("base", arm(base)), ("cand", arm(cand))):
             for i, row in enumerate(rows):
                 best = row[c]
-                readings[name][str(i)] = [{"nodes": nps_read.FINGERPRINT, "ms": 1, "nps": int(v)}
+                readings[name][str(i)] = [{"nodes": HEAD, "ms": 1, "nps": int(v)}
                                           for v in (best * 0.97, best, best * 0.95)]
         out["cycles"].append({"cycle": c, "cpu_before": 1.0, "readings": readings})
     return out
@@ -103,24 +104,58 @@ class EstimateTests(unittest.TestCase):
 class WireTests(unittest.TestCase):
     def test_a_run_at_another_fingerprint_is_refused(self):
         text = "\n".join(f"run {i}/3  nodes 11171726  time 5000ms  nps 2234345" for i in (1, 2, 3))
-        self.assertEqual(len(nps_read.parse_runs(text, "x")), 3)
+        self.assertEqual(len(nps_read.parse_runs(text, "x", HEAD)), 3)
         with self.assertRaises(SystemExit):
-            nps_read.parse_runs(text.replace("11171726", "11171725", 1), "x")
+            nps_read.parse_runs(text.replace("11171726", "11171725", 1), "x", HEAD)
         with self.assertRaises(SystemExit):
-            nps_read.parse_runs(text.rsplit("\n", 1)[0], "x")
+            nps_read.parse_runs(text.rsplit("\n", 1)[0], "x", HEAD)
+        with self.assertRaises(SystemExit):
+            nps_read.parse_runs(text, "x", 7_601_220)
+
+    @staticmethod
+    def write_pool(directory, fingerprint, count):
+        rows = []
+        for i in range(1, count + 1):
+            exe = directory / f"pext-{i}.exe"
+            exe.write_bytes(f"engine {i}".encode())
+            rows.append(f"{hashlib.sha256(exe.read_bytes()).hexdigest().upper()}  pext-{i}.exe")
+        (directory / "manifest-pext.txt").write_text(
+            f"fingerprint   : {fingerprint} (verified)\n\n" + "\n".join(rows) + "\n", encoding="utf-8")
 
     def test_a_pool_whose_bytes_differ_from_the_manifest_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory = pathlib.Path(tmp)
-            exe = directory / "pext-1.exe"
-            exe.write_bytes(b"not an engine")
-            digest = hashlib.sha256(exe.read_bytes()).hexdigest().upper()
-            (directory / "manifest-pext.txt").write_text(
-                f"fingerprint   : {nps_read.FINGERPRINT} (verified)\n\n{digest}  pext-1.exe\n", encoding="utf-8")
-            self.assertEqual(nps_read.pool(directory), [exe])
-            exe.write_bytes(b"not the same engine")
+            self.write_pool(directory, HEAD, 2)
+            self.assertEqual(nps_read.pool(directory),
+                             [directory / "pext-1.exe", directory / "pext-2.exe"])
+            (directory / "pext-1.exe").write_bytes(b"not the same engine")
             with self.assertRaises(SystemExit):
                 nps_read.pool(directory)
+
+    def test_each_pool_is_read_at_its_own_fingerprint(self):
+        """A release baseline (2.4.0 benches 7,601,220) is read against the head."""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            self.write_pool(directory, 7_601_220, 3)
+            self.assertEqual(len(nps_read.pool(directory)), 3)
+            self.assertEqual(nps_read.pool_fingerprint(directory), 7_601_220)
+
+    def test_a_one_build_pool_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            self.write_pool(directory, HEAD, 1)
+            with self.assertRaises(SystemExit):
+                nps_read.pool(directory)
+
+
+class UnequalPoolTests(unittest.TestCase):
+    def test_three_builds_against_four_use_five_degrees_of_freedom(self):
+        base = [[BENCH * f] * 2 for f in (0.999, 1.000, 1.001)]
+        cand = [[BENCH * 1.02 * f] * 2 for f in (0.999, 1.000, 1.001, 1.0005)]
+        est = nps_read.estimate(record(base, cand))
+        self.assertEqual(est["df"], 5)
+        self.assertEqual(est["t"], 2.571)
+        self.assertEqual(est["builds"], [3, 4])
 
 
 if __name__ == "__main__":

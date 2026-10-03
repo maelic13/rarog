@@ -22,7 +22,8 @@ must agree within 1%; over six cycles a cycle more than 1% from its arm's
 median cycle is disturbed, and three or more mean the read is repeated.
 
 Every build is checked against its manifest hash before and after the read,
-every run must print the fingerprint, and the pools must be distinct bytes.
+every run must print its own pool's fingerprint (from that pool's manifest, so a
+release baseline can be read against the head), and the pools must be distinct bytes.
 """
 from __future__ import annotations
 
@@ -37,11 +38,24 @@ import sys
 import time
 from pathlib import Path
 
-FINGERPRINT = 11_171_726
 RUN = re.compile(r"^run (\d)/3\s+nodes (\d+)\s+time (\d+)ms\s+nps (\d+)", re.M)
 MANIFEST_ROW = re.compile(r"^([0-9A-F]{64})\s+(\S+\.exe)$", re.M)
-# Two-sided 95% t quantiles by degrees of freedom; 6 is the four-build read.
-T95 = {2: 4.303, 4: 2.776, 6: 2.447, 8: 2.306, 10: 2.228, 12: 2.179, 14: 2.145, 16: 2.120, 20: 2.086, 30: 2.042}
+MANIFEST_FINGERPRINT = re.compile(r"^fingerprint\s*:\s*(\d+)\b", re.M)
+# Two-sided 95% t quantiles by degrees of freedom; 6 is the four-build read,
+# 5 a three-build pool against a four-build one.
+T95 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+       12: 2.179, 14: 2.145, 16: 2.120, 20: 2.086, 30: 2.042}
+
+
+def pool_fingerprint(directory: Path) -> int:
+    """The bench fingerprint the pool's manifest verified on every copy. Each
+    arm is checked against its own, so a pool of an earlier source (a release
+    baseline) can be read against the head's."""
+    manifest = directory / "manifest-pext.txt"
+    m = MANIFEST_FINGERPRINT.search(manifest.read_text(encoding="utf-8"))
+    if not m:
+        raise SystemExit(f"{manifest}: records no fingerprint")
+    return int(m.group(1))
 
 
 def pool(directory: Path) -> list[Path]:
@@ -49,8 +63,9 @@ def pool(directory: Path) -> list[Path]:
     rows = MANIFEST_ROW.findall(manifest.read_text(encoding="utf-8"))
     if not rows:
         raise SystemExit(f"{manifest}: no build rows")
-    if not re.search(rf"^fingerprint\s*:\s*{FINGERPRINT}\b", manifest.read_text(encoding="utf-8"), re.M):
-        raise SystemExit(f"{manifest}: does not record fingerprint {FINGERPRINT}")
+    if len(rows) < 2:
+        raise SystemExit(f"{manifest}: one build gives no spread; a pool needs at least two")
+    pool_fingerprint(directory)
     builds = []
     for digest, name in rows:
         exe = directory / name
@@ -60,19 +75,19 @@ def pool(directory: Path) -> list[Path]:
     return builds
 
 
-def parse_runs(output: str, exe: str) -> list[dict]:
+def parse_runs(output: str, exe: str, fingerprint: int) -> list[dict]:
     runs = [{"nodes": int(n), "ms": int(ms), "nps": int(nps)} for _, n, ms, nps in RUN.findall(output)]
     if len(runs) != 3:
         raise SystemExit(f"{exe}: expected three runs, got {len(runs)}")
     for run in runs:
-        if run["nodes"] != FINGERPRINT:
-            raise SystemExit(f"{exe}: benched {run['nodes']}, not {FINGERPRINT}: not the binary you think it is")
+        if run["nodes"] != fingerprint:
+            raise SystemExit(f"{exe}: benched {run['nodes']}, not {fingerprint}: not the binary you think it is")
     return runs
 
 
-def read(exe: Path) -> list[dict]:
+def read(exe: Path, fingerprint: int) -> list[dict]:
     out = subprocess.run([str(exe)], input="bench 13 3\n", capture_output=True, text=True, timeout=900).stdout
-    return parse_runs(out, str(exe))
+    return parse_runs(out, str(exe), fingerprint)
 
 
 def cpu_load() -> float | None:
@@ -172,7 +187,8 @@ def report(record: dict, no_regression: bool) -> str:
 
 # --- the read ----------------------------------------------------------------
 
-def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: int) -> None:
+def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: int,
+               fingerprints: dict[str, int]) -> None:
     arms = list(builds)
     order_forward = [(arm, i) for arm in arms for i in range(len(builds[arm]))]
     for _ in range(cycles):
@@ -181,7 +197,7 @@ def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: i
         order = order_forward if number % 2 == 0 else order_forward[::-1]
         readings = {arm: {} for arm in arms}
         for arm, i in order:
-            readings[arm][str(i)] = read(builds[arm][i])
+            readings[arm][str(i)] = read(builds[arm][i], fingerprints[arm])
         record["cycles"].append({"cycle": number, "cpu_before": cpu, "readings": readings,
                                  "finished": time.strftime("%Y-%m-%dT%H:%M:%S")})
         (out / "raw.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
@@ -211,6 +227,7 @@ def main() -> int:
         if len(record["cycles"]) != 2:
             raise SystemExit(f"{out}: step 2 extends a two-cycle read, this one has {len(record['cycles'])}")
         builds = {arm: pool(Path(record["arms"][arm]["pool"])) for arm in ("base", "cand")}
+        fingerprints = {arm: pool_fingerprint(Path(record["arms"][arm]["pool"])) for arm in builds}
         for arm in builds:
             if [str(e) for e in builds[arm]] != record["arms"][arm]["builds"]:
                 raise SystemExit(f"{out}: the {arm} pool changed since step 1")
@@ -223,21 +240,23 @@ def main() -> int:
         if (out / "raw.json").exists():
             raise SystemExit(f"{out}/raw.json exists: --extend it or choose another directory")
         builds = {"base": pool(args.base), "cand": pool(args.cand)}
+        fingerprints = {"base": pool_fingerprint(args.base), "cand": pool_fingerprint(args.cand)}
         digests = {hashlib.sha256(e.read_bytes()).hexdigest() for arm in builds for e in builds[arm]}
         if len(digests) != sum(len(v) for v in builds.values()):
             raise SystemExit("two pool binaries are identical")
         record = {
             "label": args.label, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "no_regression": args.no_regression,
-            "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]]}
+            "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]],
+                           "fingerprint": fingerprints[arm]}
                      for arm, path in (("base", args.base), ("cand", args.cand))},
             "cycles": [],
         }
         for arm in builds:
             for exe in builds[arm]:
-                read(exe)  # warm-up, and the fingerprint check
+                read(exe, fingerprints[arm])  # warm-up, and the fingerprint check
         cycles = args.cycles
 
-    run_cycles(record, out, builds, cycles)
+    run_cycles(record, out, builds, cycles, fingerprints)
     record["cpu_after"] = cpu_load()
     record["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     (out / "raw.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
