@@ -1,8 +1,8 @@
 # Build N INDEPENDENT PGO binaries of one ISA tier, for pooled NPS comparison.
 #
 # Why this exists: a single PGO build carries a fixed per-binary offset of about
-# 0.4% (RAR-P17, RAR-P18), so `nps_multibuild.ps1` needs several builds per arm
-# to resolve a sub-1% effect. Producing them by hand invites the two failure
+# 0.4% (RAR-P17, RAR-P18), so `nps_read.py` needs several builds per arm to
+# resolve a sub-1% effect. Producing them by hand invites the two failure
 # modes this file exists to prevent:
 #
 #   1. Measuring the same bytes twice. `cargo xtask build --pgo` overwrites one
@@ -18,10 +18,12 @@ param(
     [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
     [int]$Builds = 4,
     [Parameter(Mandatory = $true)][string]$OutDir,
-    [int]$ExpectFingerprint = 7601220,
+    # The source's `bench 13` node count (GUIDE's checkpoint, or the arm's
+    # own). No default: a default goes stale with the first integrated
+    # behaviour change and then refuses every honest build.
+    [Parameter(Mandatory = $true)][int]$ExpectFingerprint,
     [int]$Depth = 13,
     # Cargo features for a candidate arm compiled behind a flag.
-    # Pass the arm's own fingerprint with -ExpectFingerprint.
     [string]$Features = "",
     # Local experimentation only. A pool built from an unidentifiable tree must
     # never back a recorded result; `sprt.ps1` carries the same escape hatch.
