@@ -2418,7 +2418,7 @@ diagnostics; two rejections stop B.
       first, four more only near the floor, and per-build medians,
       instead of twenty cycles and a pooled bootstrap.
     - **B.7.3 SEE: the recapturer's attacker set and king query — `I1`,
-      `READY_FOR_IMPLEMENTATION`.** Added 2026-10-03 from the board-code
+      closed `NO_CHANGE` 2026-10-03.** Added 2026-10-03 from the board-code
       read of the re-profile by source line
       (`tools/results/b72-audit-20261002/board_lines{1,2}.txt`; the
       maintainer asked for the board after RAR-S98 put speed at about 2 Elo
@@ -2485,6 +2485,22 @@ diagnostics; two rejections stop B.
       ways. A disturbed read is repeated, not interpreted. No SPRT in any
       outcome, by maintainer decision of 2026-10-03. The prediction above
       stands as frozen.
+
+      **Closed 2026-10-03, `NO_CHANGE` (RAR-P33).** Step 1 (two cycles,
+      07:50–07:56, `analysis/artifacts/b73-nps/read/`): **−2.09%** (95%
+      t-interval −2.34% .. −1.84%), every candidate reading below the
+      base's, the two cycles in agreement, so not disturbed. At or under
+      +0.1%, so `8fc8ff9` was reverted in `7e6e0ef`; the oracle test
+      went with it. *Calibration:* a sign miss, outside the frozen +0.8%
+      to +2.0% (given probability 0.1 of falling under +0.1%). The
+      instrument located where the samples sit, not what a step costs:
+      the rewrite pays at its start (both colours' attackers, the slider
+      sets, each king's rays and sliders) for savings that arrive only
+      at later recapture steps, and most calls end before them. That
+      premise, about the length of the exchanges the search asks for, was
+      never measured. *Retry only* after a counter read of recapture
+      steps per SEE call shows most calls reaching two or more, and then
+      only in a form whose first step costs no more than today's.
 
       **Read but not candidates** (each under the floor on its own): the
       undo history's `Vec` push and pop in make and unmake (0.65%); the
@@ -2570,8 +2586,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.3 | LOCAL_QUALIFIED | I1 | Implemented 2026-10-03 (`8fc8ff9`), exact (oracle test 4,411,664 comparisons, bench and legacy exact); its two-step NPS read registered (RAR-P33), accepted or rejected on NPS alone |
-| B.8 | RESEARCH | I1 | After B.7.3; an NPS reading before and after guards the cleanup's layout effect |
+| B.8 | RESEARCH | I1 | The current step since B.7.3 closed `NO_CHANGE` on 2026-10-03 (RAR-P33, −2.09% NPS, reverted); an NPS reading before and after guards the cleanup's layout effect |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
 ## Phase C — Evaluation programme
