@@ -1902,9 +1902,6 @@ impl Searcher {
                 // Principal variation search: at a PV node a later move that
                 // beats alpha is searched again with the full window.
                 if NODE::PV && score > alpha {
-                    if mv == tt_move && ev.depth > 1 {
-                        new_depth = new_depth.max(1);
-                    }
                     search_count += 1;
                     score = -self.negamax::<Pv, _>(
                         board,
