@@ -2546,7 +2546,8 @@ diagnostics; two rejections stop B.
      them;
   3. dead coordinates: the 33 `SearchParams` names only the B.1 search
      reads, `QsSeeClampLo`, and any name the reader search finds dead
-     after class 2;
+     after class 2 (it found seven more: the B.2 null-move, ProbCut and
+     singular coordinates; 41 in all);
   4. the fourteen decided switches folded to their defaults (RAR-S74,
      S80, S87, S91, S92 and B.3.2's screens);
   5. the diagnostics without an owner: 63 of 265 counters by the owner

@@ -6,7 +6,10 @@ This directory holds the SPSA surface of a **registered** tune, one
 options applied to both sides at fixed values. **No group is live**: `b43` (PLAN B.4.3, RAR-S86) was baked on 2026-09-30
 after RAR-S88 accepted it. `b23core`, `b27all`, `b27core`, `b33` and `b43` are historical: their
 thetas are baked, their seeds are kept as evidence, and `historical.txt`
-exempts them from the audit's seed checks.
+exempts them from the audit's seed checks. B.8 folded the arm features
+(`b2core`, `b3proof`, `b4quiet`) into the only search, so a historical
+group's build line records how its binary was built then; a tune build of
+the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 
 ## `b43` — B.4.3, the quiescence cluster and the estimate's first consumers (historical)
 

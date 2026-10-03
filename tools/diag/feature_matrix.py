@@ -40,7 +40,7 @@ import time
 # Cargo.toml by
 # `test_feature_matrix.py::test_the_matrix_covers_every_declared_feature`, so
 # adding a feature and forgetting to check it fails the suite.
-SHIPPED_FEATURES = ["b3proof", "b4quiet", "tune", "diag", "ablate", "texel"]
+SHIPPED_FEATURES = ["tune", "diag", "ablate", "texel"]
 
 # Features that change what is MEASURED rather than only what is exposed. A
 # binary built with one of these must never be used for a strength number, and

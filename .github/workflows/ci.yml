@@ -71,23 +71,6 @@ jobs:
       - name: cargo clippy (--features diag,tune)
         run: cargo clippy --all-targets --features diag,tune -- -D warnings
 
-      # The proof-search candidate lives behind `b3proof`, so its blocks are
-      # linted only when the feature is on; with diag and tune its counters
-      # and `ProofParams` UCI plumbing compile too.
-      - name: cargo clippy (--features b3proof)
-        run: cargo clippy --all-targets --features b3proof -- -D warnings
-
-      - name: cargo clippy (--features b3proof,diag,tune)
-        run: cargo clippy --all-targets --features b3proof,diag,tune -- -D warnings
-
-      # The quiescence candidate lives behind `b4quiet`; with diag and tune
-      # its counters and `QuietParams` UCI plumbing compile too.
-      - name: cargo clippy (--features b4quiet)
-        run: cargo clippy --all-targets --features b4quiet -- -D warnings
-
-      - name: cargo clippy (--features b4quiet,diag,tune)
-        run: cargo clippy --all-targets --features b4quiet,diag,tune -- -D warnings
-
       - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -155,24 +138,6 @@ jobs:
           if [ "$ran" -ne 2 ]; then
             echo "::error::the long tier ran $ran tests, expected 2"
             exit 1
-          fi
-
-      - name: cargo test — engine, b3proof candidate (${{ matrix.profile }})
-        shell: bash
-        run: |
-          if [ "${{ matrix.profile }}" = "release" ]; then
-            cargo test -p rarog --release --features b3proof
-          else
-            cargo test -p rarog --features b3proof
-          fi
-
-      - name: cargo test — engine, b4quiet candidate (${{ matrix.profile }})
-        shell: bash
-        run: |
-          if [ "${{ matrix.profile }}" = "release" ]; then
-            cargo test -p rarog --release --features b4quiet
-          else
-            cargo test -p rarog --features b4quiet
           fi
 
       - name: cargo test — tooling crates
@@ -246,10 +211,6 @@ jobs:
       # commit, and a hardcoded constant would need editing constantly until
       # somebody just deleted the check. Cross-platform agreement, by contrast,
       # must hold forever regardless of what we change.
-      # The proof-search candidate must agree across platforms as well.
-      - name: Build release, b3proof candidate
-        run: cargo build --release --features b3proof --target-dir target/b3proof
-
       - name: Run bench and record node counts
         shell: bash
         run: |
@@ -262,11 +223,8 @@ jobs:
             fi
           }
           count "./target/release/rarog${{ matrix.ext }}" bench.log
-          accepted=$nodes
-          count "./target/b3proof/release/rarog${{ matrix.ext }}" bench-b3proof.log
-          candidate=$nodes
-          echo "${{ matrix.label }} $accepted $candidate" > "nodes-${{ matrix.label }}.txt"
-          echo "$accepted nodes (b3proof $candidate) on ${{ matrix.label }}"
+          echo "${{ matrix.label }} $nodes" > "nodes-${{ matrix.label }}.txt"
+          echo "$nodes nodes on ${{ matrix.label }}"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -291,14 +249,14 @@ jobs:
       - name: All platforms must report the same node counts
         run: |
           cat nodes-*.txt
-          for column in 2 3; do
+          for column in 2; do
             counts=$(awk -v c=$column '{print $c}' nodes-*.txt | sort -u | wc -l)
             if [ "$counts" -ne 1 ]; then
               echo "::error::platforms disagree on bench node count (column $column) — see the table above"
               exit 1
             fi
           done
-          echo "all platforms agree: $(awk '{print $2, "b3proof", $3}' nodes-*.txt | sort -u)"
+          echo "all platforms agree: $(awk '{print $2}' nodes-*.txt | sort -u)"
 
   features:
     name: feature builds
@@ -335,23 +293,19 @@ jobs:
       - name: Build --features ablate
         run: cargo build --release --features ablate
 
-      # The set B.3.2's bit sweep and B.3.3's tune run on.
-      - name: Build --features b3proof,tune,ablate
-        run: cargo build --release --features b3proof,tune,ablate
-
       # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
-      # `diag` and under `tune` and fail under both. This enumerates all 64
-      # subsets of the six declared features with
+      # `diag` and under `tune` and fail under both. This enumerates all 16
+      # subsets of the four declared features with
       # `cargo check --all-targets --no-default-features`, which catches the
-      # same compilation errors far more cheaply than 32 builds. Every subset
+      # same compilation errors far more cheaply than 16 builds. Every subset
       # starts from a clean slate.
       #
       # Deliberately NOT `--all-features`: that is not a shipped configuration.
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
       # be measured (AGENTS.md).
-      - name: Feature matrix (all 64 subsets compile)
+      - name: Feature matrix (all 16 subsets compile)
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)
