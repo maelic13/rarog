@@ -40,13 +40,18 @@ import sys
 from collections import defaultdict
 
 # fastchess writes each move as `{eval/depth time}`; eval may be a mate score.
-COMMENT = re.compile(r"\{[+-]?[\dM.]+/(\d+)\s+([\d.]+)s\}")
+COMMENT = re.compile(r"\{([+-]?[\dM.]+)/(\d+)\s+([\d.]+)s\}")
 TAG = re.compile(r'\[(\w+) "(.*)"\]')
 
 
-def main(path):
+def collect(path):
+    """Per engine: the depth, the seconds and whether the score was a mate
+    score, for each annotated move. A mate score carries the engine's own
+    pseudo-depth (classical Stockfish reports 245), so the means are also
+    given over non-mate moves."""
     depths = defaultdict(list)
     times = defaultdict(list)
+    mates = defaultdict(list)
     white = black = None
     first_is_white = True
     body = []
@@ -59,8 +64,9 @@ def main(path):
         # once we know which colour moved first in the recorded body.
         for i, m in enumerate(COMMENT.finditer(" ".join(body))):
             mover = white if ((i % 2 == 0) == first_is_white) else black
-            depths[mover].append(int(m.group(1)))
-            times[mover].append(float(m.group(2)))
+            depths[mover].append(int(m.group(2)))
+            times[mover].append(float(m.group(3)))
+            mates[mover].append("M" in m.group(1))
 
     with open(path, encoding="utf-8", errors="replace") as fh:
         for line in fh:
@@ -83,7 +89,11 @@ def main(path):
                 in_moves = True
                 body.append(s)
     flush()
+    return depths, times, mates
 
+
+def main(path):
+    depths, times, mates = collect(path)
     if not depths:
         sys.exit(
             "No move comments found. The PGN needs engine annotations - "
@@ -96,7 +106,8 @@ def main(path):
         if arg.startswith("--nodes="):
             nodes = float(arg.split("=", 1)[1])
 
-    header = f"{'engine':24s} {'moves':>8s} {'mean depth':>11s} {'median':>7s} {'s/move':>9s}"
+    header = (f"{'engine':24s} {'moves':>8s} {'mean depth':>11s} {'median':>7s} {'s/move':>9s}"
+              f" {'non-mate':>9s} {'mean':>6s} {'median':>7s}")
     if nodes:
         header += f" {'implied nps':>13s}"
     print(header)
@@ -107,6 +118,11 @@ def main(path):
             f"{eng:24s} {len(d):8d} {statistics.mean(d):11.2f} "
             f"{statistics.median(d):7.1f} {mean_t:9.4f}"
         )
+        plain = [x for x, mate in zip(d, mates[eng]) if not mate]
+        if plain:
+            row += f" {len(plain):9d} {statistics.mean(plain):6.2f} {statistics.median(plain):7.1f}"
+        else:
+            row += f" {0:9d} {'-':>6s} {'-':>7s}"
         if nodes:
             row += f" {nodes / mean_t if mean_t else 0:13,.0f}"
         print(row)
