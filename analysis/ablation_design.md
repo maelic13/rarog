@@ -1,5 +1,7 @@
 # Ablation harness: design, and why it is not a bisection over the oracle
 
+**History.** B.9 retired Rarog's `ablate` feature on 2026-10-03 (`ee02ed1`); PROCESS's *Matched ablation* says how to restore it from `a0ddbbf` and when the oracle's `oracle/hybrid-ablate` tag retires (PLAN E.1). This document is the reasoning behind the instrument, kept as history.
+
 ## Stockfish already published the decomposition
 
 Every top-level step in the oracle's `search.cpp` carries its own Elo value,

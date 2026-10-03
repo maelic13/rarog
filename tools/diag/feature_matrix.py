@@ -25,7 +25,7 @@ exactly the features it names.
 Example:
 
   python tools/diag/feature_matrix.py
-  python tools/diag/feature_matrix.py --features tune,diag,ablate --release
+  python tools/diag/feature_matrix.py --features tune,diag --release
 """
 
 from __future__ import annotations
@@ -40,12 +40,12 @@ import time
 # Cargo.toml by
 # `test_feature_matrix.py::test_the_matrix_covers_every_declared_feature`, so
 # adding a feature and forgetting to check it fails the suite.
-SHIPPED_FEATURES = ["tune", "diag", "ablate", "texel"]
+SHIPPED_FEATURES = ["tune", "diag", "texel"]
 
 # Features that change what is MEASURED rather than only what is exposed. A
 # binary built with one of these must never be used for a strength number, and
 # the matrix says so out loud when it checks such a combination.
-NEVER_MEASURE = {"texel", "ablate", "tune"}
+NEVER_MEASURE = {"texel", "tune"}
 
 
 def combinations(features: list[str]) -> list[tuple[str, ...]]:

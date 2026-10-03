@@ -49,9 +49,9 @@ struct Config {
     target: String,
     pgo: bool,
     bench_depth: u16,
-    /// Cargo features, comma-separated. Needed so a paired-ablation arm
-    /// can be PGO-built: a non-PGO arm runs shallower, and a
-    /// depth-dependent mechanism's ablation delta would be understated
+    /// Cargo features, comma-separated. Needed so a candidate arm behind a
+    /// feature can be PGO-built: a non-PGO arm runs shallower, and a
+    /// depth-dependent mechanism's measured delta would be understated
     /// at that shallower operating point.
     features: String,
 }

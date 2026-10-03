@@ -324,6 +324,19 @@ engine's own rate, and neither is measured).
 
 ### Matched ablation (deficit decomposition)
 
+**Retired 2026-10-03 (B.9).** `ee02ed1` removed Rarog's side of the
+instrument: the `ablate` feature, `Searcher::ablated`, `AblationMask` and
+the ten guards. The protocol below stays as the recipe. To bring it back,
+restore those from `a0ddbbf` (the head before the removal): `Cargo.toml`'s
+`ablate` feature, `ablated()` in `src/search/mod.rs`, `ablation_mask` in
+`src/search/params.rs` and the guards in `src/search/node.rs`. Their bits
+are the core's, not the list below: 0 razoring, 1 reverse futility, 2 null
+move, 3 ProbCut, 4 IIR and hindsight reductions, 5 move-loop pruning, 6
+singular extensions, 7 late-move reductions. The oracle's side is the tag
+`oracle/hybrid-ablate`, which is kept. Its retirement condition is PLAN
+E.1: the tag goes when E.1 decides it wants no matched ablation on the C.11
+head.
+
 How the deficit was decomposed, and the procedure for every later use.
 `analysis/ablation_design.md` holds the reasoning; this is the operation.
 
