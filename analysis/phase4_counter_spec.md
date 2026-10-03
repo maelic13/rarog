@@ -5,6 +5,11 @@ and 4.2 (Rarog side). Both implementations must satisfy this document rather
 than each other, so a disagreement is resolved here, not in whichever code was
 written second.
 
+**B.8, 2026-10-03.** The cleanup removed the Rarog counters no tracked tool
+or B-phase analysis reads, and those the B.1 search alone incremented. Rows
+below for a removed Rarog counter say so. What each did and how to restore it
+is in `analysis/b8_removed_2026-10-03.md`; the oracle side is unchanged.
+
 ## Why this file exists before either implementation
 
 "Matched name for name" is meaningless without matched *definitions*. RAR-S25
@@ -132,11 +137,11 @@ prune is applied, so overlap is observable.
 | Name | Definition |
 |---|---|
 | `prune_shadow_moves` | Moves reaching the shallow-pruning stage — the denominator |
-| `prune_shadow_lmp` | Of those, would be pruned by move count |
-| `prune_shadow_futility` | Of those, would be pruned by futility |
-| `prune_shadow_see` | Of those, would be pruned by SEE |
-| `prune_shadow_check_exempt` | Of those, exempted because the move gives check |
-| `prune_shadow_overlap_two_plus` | Of those, would be pruned by two or more families |
+| `prune_shadow_lmp` | Of those, would be pruned by move count (removed from Rarog by B.8: only the B.1 search counted it) |
+| `prune_shadow_futility` | Of those, would be pruned by futility (removed from Rarog by B.8, as above) |
+| `prune_shadow_see` | Of those, would be pruned by SEE (removed from Rarog by B.8, as above) |
+| `prune_shadow_check_exempt` | Of those, exempted because the move gives check (removed from Rarog by B.8, as above) |
+| `prune_shadow_overlap_two_plus` | Of those, would be pruned by two or more families (removed from Rarog by B.8, as above) |
 
 `prune_shadow_overlap_two_plus / prune_shadow_moves` is redundancy. A high value
 means the families are paying for each other's work rather than covering
@@ -197,11 +202,11 @@ Their absence on the oracle side is a fact about 2020 Stockfish, not a finding.
 |---|---|
 | `correction_*` | Correction history postdates this revision entirely |
 | `rootconf_*` | Rarog's root-confidence model has no counterpart |
-| `lazy_*` | Rarog HCE lazy evaluation; the oracle calls the same HCE without it |
+| `lazy_*` | Rarog HCE lazy evaluation; the oracle calls the same HCE without it (removed from Rarog by B.8 with `diag_lazy_dual`) |
 | `store_kind_*`, `tt_move_inherited*` | Rarog's typed TT provenance; the oracle has no producer field |
 | `tt_pv_veto_*`, `contradict_*`, `refine_*` | Rarog's TT-bound evidence model |
 | `shadow_4_*` | Retired shadow slots from the closed Phase-4 line |
-| `worker_*` | Rarog's SMP vote merge |
+| `worker_*` | Rarog's SMP vote merge (removed from Rarog by B.8) |
 
 ## Learned at 4.1, from the first instrumented reading
 
