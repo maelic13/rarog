@@ -2767,7 +2767,7 @@ diagnostics; two rejections stop B.
   bound above +25, positive LTC and 4T lower bounds) and 2.5.0 none; B.9
   measured STC at 1T only (+272.4 head-to-head over 2.4.0 in RAR-M64), so
   B.10 either registers LTC and 4T reads against 2.4.0 or records the
-  maintainer's waiver. AGENTS' clause that fastchess, weather-factory,
+  maintainer's waiver — registered 2026-10-03 as RAR-M65 (1,000 games at `10+0.1`) and RAR-M66 (the four-thread gauntlet in RAR-M46's conditions, 2,400 games), run by the maintainer from `analysis/artifacts/b10-release/run_all.ps1`. AGENTS' clause that fastchess, weather-factory,
   `sprt.ps1` and `spsa.ps1` stay "until at least release 2.5.0" falls due
   for review at B.10; the decision is the maintainer's. Phase B closes with
   B.10, and its tag-and-branch review (AGENTS, *Evidence*) runs then: local
@@ -2782,7 +2782,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); open for the maintainer: the release rule's LTC and 4T reads or a waiver, and AGENTS' fastchess clause |
+| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); the release rule's LTC and 4T reads are registered (RAR-M65 at `10+0.1`, RAR-M66 at four threads, `analysis/artifacts/b10-release/run_all.ps1`, 2026-10-03) and run by the maintainer; open: adopting 2.4.0's rule for 2.5.0 on those reads, and AGENTS' fastchess clause |
 
 ## Phase C — Evaluation programme
 
