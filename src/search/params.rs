@@ -137,38 +137,14 @@ search_params! {
     /// runaway iteration — which is exactly what the tune explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
 
-    /// Futility pruning base margin.
-    /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
-    futility_base = 52, "FutilityBase", 20..=200;  // was 70 → 82 → 86 → 60 → 52
-    /// Extra futility margin added when *not* improving (multiplied by
-    /// `not_improving_i`). Larger value → prune less when not improving.
-    futility_not_improving = 51, "FutilityNotImproving", 0..=120;  // was 20 → 51 → 49 → 42 → 51
 
-    /// Razoring coefficient. Prune if `eval + coeff * depth < alpha`.
-    razoring_coeff = 274, "RazoringCoeff", 50..=300;  // was 150 → 194 → 191 → 193 → 274
 
-    /// Null-move pruning depth coefficient.
-    /// Allow NMP when `eval >= beta - coeff * depth - improving_bonus * improving`.
-    nm_depth_coeff = 12, "NullMoveDepthCoeff", 2..=40;  // was 12 → 14 → 15 → 10 → 12
-    /// Null-move pruning improving bonus.
-    nm_improving_bonus = 35, "NullMoveImprovingBonus", 0..=80;  // was 24 → 25 → 32 → 35
 
     /// LMP prune-margin base.
     /// Formula: `(base + not_improving_coeff * not_improving_i) * depth`.
     lmp_base = 80, "LmpBase", 30..=200;  // was 90 → 115 → 88 → 80
-    /// Extra LMP prune-margin added when *not* improving (multiplied by
-    /// `not_improving_i`). Larger value → prune less when not improving.
-    lmp_not_improving = 64, "LmpNotImproving", 0..=120;  // was 25 → 53 → 57 → 63 → 64
 
-    /// Quiet-history pruning coefficient (stored positive; applied as `-(coeff * depth)`).
-    ///
-    quiet_hist_prune_coeff = 5_617, "QuietHistPruneCoeff", 1000..=10000;  // was 4000 → 4372 → 4419 → 5069 → 5617
 
-    /// SEE bad-capture threshold coefficient (stored positive; applied as `-(coeff * depth)`).
-    ///
-    see_pruning_coeff = 66, "SeePruningCoeff", 20..=200;  // was 83 → 51 → 66
-    /// SEE bad-capture threshold maximum magnitude (floor of `-(coeff * depth)`).
-    see_pruning_max = 955, "SeePruningMax", 200..=1600;
 
     // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
     // Exposed so the `config_see` SPSA can re-tune SEE's consumers alongside
@@ -178,16 +154,12 @@ search_params! {
     /// Qsearch capture SEE-prune margin: search a capture only if
     /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
     qs_see_margin = 266, "QsSeeMargin", 0..=600;  // was 200 → 251 → 265
-    /// Lower clamp on the qsearch SEE-prune threshold. Seed −800.
-    qs_see_clamp_lo = -722, "QsSeeClampLo", -1600..=-100;  // was -800 → -661 → -722
     /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
     qs_see_clamp_hi = 208, "QsSeeClampHi", 0..=600;  // was 200 → 218 → 212
     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
     qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
 
-    /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`.
-    singular_beta_mult = 4, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6 → 4
 
     /// 4.3 arm B — how far below the node depth a TT entry may sit and still
     /// seed a singular verification window (`ev.depth >= depth - margin`).
@@ -202,15 +174,6 @@ search_params! {
     /// the material-gain policy. B.1 removed 4.3c's persisted provenance.
     singular_tt_depth_margin = 3, "SingularTtDepthMargin", 0..=4;
 
-    /// Ordering bonus for a quiet move that gives check.
-    ///
-    /// 32000 = the historical flat `DIRECT_CHECK_BONUS`, promoted from a bare
-    /// constant to a coordinate so 4.10 can fit it. The 4.3 audit wanted this
-    /// split into safe/losing classes; that split was implemented, measured
-    /// NON-FUNCTIONAL (RAR-S44: zero losing-check population because
-    /// `see_ge` is trivially true for a non-capture) and reverted. A correct
-    /// classifier needs a different predicate and is 4.10 ordering work.
-    check_bonus_safe = 32000, "CheckBonusSafe", 0..=32000;
 
     /// Minimum non-pawn pieces the side to move must have for NMP.
     ///
@@ -225,34 +188,12 @@ search_params! {
     /// keep covering the boundary.
     nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
 
-    /// Margin below `singular_beta` required for a DOUBLE extension.
-    ///
-    /// 20 = accepted baseline, previously a bare literal. PLAN 4.4 asks for
-    /// "separate single/double rules"; making the double rule's own margin a
-    /// coordinate is what separates them, and the 4.1 census measured double
-    /// extensions at 21 of 101 sampled attempts against 25 single — a high share
-    /// for the more aggressive branch. Larger values make doubles rarer without
-    /// removing them outright.
-    singular_double_margin = 20, "SingularDoubleMargin", 0..=200;
 
-    /// LMP count base. `count = base + 2 * depth * depth / 3`.
-    lmp_count_base = 1, "LmpCountBase", 1..=12;  // was 4 → 2 → 1 (10.4.6 lower rail; active)
 
     // ── LMR weighted adjustments (all in 1024ths of a ply) ──────────────────
     // Applied to the 1024x-scaled LMR table base; `>> 10` gives integer ply.
     // The default-equivalent seed set was 1024 / 0 / 1024 / 1024; current
     // defaults are the Phase 2.5.1 clock-TC SPSA candidate pending SPRT.
-    /// PV / TT-PV nodes: reduce less (stored positive; subtracted).
-    lmr_tt_pv_adj = 887, "LmrTtPvAdj", 0..=2048;  // was 1024; Phase 2.4 candidate was 1110
-    /// Exact TT bound: additional reduction.
-    lmr_exact_bound = 109, "LmrExactBound", 0..=2048;  // was 0; Phase 2.4 candidate was 98
-    /// Late-move reduction bump applied when a **TT move is present** and the
-    /// move is late in the list (`!tt_move.is_null() && searched >= 4`). NB the
-    /// name is a misnomer — the live condition (`search/node.rs`, LMR block) fires
-    /// on TT-move *presence*, not absence, and never checks TT depth. The value
-    /// (656) was SPSA'd under this live condition; the "TT-absent / depth-aware"
-    /// polarity the name implies is a deliberate 10.4-menu A/B, not a bug.
-    lmr_shallow_tt = 656, "LmrShallowTt", 0..=2048;  // was 1024; Phase 2.4 candidate was 880
     /// Cut node: reduce more.
     lmr_cut_node = 780, "LmrCutNode", 0..=2048;  // was 1024; Phase 2.4 candidate was 1138
 
@@ -264,25 +205,13 @@ search_params! {
     lmr_table_base = 646, "LmrTableBase", 384..=1536;  // was 768 (0.75 * 1024); Phase 2.4 was 738
     /// Logarithm divisor (1024ths).
     lmr_table_div = 2335, "LmrTableDiv", 1536..=3072;  // was 2304 (2.25 * 1024); Phase 2.4 was 2334
-    /// History divisor in the per-move history adjustment. Default = 8192.
-    /// Applied as: `r -= quiet_hist * 1024 / lmr_hist_div`.
-    lmr_hist_div = 8395, "LmrHistDiv", 4096..=16384;  // was 8192; Phase 2.4 was 8268
 
     // ── Per-move quiet futility pruning (Phase 2.7) ──────────────────────────
-    // Skip a quiet move when `eval_for_pruning + fp_base + fp_coeff*depth <= alpha`
-    // (depth <= 8, not in check, move doesn't give check). Centipawn-scaled —
-    // re-tuned in the Phase 4 SPSA wave after the eval re-fit.
+    // Centipawn-scaled; re-tuned in the Phase 4 SPSA wave after the eval
+    // re-fit.
     /// Quiet futility base margin (cp).
     fp_base = 211, "FpBase", 0..=400;
-    /// Quiet futility per-depth coefficient (cp).
-    fp_coeff = 135, "FpCoeff", 0..=300;
 
-    /// ProbCut beta margin (cp). `probcut_beta = beta + margin`.
-    /// Re-tuned in the Phase 5 SPSA wave after the Phase 4 eval re-fit changed
-    /// what a centipawn means; the flat-margin form is the current accepted
-    /// shape (an earlier improving-aware 3-parameter port was tried in Phase 2
-    /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
-    probcut_margin = 180, "ProbCutMargin", 60..=400;
 
     /// Paired-ablation mask, one bit per mechanism, 0 = shipped behaviour:
     /// 0 razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
@@ -291,17 +220,6 @@ search_params! {
     /// 7 late-move reductions.
     /// Only consulted when built with `--features ablate`.
     ablation_mask = 0, "AblationMask", 0..=255;
-    /// 4.6.7 ROOT REDUCTION RELIEF, in 1024ths of a ply. 0 = off = accepted
-    /// behaviour.
-    ///
-    /// `lmr_reduction_units` is not passed the ply and `reducible` has no
-    /// `ply == 0` term, so the root is reduced exactly like an interior node
-    /// from the third move onward. An alternative root move is therefore
-    /// searched at REDUCED depth and can only displace the incumbent by
-    /// beating alpha while reduced. The answer harness measures the
-    /// consequence: Rarog revises its root move 1.50 times against the
-    /// oracle's 2.16 and lands on a different move a third of the time.
-    lmr_root_relief = 1536, "LmrRootRelief", 0..=2048;
     /// 4.7c PROBCUT MOVE FILTER. Two constants for the entry contract of the
     /// speculative capture search; both are categorical-frozen defaults awaiting
     /// the cluster fit, not tuned values.
@@ -314,12 +232,6 @@ search_params! {
     /// RAR-S55 v3 measured Rarog searching 5.17x the reference's normalised
     /// ProbCut moves and converting 32.6% of them against 71.9%.
     probcut_see_gap_scale = 100, "ProbCutSeeGapScale", 0..=100;
-    /// Base cap on captures searched at one ProbCut node, before the cut-node
-    /// bonus. Replaces a flat 8 that had no stated derivation.
-    probcut_move_cap_base = 2, "ProbCutMoveCapBase", 1..=8;
-    /// Extra captures allowed at an expected cut node, where a fail-high is the
-    /// predicted outcome and the speculative search is likeliest to pay.
-    probcut_move_cap_cut_bonus = 2, "ProbCutMoveCapCutBonus", 0..=8;
 
     /// Lazy-eval margin (Phase 5.1b; mirrors `eval::LAZY_MARGIN` = 600). If the
     /// tapered material + PST + pawn score already exceeds this, the expensive
@@ -329,104 +241,6 @@ search_params! {
     /// `[-3,3]` no-regression before tuning for NPS), then an SPSA speed knob.
     /// Disabled under `--features texel` (the tuner fits the full eval).
     lazy_margin = 600, "LazyMargin", 200..=2000;
-
-    // ── History bonus/malus split (Phase 8.1) ────────────────────────────────
-    // Replaces the symmetric `history_bonus(depth) = (d² + 2d).min(1200)` used
-    // for both reward and penalty. Cutoff move gets
-    // `min(bonus_mul·d − bonus_sub, bonus_max)`; searched-but-failed moves get
-    // `−min(malus_mul·d − malus_sub, malus_max)`. SF-shaped linear formulas —
-    // they reach the HISTORY_MAX gravity equilibrium much faster than the old
-    // quadratic (d=10: 1610 vs 120), and the split lets SPSA make penalties
-    // stronger/weaker than rewards independently. Ported from the parked
-    // `phase-8.1-history-split` branch onto the p75-tm head; seeds re-tuned by
-    // the 8.1 SPSA on this head before the `[0,3]` bake gate.
-    /// Bonus per-depth slope. Seed 170.
-    hist_bonus_mul = 174, "HistBonusMul", 40..=400;  // 8.4 histcov fit (was 156)
-    /// Bonus subtractor. Seed 90.
-    hist_bonus_sub = 264, "HistBonusSub", 0..=500;  // 8.4 histcov fit (was 125)
-    /// Bonus cap. Seed 1700.
-    hist_bonus_max = 2_491, "HistBonusMax", 400..=4000;  // 8.4 histcov fit (was 2162) → rewards saturate high
-    /// Malus per-depth slope. Seed 180.
-    hist_malus_mul = 210, "HistMalusMul", 40..=400;  // 8.4 histcov fit (was 218)
-    /// Malus subtractor. Seed 100.
-    hist_malus_sub = 0, "HistMalusSub", 0..=500;  // 8.4 histcov fit (was 27; drifted to the 0 bound)
-    /// Malus cap. Seed 1500.
-    hist_malus_max = 1_877, "HistMalusMax", 400..=4000;  // 8.4 histcov fit (was 937) → penalties saturate low
-
-    // ── Phase 8.4: history update-coverage bundle ────────────────────────────
-    // Storage is rich, learning events are sparse. Every new coverage source
-    // sits behind its OWN percentage knob seeded NEUTRAL, so the bundle is
-    // bench-identical until the config_histcov SPSA moves a knob — and the
-    // SPSA can independently drive any component back to zero. That is the
-    // designed answer to "Basilisk's lessons may not translate": Rarog's own
-    // tuning data decides per component.
-    /// 8.4(b) — reward the QUIET best move of an Exact (PV) node, as a % of
-    /// `history_bonus`. Seed 0 = today. REWARD-ONLY by design: Basilisk's
-    /// reward-only form passed +4.90 while the sibling-malus form lost
-    /// −84.21, so there is deliberately no malus, no killer/countermove
-    /// write, and no capture reward at exact nodes.
-    exact_bonus_pct = 31, "ExactBonusPct", 0..=150;  // 8.4 histcov fit (seed 0)
-    /// 8.4(c) — cross-category malus on a CAPTURE cutoff, as a % of
-    /// `history_malus`, applied to the searched quiets and bad captures that
-    /// failed to cut (today only earlier good captures are penalized). Seed
-    /// 0 = today. Good-SEE captures keep their existing malus only —
-    /// Basilisk's all-searched-capture malus was bench-vetoed (+30%).
-    capture_malus_pct = 25, "CaptureMalusPct", 0..=150;  // 8.4 histcov fit (seed 0)
-    /// 8.4(e) — surprise scale on the cutoff REWARD (both quiet and capture
-    /// cutoffs), applied when the node's static eval was below beta: the
-    /// search found a good move the eval did not credit. Seed 100 = neutral.
-    /// Basilisk's accepted value is 125 (+2.50) — a bounded nudge on a
-    /// subset of cutoffs, not a table-wide shift. Maluses stay unscaled.
-    surprise_bonus_pct = 119, "SurpriseBonusPct", 50..=250;  // 8.4 histcov fit (seed 100; Basilisk's accepted 125 — independent agreement)
-    // ── Phase 8.5: correction-history semantics + magnitude margins + blend ──
-    // The continuous margins/weights were included in the accepted 10.4.6(a)
-    // joint selectivity fit. Preserve even off-valued mechanisms through the
-    // NNUE transition: the post-NNUE retune may reactivate them.
-    //
-    /// 4.5 — weight (percent) applied to a correction update whose residual came
-    /// from a CAPTURE-caused cutoff, instead of dropping it.
-    ///
-    /// 100 = accepted baseline and exactly inert (`diff * 100 / 100 == diff`).
-    ///
-    /// This graded coordinate is retained because RAR-S16 measured binary
-    /// capture exclusion at **−55.98 Elo**: the guard
-    /// discarded 59.7% of training, so the run measured a crippled signal rather
-    /// than the mechanism's value. The 4.1 census puts capture-attributed updates
-    /// at **145,372 of 283,590 (51.3%)**, which is far too much to throw away and
-    /// is precisely why exclusion failed.
-    ///
-    /// Scaling keeps the coverage while down-weighting evidence the positional
-    /// eval arguably should not learn to predict. 0 degenerates to the exclusion
-    /// that already lost, so useful values are strictly between — and whether
-    /// ANY down-weighting is justified is an open question the new
-    /// `correction_resid_*` diagnostics answer: if capture-caused residuals are
-    /// no noisier than quiet ones, the whole premise is wrong and this knob
-    /// should stay at 100. Final weight enters the 4.10 fit; no dedicated SPSA.
-    corr_capture_weight_pct = 100, "CorrCaptureWeightPct", 0..=100;
-
-    // 8.5(b) — magnitude margins: scale forward pruning / LMR by |correction|.
-    // A large correction means the raw static eval is being heavily adjusted
-    // and is less trustworthy, so prune/reduce LESS (conservative-when-
-    // uncertain, the Reckless form). `|corr| = |static_eval − raw_static_eval|`,
-    // already computed per node. Each knob adds `|corr| · knob / 128` to a
-    // margin (or subtracts it from the LMR reduction in 1024ths). Seed 0 = off.
-    //
-    // ⚠ These three are NOT inert. A stale comment in the search claimed the
-    // seeds left them at 0; the fitted values below are live in the accepted
-    // baseline, so `corr_abs` actively widens margins and shrinks reductions.
-    corr_rfp_scale = 3, "CorrRfpScale", 0..=512;
-    corr_fut_scale = 3, "CorrFutScale", 0..=512;
-    corr_lmr_scale = 27, "CorrLmrScale", 0..=512;
-    /// 8.5(c) — blend weights for the five correction sources, previously the
-    /// fixed `(pawn+minor+own_np+their_np+cont/2)/128`. Now `Σ src·W / 16384`
-    /// with the continuation term keeping its inherent `/2`. Seed 128 on every
-    /// source reproduces the old blend bit-for-bit (`Σsrc·128/16384 = Σsrc/128`).
-    /// SPSA re-weights the sources.
-    corr_w_pawn = 135, "CorrWeightPawn", 0..=384;
-    corr_w_minor = 80, "CorrWeightMinor", 0..=384;
-    corr_w_own_np = 104, "CorrWeightOwnNp", 0..=384;
-    corr_w_their_np = 160, "CorrWeightTheirNp", 0..=384;
-    corr_w_cont = 152, "CorrWeightCont", 0..=384;
 
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
@@ -786,55 +600,20 @@ mod tests {
     fn search_params_defaults_are_sane() {
         let p = SearchParams::default();
         assert!(p.aspiration_delta > 0);
-        assert!(p.futility_base > 0);
-        assert!(p.futility_not_improving >= 0);
-        assert!(p.razoring_coeff > 0);
-        assert!(p.nm_depth_coeff > 0);
-        assert!(p.nm_improving_bonus >= 0);
         assert!(p.lmp_base > 0);
-        assert!(p.lmp_not_improving >= 0);
-        assert!(p.quiet_hist_prune_coeff > 0);
-        assert!(p.see_pruning_coeff > 0);
-        assert!(p.see_pruning_max > 0);
         assert!(p.qs_see_margin >= 0);
-        assert!(p.qs_see_clamp_lo < p.qs_see_clamp_hi);
         assert!(p.qs_see_bad_floor <= 0);
-        assert!(p.singular_beta_mult > 0);
-        // 4.3 arms land INERT: these three defaults must reproduce pre-4.3
-        // behaviour exactly, so the bench fingerprint gates the refactor rather
-        // than the arm. A bake that moves one of them is changing play and owes
-        // an SPRT, so pin the inert values here — this assert is the tripwire.
+        // A bake that moves this default is changing play and owes an SPRT,
+        // so pin the inert value here: this assert is the tripwire.
         assert_eq!(p.singular_tt_depth_margin, 3, "4.3 arm B must land inert");
-        // Not on/off switches: these two carry the baseline value itself, so
-        // the inert position is the current constant rather than zero.
         assert_eq!(
             p.nmp_min_non_pawn_pieces, 1,
             "4.4c material guard must reproduce has_non_pawn_material"
         );
-        assert_eq!(
-            p.singular_double_margin, 20,
-            "4.4c double-extension margin must land inert"
-        );
-        assert!(p.lmp_count_base > 0);
-        assert!(p.lmr_tt_pv_adj >= 0);
-        assert!(p.lmr_exact_bound >= 0);
-        assert!(p.lmr_shallow_tt >= 0);
         assert!(p.lmr_cut_node >= 0);
         assert!(p.lmr_table_base > 0);
         assert!(p.lmr_table_div > 0);
-        assert!(p.lmr_hist_div > 0);
         assert!(p.fp_base > 0);
-        assert!(p.fp_coeff > 0);
-        assert!(p.probcut_margin > 0);
-        assert!(p.hist_bonus_mul > 0);
-        assert!(p.hist_bonus_sub >= 0);
-        assert!(p.hist_bonus_max > 0 && p.hist_bonus_max <= 16_384);
-        assert!(p.hist_malus_mul > 0);
-        assert!(p.exact_bonus_pct >= 0);
-        assert!(p.capture_malus_pct >= 0);
-        assert!(p.surprise_bonus_pct > 0);
-        assert!(p.hist_malus_sub >= 0);
-        assert!(p.hist_malus_max > 0 && p.hist_malus_max <= 16_384);
         assert!(p.lazy_margin > 0);
         assert!(p.tm_opt_scale > 0);
         assert!(p.tm_fall_base > 0);

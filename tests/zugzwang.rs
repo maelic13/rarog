@@ -220,22 +220,14 @@ fn forced_mates_are_still_proven() {
 /// been shown not to break anything, and for a switch with zero bench
 /// population a targeted test is the *only* evidence that exists.
 ///
-/// Asserted with the switches on individually and all together, because the
-/// combination is what 4.4's bundle will actually ship.
+// Asserted at each value of the material guard, the one 4.4 switch left.
 #[test]
 fn every_4_4_switch_preserves_null_soundness() {
     type Setter = fn(&mut rarog::search::params::SearchParams);
-    let arms: [(&str, Setter); 5] = [
+    let arms: [(&str, Setter); 3] = [
         ("baseline", |_p| {}),
-        ("singular double margin 200", |p| {
-            p.singular_double_margin = 200;
-        }),
         ("nmp material >=2", |p| p.nmp_min_non_pawn_pieces = 2),
         ("nmp material >=3", |p| p.nmp_min_non_pawn_pieces = 3),
-        ("everything on", |p| {
-            p.nmp_min_non_pawn_pieces = 3;
-            p.singular_double_margin = 200;
-        }),
     ];
 
     for (label, configure) in arms {
