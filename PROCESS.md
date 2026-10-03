@@ -343,7 +343,7 @@ How the deficit was decomposed, and the procedure for every later use.
 One shared bitmask on both engines — 0 razoring, 1 futility-child, 2 nullmove,
 3 probcut, 4 iir, 5 shallow-pruning, 6 extensions, 7 lmr — so the same number
 ablates the same mechanism on each side. Oracle: tag `oracle/hybrid-ablate`.
-Rarog: `--features ablate`, which compiles every guard away in a shipped build.
+Rarog: `--features ablate` once restored as above, which compiles every guard away in a shipped build.
 
 0. **The harness now refuses to start when an engine does not expose an option
    being set.** fastchess only WARNS and then plays the whole match at the
