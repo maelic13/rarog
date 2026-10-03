@@ -306,8 +306,12 @@ the per-build medians.
   medians absorb two, and with three or more the read is repeated.
 
 Twenty cycles reach only ±0.25%, because the builds set the limit, not the
-cycles. `nps_multibuild.ps1`'s bootstrap interval is not this interval and
-is not quoted as one; the tool is brought to this read before its first use.
+cycles. The read is `tools/nps_read.py` (`--base <pool> --cand <pool> --out
+<dir>` for step 1, `--extend <dir>` for step 2, `--report <dir>` to recompute
+from the archive, `--no-regression` for a neutral change); its tests are
+`tools/diag/test_nps_read.py`, and on RAR-P32's archived runs it reproduces the
+study's deltas. `nps_multibuild.ps1`'s bootstrap interval is not this interval
+and is not quoted as one; that tool is kept only to compare with earlier rows.
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
@@ -555,6 +559,10 @@ cargo xtask verify-isa --arch pext
 ```powershell
 # Test/tune binaries, the SPSA coverage audit, and the harness's own checks
 ./tools/build_test.ps1 -Suffix <s>
+# Pooled-PGO NPS: four builds an arm from a clean tree, then the two-step read
+./tools/nps_build_pool.ps1 -Arch pext -Builds 4 -OutDir analysis/artifacts/<name>/pool -ExpectFingerprint 11171726
+python tools/nps_read.py --base <base pool> --cand <cand pool> --out analysis/artifacts/<name>/read --label "<experiment>"
+python tools/nps_read.py --extend analysis/artifacts/<name>/read
 ./tools/audit_spsa_coverage.ps1
 pwsh -NoProfile -File tools/diag/test_colosseum_guards.ps1
 python -m unittest discover -s tools/diag -p "test_colosseum_parity.py"
