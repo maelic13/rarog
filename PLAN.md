@@ -2458,6 +2458,34 @@ diagnostics; two rejections stop B.
       **Read:** PROCESS's two-step read, after the tool is at it, from a
       clean pool against the head's.
 
+      **Implemented 2026-10-03 (`8fc8ff9`), registered before its pool
+      (RAR-P33).** Both changes are exact as written: the attacker set is
+      built once (`attackers_to & occ` under the exchange's starting
+      occupancy) and extended after each removal; each side's king query
+      keeps its leapers and its sliders, the sliders recomputed when the
+      occupancy differs on the king's rays from the one they were computed
+      under; the king as recapturer keeps the full query and `& !target`
+      is unchanged. `least_valuable_attacker` is untouched. An oracle test
+      compares `see_with_values` (two scales) and `see_ge_impl` (seven
+      thresholds, both quiet flags) with the plain recomputation over every
+      legal move of a depth-3 walk from eight roots: 4,411,664 comparisons;
+      a planted missing orthogonal update and a planted stale king cache
+      each fail it. Bench 11,171,726 / 2.512 and legacy 7,590,542 / 2.473
+      exact; fmt; clippy zero; debug 378 and release 379 tests with the
+      allocation guard, `see_contract` and `see_pins`; the fixture oracle
+      passes (`verify_normalized_see.py` fails on a hash in its 2026-09-07
+      archive, unrelated to the engine). *Read, fixed here:* the candidate
+      pool (`analysis/artifacts/b73-nps/pool`, four pext PGO builds from
+      the clean tree) against `analysis/artifacts/b72-audit-nps/a/pool`
+      (`a42fadc`, whose engine source and build inputs equal the head's
+      before this commit), by `tools/nps_read.py` on an idle host. Step 1
+      at +0.9% or more accepts; at +0.1% or less the leaf closes
+      `NO_CHANGE` and the commit is reverted in its own commit; between,
+      step 2 decides at +0.5% with the lower bound above 0, the same two
+      ways. A disturbed read is repeated, not interpreted. No SPRT in any
+      outcome, by maintainer decision of 2026-10-03. The prediction above
+      stands as frozen.
+
       **Read but not candidates** (each under the floor on its own): the
       undo history's `Vec` push and pop in make and unmake (0.65%); the
       per-square attack query for each king move in generation (0.80%, an
@@ -2542,7 +2570,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.7.3 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-10-03: the SEE recapturer's attacker set and king query, exact, ceiling about +1.6% NPS; after the NPS tool is at the two-step read |
+| B.7.3 | LOCAL_QUALIFIED | I1 | Implemented 2026-10-03 (`8fc8ff9`), exact (oracle test 4,411,664 comparisons, bench and legacy exact); its two-step NPS read registered (RAR-P33), accepted or rejected on NPS alone |
 | B.8 | RESEARCH | I1 | After B.7.3; an NPS reading before and after guards the cleanup's layout effect |
 | B.9 | RESEARCH | V | Closes the programme; freezes the search head |
 
