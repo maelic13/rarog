@@ -21,26 +21,14 @@ pub(crate) const TB_WIN_SCORE: i32 = MATE_SCORE - 2 * MAX_PLY;
 pub(crate) const TB_VALUE: i32 = MATE_SCORE - MAX_PLY - 1;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
-// Bit 0x08 is free and deliberately unused, so the 4-bit age arithmetic
-// below keeps its layout.
-#[cfg(not(feature = "b2core"))]
-const AGE_MASK: u8 = 0xF0;
-#[cfg(not(feature = "b2core"))]
-const AGE_STRIDE: u8 = 0x10;
-#[cfg(not(feature = "b2core"))]
-const AGE_QUALITY_DIVISOR: i32 = 4;
-// The selectivity core gives the free bit to the age: five bits, 32
-// generations. One generation still costs an entry four plies of quality.
-#[cfg(feature = "b2core")]
+// The age takes the five high bits: 32 generations. One generation costs an
+// entry four plies of quality.
 const AGE_MASK: u8 = 0xF8;
-#[cfg(feature = "b2core")]
 const AGE_STRIDE: u8 = 0x08;
-#[cfg(feature = "b2core")]
 const AGE_QUALITY_DIVISOR: i32 = 2;
 /// Stored depth of an entry that holds only a raw static eval: no bound, no
 /// score, no move. Below every searched depth (qsearch stores 0, the floor
 /// for a stored result is -1), so it never satisfies a depth test.
-#[cfg(feature = "b2core")]
 pub(crate) const EVAL_ONLY_DEPTH: i32 = -2;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -78,15 +66,8 @@ impl TtEntry {
         Bound::from_bits(self.flag_age)
     }
 
-    #[cfg(not(feature = "b2core"))]
-    #[inline(always)]
-    fn is_occupied(self) -> bool {
-        self.flag_age & BOUND_MASK != 0
-    }
-
     /// A slot holds a position when it has a bound, or when it holds only a
     /// static eval.
-    #[cfg(feature = "b2core")]
     #[inline(always)]
     fn is_occupied(self) -> bool {
         self.flag_age & BOUND_MASK != 0 || i32::from(self.depth) == EVAL_ONLY_DEPTH
@@ -486,7 +467,6 @@ impl TranspositionTable {
     /// Store the raw static eval of a position the probe missed, so a later
     /// visit skips the evaluation. The entry has no bound, score or move and
     /// sits at [`EVAL_ONLY_DEPTH`], so any searched result replaces it.
-    #[cfg(feature = "b2core")]
     #[inline(always)]
     pub fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
         self.store_with_bits(
@@ -666,9 +646,6 @@ impl TtProbe {
             Some(entry) => Self {
                 bound: entry.bound(),
                 depth: i32::from(entry.depth),
-                #[cfg(not(feature = "b2core"))]
-                score: score_from_tt(i32::from(entry.score), ply, halfmove_clock),
-                #[cfg(feature = "b2core")]
                 score: if entry.bound().is_some() {
                     score_from_tt(i32::from(entry.score), ply, halfmove_clock)
                 } else {
@@ -691,7 +668,7 @@ impl TtProbe {
 
     /// An exact score is stored. Consumed by the accepted arm's LMR reduction
     /// adjustment.
-    #[cfg(any(test, not(feature = "b2core")))]
+    #[cfg(test)]
     #[inline(always)]
     pub(crate) fn is_exact(&self) -> bool {
         matches!(self.bound, Some(Bound::Exact))
@@ -718,7 +695,6 @@ impl TtProbe {
     /// cuts an expected cut node, and a fail-high entry an expected all node,
     /// only above depth 5, where a wrong prediction is cheap to re-search.
     /// The caller owns the node-role guards and the rule-50 guard.
-    #[cfg(feature = "b2core")]
     #[inline(always)]
     pub(crate) fn node_cutoff_score(
         &self,
@@ -910,15 +886,6 @@ fn replacement<C: ClusterSlots>(
         }
     }
 
-    #[cfg(not(feature = "b2core"))]
-    if same_position
-        && e.bound != Bound::Exact
-        && e.depth < replace_entry.depth as i32 - 3
-        && (replace_entry.flag_age & AGE_MASK) == age
-    {
-        return None;
-    }
-
     let stored_move = if e.mv.is_null() && same_position {
         replace_entry.mv
     } else {
@@ -928,7 +895,6 @@ fn replacement<C: ClusterSlots>(
     // A current-generation entry for the same position that is at least four
     // plies deeper (six on a PV line) keeps its result; a new move still
     // replaces its move.
-    #[cfg(feature = "b2core")]
     if same_position
         && e.depth + 4 + 2 * i32::from(e.is_pv) <= i32::from(replace_entry.depth)
         && (replace_entry.flag_age & AGE_MASK) == age
@@ -1000,10 +966,7 @@ fn make_entry(key16: u16, mv: u16, age: u8, e: TtStore, bound_bits: u8) -> TtEnt
         score: crate::infra::saturating_i16(score_to_tt(score, ply)),
         static_eval: crate::infra::saturating_i16(static_eval),
         mv,
-        #[cfg(not(feature = "b2core"))]
-        depth: crate::infra::saturating_i8(depth, -1),
         // A searched result floors at -1; only a bound-less entry sits below.
-        #[cfg(feature = "b2core")]
         depth: if bound_bits == 0 {
             crate::infra::saturating_i8(EVAL_ONLY_DEPTH, -2)
         } else {
@@ -1024,11 +987,6 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "b2core"))]
-    use super::{
-        AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, LocalTable, PV_BIT, TranspositionTable, TtEntry,
-        TtStorage, entry_quality,
-    };
     use super::{Bound, TB_VALUE, TB_WIN_SCORE, TtProbe, score_from_tt, score_to_tt};
     use crate::eval::{MATE_SCORE, VALUE_NONE};
 
@@ -1201,47 +1159,6 @@ mod tests {
         assert!(!TtProbe::MISS.pv_line(false));
     }
 
-    #[cfg(not(feature = "b2core"))]
-    #[test]
-    fn four_bit_age_preserves_the_per_generation_replacement_penalty() {
-        let entry = TtEntry {
-            depth: 20,
-            // The free 0x08 bit is set too: flag bits below the age nibble
-            // must never leak into the replacement quality.
-            flag_age: Bound::Exact as u8 | PV_BIT | 0x08,
-            ..TtEntry::default()
-        };
-
-        for generation in 0_u8..16 {
-            let age = generation.wrapping_mul(AGE_STRIDE) & AGE_MASK;
-            assert_eq!(
-                entry_quality(entry, age),
-                20 - i32::from(generation) * 4,
-                "generation {generation}"
-            );
-        }
-        assert_eq!(AGE_QUALITY_DIVISOR, 4);
-    }
-
-    #[cfg(not(feature = "b2core"))]
-    #[test]
-    fn four_bit_age_wraps_after_sixteen_searches() {
-        let mut tt = TranspositionTable::new(1);
-        for expected_generation in 1_u8..16 {
-            tt.new_search();
-            let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
-                panic!("new table must use local storage");
-            };
-            assert_eq!(*age, expected_generation * AGE_STRIDE);
-        }
-        tt.new_search();
-        let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
-            panic!("new table must use local storage");
-        };
-        assert_eq!(*age, 0);
-    }
-
-    #[cfg(feature = "b2core")]
     mod core {
         use super::super::{
             AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,

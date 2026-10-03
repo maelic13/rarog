@@ -284,11 +284,8 @@ search_params! {
     /// and dropped, H0 -24.5 Elo — see tools/spsa_configs/README.md).
     probcut_margin = 180, "ProbCutMargin", 60..=400;
 
-    /// Paired-ablation mask. Bit per mechanism, matching the oracle's:
-    /// 0 razoring, 1 futility-child, 2 nullmove, 3 probcut, 4 iir,
-    /// 5 shallow-pruning, 6 extensions, 7 lmr. 0 = shipped behaviour.
-    /// Under `b2core` the bits name the selectivity core's mechanisms: 0
-    /// razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
+    /// Paired-ablation mask, one bit per mechanism, 0 = shipped behaviour:
+    /// 0 razoring, 1 reverse futility, 2 null move, 3 ProbCut, 4 IIR and
     /// hindsight reductions, 5 move-loop pruning (late-move, quiet and
     /// bad-noisy futility, history and SEE pruning), 6 singular extensions,
     /// 7 late-move reductions.
@@ -460,7 +457,6 @@ search_params! {
 // SEE units x0.75, plies, counts and history units unchanged), or the
 // geometric mean of the classical-oracle and Rarog-fitted values where the
 // donor's margin is sized for a far more accurate evaluation.
-#[cfg(feature = "b2core")]
 search_params! {
     struct CoreParams, generated_core_param_checks;
 

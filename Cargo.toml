@@ -38,20 +38,13 @@ tune = []
 # shipped binary, and never in a strength gate except as the arm under test.
 # Production compiles every guard out entirely -- `ablated()` is a const `false`.
 ablate = []
-# The selectivity core: one compile-time umbrella over the node kernel, move
-# picker, history and correction tables (`src/search/core/`). **On by default
-# since B.2.4b accepted it, 2026-09-20** (+138.60 ± 30.66 Elo fitted against
-# unfitted, after +65.09 ± 23.26 unfitted against the previous search).
-# `--no-default-features` compiles the superseded B.1 search instead, which
-# reproduces its own fingerprint and reports `+legacy`; B.8 deletes it.
-b2core = []
 # B.3's proof searches and extensions on the selectivity core: null move with
 # a verification region, ProbCut's margin-scaled verification, graded singular
 # extensions with LDSE and the LMR margin term, and the IIR policy switch
 # (analysis/b3_research_2026-09-23.md). Off by default until its gate accepts
 # it; with the feature off the search is the accepted core exactly. The
 # version string carries `+b3proof`.
-b3proof = ["b2core"]
+b3proof = []
 # B.4's quiescence cluster: the stored PV bit kept on depth-0 stores,
 # fail-high interpolation toward beta, the donor count rule, margins as
 # coordinates, evasion pruning (on) and quiescence noisy history (off) as
@@ -62,7 +55,7 @@ b3proof = ["b2core"]
 # carries `+b4quiet`.
 b4quiet = ["b3proof"]
 
-default = ["b2core", "b3proof", "b4quiet"]
+default = ["b3proof", "b4quiet"]
 # Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe

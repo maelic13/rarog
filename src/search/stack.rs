@@ -5,8 +5,6 @@ use std::ops::{Index, IndexMut};
 use crate::board::{Move, Piece};
 use crate::eval::VALUE_NONE;
 
-#[cfg(not(feature = "b2core"))]
-use super::history::{PIECE_TO_SIZE, piece_to_index};
 use super::{MAX_PLY, Searcher};
 
 /// Sentinel plies below the root. Look-backs of up to this many plies read a
@@ -86,52 +84,31 @@ pub(super) struct StackEntry {
     pub(super) cont_key: usize,
     /// Order index of `mv` among the moves its node's picker handed over,
     /// pruned moves included; zero for a ProbCut or null move.
-    #[cfg(feature = "b2core")]
     pub(super) move_count: i32,
     /// Accumulated lateness of the line to this ply: the parent's laterality
     /// plus `max(ilog2(move_count) - 1, 0)`; zero after a null move.
-    #[cfg(feature = "b2core")]
     pub(super) laterality: i32,
     /// The LMR reduction, in 1024ths of a ply, of the move being searched at
     /// this ply; zero outside that reduced search. The child reads it.
-    #[cfg(feature = "b2core")]
     pub(super) reduction: i32,
     /// Beta cutoffs at this ply since the grandparent reset it on entry.
-    #[cfg(feature = "b2core")]
     pub(super) cutoff_count: i32,
     /// Whether the node at this ply is on a PV line, by node type or by the
     /// stored bit.
-    #[cfg(feature = "b2core")]
     pub(super) tt_pv: bool,
     /// The node's validated TT move, or null.
-    #[cfg(feature = "b2core")]
     pub(super) tt_move: Move,
     /// Squares the side not to move attacks at this node, once the node has
     /// computed them; a child updates the histories of the move made here
     /// under these threats.
-    #[cfg(feature = "b2core")]
     pub(super) threats: crate::board::Bitboard,
     /// The piece `mv` captured, if any.
-    #[cfg(feature = "b2core")]
     pub(super) captured: Option<Piece>,
     /// Positive extensions taken along the line from the root up to and
     /// including the move made at this ply; the child reads it as its own
     /// spent budget.
     #[cfg(feature = "b3proof")]
     pub(super) extension_spent: i32,
-}
-
-#[cfg(not(feature = "b2core"))]
-impl StackEntry {
-    /// Row base for continuation tables at this ply.
-    ///
-    /// `cont_row_base(piece, to) == piece_to_index(piece, to) * PIECE_TO_SIZE`,
-    /// so the stored key serves every continuation site and none of them needs
-    /// to re-derive the pair from `mv`/`piece`.
-    #[inline]
-    pub(super) fn cont_row_base(&self) -> usize {
-        self.cont_key * PIECE_TO_SIZE
-    }
 }
 
 impl Default for StackEntry {
@@ -141,21 +118,13 @@ impl Default for StackEntry {
             piece: Piece::Pawn,
             static_eval: VALUE_NONE,
             cont_key: 0,
-            #[cfg(feature = "b2core")]
             move_count: 0,
-            #[cfg(feature = "b2core")]
             laterality: 0,
-            #[cfg(feature = "b2core")]
             reduction: 0,
-            #[cfg(feature = "b2core")]
             cutoff_count: 0,
-            #[cfg(feature = "b2core")]
             tt_pv: false,
-            #[cfg(feature = "b2core")]
             tt_move: Move::NULL,
-            #[cfg(feature = "b2core")]
             threats: crate::board::Bitboard::EMPTY,
-            #[cfg(feature = "b2core")]
             captured: None,
             #[cfg(feature = "b3proof")]
             extension_spent: 0,
@@ -164,18 +133,6 @@ impl Default for StackEntry {
 }
 
 impl Searcher {
-    /// Record the move being searched at `ply`, deriving its continuation key.
-    ///
-    /// The ONLY way to put a move on the stack. Writing `mv` and `piece`
-    /// separately is what let ProbCut desynchronise them (see `StackEntry`).
-    #[cfg(not(feature = "b2core"))]
-    #[inline]
-    pub(super) fn push_move(&mut self, ply: usize, mv: Move, piece: Piece) {
-        self.td.stack[ply].mv = mv;
-        self.td.stack[ply].piece = piece;
-        self.td.stack[ply].cont_key = piece_to_index(piece as usize, mv.to_sq().index());
-    }
-
     /// Clear the move at `ply`. The static eval is deliberately preserved: it
     /// belongs to the node, not to the move being tried at it.
     #[inline]

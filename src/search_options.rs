@@ -1,5 +1,4 @@
 use crate::board::{Board, Move};
-#[cfg(feature = "b2core")]
 use crate::search::params::CoreParams;
 #[cfg(feature = "b3proof")]
 use crate::search::params::ProofParams;
@@ -41,7 +40,6 @@ pub struct EngineOptions {
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
     /// The selectivity core's coordinates.
-    #[cfg(feature = "b2core")]
     pub core_params: CoreParams,
     /// The proof-search cluster's coordinates.
     #[cfg(feature = "b3proof")]
@@ -61,7 +59,6 @@ impl Default for EngineOptions {
             multi_pv: 1,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
-            #[cfg(feature = "b2core")]
             core_params: CoreParams::default(),
             #[cfg(feature = "b3proof")]
             proof_params: ProofParams::default(),
@@ -201,7 +198,7 @@ impl SearchOptions {
         // params.rs, so the strings cannot drift from the defaults and clamps.
         #[cfg(feature = "tune")]
         opts.extend(SearchParams::uci_option_strings());
-        #[cfg(all(feature = "tune", feature = "b2core"))]
+        #[cfg(feature = "tune")]
         opts.extend(CoreParams::uci_option_strings());
         #[cfg(all(feature = "tune", feature = "b3proof"))]
         opts.extend(ProofParams::uci_option_strings());
@@ -471,7 +468,7 @@ impl SearchOptions {
                 {
                     return OptionUpdate::Engine;
                 }
-                #[cfg(all(feature = "tune", feature = "b2core"))]
+                #[cfg(feature = "tune")]
                 if self.engine.core_params.set_uci_option(&option_name, &value) {
                     return OptionUpdate::Engine;
                 }

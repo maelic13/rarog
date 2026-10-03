@@ -29,8 +29,8 @@ pub fn initialize_tables() {
 }
 
 /// The engine version as reported to the user: the package version alone for
-/// the default build, which is the accepted selectivity core.
-#[cfg(all(feature = "b2core", not(feature = "b3proof")))]
+/// the selectivity core without the later clusters.
+#[cfg(not(feature = "b3proof"))]
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// The engine version as reported to the user, with `+b3proof` for the
 /// candidate arm of the proof-search cluster, so a match binary names its arm.
@@ -40,11 +40,6 @@ pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+b3proof");
 /// arm, so a match binary names its arm.
 #[cfg(feature = "b4quiet")]
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+b4quiet");
-/// The engine version as reported to the user, with `+legacy` for a
-/// `--no-default-features` build of the superseded B.1 search, so such a
-/// binary identifies itself wherever it turns up. B.8 deletes that path.
-#[cfg(not(feature = "b2core"))]
-pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+legacy");
 
 pub mod bench;
 pub mod board;

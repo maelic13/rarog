@@ -239,30 +239,6 @@ impl Searcher {
         result
     }
 
-    /// One xorshift64 step, mapped to LMR-reduction jitter in 1024ths of a ply.
-    ///
-    /// A PRNG rather than a function of the node counter, so consecutive nodes
-    /// do not get consecutive jitter. At magnitude 64 the range is [−64, 63]
-    /// with mean −0.5/1024, so the jitter diversifies the threads without
-    /// raising their mean reduction.
-    #[cfg(not(feature = "b2core"))]
-    #[inline(always)]
-    pub(super) fn next_jitter(&mut self, magnitude: i32) -> i32 {
-        let mut x = self.td.jitter_state;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.td.jitter_state = x;
-        // Top 7 bits, not the bottom ones: xorshift64's low bits are its
-        // weakest (they carry the least mixing), and taking them measurably
-        // skewed the mean. `>> 57` yields 0..=127, so the result is [−64, 63].
-        // `magnitude` in 1024ths of a ply; the result is [−magnitude,
-        // +magnitude]. At magnitude 64 this is exactly `(x >> 57) - 64`, since
-        // `bits * 64 / 64 - 64 == bits - 64`.
-        let bits = i32::try_from(x >> 57).expect("7-bit shift fits i32");
-        bits * magnitude / 64 - magnitude
-    }
-
     fn search_worker<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         root: Board,

@@ -8,7 +8,7 @@ use crate::eval::Evaluator;
 use super::correction::CorrectionTables;
 use super::history::HistoryTables;
 use super::stack::{PlyArray, StackEntry};
-use super::{InfoSink, JITTER_SEED, MAX_PLY, RootMove, SilentSink};
+use super::{InfoSink, MAX_PLY, RootMove, SilentSink};
 
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,
@@ -56,11 +56,8 @@ pub(super) struct ThreadData {
     /// Static-evaluation correction tables.
     pub(super) corr: CorrectionTables,
     pub(super) root_move_offset: usize,
-    /// 0 = main thread, 1.. = helper index. Seeds the reduction jitter.
+    /// 0 = main thread, 1.. = helper index.
     pub(super) thread_id: usize,
-    /// Xorshift64 state for the per-thread LMR jitter. Re-seeded from
-    /// `thread_id` on every `reset_search_state`; never zero.
-    pub(super) jitter_state: u64,
     pub(super) root_iteration_nodes: u64,
     pub(super) root_best_nodes: u64,
     pub(super) root_best_effort: f64,
@@ -69,7 +66,6 @@ pub(super) struct ThreadData {
     /// iteration completes and whenever `CoreOptimism` is off.
     pub(super) optimism: [i32; 2],
     /// Width of the root window of the current aspiration step.
-    #[cfg(feature = "b2core")]
     pub(super) root_delta: i32,
     /// While a null-move verification search runs, the first ply at which the
     /// null move is allowed again; zero outside a verification, and at every
@@ -106,9 +102,9 @@ pub(super) struct ThreadData {
     pub(super) budget_truncations: u64,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
-    #[cfg(all(test, feature = "b2core"))]
+    #[cfg(test)]
     pub(super) lmr_at_root: u64,
-    #[cfg(all(test, feature = "b2core"))]
+    #[cfg(test)]
     pub(super) lmr_in_check: u64,
 }
 
@@ -140,12 +136,10 @@ impl Default for ThreadData {
             corr: CorrectionTables::default(),
             root_move_offset: 0,
             thread_id: 0,
-            jitter_state: JITTER_SEED,
             root_iteration_nodes: 0,
             root_best_nodes: 0,
             root_best_effort: 0.0,
             optimism: [0; 2],
-            #[cfg(feature = "b2core")]
             root_delta: 1,
             #[cfg(feature = "b3proof")]
             nmp_min_ply: 0,
@@ -167,9 +161,9 @@ impl Default for ThreadData {
             budget_overrun: i32::MIN,
             #[cfg(all(test, feature = "b3proof"))]
             budget_truncations: 0,
-            #[cfg(all(test, feature = "b2core"))]
+            #[cfg(test)]
             lmr_at_root: 0,
-            #[cfg(all(test, feature = "b2core"))]
+            #[cfg(test)]
             lmr_in_check: 0,
         }
     }

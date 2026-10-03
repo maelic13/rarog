@@ -19,16 +19,9 @@ macro_rules! trace_decision {
     };
 }
 
-// The selectivity-core candidate replaces the node kernel and the tables it
-// owns as one unit behind the `b2core` umbrella. The module names stay the
-// same in both arms, so everything else in the search compiles against either.
-#[cfg_attr(feature = "b2core", path = "core/correction.rs")]
 mod correction;
-#[cfg_attr(feature = "b2core", path = "core/history.rs")]
 mod history;
-#[cfg_attr(feature = "b2core", path = "core/movepick.rs")]
 mod movepick;
-#[cfg_attr(feature = "b2core", path = "core/node.rs")]
 mod node;
 pub mod params;
 mod shared;
@@ -48,7 +41,6 @@ use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE};
 
 use node::build_lmr_table;
-#[cfg(feature = "b2core")]
 use params::CoreParams;
 #[cfg(feature = "b3proof")]
 use params::ProofParams;
@@ -68,11 +60,6 @@ const MAX_DEPTH: usize = 100;
 const MAX_PLY: usize = 128;
 const MAX_QPLY: usize = 16;
 const MIN_PARALLEL_DEPTH: usize = 4;
-/// Jitter-PRNG seeding. Two odd 64-bit constants (SplitMix64's
-/// increment and Xorshift*'s multiplier); the `| 1` at the use site guarantees
-/// the state is never zero, xorshift's fixed point.
-const JITTER_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
-const JITTER_STRIDE: u64 = 0x2545_F491_4F6C_DD1D;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
 /// Where a searcher writes its protocol output: the `info` line of each
@@ -216,7 +203,6 @@ impl RootMove {
 /// from them, the resolved limits and the instant the clock started.
 struct SearchConfig {
     params: SearchParams,
-    #[cfg(feature = "b2core")]
     core: CoreParams,
     #[cfg(feature = "b3proof")]
     proof: ProofParams,
@@ -237,7 +223,6 @@ impl Default for SearchConfig {
             lmr_table: build_lmr_table(params.lmr_table_base, params.lmr_table_div),
             lmr_table_key: (params.lmr_table_base, params.lmr_table_div),
             params,
-            #[cfg(feature = "b2core")]
             core: CoreParams::default(),
             #[cfg(feature = "b3proof")]
             proof: ProofParams::default(),
@@ -744,10 +729,7 @@ impl Searcher {
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
-        #[cfg(feature = "b2core")]
-        {
-            self.cfg.core = engine_options.core_params.clone();
-        }
+        self.cfg.core = engine_options.core_params.clone();
         #[cfg(feature = "b3proof")]
         {
             self.cfg.proof = engine_options.proof_params.clone();
@@ -787,13 +769,6 @@ impl Searcher {
         {
             self.td.trace_decisions = self.td.thread_id == 0 && !limits.search_moves.is_empty();
         }
-        // Re-seed the LMR-jitter PRNG per search, per thread, so each
-        // thread walks a different sequence and a given thread's sequence does
-        // not depend on how the previous search happened to end. `thread_id` is
-        // bounded by MAX_THREADS so the conversion always succeeds; a fallback
-        // seed would only pick a different sequence, never break anything.
-        let thread_seed = u64::try_from(self.td.thread_id).unwrap_or(0);
-        self.td.jitter_state = JITTER_SEED ^ thread_seed.wrapping_mul(JITTER_STRIDE) | 1;
     }
 
     /// A root with no legal move: report the position's value and then
@@ -948,7 +923,6 @@ impl Searcher {
             }
             // Optimism for this iteration, from the running average of the
             // completed scores (the donors' form); zero before the first.
-            #[cfg(feature = "b2core")]
             self.set_optimism(board.side_to_move(), completed_depth, prev_avg_score);
             // Termination by construction: see `Aspiration`.
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
@@ -1231,7 +1205,6 @@ impl Searcher {
     /// score, the other side by the negative, both zero while the switch is
     /// off or no iteration has completed. The consumer is the corrected
     /// evaluation, which weights it by the material on the board.
-    #[cfg(feature = "b2core")]
     fn set_optimism(&mut self, root_side: Color, completed_depth: usize, avg: f64) {
         let p = &self.cfg.core;
         let value = if p.optimism == 0 || completed_depth == 0 {
@@ -1694,7 +1667,6 @@ impl Searcher {
     /// loss an upper bound, since the search may find a faster mate or a
     /// slower loss than the tables' distance; a draw, cursed and blessed
     /// results included under the rule-50 option, is exact.
-    #[cfg(feature = "b2core")]
     fn syzygy_wdl_bound(
         &mut self,
         board: &Board,
