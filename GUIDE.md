@@ -138,7 +138,7 @@ arm is 1T.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| B.10 Release 2.5.0 (added 2026-10-03), maintainer actions | Implemented 2026-10-04. The maintainer opens the PR `dev` → `master`, merges on green CI, tags `v2.5.0`, publishes the GitHub release (which builds the assets) and deletes the three reviewed local branches (PLAN B.10) | Phase B's close |
+| B.10 Release 2.5.0 (added 2026-10-03), maintainer actions | Merged to `master` 2026-10-04 (`bd1c1a5`); the three reviewed local branches deleted. The maintainer pushes the `v2.5.0` tag on the `master` commit carrying E.3.1's `release.yml`, which builds, checks and publishes the assets | Phase B's close |
 | E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
@@ -285,7 +285,7 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19) — **V**
 - [ ] **E.3** Release 3.0.0 (gate met) or 2.6.0 (2.5.0 is cut at B.10): changelog, suites, PGO assets, ISA, cut by pushing a `v` tag through E.3.1's workflow, on instruction — **M**
-    - [ ] **E.3.1** Tag-driven release flow (Colosseum's model): `git tag vX.Y.Z` on `master` and push; the workflow validates (tag = `Cargo.toml` version, commit on `master`, `## [X.Y.Z]` section in `CHANGELOG.md`), builds the nine PGO assets read-only, asserts one `bench 13` fingerprint across them, then one write job publishes with notes from the changelog; candidate mode rehearses without a tag; asset names unchanged; repair = delete tag, fix, retag; local `release-check`. Depends on nothing in B–D: **may land any time, must land before E.3** (added 2026-09-22) — **I1**
+    - [ ] **E.3.1** Tag-driven release flow, implemented 2026-10-04 (`release.yml`, `cargo xtask release-check`; the rehearsal run pending) — Colosseum's model: `git tag vX.Y.Z` on `master` and push; the workflow validates (tag = `Cargo.toml` version, commit on `master`, `## [X.Y.Z]` section in `CHANGELOG.md`), builds the nine PGO assets read-only, asserts one `bench 13` fingerprint across them, then one write job publishes with notes from the changelog; candidate mode rehearses without a tag; asset names unchanged; repair = delete tag, fix, retag; local `release-check`. Depends on nothing in B–D: **may land any time, must land before E.3** (added 2026-09-22) — **I1**
 
 ## Phase F — NNUE (own data only)
 
