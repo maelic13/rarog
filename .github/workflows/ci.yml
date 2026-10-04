@@ -1,10 +1,9 @@
 # Development CI.
 #
 # TRIGGERS: a pull request into master (the gate — GitHub builds the merge
-# commit, so this run is exactly what master would become), push to master
-# (kept as the enforced fallback until the jobs below are required status
-# checks with "require branches to be up to date"; then drop it, it is
-# redundant by construction), and manual dispatch on any branch. Deliberately
+# commit, so this run is exactly what master would become; master enforces
+# linear history, so the merged tree is the tested one) and manual dispatch
+# on any branch. Not on push to master: redundant by construction. Deliberately
 # NOT on every push to development: the local loop verifies fmt, clippy, the
 # suites and the bench on Windows x86-64 at each commit.
 #
@@ -19,8 +18,6 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
-  push:
     branches: [master]
   workflow_dispatch:
 
