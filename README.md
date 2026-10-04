@@ -11,11 +11,11 @@ a chess GUI or an engine-testing tool.
 
 ## Highlights
 
-- **Strong modern search** — iterative deepening with principal variation
-  search, aspiration windows, null-move pruning, ProbCut, singular extensions,
-  late move reductions and a capture-focused quiescence search.
+- **Strong modern search** — principal variation search with aspiration
+  windows, null-move pruning, ProbCut, singular extensions, late move
+  reductions, history and correction tables, and a quiescence search.
 - **Multi-threaded** — parallel search that scales across cores, enabled with
-  the standard `Threads` option.
+  the standard `Threads` option; `MultiPV` for analysis.
 - **Tuned evaluation** — a tapered evaluation fitted to millions of positions,
   covering king safety, mobility, threats, pawn structure and passed pawns,
   material imbalance and endgame knowledge.
@@ -48,8 +48,7 @@ the one matching your operating system and CPU:
 
 ### How much the choice is worth
 
-Measured on an idle Ryzen 9 5950X, pooling four independent PGO builds per
-asset so that per-build optimisation luck averages out:
+Measured on a Ryzen 9 5950X:
 
 | Comparison | Result |
 | --- | --- |
@@ -112,8 +111,7 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 ### Supported commands
 
 `uci`, `isready`, `setoption`, `ucinewgame`, `position`, `go`, `stop`,
-`ponderhit` and `quit`, plus `bench`, `wac` (the WAC tactical suite, a
-diagnostic) and `help` for use by hand; `help` describes them.
+`ponderhit` and `quit`, plus `bench` and `help` for use by hand.
 
 `go` supports `depth`, `nodes`, `movetime`, `wtime`, `btime`, `winc`, `binc`,
 `movestogo`, `mate`, `searchmoves`, `ponder`, `perft` and `infinite`.
@@ -160,7 +158,7 @@ needed for a valid profile; no separate LLVM installation is required.
 
 ### Tests
 
-The same commands CI runs, in both profiles:
+In both profiles:
 
 ```bash
 cargo test -p rarog

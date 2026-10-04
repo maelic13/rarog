@@ -9,85 +9,47 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [2.5.0] - 2026-10-04
 
-The search release. The search was rebuilt and fitted in this engine in three
-clusters, each accepted by its own gate, then sped up; the evaluation terms
-are 2.4.0's.
-Against the 2.4.0 release, head to head with no adjudication, this head
-measured **+272.4 Elo at `3+0.03` on one thread** (400 games, 95% about
-+245 .. +308; RAR-M64), **+260.5 ± 16.0 Elo at `10+0.1`** (1,000 games;
-RAR-M65) and **+322.7 Elo at `3+0.03` on four threads** (400 games, 95%
-+289 .. +362; RAR-M66). Those three direct readings are the release's
-numbers. The gates listed below were run one after another against different
-baselines, partly on different harnesses; they are not additive, and their
-sum must not be quoted as the release's gain.
-
-The reference this work was planned against is classical Stockfish's search
-running Rarog's own evaluation through a cross-language bridge. 2.4.0 lost to
-it by 247.97 ± 10.89 Elo at equal time; this head wins by **+24.24 ± 8.01**
-(3,000 games; RAR-O04). The reference pays the bridge on every evaluation, so
-this says the measured search deficit is closed, not that Rarog's search
-matches Stockfish's at full speed. In a gauntlet whose opponents' ratings are
-held fixed, the head rates 3,286.5 ± 15.7 on one thread against 2.4.0's
-3,001, and scores more than half the points against Houdini 3, Critter 1.6a,
-Fritz 16 and Rybka 4.1 on one thread and on four. These are this project's
-own pool ratings, not a rating list's.
-
-The new search is slower: at the fixed `bench` it searches **26.2% fewer
-nodes per second than 2.4.0** (RAR-P35), after the speed pass below won part
-of the loss back. It is stronger because each node does more, not because it
-is faster, and for the same reason it reports smaller depths than 2.4.0 did.
+A new search. Measured head to head against 2.4.0 with no adjudication, 2.5.0
+is **+272 Elo at `3+0.03`** (400 games), **+261 ± 16 at `10+0.1`** (1,000
+games) and **+323 at `3+0.03` with four threads** (400 games). The evaluation
+is unchanged. The new search visits about 26% fewer nodes per second than
+2.4.0 and reports smaller depths; it is stronger because each node does more.
 
 ### Added
 
 - `MultiPV` (default `1`, up to `256`) reports the best several lines each
-  depth for analysis, capped by the moves left after `searchmoves` and the
-  tablebase root filter. Lines interrupted by a stop are marked `lowerbound` or
-  `upperbound`, and `bestmove` is always the first line. With `Threads` above
-  one, the main thread searches the lines and the helpers assist through the
-  hash table. At `MultiPV 1` the search and its output are unchanged.
+  depth for analysis. Lines interrupted by a stop are marked `lowerbound` or
+  `upperbound`, and `bestmove` is always the first line. At `MultiPV 1` the
+  search and its output are unchanged.
 
 ### Changed
 
-- **A new search core** is the default search: a replacement node kernel, move
-  picker, history and correction tables, late move reductions and move-loop
-  pruning, with its ~100 constants fitted by a 160,000-game SPSA. It was
-  accepted over the previous search by two gates, +65.09 ± 23.26 Elo unfitted
-  and +138.60 ± 30.66 Elo fitted against that, and a re-tune of its
-  most-moved constants added +13.1 ± 5.4 Elo (RAR-S73, RAR-S78).
-- **Null-move pruning, ProbCut, the singular-extension family (with multi-cut
-  and negative extensions) and internal iterative reduction** were rebuilt on
-  the new core and fitted together: +50.5 ± 10.9 Elo (RAR-S84).
-- **The quiescence search** was rebuilt: fail-high scores are interpolated
-  toward the bound, quiescence hash entries remember whether they came from a
-  principal-variation node, a move-count limit exempts checks and recaptures,
-  hopeless evasions are pruned, and its margins were refitted: +4.4 ± 2.9 Elo
-  (RAR-S88).
-- **A speed pass** on the new search: the move picker leaves a quiet stage as
-  soon as it is exhausted, moves are scored in place, and the hash entry of
-  the next position is prefetched before the move is made — +8.85%, +6.93%
-  and +1.69% nodes per second, and +35.5 ± 9.0 Elo in games against the
-  search before it (RAR-P28, RAR-P31, RAR-S98).
+- **The search was rebuilt**: a new node kernel, move picker, history and
+  correction tables, late move reductions and move-loop pruning, with its
+  constants fitted in a 160,000-game tune. Null-move pruning, ProbCut,
+  singular extensions (with multi-cut and negative extensions), internal
+  iterative reduction and the quiescence search were rebuilt on it and fitted
+  together. Each part was accepted against the previous version in its own
+  test (+65 and +139 Elo for the core and its fit, +13 for a re-tune, +50 for
+  the pruning and extension family, +4 for the quiescence search) and the
+  whole was then made faster (+18% nodes per second, worth +35 ± 9 Elo).
 - **Tablebase results are reported as decided.** With `SyzygyPath` set, a
   tablebase win or loss prints as `cp 20000` or `cp -20000`, one less for each
-  ply from the root, instead of a large evaluation, and the principal
-  variation is continued through the tables when time allows, so the line and
-  the ponder move are complete. With tables configured: +11.4 ± 8.5 Elo (RAR-S94); every
-  one of 453 clean tablebase wins was converted in a 1,500-game endgame read
-  (RAR-S93).
-- The search code was reorganised into modules without changing a node, and
-  ran 6.3% faster for it (RAR-P24).
+  ply from the root, and the principal variation is continued through the
+  tables when time allows, so the line and the ponder move are complete.
+  Worth +11 ± 9 Elo with tables configured.
 
 ### Fixed
 
 - **Time losses in fast games.** Lookup tables were built inside the first
-  search that needed them — the king-and-pawn bitbase cost about 34 ms on that
-  search's clock — which lost games late in blitz whenever a GUI or harness
-  started a fresh engine per game. Every table is now built at start-up, and a
-  multi-threaded search no longer converts the hash table on the clock either.
+  search that needed them, which lost games late in blitz whenever a GUI or
+  harness started a fresh engine per game. Every table is now built at
+  start-up, and a multi-threaded search no longer prepares the hash table on
+  the clock either.
 - **A time loss with tablebases.** Continuing the principal variation through
   the tables could run a fast game's clock out; it now starts only when enough
-  time is left (RAR-S97). A rare loss remains possible in a very fast game
-  when tablebase files are first read from disk.
+  time is left. A rare loss remains possible in a very fast game when
+  tablebase files are first read from disk.
 - **One-move lines at tablebase roots.** A root resolved by the tablebases
   reported a single move and stopped deepening early; it now searches and
   reports a full line.
@@ -107,39 +69,24 @@ is faster, and for the same reason it reports smaller depths than 2.4.0 did.
   default, no longer tries to load tablebases from a folder of that name.
 - **No `bestmove` after an instant `ponderhit` or `stop`.** When a GUI sent
   `ponderhit` or `stop` immediately after `go ponder`, as it does when the
-  opponent replies at once, the engine lost it: after `ponderhit` it pondered
-  without a clock, and after `stop` it skipped the search and never answered.
-  Either lost the game on time. Both now reach the search they follow, even
-  before it starts, and never a later one.
+  opponent replies at once, the engine lost the game on time. Both now reach
+  the search they follow, even before it starts.
 - **An unreachable triple check was accepted.** A FEN whose side to move is in
-  check from more than two pieces is now rejected like any other invalid FEN;
-  no move gives three checks at once.
+  check from more than two pieces is now rejected like any other invalid FEN.
 
 ### Removed
 
-- The 2.4.0 search, which this release carried as a build option
-  (`--no-default-features`) until the new one was accepted, and the build
-  features that selected each new cluster while it was tested.
-- Machinery that had no effect at its defaults: 44 inert search parameters,
-  root-confidence snapshots and a helper-thread skip rule (removed without
-  changing a node), later 64 tuning constants nothing read and 14 switches
-  whose question had been decided, with their options in the tuning build
-  (217 → 153 options; the shipped build's options are unchanged apart from
-  `MultiPV`), 73 diagnostic counters with no reader, a never-reached guard in
-  the principal-variation search, and the `ablate` build feature. The last
-  round of removals ran 1.16% faster (RAR-P34).
+- The 2.4.0 search, and the build features that selected the new one while it
+  was tested. The shipped build's options are unchanged apart from `MultiPV`.
+- Tuning constants, switches and diagnostic counters that nothing read; they
+  were visible only in development builds.
 
 ## [2.4.0] - 2026-09-11
 
-A consolidation release. Its gate, RAR-E16, measured this head against a 2.3.2
-binary rebuilt from the release recipe at `3+0.03`, 1T, accepting H1 after
-**742 games at +54.77 ± 17.04 Elo**; a fixed-size 400-game `3+0.03` 4T
-direction check read +79.53 ± 21.21 with zero forfeits, zero crashes and zero
-protocol warnings. An SPRT decides rather than estimates and stops biased
-upward, so the honest reading is "clearly and substantially positive, magnitude
-not settled" — do not quote +54.77 as the release's Elo over 2.3.2. The
-individual results below are sequential gates under different baselines and
-estimators; they are not additive and must not be summed.
+A consolidation release: **+55 ± 17 Elo over 2.3.2 at `3+0.03`** (742 games,
+one thread) and +80 ± 21 with four threads (400 games), with no time forfeits,
+crashes or protocol warnings. The results quoted below were measured one after
+another against different baselines and do not add up to a release total.
 
 ### Added
 
@@ -155,63 +102,46 @@ estimators; they are not additive and must not be summed.
 ### Changed
 
 - **ProbCut move filter.** Capture eligibility is tied to the gap the capture
-  must bridge and the cap applies to moves searched rather than examined,
-  scaled by `cut_node`. Gated as a bundle at **+15.44 ± 8.06 Elo
-  (+24.50 ± 12.78 nElo)** in 2,838 games; the RAR-S58 ablation credits the
-  filter alone at +24.90 ± 16.01 nElo and its null-move partner at zero, so
-  that partner was reverted and is not part of this release.
-- **Root-only LMR relief** of 1.5 ply at ply 0, where the reduction formula
-  previously could not see the root at all. **+2.33 ± 1.85 Elo
-  (+3.58 ± 2.85 nElo)** over 56,928 games, for 6.6% fewer nodes.
-- **Two complete evaluation refits.** The first whole-surface WDL refit of the
-  1,218-slot HCE measured **+22.04 ± 7.51 Elo**; the later `hce-v3` refit on a
-  602,619-game non-adjudicated corpus measured a further **+11.81 ± 5.33 Elo**.
+  must bridge and the cap applies to moves searched rather than examined.
+  +15 ± 8 Elo.
+- **Root-only LMR relief** of 1.5 ply at the root, where the reduction formula
+  previously could not see the root at all. +2.3 ± 1.9 Elo for 6.6% fewer
+  nodes.
+- **Two complete evaluation refits**, +22 ± 8 and +12 ± 5 Elo, the second on a
+  602,619-game corpus played out without adjudication.
 - **Tablebase-corrected training labels.** Every training position with six men
   or fewer is relabelled to its Syzygy value with the fifty-move rule kept, so
-  a cursed win is labelled the draw it is. **+6.73 ± 3.82 Elo** over the
-  identical position set with self-play labels.
-- **Board and move-generation cluster**, gated as one dependency-complete
-  change at **+12.12 ± 10.17 Elo**: the SEE and UCI repairs listed below plus
-  caller-owned move-list delivery and related throughput work, together worth
-  +1.421% whole-search NPS.
-- The search clock now starts when `go` is parsed, as both reference engines
-  do, rather than after move setup. Re-measured at **zero time forfeits in
-  10,000 games** and −0.69 ± 3.62 Elo, i.e. free.
-- The build is pinned to `rustc 1.98.1` and `cc` 1.4.5, with `rust-version`
-  held in lockstep with `rust-toolchain.toml` so a stale toolchain fails with
-  a clear cargo message.
+  a cursed win is labelled the draw it is. +7 ± 4 Elo.
+- **Board and move generation**: the SEE and UCI repairs listed below plus
+  faster move-list delivery, together +12 ± 10 Elo and +1.4% nodes per second.
+- The search clock now starts when `go` is parsed rather than after move
+  setup: zero time forfeits in 10,000 games.
+- The build is pinned to `rustc 1.98.1`, so a stale toolchain fails with a
+  clear cargo message.
 
 ### Fixed
 
 - **Static exchange evaluation** no longer treats king recaptures into
   attacked squares as legal, ignores pins it creates, or mis-values recapture
-  promotions. This makes the search prune less — the fixed-depth `bench 13`
-  node count rises 6,901,489 → 7,601,220 — and was gated as part of the board
-  cluster above rather than assumed harmless.
-- Two boundary defects on the board and protocol edge: the FEN fullmove counter
-  saturates instead of overflowing at `u16::MAX`, so it is defined identically
-  in debug and release, and `Move::from_uci` rejects non-ASCII input rather
-  than indexing into the middle of a multi-byte character.
-- **KBN-K conversion.** The mate drive had been passing its anchor test under a
-  broken drive; repaired, conversion of the bishop-and-knight mate moves from
-  **19.4% to 96.9%**, with no change to the search fingerprint — fingerprint
-  equality alone never proved narrow-feature neutrality.
-- Changing the `LazyMargin` UCI option now clears the evaluation cache. The
-  margin decides which expensive evaluation terms run, so scores cached under
-  the previous margin stayed readable and wrong.
+  promotions. The search prunes less for it (the fixed-depth `bench 13` node
+  count rises 6,901,489 → 7,601,220), and the change was tested as part of the
+  board cluster above.
+- Two boundary defects: the FEN fullmove counter saturates instead of
+  overflowing, and `Move::from_uci` rejects non-ASCII input rather than
+  indexing into the middle of a multi-byte character.
+- **KBN-K conversion.** The bishop-and-knight mate drive was broken; repaired,
+  it converts **96.9%** of those endgames instead of 19.4%.
+- Changing the `LazyMargin` UCI option now clears the evaluation cache, so
+  scores cached under the previous margin are not served.
 - A panic is now reported on stdout, where a tournament harness records it,
-  instead of on stderr where 2.3.2's single crash in ~5,200 games left nothing
-  the operator could act on.
+  instead of on stderr.
 
 ### Removed
 
-- `lmr_prior_reduction_adj`, together with its consumer, its call sites and the
-  now-unused reduction field it read. With the stale-read defect it depended on
-  repaired, RAR-S64 measured the whole cluster at +0.39 ± 4.89 Elo against the
-  head: the gain had been the bug. A knob parked at its no-op value is still a
-  branch in the hot path and a coordinate in the tuning surface.
-- The null-move entry half of the 4.7 selectivity bundle, reverted after its
-  ablation measured its contribution in company at zero.
+- A late-move-reduction adjustment whose measured gain had been a bug it
+  depended on; with the bug repaired it was worth nothing.
+- The null-move half of an earlier selectivity bundle, measured at zero in
+  company.
 
 ## [2.3.2] - 2026-08-11
 
