@@ -1,12 +1,14 @@
 # Development CI.
 #
-# TRIGGERS: push to master (the release gate — master is what becomes a
-# release) and manual dispatch on any branch. Deliberately NOT on push to
-# development: the local dev loop already verifies fmt/clippy/tests/bench on
-# Windows x86-64 every commit, so per-commit CI there would mostly re-check
-# what is already known. Use the manual button before merging.
+# TRIGGERS: a pull request into master (the gate — GitHub builds the merge
+# commit, so this run is exactly what master would become), push to master
+# (kept as the enforced fallback until the jobs below are required status
+# checks with "require branches to be up to date"; then drop it, it is
+# redundant by construction), and manual dispatch on any branch. Deliberately
+# NOT on every push to development: the local loop verifies fmt, clippy, the
+# suites and the bench on Windows x86-64 at each commit.
 #
-# Both triggers run the IDENTICAL job set. That is the point: a manual run is
+# Every trigger runs the IDENTICAL job set. That is the point: a PR run is
 # only useful as a pre-merge check if it is a faithful preview of the master
 # gate. A subset would hand out false confidence.
 #
@@ -16,6 +18,8 @@
 name: CI
 
 on:
+  pull_request:
+    branches: [master]
   push:
     branches: [master]
   workflow_dispatch:
