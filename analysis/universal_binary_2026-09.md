@@ -160,7 +160,21 @@ It becomes worth doing if any of these fire:
   Stockfish's `RUN_PREFIX` arrangement. Another reason not to grow the ladder
   before NNUE gives it a reason.
 
-## 8. Sources
+## 8. The specialized assets carry no startup CPU guard
+
+Moved from `PROCESS.md` on 2026-09-14.
+
+There is deliberately no startup CPU guard inside specialized assets. When the
+compiler is told that BMI2/AVX2/FMA are mandatory, ordinary feature-detection
+macros fold those checks to true and the guard is removed. A working
+in-process guard would require baseline-compiled CPUID code to execute before
+specialized code, adding a separate dispatch boundary. The current design is
+close to the specialized-binary model: users choose `x86-64`, `avx2`, `pext`
+or `arm64`, the README states exact requirements, and release tooling
+disassembles each asset to enforce the promise. If a single universal binary
+becomes a product goal, G.2 may add a Stockfish-style baseline dispatcher.
+
+## 9. Sources
 
 RAR-P20 (tier value, and the frozen decision rule it resolved); RAR-P19 (the
 `cc` macOS `-fprofile-use` gap found alongside); RAR-M20 (~2 Elo per 1% NPS);

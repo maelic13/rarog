@@ -1,0 +1,66 @@
+diff --git a/src/search/core/correction.rs b/src/search/core/correction.rs
+index 0ee0543..12da0f3 100644
+--- a/src/search/core/correction.rs
++++ b/src/search/core/correction.rs
+@@ -140,6 +140,28 @@ impl Searcher {
+         }
+     }
+ 
++    /// Ask for the slots the position at `ply` will read. Called once the
++    /// move leading to it is made and pushed, so its keys and its
++    /// continuation contexts are final.
++    #[inline(always)]
++    pub(super) fn prefetch_correction(&self, board: &Board, ply: usize) {
++        let slots = self.correction_slots(board, ply);
++        let tables = &self.td.corr;
++        let fetch = |table: &[i16], slot: usize| {
++            crate::tt::prefetch_ptr(table.as_ptr().wrapping_add(slot));
++        };
++        fetch(&tables.pawn[..], slots.pawn);
++        fetch(&tables.minor[..], slots.minor);
++        fetch(&tables.non_pawn[0][..], slots.non_pawn[0]);
++        fetch(&tables.non_pawn[1][..], slots.non_pawn[1]);
++        if let Some(slot) = slots.continuation[0] {
++            fetch(&tables.continuation_2[..], slot);
++        }
++        if let Some(slot) = slots.continuation[1] {
++            fetch(&tables.continuation_4[..], slot);
++        }
++    }
++
+     /// The correction for the position at `ply`, in evaluation units: the
+     /// weighted sum of the six tables.
+     pub(super) fn correction_value(&self, board: &Board, ply: usize) -> i32 {
+diff --git a/src/search/core/node.rs b/src/search/core/node.rs
+index 58a0bc9..d26f972 100644
+--- a/src/search/core/node.rs
++++ b/src/search/core/node.rs
+@@ -2253,6 +2253,7 @@ impl Searcher {
+             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
+             board.make_move_with_check(mv, mv_gives_check);
+             self.shared.tt.prefetch(board.hash());
++            self.prefetch_correction(board, ply + 1);
+             let mut new_depth = depth - 1 + extension;
+             #[cfg(feature = "b3proof")]
+             debug_assert!(
+@@ -3079,6 +3080,7 @@ impl Searcher {
+             }
+             board.make_move(mv);
+             self.shared.tt.prefetch(board.hash());
++            self.prefetch_correction(board, ply + 1);
+             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
+             board.unmake_move(mv);
+             self.clear_move(ply);
+diff --git a/src/tt.rs b/src/tt.rs
+index e50148b..dc3aed3 100644
+--- a/src/tt.rs
++++ b/src/tt.rs
+@@ -527,7 +527,7 @@ impl TranspositionTable {
+ }
+ 
+ #[inline(always)]
+-fn prefetch_ptr<T>(ptr: *const T) {
++pub(crate) fn prefetch_ptr<T>(ptr: *const T) {
+     // SAFETY: `_mm_prefetch` is a pure cache hint — it never dereferences the
+     // pointer, so ANY address (dangling or null) is sound. It is `unsafe` only
+     // because `std::arch` intrinsics require the target feature, and SSE is

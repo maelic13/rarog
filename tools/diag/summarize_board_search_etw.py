@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recover and summarize PLAN 4.11b.7 ETW profiles with LLVM symbols.
+"""Recover and summarize board-profile ETW traces with LLVM symbols.
 
 The ETW capture stores executable-relative addresses in xperf's exclusive-hit
 table.  This tool resolves those addresses against the exact archived PE/PDB
@@ -276,6 +276,123 @@ def classify(functions: list[str]) -> str:
     return "other_engine"
 
 
+# Whole-search regions for throughput work, in the order a frame is tested.
+# A sample goes to the NEAREST named mechanism on its inline chain, innermost
+# frame first: board accessors, bit tricks and std helpers are transparent, so
+# a popcount inlined into king safety is evaluation and a slider lookup inlined
+# into SEE is SEE. Board helpers left out of line, with no consumer frame on
+# their chain, fall back to `board_other`; a large share there means the
+# exclusive-only attribution has lost its callers.
+FATHOM_FUNCTIONS = (
+    "decompress_pairs",
+    "free_tb_entry",
+    "init_table",
+    "probe_ab",
+    "probe_dtz",
+    "probe_root",
+    "probe_table",
+    "probe_wdl",
+    "prt_str",
+)
+SEARCH_REGIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("tablebases", ("rarog::syzygy::",)),
+    ("evaluation", ("rarog::eval::", "rarog::kpk::", "::raw_eval")),
+    (
+        "eval_correction",
+        (
+            "rarog::search::correction::",
+            "::corrected_eval",
+            "::correction_value",
+            "::correction_slots",
+            "::admits_correction_training",
+            "::train_correction",
+        ),
+    ),
+    ("transposition_table", ("rarog::tt::",)),
+    ("see", ("rarog::board::see", "::see_")),
+    (
+        "move_generation",
+        (
+            "rarog::board::movegen::",
+            "rarog::board::moves::movelist",
+            "::generate_legal",
+            "::legal_move",
+            "::pseudo_legal_move",
+            "::king_safe_after",
+            "::ep_capture_is_legal",
+        ),
+    ),
+    (
+        "make_unmake",
+        (
+            "::make_move",
+            "::unmake_move",
+            "::make_null",
+            "::unmake_null",
+            "::remove_piece",
+            "::add_piece",
+            "::move_piece",
+            "::captured_piece",
+        ),
+    ),
+    # Attack queries (`attackers_to*`, `is_attacked*`) are shared geometry:
+    # SEE, legality and the node all call them, so they stay transparent and
+    # are charged to that consumer.
+    (
+        "check_queries",
+        (
+            "::gives_check",
+            "::check_info",
+            "::calculate_checkers",
+            "::compute_pinned",
+        ),
+    ),
+    (
+        "move_ordering",
+        (
+            "rarog::search::movepick::",
+            "::score_moves",
+            "::score_tactical_moves",
+            "::quiet_score",
+            "::noisy_score",
+            "::append_quiet_moves",
+            "::quiet_context",
+            "::record_move_order",
+        ),
+    ),
+    (
+        "history",
+        (
+            "rarog::search::history::",
+            "::cont_context_back",
+            "::reward_parent_after_fail_low",
+            "::quiet_pruning_history",
+            "::update_best_move_histories",
+            "::update_continuations",
+        ),
+    ),
+    ("search_node", ("rarog::search::",)),
+)
+SEARCH_FALLBACKS = ("board_other", "other_engine")
+
+
+def classify_search(functions: list[str]) -> str:
+    """Assign one exclusive sample to the nearest named whole-search region."""
+    for function in functions:
+        name = function.casefold()
+        if name in FATHOM_FUNCTIONS or name.startswith("tb_"):
+            return "tablebases"
+        for region, markers in SEARCH_REGIONS:
+            if any(marker in name for marker in markers):
+                return region
+    if any(function.casefold().startswith("rarog::board::") for function in functions):
+        return "board_other"
+    return "other_engine"
+
+
+SCHEMES = {"board": classify, "search": classify_search}
+
+
 def mechanisms(functions: list[str]) -> list[str]:
     """Return overlapping leaf-specific mechanisms visible in inline context."""
     joined = "\n".join(functions).casefold()
@@ -306,6 +423,7 @@ def summarize_report(
     total_samples: int,
     hits: list[ExclusiveHit],
     symbols: dict[int, list[str]],
+    classifier=classify,
 ) -> dict[str, object]:
     categories: Counter[str] = Counter()
     mechanism_counts: Counter[str] = Counter()
@@ -315,7 +433,7 @@ def summarize_report(
         functions = symbols[item.rva]
         if functions and functions[0] != "??":
             resolved_hits += item.hits
-            categories[classify(functions)] += item.hits
+            categories[classifier(functions)] += item.hits
             for mechanism in mechanisms(functions):
                 mechanism_counts[mechanism] += item.hits
             leaf_functions[functions[0]] += item.hits
@@ -361,6 +479,12 @@ def main() -> int:
     )
     parser.add_argument("--symbolizer", type=Path, required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--scheme",
+        choices=sorted(SCHEMES),
+        default="board",
+        help="board: board-work regions; search: whole-search regions for throughput work",
+    )
     parser.add_argument("reports", type=Path, nargs="+")
     args = parser.parse_args()
 
@@ -379,7 +503,7 @@ def main() -> int:
         all_rvas.update(item.rva for item in hits)
 
     symbols = symbolize(args.symbolizer, args.exe, all_rvas)
-    reports = [summarize_report(*item, symbols) for item in parsed]
+    reports = [summarize_report(*item, symbols, SCHEMES[args.scheme]) for item in parsed]
 
     process_total = sum(int(report["process_samples"]) for report in reports)
     aggregate_shares: Counter[str] = Counter()
@@ -392,14 +516,21 @@ def main() -> int:
         "schema": "rarog-board-search-etw-summary-v1",
         "classification": {
             "basis": "exclusive CPU samples attributed with complete LLVM inline context",
-            "priority": [
-                "see",
-                "generation_and_legality",
-                "make_unmake",
-                "check_queries",
-                "other_board",
-                "other_engine",
-            ],
+            "scheme": args.scheme,
+            "priority": (
+                [
+                    "see",
+                    "generation_and_legality",
+                    "make_unmake",
+                    "check_queries",
+                    "other_board",
+                    "other_engine",
+                ]
+                if args.scheme == "board"
+                else ["nearest named frame, innermost first"]
+                + [region for region, _ in SEARCH_REGIONS]
+                + list(SEARCH_FALLBACKS)
+            ),
             "history_allocation": "not inferred from samples; use exact growth counters",
         },
         "image_base": f"0x{IMAGE_BASE:x}",

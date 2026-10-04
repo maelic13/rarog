@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """How often each reference endgame appears on the board in real games.
 
-PLAN 4.11.12. This replaces the occurrence input that PLAN 4.11.6's ranking
+This replaces the occurrence input that the endgame ranking
 had to hard-code: RAR-M15's twenty percentages, measured once over 3,915
 self-play games, transcribed into `endgame_ranking.py` as constants with no
 artifact behind them. The ranking now takes this tool's output as a file, so
@@ -13,8 +13,8 @@ the ranking decides the order of twenty engine changes. It rested on:
 * **board occurrence** over 3,915 games of ONE engine pair against ITSELF, at
   a single time control -- so every ending in it is an ending two nearly
   identical evaluations steered into; and
-* **tree occurrence** over 40 bench roots, which PLAN 4.11.5 then measured as
-  weak (three roots produce 56% of the whole census).
+* **tree occurrence** over 40 bench roots, which the root-split census measured
+  as weak (three roots produce 56% of the whole census).
 
 A 36,400-game rated tournament between fourteen engines of very different
 strengths and styles is a far better sample of the distribution Rarog actually
@@ -47,7 +47,7 @@ alone, both colours tried as the strong side.
   because that is the dispatch condition of the FUNCTION being ranked. This
   differs from RAR-M15, which used a plural strong side -- see
   `CALIBRATION_EXCEPTIONS`.
-* There is **no piece-count threshold**. PLAN 4.11.5 produced a reassuring
+* There is **no piece-count threshold**. The tree census produced a reassuring
   result from a "generous" 7-man cut-off that moved sharply when the cut-off
   moved one man; the lesson taken was to let the predicates bound themselves.
   The `<= 8 men` fast path below is a strict BOUND, not a cut-off: the largest

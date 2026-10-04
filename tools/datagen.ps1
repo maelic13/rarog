@@ -40,7 +40,7 @@
 
 .PARAMETER Seed
     fastchess opening-shuffle seed. Keep it identical across segments that are
-    intended to partition one book. Default 10403 (Phase 10.4.3).
+    intended to partition one book. Default 10403.
 
 .PARAMETER Nodes
     Node limit per move. Default 8000 (fast, diverse). Values 5000-12000 add
@@ -184,7 +184,7 @@ try {
         $Concurrency = (Resolve-HarnessConcurrency -Requested 0 -AllowOversubscribe).Concurrency
     }
 
-    # Book-diversity guard (Phase 6.2.0, lesson 5): fixed-node self-play from a
+    # Book-diversity guard: fixed-node self-play from a
     # small book replays near-identical games — Basilisk got 31,880 unique
     # positions from 200k games off SuperGM_4mvs vs 1.73M off a diverse seed.
     if ($BookFormat -eq "epd") {

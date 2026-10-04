@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an endgame-start opening book with Syzygy-verified verdicts (4.9a.2).
+"""Build an endgame-start opening book with Syzygy-verified verdicts.
 
 RAR-M15 measured how often each reference endgame occurs in real games: KXK
 37.34%, KRPKR 10.04%, and then a long tail down to KBNK at 0.28%, KNNK at
@@ -66,8 +66,8 @@ FAMILIES = [
 # KRPP-KRP (reference item 15) is deliberately absent: it is SEVEN men, and the
 # local tables stop at six. It is also one of the three families RAR-M15 found
 # occurring zero times in 3,915 real games -- so it can be reached neither by
-# sampling real play nor by verified construction, and 4.9a.24 cannot be closed
-# on measurement until 7-man tables exist. Record that as a gap; do not paper
+# sampling real play nor by verified construction, and it cannot be measured
+# until 7-man tables exist. Record that as a gap; do not paper
 # over it with unverified positions.
 UNVERIFIABLE_AT_6_MEN = ["KRPP-KRP"]
 

@@ -80,12 +80,11 @@ struct UnmakeInfo {
     checkers: Bitboard,
 }
 
-/// Hot-struct footprint, measured for RAR-M39 / 4.11b.14 and pinned here.
+/// Hot-struct footprint, pinned.
 ///
-/// 4.11b.14 decided against replacing the 12 colour-piece bitboards with six
-/// type boards plus colours, and against copying per-ply state instead of the
-/// compact `UnmakeInfo`. Both arms of that decision are footprint arguments, so
-/// the footprint is guarded rather than left to drift:
+/// The 12 colour-piece bitboards were kept over six type boards plus colours,
+/// and the compact `UnmakeInfo` over copying per-ply state. Both decisions are
+/// footprint arguments, so the footprint is guarded rather than left to drift:
 ///
 /// - `Board` is 264 bytes. The six-board variant would save 48 and neither
 ///   figure is near any cache boundary that matters, while the extra mask would
@@ -106,7 +105,7 @@ const _: () = assert!(
 );
 
 const NO_PIECE: u8 = 255;
-// 9.0: padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
+// Padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
 // bounds check elides and no unsafe is needed. Entries 12–15 are unreachable
 // filler (the mailbox only stores 0..=11 for occupied squares; callers assert
 // occupancy), kept as Pawn so even a broken input stays defined, never UB.
@@ -149,19 +148,19 @@ pub struct Board {
     /// `occupancy[color]`
     occupancy: [Bitboard; 2],
     /// Union of both occupancy bitboards.
-    pub all_occ: Bitboard,
+    all_occ: Bitboard,
     /// Encoded piece on each square, or 255 for empty.
     mailbox: [u8; 64],
     /// Side to move.
-    pub side_to_move: Color,
-    pub castling: CastlingRights,
+    side_to_move: Color,
+    castling: CastlingRights,
     /// En passant target square (the square a capturing pawn moves *to*).
     /// `255` encodes "no EP".
     ep_sq: u8,
-    pub halfmove_clock: u8,
-    pub fullmove: u16,
+    halfmove_clock: u8,
+    fullmove: u16,
     /// Incrementally updated Zobrist hash.
-    pub hash: u64,
+    hash: u64,
     pawn_hash: u64,
     minor_hash: u64,
     non_pawn_hash: [u64; 2],
@@ -169,9 +168,19 @@ pub struct Board {
     history: Vec<UnmakeInfo>,
 }
 
+/// The squares the side not to move attacks, by attacking piece type and in
+/// total. See [`Board::threats`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Threats {
+    /// Every square at least one enemy piece attacks.
+    pub all: Bitboard,
+    /// `by_piece[piece]`: the squares enemy pieces of that type attack.
+    pub by_piece: [Bitboard; 6],
+}
+
 /// Per-node masks for O(1) "does this move give check?" tests — see
-/// [`Board::check_info`] / [`Board::gives_check_with`] (10.3 speed pass).
-pub struct CheckInfo {
+/// [`Board::check_info`] / [`Board::gives_check_with`].
+pub(crate) struct CheckInfo {
     /// The opposing king's square at computation time.
     their_king: Square,
     /// `check_squares[piece]`: squares from which OUR `piece` delivers a
@@ -179,6 +188,13 @@ pub struct CheckInfo {
     check_squares: [Bitboard; 6],
     /// Sole blockers sitting between one of our sliders and their king.
     blockers: Bitboard,
+}
+
+impl CheckInfo {
+    /// Squares from which the side to move's `piece` gives direct check.
+    pub(crate) fn direct_check_squares(&self, piece: Piece) -> Bitboard {
+        self.check_squares[piece as usize]
+    }
 }
 
 impl Clone for Board {
@@ -445,7 +461,7 @@ impl Board {
 
     /// Piece type only at a given square.
     #[inline(always)]
-    pub fn piece_type_at(&self, sq: Square) -> Option<Piece> {
+    pub(crate) fn piece_type_at(&self, sq: Square) -> Option<Piece> {
         decode_piece_type(self.mailbox[sq.index()])
     }
 
@@ -471,6 +487,48 @@ impl Board {
     }
 
     #[inline(always)]
+    pub fn castling(&self) -> CastlingRights {
+        self.castling
+    }
+
+    /// Plies since the last capture or pawn move.
+    #[inline(always)]
+    pub fn halfmove_clock(&self) -> u8 {
+        self.halfmove_clock
+    }
+
+    #[inline(always)]
+    pub fn fullmove(&self) -> u16 {
+        self.fullmove
+    }
+
+    /// Incrementally updated Zobrist key of the position.
+    #[inline(always)]
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+
+    /// The key the position will have after `mv`, exact for a plain move or
+    /// capture that changes no castling right and sets no en-passant square,
+    /// and only a guess otherwise. A hint for prefetching, nothing else.
+    #[inline(always)]
+    pub fn key_after_hint(&self, mv: Move) -> u64 {
+        let zob = &ZOBRIST;
+        let us = self.side_to_move;
+        let (from, to) = (mv.from_sq(), mv.to_sq());
+        let piece = self.piece_type_at_unchecked(from);
+        let mut key =
+            self.hash ^ zob.side() ^ zob.piece(us, piece, from) ^ zob.piece(us, piece, to);
+        if self.ep_sq != 255 {
+            key ^= zob.ep(Square(self.ep_sq).file());
+        }
+        if mv.flags() == CAPTURE {
+            key ^= zob.piece(!us, self.piece_type_at_unchecked(to), to);
+        }
+        key
+    }
+
+    #[inline(always)]
     pub fn occupied_count(&self) -> u32 {
         self.all_occ.count()
     }
@@ -481,12 +539,7 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn piece_on(&self, sq: Square) -> Option<Piece> {
-        self.piece_type_at(sq)
-    }
-
-    #[inline(always)]
-    pub fn color_on(&self, sq: Square) -> Option<Color> {
+    fn color_on(&self, sq: Square) -> Option<Color> {
         self.piece_at(sq).map(|(color, _)| color)
     }
 
@@ -497,20 +550,15 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn is_quiet_move(&self, mv: Move) -> bool {
+    pub(crate) fn is_quiet_move(&self, mv: Move) -> bool {
         mv.flags() <= DOUBLE_PUSH
-    }
-
-    #[inline(always)]
-    pub fn en_passant(&self) -> Option<Square> {
-        self.ep_square()
     }
 
     pub fn parse_move(&self, input: &str) -> Option<Move> {
         self.legal_move(Move::from_uci(input)?)
     }
 
-    pub fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
+    fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
         if mv.is_null() {
             return None;
         }
@@ -687,11 +735,6 @@ impl Board {
         }
     }
 
-    #[inline(always)]
-    pub fn make_move_unchecked(&mut self, mv: Move) {
-        self.make_move(mv);
-    }
-
     pub fn generate_legal_moves(&self) -> Vec<Move> {
         generate_legal_moves(self)
     }
@@ -701,8 +744,7 @@ impl Board {
     }
 
     /// [`Board::generate_legal_movelist`] into a caller-owned list, which is
-    /// the form the search uses: the value form pays a 520-byte return copy
-    /// (RAR-M44).
+    /// the form the search uses: the value form pays a 520-byte return copy.
     pub fn generate_legal_movelist_into(&self, moves: &mut MoveList) {
         super::movegen::generate_legal_into(self, moves);
     }
@@ -720,25 +762,14 @@ impl Board {
         super::movegen::generate_quiets(self)
     }
 
-    /// Capture generation that also yields the pinned set, for a staged picker
-    /// that will generate quiets at the same node (10.3 speed pass).
-    pub fn generate_legal_captures_pinned(&mut self) -> (MoveList, Bitboard) {
-        super::movegen::generate_captures_pinned(self)
-    }
-
-    /// [`Board::generate_legal_captures_pinned`] into a caller-owned list,
-    /// handing back only the pinned set.
+    /// Capture generation into a caller-owned list that also yields the pinned
+    /// set, for a staged picker that will generate quiets at the same node.
     pub fn generate_legal_captures_pinned_into(&mut self, moves: &mut MoveList) -> Bitboard {
         super::movegen::generate_captures_pinned_into(self, moves)
     }
 
-    /// Quiet generation reusing a pinned set from
-    /// [`Board::generate_legal_captures_pinned`] at the same node.
-    pub fn generate_legal_quiets_pinned(&self, pinned: Bitboard) -> MoveList {
-        super::movegen::generate_quiets_pinned(self, pinned)
-    }
-
-    /// [`Board::generate_legal_quiets_pinned`] into a caller-owned list.
+    /// Quiet generation into a caller-owned list, reusing the pinned set from
+    /// [`Board::generate_legal_captures_pinned_into`] at the same node.
     pub fn generate_legal_quiets_pinned_into(&self, pinned: Bitboard, moves: &mut MoveList) {
         super::movegen::generate_quiets_pinned_into(self, pinned, moves);
     }
@@ -759,24 +790,13 @@ impl Board {
         }
     }
 
-    #[inline(always)]
-    pub fn is_capture(&self, mv: Move) -> bool {
-        mv.is_capture()
-    }
-
-    #[inline(always)]
-    pub fn is_en_passant(&self, mv: Move) -> bool {
-        mv.is_en_passant()
-    }
-
-    /// Per-node check-detection masks (10.3 speed pass).
+    /// Per-node check-detection masks.
     ///
-    /// Move scoring used to call [`Board::gives_check`] for EVERY scored
-    /// quiet at every node — an occupancy-xor plus up to two slider lookups
-    /// per move. These masks are computed once per node; a normal move's
-    /// check test then collapses to two bitboard membership tests
+    /// [`Board::gives_check`] costs an occupancy-xor plus up to two slider
+    /// lookups per move. These masks are computed once per node, so a normal
+    /// move's check test collapses to two bitboard membership tests
     /// ([`Board::gives_check_with`]).
-    pub fn check_info(&self) -> CheckInfo {
+    pub(crate) fn check_info(&self) -> CheckInfo {
         crate::diag_count!(board_check_info_calls);
         let us = self.side_to_move;
         let them = !us;
@@ -816,6 +836,41 @@ impl Board {
         }
     }
 
+    /// The squares the side not to move attacks, by piece type and in total.
+    ///
+    /// The side to move's king is removed from the occupancy first, so a
+    /// slider attacking the king also attacks the squares behind it on the
+    /// same line. A threat set answers "would a piece of ours stand attacked
+    /// there", and for the king stepping back along the checking line the
+    /// answer is yes.
+    pub fn threats(&self) -> Threats {
+        let us = self.side_to_move;
+        let them = !us;
+        let atk = &*ATTACKS;
+        let occ = self.all_occ ^ self.pieces(us, Piece::King);
+        let mut by_piece = [Bitboard::EMPTY; 6];
+        for sq in self.pieces(them, Piece::Pawn) {
+            by_piece[Piece::Pawn as usize] |= atk.pawn(them, sq);
+        }
+        for sq in self.pieces(them, Piece::Knight) {
+            by_piece[Piece::Knight as usize] |= atk.knight(sq);
+        }
+        for sq in self.pieces(them, Piece::Bishop) {
+            by_piece[Piece::Bishop as usize] |= atk.bishop(sq, occ);
+        }
+        for sq in self.pieces(them, Piece::Rook) {
+            by_piece[Piece::Rook as usize] |= atk.rook(sq, occ);
+        }
+        for sq in self.pieces(them, Piece::Queen) {
+            by_piece[Piece::Queen as usize] |= atk.queen(sq, occ);
+        }
+        by_piece[Piece::King as usize] = atk.king(self.king_sq(them));
+        let all = by_piece
+            .iter()
+            .fold(Bitboard::EMPTY, |all, &attacks| all | attacks);
+        Threats { all, by_piece }
+    }
+
     /// Fast path of [`Board::gives_check`], faithful by construction and
     /// debug-asserted against it (the debug test suite drives this through
     /// full searches). Normal moves are two mask tests: direct check via
@@ -832,7 +887,7 @@ impl Board {
     /// blocker must exist on that segment, and it still blocks after the
     /// move. (Promotions break this argument, which is one reason they fall
     /// back.)
-    pub fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
+    pub(crate) fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
         crate::diag_count!(board_gives_check_fast_calls);
         if mv.is_promo() || mv.is_en_passant() || mv.is_castling() {
             return self.gives_check(mv);
@@ -1069,7 +1124,7 @@ impl Board {
         false
     }
 
-    /// Rule-50 draw with mate precedence (Phase 7.1a, FIDE 9.6b analogue):
+    /// Rule-50 draw with mate precedence (the FIDE Laws' mate-first rule):
     /// at clock >= 100 the game is drawn UNLESS the position is checkmate —
     /// a mate delivered by the 100th-clock move wins. Stalemate at the
     /// boundary is a draw either way, so only the mated case needs the
@@ -1093,15 +1148,54 @@ impl Board {
         // scores the position as a draw in search. This is a deliberate
         // strength heuristic, NOT the arbiter's threefold rule — if a side can
         // force one repetition it can usually force the claimable second, and
-        // pruning the repetition subtree early is worth Elo. Phase 7.1d tried
-        // to make this root-aware (a single *pre-root* twofold no longer
-        // draws, matching Stockfish's `repetition < ply`); that SPRT'd at
-        // −7.21 ± 6.03 (H0), so the aggressive form is kept (lesson 14).
+        // pruning the repetition subtree early is worth Elo. A root-aware form
+        // (a single *pre-root* twofold no longer draws, as Stockfish's
+        // `repetition < ply`) measured −7.21 ± 6.03 Elo, so this one stays.
         self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
     }
 
     pub fn has_repeated_position(&self) -> bool {
         self.halfmove_clock >= 4 && self.is_repetition(2)
+    }
+
+    /// The arbiter's draws a move can reach at the tablebase root: a
+    /// claimable threefold, or with `rule50` a rule-50 draw. The search's
+    /// aggressive twofold does not count here, because a root move ranked as
+    /// a draw is one the game would score as a draw.
+    pub fn is_arbiter_draw(&self, rule50: bool) -> bool {
+        (rule50 && self.is_rule50_draw()) || self.is_threefold_repetition()
+    }
+
+    /// Whether any position since the last zeroing move, at least four plies
+    /// back from the oldest, repeats an earlier one in that window. A winning
+    /// side that has already repeated must make progress by distance to
+    /// zeroing, not merely keep the win.
+    pub fn has_repetition_since_zeroing(&self) -> bool {
+        let window = usize::from(self.halfmove_clock).min(self.history.len());
+        let hash_at = |plies_back: usize| {
+            if plies_back == 0 {
+                self.hash
+            } else {
+                self.history[self.history.len() - plies_back].hash
+            }
+        };
+        (0..=window.saturating_sub(4)).any(|newer| {
+            (newer + 4..=window)
+                .step_by(2)
+                .any(|older| hash_at(older) == hash_at(newer))
+        }) && window >= 4
+    }
+
+    /// Whether distance to zeroing is distance to mate here: no pawns, and
+    /// three men, or four with neither queen nor rook.
+    pub fn dtz_is_dtm(&self) -> bool {
+        let pawns = self.pieces(Color::White, Piece::Pawn) | self.pieces(Color::Black, Piece::Pawn);
+        let heavy = self.pieces(Color::White, Piece::Queen)
+            | self.pieces(Color::Black, Piece::Queen)
+            | self.pieces(Color::White, Piece::Rook)
+            | self.pieces(Color::Black, Piece::Rook);
+        let men = self.occupied_count();
+        !pawns.any() && (men == 3 || (men == 4 && !heavy.any()))
     }
 
     pub fn has_non_pawn_material(&self, color: Color) -> bool {
@@ -1112,7 +1206,7 @@ impl Board {
         .any()
     }
 
-    /// 9.5: rebuild every derived field from the mailbox and compare against
+    /// Rebuild every derived field from the mailbox and compare against
     /// what make/unmake has been maintaining incrementally.
     ///
     /// `Board` keeps five redundant representations of the same position —
@@ -1125,8 +1219,7 @@ impl Board {
     /// another position's cached evaluation rather than crashing.
     ///
     /// Returns `Err` with the first mismatch rather than panicking, so tests
-    /// can report instead of aborting. Not on any hot path — `assert_ok()`
-    /// compiles to nothing in release.
+    /// can report instead of aborting. Not on any hot path.
     pub fn check_consistency(&self) -> Result<(), String> {
         let mut pieces = [Bitboard::EMPTY; 12];
         let mut occupancy = [Bitboard::EMPTY; 2];
@@ -1215,20 +1308,6 @@ impl Board {
         Ok(())
     }
 
-    /// Debug-only invariant assertion. Compiles to nothing in release, so it
-    /// can be called from hot code without an NPS cost.
-    #[inline(always)]
-    pub fn assert_ok(&self) {
-        #[cfg(debug_assertions)]
-        if let Err(err) = self.check_consistency() {
-            panic!(
-                "board invariant violated: {err}
-FEN: {}",
-                self.to_fen()
-            );
-        }
-    }
-
     #[inline(always)]
     pub fn pawn_key(&self) -> u64 {
         self.pawn_hash
@@ -1258,7 +1337,7 @@ FEN: {}",
             & occ
     }
 
-    /// Short-circuiting `attackers_to_color(sq, occ, color).any()` (10.3(8b)).
+    /// Short-circuiting `attackers_to_color(sq, occ, color).any()`.
     ///
     /// Exactly equivalent — each piece set is intersected with `occ` the same
     /// way — but it returns on the first attacker found instead of building the
@@ -1266,7 +1345,7 @@ FEN: {}",
     /// need the boolean (the passed-pawn stop/path scans in eval) skip both
     /// slider lookups whenever a pawn, knight or king already answers it.
     #[inline(always)]
-    pub fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
+    pub(crate) fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
         let atk = &*ATTACKS;
         if (atk.pawn(!color, sq) & self.pieces(color, Piece::Pawn) & occ).any() {
             return true;
@@ -1506,7 +1585,7 @@ FEN: {}",
 
     /// Is the given square attacked by any piece of `attacker_color`?
     #[inline(always)]
-    pub fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
+    pub(crate) fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
         let occ = self.all_occ;
         let atk = &*ATTACKS;
 
@@ -1585,8 +1664,7 @@ FEN: {}",
         self.make_move_inner(mv, None);
     }
 
-    /// Play `mv` when the caller ALREADY knows whether it gives check
-    /// (10.3 speed pass).
+    /// Play `mv` when the caller ALREADY knows whether it gives check.
     ///
     /// `make_move` otherwise runs [`Board::calculate_checkers`] — four attack
     /// lookups, two of them slider lookups — on every single move, and the
@@ -1991,7 +2069,7 @@ FEN: {}",
     #[inline(always)]
     fn piece_type_at_unchecked(&self, sq: Square) -> Piece {
         debug_assert!(self.mailbox[sq.index()] < 12);
-        // 9.0: `& 15` into the padded 16-entry table — check elided, no unsafe.
+        // `& 15` into the padded 16-entry table — check elided, no unsafe.
         PIECE_FROM_ENCODED[self.mailbox[sq.index()] as usize & 15]
     }
 
@@ -2067,6 +2145,17 @@ FEN: {}",
         let just_moved = !self.side_to_move;
         if self.is_attacked(self.king_sq(just_moved), self.side_to_move) {
             return Err("side not to move may not be in check".to_string());
+        }
+
+        // No move gives three checks at once (a discovered double check is the
+        // most), so a third checker makes the position unreachable.
+        let to_move = self.side_to_move;
+        if self
+            .attackers_to_color(self.king_sq(to_move), self.occupied(), !to_move)
+            .count()
+            > 2
+        {
+            return Err("side to move may not be in check from more than two pieces".to_string());
         }
 
         Ok(())
@@ -2393,8 +2482,79 @@ impl fmt::Display for Board {
 }
 
 #[cfg(test)]
-mod history_contract_tests {
+mod tests {
     use super::*;
+
+    /// `threats()` agrees with the attacker query on every square of positions
+    /// reached by a perft walk, piece type by piece type, with the side to
+    /// move's king lifted from the occupancy.
+    #[test]
+    fn threats_match_the_attacker_query_on_every_square() {
+        fn check(board: &Board) {
+            let us = board.side_to_move();
+            let them = !us;
+            let occ = board.occupied() ^ board.pieces(us, Piece::King);
+            let threats = board.threats();
+            let mut union = Bitboard::EMPTY;
+            for piece in Piece::ALL {
+                let mut expected = Bitboard::EMPTY;
+                for sq in (0..64).map(Square) {
+                    let attackers =
+                        board.attackers_to_color(sq, occ, them) & board.pieces(them, piece);
+                    if attackers.any() {
+                        expected |= Bitboard::from(sq);
+                    }
+                }
+                assert_eq!(
+                    threats.by_piece[piece as usize],
+                    expected,
+                    "{piece:?} threats in {}",
+                    board.to_fen()
+                );
+                union |= expected;
+            }
+            assert_eq!(threats.all, union, "all threats in {}", board.to_fen());
+            for sq in (0..64).map(Square) {
+                assert_eq!(threats.all.contains(sq), union.contains(sq));
+            }
+        }
+        fn walk(board: &mut Board, depth: u32) {
+            check(board);
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                board.make_move(mv);
+                walk(board, depth - 1);
+                board.unmake_move(mv);
+            }
+        }
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 2);
+        }
+    }
+
+    /// The king is lifted from the occupancy: a rook checking along a file
+    /// also attacks the square behind the king, which it could not reach if
+    /// the king blocked the line.
+    #[test]
+    fn threats_see_through_the_side_to_move_king() {
+        let board = Board::from_fen("4k3/8/8/8/4r3/8/4K3/8 w - - 0 1").expect("valid FEN");
+        let rook = board.threats().by_piece[Piece::Rook as usize];
+        assert!(rook.contains(Square::E2), "the checked king's square");
+        assert!(rook.contains(Square::E1), "the square behind the king");
+        let attackers = board.attackers_to_color(Square::E1, board.occupied(), Color::Black);
+        assert!(
+            attackers.is_empty(),
+            "with the king in place e1 is shielded"
+        );
+    }
 
     /// Shuffle both knights out and back: four plies that always exist from the
     /// starting position, so a walk of any even length can be built from them.
@@ -2407,7 +2567,7 @@ mod history_contract_tests {
             let mv = board
                 .parse_move(uci)
                 .unwrap_or_else(|| panic!("{uci} must be legal at ply {index}"));
-            board.make_move_unchecked(mv);
+            board.make_move(mv);
             played.push(mv);
         }
         played
@@ -2539,5 +2699,55 @@ mod history_contract_tests {
                 "{uci}: is_legal must agree with legal_move"
             );
         }
+    }
+
+    /// The prefetch hint is the real key after the make for every plain move
+    /// or capture that changes no castling right and sets no en-passant
+    /// square, over every position of a depth-3 walk from several roots. The
+    /// walk must also reach the excluded moves, or the exclusions are untested.
+    #[test]
+    fn key_after_hint_is_exact_for_plain_moves_and_captures() {
+        #[derive(Default)]
+        struct Seen {
+            exact: u64,
+            castling_changed: u64,
+            ep_set: u64,
+        }
+        fn walk(board: &mut Board, depth: u32, seen: &mut Seen) {
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                let hint = board.key_after_hint(mv);
+                let castling = board.castling();
+                let plain = matches!(mv.flags(), QUIET | DOUBLE_PUSH | CAPTURE);
+                board.make_move(mv);
+                if plain {
+                    if board.castling() != castling {
+                        seen.castling_changed += 1;
+                    } else if board.ep_square().is_some() {
+                        seen.ep_set += 1;
+                    } else {
+                        assert_eq!(hint, board.hash(), "{mv} reaching {}", board.to_fen());
+                        seen.exact += 1;
+                    }
+                }
+                walk(board, depth - 1, seen);
+                board.unmake_move(mv);
+            }
+        }
+        let mut seen = Seen::default();
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 3, &mut seen);
+        }
+        assert!(seen.exact > 50_000, "only {} exact cases", seen.exact);
+        assert!(seen.castling_changed > 0 && seen.ep_set > 0);
     }
 }

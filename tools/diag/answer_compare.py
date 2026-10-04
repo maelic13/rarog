@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare what Rarog and the oracle ANSWER, not how often their mechanisms fire.
 
-PLAN 4.6/4.10 diagnostic. The differential suite measures RATES -- how often
+The differential suite measures RATES -- how often
 each mechanism fires per node. It cannot say whether the search returns the
 right move or the right score, and the central unexplained fact about Rarog is
 exactly an answer-quality problem: RAR-S53 measured it searching 2.5 plies
@@ -202,7 +202,7 @@ def main():
     o = run_engine(args.oracle, positions, args.depth)
 
     if args.disagree:
-        # 4.6.5: the summary says HOW MANY disagree; this says WHICH, so each
+        # The summary says HOW MANY disagree; this says WHICH, so each
         # case can be diagnosed individually.
         for fen, cohort in positions:
             if args.depth not in r.get(fen, {}) or args.depth not in o.get(fen, {}):

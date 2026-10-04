@@ -42,18 +42,16 @@ struct Config {
     /// `-C target-cpu=native` and changes nothing else, so `--arch base
     /// --native` is a valid, correct build for a CPU with no BMI2 or AVX2.
     ///
-    /// Before 2.3.0 this was an *arch* (`--arch native`) that hardcoded the
-    /// PEXT code path, which meant a non-BMI2 x86_64 host could not get a
-    /// native build at all — asking for one produced a binary emitting
-    /// `_pext_u64` against a `target-cpu` that does not enable the feature,
-    /// i.e. an illegal instruction at runtime.
+    /// A flag, not an arch: an arch that hardcoded the PEXT code path would
+    /// leave a non-BMI2 x86_64 host no native build, only a binary emitting
+    /// `_pext_u64` against a `target-cpu` that does not enable the feature.
     native: bool,
     target: String,
     pgo: bool,
     bench_depth: u16,
-    /// Cargo features, comma-separated. Needed so a paired-ablation arm
-    /// can be PGO-built: a non-PGO arm runs shallower, and a
-    /// depth-dependent mechanism's ablation delta would be understated
+    /// Cargo features, comma-separated. Needed so a candidate arm behind a
+    /// feature can be PGO-built: a non-PGO arm runs shallower, and a
+    /// depth-dependent mechanism's measured delta would be understated
     /// at that shallower operating point.
     features: String,
 }
@@ -368,10 +366,10 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
     }
 }
 
-// ─── 4.8a: the ISA contract, as something that EXECUTES ─────────────────────
+// ─── The ISA contract, as something that EXECUTES ────────────────────────────
 //
-// A tier is a promise about which instructions an asset may contain, and until
-// now that promise lived only in `rustflags` above and in prose. Node agreement
+// A tier is a promise about which instructions an asset may contain, and
+// `rustflags` above state it but do not check it. Node agreement
 // across CI cells does not test it: a binary that emits POPCNT on the baseline
 // tier computes exactly the right node count on every machine that can run it
 // at all, and crashes with `#UD` on the machines the tier exists for.
@@ -552,10 +550,10 @@ const ARM_CLASSES: &[InstructionClass] = &[
         mnemonics: &["sdot", "udot"],
         prefixes: &[],
     },
-    // 4.8b — the TT prefetch. `prfm` is ARMv8 BASELINE, so it can never be a
-    // forbidden class; it is listed so the arm64 tier can REQUIRE it. Until
-    // 4.8b the ARM64 assets shipped with `prefetch_ptr` compiled to nothing,
-    // which no test, fingerprint or node count could see — the engine plays
+    // The TT prefetch. `prfm` is ARMv8 BASELINE, so it can never be a
+    // forbidden class; it is listed so the arm64 tier can REQUIRE it. A
+    // `prefetch_ptr` compiled to nothing is invisible to every test,
+    // fingerprint and node count — the engine plays
     // identically with and without a cache hint, it just plays slower. A
     // required class is the only instrument that catches that class of silent
     // loss, and it is why `neon` is the feature named here: `prfm` needs no
@@ -622,9 +620,9 @@ fn isa_contract(arch: Arch) -> IsaContract {
 /// The target features this tier's codegen flags actually enable, straight from
 /// the compiler that will emit the code.
 ///
-/// This is the single source of truth for the whole command. PLAN 4.8 requires
-/// the `target-cpu`/`target-feature` contract to be "inspected in generated
-/// artifacts" rather than assumed, and asking rustc is how the inspection stays
+/// This is the single source of truth for the whole command. The
+/// `target-cpu`/`target-feature` contract is inspected in generated artifacts
+/// rather than assumed, and asking rustc is how the inspection stays
 /// correct across a pinned-toolchain bump instead of decaying into folklore.
 fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<String>> {
     let mut args: Vec<String> = vec![
@@ -1321,30 +1319,27 @@ fn ensure_llvm_profdata() -> Result<PathBuf> {
 
     if find_on_path("rustup").is_none() {
         return Err(
-            "llvm-profdata was not found. Install it with `rustup component add llvm-tools-preview` or add LLVM's bin directory to PATH."
+            "llvm-profdata was not found. Install it with `rustup component add llvm-tools` or add LLVM's bin directory to PATH."
                 .to_string(),
         );
     }
 
-    println_flush(format_args!(
-        "Installing llvm-tools-preview for PGO support"
-    ));
+    println_flush(format_args!("Installing llvm-tools for PGO support"));
     let status = Command::new("rustup")
         .arg("component")
         .arg("add")
-        .arg("llvm-tools-preview")
+        .arg("llvm-tools")
         .status()
         .map_err(|err| format!("failed to run rustup component add: {err}"))?;
     if !status.success() {
         return Err(
-            "failed to install llvm-tools-preview; run `rustup component add llvm-tools-preview` manually"
+            "failed to install llvm-tools; run `rustup component add llvm-tools` manually"
                 .to_string(),
         );
     }
 
-    find_llvm_profdata().ok_or_else(|| {
-        "llvm-profdata was still not found after installing llvm-tools-preview".to_string()
-    })
+    find_llvm_profdata()
+        .ok_or_else(|| "llvm-profdata was still not found after installing llvm-tools".to_string())
 }
 
 fn find_llvm_profdata() -> Option<PathBuf> {
@@ -1583,8 +1578,7 @@ mod tests {
         }
     }
 
-    /// 4.8b: the ARM64 assets shipped for three releases with the TT prefetch
-    /// compiled to nothing, and nothing could see it — the engine plays
+    /// A TT prefetch compiled to nothing is invisible — the engine plays
     /// identically without a cache hint, just slower, so no node count, test or
     /// fingerprint moves. Requiring the instruction is the only instrument that
     /// catches a silent loss of that shape, so pin that it IS required.
@@ -1616,10 +1610,9 @@ mod tests {
         assert!(isa_contract(Arch::Pext).required.contains(&"pext"));
     }
 
-    /// The property that motivated the 2.3.0 rework: `--arch` and `--native`
-    /// are INDEPENDENT. Before it, `native` was an arch that hardcoded the PEXT
-    /// path, so a pre-BMI2 x86_64 host could not get a native build at all —
-    /// it got `_pext_u64` against a `target-cpu` that did not enable BMI2.
+    /// `--arch` and `--native` are INDEPENDENT: a `native` arch that hardcoded
+    /// the PEXT path would give a pre-BMI2 x86_64 host `_pext_u64` against a
+    /// `target-cpu` that does not enable BMI2.
     #[test]
     fn native_is_orthogonal_to_arch() {
         // Non-PEXT archs must NEVER pull in the PEXT path or BMI2, native or not.

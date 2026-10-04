@@ -5,12 +5,6 @@ fully implemented. Hydra contributed the useful five-reservoir sampling idea;
 Rarog deliberately retains self-play game-result labels because its measured
 Stockfish-distillation experiment lost 17.11 Elo (RAR-E03).
 
-> **Roadmap note.** Historical comments inside the tuner may still use the
-> phase numbers from the cycle in which it was built. Current scheduling is
-> authoritative in `PLAN.md`: corpus/instrument qualification is 4.7, the
-> complete existing-surface refit is 4.8, structural clusters are 4.9, and
-> post-structure consolidation is 4.10. No historical tune group is frozen.
-
 > **Three outputs feed the tuner, all in `FEN;target` text format** (one position
 > per line; `target` is White-perspective expected score: `1` / `0.5` / `0`, or
 > a float in `[0,1]`). The tuner selects on `train.csv` + `validation.csv` and
@@ -28,7 +22,7 @@ and compare.
 ### Path A — self-play labels (primary, fully functional now)
 
 Label each position by the **result of a Rarog-vs-Rarog game** that passed
-through it. This remains mandatory for Rarog: its Phase-6 Stockfish-distilled
+through it. This remains mandatory for Rarog: its Stockfish-distilled
 fit improved offline loss but lost 17.11 Elo. We copy Hydra's reliable
 five-reservoir sampling design, not its label source.
 
@@ -163,16 +157,16 @@ named `datagen-v1` adjudication profile in `*.manifest.json`.
 
 ## The Rust tuner
 
-The tuner is built: `tools/texel-tuner` (binary `rarog-texel`), a workspace
-member depending on the rarog lib with `features = ["texel"]`. Run it from the
-repo root:
+The tuner is built: `tools/texel-tuner` (binary `rarog-texel`), its own Cargo
+workspace depending on the rarog lib with `features = ["texel"]`, so the feature
+never unifies into engine builds. Run it from the repo root:
 
 ```powershell
 # Reconstruction acceptance gate (run before any tuning):
-cargo run --release -p texel-tuner -- --verify tools\texel\data\hce-v2\validation.csv
-cargo run --release -p texel-tuner -- --audit-coverage
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --verify tools\texel\data\hce-v2\validation.csv
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage
 # Complete vectors can be chained without resetting a previous stage:
-cargo run --release -p texel-tuner -- --tune complete `
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --tune complete `
     tools\texel\data\hce-v2\train.csv tools\texel\data\hce-v2\validation.csv `
     tools\texel\out\complete.txt --initial tools\texel\out\prior.txt
 # Options include --initial FILE, --epochs N, --lr X, --l2 X,
@@ -186,7 +180,7 @@ The output file loads straight into a `--features tune` engine via
 passes its registered gate. Parallelism uses `std::thread` (no external crates), so the
 engine stays dependency-free.
 
-It was ported from Basilisk's `tools/texel/tuner.cpp` (a copy lived here until `6fa6731`). The reusable, engine-agnostic
+It was ported from Basilisk's C++ tuner (tools/texel/tuner.cpp in the Basilisk repository). The reusable, engine-agnostic
 parts (copied as *structure*, not C++):
 
 - **Objective / Adam / K-fit** (`sigmoid`, `traced_loss`, `cmd_tune`, `fit_K`):

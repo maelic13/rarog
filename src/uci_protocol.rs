@@ -1,11 +1,11 @@
-use std::io::{self, Write};
+use std::io;
 use std::process;
 use std::sync::{Arc, mpsc};
 
 use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
-use crate::infra::capitalize_first_letter;
-use crate::search_options::SearchOptions;
+use crate::infra::{capitalize_first_letter, flush_stdout};
+use crate::search_options::{GoRequest, OptionUpdate, SearchOptions};
 use crate::wac::DEFAULT_WAC_DEPTH;
 
 /// What one command line did, so a caller knows whether to keep reading and
@@ -38,12 +38,12 @@ impl UciProtocol {
     pub fn uci_loop(&mut self) {
         loop {
             let mut input = String::new();
-            // 9.0a: a read error means stdin is gone (pipe closed / GUI
+            // A read error means stdin is gone (pipe closed / GUI
             // exited) — treated exactly like EOF, which the next branch
             // already handles, rather than panicking.
             let bytes_read = io::stdin().read_line(&mut input).unwrap_or_default();
             if bytes_read == 0 {
-                self.commands.push(EngineCommand::quit(0));
+                self.commands.push(EngineCommand::Quit { epoch: 0 });
                 break;
             }
             if self.handle_command(input.trim()) == CommandOutcome::Quit {
@@ -54,7 +54,7 @@ impl UciProtocol {
 
     /// Run one command line and shut down, as `rarog bench 13` does.
     ///
-    /// A.4.5. The shutdown deliberately mirrors **stdin EOF** and not the
+    /// The shutdown deliberately mirrors **stdin EOF** and not the
     /// interactive `quit`, and the difference is not cosmetic: `quit` calls
     /// `control.request_quit()` and `push_priority`, which jumps the queue and
     /// cuts short work already dispatched to the engine thread, while EOF
@@ -64,13 +64,13 @@ impl UciProtocol {
     pub fn run_once(&mut self, command_line: &str) -> CommandOutcome {
         let outcome = self.handle_command(command_line);
         if outcome != CommandOutcome::Quit {
-            self.commands.push(EngineCommand::quit(0));
+            self.commands.push(EngineCommand::Quit { epoch: 0 });
         }
         outcome
     }
 
     /// Dispatch one command line, exactly as the interactive loop does.
-    pub fn handle_command(&mut self, command_line: &str) -> CommandOutcome {
+    fn handle_command(&mut self, command_line: &str) -> CommandOutcome {
         let input: Vec<String> = command_line
             .split_whitespace()
             .map(str::to_string)
@@ -111,7 +111,7 @@ impl UciProtocol {
         println!(
             "id name {} {}",
             capitalize_first_letter(env!("CARGO_PKG_NAME")),
-            env!("CARGO_PKG_VERSION")
+            crate::VERSION
         );
         println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
         for option in SearchOptions::get_uci_options() {
@@ -124,7 +124,7 @@ impl UciProtocol {
     fn is_ready(&self) {
         if !self.control.is_searching() {
             let (ready_tx, ready_rx) = mpsc::channel();
-            self.commands.push(EngineCommand::ready(ready_tx));
+            self.commands.push(EngineCommand::Ready(ready_tx));
             let _ = ready_rx.recv();
         }
         println!("readyok");
@@ -133,38 +133,41 @@ impl UciProtocol {
 
     fn quit(&self) {
         let epoch = self.control.request_quit();
-        self.commands.push_priority(EngineCommand::quit(epoch));
+        self.commands.push_priority(EngineCommand::Quit { epoch });
     }
 
     fn go(&mut self, args: &[String]) {
-        self.search_options.set_search_parameters(args);
-        if self.search_options.limits.perft > 0 {
-            self.run_perft(self.search_options.limits.perft);
+        if let GoRequest::Perft(depth) = self.search_options.set_search_parameters(args) {
+            self.run_perft(depth);
             return;
         }
 
         let epoch = self.control.start_replacing_search();
-        self.commands
-            .push(EngineCommand::go(self.search_options.clone(), epoch));
+        self.commands.push(EngineCommand::Go {
+            options: self.search_options.clone(),
+            epoch,
+        });
     }
 
     fn stop(&mut self) {
         let epoch = self.control.request_stop();
-        self.commands.push(EngineCommand::stop(epoch));
+        self.commands.push(EngineCommand::Stop { epoch });
     }
 
     fn set_option(&mut self, args: &[String]) {
         self.wait_for_search_finished();
-        if self.search_options.set_option(args) {
-            self.commands
-                .push(EngineCommand::configure(self.search_options.clone()));
-            self.search_options.engine.clear_hash = false;
+        match self.search_options.set_option(args) {
+            OptionUpdate::Engine => self
+                .commands
+                .push(EngineCommand::Configure(self.search_options.engine.clone())),
+            OptionUpdate::ClearHash => self.commands.push(EngineCommand::ClearHash),
+            OptionUpdate::Unknown => {}
         }
     }
 
     fn new_game(&mut self) {
         self.search_options.reset();
-        self.commands.push(EngineCommand::new_game());
+        self.commands.push(EngineCommand::NewGame);
     }
 
     fn position_with_command(&mut self, args: &[String], full_command: &str) {
@@ -188,13 +191,13 @@ impl UciProtocol {
             .max(1);
 
         let epoch = self.control.start_replacing_search();
-        self.commands.push(EngineCommand::stop(epoch));
-        self.commands.push(EngineCommand::bench(
+        self.commands.push(EngineCommand::Stop { epoch });
+        self.commands.push(EngineCommand::Bench {
             depth,
             repeats,
-            self.search_options.clone(),
+            options: self.search_options.clone(),
             epoch,
-        ));
+        });
     }
 
     /// `wac [depth]` — run the WAC tactical suite at a fixed depth (default
@@ -206,12 +209,12 @@ impl UciProtocol {
             .unwrap_or(DEFAULT_WAC_DEPTH);
 
         let epoch = self.control.start_replacing_search();
-        self.commands.push(EngineCommand::stop(epoch));
-        self.commands.push(EngineCommand::wac(
+        self.commands.push(EngineCommand::Stop { epoch });
+        self.commands.push(EngineCommand::Wac {
             depth,
-            self.search_options.clone(),
+            options: self.search_options.clone(),
             epoch,
-        ));
+        });
     }
 
     #[cfg(feature = "tune")]
@@ -223,11 +226,11 @@ impl UciProtocol {
 
     fn ponderhit(&mut self) {
         self.control.request_ponderhit();
-        self.commands.push(EngineCommand::ponderhit());
+        self.commands.push(EngineCommand::PonderHit);
     }
 
     fn run_perft(&self, depth: u32) {
-        let mut board = self.search_options.position.board.clone();
+        let mut board = self.search_options.board.clone();
         let nodes = board.perft(depth);
         println!("\nNodes searched: {nodes}\n");
         flush_stdout();
@@ -238,7 +241,7 @@ impl UciProtocol {
             return;
         }
         let (ready_tx, ready_rx) = mpsc::channel();
-        self.commands.push(EngineCommand::ready(ready_tx));
+        self.commands.push(EngineCommand::Ready(ready_tx));
         let _ = ready_rx.recv();
     }
 
@@ -299,14 +302,6 @@ const fn help_text() -> &'static str {
     )
 }
 
-fn flush_stdout() {
-    // 9.0a: a failed flush means the GUI closed the pipe — a normal way for a
-    // UCI session to end, not a bug. Panicking here aborted the process
-    // (release sets `panic = "abort"`), turning an ordinary disconnect into a
-    // crash; the write is simply dropped instead.
-    let _ = io::stdout().flush();
-}
-
 fn terminate_on_critical_error(full_command: &str, message: &str) -> ! {
     crate::info_string!("CRITICAL ERROR: Command `{full_command}` failed. Reason: {message}");
     flush_stdout();
@@ -348,26 +343,21 @@ mod tests {
 
     #[test]
     fn run_once_queues_the_eof_style_quit_not_the_interactive_one() {
-        // A.4.5's load-bearing detail. `quit` from the keyboard uses
-        // `push_priority`, which jumps ahead of a dispatched `bench` and cuts
-        // it short; EOF uses an ordinary push that the bench completes before.
-        // `run_once` must use the latter, or `rarog bench 13` benches nothing -
-        // which is the exact bug this leaf exists to fix.
+        // `quit` from the keyboard uses `push_priority`, which jumps ahead of
+        // a dispatched `bench` and cuts it short; EOF uses an ordinary push
+        // that the bench completes before. `run_once` must use the latter, or
+        // `rarog bench 13` benches nothing.
         let (mut protocol, commands) = protocol_fixture();
         assert_eq!(protocol.run_once("bench 1"), CommandOutcome::Handled);
 
         // `bench` enqueues a stop ahead of the bench itself.
-        let stop = commands.wait_pop();
-        assert!(stop.stop && !stop.quit && stop.bench_depth.is_none());
-
-        let bench = commands.wait_pop();
-        assert_eq!(bench.bench_depth, Some(1), "the bench must be queued");
-        assert!(!bench.quit, "the bench command must not carry quit");
-
-        let quit = commands.wait_pop();
-        assert!(quit.quit, "a quit must follow the bench");
-        assert_eq!(
-            quit.epoch, 0,
+        assert!(matches!(commands.wait_pop(), EngineCommand::Stop { .. }));
+        assert!(
+            matches!(commands.wait_pop(), EngineCommand::Bench { depth: 1, .. }),
+            "the bench must be queued"
+        );
+        assert!(
+            matches!(commands.wait_pop(), EngineCommand::Quit { epoch: 0 }),
             "epoch 0 is the EOF-style quit; the interactive one carries the \
              control's epoch, is pushed with priority, and pre-empts the bench"
         );
@@ -376,8 +366,8 @@ mod tests {
     #[test]
     fn help_is_recognised_under_every_alias() {
         let (mut protocol, _commands) = protocol_fixture();
-        // `unknown_command` has always told users to "Type help"; before this
-        // existed, doing so answered "Unknown command: 'help'".
+        // `unknown_command` tells users to "Type help", so every alias must be
+        // a command.
         for alias in ["help", "--help", "-h", "license", "--license"] {
             assert_eq!(
                 protocol.handle_command(alias),
@@ -413,7 +403,7 @@ mod tests {
     fn run_once_on_quit_does_not_queue_a_second_quit() {
         let (mut protocol, commands) = protocol_fixture();
         assert_eq!(protocol.run_once("quit"), CommandOutcome::Quit);
-        assert!(commands.wait_pop().quit);
+        assert!(matches!(commands.wait_pop(), EngineCommand::Quit { .. }));
     }
 
     #[test]
@@ -426,47 +416,32 @@ mod tests {
         );
         protocol.go(&args(&["depth", "3", "nodes", "123"]));
 
-        let command = commands.wait_pop();
-        assert!(!command.stop);
-        assert!(!command.quit);
-        assert!(command.epoch > 0);
-        assert_eq!(command.search_options.limits.depth, Some(3));
-        assert_eq!(command.search_options.limits.nodes, 123);
+        let EngineCommand::Go { options, epoch } = commands.wait_pop() else {
+            panic!("go must queue a search");
+        };
+        assert!(epoch > 0);
+        assert_eq!(options.limits.depth, Some(3));
+        assert_eq!(options.limits.nodes, 123);
+        assert_eq!(options.board.side_to_move(), Color::Black);
         assert_eq!(
-            command.search_options.position.board.side_to_move(),
-            Color::Black
-        );
-        assert_eq!(
-            command.search_options.position.board.piece_at(Square::E4),
+            options.board.piece_at(Square::E4),
             Some((Color::White, Piece::Pawn))
         );
     }
 
     #[test]
-    fn setoption_sends_configure_and_clears_clear_hash_button_state() {
+    fn setoption_sends_configure_and_clear_hash_sends_its_own_command() {
         let (mut protocol, commands) = protocol_fixture();
+        let configured = |command: EngineCommand| match command {
+            EngineCommand::Configure(options) => options,
+            _ => panic!("setoption must configure the engine"),
+        };
 
         protocol.set_option(&args(&["name", "Hash", "value", "8"]));
-        let hash_command = commands.wait_pop();
-        assert_eq!(
-            hash_command
-                .configure
-                .expect("hash command must configure engine")
-                .engine
-                .hash_mb,
-            8
-        );
+        assert_eq!(configured(commands.wait_pop()).hash_mb, 8);
 
         protocol.set_option(&args(&["name", "Clear", "Hash"]));
-        let clear_command = commands.wait_pop();
-        assert!(
-            clear_command
-                .configure
-                .expect("clear hash command must configure engine")
-                .engine
-                .clear_hash
-        );
-        assert!(!protocol.search_options.engine.clear_hash);
+        assert!(matches!(commands.wait_pop(), EngineCommand::ClearHash));
 
         protocol.set_option(&args(&[
             "name",
@@ -475,26 +450,13 @@ mod tests {
             "D:\\TB",
             "MixedCase",
         ]));
-        let syzygy_command = commands.wait_pop();
         assert_eq!(
-            syzygy_command
-                .configure
-                .expect("syzygy path command must configure engine")
-                .engine
-                .syzygy
-                .path,
+            configured(commands.wait_pop()).syzygy.path,
             "D:\\TB MixedCase"
         );
 
         protocol.set_option(&args(&["name", "Ponder", "value", "true"]));
-        let ponder_command = commands.wait_pop();
-        assert!(
-            ponder_command
-                .configure
-                .expect("ponder command must configure engine")
-                .engine
-                .ponder
-        );
+        assert!(configured(commands.wait_pop()).ponder);
     }
 
     #[test]
@@ -503,15 +465,21 @@ mod tests {
 
         protocol.bench(&args(&["5"]));
 
-        let stop = commands.wait_pop();
-        assert!(stop.stop);
-        assert!(stop.bench_depth.is_none());
-
-        let bench = commands.wait_pop();
-        assert!(!bench.stop);
-        assert_eq!(bench.bench_depth, Some(5));
-        assert_eq!(bench.epoch, stop.epoch);
-        assert_eq!(bench.search_options.engine.threads, 1);
+        let EngineCommand::Stop { epoch: stop_epoch } = commands.wait_pop() else {
+            panic!("bench must stop the current search first");
+        };
+        let EngineCommand::Bench {
+            depth,
+            options,
+            epoch,
+            ..
+        } = commands.wait_pop()
+        else {
+            panic!("bench must queue the bench");
+        };
+        assert_eq!(depth, 5);
+        assert_eq!(epoch, stop_epoch);
+        assert_eq!(options.engine.threads, 1);
     }
 
     #[test]
@@ -523,22 +491,18 @@ mod tests {
             "position startpos moves e2e4",
         );
         assert_eq!(
-            protocol.search_options.position.board.piece_at(Square::E4),
+            protocol.search_options.board.piece_at(Square::E4),
             Some((Color::White, Piece::Pawn))
         );
 
         protocol.new_game();
 
-        let command = commands.wait_pop();
-        assert!(command.new_game);
+        assert!(matches!(commands.wait_pop(), EngineCommand::NewGame));
         assert_eq!(
-            protocol.search_options.position.board.piece_at(Square::E2),
+            protocol.search_options.board.piece_at(Square::E2),
             Some((Color::White, Piece::Pawn))
         );
-        assert_eq!(
-            protocol.search_options.position.board.piece_at(Square::E4),
-            None
-        );
+        assert_eq!(protocol.search_options.board.piece_at(Square::E4), None);
     }
 
     #[test]
@@ -549,10 +513,8 @@ mod tests {
         protocol.ponderhit();
         protocol.quit();
 
-        let quit = commands.wait_pop();
-        assert!(quit.stop);
-        assert!(quit.quit);
-        assert!(commands.wait_pop().stop);
-        assert!(commands.wait_pop().ponderhit);
+        assert!(matches!(commands.wait_pop(), EngineCommand::Quit { .. }));
+        assert!(matches!(commands.wait_pop(), EngineCommand::Stop { .. }));
+        assert!(matches!(commands.wait_pop(), EngineCommand::PonderHit));
     }
 }

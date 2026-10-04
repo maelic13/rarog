@@ -1,0 +1,87 @@
+diff --git a/src/search/params.rs b/src/search/params.rs
+index e6d90b0..b3eee46 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -177,14 +177,14 @@ search_params! {
+     // hardcoded literals exactly → bench-identical until re-tuned.
+     /// Qsearch capture SEE-prune margin: search a capture only if
+     /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
+-    qs_see_margin = 265, "QsSeeMargin", 0..=600;  // was 200 → 251 → 265
++    qs_see_margin = 266, "QsSeeMargin", 0..=600;  // was 200 → 251 → 265
+     /// Lower clamp on the qsearch SEE-prune threshold. Seed −800.
+     qs_see_clamp_lo = -722, "QsSeeClampLo", -1600..=-100;  // was -800 → -661 → -722
+     /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
+-    qs_see_clamp_hi = 212, "QsSeeClampHi", 0..=600;  // was 200 → 218 → 212
++    qs_see_clamp_hi = 208, "QsSeeClampHi", 0..=600;  // was 200 → 218 → 212
+     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
+     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
+-    qs_see_bad_floor = -55, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
++    qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
+ 
+     /// Singular-extension beta multiplier. `singular_beta = tt_score - mult * depth`.
+     singular_beta_mult = 4, "SingularBetaMult", 1..=8;  // was 2 → 4 → 6 → 4
+@@ -497,8 +497,8 @@ search_params! {
+ 
+     // Node-level pruning.
+     /// Razoring margin `base + square * depth^2`, evaluation units.
+-    razor_base = 306, "CoreRazorBase", 50..=800;
+-    razor_square = 157, "CoreRazorSquare", 20..=400;
++    razor_base = 295, "CoreRazorBase", 50..=800;
++    razor_square = 167, "CoreRazorSquare", 20..=400;
+     /// Categorical, never an SPSA coordinate. 1 keeps razoring off a node on
+     /// a PV line (`tt_pv`) and above depth 3, as the accepted search does; 0
+     /// razors as the donor does.
+@@ -506,12 +506,12 @@ search_params! {
+     /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
+     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
+     /// unthreatened + constant`, floored at 2.
+-    rfp_square = 144, "CoreRfpSquare", 0..=320;
+-    rfp_linear = 14, "CoreRfpLinear", -100..=200;
++    rfp_square = 152, "CoreRfpSquare", 0..=320;
++    rfp_linear = 15, "CoreRfpLinear", -100..=200;
+     rfp_improvement = 40, "CoreRfpImprovement", 0..=512;
+     rfp_correction = 139, "CoreRfpCorrection", 0..=2048;
+     rfp_threat = 21, "CoreRfpThreat", 0..=120;
+-    rfp_constant = -36, "CoreRfpConstant", -100..=100;
++    rfp_constant = -32, "CoreRfpConstant", -100..=100;
+     /// Reverse-futility return, in 1024ths of the way from the estimate to beta.
+     rfp_lerp = 586, "CoreRfpLerp", 0..=1024;
+     /// Hindsight: a parent reduction (1024ths of a ply) at or above this
+@@ -643,7 +643,7 @@ search_params! {
+     /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
+     /// (child cutoffs < 2))`, evaluation units; the depth term is in
+     /// quarters of a unit per ply.
+-    nmp_base = 170, "CoreNmpBase", 0..=400;
++    nmp_base = 168, "CoreNmpBase", 0..=400;
+     nmp_depth = 16, "CoreNmpDepth", 0..=80;
+     nmp_tt_pv = 48, "CoreNmpTtPv", 0..=200;
+     nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
+@@ -746,23 +746,23 @@ search_params! {
+     struct QuietParams, generated_quiet_param_checks;
+ 
+     /// A stand-pat fail-high is stored and returned this far toward beta.
+-    qs_stand_pat_lerp = 583, "QsStandPatLerp", 0..=1024;
++    qs_stand_pat_lerp = 565, "QsStandPatLerp", 0..=1024;
+     /// A capture's fail-high is stored and returned this far toward beta.
+-    qs_cutoff_lerp = 562, "QsCutoffLerp", 0..=1024;
++    qs_cutoff_lerp = 586, "QsCutoffLerp", 0..=1024;
+     /// Captures after this many at a node are skipped unless they give check,
+     /// recapture on the previous move's square or promote, while the stand pat
+     /// is not a loss.
+     qs_count_limit = 3, "QsCountLimit", 2..=8;
+     /// A capture is skipped when the stand pat, its victim and this margin
+     /// cannot reach alpha; evaluation units over the search's piece scale.
+-    qs_futility_margin = 150, "QsFutilityMargin", 0..=400;
++    qs_futility_margin = 178, "QsFutilityMargin", 0..=400;
+     /// With more than eight pieces on the board, the stand pat, a queen and
+     /// this margin below alpha end the node.
+-    qs_delta_margin = 200, "QsDeltaMargin", 0..=800;
++    qs_delta_margin = 205, "QsDeltaMargin", 0..=800;
+     /// Categorical, never an SPSA coordinate. 1: in check, quiet evasions are
+     /// skipped once a searched evasion scores better than a loss; captures
+     /// and promotions are still searched. 0: every evasion is searched.
+-    qs_evasion_prune = 0, "CoreQsEvasionPrune", 0..=1;
++    qs_evasion_prune = 1, "CoreQsEvasionPrune", 0..=1;
+     /// Categorical, never an SPSA coordinate. 1: a capture or promotion that
+     /// fails high in the quiescence gets a flat noisy-history bonus. 0: the
+     /// quiescence writes no history.

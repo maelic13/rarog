@@ -1,4 +1,4 @@
-"""Tests for the drawn-share bias census (PLAN 4.11.4).
+"""Tests for the drawn-share bias census.
 
 Two of these guard defects the census itself uncovered: a thin drawn subset
 being reported as a rate, and results depending on the ORDER positions were

@@ -1,0 +1,161 @@
+//! Per-thread search state.
+
+use std::cell::Cell;
+
+use crate::board::{Board, Move};
+use crate::eval::Evaluator;
+
+use super::correction::CorrectionTables;
+use super::history::HistoryTables;
+use super::stack::{PlyArray, StackEntry};
+use super::{InfoSink, MAX_PLY, RootMove, SilentSink};
+
+/// Everything one search thread owns and mutates while it searches: the
+/// per-ply stack and PV, the move-ordering histories and correction tables,
+/// the root-move records, the node counters, the evaluator, the stop flags and
+/// the output sink. Every table is per thread.
+pub(super) struct ThreadData {
+    pub(super) evaluator: Evaluator,
+    /// The search must unwind: a limit, a stop request or a quit.
+    pub(super) stopped: bool,
+    pub(super) quit: bool,
+    pub(super) pondering: bool,
+    pub(super) ponderhit: bool,
+    /// The soft target expired while pondering: stop at `ponderhit`.
+    pub(super) stop_on_ponderhit: bool,
+    pub(super) sink: Box<dyn InfoSink>,
+    /// Print search decisions at plies one and two; see `trace_decision!`.
+    #[cfg(feature = "diag")]
+    pub(super) trace_decisions: bool,
+    pub(super) nodes: u64,
+    pub(super) tb_hits: u64,
+    pub(super) seldepth: usize,
+    pub(super) pv_table: PlyArray<[Move; MAX_PLY]>,
+    pub(super) pv_len: PlyArray<usize>,
+    /// Per-ply search context with sentinel entries below the root. See
+    /// `StackEntry`.
+    pub(super) stack: PlyArray<StackEntry>,
+    /// Compact root-order/index backbone, kept separate from the larger
+    /// records below so move-membership and SMP hot reads stay cache-compact.
+    pub(super) root_moves: Vec<Move>,
+    pub(super) root_move_records: Vec<RootMove>,
+    /// At a tablebase root, each legal move's displayed score; empty
+    /// elsewhere. Only the reporting thread fills it.
+    pub(super) tb_root_scores: Vec<(Move, i32)>,
+    /// The root, kept by the reporting thread when tables are loaded, for
+    /// extending reported lines through them.
+    pub(super) tb_root_board: Option<Board>,
+    /// The first move of line 1 in the last `info` line this thread printed,
+    /// so the search can tell whether that line describes its `bestmove`.
+    pub(super) last_reported_move: Cell<Move>,
+    /// Index of the MultiPV line being searched; 0 outside MultiPV, where the
+    /// root reads and writes the table as an ordinary node.
+    pub(super) multipv_line: usize,
+    /// Move-ordering histories.
+    pub(super) hist: HistoryTables,
+    /// Static-evaluation correction tables.
+    pub(super) corr: CorrectionTables,
+    pub(super) root_move_offset: usize,
+    /// 0 = main thread, 1.. = helper index.
+    pub(super) thread_id: usize,
+    pub(super) root_iteration_nodes: u64,
+    pub(super) root_best_nodes: u64,
+    pub(super) root_best_effort: f64,
+    /// Width of the root window of the current aspiration step.
+    pub(super) root_delta: i32,
+    /// While a null-move verification search runs, the first ply at which the
+    /// null move is allowed again; zero outside a verification, and at every
+    /// search start. Per thread: a helper verifies its own null moves.
+    pub(super) nmp_min_ply: i32,
+    /// The depth of the iteration this thread is searching; positive
+    /// extensions stop at twice it. Zero before any root search.
+    pub(super) root_depth: i32,
+    /// The plies at which a null move was made, for the tests of its gates.
+    #[cfg(test)]
+    pub(super) null_move_plies: Vec<usize>,
+    /// Null-move verification searches started.
+    #[cfg(test)]
+    pub(super) nmp_verifications: u64,
+    /// ProbCut capture searches started, and ProbCut cutoffs.
+    #[cfg(test)]
+    pub(super) probcut_searches: u64,
+    #[cfg(test)]
+    pub(super) probcut_cuts: u64,
+    /// Singular exclusion searches started, and nodes whose first move a
+    /// singular or low-depth singular decision extended or reduced.
+    #[cfg(test)]
+    pub(super) singular_searches: u64,
+    #[cfg(test)]
+    pub(super) extended_nodes: u64,
+    /// The most any node's spent extension budget exceeded its iteration's
+    /// depth (zero or less when the budget holds), and the extensions the
+    /// budget cut short.
+    #[cfg(test)]
+    pub(super) budget_overrun: i32,
+    #[cfg(test)]
+    pub(super) budget_truncations: u64,
+    /// Late-move reductions applied at a root node and at a node in check,
+    /// for the tests of the reduction scope.
+    #[cfg(test)]
+    pub(super) lmr_at_root: u64,
+    #[cfg(test)]
+    pub(super) lmr_in_check: u64,
+}
+
+impl Default for ThreadData {
+    fn default() -> Self {
+        Self {
+            evaluator: Evaluator::default(),
+            stopped: false,
+            quit: false,
+            pondering: false,
+            ponderhit: false,
+            stop_on_ponderhit: false,
+            sink: Box::new(SilentSink),
+            #[cfg(feature = "diag")]
+            trace_decisions: false,
+            nodes: 0,
+            tb_hits: 0,
+            seldepth: 0,
+            pv_table: PlyArray::new([Move::NULL; MAX_PLY]),
+            pv_len: PlyArray::new(0),
+            stack: PlyArray::new(StackEntry::default()),
+            root_moves: Vec::new(),
+            root_move_records: Vec::new(),
+            tb_root_scores: Vec::new(),
+            tb_root_board: None,
+            last_reported_move: Cell::new(Move::NULL),
+            multipv_line: 0,
+            hist: HistoryTables::default(),
+            corr: CorrectionTables::default(),
+            root_move_offset: 0,
+            thread_id: 0,
+            root_iteration_nodes: 0,
+            root_best_nodes: 0,
+            root_best_effort: 0.0,
+            root_delta: 1,
+            nmp_min_ply: 0,
+            root_depth: 0,
+            #[cfg(test)]
+            null_move_plies: Vec::new(),
+            #[cfg(test)]
+            nmp_verifications: 0,
+            #[cfg(test)]
+            probcut_searches: 0,
+            #[cfg(test)]
+            probcut_cuts: 0,
+            #[cfg(test)]
+            singular_searches: 0,
+            #[cfg(test)]
+            extended_nodes: 0,
+            #[cfg(test)]
+            budget_overrun: i32::MIN,
+            #[cfg(test)]
+            budget_truncations: 0,
+            #[cfg(test)]
+            lmr_at_root: 0,
+            #[cfg(test)]
+            lmr_in_check: 0,
+        }
+    }
+}

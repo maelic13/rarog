@@ -1,0 +1,19 @@
+# Conditions every Rarog workflow shares on Colosseum CLI. Inherited, never run
+# on its own: `extend = "common.toml"` from a workflow file, or pass it with
+# --run-file beside an explicit command.
+#
+# The book and its order are the same as every earlier fastchess gate, so a
+# result here is comparable with the ledger. Paths resolve relative to this file.
+
+[options]
+book = "../books/UHO_Lichess_4852_v1.epd"
+book-order = "random"
+
+# One game per physical core, both SMT siblings, core 0 left to the operating
+# system. Unpinned games cost a hidden per-run offset on this host (RAR-M48).
+placement = "auto"
+headroom-cores = 1
+
+# A slot keeps its two engine processes, so start-up work is paid once per run
+# instead of inside a game's first search (Colosseum 10.9u).
+engine-processes = "per-slot"

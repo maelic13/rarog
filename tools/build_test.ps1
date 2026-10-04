@@ -19,9 +19,11 @@
 
     Tune (-Tune switch): runs `cargo build --release --features tune` — produces
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
-    for weather-factory SPSA runs.  PGO is skipped because (a) xtask does not
-    support --features, and (b) SPSA accuracy does not depend on absolute NPS —
-    both sides of each mini-match use the same binary.
+    for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
+    not depend on absolute NPS — both sides of each mini-match use the same
+    binary.  With -Features (a candidate arm compiled behind a flag) it builds
+    `--features tune,<Features>` and records the flavor `<Features>-tune`, so
+    the manifest's bench fingerprint is that arm's own.
 
     Output always goes to tools\test_engines\ (repo-local and separate from
     released engines).
@@ -42,6 +44,15 @@
 
 .PARAMETER Tune
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
+    Combine with -Features to tune a candidate arm compiled behind a flag.
+
+.PARAMETER Features
+    Cargo features for a candidate arm compiled behind a flag.
+    For a PGO build they pass to xtask for both PGO builds; with -Tune they
+    join `tune` in the cargo build and name the flavor (`<Features>-tune`). Either
+    way they are recorded in the build command and the verified bench
+    fingerprint is the arm's own. `tune` and `texel` are refused: the first is
+    implied by -Tune, the second bypasses the evaluation caches.
 
 .PARAMETER TestEnginesDir
     Destination directory.  Default: tools\test_engines
@@ -70,6 +81,7 @@ param(
     [switch]$Tune,
     [switch]$Native,
     [switch]$BuildOnly,
+    [string]$Features = "",
     [int]$BenchDepth = 13,
     [string]$TestEnginesDir = "$PSScriptRoot\test_engines",
     [string]$SourceRoot = ""
@@ -78,13 +90,16 @@ param(
 if ($Tune -and $Native) {
     throw "-Tune and -Native are mutually exclusive."
 }
+if ($Features -match '(^|,)\s*(tune|texel)\s*(,|$)') {
+    throw "-Features may not name 'tune' (implied by -Tune) or 'texel' (it bypasses the evaluation caches)."
+}
 if ($BenchDepth -lt 1) { throw "-BenchDepth must be positive." }
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 . "$PSScriptRoot\harness_common.ps1"
 
-# --- 9.7 provenance manifest -------------------------------------------------
+# --- provenance manifest -----------------------------------------------------
 # Every test binary gets a sidecar JSON next to it: git SHA + dirty flag,
 # branch, rustc, and a bench fingerprint VERIFIED by running the binary just
 # built (which doubles as a smoke test — a broken build fails here, not in an
@@ -185,7 +200,9 @@ Push-Location $repoRoot
 try {
     if ($Tune) {
         Write-Host ""
-        Write-Host "Building pext tune binary (--features tune, no PGO) — suffix: $Suffix"
+        $tuneFeatures = if ($Features) { "tune,$Features" } else { "tune" }
+        $tuneFlavor = if ($Features) { "$($Features -replace '\s*,\s*', '+')-tune" } else { "pext-tune" }
+        Write-Host "Building pext tune binary (--features $tuneFeatures, no PGO, flavor $tuneFlavor) — suffix: $Suffix"
         Write-Host "NOTE: Use this binary only for SPSA, never for SPRT."
         Write-Host ""
 
@@ -193,8 +210,8 @@ try {
         $savedRustFlags = $env:RUSTFLAGS
         try {
             $env:RUSTFLAGS = "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
-            cargo build --release --features tune
-            if ($LASTEXITCODE -ne 0) { throw "cargo build --features tune failed (exit $LASTEXITCODE)" }
+            cargo build --release --features $tuneFeatures
+            if ($LASTEXITCODE -ne 0) { throw "cargo build --features $tuneFeatures failed (exit $LASTEXITCODE)" }
         } finally {
             $env:RUSTFLAGS = $savedRustFlags
         }
@@ -208,14 +225,14 @@ try {
 
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-tune.exe"
         Copy-Item $src $dest -Force
-        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor "pext-tune" `
-            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features tune" `
+        Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $tuneFlavor `
+            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features $tuneFeatures" `
             -Depth $BenchDepth -SkipBench:$BuildOnly
         Write-Host ""
         Write-Host "Done: $dest"
         Write-Host ""
     } else {
-        # 2.3.0: `--native` is now ORTHOGONAL to `--arch`. Both flavours build
+        # `--native` is now ORTHOGONAL to `--arch`. Both flavours build
         # the PEXT code path; -Native only swaps the portable x86-64-v3 baseline
         # for `target-cpu=native`. Gate binaries deliberately stay portable, so
         # what we SPRT matches the shipped pext asset (PLAN S3).
@@ -225,19 +242,28 @@ try {
         Write-Host "Building $label+PGO binary (suffix: $Suffix) ..."
         Write-Host ""
 
+        $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
+        $buildStarted = Get-Date
         if ($Native) {
-            cargo xtask build --arch $arch --native --pgo
+            cargo xtask build --arch $arch --native --pgo @featureArgs
         } else {
-            cargo xtask build --arch $arch --pgo
+            cargo xtask build --arch $arch --pgo @featureArgs
         }
         if ($LASTEXITCODE -ne 0) { throw "xtask build failed (exit $LASTEXITCODE)" }
 
-        $dist = Get-ChildItem "target/dist/rarog-*-$arch-pgo.exe" |
+        # The flavour decides the artifact name. A `*-$arch-pgo.exe` glob does
+        # not match `*-$arch-native-pgo.exe`, so a native build used to pick up
+        # the newest portable binary and label it native.
+        $distFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
+        $dist = Get-ChildItem "target/dist/rarog-*-windows-$distFlavor.exe" |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
         if (-not $dist) {
-            throw "No $arch-pgo binary found in target/dist/ — check xtask output above."
+            throw "No $distFlavor binary found in target/dist/ — check xtask output above."
+        }
+        if ($dist.LastWriteTime -lt $buildStarted) {
+            throw "Newest $distFlavor binary ($($dist.Name)) predates this build; xtask did not write it."
         }
 
         if (-not (Test-Path $TestEnginesDir)) {
@@ -247,7 +273,7 @@ try {
         $fileFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$fileFlavor.exe"
         Copy-Item $dist.FullName $dest -Force
-        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo"
+        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo$(if ($Features) { " --features $Features" })"
         Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $fileFlavor `
             -RepositoryRoot $repoRoot -BuildCommand $buildCommand -Depth $BenchDepth `
             -SkipBench:$BuildOnly

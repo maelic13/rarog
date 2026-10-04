@@ -188,8 +188,8 @@ try {
         throw "test.csv hash differs from its publication manifest"
     }
 
-    Invoke-Checked "build exact evaluator" "cargo" @("build", "--release", "-p", "texel-tuner")
-    $tuner = Join-Path $repo "target/release/rarog-texel.exe"
+    Invoke-Checked "build exact evaluator" "cargo" @("build", "--release", "--manifest-path", "tools/texel-tuner/Cargo.toml")
+    $tuner = Join-Path $repo "tools/texel-tuner/target/release/rarog-texel.exe"
     Invoke-Checked "save exact source vector" $tuner @("--write-defaults", $sourceVector)
 
     Write-Host "`n== one-shot exact source-to-rounded-candidate confirmation =="

@@ -1,8 +1,8 @@
 //! Startup advice about which released asset this CPU should be running.
 //!
-//! A.4.2. Two user-visible problems motivate this, both measured:
+//! Two user-visible problems motivate this, both measured:
 //!
-//! 1. **Too conservative.** RAR-P20 measured `avx2` at **+4.59%** over `base`
+//! 1. **Too conservative.** `avx2` measured **+4.59%** over `base`
 //!    and `pext` at **+2.45%** over `avx2` on an idle 5950X. A user who picks
 //!    `base` on a capable CPU gives up real strength for nothing.
 //! 2. **Too ambitious.** AMD Excavator (family 15h) and Zen/Zen+/Zen2 (17h)
@@ -35,7 +35,7 @@
 
 /// The ISA tier this binary was compiled for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Tier {
+enum Tier {
     /// Portable `x86-64` baseline.
     Base,
     /// `x86-64-v3`: AVX2, BMI1, BMI2, POPCNT, LZCNT.
@@ -59,7 +59,7 @@ impl Tier {
 ///
 /// `rarog_pext` is checked first because the PEXT build also enables every
 /// `avx2` feature; asking about `target_feature` first would misreport it.
-pub const fn built_tier() -> Tier {
+const fn built_tier() -> Tier {
     if cfg!(all(rarog_pext, target_arch = "x86_64")) {
         Tier::Pext
     } else if cfg!(target_feature = "avx2") {
@@ -97,6 +97,13 @@ const _: () = {
 /// The tier this CPU should be running, from what it supports.
 ///
 /// Pure so it can be tested across CPUs this machine is not.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 const fn recommended_tier(has_avx2: bool, has_bmi2: bool, slow_pext: bool) -> Tier {
     if !has_avx2 {
         Tier::Base
@@ -115,11 +122,25 @@ const fn recommended_tier(has_avx2: bool, has_bmi2: bool, slow_pext: bool) -> Ti
 /// its entire source and it is this one — everything else there, all eight
 /// tiers and seventeen feature bits, is pure feature testing. A flag can say an
 /// instruction is legal; it cannot say it is fast.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 const fn has_slow_pext(is_amd: bool, family: u32) -> bool {
     is_amd && (family == 0x15 || family == 0x17)
 }
 
 /// The advisory line, or `None` when this asset is already the right one.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "consumed only by the x86-64 advisory; kept portable so the pure tier logic is tested on every target"
+    )
+)]
 fn advice_for(built: Tier, recommended: Tier, slow_pext: bool) -> Option<String> {
     if built == recommended {
         return None;
@@ -132,7 +153,7 @@ fn advice_for(built: Tier, recommended: Tier, slow_pext: bool) -> Option<String>
             recommended.asset()
         ),
         // Leaving measured speed unclaimed. No figure here on purpose: the
-        // README (A.4.4) owns the numbers, so they can be revised without
+        // README owns the numbers, so they can be revised without
         // rebuilding the engine, and base-to-pext is not directly measured yet.
         _ => format!(
             "CPU advisory: this CPU supports the `{}` build, which is faster than \

@@ -39,6 +39,12 @@ are not reliably visible by reading:
    compact suffix must agree. Vendor/model tags do not belong on those active
    checklist lines; GUIDE's model mapping owns them.
 
+7. **A third level.** A leaf may carry addenda numbered one level deeper
+   (`B.2.0.1` under `B.2.0`), indented 8 spaces. An addendum is work of its
+   own with its own state and class; it does not turn its leaf into a heading,
+   so the leaf stays actionable and the hanging-parent rule does not apply
+   between them. Deeper than three levels is not accepted.
+
 The child pattern is checked against the format GUIDE actually uses --
 `- [ ] **A.2.1** ...`, bold, lettered phase, dotted step. The first version
 of this checker required a bare `4.9.1`, matched no line in the file, and so
@@ -77,8 +83,8 @@ GUIDE = ROOT / "GUIDE.md"
 # out of the count silently -- which is how the count went 100 -> 101 when one
 # such marker was moved out. Markers go after the bold: `**4.9** NEXT - ...`.
 PARENT = re.compile(r"^- \[([ x])\] \*\*([A-Z]\.\d+)\*\*")
-CHILD = re.compile(r"^( *)- \[([ x])\] \*\*([A-Z]\.\d+\.\d+)\*\*")
-STRAY = re.compile(r"^ *- \[[ x]\] \*\*[A-Z]\.\d+(\.\d+)? [^*]")
+CHILD = re.compile(r"^( *)- \[([ x])\] \*\*([A-Z]\.\d+\.\d+(?:\.\d+)?)\*\*")
+STRAY = re.compile(r"^ *- \[[ x]\] \*\*[A-Z]\.\d+(\.\d+){0,2} [^*]")
 PHASE = re.compile(r"^## Phase ([A-Z])")
 REQUIRED_PHASES = set("ABCDEFG")
 PLAN = ROOT / "PLAN.md"
@@ -91,8 +97,8 @@ PLAN = ROOT / "PLAN.md"
 STEP_IN_PLAN = re.compile(r"(?<![\d.])%s(?![\d])")
 # `SUPERSEDED -> 4.11.1`, after the closing bold. See failure 4 above.
 SUPERSEDED = re.compile(
-    r"\*\*([A-Z]\.\d+(?:\.\d+)?)\*\*.*?SUPERSEDED\s*->\s*"
-    r"([A-Z]\.\d+(?:\.\d+)?)"
+    r"\*\*([A-Z]\.\d+(?:\.\d+){0,2})\*\*.*?SUPERSEDED\s*->\s*"
+    r"([A-Z]\.\d+(?:\.\d+){0,2})"
 )
 # A PLAN sub-step DEFINITION, not a reference to one. PLAN writes a definition
 # as `**4.10.1 Some title...**` -- bold, number, space, then the title -- while
@@ -100,12 +106,12 @@ SUPERSEDED = re.compile(
 # nothing after the number (`**4.12.22**`). The trailing `\s+\S` is what
 # separates them, and without it every owner pointer in the prose would be
 # read as a step this file does not define.
-PLAN_DEFINITION = re.compile(r"\*\*([A-Z]\.\d+\.\d+)\s+\S")
+PLAN_DEFINITION = re.compile(r"\*\*([A-Z]\.\d+\.\d+(?:\.\d+)?)\s+\S")
 WORKFLOW_ROW = re.compile(
-    r"^\|\s*([A-Z]\.\d+(?:\.\d+)?)\s*\|\s*([A-Z_]+)\s*\|\s*([A-Z]\d?)\s*\|"
+    r"^\|\s*([A-Z]\.\d+(?:\.\d+){0,2})\s*\|\s*([A-Z_]+)\s*\|\s*([A-Z]\d?)\s*\|"
 )
 GUIDE_WORKFLOW = re.compile(
-    r"\*\*([A-Z]\.\d+(?:\.\d+)?)\*\*.*?\*\*"
+    r"\*\*([A-Z]\.\d+(?:\.\d+){0,2})\*\*.*?\*\*"
     r"([A-Z_]+)\s*/\s*([A-Z]\d?)\*\*"
 )
 MODEL_TAG = re.compile(r"\b(?:Astra|Terra|Sol|Opus|Sonnet|Fable)\b")
@@ -150,19 +156,112 @@ def parse_workflow_rows(lines):
     return rows, problems
 
 
+AGENTS = ROOT / "AGENTS.md"
+# A bench fingerprint as the documents write it: "7,601,220 / EBF 2.474".
+FINGERPRINT = re.compile(r"(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})")
+
+
+def fingerprint_problems(guide_text, agents_text, plan_text):
+    """The fingerprint GUIDE's checkpoint declares must be the one AGENTS and
+    PLAN's checkpoint row quote. Manta's GUIDE carried two different
+    production fingerprints on the day it froze; nothing checked."""
+    problems = []
+    head = [l for l in guide_text.splitlines() if l.startswith("| Development head")]
+    if not head:
+        return ["GUIDE.md: no '| Development head' checkpoint row to read the fingerprint from"]
+    m = FINGERPRINT.search(head[0])
+    if not m:
+        return ["GUIDE.md: the Development head row carries no 'N / EBF x.xxx' fingerprint"]
+    canonical = m.group(0)
+    for n, line in enumerate(agents_text.splitlines(), 1):
+        if "currently" in line:
+            for found in FINGERPRINT.finditer(line):
+                if found.group(0) != canonical:
+                    problems.append(
+                        "AGENTS.md:%d: fingerprint %s disagrees with GUIDE's %s"
+                        % (n, found.group(0), canonical))
+    rows = [l for l in plan_text.splitlines() if l.startswith("| Fingerprint |")]
+    for row in rows:
+        found = FINGERPRINT.search(row)
+        if found and found.group(0) != canonical:
+            problems.append(
+                "PLAN.md checkpoint row: fingerprint %s disagrees with GUIDE's %s"
+                % (found.group(0), canonical))
+    return problems
+
+
+# The current documents a reader acts on. The ledger, HISTORY and analysis/
+# are exempt: their historical paths are evidence of what existed.
+CURRENT_DOCS = ("GUIDE.md", "PLAN.md", "PROCESS.md", "AGENTS.md")
+# A backticked repository path: a known top-level directory, then segments.
+# Placeholders (`<name>`, globs, ellipses) are templates, not paths.
+REPO_PATH = re.compile(
+    r"`((?:src|tests|tools|analysis|docs|benches|xtask|vendor|logo|\.github|\.cargo)"
+    r"/[^`\s]*)`")
+TEMPLATE = re.compile(r"[<>*{}…]|\.\.\.")
+
+
+def dead_path_problems(texts, exists):
+    """Every backticked repository path in a current document must exist,
+    unless it is marked `path` (planned).
+
+    `texts` maps a document name to its text; `exists(path)` says whether the
+    path is tracked or on disk. A path that exists nowhere sends the reader to
+    nothing, and 44 of them accumulated before anything checked.
+    """
+    problems = []
+    for name, text in texts.items():
+        for n, line in enumerate(text.splitlines(), 1):
+            for m in REPO_PATH.finditer(line):
+                path = m.group(1).rstrip(".,;:")
+                path = re.sub(r":\d+(?:-\d+)?$", "", path).split("#")[0]
+                if TEMPLATE.search(path) or line[m.end():].startswith(" (planned"):
+                    continue
+                if not exists(path):
+                    problems.append("%s:%d: `%s` exists neither in the index nor on disk"
+                                    % (name, n, path))
+    return problems
+
+
+def repository_path_exists(path):
+    return (ROOT / path.rstrip("/")).exists()
+
+
 def self_test():
     """Prove the workflow guard rejects intentionally malformed input."""
     sample = [
         "| A.2.1 | WRONG_STATE | R3 | synthetic |",
         "| A.2.1 | RESEARCH | Z9 | duplicate and invalid |",
+        "| B.2.0.1 | RESEARCH | I2 | three levels are accepted |",
+        "| B.2.0.1.1 | RESEARCH | I2 | four levels are not |",
     ]
-    _, problems = parse_workflow_rows(sample)
+    rows, problems = parse_workflow_rows(sample)
+    if "B.2.0.1" not in rows or "B.2.0.1.1" in rows:
+        sys.stdout.write("FAIL: workflow self-test: three-level IDs parse, four-level do not\n")
+        return 1
     expected = ("invalid workflow state", "duplicate workflow", "invalid capability")
     missing = [term for term in expected if not any(term in p for p in problems)]
     if missing:
         sys.stdout.write("FAIL: workflow self-test missed: %s\n" % ", ".join(missing))
         return 1
     sys.stdout.write("workflow metadata negative self-test: PASS (3 failures detected)\n")
+    fp = fingerprint_problems(
+        "| Development head | fingerprint **7,601,220 / EBF 2.474** |",
+        "baseline (currently 7,000,000 / EBF 2.400) and\n  (currently **7,601,220 / EBF 2.474**)",
+        "| Fingerprint | `bench 13` **7,601,221 / EBF 2.474** |",
+    )
+    if len(fp) != 2:
+        sys.stdout.write("FAIL: fingerprint self-test expected 2 disagreements, got %d\n" % len(fp))
+        return 1
+    sys.stdout.write("fingerprint negative self-test: PASS (2 disagreements detected)\n")
+    dead = dead_path_problems(
+        {"PLAN.md": "see `src/search/mod.rs`, `src/search.rs` and `tools/<name>.ps1`"},
+        lambda p: p == "src/search/mod.rs",
+    )
+    if len(dead) != 1 or "src/search.rs" not in dead[0]:
+        sys.stdout.write("FAIL: dead-path self-test expected only src/search.rs, got %r\n" % dead)
+        return 1
+    sys.stdout.write("dead-path negative self-test: PASS (1 dangling path detected)\n")
     return 0
 
 
@@ -245,13 +344,14 @@ def main():
             steps += 1
             step_numbers.append(k.group(3))
             indent = len(k.group(1))
-            if indent != 4:
+            expected = 4 if k.group(3).count(".") == 2 else 8
+            if indent != expected:
                 problems.append(
-                    "GUIDE.md:%d: sub-item %s indented %d spaces, must be 4 "
+                    "GUIDE.md:%d: sub-item %s indented %d spaces, must be %d "
                     "(6 renders as an indented code block)"
-                    % (n, k.group(3), indent)
+                    % (n, k.group(3), indent, expected)
                 )
-            if parent is not None:
+            if parent is not None and expected == 4:
                 kids.append(k.group(2) == "x")
     close()
 
@@ -295,6 +395,11 @@ def main():
     if not plan_text:
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
+        agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
+        problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
+        texts = {name: (ROOT / name).read_text(encoding="utf-8")
+                 for name in CURRENT_DOCS if (ROOT / name).is_file()}
+        problems.extend(dead_path_problems(texts, repository_path_exists))
         absent = [s for s in step_numbers
                   if not re.search(STEP_IN_PLAN.pattern % re.escape(s), plan_text)]
         if absent:

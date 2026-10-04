@@ -1,8 +1,9 @@
 # Rarog recurring procedures
 
-Agent-facing process detail. Split out of `GUIDE.md` on 2026-08-21.
-`AGENTS.md` holds the rules that stop wrong results; this holds the
-step-by-step procedures those rules assume.
+The recurring procedures: how a leaf is researched, registered, implemented,
+gated and closed, and how the build, fit, tune and gate instruments are run.
+`AGENTS.md` holds the rules that stop wrong results; `PLAN.md` holds the
+roadmap. This file also owns the independence boundary with donor engines.
 
 ## Recurring procedures
 
@@ -47,6 +48,50 @@ distinguish independence from masking; do not require it for every small change.
 Freeze predictions in EXPERIMENTS before exposure. A later explanation is
 calibration, never proof that the outcome was predicted.
 
+### Experiment registration
+
+Register an experiment as one row in the `EXPERIMENTS.md` section that owns
+it, before any games. When the registration is longer than a row, write it in
+an `analysis/` packet with the fields below and cite the packet from the row;
+append the result and calibration there without rewriting the prediction.
+
+```markdown
+### RAR-<area><number> — <short name>
+
+- Date / owner:
+- Baseline SHA / candidate SHA / dirty-diff hash:
+- Binary / compiler / PGO identity:
+- Research question:
+- Hypothesis / proposed mechanism:
+- Competing hypotheses:
+- Interacting mechanisms / consumers:
+- **PRE-REGISTERED PREDICTION (freeze before exposure):**
+  - Expected diagnostic movement:
+  - Expected Elo sign/range, if defensible:
+  - Probability positive/useful and confidence basis:
+  - Most likely failure mode:
+- Falsification criteria:
+- Cheapest prior falsifier: test / result / implementation still justified?:
+- Registered gate and stop rule:
+- Full conditions / provenance: flags, manifests and hashes; book/hash, TC,
+  threads, Hash, concurrency, affinity, adjudication, node budget and cohort:
+- Result:
+  - Diagnostics: nodes, EBF, NPS, depth, counters, suites (not the verdict):
+  - Games/verdict: games, W-D-L, Elo/nElo and CI, LLR:
+- Disposition: accepted / retained / rejected / neutral/inconclusive /
+  observation / no-change / deferred:
+- **PREDICTION CALIBRATION (append after exposure):**
+  - Original prediction (do not rewrite):
+  - Observed result; sign and magnitude reasonable?:
+  - Proposed causal mechanism supported?:
+  - Missed interaction or instrument failure?:
+  - Confidence over/under-calibrated?:
+- Postmortem: changed causal assumption / what did not change / alternatives:
+- Conditional lesson:
+- Retry trigger or `closed`:
+- Artifacts / commits:
+```
+
 ### Step lifecycle and audit handoff
 
 Before selecting a leaf, review GUIDE's current/held overview and PLAN's
@@ -75,13 +120,15 @@ games until the end destroys attribution and lets losing structures hide.
    candidate scope, expected direction, gate, cap and stop rule, before games.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;
-   unknown-sign repairs need a symmetric one. Size from RAR-M10 at the
-   EXPECTED value before choosing, and use the PLAN §2 sizing table.
+   a repair takes the gate of its case in AGENTS' *Gating* (none, a
+   registered 2,000-game harm read, or `[-5,5]`). Size from RAR-M10 at the
+   EXPECTED value before choosing (`tools/spsa_convergence_model.py`).
 3. **Implement** — the smallest dependency-complete cluster. Substeps may be
    compiled and diagnosed separately, but are not expected to pass standalone
    and no incomplete cluster becomes the next strength baseline.
-4. **Prove correctness** — fmt, workspace tests in debug and release,
-   all-feature clippy and targeted invariants. A behavior-neutral diagnostic
+4. **Prove correctness** — fmt, the engine suite in debug and release
+   (`cargo test -p rarog`, both profiles), all-feature clippy and targeted
+   invariants. A behavior-neutral diagnostic
    seam must preserve the exact accepted fingerprint when disabled.
 5. **Explain** — use the frozen suite at fixed depth/nodes to compare nodes,
    qnodes, move source, cutoff index, TT use, reductions and re-searches,
@@ -122,116 +169,181 @@ presented as mature.
 
 ### The independence boundary
 
-Rarog takes **ideas** from Stockfish and builds its own answer. It does not
-take code, and it does not aim to resemble it. Both engines are GPLv3, so
-copying would be legally permissible — this boundary is a product decision and
-is deliberately stricter than the licence requires. PLAN §4 holds the full
-table; the working rules are:
+Donors: **Reckless** for search, threading, time management and NNUE;
+**Stockfish 11** for the classical evaluation; **Stockfish 19** for NNUE and
+SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
+rule 1 points here).
 
-- What may cross: the problem a mechanism solves, that the problem exists at
-  all, which mechanisms interact and in what order, which populations are
-  worth measuring, and known failure modes.
-- What may not cross: source code in any language or amount, line-by-line or
-  structure-for-structure transcription, copied identifiers or file layout,
-  and behavioral equivalence as a goal. A donor constant may cross only as an
-  explicitly labelled seed under PLAN's current independence rule; it is on
-  the donor's scale and must be locally fitted and gated before acceptance.
-- Read, understand, close the file, then design from Rarog's own code and its
-  measured evidence. If a change cannot be justified without pointing at the reference,
-  it is not understood well enough to ship.
-- No upstream code is copied, so Rarog is not a derivative work. `README.md`
-  already states the correct posture — an independent engine, with thanks for
-  the inspiration. Do not restyle that into an attribution of derived code.
-- Do not merge the `hybrid` branch, copy its FFI boundary into Rarog, replace
-  native Rust with C++/FFI, or read the oracle as permission for a wholesale
-  unmeasured rewrite.
+- May cross: architecture, mechanisms, population choices, contracts, failure
+  modes and constants. A constant is a seed on the donor's scale: converted
+  through the measured scale ratio, fitted locally and gated (PLAN rule 2).
+- Written by us: code in Rarog's own structure. Line-for-line transcription
+  only where an algorithm has one natural form or a different form provably
+  loses throughput.
+- Read the donor, close the file, then design from Rarog's own code and its
+  measured evidence. If a change cannot be justified without pointing at the
+  donor, it is not understood well enough to ship.
+- `README.md`'s posture stays accurate: an independent engine, with thanks for
+  the inspiration.
+- Do not merge the `hybrid` oracle, copy its FFI boundary into Rarog, replace
+  native Rust with C++/FFI, or read the oracle as permission for an unmeasured
+  rewrite.
 - Similarity is never a reason to accept anything, and a counter that diverges
-  from the oracle is a question, not a defect. Closing a counter gap is not an
-  outcome; winning games is.
-- Rarog solving a problem differently, or deciding it does not apply here, is
-  a first-class result — record it with its reason and move on.
+  from the oracle is a question, not a defect. Games decide.
+- Deciding a donor mechanism does not apply here is a first-class result;
+  record it with its reason.
 
-**Adjudication is off by default as of 2026-09-01** (RAR-M16), in `sprt.ps1`
-and `gauntlet.ps1`. It used to be kept for search-only candidates on the
-grounds that both arms share Rarog's score scale, which is true but was never
-the whole cost: RAR-M15 measured adjudication destroying **52.7% of all
-endgames before they are reached**, and RAR-M16 priced playing games out at
-only about **10% wall time** (97.5 games/min against 88.4). RAR-O01 versus
-RAR-O02 priced the cross-evaluator confounder at about 74 Elo separately.
+### Adjudication
 
-Adjudication is not unfair -- it is symmetric between arms -- it is **lossy**,
-and the loss scales with how badly the engine converts. An engine that
-converts KRP-KR at 52% disagrees with its own adjudicated verdict far more
-often than one converting at 99%, which is the argument for revisiting this
-default once the endgame cluster (PLAN C.5) closes rather than treating it as
-permanent.
+Every instrument plays games out: the Colosseum run files (`tools/colosseum/`,
+which set no draw, resign or move cap), `sprt.ps1`, `gauntlet.ps1`, SPSA on
+either path (the `RAROG_ADJUDICATION_PATCH_V4` weather-factory patch is
+required to start a tune there) and datagen (`datagen-v2`, or `datagen-v3`
+with Syzygy truth for labels, datagen only). Adjudication ends 52.7% of
+endgames before they are reached and saves about 10% wall time (RAR-M15,
+RAR-M16, RAR-M17, RAR-M18). `-Adjudicate` opts back in only with a registered
+reason; its results are not comparable with unadjudicated ones. `datagen-v1`
+stays by name so the manifests citing it keep their meaning. Use fixed
+movetime or nodes only for deterministic diagnostics.
 
-Pass `-Adjudicate` to opt back in, and justify it in the registration: wall
-time genuinely binding, and a change that provably cannot touch conversion or
-defensive holding. A result produced with the flag is not comparable with one
-produced without it.
+### Harness
 
-**This covers every instrument, SPSA and datagen included.** `setup_tools.ps1`
-now strips both the resign and the draw line from weather-factory's
-`cutechess.py` (marker `RAROG_ADJUDICATION_PATCH_V4`) and `spsa.ps1` refuses
-to START a tune without it -- while still exempting a RESUME, because a run
-that began under an older rule must finish under it rather than becoming
-incomparable with itself halfway through.
+**Colosseum CLI is the main path** for gates, fixed matches, tunes, null pairs
+and gauntlets (PLAN B.2.6, maintainer decision 2026-09-21). `tools/colosseum.ps1`
+drives it from the committed run files in `tools/colosseum/`, which carry the
+conditions every Rarog measurement shares; the cap, the seed and the run
+directory stay on the command line, because they belong to the registration in
+`EXPERIMENTS.md`. The runner is pinned by revision and SHA-256 in
+`tools/colosseum/colosseum.pin.json` and staged by `setup_tools.ps1`; a binary
+that is not the pinned one is refused, not substituted. The harness is
+qualified in its own repository (Colosseum PLAN Phase 10, with Rarog as the
+validation engine) and Rarog repeats none of that qualification.
 
-`datagen.ps1` defaults to the new `datagen-v2` profile: no adjudication at
-all. The case there is stronger than for a gate and is not about mislabeling
--- resign at 600/3 two-sided almost never calls a game wrong. It is **sample
-depletion**: adjudication ends 52.7% of endgames before they are reached, so
-an adjudicated corpus is systematically short of exactly the positions the
-endgame families must be fitted on, and the phase-balanced extraction then
-draws its endgame reservoir from a truncated distribution. `datagen-v1` is
-retained by name and unedited, because `hce-v2` and every manifest already
-written cite it and must keep meaning what they said. Pass `-Adjudicate` to
-reproduce it.
+**fastchess and weather-factory stay installed, working and documented** as the
+backup and the second opinion, at least until release 2.5.0. `sprt.ps1`,
+`spsa.ps1`, their books, their patches and `setup_tools.ps1`'s staging of them
+are maintained, not deprecated; retirement is reviewed at that release and not
+before. Both paths call one implementation of every guard
+(`tools/harness_common.ps1`), so they cannot come to disagree about what a
+measurable binary is.
 
-Historical note, superseded: an HCE A/B used to require a registered
-calibration proving adjudication safe for both
-arms. Use fixed movetime or nodes only for the deterministic diagnostic suite,
-never as the strength verdict.
+Run the backup path as a cross-check when:
+
+- the runner, the scheduler or the CPU topology on this host changes — the
+  same trigger that owes a null pair (RAR-M03);
+- a result is surprising: a sign nobody predicted, a magnitude well outside the
+  registered band, or a gate that resolves far faster or slower than RAR-M10
+  predicts for its bounds;
+- the Colosseum version changes, which means `colosseum.pin.json` was re-pinned.
+
+A cross-check is a fixed match or a replayed gate on the same arms, read as
+"do the two instruments agree inside their intervals" and never as a second
+chance at acceptance. The two agree at this host's resolution: on the B.2.2
+arms over 2,000 games each, fastchess read +54.29 ± 11.12 Elo and Colosseum
++55.71 to +65.92 across three runs of the same seed, a spread as wide as the
+gap between the instruments (RAR-M61); on the B.2.4a arms both reached H1 under
+`[0,10]` in about the same number of games (RAR-M60).
+
+**A registered experiment names its runner and never changes it mid-way.**
+Moving an experiment in flight to the other harness voids it.
+
+Shared conditions on both paths: `3+0.03`, Hash 64, one thread, the UHO book
+in random order, no adjudication, a 20 ms margin, and fourteen concurrent
+games on pinned physical cores that never include CPU 0. A tune runs fifteen,
+because both perturbation arms share a slot. `tools/colosseum/README.md` says
+which run file is for what.
 
 ### Toolchain and harness notes
 
 `build_test.ps1` manifests bind every test asset to its executable hash, source
-tree, compiler, build flavor and benchmark qualification. `sprt.ps1`,
-`spsa.ps1` and `datagen.ps1` validate those sidecars before launch. Do not
-recreate or hand-edit a sidecar to bypass a mismatch; rebuild the asset.
-Successful matches additionally reject crashes, time forfeits and protocol
-failures, and archive hashes of their logs/PGNs.
+tree, compiler, build flavor and benchmark qualification. `colosseum.ps1`,
+`sprt.ps1`, `spsa.ps1` and `datagen.ps1` validate those sidecars before launch.
+Do not recreate or hand-edit a sidecar to bypass a mismatch; rebuild the asset.
+Successful matches additionally reject crashes, time forfeits above the rate
+ceiling and protocol failures, and archive hashes of their logs and PGNs.
+Measure only on an idle host: `colosseum.ps1` refuses when another engine,
+harness or build is running, or when the host is above 15% CPU, and
+`-AllowBusyHost` records the waiver in the run's manifest.
 
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
 and PGO training refuses. `rust-toolchain.toml` pins the channel, not the host
 triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
-`fastchess -use-affinity` with concurrency 14 is mandatory for 1T gates;
-unpinned Zen 3 runs carry a hidden per-run offset of roughly ±10 nElo. It pins
-one core per game and starves `Threads>1`, so drop it for multi-thread runs
-and re-calibrate the null pair under that configuration. Validate any harness
-change on a null pair — the same executable on both arms — before trusting a
-verdict.
+Games are pinned to physical cores on both paths, because unpinned Zen 3 runs
+carry a hidden per-run offset of roughly ±10 nElo (RAR-M48). Colosseum does it
+with `--placement auto` and one physical core of headroom; fastchess needs
+`-use-affinity` with concurrency 14, and its list never contains CPU 0
+(`Get-HarnessGameCpus`), because Windows services most interrupts there. The
+two resolve to the same fourteen cores, checked field by field rather than by
+eye (`tools/diag/colosseum_parity.py`). fastchess pins one core per game and
+starves `Threads>1`, so multi-thread runs on that path drop it. After a change
+to the pinned list, `setup_tools.ps1` must repatch weather-factory before an
+SPSA launch there, and `spsa.ps1` refuses until it has. The 1T harness is
+null-calibrated and shared with Basilisk; a new null pair (the same executable
+on both arms, `-Mode calibrate`) is owed only after a runner, scheduler or
+topology change, never for a symmetric adjudication toggle (RAR-M03).
 
 NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
 by about 0.36%, and keep compilation, profiling and unrelated load off the
-match host. Roughly 2 Elo per 1% NPS at `3+0.03` — **for SMALL deltas only.**
-That figure does not extrapolate: applied to the oracle's 1.80x NPS deficit it
-predicts 160 Elo, where the standard ~60 Elo per doubling gives ~51. Above a
-few percent, convert through doublings and say which conversion was used.
+match host. **The read, revised 2026-10-02 (RAR-P32,
+`analysis/nps_method_study_2026-10-02.md`; two steps by maintainer
+decision):** four pext PGO builds an arm from clean trees, interleaved
+cycles of `bench 13 3`, each reading the best of its three runs, one warm-up
+reading per build, every run archived. The estimate is the difference
+between the arms' means of per-build medians, its interval a t-interval on
+the per-build medians.
+- **Step 1, two cycles, about 6 minutes (±0.4%).** At +0.9% or more the
+  change is accepted; at +0.1% or less it closes `NO_CHANGE`.
+- **Step 2, only in between: four more cycles, six in all, about 8 more
+  minutes (±0.3%).** Accepted at +0.5% or more with the lower bound above 0.
+- **A no-regression check** on a neutral change uses the same steps against
+  −0.5%: step 1 passes at −0.1% or above and fails at −0.9% or below.
+- **Disturbance:** load moves whole cycles by 2% to 4%. In step 1 the two
+  cycles of an arm must agree within 1%, or the step is repeated; over six
+  cycles a cycle more than 1% from its arm's median cycle is disturbed, the
+  medians absorb two, and with three or more the read is repeated.
 
-### Matched ablation (the Phase-4 measurement instrument)
+Twenty cycles reach only ±0.25%, because the builds set the limit, not the
+cycles. The read is `tools/nps_read.py` (`--base <pool> --cand <pool> --out
+<dir>` for step 1, `--extend <dir>` for step 2, `--report <dir>` to recompute
+from the archive, `--no-regression` for a neutral change); its tests are
+`tools/diag/test_nps_read.py`, and on RAR-P32's archived runs it reproduces the
+study's deltas. `nps_multibuild.ps1`'s bootstrap interval is not this interval
+and is not quoted as one; that tool is kept only to compare with earlier rows.
+
+Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
+behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
+(+16.7% inside the games) for +35.5 ± 9.0 (RAR-S98). That is about 145 Elo a
+doubling over this range, well above the textbook 60, which predicted +15
+for the second pass. Nothing is measured beyond +18% or at a slower control:
+there, convert through doublings and say which figure was used (the oracle's
+1.80x NPS deficit reads 51 Elo at 60 a doubling and about 120 at this
+engine's own rate, and neither is measured).
+
+### Matched ablation (deficit decomposition)
+
+**Retired 2026-10-03 (B.9).** `ee02ed1` removed Rarog's side of the
+instrument: the `ablate` feature, `Searcher::ablated`, `AblationMask` and
+the ten guards. The protocol below stays as the recipe. To bring it back,
+restore those from `a0ddbbf` (the head before the removal): `Cargo.toml`'s
+`ablate` feature, `ablated()` in `src/search/mod.rs`, `ablation_mask` in
+`src/search/params.rs` and the guards in `src/search/node.rs`. Their bits
+are the core's, not the list below: 0 razoring, 1 reverse futility, 2 null
+move, 3 ProbCut, 4 IIR and hindsight reductions, 5 move-loop pruning, 6
+singular extensions, 7 late-move reductions. The oracle's side is the tag
+`oracle/hybrid-ablate`, which is kept. Its retirement condition is PLAN
+E.1: the tag goes when E.1 decides it wants no matched ablation on the C.11
+head.
 
 How the deficit was decomposed, and the procedure for every later use.
 `analysis/ablation_design.md` holds the reasoning; this is the operation.
 
 One shared bitmask on both engines — 0 razoring, 1 futility-child, 2 nullmove,
 3 probcut, 4 iir, 5 shallow-pruning, 6 extensions, 7 lmr — so the same number
-ablates the same mechanism on each side. Oracle: branch `hybrid-ablate`.
-Rarog: `--features ablate`, which compiles every guard away in a shipped build.
+ablates the same mechanism on each side. Oracle: tag `oracle/hybrid-ablate`.
+Rarog: `--features ablate` once restored as above, which compiles every guard away in a shipped build.
 
 0. **The harness now refuses to start when an engine does not expose an option
    being set.** fastchess only WARNS and then plays the whole match at the
@@ -356,14 +468,24 @@ Before any SPSA:
    coordinate returning to its seed may be inactive; an omitted high-activity
    coordinate can invalidate the proposed full tune. The full tune starts from
    accepted engine defaults.
-7. Choose and register the immutable horizon from gradient quality, integer
-   resolution and compute budget. `StopAfter` may stage a review without
-   changing that horizon or games per iteration.
+7. Register the tune as blocks (PLAN rule 7c): 2,000 iterations × 30 games
+   each, a later block seeded from the previous block's rounded centres
+   with a fresh schedule and the same steps, a movement stop rule (at
+   least three coordinates moved a full step in the block, or stop) and a
+   ceiling of three blocks. Block size, rule and ceiling never change
+   after the first game; a block is never cut short to read it. The
+   movement count saves unattended compute only; a watched tune may run
+   every registered block regardless (PLAN rule 7c, amended 2026-09-26).
 8. Run `./tools/audit_spsa_coverage.ps1` and register surface, fixed values,
-   iterations, games, gain and estimator before launch.
-9. Complete the final theta without post-hoc checkpoint selection; bake it
-   into a fresh clean PGO binary and run a paired SPRT, then LTC/4T where
-   appropriate.
+   iterations, games per iteration, slots, the budget in games, gain and
+   estimator before launch. On Colosseum the shape is **15 slots and 30 games
+   per iteration**, so the budget is `iterations x 30` games (RAR-M62);
+   `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
+   registered surface for that horizon and `--check` refuses a file that has
+   drifted from it.
+9. Theta is the last completed block's rounded final centres, without
+   post-hoc checkpoint selection; bake it into a fresh clean PGO binary
+   and run a paired SPRT, then LTC/4T where appropriate.
 
 ### Opening book
 
@@ -374,31 +496,6 @@ second book or LTC as an extra robustness check for a mechanism suspected of
 condition sensitivity; do not create an unnecessary tuning/confirmation
 mismatch.
 
-### CPU compatibility design
-
-There is deliberately no startup CPU guard inside specialized assets. When the
-compiler is told that BMI2/AVX2/FMA are mandatory, ordinary feature-detection
-macros fold those checks to true and the guard is removed. A working
-in-process guard would require baseline-compiled CPUID code to execute before
-specialized code, adding a separate dispatch boundary. The current design is
-close to the specialized-binary model: users choose `x86-64`, `avx2`, `pext`
-or `arm64`, the README states exact requirements, and release tooling
-disassembles each asset to enforce the promise. If a single universal binary
-becomes a product goal, 8.1 may add a Stockfish-style baseline dispatcher.
-
-### Experiment discipline
-
-- Begin from a clean revision and record both binary hashes.
-- Register hypothesis, interactions, gate, stop rule and budget before games.
-- Treat tune and non-PGO results as diagnostics unless the experiment says
-  otherwise; final-PGO games decide promotion.
-- Do not turn node reduction into Elo. Use diagnostics to explain a game
-  result.
-- Record rejected and neutral outcomes in `EXPERIMENTS.md`; never silently
-  rewrite them into a later success story.
-- A correctness exception must name the invariant, the tests and the
-  incomplete strength evidence honestly.
-
 ## Decision rules
 
 - One item open at a time; each candidate gates against the current accepted
@@ -407,24 +504,26 @@ becomes a product goal, 8.1 may add a Stockfish-style baseline dispatcher.
 - A touched dormant switch must be removed, kept inert with a named owner, or
   separately gated. It is never activated opportunistically.
 - Borderline results are not accumulated as hidden debt. Accept or revert.
-- Commit after each finished and verified step, and keep tooling changes in
-  separate commits from engine changes.
-- Mirror any status or number change into **both `GUIDE.md` and `PLAN.md` in
-  the same commit**. `HISTORY.md` is history and is not updated for new work.
+- One gate, one read. An SPRT's verdict and its estimate at the stop are the
+  record; no fixed match of the same pair runs beside it. Only when the SPRT
+  stops under 2,000 games may a longer match be discussed, and it is
+  registered then, not in advance (maintainer decision 2026-09-27).
+- Tune and non-PGO results are diagnostics; final-PGO games decide promotion.
+- A correctness exception names the invariant, the tests and the incomplete
+  strength evidence.
 
 ## Common commands
 
 ```powershell
 cargo fmt --check
-# `-p rarog`, NEVER `--workspace`, for the engine suite: texel-tuner depends on
-# rarog with `features = ["texel"]`, so a workspace test run unifies features
-# and silently tests an engine with the eval and pawn caches bypassed. At the
-# current head that also FAILS -- the LazyMargin regression test asserts that
-# two lazy margins give different evals, and under `texel` lazy eval is off,
-# so both give the same one. ci.yml has split these since it was written.
-cargo test -p rarog --all-targets
-cargo test -p rarog --all-targets --release
-cargo test -p xtask -p texel-tuner
+cargo test -p rarog
+cargo test -p rarog --release
+# Long tier, for release qualification: the two play measurements ignored in the
+# suite, by exact name (CI's release leg runs the same command). Two must pass.
+cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor
+cargo test -p xtask
+# The texel tuner is its own workspace, so `texel` never unifies into the engine.
+cargo test --manifest-path tools/texel-tuner/Cargo.toml
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo build --release
 "bench" | ./target/release/rarog.exe
@@ -433,16 +532,51 @@ cargo xtask verify-isa --arch pext
 ```
 
 ```powershell
-# Primary SPRT [0,3] nElo — the DEFAULT bracket. Add -TC "10+0.1" for LTC.
-# [3,10] is the harness default and is WRONG for a small candidate: wide bounds
-# anchored high drive a true +4 to H0. Size from RAR-M10 before registering.
+# MAIN PATH — Colosseum. The gate: [0,3] nElo, the default bracket; -Bracket
+# removal | repair | wide for the three registered alternatives (repair is
+# [-5,5], AGENTS' third repair case). The cap comes from RAR-M10 at the
+# EXPECTED value, before any game is played.
+./tools/colosseum.ps1 -Mode sprt -EngineA <candidate.exe> -EngineB <baseline.exe> `
+  -NameA candidate -NameB baseline -MaxPairs <cap> -Seed <n> `
+  -ExpectRevision <sha> -Dir tools/results/<experiment>
+
+# A measurement with an interval, which decides nothing, except as the
+# registered 2,000-game harm read of AGENTS' second repair case
+./tools/colosseum.ps1 -Mode match -EngineA <a.exe> -EngineB <b.exe> `
+  -Games 2000 -Seed <n> -Dir tools/results/<name>
+
+# A tune: 15 slots, 30 games per iteration, budget in games (RAR-M62)
+./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
+  -Iterations <N> -TotalGames <N*30> -Seed <n> -Dir tools/results/<experiment>
+# The next block of the same tune (PLAN rule 7c): seeded from the finished block
+./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
+  -Iterations <N> -TotalGames <N*30> -Seed <n+1> -SeedFrom tools/results/<block n> `
+  -Dir tools/results/<block n+1>
+
+# Null pair, only after a runner, scheduler or topology change (RAR-M03)
+./tools/colosseum.ps1 -Mode calibrate -EngineA <same.exe> -EngineB <same.exe> `
+  -Seed <n> -Dir tools/results/<name>
+```
+
+```powershell
+# BACKUP PATH — fastchess and weather-factory, kept working until at least
+# 2.5.0. Use it for a cross-check on the triggers in "Harness", and say in the
+# registration which runner a result came from.
+# [3,10] is the fastchess wrapper's default and is WRONG for a small candidate:
+# wide bounds anchored high drive a true +4 to H0.
 ./tools/sprt.ps1 -EngineA <candidate.exe> -EngineB <baseline.exe> `
   -NameA candidate -NameB baseline -Elo0 0 -Elo1 3 -MaxGames 80000
+./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <s> -Iterations <N>
+```
 
-# Harness calibration after any runner change — same binary on both sides
-./tools/sprt.ps1 -EngineA <same.exe> -EngineB <same.exe> -NameA a -NameB b
-
-# Test/tune binaries and the SPSA coverage audit
+```powershell
+# Test/tune binaries, the SPSA coverage audit, and the harness's own checks
 ./tools/build_test.ps1 -Suffix <s>
+# Pooled-PGO NPS: four builds an arm from a clean tree, then the two-step read
+./tools/nps_build_pool.ps1 -Arch pext -Builds 4 -OutDir analysis/artifacts/<name>/pool -ExpectFingerprint 11171726
+python tools/nps_read.py --base <base pool> --cand <cand pool> --out analysis/artifacts/<name>/read --label "<experiment>"
+python tools/nps_read.py --extend analysis/artifacts/<name>/read
 ./tools/audit_spsa_coverage.ps1
+pwsh -NoProfile -File tools/diag/test_colosseum_guards.ps1
+python -m unittest discover -s tools/diag -p "test_colosseum_parity.py"
 ```

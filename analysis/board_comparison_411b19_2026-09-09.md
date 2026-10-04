@@ -1,7 +1,7 @@
 # Board comparison after 4.11b.19 — RAR-M44(d)
 
 Supersedes the gap table in
-[board_comparison_2026-09-09.md](board_comparison_2026-09-09.md) (RAR-M43).
+[board_comparison_2026-09-09.md](archive/board_comparison_2026-09-09.md) (RAR-M43).
 Four arms, one session, zero games; board throughput only.
 
 **Measured twice, and both sessions are kept.** The first ran on a head that

@@ -11,7 +11,7 @@ use super::square::Square;
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Debug)]
 pub struct Move(pub u16);
 
-// 9.0 KEEP-UNSAFE (measured): a plain `[Move; 256]` with `Move::NULL` init
+// KEEP-UNSAFE (measured): a plain `[Move; 256]` with `Move::NULL` init
 // (and the analogous ScoredMove/BadCapture lists) was tried on 2026-07-19 and
 // cost −10% NPS on both the pext and magic builds — the per-node
 // initialization of ~5 KB of list memory is exactly what the MaybeUninit
@@ -43,7 +43,7 @@ impl MoveList {
     ///
     /// Only `len` moves; the `MaybeUninit` prefix contract is preserved
     /// because nothing below the new `len` is ever read. This is what makes a
-    /// caller-owned list reusable across generations at no cost (RAR-M44).
+    /// caller-owned list reusable across generations at no cost.
     #[inline(always)]
     pub fn clear(&mut self) {
         self.len = 0;
@@ -101,21 +101,21 @@ impl<'a> IntoIterator for &'a MoveList {
 }
 
 // Move flag constants (upper 4 bits of a Move)
-pub const QUIET: u16 = 0;
-pub const DOUBLE_PUSH: u16 = 1;
-pub const CASTLE_KINGSIDE: u16 = 2;
-pub const CASTLE_QUEENSIDE: u16 = 3;
-pub const CAPTURE: u16 = 4;
-pub const EN_PASSANT: u16 = 5;
+pub(crate) const QUIET: u16 = 0;
+pub(super) const DOUBLE_PUSH: u16 = 1;
+pub(crate) const CASTLE_KINGSIDE: u16 = 2;
+pub(crate) const CASTLE_QUEENSIDE: u16 = 3;
+pub(crate) const CAPTURE: u16 = 4;
+pub(super) const EN_PASSANT: u16 = 5;
 // 6, 7 unused
-pub const PROMO_KNIGHT: u16 = 8;
-pub const PROMO_BISHOP: u16 = 9;
-pub const PROMO_ROOK: u16 = 10;
-pub const PROMO_QUEEN: u16 = 11;
-pub const PROMO_CAPTURE_KNIGHT: u16 = 12;
-pub const PROMO_CAPTURE_BISHOP: u16 = 13;
-pub const PROMO_CAPTURE_ROOK: u16 = 14;
-pub const PROMO_CAPTURE_QUEEN: u16 = 15;
+pub(crate) const PROMO_KNIGHT: u16 = 8;
+pub(super) const PROMO_BISHOP: u16 = 9;
+pub(super) const PROMO_ROOK: u16 = 10;
+pub(super) const PROMO_QUEEN: u16 = 11;
+pub(super) const PROMO_CAPTURE_KNIGHT: u16 = 12;
+pub(super) const PROMO_CAPTURE_BISHOP: u16 = 13;
+pub(super) const PROMO_CAPTURE_ROOK: u16 = 14;
+pub(super) const PROMO_CAPTURE_QUEEN: u16 = 15;
 
 impl Move {
     pub const NULL: Self = Self(0);
@@ -131,18 +131,8 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn source(self) -> Square {
-        self.from_sq()
-    }
-
-    #[inline(always)]
     pub fn to_sq(self) -> Square {
         Square(((self.0 >> 6) & 0x3F) as u8)
-    }
-
-    #[inline(always)]
-    pub fn dest(self) -> Square {
-        self.to_sq()
     }
 
     #[inline(always)]
@@ -171,16 +161,6 @@ impl Move {
     #[inline(always)]
     pub fn is_en_passant(self) -> bool {
         self.flags() == EN_PASSANT
-    }
-
-    #[inline(always)]
-    pub fn is_quiet(self) -> bool {
-        self.flags() == QUIET
-    }
-
-    #[inline(always)]
-    pub fn is_double_push(self) -> bool {
-        self.flags() == DOUBLE_PUSH
     }
 
     /// Promotion piece (only valid when `is_promo()` is true).

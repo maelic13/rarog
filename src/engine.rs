@@ -1,4 +1,3 @@
-use std::io::{self, Write};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -6,7 +5,8 @@ use std::time::Duration;
 use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
-use crate::search::{SearchEvent, SearchExit, SearchResult, Searcher};
+use crate::infra::flush_stdout;
+use crate::search::{InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
 use crate::search_options::SearchOptions;
 use crate::wac::{move_matches_any, wac_positions};
 
@@ -16,109 +16,113 @@ pub struct Engine {
     searcher: Searcher,
 }
 
+/// The protocol's output: stdout, which is line-buffered, so each line
+/// reaches the GUI as it is written.
+struct StdoutSink;
+
+impl InfoSink for StdoutSink {
+    fn line(&self, line: &str) {
+        println!("{line}");
+    }
+}
+
 impl Engine {
     pub fn new(commands: EngineCommandQueue, control: Arc<EngineControl>) -> Engine {
+        crate::initialize_tables();
+        let mut searcher = Searcher::with_sink(Box::new(StdoutSink));
+        // Touch every per-thread table now, as a new game would, so a GUI that
+        // sends no `ucinewgame` does not pay those page faults in its first search.
+        searcher.new_game();
         Engine {
             commands,
             control,
-            searcher: Searcher::default(),
+            searcher,
         }
     }
 
     pub fn start(&mut self) {
-        loop {
-            let command = self.commands.wait_pop();
+        while self.handle(self.commands.wait_pop()) == SearchExit::Stop {}
+    }
 
-            if self.handle_control_command(&command) {
-                break;
+    /// Run one command. `Quit` from here ends the engine thread.
+    fn handle(&mut self, command: EngineCommand) -> SearchExit {
+        match command {
+            EngineCommand::Go { options, epoch } => self.run_go(&options, epoch),
+            EngineCommand::Bench {
+                depth,
+                repeats,
+                options,
+                epoch,
+            } => self.run_bench(depth, repeats, &options, epoch),
+            EngineCommand::Wac {
+                depth,
+                options,
+                epoch,
+            } => self.run_wac(depth, &options, epoch),
+            EngineCommand::Stop { epoch } => {
+                self.control.finish_search_if_current(epoch);
+                SearchExit::Stop
             }
-            if command.configure.is_some()
-                || command.new_game
-                || command.ponderhit
-                || command.ready.is_some()
-            {
-                continue;
-            }
-            if command.stop {
-                continue;
-            }
-            if let Some(depth) = command.bench_depth {
-                if self.run_bench(
-                    depth,
-                    command.bench_repeats,
-                    &command.search_options,
-                    command.epoch,
-                ) == SearchExit::Quit
-                {
-                    break;
-                }
-                continue;
-            }
-            if let Some(depth) = command.wac_depth {
-                if self.run_wac(depth, &command.search_options, command.epoch) == SearchExit::Quit {
-                    break;
-                }
-                continue;
-            }
-
-            if command.epoch != 0 && self.control.current_epoch() != command.epoch {
-                continue;
-            }
-            if !self.control.prepare_search(command.epoch) {
-                continue;
-            }
-            // 9.0a: `search` takes `&SearchOptions` now, so this no longer clones
-            // a whole SearchOptions (Board + SearchParams) per `go`.
-            let result = self.search(&command.search_options, true, command.epoch);
-            let delayed_exit = if result.exit == SearchExit::Quit {
+            EngineCommand::Quit { epoch } => {
+                self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
-            } else {
-                self.wait_until_bestmove_allowed(
-                    &command.search_options,
-                    command.epoch,
-                    result.ponderhit,
-                )
-            };
-            self.control.finish_search_if_current(command.epoch);
-            print_bestmove(&result);
-            if result.exit == SearchExit::Quit || delayed_exit == SearchExit::Quit {
-                break;
+            }
+            EngineCommand::Configure(options) => {
+                self.searcher.configure(&options);
+                SearchExit::Stop
+            }
+            EngineCommand::ClearHash => {
+                self.searcher.clear_hash();
+                SearchExit::Stop
+            }
+            EngineCommand::NewGame => {
+                self.searcher.new_game();
+                SearchExit::Stop
+            }
+            EngineCommand::PonderHit => SearchExit::Stop,
+            EngineCommand::Ready(ready) => {
+                let _ = ready.send(());
+                SearchExit::Stop
             }
         }
     }
 
-    fn handle_control_command(&mut self, command: &EngineCommand) -> bool {
-        if let Some(options) = &command.configure {
-            self.searcher.configure(options);
+    fn run_go(&mut self, options: &SearchOptions, epoch: u64) -> SearchExit {
+        if epoch != 0 && self.control.current_epoch() != epoch {
+            return SearchExit::Stop;
         }
-        if command.new_game {
-            self.searcher.new_game();
+        if !self.control.prepare_search(epoch) {
+            return SearchExit::Stop;
         }
-        if command.stop && (command.epoch == 0 || self.control.current_epoch() == command.epoch) {
-            self.control.finish_search_if_current(command.epoch);
+        let result = self.search(options, true, epoch);
+        let delayed_exit = if result.exit == SearchExit::Quit {
+            SearchExit::Quit
+        } else {
+            self.wait_until_bestmove_allowed(options, epoch, result.ponderhit)
+        };
+        self.control.finish_search_if_current(epoch);
+        print_bestmove(&result);
+        if result.exit == SearchExit::Quit || delayed_exit == SearchExit::Quit {
+            SearchExit::Quit
+        } else {
+            SearchExit::Stop
         }
-        if let Some(ready) = &command.ready {
-            let _ = ready.send(());
-        }
-        command.quit
     }
 
     fn search(&mut self, options: &SearchOptions, emit_info: bool, epoch: u64) -> SearchResult {
         let control = Arc::clone(&self.control);
-        self.searcher.search(
-            options.position.board.clone(),
-            options,
-            emit_info,
-            || match control.poll_search() {
-                SearchControl::Quit => SearchEvent::Quit,
-                SearchControl::Stop if epoch == 0 || control.current_epoch() != epoch => {
-                    SearchEvent::Stop
-                }
-                SearchControl::Stop => SearchEvent::Stop,
-                SearchControl::PonderHit => SearchEvent::PonderHit,
-                SearchControl::None => SearchEvent::None,
-            },
-        )
+        self.searcher
+            .search(
+                options.board.clone(),
+                options,
+                emit_info,
+                || match control.poll_search(epoch) {
+                    SearchControl::Quit => SearchEvent::Quit,
+                    SearchControl::Stop => SearchEvent::Stop,
+                    SearchControl::PonderHit => SearchEvent::PonderHit,
+                    SearchControl::None => SearchEvent::None,
+                },
+            )
     }
 
     fn wait_until_bestmove_allowed(
@@ -133,7 +137,7 @@ impl Engine {
         }
 
         loop {
-            match self.control.poll_search() {
+            match self.control.poll_search(epoch) {
                 SearchControl::Quit => return SearchExit::Quit,
                 SearchControl::Stop | SearchControl::PonderHit => return SearchExit::Stop,
                 SearchControl::None => thread::sleep(Duration::from_millis(1)),
@@ -201,8 +205,10 @@ impl Engine {
                         return SearchExit::Stop;
                     }
                 };
-                let mut options = SearchOptions::default();
-                options.position.board = board;
+                let mut options = SearchOptions {
+                    board,
+                    ..SearchOptions::default()
+                };
                 options.limits.depth = Some(u32::from(depth));
                 options.engine = base_options.engine.clone();
 
@@ -350,8 +356,10 @@ impl Engine {
                 }
             };
             self.searcher.new_game();
-            let mut options = SearchOptions::default();
-            options.position.board = board.clone();
+            let mut options = SearchOptions {
+                board: board.clone(),
+                ..SearchOptions::default()
+            };
             options.limits.depth = Some(u32::from(depth));
             options.engine = base_options.engine.clone();
 
@@ -416,27 +424,10 @@ fn print_bestmove(result: &SearchResult) {
     flush_stdout();
 }
 
-fn flush_stdout() {
-    // 9.0a: a failed flush means the GUI closed the pipe — a normal way for a
-    // UCI session to end, not a bug. Panicking here aborted the process
-    // (release sets `panic = "abort"`), turning an ordinary disconnect into a
-    // crash; the write is simply dropped instead.
-    let _ = io::stdout().flush();
-}
-
 #[cfg(test)]
 mod tests {
-    /// Test helper threads get an explicit stack like the real engine threads
-    /// (`main.rs`'s ENGINE_THREAD_STACK_SIZE / `search_threads.rs`'s
-    /// SEARCH_THREAD_STACK_SIZE). 9.0a: these two tests used a bare
-    /// `thread::spawn`, whose default stack overflowed in DEBUG builds — the
-    /// moved `Engine` carries a ~35 KB `Searcher` (pv_table alone is 32 KB)
-    /// and debug frames are unoptimised. That crashed `cargo test` entirely,
-    /// which meant **no `debug_assert!` in the crate was ever exercised**.
-    /// Release builds and production were unaffected.
-    const TEST_THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
-
     use super::*;
+    use crate::search_options::EngineOptions;
     use std::sync::mpsc;
     use std::time::Duration;
 
@@ -451,19 +442,30 @@ mod tests {
     }
 
     #[test]
-    fn handle_control_command_returns_true_only_for_quit() {
+    fn only_quit_ends_the_engine_loop() {
         let (mut engine, _commands, control) = engine_fixture();
 
-        assert!(!engine.handle_control_command(&EngineCommand::stop(control.request_stop())));
+        let stop = EngineCommand::Stop {
+            epoch: control.request_stop(),
+        };
+        assert_eq!(engine.handle(stop), SearchExit::Stop);
 
-        let mut options = SearchOptions::default();
-        options.engine.hash_mb = 1;
-        options.engine.clear_hash = true;
-        assert!(!engine.handle_control_command(&EngineCommand::configure(options)));
-        assert!(!engine.handle_control_command(&EngineCommand::new_game()));
-        assert!(!engine.handle_control_command(&EngineCommand::ponderhit()));
+        let options = EngineOptions {
+            hash_mb: 1,
+            ..EngineOptions::default()
+        };
+        assert_eq!(
+            engine.handle(EngineCommand::Configure(options)),
+            SearchExit::Stop
+        );
+        assert_eq!(engine.handle(EngineCommand::ClearHash), SearchExit::Stop);
+        assert_eq!(engine.handle(EngineCommand::NewGame), SearchExit::Stop);
+        assert_eq!(engine.handle(EngineCommand::PonderHit), SearchExit::Stop);
 
-        assert!(engine.handle_control_command(&EngineCommand::quit(control.request_quit())));
+        let quit = EngineCommand::Quit {
+            epoch: control.request_quit(),
+        };
+        assert_eq!(engine.handle(quit), SearchExit::Quit);
     }
 
     #[test]
@@ -537,14 +539,15 @@ mod tests {
     #[test]
     fn bestmove_wait_blocks_ponder_search_until_ponderhit() {
         let (engine, _commands, control) = engine_fixture();
+        let epoch = control.start_replacing_search();
         let mut options = SearchOptions::default();
         options.limits.ponder = true;
         let (done_tx, done_rx) = mpsc::channel();
 
         thread::Builder::new()
-            .stack_size(TEST_THREAD_STACK_SIZE)
+            .stack_size(crate::infra::THREAD_STACK_SIZE)
             .spawn(move || {
-                let exit = engine.wait_until_bestmove_allowed(&options, 0, false);
+                let exit = engine.wait_until_bestmove_allowed(&options, epoch, false);
                 done_tx.send(exit).expect("wait result should be sent");
             })
             .expect("spawn wait thread");
@@ -567,7 +570,7 @@ mod tests {
         let (done_tx, done_rx) = mpsc::channel();
 
         thread::Builder::new()
-            .stack_size(TEST_THREAD_STACK_SIZE)
+            .stack_size(crate::infra::THREAD_STACK_SIZE)
             .spawn(move || {
                 let exit = engine.wait_until_bestmove_allowed(&options, 0, false);
                 done_tx.send(exit).expect("wait result should be sent");

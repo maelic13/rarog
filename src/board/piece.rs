@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::Not;
 
-use super::square::{Rank, Square};
+use super::square::Square;
 
 /// Side to move.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -18,26 +18,6 @@ impl Not for Color {
         match self {
             Self::White => Self::Black,
             Self::Black => Self::White,
-        }
-    }
-}
-
-impl Color {
-    /// Relative rank for this color (rank 1 for white = rank 8 for black).
-    #[inline(always)]
-    pub fn relative_rank(self, rank: Rank) -> Rank {
-        match self {
-            Self::White => rank,
-            Self::Black => Rank::from_u8(7 - rank as u8),
-        }
-    }
-
-    /// Relative square (flips rank for black).
-    #[inline(always)]
-    pub fn relative_square(self, sq: Square) -> Square {
-        match self {
-            Self::White => sq,
-            Self::Black => sq.flip_rank(),
         }
     }
 }
@@ -59,7 +39,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub const ALL: [Self; 6] = [
+    pub(crate) const ALL: [Self; 6] = [
         Self::Pawn,
         Self::Knight,
         Self::Bishop,
@@ -69,7 +49,7 @@ impl Piece {
     ];
 
     /// Convert a promotion char ('n', 'b', 'r', 'q') to a piece.
-    pub fn from_promo_char(c: char) -> Option<Self> {
+    pub(super) fn from_promo_char(c: char) -> Option<Self> {
         match c.to_ascii_lowercase() {
             'n' => Some(Self::Knight),
             'b' => Some(Self::Bishop),
@@ -79,7 +59,7 @@ impl Piece {
         }
     }
 
-    pub fn promo_char(self) -> char {
+    pub(crate) fn promo_char(self) -> char {
         match self {
             Self::Knight => 'n',
             Self::Bishop => 'b',
@@ -114,18 +94,17 @@ impl fmt::Display for Piece {
 pub struct CastlingRights(pub u8);
 
 impl CastlingRights {
-    pub const NONE: Self = Self(0);
+    pub(super) const NONE: Self = Self(0);
     pub const WHITE_KINGSIDE: Self = Self(1);
     pub const WHITE_QUEENSIDE: Self = Self(2);
     pub const BLACK_KINGSIDE: Self = Self(4);
     pub const BLACK_QUEENSIDE: Self = Self(8);
-    pub const ALL: Self = Self(15);
-    pub const WHITE_ALL: Self = Self(3);
-    pub const BLACK_ALL: Self = Self(12);
+    pub(crate) const WHITE_ALL: Self = Self(3);
+    pub(crate) const BLACK_ALL: Self = Self(12);
 
     /// Per-square castling update masks.
     /// When a piece moves from/to a square, AND the rights with this mask.
-    pub const UPDATE_MASK: [u8; 64] = {
+    const UPDATE_MASK: [u8; 64] = {
         let mut m = [0xF_u8; 64];
         // White rooks / king
         m[0] = 0xF & !2; // A1 = white queenside rook → clear WHITE_QUEENSIDE
@@ -145,7 +124,7 @@ impl CastlingRights {
 
     /// Update rights when a piece is moved from `from` to `to`.
     #[inline(always)]
-    pub fn update(self, from: Square, to: Square) -> Self {
+    pub(crate) fn update(self, from: Square, to: Square) -> Self {
         Self(self.0 & Self::UPDATE_MASK[from.index()] & Self::UPDATE_MASK[to.index()])
     }
 

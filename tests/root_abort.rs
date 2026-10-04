@@ -35,8 +35,10 @@ const POSITIONS: [&str; 4] = [
 /// the abort lands at an arbitrary point inside an iteration.
 fn search_aborted(fen: &str, budget: u32) -> (rarog::board::Move, i32, usize) {
     let board = Board::from_fen(fen).expect("valid FEN");
-    let mut options = SearchOptions::default();
-    options.position.board = board.clone();
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
     // Deep enough that the BUDGET ends the search. That is a PRECONDITION of
     // this suite, not a convenience: every assertion below reads "the search was
     // interrupted", so a limit the search can actually reach inside the swept

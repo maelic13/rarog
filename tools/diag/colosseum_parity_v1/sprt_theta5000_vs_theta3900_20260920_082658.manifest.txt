@@ -1,0 +1,30 @@
+mode:            gainer
+engineA:         theta5000 = D:\code\rarog\tools\test_engines\rarog-b24b-core-pext-pgo.exe
+engineA_sha256:  2A586F3B83F3C86B188985974E3355E690C943470D1019C1E4BD4A14F66FC018
+engineB:         theta3900 = D:\code\rarog\tools\test_engines\rarog-b23-theta3900-pext-pgo.exe
+engineB_sha256:  1B6A49F5F6DA3311B70FA9C1AC9BDDA050A452567A5F96EF2A296416DE1B77B9
+repo_revision:   aa7ba8e23c00311e1dadd4b4c9cf3fd32a63b45a
+test_design:     SPRT elo0=0 elo1=3 alpha=0.05 beta=0.05 model=normalized
+game_budget:     40000
+time_control:    tc=3+0.03 (clock); timemargin=20ms
+adjudication:    none (games play to a rules result)
+termination:     natural (games played out)
+hash_mb:         64
+threads:         1
+concurrency:     14
+physical_cores:  16
+affinity_cpus:   2,4,6,8,10,12,14,16,18,20,22,24,26,28
+book:            D:\code\rarog\tools\books\UHO_Lichess_4852_v1.epd
+book_sha256:     7A7F6470615A69C6CF23D565417701D38732876F480AF90D67B42ABADE35644A
+opening_order:   random
+opening_seed:    2048912727
+optionsA:        (none)
+optionsB:        (none)
+advertised_A:    Hash, Clear Hash, Ponder, Move Overhead, Threads, MultiPV, SyzygyPath, SyzygyProbeDepth, SyzygyProbeLimit, Syzygy50MoveRule
+advertised_B:    Hash, Clear Hash, Ponder, Move Overhead, Threads, MultiPV, SyzygyPath, SyzygyProbeDepth, SyzygyProbeLimit, Syzygy50MoveRule
+fastchess:       fastchess alpha 1.8.0 compiled for windows-latest 20260128-072859b (CI)
+fastchess_sha256: 8444E73965AE44E716CDE1BB546A7D7C8C9FC7A442A44194A0C71A3BFFA7DD0D
+started_utc:     2026-09-20 06:26:59Z
+completed_utc:   2026-09-20 10:09:10Z
+pgn_sha256:      F95B4A4D9A148F031BE3448138F42F4F4B793E893241AD5459C2197B46E8E4FD
+log_sha256:      6AFBAC7CF09B2374A01EFD51A3119322121422F6B1F7BBFC38B5A9BAF7844488

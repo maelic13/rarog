@@ -1,0 +1,27 @@
+# The null pair: one binary against a copy of itself, which measures the
+# harness rather than the engine. PROCESS names the trigger — a runner,
+# scheduler or CPU-topology change on this host. It is not owed per experiment
+# and not per release of the engine.
+#
+#   colosseum-cli --run-file tools/colosseum/calibrate-null.toml \
+#     <engine.exe> <same-engine.exe> --seed <n> --dir tools/results/<name>
+#
+# Pass: the whole 95% normalized-Elo interval inside +-5 and no time loss.
+
+extend = "common.toml"
+command = ["calibrate"]
+
+[options]
+games = 30000
+tolerance-nelo = 5
+concurrency = 14
+
+a-base-ms = 3000
+a-increment-ms = 30
+a-margin-ms = 20
+b-base-ms = 3000
+b-increment-ms = 30
+b-margin-ms = 20
+
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]

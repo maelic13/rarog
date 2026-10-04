@@ -1,12 +1,8 @@
 /// Emits a UCI `info string` diagnostic.
 ///
-/// 9.0a: the single choke point for engine-side diagnostics (option-parse
-/// errors, tablebase status, search notices). Previously ~15 bare `println!`
-/// calls were scattered through search and option parsing, which made engine
-/// output untestable and uncontrollable — a GUI received `info string` lines
-/// emitted from deep inside a parser. Routing them through one macro means the
-/// destination can change (suppressed under test, mirrored to a log, gated by
-/// a verbosity level) without touching the call sites.
+/// The single choke point for protocol-layer notices (option-parse errors,
+/// bench and WAC setup, diagnostics), so their destination can change without
+/// touching the call sites. The search writes its notices through `InfoSink`.
 ///
 /// UCI *protocol* output (`bestmove`, `info depth …`) deliberately stays in
 /// the protocol layer, and the `bench`/`wac` console reports stay plain
@@ -18,9 +14,22 @@ macro_rules! info_string {
     };
 }
 
-// 9.0b: 64-bit only — see the matching guard in main.rs.
+// 64-bit only: the `u64 -> usize` hash-indexing conversions in the table and
+// the evaluation caches are lossless only there (`infra::index`). The binary
+// depends on the library, so this one guard covers both.
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
+
+/// Build every process-wide lookup table. A table built on first use is built
+/// inside the first search that needs it and charged to that search's clock,
+/// so the engine builds them all before it reads a command.
+pub fn initialize_tables() {
+    std::sync::LazyLock::force(&board::ATTACKS);
+    kpk::initialize();
+}
+
+/// The engine version as reported to the user.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod bench;
 pub mod board;
@@ -30,16 +39,11 @@ pub mod diag;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;
-pub mod evidence;
 pub mod infra;
 mod kpk;
-mod move_ordering;
-pub mod params;
 pub mod search;
 pub mod search_options;
-mod search_threads;
 pub mod syzygy;
-mod time_manager;
 pub mod tt;
 pub mod uci_protocol;
 pub mod wac;

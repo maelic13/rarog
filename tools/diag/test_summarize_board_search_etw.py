@@ -68,5 +68,81 @@ class ClassificationTests(unittest.TestCase):
         )
 
 
+class SearchClassificationTests(unittest.TestCase):
+    def test_bit_helper_is_charged_to_its_eval_consumer(self) -> None:
+        functions = [
+            "core::num::impl$9::count_ones",
+            "rarog::board::bitboard::Bitboard::count",
+            "rarog::eval::Evaluator::eval_king_safety",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(functions), "evaluation")
+
+    def test_slider_lookup_inside_see_is_see(self) -> None:
+        functions = [
+            "rarog::board::attacks::bishop_attacks",
+            "rarog::board::board::Board::see_ge",
+            "rarog::search::Searcher::quiescence",
+        ]
+        self.assertEqual(MODULE.classify_search(functions), "see")
+
+    def test_attack_queries_are_charged_to_their_consumer(self) -> None:
+        inside_see = [
+            "rarog::board::board::Board::attackers_to_color",
+            "rarog::board::board::Board::see_ge_impl",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(inside_see), "see")
+        inside_node = [
+            "rarog::board::board::Board::is_attacked_with_occ",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(inside_node), "search_node")
+
+    def test_nearest_named_mechanism_wins(self) -> None:
+        functions = [
+            "rarog::search::history::HistoryTables::quiet",
+            "rarog::search::movepick::MovePicker::next",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(functions), "history")
+
+    def test_board_accessor_inlined_into_the_node_is_search_node(self) -> None:
+        functions = [
+            "rarog::board::board::Board::color_occ",
+            "rarog::search::Searcher::negamax",
+        ]
+        self.assertEqual(MODULE.classify_search(functions), "search_node")
+
+    def test_out_of_line_board_helper_falls_back(self) -> None:
+        self.assertEqual(
+            MODULE.classify_search(["rarog::board::attacks::bishop_attacks"]),
+            "board_other",
+        )
+
+    def test_fathom_and_runtime_frames(self) -> None:
+        self.assertEqual(MODULE.classify_search(["probe_table"]), "tablebases")
+        self.assertEqual(MODULE.classify_search(["tb_probe_wdl_impl"]), "tablebases")
+        self.assertEqual(MODULE.classify_search(["memcpy"]), "other_engine")
+
+    def test_correction_and_table_regions(self) -> None:
+        self.assertEqual(
+            MODULE.classify_search(
+                [
+                    "rarog::search::correction::keyed_index",
+                    "rarog::search::Searcher::correction_value",
+                    "rarog::search::Searcher::negamax",
+                ]
+            ),
+            "eval_correction",
+        )
+        self.assertEqual(
+            MODULE.classify_search(
+                ["rarog::tt::TranspositionTable::probe", "rarog::search::Searcher::negamax"]
+            ),
+            "transposition_table",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

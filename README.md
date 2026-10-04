@@ -11,11 +11,11 @@ a chess GUI or an engine-testing tool.
 
 ## Highlights
 
-- **Strong modern search** — iterative deepening with principal variation
-  search, aspiration windows, null-move pruning, ProbCut, singular extensions,
-  late move reductions and a capture-focused quiescence search.
+- **Strong modern search** — principal variation search with aspiration
+  windows, null-move pruning, ProbCut, singular extensions, late move
+  reductions, history and correction tables, and a quiescence search.
 - **Multi-threaded** — parallel search that scales across cores, enabled with
-  the standard `Threads` option.
+  the standard `Threads` option; `MultiPV` for analysis.
 - **Tuned evaluation** — a tapered evaluation fitted to millions of positions,
   covering king safety, mobility, threats, pawn structure and passed pawns,
   material imbalance and endgame knowledge.
@@ -48,8 +48,7 @@ the one matching your operating system and CPU:
 
 ### How much the choice is worth
 
-Measured on an idle Ryzen 9 5950X, pooling four independent PGO builds per
-asset so that per-build optimisation luck averages out:
+Measured on a Ryzen 9 5950X:
 
 | Comparison | Result |
 | --- | --- |
@@ -78,6 +77,7 @@ Explorer. Any UCI-compatible GUI should work.
 | `Hash` | `64` | Transposition table size in MB. More memory helps longer searches. |
 | `Clear Hash` | — | Empties the transposition table. |
 | `Threads` | `1` | Search threads. Set to the number of cores you want to use. |
+| `MultiPV` | `1` | Best lines reported per depth, `1` to `256`. For analysis; leave it at `1` for play. |
 | `Ponder` | `false` | Think while the opponent moves. Enabled by the GUI. |
 | `Move Overhead` | `10` | Milliseconds reserved for GUI and network delay. Raise it if you lose on time. |
 | `SyzygyPath` | empty | Folders holding Syzygy tablebases. Empty disables probing. |
@@ -86,12 +86,32 @@ Explorer. Any UCI-compatible GUI should work.
 | `Syzygy50MoveRule` | `true` | Whether tablebase results respect the fifty-move rule. |
 
 `SyzygyPath` accepts several folders separated by `;` on Windows or `:`
-elsewhere. Positions resolved from tablebases are reported through `tbhits`.
+elsewhere, and the value `<empty>` means no path at all, which is what a GUI
+sends back when it echoes the advertised default. Positions resolved from
+tablebases are reported through `tbhits`.
+
+### Search output
+
+Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
+`nps`, `hashfull`, `tbhits`, `time` and `pv`, in that order.
+
+- `seldepth` is the deepest ply the current iteration reached, counting the
+  root as ply one, and it starts again at each depth.
+- A score still being narrowed by an aspiration re-search is marked
+  `lowerbound` or `upperbound`; the line that closes an iteration is exact.
+- With `Threads` above one the engine picks its move by a vote across threads
+  and reports that thread's line before `bestmove`, so the last line always
+  describes the move played.
+- A position with no legal move reports `info depth 0 score mate 0` when in
+  check and `info depth 0 score cp 0` when stalemated, then `bestmove 0000`.
+- With tablebases, a tablebase win or loss is reported as `score cp 20000` or
+  `score cp -20000`, one less for each ply from the root, and when time allows
+  the line is continued through the tables.
 
 ### Supported commands
 
-`uci`, `isready`, `ucinewgame`, `position`, `go`, `stop`, `ponderhit`, `quit`
-and `bench`.
+`uci`, `isready`, `setoption`, `ucinewgame`, `position`, `go`, `stop`,
+`ponderhit` and `quit`, plus `bench` and `help` for use by hand.
 
 `go` supports `depth`, `nodes`, `movetime`, `wtime`, `btime`, `winc`, `binc`,
 `movestogo`, `mate`, `searchmoves`, `ponder`, `perft` and `infinite`.
@@ -138,8 +158,18 @@ needed for a valid profile; no separate LLVM installation is required.
 
 ### Tests
 
+In both profiles:
+
 ```bash
-cargo test --workspace --all-targets
+cargo test -p rarog
+cargo test -p rarog --release
+cargo test -p xtask
+```
+
+The Texel tuner is its own Cargo workspace:
+
+```bash
+cargo test --manifest-path tools/texel-tuner/Cargo.toml
 ```
 
 ---

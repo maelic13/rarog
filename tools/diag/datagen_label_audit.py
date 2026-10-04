@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit datagen game results against tablebase truth (PLAN 4.10.8).
+"""Audit datagen game results against tablebase truth.
 
 If HCE tuning uses game-RESULT labels from self-play, those labels are sound
 only if the games decide won endings correctly. Basilisk measured **19.77% of
@@ -9,8 +9,8 @@ carried a result contradicting tablebase truth**, ONE-DIRECTIONALLY toward
 draws, concentrated in rook and pawn families. That teaches the evaluator to
 undervalue exactly what wins endgames (BAS-E46).
 
-Rarog's own share is what this measures. It is an input to PLAN 4.13, not a
-verdict: the fix is 4.13's to choose, and raising datagen nodes is the WEAK fix
+Rarog's own share is what this measures. It is an input to the label-quality
+decision, not a verdict, and raising datagen nodes is the WEAK fix
 (3.1x compute bought a 31% relative reduction).
 
 Two details the count depends on, both easy to get wrong:

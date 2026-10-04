@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reference-family occurrence in the search tree, split by ROOT (PLAN 4.11.5).
+"""Reference-family occurrence in the search tree, split by ROOT.
 
 `analysis/endgame_search_occurrence_2026-09-03.md` measured how often each of
 the twenty reference families is reached inside the search tree, using the

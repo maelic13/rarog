@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Syzygy-truth endgame corpus and conversion baseline (PLAN 4.9a.1).
+"""Syzygy-truth endgame corpus and conversion baseline.
 
 The conversion runner (`endgame_conversion.py`) answers one bit per game: did
 the engine mate inside the budget. At 100 positions per family that is a
@@ -25,7 +25,7 @@ and the cases behind them are in `analysis/endgame_measurement_layers.md`.
 A played draw is statistical evidence, not theoretical truth: only the
 `theory_*` fields are truth here, and they come from the tablebase.
 
-SCHEMA v2 (4.10.1, RAR-E14). v1 ended a game the moment the strong side's piece
+SCHEMA v2 (RAR-E14). v1 ended a game the moment the strong side's piece
 count dropped, which aborts correct pawn technique. v2 plays on and records the
 shed ply as a diagnostic. **A v1 and a v2 report are not comparable**: the same
 field names mean different things, which is why the schema string changed and
@@ -180,7 +180,7 @@ def generate_family(
 
     Generating up front rather than lazily inside the play loop is what lets
     the cohort fingerprint be computed before any engine call, and what lets a
-    sharded run (4.10.3) address positions by fixed index. The RNG is drawn in
+    sharded run address positions by fixed index. The RNG is drawn in
     exactly the same order either way, so the set is unchanged.
     """
     rng = random.Random(family_seed(seed, name))
@@ -243,7 +243,7 @@ def play_and_grade(
     # whole-board count scores it as "material lost" and aborts the game. That
     # misfired on 12 of 12 KR-KP positions before this was fixed.
     #
-    # 4.10.1: the count is now a DIAGNOSTIC and never terminates the game. See
+    # The count is now a DIAGNOSTIC and never terminates the game. See
     # the block at its use below for why.
     def strong_material(b: chess.Board) -> int:
         return chess.popcount(b.occupied_co[chess.WHITE])
@@ -534,7 +534,7 @@ def main() -> int:
         "--workers", type=int, default=1,
         help="independent one-thread engine processes to shard across. "
              "Changes wall time only; results are reassembled by fixed index "
-             "and are byte-identical to --workers 1 (PLAN 4.10.3)",
+             "and are byte-identical to --workers 1",
     )
     parser.add_argument(
         "--per-position",
@@ -633,7 +633,7 @@ def main() -> int:
         # the engine played before it, because python-chess sends `ucinewgame`
         # per position and Rarog resets on it. Measured by running one family
         # alone and again preceded by another: 5/5 per-position records
-        # identical (PLAN 4.10.3).
+        # identical.
         shards = shard(work, args.workers)
         print(f"{len(work)} positions over {len(shards)} workers", flush=True)
         tasks = [

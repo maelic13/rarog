@@ -12,7 +12,7 @@ $gamma = 0.102
 
 $defaults = @{}
 $declared = @{}
-foreach ($m in (Select-String -Path (Join-Path $repo "src\params.rs") `
+foreach ($m in (Select-String -Path (Join-Path $repo "src\search\params.rs") `
             -Pattern '^\s+\w+ = (-?[\d_]+), "(\w+)", (-?[\d_]+)\.\.=(-?[\d_]+)').Matches) {
     $name = $m.Groups[2].Value
     $defaults[$name] = [int]($m.Groups[1].Value -replace '_', '')
@@ -20,6 +20,16 @@ foreach ($m in (Select-String -Path (Join-Path $repo "src\params.rs") `
         Min = [int]($m.Groups[3].Value -replace '_', '')
         Max = [int]($m.Groups[4].Value -replace '_', '')
     }
+}
+
+# A historical group is a surface whose tune has been baked: its seeds are the
+# registration's, frozen as evidence, and no longer the engine's defaults, so
+# classes 2 and 3 do not apply to it. Groups are listed one per line in
+# tools/spsa_configs/historical.txt; everything else is live.
+$historicalPath = Join-Path $repo "tools\spsa_configs\historical.txt"
+$historical = @()
+if (Test-Path -LiteralPath $historicalPath) {
+    $historical = @(Get-Content -LiteralPath $historicalPath | ForEach-Object { ($_ -split '#')[0].Trim() } | Where-Object { $_ })
 }
 
 $groups = @{}
@@ -39,6 +49,7 @@ foreach ($file in Get-ChildItem (Join-Path $repo "tools\spsa_configs\config_*.js
 }
 
 "declared tunables: $($defaults.Count)    names across reusable SPSA groups: $($groups.Count)"
+"historical groups (classes 2 and 3 not applied): $(if ($historical) { $historical -join ', ' } else { 'none' })"
 $problems = 0
 
 ""
@@ -48,18 +59,21 @@ if ($orphans) { $orphans | ForEach-Object { "   $_" } } else { "   none" }
 "   (expected for accepted constants, categorical gates and future-owned mechanisms)"
 
 ""
-"== 2. in a group but NOT declared (ERROR) =="
-$stale = $groups.Keys | Where-Object { -not $defaults.ContainsKey($_) } | Sort-Object
+"== 2. in a live group but NOT declared (ERROR) =="
+$stale = $groups.Keys | Where-Object {
+    -not $defaults.ContainsKey($_) -and @($groups[$_] | Where-Object { $historical -notcontains $_.Group }).Count -gt 0
+} | Sort-Object
 if ($stale) {
     $stale | ForEach-Object { "   $_"; $problems++ }
 } else { "   none" }
 
 ""
-"== 3. seed disagrees with baked default (ERROR) =="
+"== 3. live seed disagrees with baked default (ERROR) =="
 $drift = 0
 foreach ($name in ($groups.Keys | Sort-Object)) {
     if (-not $defaults.ContainsKey($name)) { continue }
     foreach ($entry in $groups[$name]) {
+        if ($historical -contains $entry.Group) { continue }
         if ($entry.Value -ne $defaults[$name]) {
             "   {0,-22} {1,-12} seed {2,8} vs default {3,8}" -f `
                 $name, $entry.Group, $entry.Value, $defaults[$name]

@@ -113,6 +113,14 @@ hashes plus source heads, complete patches, compiler identities and build
 commands are the reproducible recipe. The original full bundle also remains at
 `D:/chess/results/see-normalized-20260907`.
 
+*2026-10-03:* the verifier failed on every text file of the local bundle.
+The bundle had been tracked under `text=auto` before `.gitattributes` exempted
+it, so its text files were stored with LF endings while `source-manifest.json`
+records their CRLF bytes; the content was intact. Each file whose CRLF form
+hashed to the manifest's value was restored to CRLF (20 files, the 8 others
+already matching), and the verifier passes again. The Basilisk build log in the
+bundle is the peer engine of this three-engine comparison, not a leftover.
+
 Production fitting remains exclusively at 4.15.3–4.15.4. Later work must not
 replace `PRODUCTION_SEE_VALUES` merely because normalized peer timing uses a
 different vector. Any such change affects pruning, ordering, reductions and

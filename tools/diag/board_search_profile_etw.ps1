@@ -6,7 +6,7 @@
     Run from an elevated PowerShell 7 prompt on the experiment machine.  The
     input must be the ordinary release binary built with debug symbols, never a
     diag or all-features/texel build.  The Python driver keeps UCI stdin open,
-    clears the TT between roots and runs the frozen 4.11b.7 suite.
+    clears the TT between roots and runs the frozen board-profile suite.
 
     Outputs are written below tools/results (gitignored): an ETL, xperf
     butterfly report and runner JSON for each cohort, plus a hash manifest.
@@ -163,7 +163,9 @@ try {
         # Each report is checked against its OWN contract.  The per-address one
         # must be unresolved and finely grained; the symbolized one must have
         # named frames, which is the only place a PDB failure is detectable.
-        $reportText = Get-Content -LiteralPath $report -Raw
+        # Compared as text without markup: newer xperf wraps module and
+        # function names in links (`exe</a>!<a ...>***unknown***`).
+        $reportText = (Get-Content -LiteralPath $report -Raw) -replace '<[^>]+>', ''
         if ($reportText -notmatch [regex]::Escape($processName + "!***unknown***")) {
             throw ("per-address report for $cohort resolved symbols; xperf aggregated " +
                    "by function and inline attribution is lost")

@@ -20,11 +20,13 @@
         tools\weather-factory\main.py is missing (this script also auto-clones
         weather-factory if absent).
       - Build the tune binary: ./tools/build_test.ps1 -Suffix <s> -Tune
+        (a surface of the selectivity core's Core* options is refused on a
+        tune build that does not advertise them)
 
 .PARAMETER ConfigGroup
-    Which parameter group to tune (selects tools\spsa_configs\config_<g>.json):
-    pruning · lmr · histcov · corr · probcut · futility · tm ·
-    lazymargin · history · see (plus archived aspiration/selectivity groups).
+    Which registered parameter group to tune (selects
+    tools\spsa_configs\config_<g>.json). B.1 retired every historical
+    surface; a group exists only once PLAN registers its tune.
 
 .PARAMETER Iterations
     Planned total iterations (sets A = Iterations / 10 in spsa.json).
@@ -42,7 +44,7 @@ Learning rate at the END of the planned run (fishtest's `r_end`). The gain
 `a` is DERIVED from this and -Iterations, so the schedule always lands on
 the same end-state whatever horizon you pick — changing -Iterations can
 never silently change how hot the tune finishes. Default 0.0031, from a
-simulation validated against 8.5's real trajectory; fishtest's own default
+simulation validated against a real 3,670-iteration trajectory; fishtest's own default
 is 0.002, the same order. Larger = hotter = more late wander.
 
 .PARAMETER Concurrency
@@ -50,9 +52,9 @@ is 0.002, the same order. Larger = hotter = more late wander.
     and leaves two free. Engines remain single-threaded.
 
 .PARAMETER EngineSuffix
-    Suffix of the tune binary in tools\test_engines. If omitted, a per-group
-    default is used (e.g. history -> p81-history). Accepts a bare suffix
-    (rarog-<s>-tune.exe), a "-tune"/"-pext-pgo" suffix, or a full "*.exe".
+    Suffix of the tune binary in tools\test_engines. Required for setup.
+    Accepts a bare suffix (rarog-<s>-tune.exe), a "-tune"/"-pext-pgo" suffix,
+    or a full "*.exe".
 
 .PARAMETER Resume
     Preserve the existing tuner state (state.json/games/graph) instead of
@@ -71,20 +73,20 @@ is 0.002, the same order. Larger = hotter = more late wander.
 
 .EXAMPLE
     # Fresh setup + run, one command:
-    ./tools/build_test.ps1 -Suffix p81-history -Tune
-    ./tools/spsa.ps1 -ConfigGroup history -Iterations 2500
+    ./tools/build_test.ps1 -Suffix <name> -Tune
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -Iterations <registered-N>
 
 .EXAMPLE
     # Continue an interrupted run:
-    ./tools/spsa.ps1 -ConfigGroup history -Resume
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -Resume
 
 .EXAMPLE
     # Set up now, launch later:
-    ./tools/spsa.ps1 -ConfigGroup history -SetupOnly
-    ./tools/spsa.ps1 -ConfigGroup history -LaunchOnly
+    ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -SetupOnly
+    ./tools/spsa.ps1 -ConfigGroup <group> -LaunchOnly
 #>
 param(
-    [string]$ConfigGroup = "lmr",
+    [string]$ConfigGroup = "",
     [int]$Iterations = 5000,
     [int]$StopAfter = 0,
     [double]$REnd = 0.0031,
@@ -102,6 +104,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "harness_common.ps1")
 
 if ($SetupOnly -and $LaunchOnly) { throw "-SetupOnly and -LaunchOnly are mutually exclusive." }
+if (-not $ShowValues -and $ConfigGroup -eq "") { throw "-ConfigGroup is required: name a registered group in tools\spsa_configs." }
 if ($Iterations -le 0) { throw "-Iterations must be positive." }
 if ($StopAfter -eq 0) { $StopAfter = $Iterations }
 if ($StopAfter -le 0 -or $StopAfter -gt $Iterations) {
@@ -153,23 +156,7 @@ if ($LogFile -eq "") { $LogFile = Join-Path $PSScriptRoot "results\spsa_$ConfigG
 # ─── Setup ────────────────────────────────────────────────────────────────
 if (-not $LaunchOnly) {
     if ($EngineSuffix -eq "") {
-        $EngineSuffix = switch ($ConfigGroup) {
-            "aspiration" { "p102a" }
-            "selectivity" { "p1046a" }
-            "lmr" { "p86-lmr" }
-            "histcov" { "p84-histcov" }
-            "corr" { "p85-corr" }
-            "pruning" { "phase1-pruning" }
-            "probcut" { "phase2-probcut" }
-            "futility" { "phase2-futility" }
-            "tm" { "phase5-tm" }
-            "lazymargin" { "phase5-lazymargin" }
-            "history" { "p81-history" }
-            "see" { "p72-see" }
-        }
-        if (-not $EngineSuffix) {
-            throw "-EngineSuffix is required for unregistered config group '$ConfigGroup'."
-        }
+        throw "-EngineSuffix is required: name the tune binary built by tools/build_test.ps1 -Tune."
     }
 
     if ($EngineSuffix.EndsWith(".exe")) {
@@ -191,66 +178,36 @@ if (-not $LaunchOnly) {
     }
     Assert-AffinityFastchess -Path $fastchess | Out-Null
 
+    # Sidecar, bench verification, tune flavor and dirty-tree refusals all live
+    # in harness_common.ps1, so the fastchess and Colosseum tune paths cannot
+    # drift apart on what a measurable tune binary is.
     $engineManifestPath = [IO.Path]::ChangeExtension($engine, ".json")
-    if (-not (Test-Path -LiteralPath $engineManifestPath -PathType Leaf)) {
-        throw "Missing engine manifest: $engineManifestPath. Rebuild with tools/build_test.ps1 -Tune."
-    }
-    $engineManifest = Get-Content -LiteralPath $engineManifestPath -Raw | ConvertFrom-Json
+    $engineManifest = Assert-EngineProvenance -Path $engine -Label $engineFile -Kind tune `
+        -RequireManifest -RequireBinaryHash
     $engineHash = Get-HarnessSha256 $engine
-    if (-not $engineManifest.binary_sha256 -or $engineManifest.binary_sha256 -ne $engineHash) {
-        throw "Tune binary SHA-256 does not match its engine manifest."
-    }
-    if ($engineManifest.verification -ne "bench") {
-        throw "Tune binary manifest does not record bench verification."
-    }
-    if ($engineManifest.flavor -notlike "*-tune") {
-        throw "SPSA requires a tune build manifest; selected flavor is '$($engineManifest.flavor)'."
-    }
-    if ($engineManifest.git_dirty) {
-        throw "Tune binary was built from a dirty source tree."
-    }
 
-    $srcConfig = Join-Path $configs "config_$ConfigGroup.json"
-    if (-not (Test-Path $srcConfig)) { throw "Config not found: $srcConfig" }
+    $armConfig = Join-Path $configs "config_$ConfigGroup.json"
+    if (-not (Test-Path $armConfig)) { throw "Config not found: $armConfig" }
+    $armNames = @((Get-Content $armConfig -Raw | ConvertFrom-Json).PSObject.Properties.Name)
+    $armFixed = Join-Path $configs "fixed_$ConfigGroup.json"
+    if (Test-Path $armFixed) {
+        $armNames += @((Get-Content $armFixed -Raw | ConvertFrom-Json).PSObject.Properties.Name)
+    }
+    Assert-CoreSurfaceArm -Names $armNames -Flavor $engineManifest.flavor -ConfigGroup $ConfigGroup
+
+    $srcConfig = $armConfig
     $advertisedDetails = @(Get-EngineUciOptions -Path $engine -Detailed)
     $advertised = @($advertisedDetails.Name)
     $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
     $advertisedNormalized = @($advertised | ForEach-Object { & $normalize $_ })
     $sourceConfig = Get-Content $srcConfig -Raw | ConvertFrom-Json
-    $tunedNames = @($sourceConfig.PSObject.Properties.Name)
-    if ($tunedNames.Count -eq 0) { throw "$srcConfig declares no parameters." }
-    $missing = @($tunedNames | Where-Object { $advertisedNormalized -notcontains (& $normalize $_) })
-    if ($missing.Count -gt 0) {
-        throw ("$engineFile does not advertise: $($missing -join ', '). " +
-               "SPSA cannot tune an option the selected binary does not expose.")
-    }
-    foreach ($parameter in $sourceConfig.PSObject.Properties) {
-        $declaration = $advertisedDetails | Where-Object {
-            (& $normalize $_.Name) -eq (& $normalize $parameter.Name)
-        } | Select-Object -First 1
-        if ($declaration.Type -ne 'spin') {
-            throw "$($parameter.Name) is advertised as '$($declaration.Type)', not a spin option."
-        }
-        $value = [int64]$parameter.Value.value
-        $minimum = [int64]$parameter.Value.min_value
-        $maximum = [int64]$parameter.Value.max_value
-        $step = [double]$parameter.Value.step
-        if ($value -ne [int64]$declaration.Default -or $minimum -lt $declaration.Min -or
-            $maximum -gt $declaration.Max -or $minimum -ge $maximum -or
-            $value -lt $minimum -or $value -gt $maximum -or $step -le 0) {
-            throw ("Invalid SPSA declaration for $($parameter.Name): config value=$value " +
-                   "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
-                   "range=[$($declaration.Min),$($declaration.Max)].")
-        }
-        $endPerturbation = $step / [Math]::Pow($Iterations, 0.102)
-        if ($endPerturbation -lt 0.5) {
-            throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
-        }
-    }
+    $fixedSurface = if (Test-Path $armFixed) { Get-Content $armFixed -Raw | ConvertFrom-Json } else { $null }
+    $tunedNames = @(Assert-TuneSurface -Advertised $advertisedDetails -Surface $sourceConfig `
+        -Iterations $Iterations -Label $engineFile -Fixed $fixedSurface)
     Write-Host "Tunable options verified: $($tunedNames -join ', ')" -ForegroundColor Green
 
     $wfCute = Join-Path $wfRoot "cutechess.py"
-    $expectedAffinityCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
+    $expectedAffinityCpus = (Get-HarnessGameCpus).Cpu -join ','
     $wfCuteContent = if (Test-Path $wfCute) { Get-Content $wfCute -Raw } else { "" }
     if ($wfCuteContent -notmatch 'RAROG_AFFINITY_PATCH_V2' -or
         $wfCuteContent -notmatch [regex]::Escape("-use-affinity $expectedAffinityCpus ")) {
@@ -370,7 +327,7 @@ if (-not $LaunchOnly) {
     # round(value), so an integer knob needs step * c_t(N) >= 0.5, i.e.
     # step >= 2. A step-1 integer knob goes dead at it > 2^(1/gamma) ~= 894.
     # Cross-check on the two calibrations agreeing from independent
-    # directions: our simulation (validated against 8.5's real trajectory to
+    # directions: our simulation (validated against a real trajectory to
     # within 0.02 steps of observed wander) puts the optimum at a ≈ 0.1 for
     # N=5000, which is r_end ≈ 0.0031 — the same order as fishtest's 0.002
     # default, while the a=1.0 we shipped this morning is r_end ≈ 0.031, ~15x
@@ -384,9 +341,8 @@ if (-not $LaunchOnly) {
     # `"A": 0.0965` where it needed `"A": 500`. That is A ≈ 0, i.e. NO damping
     # over the first 10% of the run — the exact defect the 2026-07-27 schedule
     # fix existed to remove, reintroduced by a language footgun.
-    # Found 2026-07-30 by a -SetupOnly dry run before 10.4.6(a), which is the
-    # FIRST tune this parameterization would ever have driven, so no fit was
-    # contaminated. The assertion below is what makes it un-shippable again.
+    # Found 2026-07-30 by a -SetupOnly dry run before the first tune this
+    # parameterization would have driven, so no fit was contaminated. The assertion below is what makes it un-shippable again.
     $dampingA = [int]([Math]::Floor($Iterations / 10))
     if ($dampingA -le 0) { throw "-Iterations $Iterations is too small: damping A would be zero." }
     $gainA = $REnd * [Math]::Pow($dampingA + $Iterations, $alpha) / [Math]::Pow($Iterations, 2 * $gamma)
@@ -487,7 +443,7 @@ foreach ($p in @((Join-Path $wfRoot "main.py"), (Join-Path $wfRoot "cutechess.py
 $launchFastchess = Join-Path $wfRoot "fastchess.exe"
 Assert-AffinityFastchess -Path $launchFastchess | Out-Null
 $launchCute = Join-Path $wfRoot "cutechess.py"
-$expectedAffinityCpus = (Get-HarnessPhysicalCpus).Cpu -join ','
+$expectedAffinityCpus = (Get-HarnessGameCpus).Cpu -join ','
 $launchCuteContent = Get-Content $launchCute -Raw
 if ($launchCuteContent -notmatch 'RAROG_AFFINITY_PATCH_V2' -or
     $launchCuteContent -notmatch [regex]::Escape("-use-affinity $expectedAffinityCpus ")) {
@@ -541,7 +497,7 @@ if ([int]$launchManifest['games_per_iteration'] -ne [int]$launchConfig.games) {
 # ─── Multi-session bookkeeping ────────────────────────────────────────────
 # Long tunes span several sessions. Three things make that safe, and each was
 # broken before 2026-07-27:
-#   1. the log must APPEND on resume (it truncated — 8.5 lost 1,086 of its
+#   1. the log must APPEND on resume (it truncated — one tune lost 1,086 of its
 #      3,670 iterations, and the trajectory is what the bake filter reads);
 #   2. the run must STOP ITSELF at the target (main.py was `while True:`, so
 #      the target existed only in the operator's head);

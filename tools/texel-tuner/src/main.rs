@@ -1,14 +1,14 @@
-//! Rarog Texel eval tuner (Phase 3.3).
+//! Rarog Texel eval tuner.
 //!
 //! A faithful Rust port of `tools/texel/reference/basilisk_tuner.cpp`:
 //! golden-section K-fit, full-batch Adam, staged group masks, the
 //! `linear_delta_scale` that captures Rarog's frozen non-linear factors, the
 //! reconstruction `--verify` gate, and the `name index value` output format
-//! that the engine's `RAROG_EVAL_FILE` loader (Phase 3.2) reads back.
+//! that the engine's `RAROG_EVAL_FILE` loader reads back.
 //!
 //! Dataset format: one `FEN;target` per line; `target` is the White-POV
 //! expected score (`1-0`/`0-1`/`1/2-1/2`, or a float in `[0,1]`). With
-//! `--from-cp` (Phase 6.1 SF-distillation), `target` is instead a White-POV
+//! `--from-cp` (Stockfish distillation), `target` is instead a White-POV
 //! centipawn integer (e.g. Hydra's `sf_train.csv`), squashed at load with
 //! `1/(1+10^(-cp/400))`.
 //!
@@ -64,12 +64,12 @@ const PAWNSTRUCT: &[&str] = &[
     "pawn_connected_eg",
     "pawn_backward_mg",
     "pawn_backward_eg",
-    // Phase 3.8 additions.
+    // Pawn-structure detail.
     "pawn_lever_mg",
     "pawn_lever_eg",
     "pawn_doubled_isolated_mg",
     "pawn_doubled_isolated_eg",
-    // Phase 7.4: same-rank phalanx (seeded 0, activated by this refit).
+    // Same-rank phalanx.
     "pawn_phalanx_mg",
     "pawn_phalanx_eg",
 ];
@@ -82,14 +82,14 @@ const PASSERS: &[&str] = &[
     "passed_freestop_mg_per_rank",
     "passed_freestop_eg_per_rank",
     "passed_safestop_eg_per_rank",
-    // Phase 6.2.1 whole-path weighting.
+    // Whole-path weighting.
     "passed_freepath_mg_per_rank",
     "passed_freepath_eg_per_rank",
     "passed_safepath_eg_per_rank",
     "passed_candidate_mg",
     "passed_candidate_eg",
     "passer_proximity_base",
-    // Phase 3.8 passer detail.
+    // Passer detail.
     "blocked_passer_mg",
     "blocked_passer_eg",
     "ideal_blockader_mg",
@@ -125,7 +125,7 @@ const THREATS: &[&str] = &[
     "threat_rook_eg",
     "threat_queen_mg",
     "threat_queen_eg",
-    // Phase 3.6 threats v2 (per-victim and count terms; all Texel-tunable).
+    // Threats (per-victim and count terms; all Texel-tunable).
     "threat_by_minor_mg",
     "threat_by_minor_eg",
     "threat_by_rook_mg",
@@ -142,7 +142,7 @@ const THREATS: &[&str] = &[
 const HANGING: &[&str] = &["hanging_minor", "hanging_rook", "hanging_queen"];
 const MISC: &[&str] = &["passer_proximity_base", "space_weight", "tempo"];
 const IMBALANCE: &[&str] = &["imbalance_ours", "imbalance_theirs"];
-// Phase 3.10 small positional terms.
+// Small positional terms.
 const SMALLPOS: &[&str] = &[
     "bishop_pair_pawn_mg",
     "bishop_pair_pawn_eg",
@@ -161,7 +161,7 @@ const SMALLPOS: &[&str] = &[
     "closedness_rook_mg",
     "king_centrality_danger_mg",
 ];
-// Phase 3.12 gauntlet-driven additions.
+// Gauntlet-driven additions.
 const GAUNTLET: &[&str] = &[
     "unstoppable_passer_eg",
     "minor_behind_pawn_mg",
@@ -173,7 +173,7 @@ const GAUNTLET: &[&str] = &[
     "king_protector_mg",
     "king_protector_eg",
     "space_piece_mg",
-    // Phase 6.2.1 refresh structure.
+    // Refresh structure.
     "space_behind_piece_mg",
     "bishop_xray_pawns_mg",
     "bishop_xray_pawns_eg",
@@ -241,7 +241,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
         "minors" => push_all(&mut active, MINORS),
         "mobility" => push_all(&mut active, MOBILITY),
         "threats" => push_all(&mut active, THREATS),
-        // Phase 7.4: narrow affected-family refit for the HCE semantics bundle
+        // Narrow affected-family refit for the HCE semantics bundle
         // — the pawn tables (support + new phalanx), passers, the rook-behind
         // pair, the attacked2-affected threats, and the square-rule scalar.
         // Nothing else (lesson 1: no all-parameter fit).
@@ -252,12 +252,12 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, THREATS);
             push_field(&mut active, "unstoppable_passer_eg");
         }
-        // Stage 4.4: the remaining positional scalars — pawn structure, passers,
+        // The remaining positional scalars — pawn structure, passers,
         // rook files/7th, minors (bishop pair, outposts), space/tempo, small
         // positional terms, and the gauntlet additions. Excludes mobility /
-        // threats / hanging (tuned in 4.2–4.3) and material/PST/imbalance (later
+        // threats / hanging (tuned in their own stages) and material/PST/imbalance (later
         // stages). Freezes the three feature-support sparse pairs (pawn_lever,
-        // trapped_bishop, rook_trapped — too few observations to fit, Step 4.0).
+        // trapped_bishop, rook_trapped — too few observations to fit).
         "scalars44" => {
             push_all(&mut active, PAWNSTRUCT);
             push_all(&mut active, PASSERS);
@@ -279,7 +279,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             }
             active.retain(|i| !frozen.contains(i));
         }
-        // Stage 4.2: threats + the old flat hanging term together, so the fit
+        // Threats + the flat hanging term together, so the fit
         // resolves their overlap (the refined hanging term generalises the flat
         // one) — the data drives the flat penalty toward 0 rather than us
         // dropping it blind.
@@ -307,7 +307,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, KINGSAFETY);
             push_all(&mut active, IMBALANCE);
         }
-        // Phase 4.8 complete existing-surface fit. This is `all` with the ten
+        // Complete existing-surface fit. This is `all` with the ten
         // exact material/PST gauge anchors removed. The two king material
         // values are invariant (both kings are always present), and the twelve
         // danger-index selectors use the nonlinear re-evaluation instrument.
@@ -316,10 +316,9 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             let anchors = pst_gauge_anchors();
             active.retain(|i| !anchors.contains(i));
         }
-        // Stage 4.7 global polish: everything linearly tunable, but the three
-        // feature-support sparse pairs stay frozen (Step 4.0) — "everything
-        // unfrozen" predates that audit. The nonlinear king-danger inputs are
-        // not in any linear group anyway (fit via --tune-kingsafety in 4.1).
+        // Global polish: everything linearly tunable, but the three
+        // feature-support sparse pairs stay frozen. The nonlinear king-danger
+        // inputs are not in any linear group (fit via --tune-kingsafety).
         "all47" => {
             push_material(&mut active);
             push_field(&mut active, "pst_mg");
@@ -408,10 +407,10 @@ fn clamp_weights(w: &mut [f64]) {
     }
     clamp_field(w, "pawn_connected_mg", 0.0, 200.0);
     clamp_field(w, "pawn_connected_eg", 0.0, 200.0);
-    // Phase 7.4: phalanx bonus (same range as support).
+    // Phalanx bonus (same range as support).
     clamp_field(w, "pawn_phalanx_mg", 0.0, 200.0);
     clamp_field(w, "pawn_phalanx_eg", 0.0, 200.0);
-    // Phase 3.8: lever bonus and doubled-isolated penalty magnitude.
+    // Lever bonus and doubled-isolated penalty magnitude.
     clamp_field(w, "pawn_lever_mg", 0.0, 100.0);
     clamp_field(w, "pawn_lever_eg", 0.0, 100.0);
     clamp_field(w, "pawn_doubled_isolated_mg", 0.0, 200.0);
@@ -436,7 +435,7 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "passed_candidate_mg", 0.0, 200.0);
     clamp_field(w, "passed_candidate_eg", 0.0, 200.0);
     clamp_field(w, "passer_proximity_base", 0.0, 50.0);
-    // Phase 3.8: blocked-passer penalty magnitude, ideal-blockader bonus.
+    // Blocked-passer penalty magnitude, ideal-blockader bonus.
     clamp_field(w, "blocked_passer_mg", 0.0, 200.0);
     clamp_field(w, "blocked_passer_eg", 0.0, 200.0);
     clamp_field(w, "ideal_blockader_mg", 0.0, 200.0);
@@ -518,7 +517,7 @@ fn clamp_weights(w: &mut [f64]) {
     ] {
         clamp_field(w, f, 0.0, 100.0);
     }
-    // Nonlinear danger-index inputs (SPSA/finite-difference path, Phase 4.0).
+    // Nonlinear danger-index inputs (SPSA/finite-difference path).
     // All are danger *contributions* (more attack = more danger) or, for
     // queen_relief, a danger *reduction* stored as a positive magnitude — so
     // every one is bounded non-negative. The bucket index they feed is clamped
@@ -544,7 +543,7 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "imbalance_ours", -300.0, 300.0);
     clamp_field(w, "imbalance_theirs", -300.0, 300.0);
 
-    // Phase 3.10 small positional terms.
+    // Small positional terms.
     clamp_field(w, "bishop_pair_pawn_mg", -20.0, 20.0);
     clamp_field(w, "bishop_pair_pawn_eg", -20.0, 20.0);
     for f in [
@@ -568,7 +567,7 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "closedness_rook_mg", -30.0, 30.0);
     clamp_field(w, "king_centrality_danger_mg", 0.0, 100.0);
 
-    // Phase 3.12 gauntlet additions.
+    // Gauntlet additions.
     clamp_field(w, "unstoppable_passer_eg", 0.0, 600.0);
     for f in [
         "minor_behind_pawn_mg",
@@ -592,7 +591,7 @@ fn clamp_weights(w: &mut [f64]) {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Holdout buckets (Phase 4.0) — a single global loss can fall while a critical
+// Holdout buckets — a single global loss can fall while a critical
 // eval domain silently regresses. We tag every position with the buckets it
 // belongs to and report loss per bucket each fit; a bucket that regresses while
 // global loss drops is the signal to investigate *before* the SPRT. Material
@@ -765,11 +764,11 @@ impl TuneSet {
     }
 }
 
-/// `--from-cp` mode (Phase 6.1 SF-distillation): targets are White-POV
+/// `--from-cp` mode (Stockfish distillation): targets are White-POV
 /// centipawns (Hydra `annotate_sf.py` output), squashed to `[0,1]` at load.
 static FROM_CP: AtomicBool = AtomicBool::new(false);
 
-/// `--fix-k <v>` (Phase 6.1): pin the sigmoid K instead of golden-section
+/// `--fix-k <v>`: pin the sigmoid K instead of golden-section
 /// fitting it. Stored as f64 bits; 0 = unset (K=0 is never a valid pin).
 static FIX_K: AtomicU64 = AtomicU64::new(0);
 
@@ -1322,7 +1321,7 @@ struct TuneOpts {
     group: String,
     train: String,
     holdout: String,
-    /// 9.6(a): optional FROZEN TEST set. Three data roles: train updates the
+    /// Optional FROZEN TEST set. Three data roles: train updates the
     /// weights, the holdout is the VALIDATION set (it selects K and the best
     /// epoch — i.e. it steers the fit), and this set selects NOTHING. It is
     /// loaded after training ends and read exactly once, so the number it
@@ -1489,7 +1488,7 @@ fn cmd_tune(opts: &TuneOpts) {
 }
 
 // ---------------------------------------------------------------------------
-// Nonlinear king-safety fit (Phase 4.0)
+// Nonlinear king-safety fit
 // ---------------------------------------------------------------------------
 
 /// The danger-index inputs that select the (non-linear) safety-table bucket.
@@ -1507,7 +1506,7 @@ const KS_DANGER_INPUTS: &[&str] = &[
     "ks_safe_check_queen",
     "ks_flank_attack",
     "ks_pawnless_flank",
-    // Phase 6.2.1: shelter/storm pawn-cover deficit folded into the danger index.
+    // Shelter/storm pawn-cover deficit, folded into the danger index.
     "ks_shelter_storm",
     "ks_queen_relief",
 ];
@@ -1516,10 +1515,8 @@ const KS_DANGER_INPUTS: &[&str] = &[
 /// the 40-entry safety table they index into. The table is co-tuned because its
 /// shape only makes sense against the index distribution the inputs produce.
 ///
-/// The count said 11 until 2026-09-01; `ks_shelter_storm` was folded into the
-/// danger index at Phase 6.2.1 and the comment was not updated. `KS_DANGER_INPUTS`
-/// is the authority and has 12 entries, which is what 4.7.3's 1,194 + 12 + 10 + 2
-/// partition of FLAT_SIZE counts.
+/// `KS_DANGER_INPUTS` is the authority for the count (12, including
+/// `ks_shelter_storm`).
 fn ks_active_indices() -> Vec<usize> {
     let mut a = Vec::new();
     for f in KS_DANGER_INPUTS {
@@ -2060,7 +2057,7 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
 // main / argument parsing
 // ---------------------------------------------------------------------------
 
-/// Phase 4.0 readiness gate — **feature support**. For every weight, count the
+/// Readiness gate — **feature support**. For every weight, count the
 /// positions whose linear trace gives it a nonzero tapered coefficient (i.e.
 /// positions that can supply gradient signal to fit it), broken down by game
 /// phase. A weight with very few activations is *underdetermined* and would
@@ -2295,7 +2292,7 @@ fn cmd_audit_coverage() {
     );
 }
 
-/// Phase 4.0 readiness — per-bucket loss snapshot of the *current* eval, no
+/// Readiness — per-bucket loss snapshot of the *current* eval, no
 /// fit. Establishes the baselines a later fit's per-bucket table is judged
 /// against.
 fn cmd_buckets(path: &str, max_positions: usize) {
@@ -2329,7 +2326,7 @@ fn usage(exe: &str) {
     eprintln!("              best epoch, so its loss is optimistically biased;");
     eprintln!("              only the frozen-test number is an honest residual.");
     eprintln!("  --from-cp   targets are White-POV centipawns (e.g. Hydra sf_*.csv),");
-    eprintln!("              squashed 1/(1+10^(-cp/400)) at load (Phase 6.1 SF-distill)");
+    eprintln!("              squashed 1/(1+10^(-cp/400)) at load (Stockfish distillation)");
     eprintln!("  --fix-k K   pin sigmoid K instead of fitting it (e.g. --fix-k 1)");
     eprintln!("  --initial   start from a complete prior-stage vector; partial files fail");
     eprintln!("  --test-marker atomically enforce one-shot frozen-test use across runs");

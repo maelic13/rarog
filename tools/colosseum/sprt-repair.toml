@@ -1,0 +1,7 @@
+# A repair of unknown sign: the symmetric [-5, 5] nElo bracket (RAR-S62).
+
+extend = "sprt-default.toml"
+
+[options]
+elo0 = -5
+elo1 = 5

@@ -1,4 +1,4 @@
-"""Unit tests for the endgame truth harness's termination rule (PLAN 4.10.1).
+"""Unit tests for the endgame truth harness's termination rule.
 
 These are the tests RAR-E14 says were missing. The defect they cover is not a
 crash: the old harness ended a game the moment the strong side's piece count
@@ -7,7 +7,7 @@ correct pawn technique as a failure. Nothing about the output looked wrong.
 
 So each test below asserts a BEHAVIOUR, and the schema tests assert that the
 guards FAIL on a known-bad input rather than merely pass on a good one -- which
-is 4.10.4's rule applied to the change that motivated it.
+is the fail-on-bad-input rule applied to the change that motivated it.
 
 Run:
   python -m unittest discover -s tools/diag -p "test_*.py"
@@ -91,7 +91,7 @@ class TerminationRuleTests(unittest.TestCase):
         self.assertGreater(played["plies"], played["shed_material_ply"])
 
     def test_material_lost_is_no_longer_a_possible_outcome(self):
-        """The whole point of 4.10.1: nothing terminates on material any more."""
+        """Nothing terminates on material: shedding a piece is often correct technique."""
         source = Path(endgame_truth.__file__).read_text(encoding="utf-8")
         self.assertNotIn('outcome = "material_lost"', source)
 
@@ -136,7 +136,7 @@ class TerminationRuleTests(unittest.TestCase):
 
 
 class CohortIdentityTests(unittest.TestCase):
-    """4.10.2: a report must be able to say which positions it measured.
+    """A report must be able to say which positions it measured.
 
     The golden digests below were verified position-for-position, in order,
     against `tools/results/e08-accepted/endgame-truth.json` -- 1900/1900 -- so
@@ -190,7 +190,7 @@ class CohortIdentityTests(unittest.TestCase):
 
 
 class CohortGuardTests(unittest.TestCase):
-    """The guard must FAIL on two runs over different positions (4.10.4)."""
+    """The guard must FAIL on two runs over different positions."""
 
     def _report(self, digests):
         return {
@@ -230,7 +230,7 @@ class CohortGuardTests(unittest.TestCase):
                   "truth_schema": endgame_floors.TRUTH_SCHEMA, "families": {}}
         with self.assertRaises(SystemExit) as caught:
             endgame_floors.check_cohorts(floors, self._report({"KQ-K": "bb" * 32}))
-        self.assertIn("4.11.2", str(caught.exception))
+        self.assertIn("--update", str(caught.exception))
 
     def test_a_report_without_a_digest_is_refused(self):
         report = {"families": {"KQ-K": {}}}
@@ -240,7 +240,7 @@ class CohortGuardTests(unittest.TestCase):
 
 
 class ShardTests(unittest.TestCase):
-    """4.10.3: sharding may change wall time and nothing else."""
+    """Sharding may change wall time and nothing else."""
 
     def test_every_item_appears_exactly_once(self):
         items = [("f", i, "fen%d" % i) for i in range(23)]
@@ -311,7 +311,7 @@ def _report(families):
 
 
 class ThinSampleTests(unittest.TestCase):
-    """4.10.4: refuse to report a statistic over an eligible set that is tiny.
+    """Refuse to report a statistic over an eligible set that is tiny.
 
     The failure prevented is a CONFIDENT wrong reading, not a wrong verdict: a
     family with one eligible position that fails reads as 0.0%, which looks
@@ -386,11 +386,11 @@ class FloorGateTests(unittest.TestCase):
 
 
 class MeasurementLayerTests(unittest.TestCase):
-    """4.10.5: an instrument must say which QUESTION it answers.
+    """An instrument must say which QUESTION it answers.
 
     Enforced rather than documented, because the contract's whole purpose is to
     stop a number being read as answering something it never asked -- which is
-    what 4.9a.7 nearly did to a working scale function, and what RAR-E14 found
+    what reading a scale function off conversion nearly did, and what RAR-E14 found
     a conversion baseline doing.
     """
 
@@ -429,7 +429,7 @@ class MeasurementLayerTests(unittest.TestCase):
 
 
 class BudgetBracketTests(unittest.TestCase):
-    """4.10.6: one budget is a guess, and a bracket must not mix cohorts."""
+    """One budget is a guess, and a bracket must not mix cohorts."""
 
     def test_budgets_parse_sorted_and_deduplicated(self):
         self.assertEqual(
@@ -483,7 +483,7 @@ class NodeBudgetEvidenceTests(unittest.TestCase):
 
 
 class SchemaGuardTests(unittest.TestCase):
-    """4.10.4: a guard is not verified until it FAILS on a known-bad input."""
+    """A guard is not verified until it FAILS on a known-bad input."""
 
     def _write(self, directory, name, doc):
         path = Path(directory) / name
@@ -505,14 +505,9 @@ class SchemaGuardTests(unittest.TestCase):
             self.assertEqual(endgame_floors.load_report(good)["families"], {})
 
     def test_the_committed_floors_carry_their_provenance(self):
-        """Inverted at 4.11.2, when the floors were re-derived.
-
-        Between 4.10.1 and 4.11.2 this asserted the OPPOSITE -- that the
-        committed floors were stale and must fail closed -- which was true and
-        was the point. 4.11.2 rebuilt them from the corrected head arm, so the
-        assertion flips to the state that must now hold and must not silently
-        regress: stamped with the truth schema that produced them, and carrying
-        the cohort they were measured on.
+        """The committed floors must stay stamped with the truth schema that
+        produced them and carry the cohort they were measured on, so a stale or
+        foreign floors file fails closed rather than silently comparing.
 
         Nothing is weakened by the flip. That a MISMATCHED floors file is
         refused is covered independently, on synthetic inputs, by

@@ -11,8 +11,8 @@ use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, GameResult, 
 use crate::infra;
 
 pub const MATE_SCORE: i32 = 32_000;
-pub const INF_SCORE: i32 = 32_001;
-pub const VALUE_NONE: i32 = 32_002;
+pub(crate) const INF_SCORE: i32 = 32_001;
+pub(crate) const VALUE_NONE: i32 = 32_002;
 
 const PAWN_TABLE_SIZE: usize = 16_384;
 const EVAL_TABLE_SIZE: usize = 32_768;
@@ -532,7 +532,7 @@ macro_rules! tr_eg {
 /// that omits some fields is valid (those fields keep their default).
 #[cfg(feature = "tune")]
 impl EvalParams {
-    pub fn load_from_str(text: &str) -> Self {
+    fn load_from_str(text: &str) -> Self {
         let mut params = Self::default();
         for (line_no, line) in text.lines().enumerate() {
             let line = line.trim();
@@ -562,7 +562,7 @@ impl EvalParams {
         params
     }
 
-    pub fn load_from_env() -> Self {
+    pub(crate) fn load_from_env() -> Self {
         match std::env::var("RAROG_EVAL_FILE") {
             Ok(path) => {
                 let text = std::fs::read_to_string(&path).unwrap_or_else(|err| {
@@ -574,7 +574,7 @@ impl EvalParams {
         }
     }
 
-    pub fn dump(&self) -> String {
+    pub(crate) fn dump(&self) -> String {
         let mut out = String::new();
         for &(name, len) in EVAL_PARAM_NAMES {
             for idx in 0..len {
@@ -1057,7 +1057,7 @@ const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
 /// `const`-baked `MG_TABLE`/`EG_TABLE`; now `params.mg_val`/`params.pst_mg`
 /// are tunable data, so the table must be a runtime-built `Evaluator` field).
 #[derive(Clone)]
-pub struct EvalTables {
+struct EvalTables {
     mg: [[[i32; 64]; 6]; 2],
     eg: [[[i32; 64]; 6]; 2],
 }
@@ -1208,7 +1208,7 @@ impl Evaluator {
         }
     }
 
-    pub fn clear_pawn_table(&mut self) {
+    pub(crate) fn clear_pawn_table(&mut self) {
         self.pawn_table.fill(PawnEntry::default());
         self.eval_table.fill(EvalEntry::default());
     }
@@ -1245,13 +1245,13 @@ impl Evaluator {
         // The whole-eval cache must be bypassed under `texel`: a cache hit
         // returns without re-emitting trace counts, which would poison the
         // per-position trace the tuner records.
-        let eval_slot = infra::index(board.hash) & (EVAL_TABLE_SIZE - 1);
+        let eval_slot = infra::index(board.hash()) & (EVAL_TABLE_SIZE - 1);
         #[cfg(not(feature = "texel"))]
         {
             let cached = self.eval_table[eval_slot];
             if cached.occupied
-                && cached.key == board.hash
-                && cached.halfmove_clock == board.halfmove_clock
+                && cached.key == board.hash()
+                && cached.halfmove_clock == board.halfmove_clock()
             {
                 return cached.value;
             }
@@ -1324,12 +1324,6 @@ impl Evaluator {
         let lazy = false;
 
         if lazy {
-            // 9.6(b): with `diag` on, ALSO run the full eval and log how far
-            // the served cheap score strays. The served value is untouched, so
-            // search behaviour — and the bench fingerprint — stay identical
-            // even in the diag build.
-            #[cfg(feature = "diag")]
-            self.diag_lazy_dual(board, atk, &passed, &pawn_attacks, phase, mg, eg);
             self.apply_mop_up(board, &mut mg, &mut eg);
         } else {
             self.eval_piece_activity(board, atk, &mut mg, &mut eg, &passed, &pawn_attacks, phase);
@@ -1360,16 +1354,17 @@ impl Evaluator {
             self.trace.borrow_mut().raw = lin;
         }
         score = scale_endgame(board, score);
-        let rule50 = board.halfmove_clock.min(100) as i32;
-        score -= score * rule50 / 199;
+        // No rule-50 damping here: the transposition table stores this eval
+        // keyed without the clock, so the search damps it with the current
+        // clock instead.
         let value = if board.side_to_move() == Color::White {
             score
         } else {
             -score
         };
         self.eval_table[eval_slot] = EvalEntry {
-            key: board.hash,
-            halfmove_clock: board.halfmove_clock,
+            key: board.hash(),
+            halfmove_clock: board.halfmove_clock(),
             value,
             occupied: true,
         };
@@ -1795,7 +1790,7 @@ impl Evaluator {
                 Color::White => CastlingRights::WHITE_ALL,
                 Color::Black => CastlingRights::BLACK_ALL,
             };
-            let own_lost_castling = !board.castling.has(own_castling_all);
+            let own_lost_castling = !board.castling().has(own_castling_all);
             let home_rank_corner = match color {
                 Color::White => [Square(0), Square(7)],
                 Color::Black => [Square(56), Square(63)],
@@ -1895,7 +1890,7 @@ impl Evaluator {
             let mut threats = pawn_attacks[color as usize] & board.color_occ(them);
             while threats.any() {
                 let sq = threats.pop_lsb();
-                match board.piece_on(sq) {
+                match board.piece_type_at(sq) {
                     Some(Piece::Knight | Piece::Bishop) => {
                         *mg += sign * self.params.threat_minor_mg[0];
                         *eg += sign * self.params.threat_minor_eg[0];
@@ -1930,7 +1925,7 @@ impl Evaluator {
             let mut tb = our_minor_att & enemy_occ;
             while tb.any() {
                 let sq = tb.pop_lsb();
-                if let Some(v) = board.piece_on(sq) {
+                if let Some(v) = board.piece_type_at(sq) {
                     *mg += sign * self.params.threat_by_minor_mg[v as usize];
                     *eg += sign * self.params.threat_by_minor_eg[v as usize];
                     tr_mg!(self, threat_by_minor_mg, v as usize, sign);
@@ -1940,7 +1935,7 @@ impl Evaluator {
             let mut tb = attacked_by[ci][Piece::Rook as usize] & enemy_occ;
             while tb.any() {
                 let sq = tb.pop_lsb();
-                if let Some(v) = board.piece_on(sq) {
+                if let Some(v) = board.piece_type_at(sq) {
                     *mg += sign * self.params.threat_by_rook_mg[v as usize];
                     *eg += sign * self.params.threat_by_rook_eg[v as usize];
                     tr_mg!(self, threat_by_rook_mg, v as usize, sign);
@@ -1960,7 +1955,7 @@ impl Evaluator {
                 let def1 = (attacked[ti] & bb).any();
                 let def2 = (attacked2[ti] & bb).any();
                 if ((att1 && !def1) || (att2 && def1 && !def2))
-                    && let Some(v) = board.piece_on(sq)
+                    && let Some(v) = board.piece_type_at(sq)
                 {
                     *mg += sign * self.params.threat_hanging_refined_mg[v as usize];
                     *eg += sign * self.params.threat_hanging_refined_eg[v as usize];
@@ -2224,107 +2219,6 @@ impl Evaluator {
     /// from `eval_piece_activity` so it also runs on the lazy-eval early-return
     /// path (Phase 3.16) — mating technique must survive a lazy skip. Frozen
     /// (non-tunable) term, so it lands in the tuner's `rest`.
-    /// 9.6(b) lazy-eval safety audit (`diag` builds only).
-    ///
-    /// Called at the moment a lazy skip fires, with `mg0`/`eg0` as they stand
-    /// at the decision point (post-pawns, pre-mop-up). Recomputes BOTH
-    /// endpoints on scratch copies — the cheap path exactly as it will be
-    /// served (mop-up only) and the full path exactly as the non-lazy branch
-    /// would have produced (activity + mop-up + imbalance) — and logs the
-    /// disagreement. Every callee is `&self` and pure, so nothing observable
-    /// changes; the caller then serves the cheap path as before.
-    ///
-    /// Why this exists: `LazyMargin` (600) is supposed to guarantee the
-    /// skipped terms cannot flip the verdict, but the skipped king-safety
-    /// table alone reaches 369 MG per side. The accepting SPRT (+4.4) was a
-    /// speed verdict, not an evaluation-safety proof. These counters either
-    /// justify a king-danger-aware margin (13.7) or retire the question.
-    // 9.7.5(b): `&mut self`, not `&self`. 8.12(f)(i) gave `eval_piece_activity`
-    // the reused `attacks_from_sq` scratch and therefore `&mut self`, which
-    // silently broke `--features diag` — this function calls it. Nothing built
-    // with the feature between then and 2026-07-25, so the whole diagnostics
-    // path was uncompilable while the plan kept citing it as the way to measure.
-    // Overwriting the scratch here is harmless: on the lazy path the caller
-    // serves the cheap score and nothing reads the scratch afterwards.
-    #[cfg(feature = "diag")]
-    fn diag_lazy_dual(
-        &mut self,
-        board: &Board,
-        atk: &AttackTables,
-        passed: &[Bitboard; 2],
-        pawn_attacks: &[Bitboard; 2],
-        phase: i32,
-        mg0: i32,
-        eg0: i32,
-    ) {
-        use crate::diag::{counters, lazy_probe};
-        use std::sync::atomic::Ordering;
-
-        let taper = |mg: i32, eg: i32| (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
-
-        let (mut mg_c, mut eg_c) = (mg0, eg0);
-        self.apply_mop_up(board, &mut mg_c, &mut eg_c);
-        let cheap = taper(mg_c, eg_c);
-
-        lazy_probe::reset();
-        let (mut mg_f, mut eg_f) = (mg0, eg0);
-        self.eval_piece_activity(
-            board,
-            atk,
-            &mut mg_f,
-            &mut eg_f,
-            passed,
-            pawn_attacks,
-            phase,
-        );
-        self.apply_mop_up(board, &mut mg_f, &mut eg_f);
-        self.eval_imbalance(board, &mut mg_f, &mut eg_f);
-        let full = taper(mg_f, eg_f);
-        let danger_idx = lazy_probe::max();
-
-        counters::lazy_fires.fetch_add(1, Ordering::Relaxed);
-        let delta = u64::from(full.abs_diff(cheap));
-        counters::lazy_delta_sum.fetch_add(delta, Ordering::Relaxed);
-        counters::lazy_delta_max.fetch_max(delta, Ordering::Relaxed);
-
-        // Buckets: king danger from the full pass (the cheap pass never
-        // computes it), and phase quartile as the material signature. phase is
-        // 0..=24, so `* 4 / 25` lands exactly in 0..=3.
-        let danger_bucket = (danger_idx / 10).min(3);
-        let phase_bucket = infra::to_usize(phase * 4 / (TOTAL_PHASE + 1));
-
-        if cheap.signum() != full.signum() {
-            counters::lazy_sign_flips.fetch_add(1, Ordering::Relaxed);
-            match danger_bucket {
-                0 => counters::lazy_flip_danger_low.fetch_add(1, Ordering::Relaxed),
-                1 => counters::lazy_flip_danger_mid.fetch_add(1, Ordering::Relaxed),
-                2 => counters::lazy_flip_danger_high.fetch_add(1, Ordering::Relaxed),
-                _ => counters::lazy_flip_danger_extreme.fetch_add(1, Ordering::Relaxed),
-            };
-            match phase_bucket {
-                0 => counters::lazy_flip_phase_q1.fetch_add(1, Ordering::Relaxed),
-                1 => counters::lazy_flip_phase_q2.fetch_add(1, Ordering::Relaxed),
-                2 => counters::lazy_flip_phase_q3.fetch_add(1, Ordering::Relaxed),
-                _ => counters::lazy_flip_phase_q4.fetch_add(1, Ordering::Relaxed),
-            };
-        }
-        if full.abs() <= self.lazy_margin {
-            counters::lazy_margin_crossings.fetch_add(1, Ordering::Relaxed);
-            match danger_bucket {
-                0 => counters::lazy_cross_danger_low.fetch_add(1, Ordering::Relaxed),
-                1 => counters::lazy_cross_danger_mid.fetch_add(1, Ordering::Relaxed),
-                2 => counters::lazy_cross_danger_high.fetch_add(1, Ordering::Relaxed),
-                _ => counters::lazy_cross_danger_extreme.fetch_add(1, Ordering::Relaxed),
-            };
-            match phase_bucket {
-                0 => counters::lazy_cross_phase_q1.fetch_add(1, Ordering::Relaxed),
-                1 => counters::lazy_cross_phase_q2.fetch_add(1, Ordering::Relaxed),
-                2 => counters::lazy_cross_phase_q3.fetch_add(1, Ordering::Relaxed),
-                _ => counters::lazy_cross_phase_q4.fetch_add(1, Ordering::Relaxed),
-            };
-        }
-    }
-
     fn apply_mop_up(&self, board: &Board, mg: &mut i32, eg: &mut i32) {
         let approximate = (*mg + *eg) / 2;
         if approximate.abs() > 200 {
@@ -2639,10 +2533,6 @@ impl Evaluator {
         );
         *mg -= sign * self.params.king_safety_table[safety_idx];
         tr_mg!(self, king_safety_table, safety_idx, -sign);
-        // 9.6(b): expose the bucket actually read so the lazy dual-eval audit
-        // can attribute its findings to king danger. Diag-only side channel.
-        #[cfg(feature = "diag")]
-        crate::diag::lazy_probe::record(safety_idx);
 
         let king_file = infra::to_i32(SQUARE_FILE[king.index()]);
         if king_file <= 2 || king_file >= 5 {
@@ -2808,7 +2698,7 @@ impl Evaluator {
             & !board.pieces(color, Piece::King);
         while pieces.any() {
             let sq = pieces.pop_lsb();
-            let Some(piece) = board.piece_on(sq) else {
+            let Some(piece) = board.piece_type_at(sq) else {
                 continue;
             };
             let sq_bb = Bitboard::from(sq);
@@ -2993,7 +2883,7 @@ impl Evaluator {
                 Color::White => CastlingRights::WHITE_ALL,
                 Color::Black => CastlingRights::BLACK_ALL,
             };
-            if ksq == home_sq && !board.castling.has(own_castling_all) {
+            if ksq == home_sq && !board.castling().has(own_castling_all) {
                 *mg -= sign * self.params.king_centrality_danger_mg[0];
                 tr_mg!(self, king_centrality_danger_mg, 0, -sign);
             }
@@ -3407,7 +3297,7 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
         let r = rank(wp);
         let queening = 56 + file(wp);
         // The reference's `tempo` is 1 when the strong side is to move.
-        let tempo = i32::from(board.side_to_move == strong);
+        let tempo = i32::from(board.side_to_move() == strong);
 
         // Third-rank defence: pawn not far advanced, defending king on the
         // queening square, defending rook cutting on the 6th.
@@ -3585,7 +3475,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
     // Specialised endgame scale factors (Phase 3.11) apply first, mirroring
     // `scale_endgame`. A dead-draw pattern zeroes the delta scale.
     if let Some(sf) = specialized_endgame_scale(board) {
-        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock.min(100) as f64)
+        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock().min(100) as f64)
             / 199.0;
     }
 
@@ -3601,7 +3491,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
         return 0.0;
     }
 
-    let rule50 = board.halfmove_clock.min(100) as f64;
+    let rule50 = board.halfmove_clock().min(100) as f64;
     scale *= (199.0 - rule50) / 199.0;
     scale
 }

@@ -1,13 +1,12 @@
-//! Checked numeric conversions (Phase 9.0b).
+//! Checked numeric conversions.
 //!
 //! Rarog is 64-bit-only (compile-guarded in `lib.rs`/`main.rs`), and its
 //! quantities are domain-bounded: plies ≤ 128, depths ≤ 100, move counts
-//! ≤ 256, piece counts ≤ 10, squares < 64. The ~240 bare `as` casts this
-//! module replaces were each individually harmless, but nothing *checked*
-//! that, and cast #241 would have been on its own. Every narrowing in the
-//! crate now goes through one of these functions: the conversion is named,
-//! `debug_assert!`ed (exercised — the debug suite runs since 9.0a revived
-//! it), and the only `as` casts live in this one annotated block.
+//! ≤ 256, piece counts ≤ 10, squares < 64. A bare `as` cast would be harmless
+//! for each of them, but nothing would check that. Every narrowing in the
+//! crate goes through one of these functions instead: the conversion is named,
+//! `debug_assert!`ed (the debug suite exercises it), and the only `as` casts
+//! live in this one annotated block.
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
@@ -21,33 +20,45 @@ pub fn index(x: u64) -> usize {
     x as usize
 }
 
+/// `f64 → i32` for a score average: rounded to the nearest whole unit and
+/// clamped to the score range, so the cast cannot truncate.
+#[inline(always)]
+pub fn score_from_f64(x: f64) -> i32 {
+    x.round().clamp(-32_000.0, 32_000.0) as i32
+}
+
 /// Domain-bounded narrowing to `i32` (plies, depths, counts, bit indices).
 #[inline(always)]
-pub fn to_i32<T: SmallInt>(x: T) -> i32 {
+pub(crate) fn to_i32<T: SmallInt>(x: T) -> i32 {
     x.to_i32()
 }
 
 /// Non-negative, domain-bounded `i32 → usize` (table indices).
 #[inline(always)]
-pub fn to_usize(x: i32) -> usize {
+pub(crate) fn to_usize(x: i32) -> usize {
     debug_assert!(x >= 0, "negative value used as an index: {x}");
     x as usize
 }
 
+/// Stack size for every thread that runs a search: the engine thread and the
+/// helpers. A `Searcher` is tens of kilobytes inline and debug frames are
+/// unoptimised, so the platform default overflows in debug builds. libtest
+/// threads get the same budget from `RUST_MIN_STACK` in `.cargo/config.toml`.
+pub const THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+/// Flush stdout, dropping the error: a failed flush means the GUI closed the
+/// pipe, which ends a UCI session normally and must not abort the process.
+pub(crate) fn flush_stdout() {
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
 /// Domain-bounded narrowing to `u8` (squares, files, ranks).
 #[inline(always)]
-pub fn to_u8<T: SmallInt>(x: T) -> u8 {
+pub(crate) fn to_u8<T: SmallInt>(x: T) -> u8 {
     let v = x.to_i32();
     debug_assert!((0..=255).contains(&v), "value out of u8 range: {v}");
     v as u8
-}
-
-/// Domain-bounded narrowing to `i8` (file/rank deltas).
-#[inline(always)]
-pub fn to_i8<T: SmallInt>(x: T) -> i8 {
-    let v = x.to_i32();
-    debug_assert!((-128..=127).contains(&v), "value out of i8 range: {v}");
-    v as i8
 }
 
 /// Integers that are small by domain. Each impl narrows through `i32` with a
@@ -111,9 +122,8 @@ impl SmallInt for u8 {
 
 /// Narrows an `i32` to `i16`, saturating at the bounds.
 ///
-/// 9.0b: replaces the `v.clamp(i16::MIN as i32, i16::MAX as i32) as i16`
-/// idiom that appeared verbatim in four hot places (SEE scoring, history
-/// updates, TT score and static-eval packing). Expressed with `try_from` so
+/// Used in hot places (SEE scoring, history updates, TT score and static-eval
+/// packing). Expressed with `try_from` so
 /// there is **no cast at all** — the saturation is explicit and the compiler
 /// Clamp an `i64` into `i32` range.
 ///
@@ -122,22 +132,23 @@ impl SmallInt for u8 {
 /// score. Real positions land nowhere near the boundary, but saturating is
 /// the honest narrowing: a runaway weight during a fit should peg the score,
 /// not wrap it to the opposite sign and silently teach the tuner nonsense.
+#[cfg(any(test, feature = "texel"))]
 #[inline(always)]
-pub fn saturating_i32(value: i64) -> i32 {
+pub(crate) fn saturating_i32(value: i64) -> i32 {
     i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
 }
 
 /// still emits the same compare-and-select.
 #[inline(always)]
-pub fn saturating_i16(value: i32) -> i16 {
+pub(crate) fn saturating_i16(value: i32) -> i16 {
     i16::try_from(value).unwrap_or(if value < 0 { i16::MIN } else { i16::MAX })
 }
 
 /// Narrows an `i32` to `i8`, saturating at `lo`/`i8::MAX`.
 ///
-/// 9.0b: used for TT depth packing, where `-1` is the meaningful floor.
+/// Used for TT depth packing, where `-1` is the meaningful floor.
 #[inline(always)]
-pub fn saturating_i8(value: i32, lo: i8) -> i8 {
+pub(crate) fn saturating_i8(value: i32, lo: i8) -> i8 {
     i8::try_from(value)
         .unwrap_or(if value < 0 { lo } else { i8::MAX })
         .max(lo)
@@ -152,7 +163,7 @@ pub fn capitalize_first_letter(input: &str) -> String {
 }
 
 #[cfg(test)]
-mod narrow_tests {
+mod tests {
     use super::{saturating_i8, saturating_i16, saturating_i32};
 
     #[test]

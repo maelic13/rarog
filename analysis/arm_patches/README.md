@@ -18,6 +18,18 @@ prune.
 | `76e72bb` | RAR-S56 | `090dedc` | 4.7a: hard `nmp_eval >= beta` entry, old margin re-homed onto `static_eval` |
 | `7ea0620` | RAR-S63 | `05ba633` | 4.5.3 variant: ProbCut does not record its speculative move |
 | `b517991` | RAR-S66 | `e2fd4e0` | `ImprovingPly4Fallback` default 0 → 1 |
+| `23b8a7a` | RAR-S76 | `df6308e` | B.2.3 theta at iteration 3,900 baked into the 82 `CoreParams` defaults (diagnostic peek, never merged) |
+| `883666d` | RAR-S82 | `7ba3a1b` | RAR-S82's block-1 theta baked into `ProofParams` (diagnostic probe) |
+| `11e7145` | RAR-S84 | `f5d16d8` | RAR-S83's block-2 theta baked into all 36 coordinates (the B.3.4 gate candidate; `f53ca7d` baked the same values on `dev`) |
+
+**Added 2026-10-04 (B.10's ref review):** the last three rows came from the
+throwaway branches `diag/b23-theta3900`, `b33-block1-probe` and `b33-gate`,
+each one diagnostic commit on a parent `dev` contains. Each was captured with
+`git diff <base> <arm>` and proved, through a temporary index, to apply to its
+base and reproduce the commit's tree exactly
+(`analysis/artifacts/b10-release/save_branch_patches.sh`), so the branches
+are no longer the only carriers. Their bases are reachable from `dev`, not
+from the `arm/*` tags; the six rows above still need those tags.
 
 ## What was deliberately NOT preserved, and why
 
@@ -37,3 +49,10 @@ already carries all seven values and both bench fingerprints inline in its row.
 That line is **not** removed by `git gc`: it is unreachable from any ref but
 still held by the reflog, and only expiring the reflog would drop it. Nothing
 in this clean-up expired a reflog.
+
+**Superseded 2026-09-27:** the reflog is no longer the safeguard. That line
+and every other unreachable commit are preserved in the bundle recorded in
+`../ledger_commits_2026-09-27.md`, which also lists every cited commit outside
+the refs, so the reflog may be expired without losing anything the bundle
+holds. The six patches here still apply: their bases are reachable from the
+`arm/*` tags.

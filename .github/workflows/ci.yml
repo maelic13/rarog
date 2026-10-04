@@ -1,22 +1,23 @@
-# Development CI (Phase 9.2).
+# Development CI.
 #
-# TRIGGERS: push to master (the release gate — master is what becomes a
-# release) and manual dispatch on any branch. Deliberately NOT on push to
-# development: the local dev loop already verifies fmt/clippy/tests/bench on
-# Windows x86-64 every commit, so per-commit CI there would mostly re-check
-# what is already known. Use the manual button before merging.
+# TRIGGERS: a pull request into master (the gate — GitHub builds the merge
+# commit, so this run is exactly what master would become; master enforces
+# linear history, so the merged tree is the tested one) and manual dispatch
+# on any branch. Not on push to master: redundant by construction. Deliberately
+# NOT on every push to development: the local loop verifies fmt, clippy, the
+# suites and the bench on Windows x86-64 at each commit.
 #
-# Both triggers run the IDENTICAL job set. That is the point: a manual run is
+# Every trigger runs the IDENTICAL job set. That is the point: a PR run is
 # only useful as a pre-merge check if it is a faithful preview of the master
 # gate. A subset would hand out false confidence.
 #
 # The toolchain is NOT specified here — rustup reads rust-toolchain.toml and
-# installs the pinned compiler (9.1). CI therefore builds with the exact same
+# installs the pinned compiler. CI therefore builds with the exact same
 # rustc the developer does, which is the whole point of the pin.
 name: CI
 
 on:
-  push:
+  pull_request:
     branches: [master]
   workflow_dispatch:
 
@@ -50,16 +51,12 @@ jobs:
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
-      # The 9.0a/9.0b lint wall (deny on unsafe_op_in_unsafe_fn, the three cast
+      # The lint wall (deny on unsafe_op_in_unsafe_fn, the three cast
       # lints, and eight more) only binds where it is actually run. This is what
       # makes it structural rather than a local habit.
-      # Run per feature set on purpose. A single `--workspace` run compiles
-      # rarog ONCE with `texel` unified in (texel-tuner depends on it that
-      # way), so `#[cfg(not(feature = "texel"))]` paths would never be linted
-      # — and conversely, default-only runs never lint the texel code at all.
-      # That blind spot was real: writing this workflow surfaced five
-      # violations (4 casts + a needless Box allocation) that had been sitting
-      # unlinted in texel-gated code through the entire 9.0 clean-up.
+      # Run per feature set on purpose: `cfg(feature = ...)` code is linted
+      # only in a configuration that enables it, and not-enabled paths only in
+      # one that does not.
       - name: cargo clippy (default features)
         run: cargo clippy --all-targets -- -D warnings
 
@@ -69,8 +66,17 @@ jobs:
       - name: cargo clippy (--features diag)
         run: cargo clippy --all-targets --features diag -- -D warnings
 
-      - name: cargo clippy (workspace — covers texel, xtask, texel-tuner)
+      - name: cargo clippy (--features texel)
+        run: cargo clippy --all-targets --features texel -- -D warnings
+
+      - name: cargo clippy (--features diag,tune)
+        run: cargo clippy --all-targets --features diag,tune -- -D warnings
+
+      - name: cargo clippy (workspace — covers xtask)
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo clippy (texel tuner, its own workspace)
+        run: cargo clippy --manifest-path tools/texel-tuner/Cargo.toml --all-targets -- -D warnings
 
   test:
     name: test ${{ matrix.os }} / ${{ matrix.profile }}
@@ -104,15 +110,7 @@ jobs:
 
       # The debug run is not redundant with release: every debug_assert! in
       # infra's checked conversions, cont_index and piece_to_index compiles out
-      # of release entirely. That suite was silently DEAD until 9.0a revived it
-      # (stack overflow — no assert had ever executed), so it gets a real job.
-      # `-p rarog`, NOT `--workspace`: a workspace test run unifies features
-      # and silently switches the engine to `texel`, which bypasses the
-      # whole-eval cache and therefore changes the search path. The strength
-      # tests assert PRODUCTION behaviour, so they must run on production
-      # features. (Discovered building this workflow — `cargo test --workspace`
-      # fails at HEAD for exactly this reason, and did so before any of
-      # today's changes.)
+      # of release entirely, so the debug suite gets a real job.
       - name: cargo test — engine, default features (${{ matrix.profile }})
         shell: bash
         run: |
@@ -122,9 +120,32 @@ jobs:
             cargo test -p rarog
           fi
 
+      # The long tier: tests ignored in the suite because they measure play
+      # rather than check a contract, run here by exact name so no other
+      # ignored test is swept in. Two must run: a filter that matched nothing
+      # would pass with zero tests. PROCESS's "Common commands" names the same
+      # command for release qualification.
+      - name: cargo test — long tier, default features (release)
+        if: matrix.profile == 'release'
+        shell: bash
+        run: |
+          status=0
+          cargo test -p rarog --release --test endgames --test wac -- --ignored --exact \
+            kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor \
+            > long-tier.log 2>&1 || status=$?
+          cat long-tier.log
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          ran=$(grep -c '^test .* \.\.\. ok' long-tier.log || true)
+          if [ "$ran" -ne 2 ]; then
+            echo "::error::the long tier ran $ran tests, expected 2"
+            exit 1
+          fi
+
       - name: cargo test — tooling crates
         shell: bash
-        run: cargo test -p xtask -p texel-tuner
+        run: |
+          cargo test -p xtask
+          cargo test --manifest-path tools/texel-tuner/Cargo.toml
 
   bench-fingerprint:
     name: bench ${{ matrix.label }}
@@ -169,9 +190,7 @@ jobs:
       - name: Build release
         run: cargo build --release
 
-      # 4.8a — catch an ISA-contract break at PR time, not at release time.
-      # This is the check that would have caught the 15 baseline POPCNT
-      # instructions the 2.3.0/2.3.1 assets shipped, three steps earlier.
+      # Catch an ISA-contract break at PR time, not at release time.
       - name: Install llvm-tools
         run: rustup component add llvm-tools
 
@@ -193,15 +212,18 @@ jobs:
       # commit, and a hardcoded constant would need editing constantly until
       # somebody just deleted the check. Cross-platform agreement, by contrast,
       # must hold forever regardless of what we change.
-      - name: Run bench and record node count
+      - name: Run bench and record node counts
         shell: bash
         run: |
-          echo bench | ./target/release/rarog${{ matrix.ext }} | tee bench.log
-          nodes=$(sed -n 's/.*Nodes searched *: *\([0-9][0-9]*\).*/\1/p' bench.log | head -1)
-          if [ -z "$nodes" ]; then
-            echo "::error::could not parse a node count out of bench output"
-            exit 1
-          fi
+          count() {
+            echo bench | "$1" | tee "$2"
+            nodes=$(sed -n 's/.*Nodes searched *: *\([0-9][0-9]*\).*/\1/p' "$2" | head -1)
+            if [ -z "$nodes" ]; then
+              echo "::error::could not parse a node count out of $2"
+              exit 1
+            fi
+          }
+          count "./target/release/rarog${{ matrix.ext }}" bench.log
           echo "${{ matrix.label }} $nodes" > "nodes-${{ matrix.label }}.txt"
           echo "$nodes nodes on ${{ matrix.label }}"
 
@@ -225,14 +247,16 @@ jobs:
       # architecture must reach the identical number. A disagreement is a real
       # bug — an unsound unsafe block (17 remain), a data race in lazy SMP, or
       # float non-determinism — never a benign platform quirk.
-      - name: All platforms must report the same node count
+      - name: All platforms must report the same node counts
         run: |
           cat nodes-*.txt
-          counts=$(awk '{print $2}' nodes-*.txt | sort -u | wc -l)
-          if [ "$counts" -ne 1 ]; then
-            echo "::error::platforms disagree on bench node count — see the table above"
-            exit 1
-          fi
+          for column in 2; do
+            counts=$(awk -v c=$column '{print $c}' nodes-*.txt | sort -u | wc -l)
+            if [ "$counts" -ne 1 ]; then
+              echo "::error::platforms disagree on bench node count (column $column) — see the table above"
+              exit 1
+            fi
+          done
           echo "all platforms agree: $(awk '{print $2}' nodes-*.txt | sort -u)"
 
   features:
@@ -250,7 +274,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # None of these are in the default build, so all three can rot unnoticed
+      # Neither is in the default build, so both can rot unnoticed
       # — and `tune` is what the SPSA runs on, so its rotting would be found at
       # the worst possible moment.
       - name: Build --features tune
@@ -259,29 +283,23 @@ jobs:
       - name: Build --features diag
         run: cargo build --release --features diag
 
-      # `ablate` was the fourth declared feature and the only one CI never
-      # built, so it could rot unnoticed exactly like the other three would
-      # have. It is the paired-ablation instrument; it is needed the moment an
-      # ablation is wanted, which is never a convenient moment to discover a
-      # build error.
-      - name: Build --features ablate
-        run: cargo build --release --features ablate
-
-      # 4.10.12: single features are not enough. Which items arrive under a
+      # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
-      # `diag` and under `tune` and fail under both. This enumerates all 16
-      # subsets with `cargo check --all-targets`, which catches the same
-      # compilation errors far more cheaply than 16 builds.
+      # `diag` and under `tune` and fail under both. This enumerates all 8
+      # subsets of the three declared features with
+      # `cargo check --all-targets --no-default-features`, which catches the
+      # same compilation errors far more cheaply than 8 builds. Every subset
+      # starts from a clean slate.
       #
       # Deliberately NOT `--all-features`: that is not a shipped configuration.
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
       # be measured (AGENTS.md).
-      - name: Feature matrix (all 16 subsets compile)
+      - name: Feature matrix (all 8 subsets compile)
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)
-        run: cargo build --release -p texel-tuner
+        run: cargo build --release --manifest-path tools/texel-tuner/Cargo.toml
 
       - name: Build xtask and benches
         run: cargo build --release -p xtask --all-targets

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Per-engine reported depth and time-per-move from a fastchess PGN.
 
-Built for 10.0(b) and kept because it answers a question no internal counter
+It answers a question no internal counter
 can: at a FIXED NODE budget, how deep does each engine go, and how fast?
 
-Why fixed nodes makes it decisive. PLAN 10.0's headline observation was "14.6
+Why fixed nodes makes it decisive. The headline observation was "14.6
 nominal depth vs Basilisk's 12.7 at identical NPS with equal eval quality" - a
 bigger depth number on a thinner tree - but that came from two measurements
 taken under different conditions. In a `-Nodes N` match both engines answer the
 same positions with the same node budget, so a depth difference is PURELY tree
 shape and a time difference is PURELY speed. No modelling, no normalisation.
 
-The 10.0(b) reading (250,000 nodes/move, ~158k moves per engine):
+The fixed-nodes reading (250,000 nodes/move, ~158k moves per engine):
 
     engine              moves   mean depth   median   s/move   implied nps
     basilisk-1.9.1     158841        13.96     13.0   0.0819     3,051,641
@@ -20,8 +20,8 @@ The 10.0(b) reading (250,000 nodes/move, ~158k moves per engine):
 i.e. Rarog reaches 2.5 MORE plies on the same nodes at near-identical speed -
 and loses the match by 65 Elo. Depth is not the currency; tree quality is.
 
-⚠ Registered as a progress metric: after 10.4.6's selectivity re-fit, re-run
-this. If the re-fit did what 10.0(c) predicts, Rarog's mean depth at 250k nodes
+⚠ Registered as a progress metric: after a selectivity re-fit, re-run this.
+If the re-fit removes over-pruning, Rarog's mean depth at 250k nodes
 should FALL toward ~14 while its Elo RISES. A re-fit that keeps the depth
 advantage has not fixed the over-pruning.
 
@@ -39,14 +39,21 @@ import statistics
 import sys
 from collections import defaultdict
 
-# fastchess writes each move as `{eval/depth time}`; eval may be a mate score.
-COMMENT = re.compile(r"\{[+-]?[\dM.]+/(\d+)\s+([\d.]+)s\}")
+# fastchess writes each move as `{eval/depth time}`; eval may be a mate score,
+# and a game's last move carries the termination after a comma
+# (`{0.00/32 0.047s, Draw by 3-fold repetition}`), which is still a move.
+COMMENT = re.compile(r"\{([+-]?[\dM.]+)/(\d+)\s+([\d.]+)s(?:,[^}]*)?\}")
 TAG = re.compile(r'\[(\w+) "(.*)"\]')
 
 
-def main(path):
+def collect(path):
+    """Per engine: the depth, the seconds and whether the score was a mate
+    score, for each annotated move. A mate score carries the engine's own
+    pseudo-depth (classical Stockfish reports 245), so the means are also
+    given over non-mate moves."""
     depths = defaultdict(list)
     times = defaultdict(list)
+    mates = defaultdict(list)
     white = black = None
     first_is_white = True
     body = []
@@ -59,8 +66,9 @@ def main(path):
         # once we know which colour moved first in the recorded body.
         for i, m in enumerate(COMMENT.finditer(" ".join(body))):
             mover = white if ((i % 2 == 0) == first_is_white) else black
-            depths[mover].append(int(m.group(1)))
-            times[mover].append(float(m.group(2)))
+            depths[mover].append(int(m.group(2)))
+            times[mover].append(float(m.group(3)))
+            mates[mover].append("M" in m.group(1))
 
     with open(path, encoding="utf-8", errors="replace") as fh:
         for line in fh:
@@ -83,7 +91,11 @@ def main(path):
                 in_moves = True
                 body.append(s)
     flush()
+    return depths, times, mates
 
+
+def main(path):
+    depths, times, mates = collect(path)
     if not depths:
         sys.exit(
             "No move comments found. The PGN needs engine annotations - "
@@ -96,7 +108,8 @@ def main(path):
         if arg.startswith("--nodes="):
             nodes = float(arg.split("=", 1)[1])
 
-    header = f"{'engine':24s} {'moves':>8s} {'mean depth':>11s} {'median':>7s} {'s/move':>9s}"
+    header = (f"{'engine':24s} {'moves':>8s} {'mean depth':>11s} {'median':>7s} {'s/move':>9s}"
+              f" {'non-mate':>9s} {'mean':>6s} {'median':>7s}")
     if nodes:
         header += f" {'implied nps':>13s}"
     print(header)
@@ -107,6 +120,11 @@ def main(path):
             f"{eng:24s} {len(d):8d} {statistics.mean(d):11.2f} "
             f"{statistics.median(d):7.1f} {mean_t:9.4f}"
         )
+        plain = [x for x, mate in zip(d, mates[eng]) if not mate]
+        if plain:
+            row += f" {len(plain):9d} {statistics.mean(plain):6.2f} {statistics.median(plain):7.1f}"
+        else:
+            row += f" {0:9d} {'-':>6s} {'-':>7s}"
         if nodes:
             row += f" {nodes / mean_t if mean_t else 0:13,.0f}"
         print(row)

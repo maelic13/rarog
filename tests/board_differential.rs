@@ -94,7 +94,7 @@ impl FullState {
         }
         Self {
             fen: board.to_fen(),
-            hash: board.hash,
+            hash: board.hash(),
             pawn_key: board.pawn_key(),
             minor_key: board.minor_key(),
             non_pawn: [
@@ -102,7 +102,7 @@ impl FullState {
                 board.non_pawn_key(Color::Black),
             ],
             checkers: board.checkers().0,
-            all_occ: board.all_occ.0,
+            all_occ: board.occupied().0,
             pieces,
         }
     }
@@ -124,7 +124,7 @@ fn walk(name: &str, fen: &str, seed: u64, plies: usize) {
         }
         let before = FullState::of(&board);
         let mv = moves[rng.below(moves.len())];
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
 
         board.check_consistency().unwrap_or_else(|e| {
             panic!(

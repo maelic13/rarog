@@ -93,22 +93,32 @@ function Invoke-Bench {
     }
 }
 
-# The accepted head's `bench 13` fingerprint. Bumped again 2026-09-02 when
-# RAR-E08 accepted the tablebase-corrected label fit: 7,226,051 / 2.460 became
-# 7,165,683 / 2.462. Bumped 2026-09-01 when RAR-E06's
-# complete HCE refit was accepted: 6,977,070 / 2.466 (RAR-S70) became
-# 7,226,051 / 2.460. It was NOT bumped at acceptance and the first fit run
-# afterwards failed here -- correctly, but for a stale reason.
+# The accepted head's `bench 13` fingerprint, read from GUIDE.md's
+# `| Development head` row: the one place the documents declare it, which
+# tools/diag/check_guide.py holds AGENTS and PLAN to. A literal copied here went
+# stale at every accepted change.
 #
 # WHAT THIS CANNOT PROVE. A fingerprint identifies the SEARCH, and a change
 # confined to positions the bench suite never reaches is invisible to it. The
-# 4.9a.4 mate drive is exactly that: it moves KBN-K conversion from 19.4% to
+# KBN-K mate drive is exactly that: it moves KBN-K conversion from 19.4% to
 # 96.9% and leaves `bench 13` byte-identical, because no bench tree reaches a
 # bare-king minor-piece mate. So this guard will happily pass a tree carrying
 # an unaccepted eval change. Check `git rev-parse HEAD` against the commit the
 # fit is supposed to start from; the run manifest records it for that purpose.
-$script:AcceptedBenchNodes = 6901489
-$script:AcceptedBenchEbf = 2.458
+function Get-AcceptedFingerprint {
+    $guide = Join-Path $repo "GUIDE.md"
+    $row = Select-String -LiteralPath $guide -Pattern '^\| Development head' | Select-Object -First 1
+    if (-not $row) { throw "GUIDE.md has no '| Development head' row to read the accepted fingerprint from" }
+    $m = [regex]::Match($row.Line, '(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})')
+    if (-not $m.Success) { throw "GUIDE.md's Development head row carries no 'N / EBF x.xxx' fingerprint" }
+    [pscustomobject]@{
+        Nodes = [long]($m.Groups[1].Value -replace ',', '')
+        Ebf   = [double]::Parse($m.Groups[2].Value, [Globalization.CultureInfo]::InvariantCulture)
+    }
+}
+$accepted = Get-AcceptedFingerprint
+$script:AcceptedBenchNodes = $accepted.Nodes
+$script:AcceptedBenchEbf = $accepted.Ebf
 
 function Assert-BaselineFingerprint {
     param($Bench, [string]$Label)
@@ -262,7 +272,7 @@ try {
             # hce-v2: 750,000-opening phase-BALANCED beast_seed.epd, adjudicated
             # self-play. The corpus RAR-E06 and RAR-E08 were fitted on.
             [pscustomobject]@{ Adjudication = "datagen-v1"; Starts = 600000 },
-            # hce-v3 (4.9a.6): 1,000,000-opening phase-WEIGHTED phase_book_v1.epd
+            # hce-v3: 1,000,000-opening phase-WEIGHTED phase_book_v1.epd
             # at 50/10/10/10/20, NO adjudication. The balanced book could not
             # reach the row target at any schedule; see
             # analysis/texel_corpus_book_shape_2026-09-02.md.
@@ -377,8 +387,8 @@ try {
     }
     $settings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "settings.json") -Encoding utf8
 
-    [void](Invoke-Logged "build-tuner" "cargo" @("build", "--release", "-p", "texel-tuner"))
-    $tuner = Join-Path $repo "target/release/rarog-texel.exe"
+    [void](Invoke-Logged "build-tuner" "cargo" @("build", "--release", "--manifest-path", "tools/texel-tuner/Cargo.toml"))
+    $tuner = Join-Path $repo "tools/texel-tuner/target/release/rarog-texel.exe"
     $baselineVector = Join-Path $runDir "00-source-defaults.txt"
     [void](Invoke-Logged "write-source-defaults" $tuner @("--write-defaults", $baselineVector))
     [void](Invoke-Logged "instrument-coverage" $tuner @("--audit-coverage"))

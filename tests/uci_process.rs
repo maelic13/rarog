@@ -90,6 +90,19 @@ impl UciSession {
         self.stdin.flush().expect("command should be flushed");
     }
 
+    /// Write several commands in one `write_all`, so the engine reads them back
+    /// to back, as it does when a GUI's opponent replies at once.
+    fn send_together(&mut self, commands: &[&str]) {
+        let batch: String = commands
+            .iter()
+            .map(|command| format!("{command}\n"))
+            .collect();
+        self.stdin
+            .write_all(batch.as_bytes())
+            .expect("commands should be written");
+        self.stdin.flush().expect("commands should be flushed");
+    }
+
     fn expect_line_containing(&self, needle: &str, timeout: Duration) -> String {
         self.collect_until_line_containing(needle, timeout)
             .pop()
@@ -97,20 +110,31 @@ impl UciSession {
     }
 
     fn collect_until_line_containing(&self, needle: &str, timeout: Duration) -> Vec<String> {
+        self.try_collect_until_line_containing(needle, timeout)
+            .unwrap_or_else(|seen| panic!("timed out waiting for `{needle}`; seen: {seen:?}"))
+    }
+
+    /// Lines up to and including the first containing `needle`, or every line
+    /// seen before the timeout or the end of output.
+    fn try_collect_until_line_containing(
+        &self,
+        needle: &str,
+        timeout: Duration,
+    ) -> Result<Vec<String>, Vec<String>> {
         let deadline = Instant::now() + timeout;
         let mut seen = Vec::new();
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                panic!("timed out waiting for `{needle}`; seen: {seen:?}");
+                return Err(seen);
             }
             match self.stdout_rx.recv_timeout(remaining) {
                 Ok(line) if line.contains(needle) => {
                     seen.push(line);
-                    return seen;
+                    return Ok(seen);
                 }
                 Ok(line) => seen.push(line),
-                Err(err) => panic!("timed out waiting for `{needle}` ({err}); seen: {seen:?}"),
+                Err(_) => return Err(seen),
             }
         }
     }
@@ -330,6 +354,136 @@ fn threaded_ponderhit_after_spent_movetime_does_not_restart_search_clock() {
     session.quit();
 }
 
+/// The ponder-race report's positions: a middlegame mate, a tablebase ending
+/// and an opening, so the race cannot hang on the position.
+const PONDER_RACE_SCENARIOS: [(&str, &str, &str); 3] = [
+    (
+        "A",
+        "position fen 6k1/8/4p1P1/2p2p1P/P2p1q2/Q7/1r2n1K1/6R1 b - - 4 55",
+        "go ponder wtime 13537 btime 6905 winc 1000 binc 1000",
+    ),
+    (
+        "B",
+        "position fen 5B2/P7/2k5/8/8/3B2K1/8/8 b - - 0 82",
+        "go ponder wtime 6493 btime 7249 winc 1000 binc 1000",
+    ),
+    (
+        "C",
+        "position startpos moves e2e4 e7e5 g1f3 b8c6 f1b5 a7a6",
+        "go ponder wtime 10000 btime 10000 winc 1000 binc 1000",
+    ),
+];
+
+/// `go ponder` with its `ponderhit` or `stop` in the same write must still end
+/// in exactly one `bestmove`, and leave the engine answering. A `ponderhit` the
+/// engine loses ponders without a clock and a `go` it drops prints nothing, so
+/// either fault times out at any budget. Every scenario runs, and the failure
+/// names each one that went unanswered with what the engine printed instead.
+fn assert_ponder_race_answers(threads: usize, release: &str, budget: Duration) {
+    let mut unanswered = Vec::new();
+    for (scenario, position, go) in PONDER_RACE_SCENARIOS {
+        let mut session = UciSession::start();
+        session.send("uci");
+        session.expect_line_containing("uciok", wait(15));
+        session.send(&format!("setoption name Threads value {threads}"));
+        session.send("setoption name Ponder value true");
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send(position);
+        session.send_together(&[go, release]);
+
+        match session.try_collect_until_line_containing("bestmove", budget) {
+            Ok(_) => {
+                session.assert_no_line_containing("bestmove", Duration::from_millis(300));
+                session.send("isready");
+                session.expect_line_containing("readyok", wait(5));
+                session.quit();
+            }
+            Err(seen) => {
+                let info_lines = seen.iter().filter(|line| line.starts_with("info")).count();
+                unanswered.push(format!(
+                    "scenario {scenario}: no bestmove in {budget:?} after `{release}`; \
+                     {info_lines} info lines, last {:?}",
+                    seen.last()
+                ));
+            }
+        }
+    }
+    assert!(
+        unanswered.is_empty(),
+        "Threads {threads}, `go ponder` then `{release}` in one write:\n{}",
+        unanswered.join("\n")
+    );
+}
+
+/// After `ponderhit` the search runs on the mover's clock, and may use most of
+/// it: at Threads 4 scenario B reaches its 5.9 s hard limit in most runs. The
+/// budget is above every scenario's clock, so only an engine that never answers
+/// fails, and a slower build needs no more.
+const PONDERHIT_RACE_BUDGET: Duration = Duration::from_secs(12);
+
+#[test]
+fn ponderhit_written_with_go_ponder_starts_the_clock() {
+    assert_ponder_race_answers(1, "ponderhit", PONDERHIT_RACE_BUDGET);
+}
+
+#[test]
+fn threaded_ponderhit_written_with_go_ponder_starts_the_clock() {
+    assert_ponder_race_answers(4, "ponderhit", PONDERHIT_RACE_BUDGET);
+}
+
+#[test]
+fn stop_written_with_go_ponder_still_answers_the_go() {
+    assert_ponder_race_answers(1, "stop", wait(2));
+}
+
+#[test]
+fn threaded_stop_written_with_go_ponder_still_answers_the_go() {
+    assert_ponder_race_answers(4, "stop", wait(2));
+}
+
+/// A `ponderhit` belongs to the `go ponder` it follows: one already spent, or
+/// one that arrives with no search, must not release the next ponder search.
+#[test]
+fn ponderhit_never_converts_a_later_ponder_search() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos moves e2e4");
+    session.send("go ponder depth 1");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.send("ponderhit");
+    session.expect_line_containing("bestmove", wait(2));
+
+    session.send("ponderhit");
+    session.send("position startpos moves e2e4 e7e5");
+    session.send("go ponder depth 1");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.assert_no_line_containing("bestmove", Duration::from_millis(200));
+
+    session.send("stop");
+    session.expect_line_containing("bestmove", wait(2));
+    session.quit();
+}
+
+/// A `stop` with no search running belongs to no `go`, so the next one searches
+/// to its limit.
+#[test]
+fn stop_with_no_search_does_not_stop_the_next_go() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send_together(&["stop", "go depth 4"]);
+
+    let lines = session.collect_until_line_containing("bestmove", wait(5));
+    assert!(
+        lines.iter().any(|line| line.starts_with("info depth 4 ")),
+        "the go after a stray stop should reach its depth: {lines:?}"
+    );
+    session.quit();
+}
+
 #[test]
 fn emitted_pvs_are_legal_for_tournament_positions_with_threads() {
     let fens = [
@@ -398,6 +552,291 @@ fn invalid_position_fen_is_a_critical_exit() {
     ));
 }
 
+#[test]
+fn a_triple_check_fen_is_a_critical_exit_before_any_search() {
+    let output = run_rarog("position fen 4k3/8/3N4/8/B7/8/8/K3R3 b - - 0 1\ngo depth 1\n");
+
+    assert_eq!(output.status.code(), Some(1), "status: {:?}", output.status);
+    let out = stdout(&output);
+    assert!(out.contains("info string CRITICAL ERROR"), "stdout: {out}");
+    assert!(!out.contains("bestmove"), "stdout: {out}");
+}
+
+/// The `<empty>` placeholder a GUI echoes back means no path, so the engine
+/// says nothing about tablebases; a genuine path that holds none still does.
+#[test]
+fn the_empty_syzygy_path_placeholder_says_nothing() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("setoption name SyzygyPath value <empty>");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    session.assert_no_line_containing("tablebases", Duration::from_millis(200));
+
+    session.send("setoption name SyzygyPath value D:/no/such/folder");
+    session.send("isready");
+    let lines = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("no usable tablebases")),
+        "a path that holds no tablebases is still worth reporting: {lines:?}"
+    );
+    session.quit();
+}
+
+/// `seldepth` is the deepest ply reached in the CURRENT iteration, counted as
+/// Stockfish counts it (`ss->ply + 1`), not a high-water mark for the whole
+/// search. Carried across a search it only ever rises, which is not what a GUI
+/// plots against depth. One thread at fixed depth is deterministic.
+#[test]
+fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go depth 12");
+    let lines = session.collect_until_line_containing("bestmove", wait(60));
+
+    let reported: Vec<(u64, u64)> = lines
+        .iter()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .filter_map(|line| {
+            Some((
+                parse_uci_u64_field(line, "depth")?,
+                parse_uci_u64_field(line, "seldepth")?,
+            ))
+        })
+        .collect();
+    assert!(reported.len() >= 10, "a depth-12 search reports: {lines:?}");
+    for (depth, seldepth) in &reported {
+        assert!(
+            seldepth >= depth,
+            "an iteration reaches at least its own depth: depth {depth}, seldepth {seldepth}"
+        );
+    }
+    // The root is ply 0 and the count starts at one, so a search that reaches
+    // the first quiescence ply reports 2 at depth 1.
+    assert!(
+        reported
+            .first()
+            .is_some_and(|(depth, seldepth)| *depth == 1 && *seldepth >= 2),
+        "depth 1 counts the plies it reached: {reported:?}"
+    );
+    assert!(
+        reported.windows(2).any(|pair| pair[1].1 < pair[0].1),
+        "a reset iteration may report less than an earlier one: {reported:?}"
+    );
+    session.quit();
+}
+
+/// An aspiration re-search's score is only a bound, and single-PV mode used to
+/// print nothing at all until the window closed: a long iteration went silent
+/// and a stopped one reported the previous depth. One-thread fixed-depth
+/// searches are deterministic, so this asserts exact shapes.
+#[test]
+fn single_pv_reports_aspiration_bounds() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go depth 12");
+    let lines = session.collect_until_line_containing("bestmove", wait(60));
+
+    let bounded: Vec<&String> = lines
+        .iter()
+        .filter(|line| line.contains("lowerbound") || line.contains("upperbound"))
+        .collect();
+    assert!(
+        !bounded.is_empty(),
+        "a depth-12 search re-searches its window and must report the bounds: {lines:?}"
+    );
+    for line in &bounded {
+        assert!(
+            line.contains(" multipv 1 score ") && line.contains(" pv "),
+            "a bounded line keeps the ordinary shape: {line}"
+        );
+        let bounds =
+            usize::from(line.contains("lowerbound")) + usize::from(line.contains("upperbound"));
+        assert_eq!(bounds, 1, "a score is one bound or the other: {line}");
+    }
+    // The line that closes an iteration is exact, never bounded.
+    let last_info = lines
+        .iter()
+        .rev()
+        .find(|line| line.starts_with("info depth"))
+        .expect("the search reports");
+    assert!(
+        !last_info.contains("bound"),
+        "the final line of a search is an exact score: {last_info}"
+    );
+    session.quit();
+}
+
+/// A root with no legal move still reports what the position is worth: a GUI
+/// otherwise receives `bestmove` with no score at all (the 2026-09-16 review).
+#[test]
+fn a_root_with_no_legal_move_reports_a_score_before_bestmove() {
+    for (fen, expected) in [
+        // Fool's mate: Black has delivered mate, White is to move.
+        (
+            "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3",
+            "info depth 0 score mate 0",
+        ),
+        // Stalemate: Black to move, no legal move, not in check.
+        ("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "info depth 0 score cp 0"),
+    ] {
+        let mut session = UciSession::start();
+        session.send("uci");
+        session.expect_line_containing("uciok", wait(15));
+        session.send(&format!("position fen {fen}"));
+        session.send("go depth 5");
+        let lines = session.collect_until_line_containing("bestmove", wait(5));
+        assert!(
+            lines.iter().any(|line| line == expected),
+            "expected `{expected}` for {fen}: {lines:?}"
+        );
+        assert_eq!(
+            lines.last().map(String::as_str),
+            Some("bestmove 0000"),
+            "a position with no legal move still answers with bestmove: {lines:?}"
+        );
+        session.quit();
+    }
+}
+
+/// The last `info` line that carries a PV, and the `bestmove` after it.
+fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
+    let pv_move = lines
+        .iter()
+        .rev()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .find_map(|line| {
+            line.split(" pv ")
+                .nth(1)
+                .and_then(|pv| pv.split_whitespace().next())
+                .map(str::to_owned)
+        })
+        .unwrap_or_else(|| panic!("a search should report at least one PV: {lines:?}"));
+    let best = lines
+        .iter()
+        .rev()
+        .find(|line| line.starts_with("bestmove "))
+        .and_then(|line| line.split_whitespace().nth(1))
+        .unwrap_or_else(|| panic!("a search should end with bestmove: {lines:?}"))
+        .to_owned();
+    (pv_move, best)
+}
+
+/// A parallel search picks its move by vote across threads, but only the main
+/// thread prints `info`. When the vote chose a helper's move, `bestmove` named
+/// a move no printed line mentioned — 4 of 24 searches in the 2026-09-16
+/// review, and the report in GitHub issue #1. The pool now prints the winner's
+/// own line.
+///
+/// **A guard, not a proof.** Whether a given search's vote disagrees with the
+/// main thread is a scheduling matter, so this cannot fail deterministically
+/// on a broken build; it runs at the thread count and time control where the
+/// review saw disagreement most often. The decision itself is pinned
+/// deterministically by `only_a_helpers_line_is_reported_after_the_vote`.
+#[test]
+fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("setoption name Threads value 8");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    for fen in [
+        "position startpos",
+        "position fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "position fen r2q1rk1/pp1bbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 9",
+        "position fen 2rq1rk1/pb1nbppp/1p2pn2/2pp4/2PP4/1PN1PN2/PB2BPPP/R2Q1RK1 w - - 0 11",
+        "position fen r1b1k2r/ppppqppp/2n2n2/2b5/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 6 6",
+        "position fen rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 0 6",
+    ] {
+        session.send("ucinewgame");
+        session.send(fen);
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send("go movetime 300");
+        let lines = session.collect_until_line_containing("bestmove", wait(20));
+        let (pv_move, best) = last_pv_and_bestmove(&lines);
+        assert_eq!(
+            pv_move, best,
+            "the last info line must describe the move played ({fen}): {lines:?}"
+        );
+    }
+    session.quit();
+}
+
+/// The same contract without threads or a clock, where it is deterministic: a
+/// node budget that stops an iteration just after a window failed high on a
+/// new move left that move's `lowerbound` line last while `bestmove` named the
+/// previous depth's move (`go nodes 9770` to `12467` here). The search now
+/// prints its result's own line before `bestmove` whenever they differ.
+#[test]
+fn a_stopped_fail_high_line_is_followed_by_the_line_of_the_move_played() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    let fen = "position fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+    for nodes in (9_000..=13_000).step_by(500) {
+        session.send("ucinewgame");
+        session.send(fen);
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(5));
+        session.send(&format!("go nodes {nodes}"));
+        let lines = session.collect_until_line_containing("bestmove", wait(20));
+        let (pv_move, best) = last_pv_and_bestmove(&lines);
+        assert_eq!(
+            pv_move, best,
+            "the last info line must describe the move played (go nodes {nodes}): {lines:?}"
+        );
+    }
+    session.quit();
+}
+
+/// The engine's own `time` for a `go depth 4` from a lone-pawn KPK position,
+/// read from the last `info depth` line.
+fn kpk_search_ms(session: &mut UciSession) -> u64 {
+    session.send("ucinewgame");
+    session.send("position fen 8/8/8/4k3/8/3PK3/8/8 w - - 0 1");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(5));
+    session.send("go depth 4");
+    let lines = session.collect_until_line_containing("bestmove", wait(5));
+    lines
+        .iter()
+        .rev()
+        .filter(|line| line.starts_with("info depth"))
+        .find_map(|line| parse_uci_u64_field(line, "time"))
+        .unwrap_or_else(|| panic!("KPK search should report its time: {lines:?}"))
+}
+
+/// A fresh process's first search that reaches KPK must cost what the same
+/// search costs warm. The bitbase was built on first probe, inside that search
+/// and on its clock (about 34 ms in release), which lost games on time late in
+/// fast games whenever a harness started a fresh engine for every game.
+///
+/// A genuine timing assertion, deliberately NOT scaled by `wait`: the margin
+/// sits far above a depth-4 KPK search's noise in either profile and below
+/// the cost of building the table in either profile.
+#[test]
+fn first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    let cold = kpk_search_ms(&mut session);
+    let warm = kpk_search_ms(&mut session);
+    assert!(
+        cold <= warm + 15,
+        "first KPK search took {cold} ms against {warm} ms warm: a table is being built inside the search"
+    );
+    session.quit();
+}
+
 fn parse_uci_u64_field(line: &str, field: &str) -> Option<u64> {
     let mut parts = line.split_whitespace();
     while let Some(part) = parts.next() {
@@ -424,7 +863,7 @@ fn assert_uci_pv_lines_are_legal(root_fen: &str, lines: &[String]) {
                     board.to_fen()
                 )
             });
-            board.make_move_unchecked(mv);
+            board.make_move(mv);
         }
     }
     assert!(saw_pv, "search should emit at least one PV line: {lines:?}");

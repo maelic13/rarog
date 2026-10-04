@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check every shipped feature combination compiles (PLAN 4.10.12).
+"""Check every shipped feature combination compiles.
 
 Which headers, items and modules arrive under a given `cfg` differs per feature
 combination, so a module can compile in the default build and in `--features
@@ -19,10 +19,13 @@ finds the combination that includes `texel`.
 compilation errors -- which is what a feature matrix is for -- at a fraction of
 the cost, so the whole matrix is runnable on demand rather than only in CI.
 
+Every configuration is checked with `--no-default-features`, so each subset is
+exactly the features it names.
+
 Example:
 
   python tools/diag/feature_matrix.py
-  python tools/diag/feature_matrix.py --features tune,diag,ablate --release
+  python tools/diag/feature_matrix.py --features tune,diag --release
 """
 
 from __future__ import annotations
@@ -33,15 +36,16 @@ import subprocess
 import sys
 import time
 
-# Every feature the crate declares. Kept in sync with Cargo.toml by
+# Every feature the crate declares, `default` aside. Kept in sync with
+# Cargo.toml by
 # `test_feature_matrix.py::test_the_matrix_covers_every_declared_feature`, so
 # adding a feature and forgetting to check it fails the suite.
-SHIPPED_FEATURES = ["tune", "diag", "ablate", "texel"]
+SHIPPED_FEATURES = ["tune", "diag", "texel"]
 
 # Features that change what is MEASURED rather than only what is exposed. A
 # binary built with one of these must never be used for a strength number, and
 # the matrix says so out loud when it checks such a combination.
-NEVER_MEASURE = {"texel", "ablate", "tune"}
+NEVER_MEASURE = {"texel", "tune"}
 
 
 def combinations(features: list[str]) -> list[tuple[str, ...]]:
@@ -53,11 +57,11 @@ def combinations(features: list[str]) -> list[tuple[str, ...]]:
 
 
 def describe(combo: tuple[str, ...]) -> str:
-    return "default" if not combo else ",".join(combo)
+    return "no features (the legacy search)" if not combo else ",".join(combo)
 
 
 def check(combo: tuple[str, ...], release: bool, verbose: bool) -> tuple[bool, float]:
-    cmd = ["cargo", "check", "--all-targets"]
+    cmd = ["cargo", "check", "--all-targets", "--no-default-features"]
     if release:
         cmd.append("--release")
     if combo:

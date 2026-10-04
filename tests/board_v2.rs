@@ -139,7 +139,7 @@ impl State {
         }
         Self {
             fen: board.to_fen(),
-            hash: board.hash,
+            hash: board.hash(),
             pawn_key: board.pawn_key(),
             minor_key: board.minor_key(),
             non_pawn_keys: [
@@ -147,7 +147,7 @@ impl State {
                 board.non_pawn_key(Color::Black),
             ],
             checkers: board.checkers().0,
-            all_occ: board.all_occ.0,
+            all_occ: board.occupied().0,
             pieces,
         }
     }
@@ -165,7 +165,7 @@ fn divide(board: &mut Board, depth: u32) -> BTreeMap<String, u64> {
     let mut result = BTreeMap::new();
     let moves = board.generate_legal_movelist();
     for &mv in &moves {
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         let nodes = board.perft(depth - 1);
         board.unmake_move(mv);
         before.assert_matches(board, &format!("divide unmake {mv}"));
@@ -249,11 +249,15 @@ fn assert_tags(case: &Case, board: &Board) {
         }
     }
     if case.tags.contains("sparse-endgame") {
-        assert!(board.all_occ.count() <= 10, "{} is not sparse", case.name);
+        assert!(
+            board.occupied().count() <= 10,
+            "{} is not sparse",
+            case.name
+        );
     }
     if case.tags.contains("long-history") {
         assert!(
-            board.halfmove_clock >= 90 && board.fullmove >= 100,
+            board.halfmove_clock() >= 90 && board.fullmove() >= 100,
             "{} lacks long counters",
             case.name
         );
@@ -333,7 +337,7 @@ fn board_v2_preflight_rejects_wrong_moves_work_and_state() {
 
     let mut board = Board::from_fen(&case.fen).expect("valid oracle FEN");
     let mv = board.parse_move("e5d6").expect("legal en passant move");
-    board.make_move_unchecked(mv);
+    board.make_move(mv);
     assert_eq!(
         preflight(&case, &mut board),
         Err("canonical FEN"),
@@ -350,8 +354,10 @@ fn board_v2_normal_hinted_staged_and_null_paths_restore_every_field() {
         let all = generated_set(&board.generate_legal_movelist());
 
         let mut staged = board.clone();
-        let (captures, pinned) = staged.generate_legal_captures_pinned();
-        let quiets = staged.generate_legal_quiets_pinned(pinned);
+        let mut captures = MoveList::new();
+        let pinned = staged.generate_legal_captures_pinned_into(&mut captures);
+        let mut quiets = MoveList::new();
+        staged.generate_legal_quiets_pinned_into(pinned, &mut quiets);
         let staged_moves: BTreeSet<String> = generated_set(&captures)
             .union(&generated_set(&quiets))
             .cloned()
@@ -407,7 +413,7 @@ fn board_v2_randomized_unwind_and_clone_history_are_independent() {
             .parse_move(cycle[ply % cycle.len()])
             .expect("reversible move must stay legal");
         played.push(mv);
-        board.make_move_unchecked(mv);
+        board.make_move(mv);
         board
             .check_consistency()
             .expect("long history must remain consistent");
@@ -420,7 +426,7 @@ fn board_v2_randomized_unwind_and_clone_history_are_independent() {
         .iter()
         .next()
         .expect("clone must have a legal move");
-    clone.make_move_unchecked(clone_move);
+    clone.make_move(clone_move);
     assert_ne!(State::of(&clone), clone_state, "clone move must be live");
     assert_eq!(
         State::of(&board),

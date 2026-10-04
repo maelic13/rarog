@@ -5,6 +5,11 @@ and 4.2 (Rarog side). Both implementations must satisfy this document rather
 than each other, so a disagreement is resolved here, not in whichever code was
 written second.
 
+**B.8, 2026-10-03.** The cleanup removed the Rarog counters no tracked tool
+or B-phase analysis reads, and those the B.1 search alone incremented. Rows
+below for a removed Rarog counter say so. What each did and how to restore it
+is in `analysis/b8_removed_2026-10-03.md`; the oracle side is unchanged.
+
 ## Why this file exists before either implementation
 
 "Matched name for name" is meaningless without matched *definitions*. RAR-S25
@@ -132,11 +137,11 @@ prune is applied, so overlap is observable.
 | Name | Definition |
 |---|---|
 | `prune_shadow_moves` | Moves reaching the shallow-pruning stage — the denominator |
-| `prune_shadow_lmp` | Of those, would be pruned by move count |
-| `prune_shadow_futility` | Of those, would be pruned by futility |
-| `prune_shadow_see` | Of those, would be pruned by SEE |
-| `prune_shadow_check_exempt` | Of those, exempted because the move gives check |
-| `prune_shadow_overlap_two_plus` | Of those, would be pruned by two or more families |
+| `prune_shadow_lmp` | Of those, would be pruned by move count (removed from Rarog by B.8: only the B.1 search counted it) |
+| `prune_shadow_futility` | Of those, would be pruned by futility (removed from Rarog by B.8, as above) |
+| `prune_shadow_see` | Of those, would be pruned by SEE (removed from Rarog by B.8, as above) |
+| `prune_shadow_check_exempt` | Of those, exempted because the move gives check (removed from Rarog by B.8, as above) |
+| `prune_shadow_overlap_two_plus` | Of those, would be pruned by two or more families (removed from Rarog by B.8, as above) |
 
 `prune_shadow_overlap_two_plus / prune_shadow_moves` is redundancy. A high value
 means the families are paying for each other's work rather than covering
@@ -197,11 +202,11 @@ Their absence on the oracle side is a fact about 2020 Stockfish, not a finding.
 |---|---|
 | `correction_*` | Correction history postdates this revision entirely |
 | `rootconf_*` | Rarog's root-confidence model has no counterpart |
-| `lazy_*` | Rarog HCE lazy evaluation; the oracle calls the same HCE without it |
+| `lazy_*` | Rarog HCE lazy evaluation; the oracle calls the same HCE without it (removed from Rarog by B.8 with `diag_lazy_dual`) |
 | `store_kind_*`, `tt_move_inherited*` | Rarog's typed TT provenance; the oracle has no producer field |
 | `tt_pv_veto_*`, `contradict_*`, `refine_*` | Rarog's TT-bound evidence model |
 | `shadow_4_*` | Retired shadow slots from the closed Phase-4 line |
-| `worker_*` | Rarog's SMP vote merge |
+| `worker_*` | Rarog's SMP vote merge (removed from Rarog by B.8) |
 
 ## Learned at 4.1, from the first instrumented reading
 
@@ -371,3 +376,19 @@ list rather than a rediscovery.
   reading — fewer nodes is better — is the one that has already cost Rarog Elo.
 - Values from different suites, depths or node budgets are not comparable. The
   4.2 suite is versioned for this reason.
+
+## B.4 quiescence and unit-census counters (2026-09-28)
+
+Rarog-only, **exact** (not sampled), added for B.4's research
+(`analysis/b4_research_2026-09-28.md`); never differenced against the oracle.
+
+| Counter | Increments |
+|---|---|
+| `q_qply0` | Quiescence entries at qply 0: from the depth-0 dispatch, razoring and ProbCut |
+| `q_tt_hit_pv`, `q_tt_hit_pv_shallow` | Quiescence probes whose entry carries the PV bit; of those, entries shallower than 4 plies, which a depth-0 store overwrites |
+| `q_stand_pat_refined` | Stand pat changed by the TT refinement |
+| `q_delta_prune` | The `stand_pat + queen + margin < alpha` exit |
+| `q_capture_considered`, `q_capture_searched` | Captures entering the out-of-check loop; captures made |
+| `q_futility_skip`, `q_count_skip`, `q_see_threshold_skip`, `q_bad_floor_skip` | The four out-of-check prune stages, per capture |
+| `est_refined_from_q`, `_lower`, `_upper` | Interior `eval_for_pruning` refined by a depth-0 entry, by bound |
+| `*_flip_eval_units` (`q_delta`, `q_futility`, `q_see`, `probcut_see`, `main_see`, `bnfp`) | The consumer's verdict re-read with the evaluator's middlegame material (88/394/418/537/1131) differs from the production verdict at the same threshold |

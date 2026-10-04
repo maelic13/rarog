@@ -1,14 +1,8 @@
 //! Route a panic onto the channel a tournament harness actually keeps.
 //!
-//! Written for PLAN 4.11.11, after Rarog 2.3.2 lost one game in ~5,200 to
-//! `EngineCrash` in the 2026-09-04 rating tournament and **the cause could not
-//! be established from anything that was retained**. The incident report
-//! (`20260904-230039-002`) has the full UCI transcript, the clocks and the
-//! position; it has no exit status and no stderr. Every other incident in that
-//! run is equally mute, including five for a different engine, so the silence
-//! is a property of the pipeline rather than evidence about the death.
-//!
-//! Rarog's own half of that gap is this module. Release builds set
+//! A tournament harness keeps the UCI transcript, the clocks and the position
+//! of a crashed game, but not its exit status or stderr, so a crash leaves no
+//! cause behind. Release builds set
 //! `panic = "abort"`, and the default hook writes the panic to **stderr** —
 //! which the harness drains on a background task that loses the race against a
 //! fast abort. The UCI transcript, in contrast, is recorded synchronously by
@@ -24,8 +18,7 @@
 //! a death that never reaches the Rust runtime — an access violation, a
 //! `STATUS_ILLEGAL_INSTRUCTION`, or a kill from outside. Distinguishing those
 //! needs a structured-exception handler, which is a new FFI site against the
-//! frozen unsafe floor (PLAN principle #8) and therefore a deliberate decision
-//! rather than a detail; PLAN 4.11.11 records it as the open option. What this
+//! frozen unsafe floor and therefore a deliberate decision. What this
 //! buys is the ability to tell the two classes apart the next time: a report on
 //! stdout means Rust panicked and names the line, and no report narrows the
 //! next search to the ways a process dies without the runtime noticing.
@@ -49,7 +42,7 @@ use std::panic::{self, PanicHookInfo};
 /// Where a formatted report goes. A plain `fn` pointer, not a closure: the
 /// hook must not own captured state that a panicking thread might already be
 /// borrowing.
-pub type ReportSink = fn(&str);
+type ReportSink = fn(&str);
 
 /// The `info string` a panic is reported as.
 ///
@@ -57,7 +50,7 @@ pub type ReportSink = fn(&str);
 /// Newlines and carriage returns in `message` fold to ` | ` — a payload
 /// formatted over several lines (an `assert_eq!`, typically) would otherwise
 /// emit fragments that a UCI parser reads as separate commands.
-pub fn panic_line(thread: &str, message: &str, location: &str) -> String {
+fn panic_line(thread: &str, message: &str, location: &str) -> String {
     format!(
         "info string PANIC thread={} at {}: {}",
         one_line(thread),
@@ -105,12 +98,12 @@ fn stdout_sink(line: &str) {
 }
 
 /// Install the reporter, mirroring every panic to `sink` before the hook that
-/// was previously in place runs.
+/// was installed before it runs.
 ///
 /// Public so the wire itself can be proved live in a test, per the standing
 /// rule that a harness wire is not trusted until it has been shown to fire;
 /// the binary calls [`install_stdout_reporter`].
-pub fn install_with(sink: ReportSink) {
+fn install_with(sink: ReportSink) {
     let previous = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
         sink(&describe(info));

@@ -5,13 +5,14 @@
 
 ## Numbering, and how to resolve an old reference
 
-Three numbering schemes exist in the ledger, the analyses and source comments.
+Three retired numbering schemes exist in the ledger, the analyses and source comments.
 None of them is the current roadmap's, which uses lettered phases (`A.2.1`).
 
 | Scheme | Where it appears | Resolve it in |
 |---|---|---|
-| Legacy Lynx/Rarog phases (`8.2(a)`, `9.0a`, `10.3 speed pass`) | source comments, oldest ledger rows, the tracker below | the tracker section of this file |
-| Phase 4 roadmap (`4.5`, `4.9a.4`, `4.11b.19`, `4.12.7`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `f10b999`…`c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](docs/archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is PLAN section 6 |
+| Legacy Rarog phases 7–14 (`7.0b`, `8.2(a)`, `9.0a`, `10.3 speed pass`, `11.x`–`14`) | older source comments and tool prose, the oldest ledger rows, releases up to 2.3.1 | [docs/archive/GUIDE-legacy-2026-07-29.md](docs/archive/GUIDE-legacy-2026-07-29.md) (the tracker) and [docs/archive/PLAN-legacy-2026-07-29.md](docs/archive/PLAN-legacy-2026-07-29.md) (§S6, rationale per item), both verbatim from the 2.3.1 release commit `a5fd288` |
+| Phase 4 roadmap before the 2026-09-04 renumbering (`4.9b`) | ledger rows and analyses written 2026-08-11…2026-09-03 | [docs/archive/GUIDE-phase4-tracker-2026-08-21.md](docs/archive/GUIDE-phase4-tracker-2026-08-21.md); its old numbers map to the renumbered ones in section 13 of the archived Phase-4 PLAN |
+| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](docs/archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
 | Current roadmap (`A`–`G`) | `PLAN.md`, `GUIDE.md`, ledger rows from RAR-M45 on | `PLAN.md` |
 
 ## The Phase-4 line, 2026-08-11 to 2026-09-09: what it established
@@ -37,17 +38,353 @@ maintainer's assumption that endgames were the last missing evaluation piece
 was contradicted by the 329-Elo same-search evaluation gap and by the
 110–220-Elo pool deficit to the strongest HCE-era engines.
 
-## Legacy tracker (retired numbering, frozen)
+## Number map: retired leaves that continue in the current roadmap
 
-The detailed per-step checklist of the pre-Phase-4 line, split out of
-`GUIDE.md` on 2026-08-21. **Item numbers here are FROZEN and retired**, and any
-UNCHECKED forward item below was **superseded** by the Phase-4 line and then
-by the current roadmap. The old numbers are kept because commits,
-`EXPERIMENTS.md` rows and analysis documents cite them; the numbering schemes
-do not correspond and are not meant to.
+Every identifier from the archived roadmap is retired. Where a retired open
+leaf continues here, this is the mapping; everything else is history.
+
+| Retired | Continues as | Note |
+|---|---|---|
+| 4.12 (20 endgame functions) | C.5 (8 leaves) | rescoped from function coverage to conversion and generic scaling |
+| 4.13, 4.14 (labels, refit cycles) | C.2, C.8 | inside the evaluation programme |
+| 4.13a (HCE audit) | C.0 | |
+| 4.15, 4.15a–c, 4.16, 4.18 (search audits, SPSA, cleanup) | B.0–B.9 | replaced by the search programme |
+| 4.17 (time management) | D.1 | |
+| 4.19, 4.20 (checkpoint, release) | E.1–E.3 | |
+| A.3.4, A.5, A.6, A.7 (before 2026-09-10) | A.9, A.8, A.5, A.6 | Phase A reordered so the numbering matches execution: improvements, instrument and analysis, then the version bump, then baselines on the bumped binary, then the release. Only open leaves moved; A.1-A.3 keep their numbers |
+| 4.21 (universal binary) | G.2 | investigated under A.4 and deferred 2026-09-10 as optional; `analysis/universal_binary_2026-09.md` holds the design and the revival triggers |
+| Phase 5, 6, 7 (NNUE runway, baseline, frontier) | F | |
+| Phase 8 (scaling) | G | |
+| Phase 9 (classical fallback) | dropped | the classical evaluation stays as datagen baseline and fallback by construction |
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-04 — PLAN B.10 IMPLEMENTED: Rarog 2.5.0 prepared; Phase B closes
+  with the `v2.5.0` tag.** `3575558` bumps the version to 2.5.0 on the frozen
+  B.9 head (engine source `ee02ed1`), reproducing `bench 13` 11,171,726 / EBF
+  2.512, with clippy clean and debug 374 / release 375 tests passing. The
+  release is licensed under 2.4.0's rule, which the maintainer adopted for
+  2.5.0 on 2026-10-04, by three direct reads against the 2.4.0 release:
+  **+272.4 at `3+0.03` on one thread** (400 games, RAR-M64), **+260.5 ± 16.0
+  at `10+0.1`** (1,000 games, RAR-M65) and **+322.7 on four threads** (400
+  games, RAR-M66). **What 2.5.0 contains**, each individually gated: the
+  selectivity core (+65.09 ± 23.26 unfitted, +138.60 ± 30.66 fitted) and its
+  re-tune (+13.1 ± 5.4), cluster 2 (+50.5 ± 10.9), cluster 3 (+4.4 ± 2.9),
+  the tablebase repair (+11.4 ± 8.5 with tables) and the speed pass
+  (+35.5 ± 9.0) — sequential gates under different baselines, **not
+  additive**; plus `MultiPV`, the cleanup and the protocol and time-loss
+  repairs the changelog lists. It runs at 73.8% of 2.4.0's bench speed and
+  beats the frozen oracle by +24.24 ± 8.01. The tag-and-branch review
+  recommends deleting three local diagnostic branches, whose diffs are now in
+  `analysis/arm_patches/`, and keeps the `arm/*` and `oracle/*` tags with
+  their retirement conditions. The PR, merge, tag and GitHub release are the
+  maintainer's.
+- **2026-10-03 — PLAN B.9 CLOSED: the Phase B record; the search head frozen.**
+  The B.9 head (engine source `ee02ed1`, 11,171,726 / EBF 2.512, binary
+  `aac92114…` built at `24aefb4`) beats the frozen oracle by **+24.24 ± 8.01
+  Elo** (RAR-O04), where 2.4.0 lost by 247.97 ± 10.89 (RAR-O03): the measured
+  equal-time search deficit, the programme's target, is closed, a move of
+  +272.2 ± 13.5. It rates **3,286.5 ± 15.7** at 1T on the held scale against
+  2.4.0's 3,001 and passes every E.2 target at 1T, Houdini 3 at 55.4%
+  (RAR-M64). It runs 26.23% slower than 2.4.0 in pooled bench NPS (RAR-P35)
+  and about 2 plies shallower than the oracle in their games. Attributed Elo
+  per cluster from the gates: the selectivity core +65.09 and +138.60
+  (B.2.4a/b), the B.2.7 re-tune +13.1, cluster 2 +50.5, cluster 3 +4.4, the
+  speed pass +35.5 (sum +307 ± 41 over differing baselines), the tablebase
+  repair +11.4 with tables; directly, +272.4 head-to-head over 2.4.0. `ablate`
+  was removed. The budget table's B row (120–200 planned) is corrected to 272
+  ± 14 measured. PLAN B.9 holds the readings, the attribution table, the
+  calibration and the freeze. Also found while preparing B.9: RAR-O03's depth
+  figures had been mis-attributed, corrected in `e5d359e` and `408e3a9`.
+
+  GUIDE's checkpoint carried the B-phase closures in two cells until B.9
+  closed; they are moved here verbatim.
+
+  *Current step, as it read before B.9 closed:* **B.9** (`V`), `RESEARCH`: the
+  checkpoint (G(0), depth/EBF, NPS, conversion, pool gauntlet; remove
+  `ablate`; freeze the search head); not started. **B.8 closed 2026-10-03:**
+  the B.1 search, the arm features `b2core`, `b3proof` and `b4quiet`, 64 dead
+  coordinates, the fourteen decided switches, 73 unowned counters and the dead
+  PVS guard removed in eight engine commits, each at `bench 13` 11,171,726 /
+  EBF 2.512; the no-regression read (RAR-P34) +1.16% NPS (95% t-interval
+  +0.72% .. +1.59%); what each removed item did, how it was decided and how to
+  restore it is in `analysis/b8_removed_2026-10-03.md`; acceptance waits on
+  the auditor's verification. **B.7.3 closed 2026-10-03, `NO_CHANGE`
+  (RAR-P33):** the SEE recapturer's exact rewrite (`8fc8ff9`, oracle test of
+  4,411,664 comparisons, bench exact) read **−2.09%** NPS (95% t-interval
+  −2.34% .. −1.84%) against the head's pool, closed by step 1 of the two-step
+  read and reverted in `7e6e0ef`; B.7 closed with it. Phase C carries speed as
+  a secondary requirement from 2026-10-03 (PLAN, Phase C's goal). **B.7 closed
+  2026-10-02 by the maintainer, its sweep verified by the auditor from the
+  artifacts (RAR-P31), and confirmed in games (RAR-S98): H1 at 1,051 pairs,
+  +35.5 ± 9.0 Elo against the head before B.7, +16.7% nodes a second inside
+  the games.** The speed pass, B.7.2.1–B.7.2.20 on the board. **Accepted
+  (RAR-P28):** candidate 1, the quiet-stage early exit (`5fe42cf`), +8.85%
+  NPS; candidate 2, the in-place scored list (`0d95763`), +6.93% over it;
+  bench exact. The re-profile leaves `pick_next` at 6.26%. Candidate 3, the
+  scan layout, closed `NO_CHANGE` by the maintainer after its falsifier read
+  `s` = 1.106 and 1.093. **B.7.2.13, the audit's screen, done 2026-10-02
+  (RAR-P30):** the TT prefetch before the make (A) read +1.48% (CI +0.91% ..
+  +2.41%) and goes forward; the correction-slot prefetch (I) read +0.14%
+  (−0.29% .. +0.75%), between the bounds, and is implemented after A by the
+  maintainer's decision; the history-row prefetch (D, −1.87%) and the static
+  attack tables (B, −0.49%) close `NO_CHANGE`; all four together +1.71%.
+  **B.7.2.14–B.7.2.16 done 2026-10-02 (RAR-P31):** A (`a42fadc`) accepted at
+  +1.69% (95% CI +1.56% .. +1.89%), bench exact. **B.7.2.17–B.7.2.20 done
+  2026-10-02:** I read +0.37% over A, under the floor, and was reverted
+  (`bec1292`, `NO_CHANGE`); the total, A's pool against the c2 pool again,
+  +1.78% (+0.92% .. +2.56%). Profiled 2026-10-01 (RAR-P27,
+  `analysis/b72_profile_2026-10-01.md`). **B.6 closed 2026-10-01, `NO_CHANGE`,
+  by the maintainer** (RAR-S95, `analysis/b6_research_2026-10-01.md`): the
+  finished tunes' journals show no gradient left where each stopped (RAR-S78's
+  second half and every later block read as random walks; only
+  `QsFutilityMargin` still travels), a read that cannot see a gain of a few
+  Elo; a restart was estimated at +3 ± 3 Elo for 12.5 hours a block plus a
+  gate, so the joint search SPSA is C.10, after the classical evaluation.
+  **B.5 closed 2026-10-01 with B.5.2**: the maintainer kept B.5.2.1 (RAR-S93
+  converted 453 of 453 clean tablebase wins on both sides; RAR-S94 H1 at 776
+  pairs, +11.4 ± 8.5 Elo with tables). Two registered stop conditions had
+  fired by their letter. The box rule is recorded as unsatisfiable for a box
+  checked between Fathom calls: a replay put the 50 overruns on single calls
+  of up to 16 ms that the page cache misses, so a predictive box was not
+  built. The cold-table time loss at a 7-man root goes to D.3. Out of band
+  2026-10-01: the last `info` line always describes `bestmove` (`97ea52d`, the
+  flaky threaded test's cause, now with a deterministic test), the legacy
+  search builds again (`2326153`), and a test-suite audit is recorded under
+  B.8 for the maintainer's decision. **B.5.2.1 done 2026-10-01**: the root
+  keeps its DTZ-best group, probes are off at a DTZ root and bound-correct
+  elsewhere, tablebase values are decisive and print `cp ±20000`, the hard
+  limit is the optimum at a DTZ root, PVs extend through the tables and give
+  the ponder move; KQvK/KRvK are committed so CI tests it; bench 11,171,726
+  after every commit. The stop rule refuted moving band values by ply in the
+  table (window arithmetic reaches the band without tables), so the table
+  keeps them as stored. **B.5.2's investigation closed 2026-10-01,
+  `READY_FOR_IMPLEMENTATION`**: the one-move PV has three causes (the root
+  cut, the single-move shortcut stopping at depth 2, the at-once zeroing-child
+  probe); probed tablebase values were never decisive and the TT ignored their
+  band; without the cut a tablebase root fell into a won-endgame time sink (30
+  s of 60, D.1's input), so the root's hard limit becomes the optimum; Fathom
+  is safe for root DTZ probes beside helper WDL probes; the extension costs
+  1.3–7.5 ms warm. The fixture (KQvK, KRvK, 14,080 bytes) waits on the
+  maintainer's licence decision. **B.5.4 closed 2026-10-01, `NO_CHANGE`**:
+  optimism read −5.6 ± 9.4 Elo in RAR-S92's 2,000 games; the donors' gain did
+  not transfer to a classical evaluation. **B.5.1 closed 2026-10-01,
+  `NO_CHANGE` on both cards**: (a) the premise was false, because the default
+  search has given the TT-cutoff history bonus since B.2 in Reckless's form,
+  fitted twice; (b) draw-score randomisation (`CoreDrawJitter`) read −1.2 ±
+  9.4 Elo in RAR-S91's 2,000 games against a prediction of +1 ± 10, so it is
+  undecidable at this budget and stays off
+  (`analysis/b51_research_2026-09-30.md`). **B.5's root cluster closed
+  2026-09-30, `NO_CHANGE`**: one-retry aspiration was rejected at −18.3 ± 6.9
+  (RAR-S89) and lost the same at `10+0.1`; a window twice as wide read −25.4 ±
+  9.2 and a narrower one +2.1 ± 9.2 (RAR-S90), so the loop is kept and no tune
+  is owed; zero-game reads had pointed the other way. The research's inventory
+  leaves the time management multipliers (D.1) and six single coordinates
+  (B.6) as what was never re-fitted on this search
+  (`analysis/b5_research_2026-09-30.md`). **B.4 closed 2026-09-30**: RAR-S88's
+  gate accepted H1 at 10,705 pairs, +4.4 ± 2.9 Elo; theta baked, evasion
+  pruning on and `b4quiet` the default in `5a5c150` (11,171,726 / EBF 2.512).
+  **B.4.3 closed 2026-09-30**: the tune's block 1 moved one coordinate a full
+  step (`QsFutilityMargin` 150 → 178) and the stop rule ended it; evasion
+  pruning was adopted by RAR-S87 at +7.8 ± 9.4 Elo (quiescence history off at
+  −4.7 ± 9.4); the sweep read 2026-09-29 found `QsSeeClampHi`, `QsDeltaMargin`
+  and `QsStandPatLerp` curved, and the preparation's review added
+  `CoreRazorSquare` and `CoreNmpBase` and took `CoreRfpLinear` off its rail.
+  **B.4.2 closed 2026-09-29**: the unfitted paired run read +0.7 ± 9.3 Elo in
+  2,000 games; the component ablation puts the failed floors on the
+  interpolation pair through the estimate B.2's reverse futility was fitted
+  on, so the estimate's first consumers join B.4.3's surface; the
+  implementation was reviewed with no defect and CI covers the arm. **B.4.1
+  closed 2026-09-29**: the arm at its defaults reads 10,226,874 / EBF 2.519,
+  WAC 236 / 270, canaries 92 with none lost, time-to-depth 0.85×; floors
+  failed on depth-14 nodes, agreement and b15's cost, as B.3.2's did; T3 and
+  T4's switches default off by the canary rule. Earlier: **research amendment
+  1 closed 2026-09-29** (packet, RAR-S85) after T1 (`ac018d4`) tripped the
+  canary rule on 2026-09-28 — the rule is kept (0 of 12 neutral perturbations
+  of the head lose a canary), Q1 becomes the Stockfish stored-bit form, Q2's
+  seeds the Stockfish pair 583 / 562; the amended T1 reads bench 10,953,303,
+  WAC 235, canaries 92 with none of the 91 lost, and its commit must reproduce
+  those numbers. **B.4's research closed 2026-09-28** (RAR-S85,
+  `analysis/b4_research_2026-09-28.md`): on the cluster-2 head the quiescence
+  reads 0.33 qnodes per interior node against the oracle's 0.58, WAC 232/266
+  at 100k/400k, 91/116 canaries, branching 1.800; contract Q1–Q9, screens and
+  predictions registered; the diag counters landed in the engine commit. **B.3
+  closed 2026-09-27**: B.3.5's ponder race fixed in `ef1a24b` (bench
+  unchanged; ponder-on smoke 400 games, 0 faults). **B.3.4 closed
+  2026-09-27**: RAR-S84's gate accepted H1 at 804 pairs, +50.5 ± 10.9 Elo, the
+  direction read +48.1 ± 9.5; theta baked and `b3proof` the default in
+  `f53ca7d`. **B.2 closed 2026-09-25**: B.2.7's re-tune (RAR-S78) was baked
+  (`52c46df`, 7,435,006 / EBF 2.457) and its `[0,3]` gate accepted H1 at +13.1
+  ± 5.4 Elo in 3,081 pairs. **B.3.1** (cluster 2 implementation, `I2`) was
+  **implemented on 2026-09-23**: the `b3proof` arm reads 7,479,114 / EBF 2.467
+  with the off arm exact, and CI covers it
+  (`analysis/b3_research_2026-09-23.md`, *Final implementation record*).
+  **B.3.2** closed 2026-09-24 (paired run +18.4 ± 9.4 Elo; RAR-S80's
+  categoricals adopt `SingularTtDepthMargin=2` alone); **B.3.3**: the bake
+  (`3ca9aab`, arm 7,978,292 / EBF 2.465) and the curvature sweep are done (3
+  of 7 coordinates curved, `analysis/b33_sweep_2026-09-24.md`). B.2.6 closed
+  2026-09-22. **E.3.1** (tag-driven release flow, `I1`, added 2026-09-22) is
+  independent tooling that may land at any point before E.3
+
+  *Active experiment, as it read before B.9 closed:* **RAR-S73** (B.2
+  selectivity core: B.2.4a passed 2026-09-16, +65.09 ± 23.26; RAR-S75 finished
+  2026-09-20 (5,000 iterations, theta baked at 7,185,678); RAR-S76 peek at
+  3,900 +118.72 ± 10.62; RAR-M55 and RAR-M56 (B.2.3.2 closed: fitted +97.69,
+  unfitted −7.12 vs Rybka 4.1), **B.2.4b passed 2026-09-20, +138.60 ± 30.66**;
+  RAR-S77 (B.2.3.3) passed, +4.43 ± 2.90; RAR-S78 (B.2.7) tune finished
+  2026-09-24, theta baked, **gate H1 2026-09-25, +13.1 ± 5.4 Elo** in 3,081
+  pairs, B.2 closed; close-out audit 2026-09-21,
+  `analysis/b2_audit_2026-09-21.md`); **RAR-M45, RAR-M46, RAR-O03 and RAR-M48
+  all resolved 2026-09-11**; RAR-M49 conversion re-read and RAR-M50 (B.0
+  measurements) recorded 2026-09-13; RAR-M54 (Super Rating Tournament read, 42
+  engines) recorded 2026-09-15, nothing moves. **D.2's premise is contradicted
+  by RAR-M46 and the leaf needs re-scoping**
+- **2026-10-03 — PLAN B.8: the B.1 search deleted** in `84de712`, with the
+  `b2core` umbrella that selected it. It was the 2.4.0 search that
+  `--no-default-features` compiled; its last fingerprint was 7,590,542 /
+  EBF 2.473, at `10d0e83` (the record: `analysis/b8_removed_2026-10-03.md`).
+- **2026-09-29 — PLAN B.4.1 CLOSED: the quiescence cluster implemented behind
+  `b4quiet`.** The PV bit carried on depth-0 stores (Stockfish form), fail-high
+  interpolation at 583 / 562, the count rule with check and recapture escapes,
+  the SEE threshold on every capture, margins as coordinates, and evasion
+  pruning and quiescence noisy history as switches, both off by the canary
+  rule; two research amendments on the way (the PV-subtree marking and the
+  check exemption each lost canaries). The arm reads 10,226,874 / EBF 2.519,
+  WAC 236 / 270, time-to-depth 0.85×; its paired run is B.4.2's.
+- **2026-09-27 — PLAN B.7.1 CLOSED: allocation guard.** A counting-allocator
+  test (`8836013`) holds per-node search code to AGENTS' no-allocation rule:
+  allocations may grow per iteration, never per node, and a planted
+  per-node allocation fails it. Every allocation left in a search is at the
+  root node; B.7's own work moved to B.7.2.
+- **2026-09-27 — PLAN B.3.5 CLOSED, B.3 closed with it.** `go ponder` with
+  `ponderhit` or `stop` in the same write never got a `bestmove`: a `stop`
+  made the queued `go` stale and a `ponderhit` was erased as the search
+  started. Both signals are scoped to their `go`'s epoch (`ef1a24b`), with
+  race tests at Threads 1 and 4 that fail on the old code; bench unchanged
+  at 12,897,901 / EBF 2.523.
+- **2026-09-27 — PLAN B.3.4 CLOSED: cluster 2 accepted.** The `b3proof` arm (NMP
+  with a verification region, ProbCut with the TT gate, graded singular
+  extensions with Rarog's multi-cut rule, the −3 negative extension, LDSE, the
+  LMR singular term, a per-line extension budget), fitted by RAR-S82/S83 in
+  blocks from the measured singular margin, passed its `[0,3]` gate against
+  the B.2.7 head at 804 pairs, **+50.5 ± 10.9 Elo** (RAR-S84), and became the
+  default build at **12,897,901 / EBF 2.523**. B.3.5 (the ponder race) stays open
+  under B.3.
+- **2026-09-25 — PLAN B.2.7 CLOSED, B.2 closed with it.** The Colosseum re-tune
+  of all 82 `CoreParams` coordinates from B.2.3's theta (RAR-S78, 150,000
+  games) was baked at **7,435,006 / EBF 2.457** and accepted by its `[0,3]`
+  gate at +13.1 ± 5.4 Elo in 3,081 pairs. Ten coordinates moved a full
+  step, led by LMR terms B.2.3 had left near their seeds.
+- **2026-09-20 — PLAN B.2 CLOSED (first close; reopened for B.2.7).** B.2.3's SPSA finished at N = 5,000
+  (160,000 games) and its theta was baked; B.2.4a (+65.09 ± 23.26) and B.2.4b
+  (+138.60 ± 30.66) accepted the fitted selectivity core, which became the
+  default build at **7,185,678 / EBF 2.444**. RAR-S77 measured the tune's last
+  1,100 iterations at +4.43 ± 2.90. B.2.5 then fixed seven UCI `info` defects,
+  two of them reported in GitHub issue maelic13/rarog#1, and B.2.8 removed the
+  start-up stalls that cost games on time.
+- **2026-09-15 — PLAN B.2.2.4 and B.2.2 CLOSED:** the screen ladder for
+  B.3–B.5 is written into rule 8. The paired run governs, the floors are
+  diagnostics, time-to-depth replaces pooled NPS, a positional screen and the
+  canary regression rule are added, and a curvature sweep precedes any SPSA.
+- **2026-09-15 — PLAN B.2.2.3 CLOSED, RAR-S73:** the curvature sweep found
+  three curved coordinates (`CoreLmpSquare`, `CoreLmrQuiet`,
+  `CoreCorrUpdateSlope`), so B.2.3 runs; P6 read +5.59% against < 3%.
+- **2026-09-15 — PLAN B.2.2.2 CLOSED, RAR-S74:** six paired runs adopted no
+  switch, kept mate-residual training (+15 Elo), and reverted the clamp
+  conversion (−7.64) to four SPSA coordinates at the donor's seeds;
+  `b2core` 4,706,910 / EBF 2.391 again at `308abe9`.
+- **2026-09-15 — PLAN B.2.2.1 CLOSED, RAR-S74: the seed-scale clamps
+  converted and five categorical switches on the `b2core` arm.** Two LMR
+  clamps still in the donor's evaluation units were converted (×0.457),
+  moving the candidate's bench from 4,706,910 to 6,586,667 / EBF 2.433;
+  five `CoreParams` switches (razoring guards, mate-range residual
+  training, singular-node training, the donor's full-depth branch,
+  reductions in check and at the root) landed one commit each with a
+  constructing test, defaults at today's behaviour; a `b2core,tune` PGO
+  build and the run commands were handed over and RAR-S74 registered
+  before any game. The five runs then read −2.6, −15.1, +2.3, +1.7 and
+  −3.8 Elo for the switches: nothing adopted, and refusing mate-range
+  residuals in correction training costs about 15 Elo, so the donor's
+  admission stands.
+- **2026-09-15 — PLAN B.2.0.2 CLOSED, RAR-P26: MultiPV.** `option name
+  MultiPV` (1–256), clamped to the root set after `searchmoves` and the
+  tablebase filter. Above one line a cold root loop searches each line with
+  the ranked moves excluded through the existing root restriction, keeps the
+  ranked lines in score order, and takes `bestmove`, ponder and the time
+  signals from line 1; helpers search one line and do not vote. At the
+  default nothing moved: both fingerprints, the depth-10 `info` stream on
+  both arms, pooled NPS +0.62% [−0.29%, +1.18%]. Two defects the frozen
+  contract did not name were found and fixed before commit: lines after the
+  first searched a ply shallower than reported (the excluded stored root
+  move fed IIR; fixed as Stockfish and Reckless do, by not storing later
+  lines' root result and giving them their own root TT move), and a stopped
+  depth filled unsearched lines from root records carrying fail-low bounds
+  (found in a 4-thread `go infinite` session; fixed to use the last
+  completed depth's reported lines, with a node-stopped regression test).
+- **2026-09-14 — PLAN B.2.1 CLOSED, RAR-S73: the selectivity core implemented
+  behind `b2core` and accepted by its reviewer.** Sixteen commits: the
+  `Searcher` split (ticket 0), the diag-only decision trace, the umbrella,
+  then tickets 1–8 in the handoff's order (threats and stack producers; TT
+  eval store, node-typed cutoff, five-bit age and replacement refusal;
+  threat-keyed histories and the staged picker with shadow continuation
+  corrections; correction tables and the corrected-eval formula; razoring,
+  reverse futility and hindsight; move-loop pruning with direct checks
+  surviving the skip; late-move reductions in the donor's shape; the history
+  update policy), tests and CI. Off arm exact at every commit (7,601,220 /
+  EBF 2.474, pooled NPS −0.13%); candidate 4,706,910 / EBF 2.391 unfitted
+  with 80 `CoreParams` coordinates. Three defects found by the cluster's own
+  tests and instruments (rule-50 damping stored with the eval, the quiet skip
+  dropping a late mating check, a budget-chaotic KBNK anchor). A separate
+  reviewer (`analysis/b21_review_2026-09-14.md`) upheld the four resolutions,
+  found no defect, and left a speed warning for B.2.2: a single-build screen
+  read the candidate at about 0.71x of the off arm against a 0.90x pooled floor. B.2.3 and B.2.4 are
+  registered with B.0's predictions verbatim; no game has been played.
+- **2026-09-14 — PLAN B.2.0.1 CLOSED, RAR-M53: the documents restructured, each
+  to one purpose.** The two retired trackers were recovered and archived
+  (the review had called one lost and the other a duplicate; neither was);
+  PLAN's closed leaves became one line each with their text archived;
+  EXPERIMENTS became one row per experiment with prose records in
+  `analysis/ledger_records_2026-09-14.md`; PROCESS kept procedures and took
+  the independence boundary and the registration template; `analysis/` got
+  an index and an archive; `check_guide.py` fails on dead paths in current
+  documents; GUIDE and AGENTS were shortened, AGENTS after the maintainer
+  approved the draft. The ticket that untracked six logo variants was
+  reverted at the maintainer's instruction: logos stay tracked. The same
+  session withdrew B.0's null-calibration hold, which contradicted RAR-M03.
+- **2026-09-14 — PLAN B.2.0 CLOSED, RAR-P25: the architecture review's twelve
+  upgrades landed behaviour-neutral.** The review
+  (`analysis/architecture_review_2026-09.md`, RAR-M51) found the layering
+  sound and the weight in comments, public surface and duplication. The
+  upgrades: dead aliases and counters deleted; visibility narrowed to what
+  external crates use, one move-generation API, private `Board` fields; one
+  definition each of the duplicated helpers; a tagged `EngineCommand` with its
+  own `ClearHash`; an `InfoSink` output port for the search; the table's
+  replacement policy written once over both backends (NPS +0.04% on its own);
+  the texel tuner as its own Cargo workspace; a tools index; retired step
+  numbers removed from the owned source, configuration and tools. Fingerprint
+  7,601,220 / EBF 2.474 exact at every engine commit; pooled NPS +0.21%
+  [−0.34%, +0.68%] against the B.1 pool. The `Searcher` split it designed went
+  to B.2.1 as ticket 0.
+- **2026-09-14 — PLAN B.1 CLOSED, RAR-P24: the search restructure, exact
+  fingerprint and 6.30% faster.** Seven engine commits split `search.rs` into
+  `src/search/` modules, introduced `NodeType {Root, Pv, NonPv}`, `ThreadData`,
+  `SharedContext` and a sentinel `PlyArray` stack, removed the 44 parameters
+  inert at default, the root-confidence subsystem, the SMP iteration skip and
+  TT provenance (`evidence.rs`), and re-keyed the diagnostic counters. Every
+  commit reproduced 7,601,220 / EBF 2.474 on magic and PEXT with all 40
+  positions identical; the B.0 section 11 baselines reproduced exactly; pooled
+  PGO NPS +6.30% [+5.78%, +6.84%], the removed per-node work. RAR-S65–S69 were
+  superseded by B.2.
+- **2026-09-13 — PLAN B.0 DONE, `NO_CHANGE` to source, RAR-M50: the search
+  programme's investigation.** `analysis/search_programme_2026-09-13.md`.
+  Rarog's branching factor over depths 4–14 is 1.630, below the oracle's 1.736
+  and Reckless's 1.697, so the deficit is not per-ply growth; it is decision
+  quality at a fixed budget (WAC at 100k nodes: oracle 242, Reckless 224,
+  Rarog 200; median depth at 300k nodes 16 against 19). 46.7% of LMR
+  reductions land in quiescence and 1.3% are re-searched. Decisions: node
+  types with runtime `cut_node`; `ThreadData` and `SharedContext` without
+  changing table ownership; `evidence.rs` deleted; frozen handoffs for B.1–B.3
+  and B.2's prediction (+35 Elo after fitting, 90% [+5, +70]).
 - **2026-09-11 — PLAN A.9 DONE: Rarog 2.4.0 released, and PHASE A IS CLOSED.**
   `dev` squashed into `master` as one `Version 2.4.0` commit, which ran the CI
   matrix for the first time on the 1.98.1 pin and **discharged that standing
@@ -83,7 +420,9 @@ do not correspond and are not meant to.
   against three of four targets, Rarog beats Basilisk 1.10.0 at 4T (**+25**)
   having lost at 1T, and the performance rating is 3034 against a frozen 3003.
   **A.8.3 (RAR-O03)** put G(0) at **−247.97 ± 10.89** with the evaluation
-  proved constant three ways, and found the depth gap is only **0.97 ply** — so
+  proved constant three ways, and found the depth gap is only **0.97 ply**
+  (corrected 2026-10-03 to 1.4 non-mate plies: the reading mis-attributed
+  Black-to-move openings; RAR-O03 carries the correction) — so
   most of a 248-Elo deficit is decision quality, not depth, which corroborates
   the matched ablation from an independent direction. **A.8.4 (RAR-M48)** set
   the speed baseline at **3.19 MNPS** pooled median with the instrument
@@ -106,6 +445,36 @@ do not correspond and are not meant to.
   reproduced its seed exactly (RAR-M47); **A.6** concluded that **Phase A
   refactors nothing**, handing its findings to B.1 and C.1.
 
+- **2026-09-10 — Deleted-branch arms preserved.**
+  An audit of every SHA cited in
+  this file found 122 tokens: 84 reachable, 9 not our commits or already gone,
+  and **29 dangling** — cited by a row but reachable from no branch or tag. Six
+  were experiment arms with a tight, meaningful diff; their patches now live in
+  `analysis/arm_patches/`, each verified to apply to a reachable baseline and to
+  depend only on blobs that survive a prune. Thirteen touched no `src/` file and
+  needed nothing: their content is already in the documents they edited. Nine sit
+  deep on a 113-commit line that forked from `a5fd288` and was never merged, so a
+  diff to any reachable base is a whole-branch snapshot rather than a recipe;
+  those rows are closed findings, and `ba3170b` (RAR-S20), the only one with a
+  parameter recipe, already carries its seven values and both fingerprints inline.
+  That line is unreachable from refs but still held by the reflog, so `git gc`
+  does not remove it. `analysis/arm_patches/README.md` has the detail.
+
+  **Three cited SHAs were already gone before this audit** — `0ddc8e5` and
+  `3ee4660` (RAR-P16) and `7693010` (RAR-S54). All three rows anticipated it and
+  carry their recipes, which is why nothing was lost.
+- **2026-09-09 — Test-engine store cleared.**
+  `tools/test_engines/` held 183
+  executables, 181 of them built on the retired 1.97.1 pin and 73 of those with
+  no manifest at all, so they could not be used in a gate anyway — `sprt.ps1`
+  refuses a pair whose compilers differ and warns when equality is not
+  checkable. All of them were deleted on maintainer instruction after the A.3.1
+  bump; rows that cite a path under `tools/test_engines/` now rest on their
+  recorded recipe and fingerprint, which is what the ledger's own rule requires
+  of them. Rebuild from the row when a binary is needed again. **Kept:** the two
+  RAR-E16 gate arms, `tools/test_engines/ablate/` (the frozen matched-ablation
+  oracle and its HCE glue, which B.9 still needs and which is not cheaply
+  rebuilt), and `rarog-43b-cand.diff`, a recipe rather than an artifact.
 - **2026-09-09 — PLAN A.1 to A.3.2 CLOSED: the reset itself.** New PLAN, GUIDE
   and HISTORY with the Phase-4 line archived and a mechanical checker
   (`check_guide.py`); twelve superseded tracked files removed; seven branches
@@ -380,549 +749,9 @@ correctness repair, AArch64 TT prefetch at **+1.42% NPS**, and the executable
 ISA contract. Those three strength results used different estimators and are
 not additive.
 
-**Its item numbers 4.0–4.10 are retired** and are not reused by the tracker
-below. Ten abandoned parameters were removed with their accepted defaults
+**Its item numbers 4.0–4.10 are retired** and are not reused by later
+trackers. Ten abandoned parameters were removed with their accepted defaults
 hardwired at the call sites; the root-gap observation stays in diagnostics but
 cannot enter root confidence, because null-window rival scores made it
-degenerate. Full detail and the retained-inert ownership table are in PLAN §3.
-
-## Forward tracker
-
-<!-- FORMATTING RULES for this tracker — follow them, they get broken often:
-     1. ONE step per `- [ ]` bullet. Never join two steps on one line with
-        "·" (e.g. "4.4 foo · 4.5 bar") — each gets its own bullet, always.
-     2. Continuation lines indent 6 spaces so they align under the text after
-        "- [ ] ". SUB-ITEM INDENT IS 4 SPACES with 10-space continuations.
-     3. Status boxes: `[ ]` todo · `[~]` ONLY while genuinely in flight (a
-        gate running right now) · `[x]` finished — accepted, rejected,
-        deferred or parked. Anything resolved is `[x]`, never `[~]`.
-     4. Every item opens with its STEP NUMBER, then (for `[x]` items) a
-        BRACKETED OUTCOME TAG in bold, so the reader orients by number
-        first and reads the result second (number BEFORE tag, never the
-        reverse):
-            - [x] 4.5 **[ACCEPTED +22.13 ± 7.28, LOS 100%]** Cluster A ...
-            - [x] 4.6b **[REJECTED −6.6]** retry — ...
-            - [x] (b) **[DEFERRED → 4.8]** late evasions — ...
-            - [x] 4.4 **[PARKED → 5.1]** dirty-piece deltas ...
-            - [x] 4.2 **[DONE, no games]** Diagnostic counters ...
-        Tags: ACCEPTED <elo> · REJECTED <elo> · DEFERRED → <item> ·
-        PARKED → <phase> · DONE · FIXED. Put the Elo in the tag, detail
-        after. The number must be ON the bullet line itself.
-     5. Bullet order: step number, outcome tag, short title, then detail.
-     6. NEVER renumber existing items. PLAN.md freezes item numbers because
-        commits and history reference them. To insert before the first item
-        use a .0; to subdivide, use letter sub-items like 4.5(a)/(b).
-     7. Mirror any status/number change into PLAN.md in the same commit.
-     8. Blank line AFTER the `###` phase heading, then NO BLANK LINES between
-        bullets at all. A blank line splits one list into two and the
-        renderer re-spaces everything around it.
-     9. ONLY NUMBERED STEPS live in the tracker. A recurring procedure or a
-        checklist is NOT a step — it never gets ticked, so an unticked box
-        reads as outstanding work forever. Those go in
-        `## Recurring procedures`, and the owning step links to them.
-    10. Wrap at ~76 columns. Do not let one bullet run to 100+ columns
-        because the sentence "felt continuous".
-    11. Quick mechanical check after editing — all five must be zero:
-        blank lines inside a list; bare `    - ` sub-bullets without a box;
-        unnumbered `- [ ] **` pseudo-steps; lines over 78 columns; and
-        `(a)`/`(b)` labels written mid-sentence inside a parent's own
-        continuation instead of as their own `    - [ ]` line. -->
-
-The model implements and verifies locally; the maintainer runs only the long
-game jobs. One item is open at a time and each candidate gates against the
-then-current accepted head. Macro-order: **A** search work (4.0–4.10) → **B**
-HCE work (4.11–4.18) → **C** transfer and release (4.19) → **D** NNUE (5
-runway → 6 baseline → 7 frontier) → **E** scaling (8) → **F** contingent
-classical fallback (9, last, may never run). Per-item rationale is in
-`PLAN.md` §4–§9.
-
-### Phase 4 — Reference-accelerated search and HCE work (→ conditional 2.4.0)
-
-- [x] 4.0 **[DONE, no games]** Evidence, baseline and oracle freeze — RAR-M12.
-      2.3.2 reproduced from `dev` `5294e2c` (code byte-identical to `master`,
-      doc-only diff), rustc 1.97.1 as pinned. fmt and all-feature clippy
-      clean; tests 258/0 debug and 259/0 release, the one-test gap being a
-      documented release-only `cfg`. Bench **6,519,711 / 2.449**; tune build
-      advertises 101 options with all ten removed absent and the inert ones
-      present; PGO PEXT asset reproduces the fingerprint at SHA-256
-      `389E234E…05046E28` and passes `verify-isa`. Oracle binaries re-hashed
-      byte-exact. Budget and stop rules registered. `hybrid` and `spsa_impr`
-      pushed, so the oracle is no longer single-machine.
-- [x] 4.1 **[DONE, no games]** Instrumented oracle — `hybrid-diag` at
-      `de568b3`, implementing `analysis/phase4_counter_spec.md`. Verified:
-      diag OFF reproduces the frozen binary exactly (bench 136,903, bestmove
-      e7e3, zero diag lines); diag ON gives the same 136,903, so the
-      instrumentation does not perturb the tree. Built-in invariants hold —
-      `best_rank_1` == `cutoff_first_move`, rank buckets sum to the cutoff
-      total, `main_tt_probes` == `nodes`. Build with `make build
-      ARCH=x86-64-bmi2 COMP=mingw diag=yes`. **The suite must drive `bench`; a
-      piped `go … quit` aborts before the search starts.**
-- [x] 4.2 **[DONE, no games]** Differential observation harness — RAR-S55.
-      Versioned fixed suite (UHO openings, quiet middlegames, tactics, checks,
-      zugzwangs, endgames) at fixed depth/nodes, 1T. Counters for TT
-      producer/consumer kind, **prune recall and overlap** (not node savings —
-      a smaller tree can be worse), **correction attribution**, history
-      attribution, move source, cutoff index, LMR/re-searches, pruning,
-      extensions, aspiration and root ownership. Off ⇒ bench 6,519,711
-      exactly; on ⇒ same best move and nodes. Run it against the 4.1 oracle:
-      the counters that diverge most select the work. **Shadow-record**
-      stand-pat, ProbCut, NMP/IIR/singular, checking-move LMR and
-      root-confidence concerns — each is owned by the cluster that reaches it,
-      else 7.3. Recording is mandatory; acting here is not permitted.
-- [x] 4.3 **[DONE, no games]** Mechanism map and order freeze —
-      `analysis/phase4_mechanism_map.md`. **Execution order changed on the
-      evidence: 4.7 runs first**, then 4.5, 4.6, 4.8, 4.9; numbers unchanged.
-      Ordering premise refuted (Rarog's first-move cutoff beats the reference
-      in every cohort), so 4.5 drops to low expectation. Six mechanisms are
-      classed UNKNOWN and their owning cluster must measure before designing.
-      Classify each reference contract as equivalent / intentionally different
-      (with reason) / missing / coupled to a later consumer, against the Rust
-      owners in PLAN §4. If the evidence contradicts the cluster order, edit
-      `PLAN.md` **before** implementing — never after seeing games.
-- [x] 4.4 **[DONE, nothing required]** Search-consumed board state. Audited
-      against 4.7's three leads (null-move entry, move-count volume, ProbCut
-      entry): they consume `improving`, `eval_for_pruning`, depth and beta,
-      all already available, and the one board-state input their pruning block
-      uses is `CheckInfo` — already a per-node lazy cache (`node_ci`) with
-      per-move memoisation. Building persistent
-      pins/blockers/`plies_from_null` now would be speculative state with no
-      consumer, which rule 2 forbids and the step itself warns against.
-      Deferred to whichever cluster needs one, else 5.1. Cache only the
-      per-ply state a 4.5–4.9 contract actually consumes: `CheckInfo`,
-      pins/blockers, check squares, `plies_from_null`, repetition distance.
-      Bench-identical where behavior-neutral; pooled-PGO NPS gate where it is
-      a layout change. The evaluator-facing dirty-piece delta contract stays
-      owned by 5.1 — do not let this grow into the NNUE runway.
-- [x] 4.5 **[REJECTED, no gain]** Cluster A — per-ply authority, ordering,
-      histories and LMR. All five sub-items closed. RAR-S64 took H0 at
-      +0.39 ± 4.89 once the stale-reduction defect was fixed, so the
-      +4.50 RAR-S61 saw was the defect. Structural work retained at no
-      strength claim; `lmr_prior_reduction_adj` removed. Head
-      7,467,143 / EBF 2.477. **Unexecuted scope was numbered, not
-      dropped: history semantics → 4.9b, reduction contract → 4.8.1.**
-      One dependency-complete cluster. Prior 15–45 nElo; it rests on evidence,
-      reduction and re-search coordination, not raw ordering quality.
-    - [x] (1) **[DONE, no games]** Rarog search context: `NodeContext`
-          replaces the three parallel per-ply arrays. Behaviour-neutral —
-          bench 6,922,439 / 2.451 exactly — and NPS-neutral at +0.11%,
-          CI −0.14%..+0.48% over three PGO builds per arm (RAR-P17). TT/PV
-          evidence, prior reduction, statistical score, cutoff count,
-          previous-PV following and continuation keys are deliberately NOT
-          added: nothing consumes them yet, so they land with 4.5.2–4.5.4.
-    - [x] (2) **[DONE, no games]** Move-picker contract: a named `Stage`
-          enum replaces three implicit cursor comparisons, and
-          `Stage::GenerateQuiets` replaces the `quiets_generated` bool.
-          Behaviour-neutral, bench 6,922,439 / 2.451. Legality and duplicate
-          guarantees are now asserted, not assumed — three tests cover both
-          paths including in-check, 251/245 total. Quiet suppression is
-          CLOSED as intentionally different; see the note under this
-          cluster. **Previous-PV following moves to 4.5.3**, whose evidence
-          work is where a previous-PV move would be scored.
-    - [x] (3) **[DONE, no games]** Evidence ownership. Continuation key in
-          `NodeContext`, derived by `push_move`, which is now the only way to
-          put a move on the stack — that found and fixed the ProbCut piece
-          desync (bench 6,922,439 → 7,467,143). Every continuation site reads
-          the stored key. Continuation-malus asymmetry measured and REJECTED
-          (RAR-S59): it is a disguised selectivity increase, not an ordering
-          fix.
-    - [x] (4) **[DONE, no games]** Reduction/re-search contract. Prior-
-          reduction authority ADOPTED at 512/1024 ply (RAR-S60): cutoffs per
-          node rise faster than nodes and first-move cutoff improves 88.04% →
-          88.18%. bench 7,467,143 → 7,587,235. Cutoff count REJECTED as inert
-          — a cutoff breaks the move loop, so a per-visit count is 0 or 1.
-          Statistical score and TT/PV evidence REJECTED as per-ply fields:
-          both are node-local (`quiet_hist`, `tt_pv`) and already threaded.
-          Previous-PV following REJECTED as redundant with `Stage::TtMove`.
-          **All six of 4.5.1's deferred fields are now disposed**, so (5) may
-          close. No dormant switches were left behind.
-    - [x] (5) **[REJECTED, no gain]** Fit, gate and ablation. RAR-S61 was
-          unresolved at `[3,10]`; RAR-S64 re-measured after the
-          stale-reduction fix and took H0 at `[0,10]` in 8,088 games,
-          +0.39 ± 4.89 Elo. The whole +4.50 RAR-S61 saw was the defect.
-          `lmr_prior_reduction_adj` removed. Structural work retained at no
-          strength claim.
-      **SCOPE NOT FULLY EXECUTED — both halves now have owners.** Cluster A
-      aimed at three maturity contracts. Per-ply authority closed, though as
-      "Rarog needs fewer fields than the plan listed" — three of four rejected
-      as node-local, inert or redundant, which the plan's own rule allows as
-      an intentionally different answer. The other two were marked done
-      prematurely and are now numbered rather than left to a catch-all:
-      **history semantics → 4.9b** (ageing, decay and seed policy, update
-      attribution, check/capture context in indexing, evaluation-difference
-      training). Placed before 4.10 because 4.10 re-runs the 4.2 suite as its
-      evidence base and that is not meaningful while the history contract is
-      unsettled.
-      **reductions and re-search as ONE contract → 4.8.1**, where 4.8 already
-      owns LMR and depth authority. `lmr_reduction_units` still takes eleven
-      loose arguments; the zero-reduction floor and full-depth verification
-      were never audited.
-- [~] 4.6 **Cluster B — static eval, TT and quiescence.** AUDIT STARTED
-      2026-08-20; see the audit note under this item.
-      pruning and searched evidence distinct. Audit TT
-      admission/replacement, PV/bound propagation, qsearch stand-pat,
-      corrected eval, prior-square futility, capture/promotion ordering,
-      evasions and checks. Derive opponent-worsening from 4.5. Measure,
-      never import, reference blends and thresholds. Preserve draw and
-      mate-distance semantics; finish with any justified cluster-only
-      fit, final-PGO SPRT, NPS and ablation.
-
-      **4.6 AUDIT COMPLETE — `analysis/phase4_6_audit.md`.** It began by
-      invalidating its own headline: the runner normalised every `q_*`
-      counter by main-search NODES while Rarog runs 1.60x more qsearch
-      per node. Fixed in the tool (v4 reading). `q_tt_cut` 4.25x →
-      **2.46x**, `q_stand_pat_cut` 1.62x → **1.05x, parity**, and
-      `q_move_cut` / `q_in_check` FLIP from slightly high to **0.66x /
-      0.64x**. Third instance of this denominator class, first one
-      inside the tooling. **Leads, ranked:** (1) `qnodes` **1.60x**, the
-      headline and not an artifact; (2) `q_tt_cut` **2.46x** — the
-      oracle guards its qsearch TT cutoff with `!PvNode` and Rarog's
-      `quiescence` has NO PV concept at all; (3) `q_move_cut` **0.66x**
-      — Rarog generates captures only in qsearch, the oracle also
-      generates quiet checks at the first qply — ⚠ but Rarog measured
-      **+30.75 for REMOVING its check extension**, so this population
-      has the worst track record for casual changes; (4) TT bound
-      composition — Rarog hits MORE (67.4% vs 60.3%) and converts LESS
-      (16.7% vs 19.5%), with `tt_bound_not_usable` at **2.13x** and a
-      smaller Exact share of stores (3.2% vs 4.1%); (5) **opponent-
-      worsening is absent** and PLAN 4.6 names it — 4.5.1 already built
-      the substrate (`stack[ply-1].static_eval`) and the consumer does
-      not exist. **NOT leads:** qsearch stand-pat is at parity;
-      raw/corrected/pruning separation is already present from 4.3a;
-      delta pruning and evasions are present; TT probing is at exact
-      parity. All three top leads are contract distinctions the
-      reference draws and Rarog does not — the 4.7c profile, not the
-      profile of the five candidates that failed after it. That ranks
-      them; it does not make them true. Each needs its own `[0,3]` gate.
-    - [x] (1) **[DONE, no games]** TT admission and bound composition. BOTH
-          producer-side hypotheses checked and neither is a defect.
-          **Admission:** suppressing the bare stand-pat store — 35.87% of all
-          stores — makes `tt_bound_not_usable` WORSE, 9.5% → 14.9% per hit,
-          with total TT cutoffs −10.3% against a 7.5% smaller tree. Those
-          entries earn their slot. **Replacement:** quality is
-          `depth − age_delta/4`, so depth-0 qsearch entries are already
-          evicted
-          first; the reference weights age ~2x harder but keeps the same depth
-          dominance. **Conclusion:** the 2.13x not-usable divergence is a
-          SYMPTOM, not a policy defect. It follows arithmetically from a
-          Lower-heavy store mix (67.8% vs 55.7%), which follows from 67.5% of
-          stores being depth-0 qsearch entries, which follows from `qnodes`
-          1.60x. The cause is the search shape, and it is lead (1) of the
-          audit — not the TT.
-    - [ ] (2) **Quiescence PV contract.** Oracle guards its qsearch TT cutoff
-          with `!PvNode`; Rarog's `quiescence` has no `is_pv` at all.
-          `q_tt_cut` 2.46x, but partly downstream of (1), so it runs after.
-    - [ ] (3) **Opponent-worsening.** Named by 4.6, absent from the engine;
-          4.5.1 built the substrate. ⚠ the reference's form makes RFP fire
-          MORE and Rarog already runs `rfp_cut` 1.41x — direction first.
-    - [ ] (4) **Quiet checks in quiescence.** Explains `q_move_cut` 0.66x.
-          LAST: adds work to a qsearch already at 1.60x, and touches the
-          population where removing the check extension measured **+30.75**.
-      **Answer-led sub-steps (5)-(8), from `answer_compare.py` — a different
-      generator: what the search RETURNS, not how often it fires. ⚠ agreement
-      is a PROXY; the objective is strength, and each still owes a gate.**
-    - [ ] (5) **Mate-answer disagreements.** **5 of 50** positions where one
-          engine sees a forced mate and the other does not. FIRST because it
-          does not depend on the proxy: missing a mate is worse play, not
-          merely different. Each case individually diagnosable.
-    - [ ] (6) **Cohort agreement — ENDGAME; the zugzwang lead is WITHDRAWN.**
-          25% for zugzwang was a TT-contamination artifact (no `ucinewgame`
-          between positions). Clean: zugzwang **62.5%**, and **endgame worst
-          at 50%** against 66.7-75%. Endgame is where a shared eval should
-          make two searches agree MOST. **n=10: widen before building.**
-    - [ ] (7) **Premature conviction — SURVIVED the correction.** Rarog
-          revises **1.50** vs **2.16** and self-survives more (72% vs 60% at
-          depth 7) yet lands elsewhere a third of the time. Strongest
-          surviving lead; matches `root_best_changes` 0.29x independently.
-    - [ ] (8) **Score volatility.** **422** cp/iteration against **199** —
-          more than double — with a MORE stable move. Explain before trusting.
-
-- [x] 4.7 **[ACCEPTED +15.56 ± 10.02, LOS 99.89%]** Cluster C — main
-      selectivity; nElo +24.90 ± 16.01 (RAR-S57 gated the a+c bundle at
-      +24.50 ± 12.78; RAR-S58 showed 4.7c carried all of it, so 4.7a was
-      reverted and the shipped contract is 4.7c alone). Razoring,
-      reverse futility, NMP verification, ProbCut, move-count and history
-      pruning, quiet/capture futility, in dependency order with prospective
-      searched depth used consistently. Categoricals before constants; no
-      broad SPSA — and none was run: the curvature probe in (e) ruled it out.
-      The prior was re-derived to 5–15 nElo once 4.7b was withdrawn; the
-      result beat it by 60%, and is ~3.8x RAR-S54's blind uniform scalar
-      (+4.06 ± 3.71), which is what PLAN 4.7 predicted of a structural
-      rework. Owns the NMP/IIR provenance switches and
-      `SelectivityProspectiveDepth`. Merged to `dev`; the candidate branch
-      `p47c-probcut-filter` can be deleted.
-    - [x] (a) **[DONE, no games]** Counter comparability and the corrected
-          reading. `probcut_nodes` (per node) and `probcut_attempt` (per move)
-          now exist on both engines, and the oracle's TT-served returns are
-          split out as `probcut_tt_served`. Re-ran the 4.2 suite as
-          `analysis/phase4_differential_v3_depth8.txt`. Oracle side `2682f64`
-          on `hybrid-diag`; Rarog side `cf4e475`; reading `8142d5a`.
-    - [x] (b) 4.7a **[REVERTED]** null-move entry.
-          Primary gate becomes `nmp_eval >= beta`, the old margin re-homed
-          onto raw `static_eval`. `nmp_attempt` −21.4%, `nmp_cut` −2.4%,
-          conversion 19.2% → 23.8%. RAR-S56. Do not gate standalone: PLAN
-          rule 3 says substeps are not expected to win alone.
-    - [x] (c) 4.7b **[REJECTED, no games]** Move-count volume. The 13.35x
-          divergence was a per-move against per-node artifact; corrected,
-          Rarog fires LMP at 0.57x the reference's per-node rate. Withdrawn
-          before any code was written against it.
-    - [x] (d) 4.7c **[ACCEPTED in the bundle]** ProbCut move filter. SEE
-          threshold tied to `probcut_beta − static_eval`, cap counts moves
-          searched and scales with `cut_node`. Moves −56.6% while keeping
-          91% of cutoffs; conversion per move 32.6% → 68.4% against the
-          oracle's 71.9%. Cost is not uniform — one endgame got 46% cheaper.
-    - [x] (e) **[DONE, no games]** Fit decision: **no SPSA.** PLAN rule 4
-          makes it conditional on curvature. A zero-game sweep shows
-          `ProbCutMargin`'s conversion surface flat at 61.8–65.5% across a
-          2x range, the move cap inert at 0.72–0.74% moves per node, and
-          only the gap scale monotone. The condition is not met.
-    - [x] (f) **[DONE]** Registered as RAR-S57 at `[3,10]` nElo, cap 16,000,
-          on a re-derived 5–15 prior. ⚠ The bounds and prior were fixed in
-          writing before the run and used verbatim, but the ledger row was
-          filed after the result. Rule 2 wants it filed first.
-    - [x] (g) **[ACCEPTED]** Bundle gate closed at 2,838 games, a fifth of
-          the cap, zero time forfeits. The rule 7 ablation (RAR-S58) then
-          found 4.7c reproduces the whole effect and 4.7a contributes −0.40
-          nElo, so 4.7a was reverted. Shipped head is the 47c-only arm that
-          passed its own SPRT: fingerprint 6,922,439 / EBF 2.451.
-- [ ] 4.8 **Cluster D — extensions and depth authority.** Check, singular,
-      double/possible-higher/negative extension, IIR and excluded-move
-      semantics against TT provenance, 4.5 context and LMR. Add locally
-      justified TT-move reliability, multi-cut correction and shuffling
-      guards. Preserve mate/abort and NMP-clamp correctness. Refit only the
-      activated surface, then gate the integrated contract.
-- [ ] 4.9 **Cluster E — root search and clock handoff.** Aspiration retries,
-      completed-root and interrupted-fallback authority, stability and the
-- [ ] 4.9b **History semantics — inherited from 4.5.3.** Ageing, decay and
-      seed policy; update attribution; check/capture context in history
-      indexing; evaluation-difference training as a Rarog candidate. The
-      unexecuted half of Cluster A. Runs BEFORE 4.10, whose 4.2 suite re-run
-      is not meaningful while this is unsettled. Stockfish's history events
-      are candidates, not defaults — RAR-S59 caught one that looked like a
-      plain omission and measured as a disguised selectivity increase.
-      decision to start another iteration. Measure extra-iteration behavior
-      against Rarog's root-confidence model. Settle root evidence before total
-      time; tune and gate real-clock changes separately.
-- [ ] 4.10 **Search integration, second selectivity pass, fit and freeze.**
-      Re-run 4.2 after 4.5/4.6/4.8/4.9 and close every search-map contract.
-      **Read `analysis/phase4_10_obligations.md` FIRST.** Every deferral
-      to this step is collected there with its evidence: the structural
-      work 4.10 does NOT own (history ageing/decay/attribution, and the
-      reduction contract — both unexecuted halves of 4.5), the live
-      leads (deliberate selectivity randomisation,
-      `NullMoveImprovingBonus` as a volume knob, TT-served ProbCut), the
-      rejections with their evidence so they are not retried blind, and
-      the two live switches owed a disposition. Written because a catch-
-      all clause is where structural work goes to be forgotten.
-      **Inherited from 4.5.4 (RAR-S60): Stockfish `cutoffCnt`.** A ply-
-      slot recency counter — reset via `(ss+2)->cutoffCnt = 0`, so it
-      accumulates across sibling visits — consumed as `if
-      ((ss-1)->cutoffCnt > 3) r++`. Rejected at 4.5.4 because that is a
-      selectivity increase and every reading this project owns says
-      Rarog prunes too much. Re-open here only if the second-pass
-      evidence changes that, and note the counter-point: it is
-      CONDITIONAL on plies that demonstrably cut often, unlike the
-      blanket increases already rejected.
-      Own any 4.7-adjacent issue intentionally excluded from protected 4.7,
-      including changed NMP/ProbCut/futility populations. If structural work
-      moved continuous optima, run one targeted search SPSA over activated
-      coordinates only; complete theta, PGO and SPRT it. Compare directly with
-      2.3.2 at 1T STC and re-run RAR-S53: at `-Nodes 250000`, mean depth
-      fall toward ~14 while Elo rises. Freeze the head, then re-review EV
-      before 4.11.
-- [ ] 4.11 **HCE baseline and reciprocal-oracle freeze.** Make the 4.10 head
-      the immutable HCE baseline; record source/binary hashes, benchmark and
-      NPS, and a no-adjudication reproduction slice of Stockfish-HCE versus
-      Rarog-HCE under the frozen oracle search. Register the HCE budget and
-      stop rules before changing evaluation code.
-- [ ] 4.12 **Differential evaluator harness and contract map.** Versioned
-      legal corpus with scores, phase, terms, activation, covariance and cost.
-      Map score/lazy, mobility/x-rays, pawn shelter/storm, king danger,
-      passers, winnability/scaling and specialized endgames from `9587eeeb`.
-      Classify every contract; generic ideas need separate local evidence.
-      Off ⇒ 4.11 fingerprint exactly. Teacher fit cannot accept a candidate.
-- [ ] 4.13 **Cluster F — score, winnability and endgame dispatch.** Material/
-      PST and phase ownership, tempo, score grain/POV, rule-50 damping, space
-      gating, winnability/complexity and a mature queen/rook/pawn/bishop
-      endgame registry. Reference formulas are hypotheses, not correctness.
-      Structural and Syzygy invariants precede local Texel, PGO/NPS and
-      no-adjudication SPRT.
-- [ ] 4.14 **Cluster G — pawns, passers and pawn-dependent scaling.** Pawn
-      cache, weak-unopposed/lever/doubled/backward/opposed semantics, blocked
-      support, edge files, path safety, progression and king distances.
-      Activation/covariance first, joint pawn/passer Texel after structure.
-      Repeat only after validation and SPRT both improve; reject prettier fits
-      that lose games.
-- [ ] 4.15 **Cluster H — activity, threats and space.** Pin-aware mobility,
-      bishop/rook x-rays, reachable/bad outposts, bishop-pawn severity,
-      trapped-rook geometry, files, king-ring/queen pressure, weak/restricted/
-      hanging/king threats and material-gated space. Pooled-PGO NPS on attack
-      changes; refit mobility tables and traced terms before SPRT.
-- [ ] 4.16 **Cluster I — king safety and nonlinear imbalance.** Rank/file and
-      blocked/unblocked shelter/storm, castling destinations, attack units,
-      single/multiple safe and unsafe checks, weak squares, pinned defenders,
-      flank camp, pawnless flanks and mobility/score feedback. Texel fits
-      direct and one-hot table weights; targeted SPSA fits bucket selectors
-      only after structure passes. Bake theta, PGO and SPRT it.
-- [ ] 4.17 **HCE convergence, search compatibility and cost.** Measure lazy/
-      cache behavior, parent-child stability, pruning bounds, NPS and endgame
-      pathologies.
-      Run anchored whole-HCE Texel cycles on activated weights with fixed
-      train/validation/untouched splits; PGO/SPRT each final fit. Repeat only
-      while validation and the baked SPRT both improve; stop at the first
-      no-gain/failed cycle. Then separately SPSA only moved search margins
-      with HCE frozen. Never mix search and HCE coordinates.
-- [ ] 4.18 **Cumulative HCE checkpoint and ablation.** Revision-matched
-      final-PGO comparison against 4.10, adjudication off. Ablate surprises,
-      remove unowned alternatives, close every 4.12 classification and record
-      search-versus-HCE attribution. UNKNOWN or first-draft contracts fail the
-      maturity bar even with positive Elo.
-- [ ] 4.19 **Transfer, portability, SMP and release gate.** Direct comparison
-      with 2.3.2; confirm LTC `10+0.1` and 4T direction, benchmark and pooled
-      NPS, the platform/ISA matrix, UCI conformance and the correctness suite.
-      Require zero UNKNOWN maturity-map items, remove unowned scaffolding and
-      resolve obsolete switches. Final no-adjudication target cohort includes
-      Basilisk 1.9.3 and the 4.1 oracle. Drop `-use-affinity` for 4T and
-      re-calibrate the null pair. **2.4.0** needs ≥ +40 Elo STC with the 95%
-      lower bound above +25, plus positive LTC/4T lower bounds; ≥ +100 with a
-      lower bound above +75 may justify a higher minor version.
-
-### ━━━ NNUE CUTOFF ━━━ (Phase 5 opens the NNUE line)
-
-### Phase 5 — NNUE runway (bench-identical or NPS-gated per step; no games)
-
-- [ ] 5.0 **Frozen measurement corpus.** Quiet, tactical, endgame, rule-50,
-      phase-balanced and search-disagreement cohorts with deep **external**
-      teacher cp/WDL labels plus Syzygy WDL/DTZ, by-game train/validation/
-      untouched-test separation, exact cohort labels, paired counterfactuals
-      and per-candidate residual reports. No engine footprint, so it may be
-      pulled forward into Phase-4 SPRT downtime.
-- [ ] 5.1 **Per-ply state and dirty pieces.** Extend 4.4's structure to the
-      full reversible state, then add the dirty-piece delta contract for
-      quiets, captures, EP, promotions, castling and null. Adopt the Reckless
-      `BoardObserver` shape: three events emitted at the exact mutation
-      points, a generic `make_move<T>` so the null observer costs nothing, a
-      compact pre-make stack channel for accumulators and a during-make
-      observer channel for threat features. Randomized make/unmake compares
-      against a full refresh every ply.
-- [ ] 5.2 **Accumulator scaffolding.** Per-thread and per-ply ownership,
-      refresh markers and debug full-recompute seams. The accumulator lives
-      with the search worker, not inside the copyable `Board`. HCE keeps
-      running unchanged and the search stays fingerprint-identical. No
-      inference yet; reserve the king-bucket refresh-cache slot for 6.5.
-- [ ] 5.3 **Trainer preflight.** Pin trainer, Bullet, toolchain and GPU;
-      verify conversion, shuffle, deterministic splits and manifests,
-      reference vectors and resume semantics. Malformed or lossy input fails
-      loudly.
-- [ ] 5.4 **Runway gate.** Exact benchmark, fmt, tests in debug and release,
-      randomized unwind, reproducible pilot corpus and trainer conformance.
-      Create an NNUE integration branch only after this passes.
-- [ ] 5.5 **Threat-map hooks (optional).** Reserve the dirty-threat interface
-      so threat inputs can land in 7.2 without another make/unmake rewrite.
-
-### Phase 6 — Baseline NNUE via net_trainer (→ 2.4.0 or 2.5.0)
-
-- [ ] 6.0 **Trainer hardening.** Strict CLI, train/validation/untouched-test
-      splits, checkpoint selection, hashes, seeds and exact references.
-- [ ] 6.1 **Controlled data.** 30–60M unique teacher positions at 10–20
-      sampled positions per game, label blend λ selected on validation, seeded
-      from a diverse EPD book. Add by-game/trajectory splits, dedup, the
-      frozen 5.0 test set and a dataset manifest (source engine and net SHA,
-      search budget, book, λ, seed, trainer commit). Do not train mainly on
-      positions adjudicated early by the same evaluator.
-- [ ] 6.2 **Baseline networks.** Documented widths and buckets, at least two
-      seeds; validation chooses within a run, untouched cohorts are used once.
-- [ ] 6.3 **Scalar integration.** Implement `nnue_format.md` in Rarog from the
-      reference Rust example: chess768 → (H×2, perspective, SCReLU) → 8
-      material output buckets, QA=255, QB=64, SCALE=400. **Acceptance gate is
-      the integer-exact conformance vectors**, which replaces any custom
-      header scheme; embed the net hash for provenance. Require layout
-      validation, malformed/truncated rejection and a clean HCE fallback.
-- [ ] 6.4 **Incremental and SIMD.** Dirty deltas per ply and thread,
-      randomized incremental-versus-full parity across castling/EP/promotion/
-      null, integer bound proof, and portable/x86/ARM64 kernels bit-exact and
-      target-native PGO-smoked. Hard pooled-PGO NPS gate before any games.
-- [ ] 6.5 **Architecture loop.** One axis at a time with two seeds. Step to
-      king-conditioned inputs (trainer v2, mirrored king buckets) as the
-      minimum serious architecture, consuming 5.2's reserved refresh-cache
-      slot. Capacity follows data; data-scale comparisons hold architecture
-      fixed and vice versa. Do not declare NNUE complete without testing king
-      conditioning.
-- [ ] 6.6 **Gross search-scale safety.** Adjust only clearly invalid margins
-      or clock scale. The broad fit waits for 7.3.
-- [ ] 6.7 **Baseline release.** Beats the accepted pre-NNUE master at STC and
-      LTC, transfers at 4T, passes external checks, zero
-      incremental-versus-reference mismatch. Archive the 6.1 manifest and
-      trainer commit with each accepted `quantised.bin`. **2.4.0 only if Phase
-      4 did not use it**; otherwise 2.5.0.
-
-### Phase 7 — NNUE frontier and final search fit
-
-- [ ] 7.0 **Residual and disagreement analysis.** By phase, material, king,
-      tactical and endgame cohort, plus calibration, refresh cost and
-      teacher-search disagreement.
-- [ ] 7.1 **Data frontier.** Scale and deduplicate, natural finishes,
-      hard-position mining, controlled label/depth A/Bs against untouched
-      sets, and fresh on-policy data with each clearly stronger net.
-- [ ] 7.2 **Architecture ladder.** King/perspective buckets, threat and
-      material inputs, width and activation, refresh-friendly variants. Each
-      relation-input family is a full architecture revision, not an
-      engine-side patch; add one family at a time and pick by measured
-      residuals.
-- [ ] 7.3 **One post-NNUE search fit.** First resolve the retained categorical
-      switches no Phase-4 cluster reached, then register only the continuous
-      coordinates whose optimum likely moved. cp margins do not transfer
-      across evaluators; structural mechanisms do. Coordinate count and
-      horizon come from activation, curvature and budget — not a remembered 24
-      or 5,000.
-- [ ] 7.4 **Frontier gate.** Direct comparison of 2.3.2, the Phase-4 head and
-      the baseline NNUE, plus calibrated matches against contemporary target
-      engines. This is where the Basilisk gap is re-measured.
-
-### Phase 8 — Scaling, platforms and product completeness
-
-- [ ] 8.0 **High-thread and NUMA.** Price the depth-diversity deficit at
-      4T/8T/16T; test the retained pool-instability and iteration-skipping
-      switches, first-touch placement, TT/accumulator sharing and false
-      sharing. Keep the score/depth-weighted vote merge. Measure helper TT
-      write policy and helper diversity rather than intuiting them.
-- [ ] 8.1 **Runtime dispatch and memory.** Consider a baseline universal
-      binary selecting specialized kernels, plus TT/network placement and
-      large pages. No specialized-binary startup CPU guard — see Recurring
-      procedures.
-- [ ] 8.2 **Product and platform.** Demand-led Chess960 and FRC coverage or
-      other platform work; also holds the parked large-page/NUMA TT, shared-TT
-      atomic packing, AVX-512/VNNI kernels, match-manifest schema and
-      distributed testing.
-- [ ] 8.3 **Scaling release.** Full topology, clock, net, ISA and user-doc
-      gate.
-
-### Phase 9 — Contingent classical fallback (only if NNUE is abandoned)
-
-- [ ] 9.0 **King-safety semantic rework.** Closed without retry if 4.16 landed
-      it. Otherwise: activation instrumentation by queen presence and phase,
-      legal versus geometric safe checks, storm conditioning, reachable
-      shelter, and joint danger-input fits.
-- [ ] 9.1 **Winnability and material-specific scaling.** Replace the sign-only
-      initiative term; residual tables by exact material signature, Syzygy
-      WDL/DTZ as direct evidence, sign-preserving non-amplifying scalers only.
-- [ ] 9.2 **Passer and pawn conditionality.** Blocker ownership and type,
-      rear-line openness, connected-passer semantics, candidate-passer
-      exchange conditioning, and a short-horizon race diagnostic.
-- [ ] 9.3 **Threat conditionality.** SEE-safe pawn pushes, restricted mobility
-      per affected piece rather than board-global, cheap pin/overload
-      relations. NPS-check first; do not hand-write a threat net one scalar at
-      a time.
-- [ ] 9.4 **Broad positional repairs.** Queen infiltration on the full enemy
-      attack map, bad-bishop conditioning, space usability (all three weights
-      fit to zero, so the representation is the problem) and conditioned
-      rook-on-seventh.
-- [ ] 9.5 **Material and phase specialization.** Bucketed coefficients,
-      king-bucketed PSTs, queen-presence gates. Worst time-to-Elo on the list;
-      only if NNUE is abandoned outright.
-- [ ] 9.6 **Lazy-margin conditioning.** Only if dual-eval data shows a
-      material sign-flip cohort; margin by non-pawn material and king danger.
-- [ ] 9.7 **OCB material-scope refinement.** A small material hierarchy for
-      the opposite-coloured-bishop scaler with non-amplification, sign,
-      pure-OCB, plus-minor and plus-major tests. Cheap and high-confidence, so
-      it is the natural first item here.
-
+degenerate. Full detail and the retained-inert ownership table are in section 3
+of [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md).

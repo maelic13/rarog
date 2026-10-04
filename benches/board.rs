@@ -28,10 +28,7 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use rarog::board::{
-    Board, CROSS_ENGINE_SEE_VALUES, MoveList, SeeValues, generate_captures, generate_captures_into,
-    generate_legal_into, perft,
-};
+use rarog::board::{Board, CROSS_ENGINE_SEE_VALUES, MoveList, SeeValues};
 
 const WARMUP: Duration = Duration::from_millis(150);
 // 9.7: N shorter samples instead of one 750 ms shot. A single sample on a
@@ -133,7 +130,7 @@ fn main() {
             capture_gen(&mut capture_boards, &mut scratch),
             make_unmake(&mut mutable_boards, &mut scratch),
             see_captures(&mut see_boards, see_values),
-            perft(&mut perft_board, 4),
+            perft_board.perft(4),
             game_simulation(&mut simulation_boards, &mut outer, &mut inner),
         ];
         let mut ok = true;
@@ -171,7 +168,7 @@ fn main() {
             see_captures(&mut see_boards, see_values)
         }),
         measure("perft(4) startpos", "nodes", EXPECTED_OPS[4], || {
-            perft(&mut perft_board, 4)
+            perft_board.perft(4)
         }),
         measure("two-ply simulation", "moves", EXPECTED_OPS[5], || {
             game_simulation(&mut simulation_boards, &mut outer, &mut inner)
@@ -245,7 +242,7 @@ fn see_verdicts(boards: &[Board], values: SeeValues) -> String {
     let mut verdicts = Vec::new();
     for (index, original) in boards.iter().enumerate() {
         let mut board = original.clone();
-        for &mv in &generate_captures(&mut board) {
+        for &mv in &board.generate_legal_captures() {
             verdicts.push(format!(
                 "{index}:{mv}={}",
                 u8::from(board.see_ge_with_values(mv, 0, values))
@@ -338,7 +335,7 @@ where
     }
 }
 
-// `generate_legal_into` writes into a fixed-capacity `MoveList` the caller
+// `generate_legal_movelist_into` writes into a fixed-capacity `MoveList` the caller
 // owns. The convenience wrapper `generate_legal_moves` returns a `Vec<Move>`
 // and so puts a `Vec::with_capacity(48)` malloc/free pair inside the timed
 // region — that allocation was worth 17-43% on the four workloads that used
@@ -349,7 +346,7 @@ where
 fn legal_movegen(boards: &[Board], moves: &mut MoveList) -> u64 {
     let mut total = 0u64;
     for board in boards {
-        generate_legal_into(black_box(board), moves);
+        black_box(board).generate_legal_movelist_into(moves);
         total += moves.len() as u64;
         black_box(&*moves);
     }
@@ -359,7 +356,7 @@ fn legal_movegen(boards: &[Board], moves: &mut MoveList) -> u64 {
 fn capture_gen(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     let mut total = 0u64;
     for board in boards {
-        generate_captures_into(black_box(board), moves);
+        black_box(&mut *board).generate_legal_captures_into(moves);
         total += moves.len() as u64;
         black_box(&*moves);
     }
@@ -369,7 +366,7 @@ fn capture_gen(boards: &mut [Board], moves: &mut MoveList) -> u64 {
 fn make_unmake(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     let mut ops = 0u64;
     for board in boards {
-        generate_legal_into(board, moves);
+        board.generate_legal_movelist_into(moves);
         for &mv in moves.as_slice() {
             board.make_move(mv);
             black_box(&board);
@@ -399,7 +396,7 @@ fn make_unmake(boards: &mut [Board], moves: &mut MoveList) -> u64 {
 fn see_captures(boards: &mut [Board], values: SeeValues) -> u64 {
     let mut ops = 0u64;
     for board in boards {
-        let captures = generate_captures(board);
+        let captures = board.generate_legal_captures();
         for &mv in &captures {
             black_box(board.see_ge_with_values(mv, 0, values));
             ops += 1;
@@ -411,10 +408,10 @@ fn see_captures(boards: &mut [Board], values: SeeValues) -> u64 {
 fn game_simulation(boards: &mut [Board], outer: &mut MoveList, inner: &mut MoveList) -> u64 {
     let mut ops = 0u64;
     for board in boards {
-        generate_legal_into(board, outer);
+        board.generate_legal_movelist_into(outer);
         for &mv in outer.as_slice() {
             board.make_move(mv);
-            generate_legal_into(board, inner);
+            board.generate_legal_movelist_into(inner);
             ops += inner.len() as u64;
             black_box(&*inner);
             board.unmake_move(mv);
