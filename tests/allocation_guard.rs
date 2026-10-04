@@ -98,8 +98,15 @@ fn measured_search(searcher: &mut Searcher, options: &SearchOptions, depth: u32)
 
 #[test]
 fn allocations_grow_per_iteration_never_per_node() {
-    for threads in [1, 4] {
-        for index in POSITIONS {
+    for index in POSITIONS {
+        // The single-thread shallow tree is the honest size of a depth-5
+        // search of this position. The threaded searches are sized against it
+        // below, because a threaded node count is the scheduler's as much as
+        // the search's: on an oversubscribed host (CI's three-core macOS
+        // runner at Threads 4) the main thread is starved while the helpers
+        // run free, and a depth-5 search was once counted at 219,395 nodes.
+        let mut single_thread_shallow_nodes = 0;
+        for threads in [1, 4] {
             let fen = BENCH_FENS[index];
             let mut options = SearchOptions {
                 board: Board::from_fen(fen).expect("bench FEN parses"),
@@ -122,8 +129,11 @@ fn allocations_grow_per_iteration_never_per_node() {
                  {shallow_allocations} allocations in {shallow_nodes} nodes, depth \
                  {DEEP_DEPTH} made {deep_allocations} in {deep_nodes}"
             );
+            if threads == 1 {
+                single_thread_shallow_nodes = shallow_nodes;
+            }
             assert!(
-                deep_nodes >= MIN_NODE_GROWTH * shallow_nodes,
+                deep_nodes >= MIN_NODE_GROWTH * single_thread_shallow_nodes,
                 "the deep search is too small to expose a per-node allocation; {context}"
             );
             let extra_iterations = u64::from(DEEP_DEPTH - SHALLOW_DEPTH);
