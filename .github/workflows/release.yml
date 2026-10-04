@@ -1,0 +1,307 @@
+name: Release
+run-name: ${{ github.ref_type == 'tag' && github.ref_name || format('release candidate {0}', github.sha) }}
+
+# A release is cut by pushing a `vX.Y.Z` tag on master; nothing else. The
+# workflow validates first (the tag names Cargo.toml's version, the tagged
+# commit is on master, CHANGELOG.md has a dated section for it), builds the
+# nine PGO assets read-only, benches every one and asserts a single `bench 13`
+# fingerprint across the matrix equal to the one GUIDE's checkpoint declares,
+# and only then one job with write permission publishes the release with every
+# asset and the notes taken from that CHANGELOG section. Nothing exists on
+# GitHub until every cell has passed, so a failed run is repaired by deleting
+# the tag, fixing master and tagging again.
+#
+# A manual dispatch is the rehearsal: the same build, bench and fingerprint
+# checks on the chosen ref, the bundle kept as a workflow artifact, no tag
+# and no release.
+#
+# Only `v<major>.<minor>.<patch>` tags trigger this, never the `arm/…` or
+# `oracle/…` markers.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  prepare:
+    name: Validate the tag, the changelog and the declared fingerprint
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.meta.outputs.mode }}
+      version: ${{ steps.meta.outputs.version }}
+      expected_nodes: ${{ steps.meta.outputs.expected_nodes }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # No toolchain action: rustup reads rust-toolchain.toml and installs
+      # the pinned compiler, the same one the developer builds with.
+      - name: Show pinned toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-prepare
+
+      - name: Validate
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            cargo xtask release-check "$GITHUB_REF_NAME" --notes release-notes.md
+            mode=release
+            version="${GITHUB_REF_NAME#v}"
+          else
+            mode=candidate
+            version="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+            echo "candidate build of $GITHUB_SHA at version $version; nothing will be published" > release-notes.md
+          fi
+          # GUIDE's checkpoint declares the fingerprint once; every asset
+          # must reproduce it. A cross-platform mismatch is investigated,
+          # never waived.
+          expected="$(grep -oP 'fingerprint \*\*\K[0-9,]+' GUIDE.md | head -1 | tr -d ,)"
+          test -n "$expected"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "expected_nodes=$expected" >> "$GITHUB_OUTPUT"
+          echo "mode $mode, version $version, expected bench 13 nodes $expected"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  build:
+    name: Build ${{ matrix.os_name }} ${{ matrix.asset_arch }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Every cell is a NATIVE runner (host triple == target), which PGO
+          # requires: the instrumented binary runs its training bench locally.
+          - runner: ubuntu-latest
+            os_name: linux
+            asset_arch: x86-64
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - runner: ubuntu-latest
+            os_name: linux
+            asset_arch: avx2
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - runner: ubuntu-latest
+            os_name: linux
+            asset_arch: pext
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - runner: ubuntu-24.04-arm
+            os_name: linux
+            asset_arch: arm64
+            target: aarch64-unknown-linux-gnu
+            ext: ""
+          - runner: windows-latest
+            os_name: windows
+            asset_arch: x86-64
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+          - runner: windows-latest
+            os_name: windows
+            asset_arch: avx2
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+          - runner: windows-latest
+            os_name: windows
+            asset_arch: pext
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+          # PGO here depends on a WORKAROUND, not on stock toolchain support:
+          # linked with MSVC link.exe the instrumented binary emits .profraw
+          # files with an empty symbol-name table and llvm-profdata refuses
+          # them. xtask forces LLD for this target (`linker_flags` in
+          # xtask/src/main.rs, rust-lang/rust#156675) — when that lands, drop
+          # the override and re-test.
+          - runner: windows-11-arm
+            os_name: windows
+            asset_arch: arm64
+            target: aarch64-pc-windows-msvc
+            ext: ".exe"
+          - runner: macos-latest
+            os_name: macos
+            asset_arch: arm64
+            target: aarch64-apple-darwin
+            ext: ""
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Show pinned toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustc -vV
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      # `verify-isa` disassembles the finished asset and PGO merges profiles;
+      # both need llvm-tools.
+      - name: Install llvm-tools
+        run: rustup component add llvm-tools
+
+      - name: Build the PGO asset
+        run: >
+          cargo xtask build --arch ${{ matrix.asset_arch }}
+          --target ${{ matrix.target }} --pgo
+
+      # xtask appends `-pgo` locally so PGO and non-PGO builds can coexist.
+      # Released assets are not labelled: every shipped binary is PGO, and the
+      # names `rarog-vX.Y.Z-<os>-<arch>[.exe]` are what README and existing
+      # download links use.
+      - name: Name the asset
+        id: asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='${{ needs.prepare.outputs.version }}'
+          built="target/dist/rarog-v${version}-${{ matrix.os_name }}-${{ matrix.asset_arch }}-pgo${{ matrix.ext }}"
+          name="rarog-v${version}-${{ matrix.os_name }}-${{ matrix.asset_arch }}${{ matrix.ext }}"
+          test -f "$built" || { echo "::error::expected artifact not found: $built"; ls -la target/dist || true; exit 1; }
+          mkdir -p asset
+          mv "$built" "asset/$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      # The ISA contract, checked on the asset about to be shipped: no
+      # instruction the tier's target-cpu does not enable, every class the
+      # tier exists to emit. Node agreement cannot see this class of defect.
+      - name: Verify the ISA contract
+        shell: bash
+        run: >
+          cargo xtask verify-isa --arch ${{ matrix.asset_arch }}
+          --target ${{ matrix.target }}
+          --exe "asset/${{ steps.asset.outputs.name }}"
+
+      # The UCI handshake, the version string and the fingerprint. The node
+      # count must equal the one GUIDE declares for the tagged source; a
+      # stale or wrong source cannot ship with a plausible count.
+      - name: Smoke-test and fingerprint the asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="asset/${{ steps.asset.outputs.name }}"
+          chmod +x "$bin" 2>/dev/null || true
+          out="$({ echo uci; echo quit; } | "$bin")"
+          echo "$out" | grep -q '^uciok' || { echo "::error::no uciok in the UCI handshake"; exit 1; }
+          echo "$out" | grep -q "^id name Rarog ${{ needs.prepare.outputs.version }}\$" \
+            || { echo "::error::id name does not read 'Rarog ${{ needs.prepare.outputs.version }}'"; echo "$out" | grep '^id name'; exit 1; }
+          nodes="$("$bin" bench 13 | grep -i 'Nodes searched' | grep -oE '[0-9]+' | head -1)"
+          expected='${{ needs.prepare.outputs.expected_nodes }}'
+          echo "bench 13: $nodes nodes (declared $expected)"
+          test "$nodes" = "$expected" || { echo "::error::fingerprint $nodes differs from the declared $expected"; exit 1; }
+          echo "$nodes" > "asset/${{ steps.asset.outputs.name }}.nodes"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: asset-${{ matrix.os_name }}-${{ matrix.asset_arch }}
+          path: asset/*
+          if-no-files-found: error
+
+  collect:
+    name: Verify the complete matrix
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: asset-*
+          merge-multiple: true
+          path: bundle
+
+      - name: Nine assets, one fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd bundle
+          version='${{ needs.prepare.outputs.version }}'
+          expected=(
+            "rarog-v${version}-linux-x86-64" "rarog-v${version}-linux-avx2" "rarog-v${version}-linux-pext"
+            "rarog-v${version}-linux-arm64"
+            "rarog-v${version}-windows-x86-64.exe" "rarog-v${version}-windows-avx2.exe"
+            "rarog-v${version}-windows-pext.exe" "rarog-v${version}-windows-arm64.exe"
+            "rarog-v${version}-macos-arm64"
+          )
+          for f in "${expected[@]}"; do test -f "$f" || { echo "::error::missing asset $f"; exit 1; }; done
+          test "$(ls | grep -vc '\.nodes$')" -eq 9
+          nodes="$(cat *.nodes | sort -u)"
+          test "$(wc -l <<<"$nodes")" -eq 1 || { echo "::error::the assets disagree on bench 13: $nodes"; exit 1; }
+          test "$nodes" = '${{ needs.prepare.outputs.expected_nodes }}'
+          rm -f *.nodes
+          sha256sum "${expected[@]}" | tee SHA256SUMS
+          echo "nine assets at bench 13 = $nodes"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rarog-${{ needs.prepare.outputs.mode }}-${{ github.sha }}
+          path: bundle/*
+          if-no-files-found: error
+          retention-days: ${{ needs.prepare.outputs.mode == 'candidate' && 30 || 90 }}
+
+  publish:
+    name: Publish the release
+    if: needs.prepare.outputs.mode == 'release'
+    needs: [prepare, collect]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The tagged commit is on master
+        run: |
+          git fetch origin master
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: rarog-release-${{ github.sha }}
+          path: bundle
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: notes
+
+      - name: Recheck the bundle
+        run: cd bundle && sha256sum --check SHA256SUMS
+
+      # SHA256SUMS is checked between jobs and not published: a checksum file
+      # beside the assets it describes proves nothing an attacker who can
+      # replace one cannot also replace. GitHub's per-asset digests are the
+      # ones to compare against.
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Rarog ${{ needs.prepare.outputs.version }}
+          body_path: notes/release-notes.md
+          make_latest: true
+          fail_on_unmatched_files: true
+          files: bundle/rarog-v*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

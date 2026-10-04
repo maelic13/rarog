@@ -1,3 +1,5 @@
+mod release;
+
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
@@ -100,13 +102,18 @@ fn parse_args() -> Result<Config> {
         print_usage();
         std::process::exit(0);
     }
+    if command == "release-check" {
+        let check = parse_release_check(args)?;
+        release::run(&check)?;
+        std::process::exit(0);
+    }
     let command = match command.as_str() {
         "build" => CommandKind::Build,
         "verify-isa" => CommandKind::VerifyIsa,
         other => {
             return Err(format!(
-                "unknown command `{other}`; expected `build` or `verify-isa`. \
-                 Run `cargo xtask help`."
+                "unknown command `{other}`; expected `build`, `verify-isa` or \
+                 `release-check`. Run `cargo xtask help`."
             ));
         }
     };
@@ -189,11 +196,40 @@ fn parse_args() -> Result<Config> {
     })
 }
 
+/// `release-check vX.Y.Z [--notes <path>] [--base <ref>]`.
+fn parse_release_check(mut args: impl Iterator<Item = String>) -> Result<release::ReleaseCheck> {
+    let tag = args.next().ok_or_else(|| {
+        "`release-check` needs the tag: cargo xtask release-check vX.Y.Z".to_string()
+    })?;
+    let mut notes = None;
+    let mut base = "origin/master".to_string();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--notes" => {
+                let path = PathBuf::from(
+                    args.next()
+                        .ok_or_else(|| "`--notes` requires a path".to_string())?,
+                );
+                release::ensure_parent(&path)?;
+                notes = Some(path);
+            }
+            "--base" => {
+                base = args
+                    .next()
+                    .ok_or_else(|| "`--base` requires a git ref".to_string())?;
+            }
+            other => return Err(format!("unknown argument `{other}`")),
+        }
+    }
+    Ok(release::ReleaseCheck { tag, notes, base })
+}
+
 fn print_usage() {
     println!(
         "Usage:
   cargo xtask build [--arch base|x86-64|avx2|pext|arm64] [--native] [--target <triple>] [--pgo] [--bench-depth <n>]
   cargo xtask verify-isa [--arch <same>] [--target <triple>] [--exe <path>] [--pgo] [--native] [--default-cpu]
+  cargo xtask release-check vX.Y.Z [--notes <path>] [--base <ref>]
 
 `--arch` picks the ISA contract: which source path compiles (PEXT vs portable
 magic bitboards) and which CPU features are required.
@@ -203,6 +239,9 @@ class the tier exists to emit. Needs `rustup component add llvm-tools`.
 `--native` is INDEPENDENT of it: it swaps the portable `target-cpu` baseline
 for this exact host CPU. LOCAL ONLY - such a binary is not guaranteed to run
 anywhere else, and is marked `-native` in its filename.
+`release-check` refuses a tag that does not name Cargo.toml's version, a HEAD
+not reachable from `--base` (default origin/master) or a CHANGELOG without a
+dated section for the version; `--notes` writes that section as the notes.
 
 Examples:
   cargo xtask build                              # portable x86-64
@@ -211,7 +250,8 @@ Examples:
   cargo xtask build --arch pext --native --pgo   # fastest build for this box
   cargo xtask build --arch base --native         # native on a pre-BMI2 CPU
   cargo xtask build --arch arm64 --target aarch64-apple-darwin
-  cargo xtask verify-isa --arch base             # prove the baseline asset is baseline"
+  cargo xtask verify-isa --arch base             # prove the baseline asset is baseline
+  cargo xtask release-check v2.5.0 --notes notes.md   # what the release workflow checks first"
     );
 }
 
