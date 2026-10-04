@@ -121,3 +121,6 @@ rebuild from the restored commit.
 
 `883666d` (RAR-S82's block-1 probe) is not in this table: its branch
 `b33-block1-probe` was restored on 2026-09-27 after an accidental deletion.
+Since B.10 (2026-10-04) its diff is preserved as
+`analysis/arm_patches/883666d-b33-block1-probe-proofparams.patch`, so the
+branch is no longer its only carrier.

@@ -105,11 +105,15 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
   describes the move played.
 - A position with no legal move reports `info depth 0 score mate 0` when in
   check and `info depth 0 score cp 0` when stalemated, then `bestmove 0000`.
+- With tablebases, a tablebase win or loss is reported as `score cp 20000` or
+  `score cp -20000`, one less for each ply from the root, and when time allows
+  the line is continued through the tables.
 
 ### Supported commands
 
-`uci`, `isready`, `ucinewgame`, `position`, `go`, `stop`, `ponderhit`, `quit`
-and `bench`.
+`uci`, `isready`, `setoption`, `ucinewgame`, `position`, `go`, `stop`,
+`ponderhit` and `quit`, plus `bench`, `wac` (the WAC tactical suite, a
+diagnostic) and `help` for use by hand; `help` describes them.
 
 `go` supports `depth`, `nodes`, `movetime`, `wtime`, `btime`, `winc`, `binc`,
 `movestogo`, `mate`, `searchmoves`, `ponder`, `perft` and `infinite`.

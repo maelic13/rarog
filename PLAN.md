@@ -2753,7 +2753,7 @@ diagnostics; two rejections stop B.
   the oracle's at depth 12, yet it out-plays the oracle at 2 plies less; the
   search costs a quarter of 2.4.0's speed. Speed is C's secondary
   requirement; the whole-surface search tune is C.10.
-- **B.10 Release 2.5.0 — `M`.** Added 2026-10-03 by maintainer decision: 2.5.0
+- **B.10 Release 2.5.0 — `M`, IMPLEMENTED 2026-10-04, awaiting the maintainer's tag.** Added 2026-10-03 by maintainer decision: 2.5.0
   is released at the search checkpoint (it was to be cut at E.3; E.3's
   version becomes 3.0.0 or 2.6.0). Modelled on A.7 and A.9: version bump
   `2.5.0-dev` → `2.5.0`, behaviour-neutral, reproducing 11,171,726 / EBF
@@ -2775,6 +2775,43 @@ diagnostics; two rejections stop B.
   branches `b33-block1-probe`, `b33-gate` and `diag/b23-theta3900`, the
   `arm/*` and `oracle/*` tags.
 
+  *Implemented 2026-10-04, awaiting the maintainer's PR, merge, tag and
+  release.*
+  - **Version bump `3575558`** ("Version 2.5.0"): `Cargo.toml`, `Cargo.lock`
+    and `tools/texel-tuner/Cargo.lock`, `2.5.0-dev` → `2.5.0`; no other live
+    code, CI or tool file carried the dev string. Qualified on that tree
+    (`analysis/artifacts/b10-release/verify/summary.txt`, every exit 0): fmt;
+    `cargo clippy --locked --all-features --all-targets` 0 warnings and the
+    texel tuner's clippy at `-D warnings`; debug **374 passed, 0 failed, 2
+    ignored**, release **375 / 0 / 2**; `bench 13` **11,171,726 / EBF
+    2.512**, unchanged; `uci` answers `id name Rarog 2.5.0`.
+  - **Documents** (the commit that records this): `CHANGELOG.md`'s
+    `[2.5.0] - 2026-10-04` section, licensed by the three direct reads
+    against 2.4.0 with the non-additivity caution, the B.9 checkpoint and the
+    NPS cost stated plainly, and a fresh `[Unreleased]`; `README.md`'s
+    tablebase score display and the full command list. The shipped build's
+    UCI options differ from 2.4.0's only by `MultiPV`, read from both
+    binaries.
+  - **Assets** are built, `verify-isa`-checked and attached by
+    `build.yml` when the maintainer publishes the GitHub release; nothing was
+    built for release here.
+  - **Tag-and-branch review** (`analysis/artifacts/b10-release/ref_review.sh`
+    and its output `ref_review.txt`; `git for-each-ref --contains` per ref,
+    `git cherry` against `dev`, every tracked citation). Nothing was deleted.
+
+  | Ref | Kind | What it holds | Cited by | Contained by | Recommendation |
+  |---|---|---|---|---|---|
+  | `diag/b23-theta3900` | local branch, not on `origin` | `23b8a7a`, RAR-S76's theta at 3,900 baked into `CoreParams`, on `df6308e`; its two later commits are on `dev` as `b940fc2` and `7edd3ca` (`git cherry`) | RAR-S76 | itself only | **delete**: the diff is `analysis/arm_patches/23b8a7a-theta3900-coreparams.patch`, proved to reproduce the commit's tree |
+  | `b33-block1-probe` | local branch, not on `origin` | `883666d`, RAR-S82's block-1 probe, on `7ba3a1b` | RAR-S82; `analysis/ledger_commits_2026-09-27.md` | itself only | **delete**: `analysis/arm_patches/883666d-b33-block1-probe-proofparams.patch` |
+  | `b33-gate` | local branch, not on `origin` | `11e7145`, RAR-S84's gate candidate, on `f5d16d8`; `f53ca7d` baked the same theta on `dev` | RAR-S84 | itself only | **delete**: `analysis/arm_patches/11e7145-b33-gate-proofparams.patch` |
+  | `arm/p410-jitter-1t`, `arm/p410-lmr-relief`, `arm/p410-margin-relief`, `arm/p46-root-relief` | tags, on `origin` | four one-file arms of 2026-08-20, each a change to the 2.4.0-era parameter file (`params.rs`, since moved) (RAR-S67, RAR-S68, RAR-S69, superseded and never run; an `LmrRootRelief` 1536 arm); together the only refs holding the bases of the six recipes in `analysis/arm_patches/` of 2026-09-10 | `analysis/arm_patches/README.md`; the archived closed-leaves PLAN | the four tags only | **keep**; retire when those six recipes are re-based on commits `dev` reaches, or retired with their rows |
+  | `oracle/hybrid` | tag, on `origin` | `75d0d43`, the G(0) oracle's source and build recipe | RAR-O03, RAR-O04, PROCESS | itself and the two tags below | **keep** while G(0) is measured (C.11, E.1) |
+  | `oracle/hybrid-ablate` | tag, on `origin` | `984f478`, the oracle's ablation bitmask | PROCESS *Matched ablation* | itself only | **keep** until PLAN E.1 (PROCESS) |
+  | `oracle/hybrid-diag` | tag, on `origin` | `2682f64`, the oracle's diagnostic counters for the stride-1 oracle differential | RAR-P24 | itself only | **keep**; retire with `oracle/hybrid-ablate` at E.1 unless a later leaf still runs the differential |
+
+  The three branches are local only, so their deletion is local; the
+  maintainer runs it. Phase B closes with the `v2.5.0` tag.
+
 ### Active workflow register
 
 One row per open leaf in the active phases (A and B). The checker requires
@@ -2783,7 +2820,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); the release rule's LTC and 4T reads are in: RAR-M65 **+260.5 ± 16.0** at `10+0.1`, RAR-M66 **+322.7** over 2.4.0 at four threads (performance 3,340, all four E.2 targets passed at 4T); with RAR-M64's STC +272.4, every lower bound 2.4.0's rule asks for is positive. Decided 2026-10-04: the rule is adopted and met; fastchess and weather-factory stay as the backup. Open: the release mechanics only (version, changelog, documents, assets, the maintainer's tag) |
+| B.10 | IMPLEMENTED | M | Implemented 2026-10-04: version `3575558` (bench 11,171,726 / EBF 2.512, `id name Rarog 2.5.0`), `CHANGELOG.md` `[2.5.0]`, README, the ref review (three local branches recommended for deletion, their diffs archived; the `arm/*` and `oracle/*` tags kept). Licensed by RAR-M64, RAR-M65 and RAR-M66 under 2.4.0's rule. Awaiting the maintainer: PR `dev` → `master`, merge on green CI, the `v2.5.0` tag and the GitHub release that builds the assets |
 
 ## Phase C — Evaluation programme
 

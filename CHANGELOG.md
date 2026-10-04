@@ -7,6 +7,36 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-04
+
+The search release. The search was rebuilt and fitted in this engine in three
+clusters, each accepted by its own gate, then sped up; the evaluation terms
+are 2.4.0's.
+Against the 2.4.0 release, head to head with no adjudication, this head
+measured **+272.4 Elo at `3+0.03` on one thread** (400 games, 95% about
++245 .. +308; RAR-M64), **+260.5 ± 16.0 Elo at `10+0.1`** (1,000 games;
+RAR-M65) and **+322.7 Elo at `3+0.03` on four threads** (400 games, 95%
++289 .. +362; RAR-M66). Those three direct readings are the release's
+numbers. The gates listed below were run one after another against different
+baselines, partly on different harnesses; they are not additive, and their
+sum must not be quoted as the release's gain.
+
+The reference this work was planned against is classical Stockfish's search
+running Rarog's own evaluation through a cross-language bridge. 2.4.0 lost to
+it by 247.97 ± 10.89 Elo at equal time; this head wins by **+24.24 ± 8.01**
+(3,000 games; RAR-O04). The reference pays the bridge on every evaluation, so
+this says the measured search deficit is closed, not that Rarog's search
+matches Stockfish's at full speed. In a gauntlet whose opponents' ratings are
+held fixed, the head rates 3,286.5 ± 15.7 on one thread against 2.4.0's
+3,001, and scores more than half the points against Houdini 3, Critter 1.6a,
+Fritz 16 and Rybka 4.1 on one thread and on four. These are this project's
+own pool ratings, not a rating list's.
+
+The new search is slower: at the fixed `bench` it searches **26.2% fewer
+nodes per second than 2.4.0** (RAR-P35), after the speed pass below won part
+of the loss back. It is stronger because each node does more, not because it
+is faster, and for the same reason it reports smaller depths than 2.4.0 did.
+
 ### Added
 
 - `MultiPV` (default `1`, up to `256`) reports the best several lines each
@@ -15,11 +45,37 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `upperbound`, and `bestmove` is always the first line. With `Threads` above
   one, the main thread searches the lines and the helpers assist through the
   hash table. At `MultiPV 1` the search and its output are unchanged.
-- The selectivity core is the default search: a replacement node kernel, move
-  picker, history and correction tables, with its ~100 constants fitted by a
-  160,000-game SPSA. It was accepted over the previous search by two gates,
-  +65.09 ± 23.26 Elo unfitted and +138.60 ± 30.66 Elo fitted against that.
-  The previous search has been removed.
+
+### Changed
+
+- **A new search core** is the default search: a replacement node kernel, move
+  picker, history and correction tables, late move reductions and move-loop
+  pruning, with its ~100 constants fitted by a 160,000-game SPSA. It was
+  accepted over the previous search by two gates, +65.09 ± 23.26 Elo unfitted
+  and +138.60 ± 30.66 Elo fitted against that, and a re-tune of its
+  most-moved constants added +13.1 ± 5.4 Elo (RAR-S73, RAR-S78).
+- **Null-move pruning, ProbCut, the singular-extension family (with multi-cut
+  and negative extensions) and internal iterative reduction** were rebuilt on
+  the new core and fitted together: +50.5 ± 10.9 Elo (RAR-S84).
+- **The quiescence search** was rebuilt: fail-high scores are interpolated
+  toward the bound, quiescence hash entries remember whether they came from a
+  principal-variation node, a move-count limit exempts checks and recaptures,
+  hopeless evasions are pruned, and its margins were refitted: +4.4 ± 2.9 Elo
+  (RAR-S88).
+- **A speed pass** on the new search: the move picker leaves a quiet stage as
+  soon as it is exhausted, moves are scored in place, and the hash entry of
+  the next position is prefetched before the move is made — +8.85%, +6.93%
+  and +1.69% nodes per second, and +35.5 ± 9.0 Elo in games against the
+  search before it (RAR-P28, RAR-P31, RAR-S98).
+- **Tablebase results are reported as decided.** With `SyzygyPath` set, a
+  tablebase win or loss prints as `cp 20000` or `cp -20000`, one less for each
+  ply from the root, instead of a large evaluation, and the principal
+  variation is continued through the tables when time allows, so the line and
+  the ponder move are complete. With tables configured: +11.4 ± 8.5 Elo (RAR-S94); every
+  one of 453 clean tablebase wins was converted in a 1,500-game endgame read
+  (RAR-S93).
+- The search code was reorganised into modules without changing a node, and
+  ran 6.3% faster for it (RAR-P24).
 
 ### Fixed
 
@@ -28,6 +84,13 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   search's clock — which lost games late in blitz whenever a GUI or harness
   started a fresh engine per game. Every table is now built at start-up, and a
   multi-threaded search no longer converts the hash table on the clock either.
+- **A time loss with tablebases.** Continuing the principal variation through
+  the tables could run a fast game's clock out; it now starts only when enough
+  time is left (RAR-S97). A rare loss remains possible in a very fast game
+  when tablebase files are first read from disk.
+- **One-move lines at tablebase roots.** A root resolved by the tablebases
+  reported a single move and stopped deepening early; it now searches and
+  reports a full line.
 - **`bestmove` naming a move no `info` line reported.** A multi-threaded search
   picks its move by a vote across threads; the winning thread's line is now
   reported before `bestmove`.
@@ -51,6 +114,20 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **An unreachable triple check was accepted.** A FEN whose side to move is in
   check from more than two pieces is now rejected like any other invalid FEN;
   no move gives three checks at once.
+
+### Removed
+
+- The 2.4.0 search, which this release carried as a build option
+  (`--no-default-features`) until the new one was accepted, and the build
+  features that selected each new cluster while it was tested.
+- Machinery that had no effect at its defaults: 44 inert search parameters,
+  root-confidence snapshots and a helper-thread skip rule (removed without
+  changing a node), later 64 tuning constants nothing read and 14 switches
+  whose question had been decided, with their options in the tuning build
+  (217 → 153 options; the shipped build's options are unchanged apart from
+  `MultiPV`), 73 diagnostic counters with no reader, a never-reached guard in
+  the principal-variation search, and the `ablate` build feature. The last
+  round of removals ran 1.16% faster (RAR-P34).
 
 ## [2.4.0] - 2026-09-11
 

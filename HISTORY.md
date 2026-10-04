@@ -59,6 +59,26 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-04 — PLAN B.10 IMPLEMENTED: Rarog 2.5.0 prepared; Phase B closes
+  with the `v2.5.0` tag.** `3575558` bumps the version to 2.5.0 on the frozen
+  B.9 head (engine source `ee02ed1`), reproducing `bench 13` 11,171,726 / EBF
+  2.512, with clippy clean and debug 374 / release 375 tests passing. The
+  release is licensed under 2.4.0's rule, which the maintainer adopted for
+  2.5.0 on 2026-10-04, by three direct reads against the 2.4.0 release:
+  **+272.4 at `3+0.03` on one thread** (400 games, RAR-M64), **+260.5 ± 16.0
+  at `10+0.1`** (1,000 games, RAR-M65) and **+322.7 on four threads** (400
+  games, RAR-M66). **What 2.5.0 contains**, each individually gated: the
+  selectivity core (+65.09 ± 23.26 unfitted, +138.60 ± 30.66 fitted) and its
+  re-tune (+13.1 ± 5.4), cluster 2 (+50.5 ± 10.9), cluster 3 (+4.4 ± 2.9),
+  the tablebase repair (+11.4 ± 8.5 with tables) and the speed pass
+  (+35.5 ± 9.0) — sequential gates under different baselines, **not
+  additive**; plus `MultiPV`, the cleanup and the protocol and time-loss
+  repairs the changelog lists. It runs at 73.8% of 2.4.0's bench speed and
+  beats the frozen oracle by +24.24 ± 8.01. The tag-and-branch review
+  recommends deleting three local diagnostic branches, whose diffs are now in
+  `analysis/arm_patches/`, and keeps the `arm/*` and `oracle/*` tags with
+  their retirement conditions. The PR, merge, tag and GitHub release are the
+  maintainer's.
 - **2026-10-03 — PLAN B.9 CLOSED: the Phase B record; the search head frozen.**
   The B.9 head (engine source `ee02ed1`, 11,171,726 / EBF 2.512, binary
   `aac92114…` built at `24aefb4`) beats the frozen oracle by **+24.24 ± 8.01

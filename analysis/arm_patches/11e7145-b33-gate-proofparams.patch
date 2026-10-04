@@ -1,0 +1,140 @@
+Arm 11e7145  (gate candidate: RAR-S83 block-2 theta baked (all 36, the three shared LMR bases included); B.3.4 gate binary only)
+Author-date: 2026-09-27 14:17:39 +0200
+Applies to: f5d16d8  (reachable from dev; the commit was on branch b33-gate)
+Command:    git diff <base> <arm>
+
+diff --git a/src/search/params.rs b/src/search/params.rs
+index 8204c45..c656469 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -569,14 +569,14 @@ search_params! {
+     lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
+     lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
+     lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;
+-    lmr_quiet = 1_421, "CoreLmrQuiet", 0..=6144;
++    lmr_quiet = 1_932, "CoreLmrQuiet", 0..=6144;
+     lmr_quiet_history = 316, "CoreLmrQuietHistory", 0..=1024;
+     lmr_alpha_gap = 195, "CoreLmrAlphaGap", 0..=2048;
+     /// Bounds of `alpha - estimated score` in the quiet term, evaluation
+     /// units, seeded at the donor's values like the improvement bounds.
+     lmr_alpha_gap_lo = -69, "CoreLmrAlphaGapLo", -512..=0;
+     lmr_alpha_gap_hi = 84, "CoreLmrAlphaGapHi", 0..=512;
+-    lmr_noisy = 779, "CoreLmrNoisy", 0..=6144;
++    lmr_noisy = 830, "CoreLmrNoisy", 0..=6144;
+     lmr_noisy_history = 182, "CoreLmrNoisyHistory", 0..=1024;
+     lmr_critical_ply = 171, "CoreLmrCriticalPly", 0..=512;
+     lmr_pv = 399, "CoreLmrPv", 0..=2048;
+@@ -586,7 +586,7 @@ search_params! {
+     lmr_tt_pv = 179, "CoreLmrTtPv", 0..=2048;
+     lmr_tt_pv_score = 571, "CoreLmrTtPvScore", 0..=2048;
+     lmr_tt_pv_depth = 633, "CoreLmrTtPvDepth", 0..=2048;
+-    lmr_cut_node = 2_354, "CoreLmrCutNode", 0..=4096;
++    lmr_cut_node = 2_071, "CoreLmrCutNode", 0..=4096;
+     lmr_cut_node_no_tt_move = 2_073, "CoreLmrCutNodeNoTtMove", 0..=4096;
+     lmr_gives_check = 1_030, "CoreLmrGivesCheck", 0..=4096;
+     lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
+@@ -643,18 +643,18 @@ search_params! {
+     /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
+     /// (child cutoffs < 2))`, evaluation units; the depth term is in
+     /// quarters of a unit per ply.
+-    nmp_base = 166, "CoreNmpBase", 0..=400;
+-    nmp_depth = 17, "CoreNmpDepth", 0..=80;
+-    nmp_tt_pv = 52, "CoreNmpTtPv", 0..=200;
+-    nmp_improvement = 48, "CoreNmpImprovement", 0..=200;
+-    nmp_cutoff = 12, "CoreNmpCutoff", 0..=60;
++    nmp_base = 170, "CoreNmpBase", 0..=400;
++    nmp_depth = 16, "CoreNmpDepth", 0..=80;
++    nmp_tt_pv = 48, "CoreNmpTtPv", 0..=200;
++    nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
++    nmp_cutoff = 11, "CoreNmpCutoff", 0..=60;
+     /// Reduction in 1024ths of a ply: `base + improving_term * improving +
+     /// depth_term * depth + eval * clamp(estimate - beta, 0, clamp)/128`.
+-    nmp_r_base = 4_234, "CoreNmpRBase", 2048..=8192;
+-    nmp_r_improving = 976, "CoreNmpRImproving", 0..=2048;
+-    nmp_r_depth = 258, "CoreNmpRDepth", 64..=640;
+-    nmp_r_eval = 1_073, "CoreNmpREval", 0..=3072;
+-    nmp_r_clamp = 562, "CoreNmpRClamp", 128..=1536;
++    nmp_r_base = 4_203, "CoreNmpRBase", 2048..=8192;
++    nmp_r_improving = 949, "CoreNmpRImproving", 0..=2048;
++    nmp_r_depth = 253, "CoreNmpRDepth", 64..=640;
++    nmp_r_eval = 1_092, "CoreNmpREval", 0..=3072;
++    nmp_r_clamp = 534, "CoreNmpRClamp", 128..=1536;
+     /// From this depth a null fail-high outside a verification region is
+     /// verified by a search with the null move disabled over the region.
+     nmp_verify_depth = 16, "CoreNmpVerifyDepth", 4..=32;
+@@ -666,18 +666,18 @@ search_params! {
+     probcut_nodes = 0, "CoreProbcutNodes", 0..=1;
+     /// `probcut_beta = beta + base - improving_term * improving`, evaluation
+     /// units; the base is Rarog's fitted `ProbCutMargin`.
+-    probcut_base = 180, "CoreProbcutBase", 50..=400;
+-    probcut_improving = 42, "CoreProbcutImproving", 0..=150;
++    probcut_base = 177, "CoreProbcutBase", 50..=400;
++    probcut_improving = 44, "CoreProbcutImproving", 0..=150;
+     /// Captures searched at most per node.
+     probcut_move_cap = 5, "CoreProbcutMoveCap", 1..=16;
+     /// The verification depth falls one ply below `depth - 4 - improving`
+     /// for every `div` units the qsearch pass cleared `probcut_beta` by.
+-    probcut_depth_div = 142, "CoreProbcutDepthDiv", 48..=512;
++    probcut_depth_div = 131, "CoreProbcutDepthDiv", 48..=512;
+     /// A shallower verification must clear `probcut_beta` plus this per ply
+     /// it saved.
+-    probcut_adjust = 97, "CoreProbcutAdjust", 0..=300;
++    probcut_adjust = 105, "CoreProbcutAdjust", 0..=300;
+     /// A cut returns this many 1024ths of the way from its score to beta.
+-    probcut_lerp = 273, "CoreProbcutLerp", 0..=1024;
++    probcut_lerp = 240, "CoreProbcutLerp", 0..=1024;
+     /// Categorical, never an SPSA coordinate. 1 returns `beta + margin`
+     /// before the capture search when a stored lower bound at most four
+     /// plies shallower already clears it; 0 does not.
+@@ -689,7 +689,7 @@ search_params! {
+     /// node searched with a null window)) / 16`: sixteenths of an
+     /// evaluation unit per ply of span. 64 is Rarog's fitted `4 * depth`;
+     /// both donors convert to about 8.
+-    singular_margin = 16, "CoreSingularMargin", 4..=192;
++    singular_margin = 17, "CoreSingularMargin", 4..=192;
+     /// The span of the margin when the stored bound is exact, in sixteenths
+     /// of the depth, rounded up; a non-exact bound spans the whole depth.
+     sing_exact_span = 4, "CoreSingExactSpan", 2..=16;
+@@ -706,20 +706,20 @@ search_params! {
+     /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
+     /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128
+     /// + base`; the base, zero as in the donor, sets the bar off the PV.
+-    sing_double_base = -4, "CoreSingDoubleBase", -100..=200;
+-    sing_double_pv = 88, "CoreSingDoublePv", 0..=300;
+-    sing_double_not_tt_pv = 25, "CoreSingDoubleNotTtPv", 0..=100;
+-    sing_double_quiet = 9, "CoreSingDoubleQuiet", 0..=50;
+-    sing_double_corr = 8, "CoreSingDoubleCorr", 0..=50;
++    sing_double_base = -2, "CoreSingDoubleBase", -100..=200;
++    sing_double_pv = 101, "CoreSingDoublePv", 0..=300;
++    sing_double_not_tt_pv = 26, "CoreSingDoubleNotTtPv", 0..=100;
++    sing_double_quiet = 8, "CoreSingDoubleQuiet", 0..=50;
++    sing_double_corr = 10, "CoreSingDoubleCorr", 0..=50;
+     /// Three times at this margin, the same terms plus a base.
+     sing_triple_pv = 119, "CoreSingTriplePv", 0..=350;
+-    sing_triple_not_tt_pv = 24, "CoreSingTripleNotTtPv", 0..=100;
+-    sing_triple_quiet = 11, "CoreSingTripleQuiet", 0..=50;
++    sing_triple_not_tt_pv = 23, "CoreSingTripleNotTtPv", 0..=100;
++    sing_triple_quiet = 7, "CoreSingTripleQuiet", 0..=50;
+     sing_triple_corr = 7, "CoreSingTripleCorr", 0..=50;
+-    sing_triple_base = 14, "CoreSingTripleBase", 0..=80;
++    sing_triple_base = 15, "CoreSingTripleBase", 0..=80;
+     /// A multi-cut returns this many 1024ths of the way from its score to
+     /// beta.
+-    sing_multicut_lerp = 403, "CoreSingMulticutLerp", 0..=1024;
++    sing_multicut_lerp = 383, "CoreSingMulticutLerp", 0..=1024;
+     /// Categorical, never an SPSA coordinate. An exclusion search that
+     /// fails high without a multi-cut or a demotion shortens the TT move:
+     /// at 0 by three plies when the TT score is at or above beta or at an
+@@ -733,9 +733,9 @@ search_params! {
+     /// Late moves at a node whose TT move beat the exclusion search reduce
+     /// more: `clamp(slope * (tt_move_score - singular_score - offset)/128, 0,
+     /// cap)`, in 1024ths of a ply.
+-    lmr_singular_slope = 939, "CoreLmrSingularSlope", 0..=3072;
+-    lmr_singular_offset = 87, "CoreLmrSingularOffset", 0..=300;
+-    lmr_singular_cap = 1_982, "CoreLmrSingularCap", 0..=4096;
++    lmr_singular_slope = 1_123, "CoreLmrSingularSlope", 0..=3072;
++    lmr_singular_offset = 78, "CoreLmrSingularOffset", 0..=300;
++    lmr_singular_cap = 2_051, "CoreLmrSingularCap", 0..=4096;
+ }
+ 
+ #[cfg(test)]
