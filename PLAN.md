@@ -2762,8 +2762,9 @@ diagnostics; two rejections stop B.
   fingerprinted and hashed; the release binary's bench equal to the B.9
   head's. Cut by the maintainer pushing a `v2.5.0` tag: E.3.1's tag-driven
   flow if it has landed, otherwise A.9's squash to `master`. The release
-  changes no search or evaluation. **Open for the maintainer before the
-  cut:** PLAN §4 gives 2.4.0 a rule (STC over its predecessor with the lower
+  changes no search or evaluation. **Decided by the maintainer 2026-10-04:** 2.4.0's rule is adopted for
+  2.5.0 and is met (PLAN §4), and fastchess and weather-factory stay as the
+  backup harness (AGENTS, *Measurement*). The question as it stood: PLAN §4 gives 2.4.0 a rule (STC over its predecessor with the lower
   bound above +25, positive LTC and 4T lower bounds) and 2.5.0 none; B.9
   measured STC at 1T only (+272.4 head-to-head over 2.4.0 in RAR-M64), so
   B.10 either registers LTC and 4T reads against 2.4.0 or records the
@@ -2782,7 +2783,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); the release rule's LTC and 4T reads are in: RAR-M65 **+260.5 ± 16.0** at `10+0.1`, RAR-M66 **+322.7** over 2.4.0 at four threads (performance 3,340, all four E.2 targets passed at 4T); with RAR-M64's STC +272.4, every lower bound 2.4.0's rule asks for is positive. Open: the maintainer adopts the rule for 2.5.0 (it is met) and decides AGENTS' fastchess clause; then the release mechanics |
+| B.10 | READY_FOR_IMPLEMENTATION | M | Added 2026-10-03 by maintainer decision; not started. Release 2.5.0 from the frozen B.9 head (`ee02ed1`, 11,171,726 / EBF 2.512); the release rule's LTC and 4T reads are in: RAR-M65 **+260.5 ± 16.0** at `10+0.1`, RAR-M66 **+322.7** over 2.4.0 at four threads (performance 3,340, all four E.2 targets passed at 4T); with RAR-M64's STC +272.4, every lower bound 2.4.0's rule asks for is positive. Decided 2026-10-04: the rule is adopted and met; fastchess and weather-factory stay as the backup. Open: the release mechanics only (version, changelog, documents, assets, the maintainer's tag) |
 
 ## Phase C — Evaluation programme
 
@@ -3310,6 +3311,9 @@ and adjudication never change after games are seen.
   row and whose deficit meters are recorded at the checkpoint before it.
 - 3.0.0 requires the E.2 gate met; 2.4.0 requires at least +40 Elo at STC over
   2.3.2 with the lower bound above +25, positive LTC and 4T lower bounds.
+- 2.5.0 adopts 2.4.0's rule against 2.4.0 (maintainer decision 2026-10-04)
+  and meets it: STC +272.4 (95% about +245 .. +308, RAR-M64), `10+0.1`
+  +260.5 ± 16.0 (RAR-M65), 4T +322.7 (95% +289 .. +362, RAR-M66).
 - NNUE releases require a win over the last classical release at STC, LTC and
   4T, and a clean platform matrix.
 - Tag, push and publish only on maintainer instruction. From E.3.1 on, a

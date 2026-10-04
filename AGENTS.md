@@ -141,8 +141,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   and gauntlets; `tools/colosseum.ps1` drives it from the committed run files
   and carries every guard. fastchess and weather-factory (`tools/sprt.ps1`,
   `tools/spsa.ps1`) stay installed and working as the backup and the second
-  opinion until at least release 2.5.0; retire nothing before then. PROCESS's
-  *Harness* section names the cross-check triggers.
+  opinion (reviewed at 2.5.0 on 2026-10-04 and kept; they retire only on a
+  maintainer decision recorded here). PROCESS's *Harness* section names the
+  cross-check triggers.
 - Never measure a `--all-features` binary: it enables `texel`, which bypasses
   the eval and pawn caches. If a number you are not changing changes, check
   the binary.
