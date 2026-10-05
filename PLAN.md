@@ -2786,7 +2786,7 @@ diagnostics; two rejections stop B.
     ignored**, release **375 / 0 / 2**; `bench 13` **11,171,726 / EBF
     2.512**, unchanged; `uci` answers `id name Rarog 2.5.0`.
   - **Documents** (the commit that records this): `CHANGELOG.md`'s
-    `[2.5.0] - 2026-10-04` section, licensed by the three direct reads
+    `[2.5.0] - 2026-10-05` section, licensed by the three direct reads
     against 2.4.0 with the non-additivity caution, the B.9 checkpoint and the
     NPS cost stated plainly, and a fresh `[Unreleased]`; `README.md`'s
     tablebase score display and the full command list. The shipped build's
