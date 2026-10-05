@@ -24,6 +24,12 @@ median cycle is disturbed, and three or more mean the read is repeated.
 Every build is checked against its manifest hash before and after the read,
 every run must print its own pool's fingerprint (from that pool's manifest, so a
 release baseline can be read against the head), and the pools must be distinct bytes.
+
+An arm may instead differ by UCI options on a tune build (`--cand-option
+LazyMargin=2000`, sent as `setoption` before the bench). Then one pool may serve
+both arms, which cancels each build's PGO offset (the unpaired interval below is
+conservative for that design), the options must differ, and an option that
+changes the search names that arm's fingerprint (`--cand-fingerprint`).
 """
 from __future__ import annotations
 
@@ -85,9 +91,35 @@ def parse_runs(output: str, exe: str, fingerprint: int) -> list[dict]:
     return runs
 
 
-def read(exe: Path, fingerprint: int) -> list[dict]:
-    out = subprocess.run([str(exe)], input="bench 13 3\n", capture_output=True, text=True, timeout=900).stdout
+def parse_option(text: str) -> tuple[str, str]:
+    """`Name=Value` as given on the command line."""
+    name, sep, value = text.partition("=")
+    if not sep or not name.strip() or not value.strip():
+        raise SystemExit(f"option {text!r}: expected NAME=VALUE")
+    return name.strip(), value.strip()
+
+
+def bench_input(options) -> str:
+    """The engine's stdin: each option set, then the bench."""
+    return "".join(f"setoption name {n} value {v}\n" for n, v in options) + "bench 13 3\n"
+
+
+def read(exe: Path, fingerprint: int, options=()) -> list[dict]:
+    out = subprocess.run([str(exe)], input=bench_input(options), capture_output=True, text=True,
+                         timeout=900).stdout
     return parse_runs(out, str(exe), fingerprint)
+
+
+def check_arms(base_dir: Path, cand_dir: Path, builds: dict, options: dict) -> None:
+    """Distinct pools must be distinct bytes; one pool on both arms is a
+    same-binary comparison and needs the arms' options to differ."""
+    if base_dir.resolve() == cand_dir.resolve():
+        if list(options["base"]) == list(options["cand"]):
+            raise SystemExit("one pool on both arms needs the arms' options to differ")
+        return
+    digests = {hashlib.sha256(e.read_bytes()).hexdigest() for arm in builds for e in builds[arm]}
+    if len(digests) != sum(len(v) for v in builds.values()):
+        raise SystemExit("two pool binaries are identical")
 
 
 def cpu_load() -> float | None:
@@ -174,6 +206,9 @@ def report(record: dict, no_regression: bool) -> str:
     lines = [
         f"== {record['label']}",
         f"base {record['arms']['base']['pool']} ({est['builds'][0]} builds)  cand {record['arms']['cand']['pool']} ({est['builds'][1]} builds)",
+        "options: " + "; ".join(
+            f"{arm} " + (", ".join(f"{n}={v}" for n, v in record['arms'][arm].get('options', [])) or "defaults")
+            + f" at {record['arms'][arm].get('fingerprint', '?')}" for arm in ("base", "cand")),
         f"cycles {est['cycles']}; CPU before each: {[c.get('cpu_before') for c in record['cycles']]}; after {record.get('cpu_after')}",
         "per-build medians (nps): base " + ", ".join(f"{m:,.0f}" for m in est["base_medians"])
         + " | cand " + ", ".join(f"{m:,.0f}" for m in est["cand_medians"]),
@@ -188,7 +223,8 @@ def report(record: dict, no_regression: bool) -> str:
 # --- the read ----------------------------------------------------------------
 
 def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: int,
-               fingerprints: dict[str, int]) -> None:
+               fingerprints: dict[str, int], options: dict | None = None) -> None:
+    options = options or {}
     arms = list(builds)
     order_forward = [(arm, i) for arm in arms for i in range(len(builds[arm]))]
     for _ in range(cycles):
@@ -197,7 +233,7 @@ def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: i
         order = order_forward if number % 2 == 0 else order_forward[::-1]
         readings = {arm: {} for arm in arms}
         for arm, i in order:
-            readings[arm][str(i)] = read(builds[arm][i], fingerprints[arm])
+            readings[arm][str(i)] = read(builds[arm][i], fingerprints[arm], options.get(arm, ()))
         record["cycles"].append({"cycle": number, "cpu_before": cpu, "readings": readings,
                                  "finished": time.strftime("%Y-%m-%dT%H:%M:%S")})
         (out / "raw.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
@@ -214,6 +250,12 @@ def main() -> int:
     parser.add_argument("--extend", type=Path, help="add four cycles to this read (step 2)")
     parser.add_argument("--report", type=Path, help="recompute a read from its raw.json")
     parser.add_argument("--no-regression", action="store_true")
+    parser.add_argument("--base-option", action="append", default=[], metavar="NAME=VALUE",
+                        help="setoption sent to every base run (tune builds)")
+    parser.add_argument("--cand-option", action="append", default=[], metavar="NAME=VALUE",
+                        help="setoption sent to every candidate run (tune builds)")
+    parser.add_argument("--base-fingerprint", type=int, help="the base arm's bench 13 nodes, if not the pool's")
+    parser.add_argument("--cand-fingerprint", type=int, help="the candidate arm's bench 13 nodes, if not the pool's")
     args = parser.parse_args()
 
     if args.report:
@@ -227,7 +269,9 @@ def main() -> int:
         if len(record["cycles"]) != 2:
             raise SystemExit(f"{out}: step 2 extends a two-cycle read, this one has {len(record['cycles'])}")
         builds = {arm: pool(Path(record["arms"][arm]["pool"])) for arm in ("base", "cand")}
-        fingerprints = {arm: pool_fingerprint(Path(record["arms"][arm]["pool"])) for arm in builds}
+        fingerprints = {arm: record["arms"][arm].get("fingerprint")
+                        or pool_fingerprint(Path(record["arms"][arm]["pool"])) for arm in builds}
+        options = {arm: [tuple(o) for o in record["arms"][arm].get("options", [])] for arm in builds}
         for arm in builds:
             if [str(e) for e in builds[arm]] != record["arms"][arm]["builds"]:
                 raise SystemExit(f"{out}: the {arm} pool changed since step 1")
@@ -240,23 +284,24 @@ def main() -> int:
         if (out / "raw.json").exists():
             raise SystemExit(f"{out}/raw.json exists: --extend it or choose another directory")
         builds = {"base": pool(args.base), "cand": pool(args.cand)}
-        fingerprints = {"base": pool_fingerprint(args.base), "cand": pool_fingerprint(args.cand)}
-        digests = {hashlib.sha256(e.read_bytes()).hexdigest() for arm in builds for e in builds[arm]}
-        if len(digests) != sum(len(v) for v in builds.values()):
-            raise SystemExit("two pool binaries are identical")
+        fingerprints = {"base": args.base_fingerprint or pool_fingerprint(args.base),
+                        "cand": args.cand_fingerprint or pool_fingerprint(args.cand)}
+        options = {"base": [parse_option(o) for o in args.base_option],
+                   "cand": [parse_option(o) for o in args.cand_option]}
+        check_arms(args.base, args.cand, builds, options)
         record = {
             "label": args.label, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "no_regression": args.no_regression,
             "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]],
-                           "fingerprint": fingerprints[arm]}
+                           "fingerprint": fingerprints[arm], "options": options[arm]}
                      for arm, path in (("base", args.base), ("cand", args.cand))},
             "cycles": [],
         }
         for arm in builds:
             for exe in builds[arm]:
-                read(exe, fingerprints[arm])  # warm-up, and the fingerprint check
+                read(exe, fingerprints[arm], options[arm])  # warm-up, and the fingerprint check
         cycles = args.cycles
 
-    run_cycles(record, out, builds, cycles, fingerprints)
+    run_cycles(record, out, builds, cycles, fingerprints, options)
     record["cpu_after"] = cpu_load()
     record["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     (out / "raw.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
