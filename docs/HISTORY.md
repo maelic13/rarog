@@ -59,6 +59,19 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-05 — Documents restructured so sessions read less (maintainer
+  request).** PLAN, PROCESS, HISTORY and EXPERIMENTS moved to `docs/`; GUIDE
+  stays at the root. Closed Phases A and B and step E.3.1 moved verbatim to
+  `docs/archive/PLAN-closed-2026-10-05.md` (PLAN 240 KB → 57 KB), after
+  B.9's search freeze became a Phase C rule and the archive-tag item a
+  self-contained GUIDE hold. GUIDE's board is generated from PLAN's step
+  heads by `tools/diag/guide_board.py`, and `check_guide.py` fails on a stale
+  board. The ledger became an index plus 244 entry files in
+  `docs/experiments/` (index 604 KB → 53 KB), held in step by
+  `check_guide.py`; the split also repaired three tables whose blank lines
+  had left 48 rows unrendered on GitHub and six rows whose extra cells GitHub
+  dropped. Every move was checked to keep the removed text verbatim.
+
 - **2026-10-05 — `dev` reopened at 2.6.0-dev; PLAN E.3.1 DONE; tags
   reviewed.** `d6998db` bumps the version to 2.6.0-dev (PROCESS *Release*
   step 6): `bench 13` 11,171,726 / EBF 2.512 unchanged, `id name Rarog

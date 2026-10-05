@@ -1,0 +1,19 @@
+# RAR-P16 — Finish the two outstanding `origin/arm_fix` changes on current dev and measure them on Apple Silicon
+
+Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+## Experiment and conditions
+
+Finish the two outstanding `origin/arm_fix` changes on current dev and measure them on Apple Silicon. MacBook Air M4 (4P+6E, fanless), macOS 26.6.1, rustc 1.97.1. Closes RAR-P07. **RECIPE — reconstructible without `arm_fix`, which is the only ref carrying `0ddc8e5`/`3ee4660`.** (B) eval hoist: in `src/eval.rs`, insert `let atk = &*ATTACKS;` at the top of the slider feature group and of the king-safety function, then rewrite the 9 `ATTACKS.` call sites in those two bodies to `atk.` — dev already carried the identical hoist at a third site, this makes all three consistent. (C) TT wrapper: add `LOCAL_CLUSTERS_PER_BLOCK = 4` and `SHARED_CLUSTERS_PER_BLOCK = 2` under `cfg(all(target_os="macos", target_arch="aarch64"))` and 1 otherwise; wrap in `LocalBlock { clusters: [LocalCluster; N] }` and `SharedBlock { clusters: [SharedCluster; N] }`, `repr(align(128))` on that cfg and align(32)/align(64) otherwise; change `Vec<LocalCluster>` to `Vec<LocalBlock>` and `Box<[SharedCluster]>` to `Box<[SharedBlock]>`, reaching a cluster as `blocks[i / N].clusters[i % N]`; add 4 const asserts pinning `size_of(Block) == N * size_of(Cluster)` and `align == size`. Keep dev's 4.8c comment and `AGE_MASK`; hoist `let age = table.age` above the `cluster_mut` call, which the whole-table mutable borrow now requires. **MEASUREMENT:** 4 builds via `cargo xtask build --arch arm64 --pgo` (A baseline, B, C, D = B+C), 12 interleaved `bench 13` rounds driven over stdin, 1 thread, arm order ROTATED each round so each arm holds each slot exactly 3 times.
+
+## Result / disposition
+
+**NEITHER CHANGE IS MEASURABLE; `3ee4660` stays REJECTED, third time.** Medians: A 5,131,610; B 5,137,678 (**+0.12%**); C 5,125,558 (**-0.12%**); D 5,129,591 (**-0.04%**) — every arm inside RAR-P13's ±0.5% resolvable floor. Paired per-round wins over baseline: B **5/12**, C **4/12**, D **3/12** — coin flips, against the 12/12 with zero distribution overlap that carried the RAR-P11 prefetch. MAD 0.20–0.47%; slot spread 0.20% after rotation. **FINGERPRINT proving each rebuild matched: all four arms 6,519,711 / EBF 2.449**, and all four pass `verify-isa --arch arm64` with 38 prefetch sites. The eval hoist is kept as CONSISTENCY ONLY, with no speed claim; the TT wrapper is NOT merged and exists in no ref — arm C is rebuildable only from the recipe in this row, which is deliberate: it is a rejected no-op and not worth a branch.
+
+## Conditional lesson and retry trigger
+
+**The layout premise was directly falsifiable, and false.** `3ee4660` exists so "the allocator cannot leave the TT base only 32/64-byte aligned" — but a standalone probe allocating the exact shapes (`Vec` of `repr(align(32))` 32 B and `repr(align(64))` 64 B elements) shows macOS returns 16 MiB-granular, hence already 128 B-aligned, bases at Hash = 1, 16, 64 and 256 MB. The wrapper cannot move a single address, so arm C is flat for a mechanical reason rather than by luck. That probe cost two minutes and EXPLAINED a null that 12 rounds could only bound — when an optimisation rests on a stated premise, test the premise, not just the outcome. ⚠ The host was NOT idle (load ~2.5, including the app driving the run); rotation plus median/MAD is what makes this null trustworthy, and the floor is RAR-P13's ±0.5%, not better. ⚠ A `debug_assert_eq!` guards block divisibility in (C); it is unreachable only because `mb.max(1)` forces power >= 16384, and would truncate silently in release if that ever changed. Retry trigger: only a Threads>1 ARM result contradicting RAR-P12 reopens `3ee4660`.
+
+## Source
+
+`src/eval.rs` (arm B, merged to dev); arm C measured then discarded; recipe above is self-contained and cites no branch

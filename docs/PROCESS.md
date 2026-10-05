@@ -50,13 +50,16 @@ calibration, never proof that the outcome was predicted.
 
 ### Experiment registration
 
-Register an experiment as one row in the `docs/EXPERIMENTS.md` section that owns
-it, before any games. When the registration is longer than a row, write it in
-an `analysis/` packet with the fields below and cite the packet from the row;
-append the result and calibration there without rewriting the prediction.
+Register an experiment before any games as its own file,
+`docs/experiments/RAR-<area><number>.md`, with the fields below, and add one
+index row (ID linked to the file, short title, disposition) to the
+`docs/EXPERIMENTS.md` section that owns it. Append the result and
+calibration to the file without rewriting the prediction, and update the
+index row's disposition in the same commit. A long analysis goes in an
+`analysis/` packet the entry cites.
 
 ```markdown
-### RAR-<area><number> — <short name>
+# RAR-<area><number> — <short name>
 
 - Date / owner:
 - Baseline SHA / candidate SHA / dirty-diff hash:
@@ -116,7 +119,8 @@ games until the end destroys attribution and lets losing structures hide.
 1. **Audit** — name the problem, its Rust owner, all interacting consumers and
    the local diagnostic population. Update `docs/PLAN.md` first if the evidence
    contradicts the planned order.
-2. **Register** — add an `docs/EXPERIMENTS.md` ID with hypothesis, baseline SHA,
+2. **Register** — add a ledger entry (`docs/experiments/<ID>.md` and its
+   index row in `docs/EXPERIMENTS.md`) with hypothesis, baseline SHA,
    candidate scope, expected direction, gate, cap and stop rule, before games.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;

@@ -271,9 +271,10 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 ## Gating
 
 - The strength unit is one dependency-complete, locally fitted cluster;
-  internal sub-steps get no gates of their own. Register it in `docs/EXPERIMENTS.md`
-  (hypothesis, baseline SHA, gate, cap, stop rule) before any games, and never
-  change bounds, cap, book or adjudication after seeing games.
+  internal sub-steps get no gates of their own. Register it before any games
+  as a ledger entry, `docs/experiments/<ID>.md` with its index row in
+  `docs/EXPERIMENTS.md` (hypothesis, baseline SHA, gate, cap, stop rule), and
+  never change bounds, cap, book or adjudication after seeing games.
 - `[0,3]` nElo is the default bracket. Widen only for a genuinely large prior
   and say why; a wide bracket resolves a large effect fast (RAR-S57, `[3,10]`,
   2,838 games). Compute the games at the expected value from RAR-M10 first.

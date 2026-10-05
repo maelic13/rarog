@@ -54,6 +54,12 @@ are not reliably visible by reading:
    what PLAN generates fails here. The checks above still run over the
    generated board, so a generator defect cannot pass silently.
 
+9. **A ledger index out of step with its entries.** Since 2026-10-05 each
+   experiment is `docs/experiments/<ID>.md` and `docs/EXPERIMENTS.md` is
+   its index. Every index row must link an entry file that exists, every
+   entry file must have exactly one index row, and each file's heading must
+   name its own ID.
+
 The child pattern is checked against the format GUIDE actually uses --
 `- [ ] **A.2.1** ...`, bold, lettered phase, dotted step. The first version
 of this checker required a bare `4.9.1`, matched no line in the file, and so
@@ -259,6 +265,36 @@ def closed_phase_problems(lines):
     return closed, problems
 
 
+LEDGER = ROOT / "docs" / "EXPERIMENTS.md"
+ENTRIES = ROOT / "docs" / "experiments"
+INDEX_ROW = re.compile(r"^\| \[(RAR-[A-Z]+\d+)\]\(experiments/(RAR-[A-Z]+\d+)\.md\) \|")
+
+
+def ledger_problems(ledger_text, headings):
+    """`headings` maps each entry file's ID (its name without .md) to its
+    first line. Returns the disagreements between index and entries."""
+    problems = []
+    indexed = []
+    for n, line in enumerate(ledger_text.splitlines(), 1):
+        m = INDEX_ROW.match(line)
+        if m:
+            if m.group(1) != m.group(2):
+                problems.append("docs/EXPERIMENTS.md:%d: %s links %s.md"
+                                % (n, m.group(1), m.group(2)))
+            indexed.append(m.group(1))
+    for rid in sorted({r for r in indexed if indexed.count(r) > 1}):
+        problems.append("docs/EXPERIMENTS.md: %s is indexed more than once" % rid)
+    for rid in sorted(set(indexed) - set(headings)):
+        problems.append("docs/EXPERIMENTS.md: %s has no docs/experiments/%s.md" % (rid, rid))
+    for rid in sorted(set(headings) - set(indexed)):
+        problems.append("docs/experiments/%s.md has no index row in docs/EXPERIMENTS.md" % rid)
+    for rid, first in sorted(headings.items()):
+        if not first.startswith("# %s — " % rid):
+            problems.append("docs/experiments/%s.md: heading does not read '# %s — <title>'"
+                            % (rid, rid))
+    return problems
+
+
 def repository_path_exists(path):
     return (ROOT / path.rstrip("/")).exists()
 
@@ -311,6 +347,17 @@ def self_test():
         sys.stdout.write("FAIL: closed-phase self-test got %r, %r\n" % (closed, closed_problems))
         return 1
     sys.stdout.write("closed-phase negative self-test: PASS (1 checkbox under a closed phase)\n")
+    ledger = ("| ID | Experiment | Disposition |\n|---|---|---|\n"
+              "| [RAR-S1](experiments/RAR-S1.md) | a | b |\n"
+              "| [RAR-S2](experiments/RAR-S3.md) | a | b |\n"
+              "| [RAR-S4](experiments/RAR-S4.md) | a | b |\n")
+    found = ledger_problems(ledger, {"RAR-S1": "# RAR-S1 — a", "RAR-S3": "# RAR-S3 — c",
+                                     "RAR-S5": "# RAR-S5 — e", "RAR-S6": "RAR-S6 untitled"})
+    # S2 links S3's file; S2 and S4 lack files; S3, S5 and S6 lack rows; S6's heading.
+    if len(found) != 7:
+        sys.stdout.write("FAIL: ledger self-test expected 7 problems, got %r\n" % found)
+        return 1
+    sys.stdout.write("ledger negative self-test: PASS (7 disagreements detected)\n")
     return guide_board.self_test()
 
 
@@ -448,6 +495,10 @@ def main():
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
         problems.extend(guide_board.board_problems("\n".join(lines), plan_text))
+        headings = {p.stem: (p.read_text(encoding="utf-8").splitlines() or [""])[0]
+                    for p in ENTRIES.glob("*.md")} if ENTRIES.is_dir() else {}
+        ledger_text = LEDGER.read_text(encoding="utf-8") if LEDGER.is_file() else ""
+        problems.extend(ledger_problems(ledger_text, headings))
         agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
         problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
         texts = {name: (ROOT / name).read_text(encoding="utf-8")
