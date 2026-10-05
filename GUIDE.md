@@ -86,7 +86,7 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Item | Value |
 |---|---|
 | Released baseline | **2.5.0** on `master`, released 2026-10-05 from the `v2.5.0` tag; fingerprint **11,171,726 / EBF 2.512**, `rustc 1.98.1`, per-tier PGO assets built and fingerprint-checked by `release.yml`. Licensed under 2.4.0's rule against 2.4.0: **+272.4** at `3+0.03` 1T (RAR-M64), **+260.5 ± 16.0** at `10+0.1` (RAR-M65), **+322.7** at 4T (RAR-M66). Before it: 2.4.0 (7,601,220 / EBF 2.474), accepted by RAR-E16 at +54.77 ± 17.04 Elo over 2.3.2 |
-| Development head | `dev`, version **2.5.0**, the released engine (bumped in `3575558`; tooling and documents only since); fingerprint **11,171,726 / EBF 2.512**. **The search head is frozen for Phase C (B.9, 2026-10-03):** engine source `ee02ed1`, the measured binary `tools/test_engines/rarog-b9head-pext-pgo.exe` built at `24aefb4` (clean, `rustc 1.98.1`, pext PGO), SHA-256 `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`. Phase C changes no search code and no search coordinate except through C.10's joint tune; a C-phase change touching `src/search/` returns to the owner leaf with an explicit reason and is gated as a search change. Accepted on the way: the selectivity core (B.2.4a/b, RAR-S78), cluster 2 (RAR-S84), cluster 3 (RAR-S88), the tablebase repair (RAR-S94), the speed pass (RAR-S98), the cleanup (RAR-P34); fingerprints per step in PLAN's *Where we start*. Last verified on Windows ARM64 and macOS ARM64 at the 2.4.0 head (RAR-P19); pinned `rustc 1.98.1` |
+| Development head | `dev`, version **2.6.0-dev** (bumped in `d6998db` on 2026-10-05; the 2.5.0 engine, no engine change since); fingerprint **11,171,726 / EBF 2.512**. **The search head is frozen for Phase C (B.9, 2026-10-03):** engine source `ee02ed1`, the measured binary `tools/test_engines/rarog-b9head-pext-pgo.exe` built at `24aefb4` (clean, `rustc 1.98.1`, pext PGO), SHA-256 `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`. Phase C changes no search code and no search coordinate except through C.10's joint tune; a C-phase change touching `src/search/` returns to the owner leaf with an explicit reason and is gated as a search change. Accepted on the way: the selectivity core (B.2.4a/b, RAR-S78), cluster 2 (RAR-S84), cluster 3 (RAR-S88), the tablebase repair (RAR-S94), the speed pass (RAR-S98), the cleanup (RAR-P34); fingerprints per step in PLAN's *Where we start*. Last verified on Windows ARM64 and macOS ARM64 at the 2.4.0 head (RAR-P19); pinned `rustc 1.98.1` |
 | Pool position, `3+0.03` 1T | Houdini 3 −224, Critter 1.6a −184, Houdini 1.5a −179, Fritz 16 −147, Rybka 4 −99, Basilisk 1.10.0 −23, Basilisk 1.9.3 −9, Rarog 2.3.2 +70 (RAR-M45, 2026-09-11, 600 games/pair, 2.4.0 release); reproduced within the 200-game bands in the 42-engine Super Rating Tournament, where 2.4.0 scores 64.8% and Houdini 4 −323, Stockfish 5 −222, Stockfish 1.9.1–4 within ±35 (RAR-M54, 2026-09-15) |
 | Pool position, `3+0.03` 1T, **2.5.0-dev** | Rating **3,286.5 ± 15.7** for the B.9 head against 2.4.0's 3,001 (RAR-M64, 2026-10-03, 2,400 games, field held at its Super Rating Tournament ratings, Hash 128): Houdini 3 **+37.5** (55.4%), Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, Rarog 2.4.0 +272.4, Basilisk 1.10.0 +296.3; **E.2 at 1T: all four targets pass**, 4T not measured. Earlier: the cluster-2 head 3,233 (RAR-M63, 40,000 games), the fit at 3,900 3,191 (RAR-M57) |
 | Pool position, `3+0.03` **4T** | **B.9 head (RAR-M66, 2026-10-04, Hash 512, 400 games/pair): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210, Basilisk 1.10.0 +332, Rarog 2.4.0 +323; performance 3,340.0 ± 16.7 on the held 1T scale.** 2.4.0 release (RAR-M46, 2026-09-11): Houdini 3 −169, Fritz 16 −149, Critter 1.6a −109, Rybka 4 −73, Basilisk 1.10.0 +25, Rarog 2.3.2 +45, Rybka 3 +79; perf 3034 vs frozen 3003 |
@@ -95,49 +95,32 @@ together, and `python tools/diag/check_guide.py` must pass.
 | Speed | B.9 head **2.33 MNPS** pooled median, **−26.23% [−26.76%, −25.70%]** against the 2.4.0 release pool's 3.15 (RAR-P35, 2026-10-03); in the gauntlet's games 1.86 against 2.70 M nps. Inside B: B.7 +8.85%, +6.93%, +1.69% (RAR-P28, RAR-P31), B.8 +1.16% (RAR-P34). This host drifts by several percent between days, so compare pools interleaved only; Basilisk 3.71 (RAR-M48) |
 | Conversion | B.9 head: **38 draws + 2 losses** after a persistent piece-up in 2,400 games, 15.8 and 0.8 per 1,000 (RAR-M64's games, a stronger field than the baseline's). 2.4.0 release: 88 + 19 in 3,600 games against the six HCE-era engines, 24.4 and 5.3 per 1,000 (RAR-M49); third sample 24.2 / 3.3 (RAR-M54) |
 | Active experiment | None open. Last: RAR-O04, RAR-M64 and RAR-P35, B.9's readings, played and read 2026-10-03. **D.2's premise is contradicted by RAR-M46 and the leaf needs re-scoping** |
-| Current step | **C.0** (`R3`): the evaluation programme's investigation on the frozen search head. **B.10 closed 2026-10-05, and Phase B with it: 2.5.0 released** from the `v2.5.0` tag, licensed under 2.4.0's rule by RAR-M64, RAR-M65 and RAR-M66. **B.9 closed 2026-10-03:** G(0) +24.24 ± 8.01 (the search deficit closed), gauntlet 3,286.5, NPS −26.23%, conversion 15.8 / 0.8 per 1,000; `ablate` removed (`ee02ed1`); the search head frozen; the attribution table and calibration in PLAN B.9. Earlier B closures: HISTORY, *Phase B record* |
+| Current step | **C.0** (`R3`): the evaluation programme's investigation on the frozen search head; `dev` reopened at 2.6.0-dev and E.3.1 closed on 2026-10-05. **B.10 closed 2026-10-05, and Phase B with it: 2.5.0 released** from the `v2.5.0` tag, licensed under 2.4.0's rule by RAR-M64, RAR-M65 and RAR-M66. **B.9 closed 2026-10-03:** G(0) +24.24 ± 8.01 (the search deficit closed), gauntlet 3,286.5, NPS −26.23%, conversion 15.8 / 0.8 per 1,000; `ablate` removed (`ee02ed1`); the search head frozen; the attribution table and calibration in PLAN B.9. Earlier B closures: HISTORY, *Phase B record* |
 | Next release | **3.0.0** at E.3 if the E.2 target gate is met, otherwise 2.6.0, after the evaluation programme. 2.5.0 was released 2026-10-05 at the search checkpoint (B.10) |
 
 ## Next and held work
 
-**B.9 closed 2026-10-03 and the search head is frozen; the current step is
-C.0.** The head beats the oracle (G(0) +24.24 ± 8.01, RAR-O04) and rates
-3,286.5 at 1T (RAR-M64); PLAN B.9 holds the readings, the attribution table
-and the freeze. B.10 released 2.5.0 on 2026-10-05, and Phase B is closed.
+**Phase B is closed and 2.5.0 released (2026-10-05); `dev` reopened at
+2.6.0-dev. The current step is C.0**, the evaluation programme's
+investigation on the frozen search head; PLAN B.9 holds the freeze, the
+readings and the attribution table. Binding findings sit at their leaves in
+PLAN: D.2's premise is contradicted (RAR-M46) and E.2's binding arm is 1T.
 
-**B.2 passed both gates.** B.2.4a on 2026-09-16 (+65.09 ± 23.26 in 432
-games) accepted the unfitted core over the off arm; B.2.4b on 2026-09-20
-(+138.60 ± 30.66 in 248 games) accepted the B.2.3-fitted arm over it. The
-**fitted `b2core` arm at 7,185,678 / EBF 2.444 is the accepted head** and
-the base for B.3, and it became the default build on 2026-09-20. B.2.3's
-tune finished at N = 5,000 on 2026-09-20; its tail, the last 1,100
-iterations, measured +4.43 ± 2.90 in RAR-S77. B.2.2 closed on 2026-09-15:
-- the unfitted paired run measured +52.16 ± 10.73 Elo;
-- no switch was adopted and mate-residual training stays;
-- the clamp conversion was reverted to coordinates;
-- the curvature sweep found three curved coordinates;
-- the screen ladder for B.3–B.5 is now rule 8's *Cluster screens*.
+**Colosseum CLI is the main harness**: gates, fixed matches, tunes, null
+pairs and gauntlets run through `tools/colosseum.ps1` from the committed run
+files, with the runner pinned by revision and SHA-256 (`cli-v0.2.0`,
+`ca05dfa`, since 2026-09-25). fastchess, weather-factory, `sprt.ps1` and
+`spsa.ps1` stay installed and working as the backup and the second opinion
+(reviewed at 2.5.0 and kept); PROCESS's *Harness* section holds the
+cross-check triggers.
 
-**Colosseum CLI is the main harness** since 2026-09-21 (B.2.6.2): gates, fixed
-matches, tunes, null pairs and gauntlets run through `tools/colosseum.ps1` from
-the committed run files, with the runner pinned by revision and SHA-256 —
-since 2026-09-25 the published `cli-v0.2.0` (`ca05dfa`; `cli-v0.1.0` from
-2026-09-22 to then), which resolves Rarog's run files to policy in every
-checked field and passes the 40-case guard suite.
-fastchess, weather-factory, `sprt.ps1` and `spsa.ps1` stay installed, working
-and documented as the backup and the second opinion until at least release
-2.5.0; PROCESS's *Harness* section holds the cross-check triggers. The two
-instruments agree where they have been compared (RAR-M60, RAR-M61).
-
-B.7 keeps its place. B.3 is eligible: the B.2 head was accepted on 2026-09-20. B.2.0.2 closed on 2026-09-15
-(MultiPV, RAR-P26). B.2.1 was accepted by its reviewer on 2026-09-14
-(`analysis/b21_review_2026-09-14.md`). Binding findings sit at their
-leaves in PLAN: D.2's premise is contradicted (RAR-M46) and E.2's binding
-arm is 1T.
+**`dev` reaches `master` by a merge commit** from the next PR on
+(maintainer decision 2026-10-05), so no further archive tag is needed.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| E.3.1 tag-driven release flow (added 2026-09-22) | Any time: it depends on nothing in B–D; schedule it between leaves, not inside a registered experiment's window | E.3, the next release |
+| Repository settings for merge commits (decided 2026-10-05) | The maintainer turns on *Allow merge commits* and turns off *Require linear history* in `master`'s protection | The next PR to `master` |
+| `archive/pr2`, `archive/pr3`, `archive/pr4` tags (PLAN B.10, *Ref review after the release*) | The next PR has merged with a merge commit and `git for-each-ref --contains` lists `master` for each tip; the maintainer then deletes them | Phase C's ref review at C.11 |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 
@@ -283,7 +266,8 @@ is the numbering: release first, baselines on the released binary.
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19) — **V**
 - [ ] **E.3** Release 3.0.0 (gate met) or 2.6.0 (2.5.0 is cut at B.10): changelog, suites, PGO assets, ISA, cut by pushing a `v` tag through E.3.1's workflow, on instruction — **M**
-    - [ ] **E.3.1** Tag-driven release flow, implemented 2026-10-04 (`release.yml`, `cargo xtask release-check`; the rehearsal run pending) — Colosseum's model: `git tag vX.Y.Z` on `master` and push; the workflow validates (tag = `Cargo.toml` version, commit on `master`, `## [X.Y.Z]` section in `CHANGELOG.md`), builds the nine PGO assets read-only, asserts one `bench 13` fingerprint across them, then one write job publishes with notes from the changelog; candidate mode rehearses without a tag; asset names unchanged; repair = delete tag, fix, retag; local `release-check`. Depends on nothing in B–D: **may land any time, must land before E.3** (added 2026-09-22) — **I1**
+    - [x] **E.3.1** Tag-driven release flow: `release.yml` and `cargo xtask release-check`; a `vX.Y.Z` tag on `master` validates (tag = `Cargo.toml` version, commit on `master`, dated `CHANGELOG.md` section), builds the nine PGO assets read-only, asserts one `bench 13` fingerprint across them and publishes with the changelog's notes; every PR to `master` runs it as a candidate; 2.5.0 was released through it, nine assets at 11,171,726 — DONE 2026-10-05
+    - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the PR merged with a merge commit, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 
 ## Phase F — NNUE (own data only)
 

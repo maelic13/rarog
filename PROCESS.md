@@ -493,7 +493,8 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 `.github/workflows/release.yml` (E.3.1) validates, builds and publishes, and
 nothing exists on GitHub until every cell has passed.
 
-1. Close `CHANGELOG.md`'s `[Unreleased]` as `## [X.Y.Z] - YYYY-MM-DD` and
+1. Close `CHANGELOG.md`'s `[Unreleased]`, which collected each change as it
+   landed (AGENTS, *Changes*), as `## [X.Y.Z] - YYYY-MM-DD` and
    bump `Cargo.toml` to `X.Y.Z` (bench unmoved), and mark the release
    released in GUIDE's checkpoint: its *Released baseline* row names
    `X.Y.Z` at the fingerprint the *Development head* row declares, and
@@ -506,10 +507,14 @@ nothing exists on GitHub until every cell has passed.
    for `vX.Y.Z` (all but the tag's name and the commit's place on
    `master`), so a green release PR is a releasable one; a `-dev` version
    skips it (step 6 keeps `dev` on a `-dev` version between releases);
-   merge
-   only when both are green, and keep `dev` (do not let the merge delete the
-   branch: the ledger cites its commits). Both workflows should be required
-   checks on `master` in the repository's branch protection.
+   merge only when both are green, **with a merge commit**, never a squash
+   (a squash leaves `dev`'s commits, which the documents cite, on no ref;
+   the repository must allow merge commits and `master`'s protection must
+   not require linear history). Afterwards `dev` fast-forwards to `master`
+   (`git switch dev; git merge --ff-only origin/master; git push origin
+   dev`), or is deleted and recreated from it, since `master` now holds
+   every commit it had. Both workflows should be required checks on
+   `master` in the repository's branch protection.
 2. On the merged `master` commit, before pushing anything:
 
    ```powershell

@@ -59,6 +59,23 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-05 — `dev` reopened at 2.6.0-dev; PLAN E.3.1 DONE; tags
+  reviewed.** `d6998db` bumps the version to 2.6.0-dev (PROCESS *Release*
+  step 6): `bench 13` 11,171,726 / EBF 2.512 unchanged, `id name Rarog
+  2.6.0-dev`, fmt and clippy clean, debug 374 and release 375 tests
+  passing. E.3.1's owed exit check was met by the 2.5.0 release itself:
+  PR #4's candidate run and the `v2.5.0` tag run each built nine assets at
+  one fingerprint, and the tag run published them. The maintainer decided
+  that `dev` reaches `master` by merge commits from now on, so development
+  commits stay on `master` and need no archive tag. The three `archive/pr*`
+  tags cut for the squash merges of #2–#4, which now preserve the commits
+  the entry below found on no ref, retire once the next merge carries
+  their chains into `master` (`e887c3f` joins them to `dev`). The four
+  `arm/*` tags are retired: their patches change the deleted 2.4.0 search,
+  and every commit only they held is in the 2026-09-27 bundle.
+  `CHANGELOG.md`'s `[Unreleased]` now collects changes as they land
+  (AGENTS, *Changes*). Record: PLAN B.10, *Ref review after the release*.
+
 - **2026-10-05 — PLAN B.10 DONE: Rarog 2.5.0 released, and PHASE B IS CLOSED.**
   The search release, from the frozen B.9 head (engine source `ee02ed1`,
   11,171,726 / EBF 2.512), licensed under 2.4.0's rule against 2.4.0:

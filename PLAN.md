@@ -2828,6 +2828,32 @@ diagnostics; two rejections stop B.
   tag is cut again from the merged `master`. The release date in
   `CHANGELOG.md` is 2026-10-05 (`07c73c1`).
 
+  *Ref review after the release, 2026-10-05* (maintainer request, with
+  `dev` reopened at 2.6.0-dev in `d6998db`). All 33 tags; every commit
+  hash a tracked text file cites was mapped to the refs holding it (`git
+  for-each-ref --contains`) and to the 2026-09-27 bundle (`git rev-list` of
+  its 568 heads); every cited commit that is on no ref is in the bundle.
+
+  | Tags | Holds | Decision |
+  |---|---|---|
+  | `v1.0.0` … `v2.5.0` (23) | one published GitHub release each (23 releases) | **keep**: each release hangs on its tag |
+  | `oracle/hybrid`, `oracle/hybrid-ablate`, `oracle/hybrid-diag` | the G(0) oracle and its two instruments, one to four commits on `v2.3.2` with a vendored Stockfish tree (about 15,700 lines), too large for a patch | **keep**; retirement conditions unchanged (C.11, E.1) |
+  | `archive/pr2-version-2.5.0` | 391 commits, the `dev` chain squash-merged as `bd1c1a5` (#2); 198 cited commits no other ref held before `e887c3f`, among them the B-phase engine commits on `dev`'s line and the bases of three arm patches | **keep** until `master` holds the chain (below) |
+  | `archive/pr3-tag-driven-release`, `archive/pr4-release-checks` | 3 and 6 tooling and document commits, squash-merged as `9acdf22` (#3) and `855a092` (#4); cited commits no other ref held before `e887c3f`: `07c73c1`; `5dc9f0e`, `4a572c9`, `7c2d696` | **keep** until `master` holds the chains (below) |
+  | `arm/p410-jitter-1t`, `arm/p410-lmr-relief`, `arm/p410-margin-relief`, `arm/p46-root-relief` | the 2026-08-12 … 20 development chain off `v2.3.2`; 23 cited commits held by them alone, the bases of six arm patches among them | **retired** (maintainer decision 2026-10-05): the patches change the 2.4.0 search that B.8 deleted, so no leaf can apply them now, and all 23 commits are in the 2026-09-27 bundle, which restores them (`analysis/ledger_commits_2026-09-27.md`) |
+
+  The archive tags were cut on 2026-10-05, after the squash merges reset
+  `dev` to `master`; they are what preserves the commits the release
+  record above found on no ref. Each archive tip's tree equals its squash
+  commit's (checked). **`dev` reaches `master` by a merge commit from now
+  on** (maintainer decision 2026-10-05; AGENTS, *Changes*), so no further
+  archive tag is needed, and `e887c3f` merges the three archive tips into
+  `dev` with the `ours` strategy (no file changes; its tree equals its
+  first parent's, checked), so the next merge commit carries the chains
+  into `master`. Each `archive/*` tag retires when `git for-each-ref
+  --contains <tip>` lists `master`. Deleting the `arm/*` tags, locally and
+  on `origin`, is the maintainer's command.
+
 ### Active workflow register
 
 One row per open leaf in the active phases (A and B). The checker requires
@@ -3208,10 +3234,14 @@ decision 2026-10-03). The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
-    - **E.3.1 Tag-driven release flow — `I1`, IMPLEMENTED 2026-10-04,
-      amended 2026-10-05 (B.10's record: the declared fingerprint, the PR
-      candidate run, the release-marked rule), the rehearsal run pending;
-      tooling only.** `.github/workflows/release.yml`
+    - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05; tooling
+      only.** Implemented 2026-10-04 and amended 2026-10-05 (B.10's
+      record: the declared fingerprint, the PR candidate run, the
+      release-marked rule). **Exit check met 2026-10-05** by the 2.5.0
+      release: PR #4's candidate run (head `4baedd9`, GitHub run
+      37283080971) and the `v2.5.0` tag run on `855a092` (run 37284706939)
+      each printed `nine assets at bench 13 = 11171726`, and the tag run
+      published 2.5.0 with its nine assets. `.github/workflows/release.yml`
       replaces `build.yml`: a `v[0-9]+.[0-9]+.[0-9]+` tag push runs
       `cargo xtask release-check` (tag equals `Cargo.toml`'s version, the
       commit is on `origin/master`, `CHANGELOG.md` has the dated section,
@@ -3222,8 +3252,8 @@ decision 2026-10-03). The release is cut through the
       marked latest. `workflow_dispatch` is the candidate mode (bundle kept 30
       days, nothing published). The 2.5.0 tag the maintainer had pushed at
       `bd1c1a5` (no release existed) is deleted and re-pushed on the commit
-      that carries the workflow. Exit check still owed: one candidate run
-      with nine assets and one fingerprint. The procedure is PROCESS
+      that carries the workflow. Its exit check, one candidate run
+      with nine assets and one fingerprint, is met (above). The procedure is PROCESS
       *Release*. Added
       2026-09-22 by maintainer decision, modelled on Colosseum's release
       lanes (in `D:/code/colosseum`: the two release workflows, the
@@ -3282,6 +3312,15 @@ decision 2026-10-03). The release is cut through the
       published. Tooling commits only; no engine input changes and the
       fingerprint does not move. Tag, push and publish stay the
       maintainer's.
+    - **E.3.2 Release cut — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
+      E.2 is met, otherwise 2.6.0, behaviour-neutral with the fingerprint
+      held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
+      reviewed and dated; fmt, clippy, debug and release suites, feature
+      builds; GUIDE's checkpoint marks the release; the PR to `master`,
+      merged with a merge commit once `CI` and `Release` are green; the
+      `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
+      PROCESS *Release*.
 ## Phase F — NNUE
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
@@ -3397,6 +3436,7 @@ and adjudication never change after games are seen.
 | `PLAN.md` | This roadmap: objective, rules, phases, protocols |
 | `EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
 | `PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |
+| `CHANGELOG.md` | User-facing changes: `[Unreleased]` collects them as they land; a release dates the section, whose body becomes the release notes |
 | `HISTORY.md` | Completed work, retired numbering and the number map; never a source of the next step |
 | `analysis/` | Per-leaf analyses and measurement records; raw artifacts stay local and ignored |
 | `docs/archive/` | Verbatim archived roadmaps |

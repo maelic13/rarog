@@ -1,6 +1,7 @@
 # Changelog
 
-All notable changes to Rarog are documented in this file.
+All notable changes to Rarog are documented in this file. Each is added under
+`[Unreleased]` when it lands; a release dates that section.
 
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.

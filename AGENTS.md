@@ -215,6 +215,15 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Never push, create a release tag, publish or merge to `master`; the
   maintainer does, on instruction. Do not amend or rewrite a commit that has
   left this machine. Archive tags follow *Evidence*.
+- `dev` reaches `master` by a merge commit, never a squash, so every
+  development commit the documents cite stays on `master` and needs no tag
+  (maintainer decision 2026-10-05; the procedure is PROCESS, *Release*).
+- `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
+  of the engine would notice (a gate-accepted strength change; a UCI option,
+  output or default; a fixed defect; a removal; a build or asset change)
+  gets its entry, written for users, in the commit that records it.
+  Experiments, refutations and internal refactors get none. A release dates
+  the section and never reconstructs it.
 - Most of the tree is CRLF. A scripted edit preserves the file's existing line
   endings, asserts each anchor is present exactly once, and re-reads the
   region afterwards; a mixed-ending file or a silently unmatched anchor is a

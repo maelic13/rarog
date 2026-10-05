@@ -25,6 +25,19 @@ the other raw evidence on the development machine (ignored, never in Git):
   all 71 cited commits and all 499 archived ones, and its `git fsck
   --connectivity-only` passes.
 
+**2026-10-05:** the four `arm/*` tags were retired (PLAN B.10, *Ref review
+after the release*). The 23 cited commits only they held are in this
+bundle under its `refs/tags/arm/*` heads, not `refs/archive-tmp/*`, so
+they restore with
+`git fetch analysis/artifacts/git-history-2026-09-27/rarog-full-history.bundle "refs/tags/arm/*:refs/archive/arm/*"`
+(proved into an empty repository: all 23 resolve, `git fsck
+--connectivity-only` passes, and the six arm patches apply to their
+bases):
+`05ba633`, `090dedc`, `1155ec3`, `21e5276`, `23b21b8`, `2a64941`,
+`36dad5f`, `3bb6cf3`, `5294e2c`, `5dbeb52`, `774000b`, `8142d5a`,
+`a1642ae`, `aaa715a`, `b6b0d7d`, `c399435`, `c58d82d`, `cf4e475`,
+`db19aef`, `dfa965e`, `e2fd4e0`, `e7965b9`, `e950f03`.
+
 To restore any of them into a working repository:
 
 ```bash
@@ -37,9 +50,9 @@ them, and `git update-ref -d` removes the refs again.
 ## The cited commits
 
 *Recipe in Git* says where a row's reproduction lives without the bundle:
-an arm patch (`analysis/arm_patches/`, applicable to a base reachable from
-the `arm/*` tags), a twin commit that is still on a ref, or, for documentation
-commits, the tracked documents themselves, whose citation is a date stamp
+an arm patch (`analysis/arm_patches/`, applicable to a base the `arm/*`
+tags held until 2026-10-05 and this bundle holds), a twin commit that is
+still on a ref, or, for documentation commits, the tracked documents themselves, whose citation is a date stamp
 (the policy `analysis/arm_patches/README.md` set on 2026-09-10). *Bundle*
 means the diff itself exists only in the bundle; the citing row still holds
 the finding, and where it names a fingerprint, that fingerprint checks a
