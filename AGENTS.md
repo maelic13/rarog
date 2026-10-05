@@ -312,18 +312,24 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Documents
 
-- `GUIDE.md` and `docs/PLAN.md` change in the same commit when roadmap status or
-  requirements change; an AGENTS-only edit needs no PLAN or GUIDE churn.
-- GUIDE carries status. Tick a step only when finished and verified, in the
-  commit that finishes it; tick the parent when its last sub-step is ticked.
-- Sub-steps indent by 4 spaces and addenda (`B.2.0.1`) by 8, never 6 (6
-  renders as code); nothing goes deeper than three levels. Run
-  `python tools/diag/check_guide.py` rather than reading the file.
-- Keep GUIDE short and its board first: every phase with its checkboxes,
-  then the checkpoint, holds, model mapping, two prompts and operator
-  contract. A closed phase keeps its heading, marked `— CLOSED <date>`,
-  over a one- or two-sentence summary; PLAN and HISTORY keep its steps
-  (maintainer decision 2026-10-05). What a step involves goes in PLAN, a
+- GUIDE's board is generated from `docs/PLAN.md` by
+  `python tools/diag/guide_board.py`; never edit it by hand. A PLAN step
+  head reads ``- **<ID> <title> — `<class>`….**``: the title is what the
+  board shows, the first backticked class is the step's class, and
+  `DONE <date>` (or CLOSED, NO_CHANGE) in the field ticks it. Mark a step
+  DONE only when finished and verified, in the commit that finishes it,
+  and a parent when its last sub-step is; then regenerate. Run
+  `python tools/diag/check_guide.py`, which fails on a stale board, rather
+  than reading the file.
+- PLAN, the regenerated board and GUIDE's hand-kept checkpoint and holds
+  change in the same commit when roadmap status or requirements change; an
+  AGENTS-only edit needs no PLAN or GUIDE churn. Sub-steps nest one level
+  (`C.5.1`) and addenda two (`B.2.0.1`); nothing goes deeper.
+- Keep GUIDE short and its board first: every phase, then the checkpoint,
+  holds, model mapping, two prompts and operator contract. A finished
+  phase's PLAN heading is marked `— CLOSED <date>` over the one- or
+  two-sentence summary the board shows, and its text moves verbatim to
+  `docs/archive/` (maintainer decision 2026-10-05). What a step involves goes in PLAN, a
   completed record in HISTORY, a procedure in PROCESS, evidence in
   EXPERIMENTS, a derivation in `analysis/`.
 - `docs/HISTORY.md` is history and resolves every retired numbering scheme; never

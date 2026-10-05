@@ -800,7 +800,7 @@ and adjudication never change after games are seen.
 
 | File | Purpose |
 |---|---|
-| `GUIDE.md` | The checkbox board first (closed phases as one- or two-sentence summaries), then checkpoint, holds, model mapping, prompts and operator guide |
+| `GUIDE.md` | The checkbox board first, generated from this file's step heads by `tools/diag/guide_board.py` (closed phases as one- or two-sentence summaries), then the hand-kept checkpoint, holds, model mapping, prompts and operator guide |
 | `docs/PLAN.md` | This roadmap: objective, rules, phases, protocols |
 | `docs/EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
 | `docs/PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |

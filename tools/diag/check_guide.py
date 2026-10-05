@@ -49,6 +49,11 @@ are not reliably visible by reading:
    so the leaf stays actionable and the hanging-parent rule does not apply
    between them. Deeper than three levels is not accepted.
 
+8. **A stale board.** Since 2026-10-05 the board is generated from
+   `docs/PLAN.md` by `tools/diag/guide_board.py`; a board that differs from
+   what PLAN generates fails here. The checks above still run over the
+   generated board, so a generator defect cannot pass silently.
+
 The child pattern is checked against the format GUIDE actually uses --
 `- [ ] **A.2.1** ...`, bold, lettered phase, dotted step. The first version
 of this checker required a bare `4.9.1`, matched no line in the file, and so
@@ -78,6 +83,8 @@ import argparse
 import pathlib
 import re
 import sys
+
+import guide_board
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "GUIDE.md"
@@ -304,7 +311,7 @@ def self_test():
         sys.stdout.write("FAIL: closed-phase self-test got %r, %r\n" % (closed, closed_problems))
         return 1
     sys.stdout.write("closed-phase negative self-test: PASS (1 checkbox under a closed phase)\n")
-    return 0
+    return guide_board.self_test()
 
 
 def actionable(lines):
@@ -440,6 +447,7 @@ def main():
     if not plan_text:
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
+        problems.extend(guide_board.board_problems("\n".join(lines), plan_text))
         agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
         problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
         texts = {name: (ROOT / name).read_text(encoding="utf-8")

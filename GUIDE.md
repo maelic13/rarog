@@ -1,12 +1,7 @@
 # Rarog development guide
 
-**Now: C.0** (`R3`), the evaluation programme's investigation on the frozen
-search head. **Next release:** 3.0.0 at E.3 if E.2 is met, otherwise 2.6.0.
-
-The board lists every phase; a closed phase is a short summary whose steps
-PLAN and HISTORY keep. Below the board: the checkpoint, holds, model
-mapping, prompts and how to work with the agent. GUIDE and PLAN change
-together, and `python tools/diag/check_guide.py` must pass.
+<!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
+**Now: C.0** (`R3`): Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -58,7 +53,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — **V**
 - [ ] **E.3** Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — **M**
-    - [x] **E.3.1** Tag-driven release flow (`release.yml`, `cargo xtask release-check`); 2.5.0 was released through it — DONE 2026-10-05
+    - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
     - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the PR merged with a merge commit, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 
 ## Phase F — NNUE (own data only)
@@ -80,11 +75,13 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **G.1** High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — **R2**
 - [ ] **G.2** Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — **I1**
 - [ ] **G.3** Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — **R3**
+<!-- end of generated board -->
 
 ## Current checkpoint
 
 | Item | Value |
 |---|---|
+| Next release | **3.0.0** at E.3 if the E.2 target gate is met, otherwise 2.6.0 |
 | Released baseline | **2.5.0** on `master`, released 2026-10-05 from the `v2.5.0` tag; fingerprint **11,171,726 / EBF 2.512**. Over 2.4.0: +272.4 at `3+0.03` 1T, +260.5 ± 16.0 at `10+0.1`, +322.7 at 4T (RAR-M64, RAR-M65, RAR-M66) |
 | Development head | `dev`, version **2.6.0-dev** (`d6998db`), the 2.5.0 engine; fingerprint **11,171,726 / EBF 2.512**; `rustc 1.98.1`. The search is frozen for Phase C at engine source `ee02ed1` (the measured binary and its SHA-256 are in PLAN's Phase C rules): a C-phase change touching `src/search/` returns to its owner leaf and is gated as a search change, and search coordinates move only in C.10's joint tune |
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
@@ -169,3 +166,12 @@ Claude models only, by maintainer decision 2026-09-25.
 6. Freeze the prediction before exposure; judge the postmortem against it.
 7. A clean negative result is progress. Clusters, not features; compatibility
    over completeness; donor architecture, own implementation.
+
+## About this guide
+
+The board at the top is generated from `docs/PLAN.md` by
+`python tools/diag/guide_board.py`: edit PLAN's step heads (title, class,
+DONE) and its workflow register, then regenerate; never edit the board by
+hand. A closed phase shows its one- or two-sentence summary; its steps are
+in `docs/archive/`. Everything below the board is kept by hand.
+`python tools/diag/check_guide.py` must pass; it fails on a stale board.
