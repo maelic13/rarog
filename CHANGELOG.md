@@ -7,7 +7,7 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
-## [2.5.0] - 2026-10-04
+## [2.5.0] - 2026-10-05
 
 A new search. Measured head to head against 2.4.0 with no adjudication, 2.5.0
 is **+272 Elo at `3+0.03`** (400 games), **+261 ± 16 at `10+0.1`** (1,000

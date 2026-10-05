@@ -2786,15 +2786,15 @@ diagnostics; two rejections stop B.
     ignored**, release **375 / 0 / 2**; `bench 13` **11,171,726 / EBF
     2.512**, unchanged; `uci` answers `id name Rarog 2.5.0`.
   - **Documents** (the commit that records this): `CHANGELOG.md`'s
-    `[2.5.0] - 2026-10-04` section, licensed by the three direct reads
+    `[2.5.0] - 2026-10-05` section, licensed by the three direct reads
     against 2.4.0 with the non-additivity caution, the B.9 checkpoint and the
     NPS cost stated plainly, and a fresh `[Unreleased]`; `README.md`'s
     tablebase score display and the full command list. The shipped build's
     UCI options differ from 2.4.0's only by `MultiPV`, read from both
     binaries.
-  - **Assets** are built, `verify-isa`-checked and attached by
-    `build.yml` when the maintainer publishes the GitHub release; nothing was
-    built for release here.
+  - **Assets** are built, `verify-isa`-checked, fingerprint-asserted and
+    published by `release.yml` on the `v2.5.0` tag push (E.3.1, landed
+    2026-10-04 before the tag); nothing was built for release here.
   - **Tag-and-branch review** (`analysis/artifacts/b10-release/ref_review.sh`
     and its output `ref_review.txt`; `git for-each-ref --contains` per ref,
     `git cherry` against `dev`, every tracked citation). Nothing was deleted.
@@ -2820,7 +2820,7 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.10 | IMPLEMENTED | M | Implemented 2026-10-04: version `3575558` (bench 11,171,726 / EBF 2.512, `id name Rarog 2.5.0`), `CHANGELOG.md` `[2.5.0]`, README, the ref review (three local branches recommended for deletion, their diffs archived; the `arm/*` and `oracle/*` tags kept). Licensed by RAR-M64, RAR-M65 and RAR-M66 under 2.4.0's rule. Awaiting the maintainer: PR `dev` → `master`, merge on green CI, the `v2.5.0` tag and the GitHub release that builds the assets |
+| B.10 | IMPLEMENTED | M | Implemented 2026-10-04: version `3575558` (bench 11,171,726 / EBF 2.512, `id name Rarog 2.5.0`), `CHANGELOG.md` `[2.5.0]`, README, the ref review (three local branches recommended for deletion, their diffs archived; the `arm/*` and `oracle/*` tags kept). Licensed by RAR-M64, RAR-M65 and RAR-M66 under 2.4.0's rule. Merged to `master` as `bd1c1a5` on 2026-10-04 (PR #2, CI green). Awaiting the maintainer: the `v2.5.0` tag re-pushed on the `master` commit that carries E.3.1's `release.yml`, which builds and publishes the assets |
 
 ## Phase C — Evaluation programme
 
@@ -3193,8 +3193,21 @@ decision 2026-10-03). The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
-    - **E.3.1 Tag-driven release flow — `I1`, READY_FOR_IMPLEMENTATION,
-      tooling only; may land any time, must land before E.3.** Added
+    - **E.3.1 Tag-driven release flow — `I1`, IMPLEMENTED 2026-10-04,
+      the rehearsal run pending; tooling only.** `.github/workflows/release.yml`
+      replaces `build.yml`: a `v[0-9]+.[0-9]+.[0-9]+` tag push runs
+      `cargo xtask release-check` (tag equals `Cargo.toml`'s version, the
+      commit is on `origin/master`, `CHANGELOG.md` has the dated section,
+      whose body becomes the notes), builds the nine PGO assets read-only,
+      `verify-isa`-checks and benches each, asserts the node count equal to
+      GUIDE's declared fingerprint on every cell and across the matrix, and
+      only then one `contents: write` job publishes with `softprops/action-gh-release`,
+      marked latest. `workflow_dispatch` is the candidate mode (bundle kept 30
+      days, nothing published). The 2.5.0 tag the maintainer had pushed at
+      `bd1c1a5` (no release existed) is deleted and re-pushed on the commit
+      that carries the workflow. Exit check still owed: one candidate run
+      with nine assets and one fingerprint. The procedure is PROCESS
+      *Release*. Added
       2026-09-22 by maintainer decision, modelled on Colosseum's release
       lanes (in `D:/code/colosseum`: the two release workflows, the
       `colosseum-release` tag validator and DEVELOPMENT's release lanes). It absorbs

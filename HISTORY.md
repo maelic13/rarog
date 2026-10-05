@@ -59,6 +59,19 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-04 — PLAN E.3.1 IMPLEMENTED: the tag-driven release flow,
+  before the 2.5.0 tag.** `release.yml` replaces `build.yml`: a `vX.Y.Z` tag
+  push validates (`cargo xtask release-check`: tag = `Cargo.toml` version,
+  commit on `origin/master`, dated `CHANGELOG.md` section, whose body is the
+  notes), builds the nine PGO assets read-only, asserts one `bench 13`
+  fingerprint across them equal to GUIDE's checkpoint, then publishes in one
+  write job. A manual dispatch rehearses without publishing. The GitHub form
+  is never typed into again, and nothing exists on GitHub until every cell
+  passed. The `v2.5.0` tag pushed at `bd1c1a5` before this landed (no release
+  existed) is deleted and re-pushed on the commit that carries the workflow.
+  The three reviewed local branches (`b33-block1-probe`, `b33-gate`,
+  `diag/b23-theta3900`) were deleted; their diffs live in `analysis/arm_patches/`.
+
 - **2026-10-04 — PLAN B.10 IMPLEMENTED: Rarog 2.5.0 prepared; Phase B closes
   with the `v2.5.0` tag.** `3575558` bumps the version to 2.5.0 on the frozen
   B.9 head (engine source `ee02ed1`), reproducing `bench 13` 11,171,726 / EBF

@@ -487,6 +487,44 @@ Before any SPSA:
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
    and run a paired SPRT, then LTC/4T where appropriate.
 
+### Release
+
+A release is cut by pushing one tag; the GitHub form is never typed into.
+`.github/workflows/release.yml` (E.3.1) validates, builds and publishes, and
+nothing exists on GitHub until every cell has passed.
+
+1. Close `CHANGELOG.md`'s `[Unreleased]` as `## [X.Y.Z] - YYYY-MM-DD` and
+   bump `Cargo.toml` to `X.Y.Z` (bench unmoved); PR into `master`, merge on
+   green CI.
+2. On the merged `master` commit, before pushing anything:
+
+   ```powershell
+   git fetch origin; git checkout origin/master --detach
+   cargo xtask release-check vX.Y.Z --notes release-notes.md
+   ```
+
+   It refuses a tag that does not name `Cargo.toml`'s version, a commit not
+   reachable from `origin/master`, or a changelog without a dated section
+   for the version, and writes that section as the notes.
+3. Rehearse once if anything in the pipeline changed: `Actions → Release →
+   Run workflow` on `master` builds, `verify-isa`-checks and benches the nine
+   assets and keeps them as a workflow artifact; it publishes nothing.
+4. Tag and push:
+
+   ```powershell
+   git tag vX.Y.Z; git push origin vX.Y.Z
+   ```
+
+   The workflow asserts one `bench 13` fingerprint across the nine assets
+   equal to GUIDE's checkpoint, then creates the release, marked latest, with
+   the assets and the changelog section as notes.
+5. A failed run is repaired by deleting the tag (`git push origin
+   :refs/tags/vX.Y.Z; git tag -d vX.Y.Z`), fixing `master` and tagging
+   again. Never re-run a failed cell against a moved `master`.
+
+Asset names are `rarog-vX.Y.Z-<os>-<arch>[.exe]`; GitHub's per-asset digests
+are the checksums to compare against.
+
 ### Opening book
 
 SPSA and the default SPRT both use `tools/books/UHO_Lichess_4852_v1.epd`,
