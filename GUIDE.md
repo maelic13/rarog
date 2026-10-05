@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.0** (`R3`): Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol.
+**Now: C.0.1** (`V`): Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05).
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -21,25 +21,29 @@ and is frozen at `ee02ed1` for Phase C.
 ## Phase C — Evaluation programme (search frozen)
 
 - [ ] **C.0** Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — **R3**
-- [ ] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — **I1**
-- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **V**
-- [ ] **C.3** King safety cluster: danger units, safe/unsafe checks, weak ring, flank, shelter/storm; refit; gate — **I2**
-- [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **I2**
+    - [ ] **C.0.1** Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05) — **GAME_GATE / V**
+    - [x] **C.0.2** Donor-direction residual screen (RAR-E17, RAR-E18) — DONE 2026-10-05
+    - [ ] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — **RESEARCH / R2**
+    - [ ] **C.0.4** King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — **RESEARCH / R3**
+- [ ] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **READY_FOR_IMPLEMENTATION / V**
+- [ ] **C.3** King safety cluster: danger units, safe/unsafe checks, weak ring, flank, shelter/storm; refit; gate — **RESEARCH / I2**
+- [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **RESEARCH / I2**
 - [ ] **C.5** Endgame handling and winnability cluster — **R3**
-    - [ ] **C.5.1** Classification and deciding instrument per family — **R2**
-    - [ ] **C.5.2** Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — **I2**
-    - [ ] **C.5.3** Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — **I2**
-    - [ ] **C.5.4** Rook versus minor cluster: KRKN, KRKB, KRPKB — **I2**
-    - [ ] **C.5.5** Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — **R2**
-    - [ ] **C.5.6** Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — **R2**
-    - [ ] **C.5.7** Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — **I1**
-    - [ ] **C.5.8** Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — **V**
-- [ ] **C.6** Pawns and passers cluster; refit; gate — **I2**
-- [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **I2**
-- [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **V**
-- [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **V**
-- [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **V**
-- [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **V**
+    - [ ] **C.5.1** Classification and deciding instrument per family — **RESEARCH / R2**
+    - [ ] **C.5.2** Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — **RESEARCH / I2**
+    - [ ] **C.5.3** Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — **RESEARCH / I2**
+    - [ ] **C.5.4** Rook versus minor cluster: KRKN, KRKB, KRPKB — **RESEARCH / I2**
+    - [ ] **C.5.5** Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — **RESEARCH / R2**
+    - [ ] **C.5.6** Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — **RESEARCH / R2**
+    - [ ] **C.5.7** Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — **RESEARCH / I1**
+    - [ ] **C.5.8** Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — **RESEARCH / V**
+- [ ] **C.6** Pawns and passers cluster; refit; gate — **RESEARCH / I2**
+- [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **RESEARCH / I2**
+- [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **RESEARCH / V**
+- [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
+- [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **RESEARCH / V**
+- [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
 
 ## Phase D — Clock, threads, robustness
 
@@ -87,10 +91,11 @@ and is frozen at `ee02ed1` for Phase C.
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
-| Evaluation deficit | **About 329 Elo** against Stockfish's classical HCE with the same search (RAR-O02): Phase C's target |
+| Evaluation deficit | **About 329 Elo** against Stockfish's classical HCE with the same search (RAR-O02): the 2.3.2 evaluation, about 205 games, with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3. RAR-O05 (C.0.1) re-measures the current evaluation at equal nodes and at equal time; its equal-node figure becomes Phase C's baseline |
+| Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). It ranks questions; it is not Elo |
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
-| Active experiment | None open |
+| Active experiment | **RAR-O05** registered 2026-10-05, maintainer-run (C.0.1): `pwsh -File analysis\artifacts\c0-meter\run_all.ps1` |
 
 ## Holds and obligations
 
@@ -99,6 +104,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Tags `archive/pr2-version-2.5.0`, `archive/pr3-tag-driven-release`, `archive/pr4-release-checks`: the `dev` chains squash-merged as PRs #2–#4 (400 commits the documents cite), joined to `dev` by `e887c3f` | The next PR to `master` has merged with a merge commit and `git for-each-ref --contains <tip>` lists `master` for each; then the maintainer deletes the three tags | Phase C's ref review at C.11 |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
+| Unstoppable-passer test one tempo generous in both move orders (`eval.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 

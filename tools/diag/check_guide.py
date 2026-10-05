@@ -38,7 +38,7 @@ are not reliably visible by reading:
    GUIDE's titles also off by one against PLAN's. Both directions are compared
    now.
 
-6. **Invalid or drifting active workflow metadata.** Open leaves in the active phases (A and B)
+6. **Invalid or drifting active workflow metadata.** Open leaves in the active phase (C since 2026-10-05)
    must have one PLAN row using a canonical state/capability class, and GUIDE's
    compact suffix must agree. Vendor/model tags do not belong on those active
    checklist lines; GUIDE's model mapping owns them.
@@ -142,7 +142,7 @@ VALID_STATES = {
     "CLOSED",
 }
 VALID_CLASSES = {"R3", "R2", "I2", "I1", "M", "V"}
-ACTIVE_PREFIXES = ("A.", "B.")
+ACTIVE_PREFIXES = ("C.",)
 
 
 def parse_workflow_rows(lines):
@@ -301,14 +301,18 @@ def repository_path_exists(path):
 
 def self_test():
     """Prove the workflow guard rejects intentionally malformed input."""
+    # The samples sit in the active phase: rows of any other phase are skipped
+    # before they are checked, and the test would then prove nothing.
+    lead = ACTIVE_PREFIXES[0]
+    deep = lead + "2.0.1"
     sample = [
-        "| A.2.1 | WRONG_STATE | R3 | synthetic |",
-        "| A.2.1 | RESEARCH | Z9 | duplicate and invalid |",
-        "| B.2.0.1 | RESEARCH | I2 | three levels are accepted |",
-        "| B.2.0.1.1 | RESEARCH | I2 | four levels are not |",
+        "| %s2.1 | WRONG_STATE | R3 | synthetic |" % lead,
+        "| %s2.1 | RESEARCH | Z9 | duplicate and invalid |" % lead,
+        "| %s | RESEARCH | I2 | three levels are accepted |" % deep,
+        "| %s.1 | RESEARCH | I2 | four levels are not |" % deep,
     ]
     rows, problems = parse_workflow_rows(sample)
-    if "B.2.0.1" not in rows or "B.2.0.1.1" in rows:
+    if deep not in rows or deep + ".1" in rows:
         sys.stdout.write("FAIL: workflow self-test: three-level IDs parse, four-level do not\n")
         return 1
     expected = ("invalid workflow state", "duplicate workflow", "invalid capability")
@@ -495,10 +499,12 @@ def main():
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
         problems.extend(guide_board.board_problems("\n".join(lines), plan_text))
-        headings = {p.stem: (p.read_text(encoding="utf-8").splitlines() or [""])[0]
-                    for p in ENTRIES.glob("*.md")} if ENTRIES.is_dir() else {}
+        # Not `headings`: that name is the set of parent steps, read again
+        # below to tell a parent from a leaf.
+        entry_headings = {p.stem: (p.read_text(encoding="utf-8").splitlines() or [""])[0]
+                          for p in ENTRIES.glob("*.md")} if ENTRIES.is_dir() else {}
         ledger_text = LEDGER.read_text(encoding="utf-8") if LEDGER.is_file() else ""
-        problems.extend(ledger_problems(ledger_text, headings))
+        problems.extend(ledger_problems(ledger_text, entry_headings))
         agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
         problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
         texts = {name: (ROOT / name).read_text(encoding="utf-8")

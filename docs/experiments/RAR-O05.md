@@ -23,4 +23,5 @@ Indexed under *3. Search and selectivity › Search-oracle observations* in [`do
 - **PREDICTION CALIBRATION (append after exposure):** pending.
 - **Conditional lesson:** pending.
 - **Retry trigger or `closed`:** re-measured at C.11 by PLAN.
+- **Wire check (2026-10-05, after the registration commit `c0a67f1`; it decided nothing):** 4 games of the same pair under other names (`wire-sf`, `wire-rarog`) at seed 777 and 150,000 nodes, `tools/results/sprt_wire-sf_vs_wire-rarog_20261005_213232.*`. The option reaches both arms: the manifest records `Use Rarog HCE=false` and `Use Rarog HCE=true`; at the fixed node count the mean time per move is 0.049 s for `wire-sf` and 0.075 s for `wire-rarog` (229 and 228 moves, each game's first mover taken from its starting FEN); and a direct `go nodes 1500000` on one middlegame position reads 2.31 Mnps with the option false and 1.39 Mnps with it true, with different best moves. The registered seed 20261005 was not used. That direct reading is 0.73 doublings, more than the 0.5 to 0.6 the prediction assumed; the prediction stands as written.
 - **Artifacts / commits:** pending.

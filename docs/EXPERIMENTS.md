@@ -381,8 +381,8 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-E12](experiments/RAR-E12.md) | Complete HCE refit on `hce-v3-tb` | H1 ACCEPTED at 7,388 games: +11.81 +/- 5.33 Elo, +17.57 +/- 7.92 nElo |
 | [RAR-E13](experiments/RAR-E13.md) | RAR-E13 — is the fitted king-safety table worth its tree cost? (registered 2026-09-03, before games) | Recorded in full in the packet |
 | [RAR-E14](experiments/RAR-E14.md) | Audit of the endgame truth instrument, 2026-09-04, prompted by Basilisk BAS-E47/BAS-E50 and verified … | Three confirmed defects |
-| [RAR-E17](experiments/RAR-E17.md) | C.0 donor-direction residual screen: what the classical Stockfish evaluation predicts that Rarog's does not — REGISTERED 2026-10-05, before the corpus was scored | Registered, not yet run |
-| [RAR-E18](experiments/RAR-E18.md) | C.0 follow-up cuts of RAR-E17's rows: where the donor's total-level information sits — REGISTERED 2026-10-05, before the cuts were computed | Registered, not yet run |
+| [RAR-E17](experiments/RAR-E17.md) | C.0 donor-direction residual screen: what the classical Stockfish evaluation predicts that Rarog's does not — REGISTERED 2026-10-05, before the corpus was scored; RUN 2026-10-05 | Observation: Stockfish's total adds +3.59% held-out, its families +1.22%; king +0.66% and winnability +0.12% carry signal, mobility, pieces, material and space none |
+| [RAR-E18](experiments/RAR-E18.md) | C.0 follow-up cuts of RAR-E17's rows: where the donor's total-level information sits — REGISTERED 2026-10-05, before the cuts were computed; RUN 2026-10-05 | Observation: at seven men or more the total adds +2.73% (magnitude 0.46, families 1.62); at six or fewer +29.7%, half of it magnitude |
 
 ## 6. Throughput, build and platforms
 

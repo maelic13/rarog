@@ -22,9 +22,27 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Cheapest prior falsifier:** RAR-E17 itself; it could not separate these because its cohorts shared one fit.
 - **Registered gate and stop rule:** no gate; one run of `analyse --within`, no further cuts of these rows without a new registration. Use, frozen: if (c) survives, C.5.1 and C.5.2 are placed directly after C.3 in the order of work, as RAR-E17's initiative reading already indicates; if (a) or (b) explains the excess, C.5 keeps PLAN's place and its research card starts from the magnitude or tablebase finding. Nothing is accepted and no Elo is estimated.
 - **Full conditions / provenance:** `python tools/diag/donor_residual.py analyse --within --scores tools/results/donor-residual-20261005/scores.csv --out tools/results/donor-residual-20261005/report-within.json`. Cohorts: all, the three phase bands, queens on or off, six men or fewer against seven or more (kings included), and Rarog's clipped score within or beyond 500 cp. `rarog+magnitude` adds `r·|r|/1000` to Rarog's score. Disclosed: these rows were seen in aggregate in RAR-E17; no cohort below was computed before this registration except RAR-E17's own six, which were read from a single global fit.
-- **Result:** not run at registration.
-- **Disposition:** registered.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
-- **Conditional lesson:** pending.
-- **Retry trigger or `closed`:** pending.
-- **Artifacts / commits:** pending.
+- **Result (run 2026-10-05, once, after the registration commit `e2c6ebd`):** null control within ±0.025% in every cohort. Gains against `rarog` inside each cohort, percent ± SE:
+
+  | Cohort (rows) | `stockfish` alone | `rarog+stockfish` | `rarog+all_families` | `rarog+king` | `rarog+initiative` | `rarog+magnitude` |
+  |---|---:|---:|---:|---:|---:|---:|
+  | all (194,444) | +2.17 ± 0.16 | +3.59 ± 0.09 | +1.22 ± 0.05 | +0.66 ± 0.04 | +0.12 ± 0.01 | **+0.97 ± 0.05** |
+  | phase ≥ 96 (43,017) | +1.89 ± 0.19 | +2.19 ± 0.14 | +1.95 ± 0.13 | +0.71 ± 0.08 | +0.03 ± 0.02 | +0.07 ± 0.02 |
+  | phase 32–95 (50,797) | +2.55 ± 0.25 | +3.25 ± 0.17 | +2.24 ± 0.13 | **+1.58 ± 0.12** | +0.03 ± 0.02 | +0.12 ± 0.03 |
+  | phase < 32 (100,630) | +5.77 ± 0.30 | +7.33 ± 0.20 | +1.36 ± 0.09 | +0.09 ± 0.02 | **+0.91 ± 0.07** | +2.75 ± 0.12 |
+  | men ≤ 6 (33,648) | +29.46 ± 0.95 | **+29.69 ± 0.84** | +7.70 ± 0.46 | +0.01 ± 0.02 | +6.84 ± 0.43 | +15.12 ± 0.61 |
+  | men ≥ 7 (160,796) | +1.43 ± 0.15 | **+2.73 ± 0.09** | +1.62 ± 0.06 | +0.76 ± 0.05 | +0.02 ± 0.01 | +0.46 ± 0.03 |
+  | \|rarog\| ≤ 500 (139,678) | +2.19 ± 0.15 | **+3.24 ± 0.09** | +2.00 ± 0.08 | +0.80 ± 0.05 | +0.09 ± 0.01 | +0.24 ± 0.03 |
+  | \|rarog\| > 500 (54,766) | +0.56 ± 0.67 | +3.39 ± 0.25 | +1.16 ± 0.21 | +0.09 ± 0.04 | +0.07 ± 0.04 | +0.32 ± 0.05 |
+
+  Other families inside their best cohort: space +0.15 ± 0.04 at phase ≥ 96; mobility +0.11 ± 0.03 at phase 32–95; threats +0.20 ± 0.04 and passed +0.16 ± 0.03 without queens; material +2.41 ± 0.32 at six men or fewer. In squared-error units the 3.6% splits into about 2.6 points from positions of seven men or more and 1.2 from six or fewer (which are 17% of the rows and 4% of the loss). Full table: `tools/results/donor-residual-20261005/report-within.json` (`8a7ddb94…9c6b`).
+- **Disposition:** observation. Hypothesis (c) survives its falsifier: at seven men or more the donor's total adds 2.73%, a magnitude recalibration of Rarog's own score recovers 0.46 of it (17%), and the term families 1.62. Hypothesis (d) is right for the opening band (families +1.95% of the total's +2.19%) and wrong for the endgame band. Hypotheses (a) and (b) each explain a share: at six men or fewer the donor is 29.7% better and half of that is magnitude. By the frozen use, C.5.1 and C.5.2 follow C.3 in the order of work.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 6 above.
+  - Observed: (1) hit, +2.73% and Stockfish alone ahead by 1.43%. (2) hit, far beyond the line (+29.7% against "at least 8%"). (3) hit, +3.24%. (4) **miss**: `rarog+magnitude` gains +0.97%, above the 0.5% line and 27% of the total's gain rather than under a quarter. (5) hit, +1.58%. (6) hit, +0.91% and a six-point gap.
+  - Mechanism supported? Partly. The excess above the families at seven men or more (about 1.1 points) is real and is not magnitude, but the winnability term itself adds almost nothing there (+0.02%): its signal is a six-men-or-fewer effect (+6.84%). What carries the excess above six men is not identified by this instrument; the scale factor is the candidate, unmeasured.
+  - Missed interaction or instrument limit: I under-weighted how much of a Texel loss on tablebase-corrected rows is the size of a winning score. Rarog scores a won KR-K at 4 to 7 pawns; the label is 1.0.
+  - Confidence: about right on five of six.
+- **Conditional lesson:** three different things sit behind "Stockfish's evaluation knows more in endgames": exact low-material knowledge that matches tablebase labels, the magnitude it gives a win, and scaling above six men. Only the last is what a generic winnability cluster builds, and its size here is about one point of loss, not seven.
+- **Retry trigger or `closed`:** C.5.1 owns the next cut (by material signature); closed here.
+- **Artifacts / commits:** tool change `3432fc7`; `tools/results/donor-residual-20261005/report-within.json` and the log `tools/results/donor-residual-20261005.within.log` (ignored storage). Analysis: `analysis/eval_programme_2026-10-05.md`, section 5.
