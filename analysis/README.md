@@ -78,7 +78,7 @@ commit that adds it.
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |
 | [`gyatso_read_2026-09-26.md`](gyatso_read_2026-09-26.md) | A reading of GyatsoChess: two post-cluster candidates (TT-hit history bonus, draw-score randomisation) | Deliverable | B.5.1 |
-| [`ledger_records_2026-09-14.md`](ledger_records_2026-09-14.md) | Ledger records moved out of EXPERIMENTS.md, 2026-09-14 | Deliverable | `EXPERIMENTS.md` |
+| [`ledger_records_2026-09-14.md`](ledger_records_2026-09-14.md) | Ledger records moved out of EXPERIMENTS.md, 2026-09-14 | Deliverable | `docs/EXPERIMENTS.md` |
 | [`ponder_race_report_2026-09-26.md`](ponder_race_report_2026-09-26.md) | The ponder race as reported: `ponderhit` or `stop` right after `go ponder` loses the `bestmove` | Deliverable | B.3.5 |
 | [`repository_review_2026-09.md`](repository_review_2026-09.md) | Repository and document review — PLAN B.2.0.1 | Deliverable | B.2.0.1, E.1 |
 | [`search_programme_2026-09-13.md`](search_programme_2026-09-13.md) | Search programme investigation — PLAN B.0 | Deliverable | B.0, B.1–B.3 |
@@ -107,7 +107,7 @@ commit that adds it.
 | [`hce_maturity_2026-08-25.md`](hce_maturity_2026-08-25.md) | Rarog HCE maturity against the classical Stockfish reference | Record | cited by PLAN or another analysis |
 | [`hce_residuals_2026-09-01.md`](hce_residuals_2026-09-01.md) | Post-fit residual audit of the accepted HCE — 2026-09-01 (PLAN 4.9.1) | Record | RAR-E09 |
 | [`king_square_cache_2026-09-08.md`](king_square_cache_2026-09-08.md) | King-square caching — RAR-M37 / 4.11b.12 | Record | RAR-M37 |
-| [`ledger_commits_2026-09-27.md`](ledger_commits_2026-09-27.md) | Ledger-cited commits outside every branch: date, subject, citing rows and recipe for each of 71, and the local bundle holding all of them | Record | `EXPERIMENTS.md` commit note; `arm_patches/` |
+| [`ledger_commits_2026-09-27.md`](ledger_commits_2026-09-27.md) | Ledger-cited commits outside every branch: date, subject, citing rows and recipe for each of 71, and the local bundle holding all of them | Record | `docs/EXPERIMENTS.md` commit note; `arm_patches/` |
 | [`mate_drive_promotion_closure_2026-09-06.md`](mate_drive_promotion_closure_2026-09-06.md) | 4.11.9 mate-drive promotion closure -- RAR-M23 | Record | RAR-M23 |
 | [`movegen_2026-09-07.md`](movegen_2026-09-07.md) | Move generation optimization — RAR-M31 / 4.11b.8 | Record | RAR-M31 |
 | [`node_budget_2026-09-04.md`](node_budget_2026-09-04.md) | What a move actually costs at 3+0.03 (PLAN 4.10.6) | Record | cited by PLAN or another analysis |

@@ -4,9 +4,9 @@ This is the forward roadmap. It says what will be done, in what order, why,
 and what decides each step. It does not record history: completed work lives
 in [HISTORY.md](HISTORY.md), measured evidence in
 [EXPERIMENTS.md](EXPERIMENTS.md), procedures in [PROCESS.md](PROCESS.md), and
-the day-to-day status board with checkboxes in [GUIDE.md](GUIDE.md). The
+the day-to-day status board with checkboxes in [GUIDE.md](../GUIDE.md). The
 pre-rewrite roadmap is archived verbatim at
-[docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md);
+[docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md);
 every historical `4.x` reference in the ledger and analyses points there.
 
 Rewritten 2026-09-09 as a battle plan with one objective and a measured
@@ -88,7 +88,7 @@ miss and the budget above is corrected rather than defended.
 gating. The rules below decide order and acceptance in this roadmap.
 
 1. **Donor architecture, own implementation.** Which engine donates what,
-   what may cross and how the code is written: `PROCESS.md`, *The
+   what may cross and how the code is written: `docs/PROCESS.md`, *The
    independence boundary*. Similarity to a donor is never an acceptance
    criterion; games are.
 2. **Constants are seeds.** A ported constant sits on the donor's score scale
@@ -108,7 +108,7 @@ gating. The rules below decide order and acceptance in this roadmap.
    margin coupling, TT masking and history gravity are the interactions that
    have bitten this project; name them in every cluster handoff.
 5. **Each cluster: audit, register, implement, prove, explain, fit, gate,
-   record.** Registration in `EXPERIMENTS.md` before any games: hypothesis,
+   record.** Registration in `docs/EXPERIMENTS.md` before any games: hypothesis,
    baseline SHA, bracket, cap, stop rule and the frozen prediction. Bounds
    default to `[0,3]` nElo; a large prior uses `[0,10]` or `[3,10]` and says
    why; a removal uses a loss-permitting bracket, and a repair the gate of
@@ -262,7 +262,7 @@ linked analyses; this table is the index.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release
 
-**Closed 2026-09-11.** Each leaf's dated record is in `HISTORY.md`; the
+**Closed 2026-09-11.** Each leaf's dated record is in `docs/HISTORY.md`; the
 text this section held is verbatim in
 `docs/archive/PLAN-closed-leaves-2026-09-14.md`. The measured starting
 figures are in section 1.
@@ -659,7 +659,7 @@ diagnostics; two rejections stop B.
           Hand over: one `b2core,tune` PGO build by
           `nps_build_pool.ps1 -Features b2core,tune -Builds 1`, hashed and
           fingerprinted, and the six `sprt.ps1` commands of B.2.2.2 with
-          `-OptionsB`, then register RAR-S74 in `EXPERIMENTS.md` with the
+          `-OptionsB`, then register RAR-S74 in `docs/EXPERIMENTS.md` with the
           predictions of B.2.2.2 copied verbatim before any game.
           **Implemented 2026-09-15 (RAR-S73, RAR-S74).** Engine commits
           `bebed9f` (clamps), `0e0c526` `CoreRazorGuards`, `218036c`
@@ -3445,10 +3445,10 @@ and adjudication never change after games are seen.
 | File | Purpose |
 |---|---|
 | `GUIDE.md` | The checkbox board first (closed phases as one- or two-sentence summaries), then checkpoint, holds, model mapping, prompts and operator guide |
-| `PLAN.md` | This roadmap: objective, rules, phases, protocols |
-| `EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
-| `PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |
+| `docs/PLAN.md` | This roadmap: objective, rules, phases, protocols |
+| `docs/EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
+| `docs/PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |
 | `CHANGELOG.md` | User-facing changes: `[Unreleased]` collects them as they land; a release dates the section, whose body becomes the release notes |
-| `HISTORY.md` | Completed work, retired numbering and the number map; never a source of the next step |
+| `docs/HISTORY.md` | Completed work, retired numbering and the number map; never a source of the next step |
 | `analysis/` | Per-leaf analyses and measurement records; raw artifacts stay local and ignored |
 | `docs/archive/` | Verbatim archived roadmaps |

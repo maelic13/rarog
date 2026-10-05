@@ -66,7 +66,7 @@ The same run, called directly (no guards, no manifest):
 ```
 
 The cap, the seed and the directory stay on the command line: the cap belongs to
-the registration in `EXPERIMENTS.md`, and a seed is chosen and recorded per run.
+the registration in `docs/EXPERIMENTS.md`, and a seed is chosen and recorded per run.
 Bounds, book and adjudication never change after games are seen.
 
 `tournament` needs its command spelled on the command line, because its options

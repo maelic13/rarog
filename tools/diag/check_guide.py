@@ -92,7 +92,7 @@ STRAY = re.compile(r"^ *- \[[ x]\] \*\*[A-Z]\.\d+(\.\d+){0,2} [^*]")
 PHASE = re.compile(r"^## Phase ([A-Z])")
 CLOSED_PHASE = re.compile(r"^## Phase ([A-Z])\b.*\bCLOSED\b")
 REQUIRED_PHASES = set("ABCDEFG")
-PLAN = ROOT / "PLAN.md"
+PLAN = ROOT / "docs" / "PLAN.md"
 # Every GUIDE step number must appear somewhere in PLAN. GUIDE and PLAN are
 # required to change in the same commit, and three times in one session a
 # scripted PLAN edit matched no anchor, reported success, and was committed with
@@ -197,7 +197,7 @@ def fingerprint_problems(guide_text, agents_text, plan_text):
 
 # The current documents a reader acts on. The ledger, HISTORY and analysis/
 # are exempt: their historical paths are evidence of what existed.
-CURRENT_DOCS = ("GUIDE.md", "PLAN.md", "PROCESS.md", "AGENTS.md")
+CURRENT_DOCS = ("GUIDE.md", "docs/PLAN.md", "docs/PROCESS.md", "AGENTS.md")
 # A backticked repository path: a known top-level directory, then segments.
 # Placeholders (`<name>`, globs, ellipses) are templates, not paths.
 REPO_PATH = re.compile(

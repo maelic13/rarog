@@ -2,7 +2,7 @@
 
 This is the indexed maintainer record of measured experiments and the lessons
 that may inform later work. It is not a roadmap: [`PLAN.md`](PLAN.md) owns what
-will be done and in what order. [`CHANGELOG.md`](CHANGELOG.md) remains the
+will be done and in what order. [`CHANGELOG.md`](../CHANGELOG.md) remains the
 user-facing release record.
 
 Every lesson below is conditional. A result describes one engine state, test

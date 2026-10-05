@@ -1,9 +1,9 @@
 # Agent operating rules for Rarog
 
 The rules an agent follows while working on Rarog. `GUIDE.md` says what to work
-on; the relevant section of `PLAN.md` says why; `PROCESS.md` holds the
+on; the relevant section of `docs/PLAN.md` says why; `docs/PROCESS.md` holds the
 procedures these rules assume. Each rule is stated once, here. The incidents
-that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
+that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
 
 ## Classify the work
 
@@ -47,7 +47,7 @@ that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
   by PROCESS's method. A shared atomic states what it signals and which search
   it belongs to. B.7.1's allocation test checks the first clause.
 - Donor engines teach mechanisms, contracts, dependencies, failure modes and
-  methods. What may cross is `PROCESS.md`, *The independence boundary*. Neither
+  methods. What may cross is `docs/PROCESS.md`, *The independence boundary*. Neither
   similarity nor a copied value is acceptance evidence.
 - For nontrivial playing work, check shared signals and feedback: search
   changes move evaluation populations, evaluation changes move pruning,
@@ -271,7 +271,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 ## Gating
 
 - The strength unit is one dependency-complete, locally fitted cluster;
-  internal sub-steps get no gates of their own. Register it in `EXPERIMENTS.md`
+  internal sub-steps get no gates of their own. Register it in `docs/EXPERIMENTS.md`
   (hypothesis, baseline SHA, gate, cap, stop rule) before any games, and never
   change bounds, cap, book or adjudication after seeing games.
 - `[0,3]` nElo is the default bracket. Widen only for a genuinely large prior
@@ -312,7 +312,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Documents
 
-- `GUIDE.md` and `PLAN.md` change in the same commit when roadmap status or
+- `GUIDE.md` and `docs/PLAN.md` change in the same commit when roadmap status or
   requirements change; an AGENTS-only edit needs no PLAN or GUIDE churn.
 - GUIDE carries status. Tick a step only when finished and verified, in the
   commit that finishes it; tick the parent when its last sub-step is ticked.
@@ -326,7 +326,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   (maintainer decision 2026-10-05). What a step involves goes in PLAN, a
   completed record in HISTORY, a procedure in PROCESS, evidence in
   EXPERIMENTS, a derivation in `analysis/`.
-- `HISTORY.md` is history and resolves every retired numbering scheme; never
+- `docs/HISTORY.md` is history and resolves every retired numbering scheme; never
   take a next step from it or from `docs/archive/`. When documents disagree,
   source, defaults and reproducible artifacts outrank prose; fix the prose in
   the same change.

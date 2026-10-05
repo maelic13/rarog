@@ -3,7 +3,7 @@
 One line per tool: what it does, and where the method that uses it lives.
 Run everything from the repository root. Measurement rules (rebuild with the
 exact features, sum per-position counters, check exit status directly) are in
-`AGENTS.md`; procedures are in `PROCESS.md`. Raw outputs go to ignored
+`AGENTS.md`; procedures are in `docs/PROCESS.md`. Raw outputs go to ignored
 `tools/results/`. Tool and fixture names are cited by ledger rows, so they do
 not change.
 

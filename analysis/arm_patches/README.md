@@ -1,6 +1,6 @@
 # Preserved arm patches
 
-Six experiment arms that `EXPERIMENTS.md` cites by SHA and that live only on
+Six experiment arms that `docs/EXPERIMENTS.md` cites by SHA and that live only on
 deleted branches, captured as diffs against a base commit (where each base
 lives now: *Updated 2026-10-05*, below). A ledger row must reproduce its
 artifact without the branch it came from; for these arms the recipe is the diff, and this is where the diff lives.

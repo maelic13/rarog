@@ -2,7 +2,7 @@
 
 The recurring procedures: how a leaf is researched, registered, implemented,
 gated and closed, and how the build, fit, tune and gate instruments are run.
-`AGENTS.md` holds the rules that stop wrong results; `PLAN.md` holds the
+`AGENTS.md` holds the rules that stop wrong results; `docs/PLAN.md` holds the
 roadmap. This file also owns the independence boundary with donor engines.
 
 ## Recurring procedures
@@ -50,7 +50,7 @@ calibration, never proof that the outcome was predicted.
 
 ### Experiment registration
 
-Register an experiment as one row in the `EXPERIMENTS.md` section that owns
+Register an experiment as one row in the `docs/EXPERIMENTS.md` section that owns
 it, before any games. When the registration is longer than a row, write it in
 an `analysis/` packet with the fields below and cite the packet from the row;
 append the result and calibration there without rewriting the prediction.
@@ -114,9 +114,9 @@ before their consumers and weights move together. Conversely, postponing all
 games until the end destroys attribution and lets losing structures hide.
 
 1. **Audit** — name the problem, its Rust owner, all interacting consumers and
-   the local diagnostic population. Update `PLAN.md` first if the evidence
+   the local diagnostic population. Update `docs/PLAN.md` first if the evidence
    contradicts the planned order.
-2. **Register** — add an `EXPERIMENTS.md` ID with hypothesis, baseline SHA,
+2. **Register** — add an `docs/EXPERIMENTS.md` ID with hypothesis, baseline SHA,
    candidate scope, expected direction, gate, cap and stop rule, before games.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;
@@ -213,7 +213,7 @@ and gauntlets (PLAN B.2.6, maintainer decision 2026-09-21). `tools/colosseum.ps1
 drives it from the committed run files in `tools/colosseum/`, which carry the
 conditions every Rarog measurement shares; the cap, the seed and the run
 directory stay on the command line, because they belong to the registration in
-`EXPERIMENTS.md`. The runner is pinned by revision and SHA-256 in
+`docs/EXPERIMENTS.md`. The runner is pinned by revision and SHA-256 in
 `tools/colosseum/colosseum.pin.json` and staged by `setup_tools.ps1`; a binary
 that is not the pinned one is refused, not substituted. The harness is
 qualified in its own repository (Colosseum PLAN Phase 10, with Rarog as the

@@ -10,9 +10,9 @@ None of them is the current roadmap's, which uses lettered phases (`A.2.1`).
 
 | Scheme | Where it appears | Resolve it in |
 |---|---|---|
-| Legacy Rarog phases 7–14 (`7.0b`, `8.2(a)`, `9.0a`, `10.3 speed pass`, `11.x`–`14`) | older source comments and tool prose, the oldest ledger rows, releases up to 2.3.1 | [docs/archive/GUIDE-legacy-2026-07-29.md](docs/archive/GUIDE-legacy-2026-07-29.md) (the tracker) and [docs/archive/PLAN-legacy-2026-07-29.md](docs/archive/PLAN-legacy-2026-07-29.md) (§S6, rationale per item), both verbatim from the 2.3.1 release commit `a5fd288` |
-| Phase 4 roadmap before the 2026-09-04 renumbering (`4.9b`) | ledger rows and analyses written 2026-08-11…2026-09-03 | [docs/archive/GUIDE-phase4-tracker-2026-08-21.md](docs/archive/GUIDE-phase4-tracker-2026-08-21.md); its old numbers map to the renumbered ones in section 13 of the archived Phase-4 PLAN |
-| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](docs/archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
+| Legacy Rarog phases 7–14 (`7.0b`, `8.2(a)`, `9.0a`, `10.3 speed pass`, `11.x`–`14`) | older source comments and tool prose, the oldest ledger rows, releases up to 2.3.1 | [docs/archive/GUIDE-legacy-2026-07-29.md](archive/GUIDE-legacy-2026-07-29.md) (the tracker) and [docs/archive/PLAN-legacy-2026-07-29.md](archive/PLAN-legacy-2026-07-29.md) (§S6, rationale per item), both verbatim from the 2.3.1 release commit `a5fd288` |
+| Phase 4 roadmap before the 2026-09-04 renumbering (`4.9b`) | ledger rows and analyses written 2026-08-11…2026-09-03 | [docs/archive/GUIDE-phase4-tracker-2026-08-21.md](archive/GUIDE-phase4-tracker-2026-08-21.md); its old numbers map to the renumbered ones in section 13 of the archived Phase-4 PLAN |
+| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
 | Current roadmap (`A`–`G`) | `PLAN.md`, `GUIDE.md`, ledger rows from RAR-M45 on | `PLAN.md` |
 
 ## The Phase-4 line, 2026-08-11 to 2026-09-09: what it established
@@ -802,4 +802,4 @@ trackers. Ten abandoned parameters were removed with their accepted defaults
 hardwired at the call sites; the root-gap observation stays in diagnostics but
 cannot enter root confidence, because null-window rival scores made it
 degenerate. Full detail and the retained-inert ownership table are in section 3
-of [docs/archive/PLAN-phase4-2026-09-09.md](docs/archive/PLAN-phase4-2026-09-09.md).
+of [docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md).
