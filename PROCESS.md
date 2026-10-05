@@ -501,7 +501,13 @@ nothing exists on GitHub until every cell has passed.
    says released; a failed tag run is repaired by retagging, after which
    it is true). PR into `master`. A PR to
    `master` runs both `CI` and `Release` (a candidate build of the nine
-   assets with every check the tag run makes, publishing nothing); merge
+   assets with every check the tag run makes, publishing nothing). While
+   `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
+   for `vX.Y.Z` (all but the tag's name and the commit's place on
+   `master`), so a green release PR is a releasable one; a `-dev` version
+   skips it. After a release, the first change that moves the fingerprint
+   must bump the version to the next `-dev`, or every PR fails that check;
+   merge
    only when both are green, and keep `dev` (do not let the merge delete the
    branch: the ledger cites its commits). Both workflows should be required
    checks on `master` in the repository's branch protection.

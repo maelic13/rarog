@@ -74,7 +74,16 @@ jobs:
           else
             mode=candidate
             version="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
-            echo "candidate build of $GITHUB_SHA at version $version; nothing will be published" > release-notes.md
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              # A plain version declares this commit a release: it passes
+              # every check the tag run makes except the two only a tag can
+              # (its name, and the commit on master once merged; `--base
+              # HEAD` waives the second), so a green PR is a releasable one.
+              # A `-dev` version is not a release and skips this.
+              cargo xtask release-check "v$version" --base HEAD --notes release-notes.md
+            else
+              echo "candidate build of $GITHUB_SHA at version $version; nothing will be published" > release-notes.md
+            fi
           fi
           # GUIDE's checkpoint declares the fingerprint once, in its
           # Development head row; release-check (above, for a tag) and this
