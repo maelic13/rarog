@@ -228,6 +228,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-O02](experiments/RAR-O02.md) | No-adjudication confirmation of RAR-O01, stopped after 1,238/2,400 games because the architectural decision … | Observation, sufficient and deliberately stopped |
 | [RAR-O03](experiments/RAR-O03.md) | A.8.3 oracle deficit meter G(0) on the release head - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
 | [RAR-O04](experiments/RAR-O04.md) | B.9 oracle deficit meter G(0) on the search head — REGISTERED 2026-10-03, before any game; PLAYED 2026-10-03 … | Played 2026-10-03 18:00:29–18:34:15 UTC |
+| [RAR-O05](experiments/RAR-O05.md) | C.0 evaluation meter at the start of Phase C: the same-search gap at equal nodes and at equal time — REGISTERED 2026-10-05, before any game | Registered, not yet run |
 
 ### Registered, open
 
@@ -380,6 +381,7 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-E12](experiments/RAR-E12.md) | Complete HCE refit on `hce-v3-tb` | H1 ACCEPTED at 7,388 games: +11.81 +/- 5.33 Elo, +17.57 +/- 7.92 nElo |
 | [RAR-E13](experiments/RAR-E13.md) | RAR-E13 — is the fitted king-safety table worth its tree cost? (registered 2026-09-03, before games) | Recorded in full in the packet |
 | [RAR-E14](experiments/RAR-E14.md) | Audit of the endgame truth instrument, 2026-09-04, prompted by Basilisk BAS-E47/BAS-E50 and verified … | Three confirmed defects |
+| [RAR-E17](experiments/RAR-E17.md) | C.0 donor-direction residual screen: what the classical Stockfish evaluation predicts that Rarog's does not — REGISTERED 2026-10-05, before the corpus was scored | Registered, not yet run |
 
 ## 6. Throughput, build and platforms
 
