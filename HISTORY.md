@@ -59,6 +59,24 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-05 — PLAN B.10 DONE: Rarog 2.5.0 released, and PHASE B IS CLOSED.**
+  The search release, from the frozen B.9 head (engine source `ee02ed1`,
+  11,171,726 / EBF 2.512), licensed under 2.4.0's rule against 2.4.0:
+  +272.4 at `3+0.03` 1T, +260.5 ± 16.0 at `10+0.1`, +322.7 at 4T (RAR-M64,
+  RAR-M65, RAR-M66). It is the first release cut by E.3.1's tag-driven
+  workflow. Its first tag run failed every cell on the declared
+  fingerprint: the workflow read GUIDE's Released baseline row (2.4.0's
+  7,601,220) instead of the Development head row; nothing was published.
+  The repair, by one PR to `master`: the workflow reads the declared
+  fingerprint through `cargo xtask declared-fingerprint`, runs on every PR
+  to `master` as a candidate build, and `release-check` requires the release
+  commit to mark its own version released, as 2.4.0's release commit did by
+  hand. Phase B's lasting output is the search itself: the measured
+  equal-time search deficit, 248 Elo at 2.4.0, closed (G(0) +24.24 ± 8.01).
+  The squash merges that carried 2.5.0 to `master` left the B-phase
+  commits the ledger cites on no ref; they are held by this machine's local
+  history until preserved.
+
 - **2026-10-04 — PLAN E.3.1 IMPLEMENTED: the tag-driven release flow,
   before the 2.5.0 tag.** `release.yml` replaces `build.yml`: a `vX.Y.Z` tag
   push validates (`cargo xtask release-check`: tag = `Cargo.toml` version,

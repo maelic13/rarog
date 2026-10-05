@@ -2753,7 +2753,7 @@ diagnostics; two rejections stop B.
   the oracle's at depth 12, yet it out-plays the oracle at 2 plies less; the
   search costs a quarter of 2.4.0's speed. Speed is C's secondary
   requirement; the whole-surface search tune is C.10.
-- **B.10 Release 2.5.0 — `M`, IMPLEMENTED 2026-10-04, awaiting the maintainer's tag.** Added 2026-10-03 by maintainer decision: 2.5.0
+- **B.10 Release 2.5.0 — `M`, DONE 2026-10-05: released from the `v2.5.0` tag; Phase B is closed.** Added 2026-10-03 by maintainer decision: 2.5.0
   is released at the search checkpoint (it was to be cut at E.3; E.3's
   version becomes 3.0.0 or 2.6.0). Modelled on A.7 and A.9: version bump
   `2.5.0-dev` → `2.5.0`, behaviour-neutral, reproducing 11,171,726 / EBF
@@ -2812,6 +2812,22 @@ diagnostics; two rejections stop B.
   The three branches are local only, so their deletion is local; the
   maintainer runs it. Phase B closes with the `v2.5.0` tag.
 
+  *Released 2026-10-05.* The first tag run (2026-10-05, on `9acdf22`) built
+  all nine assets at 11,171,726 and failed every cell's fingerprint check:
+  `release.yml` took GUIDE's first `fingerprint **`, the Released baseline
+  row's 7,601,220 (2.4.0's), instead of the Development head row's.
+  Nothing was published. The tag was deleted and three tooling changes went
+  to `master` by one PR: the workflow reads the Development head row
+  (`5dc9f0e`); it runs on every PR to `master` as a candidate build, so a
+  green PR means a green release build, and publishing also requires a tag
+  push (`4a572c9`); `cargo xtask release-check` requires the release commit
+  to mark its own version released (GUIDE's Released baseline row names it
+  at the Development head row's fingerprint), and `cargo xtask
+  declared-fingerprint` gives the workflow the same parser (`7c2d696`). The
+  release commit marks 2.5.0 released in GUIDE, PLAN and HISTORY, and the
+  tag is cut again from the merged `master`. The release date in
+  `CHANGELOG.md` is 2026-10-05 (`07c73c1`).
+
 ### Active workflow register
 
 One row per open leaf in the active phases (A and B). The checker requires
@@ -2820,7 +2836,6 @@ class until they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| B.10 | IMPLEMENTED | M | Implemented 2026-10-04: version `3575558` (bench 11,171,726 / EBF 2.512, `id name Rarog 2.5.0`), `CHANGELOG.md` `[2.5.0]`, README, the ref review (three local branches recommended for deletion, their diffs archived; the `arm/*` and `oracle/*` tags kept). Licensed by RAR-M64, RAR-M65 and RAR-M66 under 2.4.0's rule. Merged to `master` as `bd1c1a5` on 2026-10-04 (PR #2, CI green). Awaiting the maintainer: the `v2.5.0` tag re-pushed on the `master` commit that carries E.3.1's `release.yml`, which builds and publishes the assets |
 
 ## Phase C — Evaluation programme
 
@@ -3194,7 +3209,9 @@ decision 2026-10-03). The release is cut through the
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
     - **E.3.1 Tag-driven release flow — `I1`, IMPLEMENTED 2026-10-04,
-      the rehearsal run pending; tooling only.** `.github/workflows/release.yml`
+      amended 2026-10-05 (B.10's record: the declared fingerprint, the PR
+      candidate run, the release-marked rule), the rehearsal run pending;
+      tooling only.** `.github/workflows/release.yml`
       replaces `build.yml`: a `v[0-9]+.[0-9]+.[0-9]+` tag push runs
       `cargo xtask release-check` (tag equals `Cargo.toml`'s version, the
       commit is on `origin/master`, `CHANGELOG.md` has the dated section,

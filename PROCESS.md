@@ -494,7 +494,12 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 nothing exists on GitHub until every cell has passed.
 
 1. Close `CHANGELOG.md`'s `[Unreleased]` as `## [X.Y.Z] - YYYY-MM-DD` and
-   bump `Cargo.toml` to `X.Y.Z` (bench unmoved); PR into `master`. A PR to
+   bump `Cargo.toml` to `X.Y.Z` (bench unmoved), and mark the release
+   released in GUIDE's checkpoint: its *Released baseline* row names
+   `X.Y.Z` at the fingerprint the *Development head* row declares, and
+   PLAN and HISTORY record it (as for 2.4.0 and 2.5.0, the release commit
+   says released; a failed tag run is repaired by retagging, after which
+   it is true). PR into `master`. A PR to
    `master` runs both `CI` and `Release` (a candidate build of the nine
    assets with every check the tag run makes, publishing nothing); merge
    only when both are green, and keep `dev` (do not let the merge delete the
@@ -508,8 +513,9 @@ nothing exists on GitHub until every cell has passed.
    ```
 
    It refuses a tag that does not name `Cargo.toml`'s version, a commit not
-   reachable from `origin/master`, or a changelog without a dated section
-   for the version, and writes that section as the notes.
+   reachable from `origin/master`, a changelog without a dated section for
+   the version, or a GUIDE that does not mark the version released at the
+   declared fingerprint, and writes that section as the notes.
 3. The PR's `Release` run is the rehearsal. A manual one (`Actions →
    Release → Run workflow`, or `gh workflow run release.yml --ref master`)
    is needed only when `master` moved without a PR; it builds,
