@@ -293,7 +293,7 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 
-## Phase C — Evaluation programme
+## Phase C — Evaluation programme (search frozen)
 
 **Goal:** recover the measured 329-Elo same-search evaluation deficit, with
 the search frozen at the B.9 head, by re-implementing the evaluation families
@@ -347,7 +347,7 @@ existing toolchain, frozen test reported once; (6) a PGO bake and SPRT `[0,3]`
 screen and a falsifier, never acceptance (RAR-E03 lost 17 Elo with better
 loss).
 
-- **C.0 Investigation: family map, residuals and cluster order — `R3`.**
+- **C.0 Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — `R3`.**
   Produce the evaluation programme document (C.0 names it): the six-family map from the
   maturity record refreshed on the B.9 head, per-family residual and
   activation evidence, the donor comparison of conditioning, the shared-input
@@ -355,7 +355,7 @@ loss).
   for the programme (corpus name, size, splits, label policy from the label
   audit), and frozen handoffs for C.1 and the first family cluster. **No
   engine implementation.**
-- **C.1 Evaluation restructure, behaviour-neutral — `I1`.** Split `eval.rs`
+- **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`.** Split `eval.rs`
   into the target modules; one attack-map and mobility-area producer consumed
   by pieces, king, threats and space; `EvalTrace` unchanged in meaning. Exact
   fingerprint, suites, pooled NPS inside ±0.5%. The move table is the C.1
@@ -371,7 +371,7 @@ loss).
   wants that instrument to decide `lazy_margin`, it restores them from
   `10d0e83` (`analysis/b8_removed_2026-10-03.md`, entry 5). The `texel` trace-reconstruction test is
   part of the suite run, never a speed measurement.
-- **C.2 Datagen and label contract for the programme — `V`.** Generate the
+- **C.2 Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — `V`.** Generate the
   programme's corpus with the B.9 search under the adjudication-off datagen
   profile; audit labels against tablebase truth (existing tool); freeze
   splits and manifests under a new corpus name. Records the label-contradiction
@@ -384,13 +384,13 @@ loss).
   tuner reads the manifest; the hand-kept frozen list in
   `tools/texel-tuner` is replaced by it. Adopted from Manta's
   `manta-hce-fit-v3` (1,109 free, 17 fixed, 103 excluded).
-- **C.3 King safety cluster — `I2`, then `V`.** King danger in the donor's
+- **C.3 King safety cluster: danger units, safe/unsafe checks, weak ring, flank, shelter/storm; refit; gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and
   storm by file with the castling-destination alternative, queen-absent
   reduction, and the nonlinear danger-to-score map. Rarog's existing nonlinear
   danger table is the seed for the map. Refit, gate.
-- **C.4 Threats and mobility cluster — `I2`, then `V`.** Mobility with a
+- **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,
   restricted squares, threat by pawn push, king threats, slider and knight
@@ -400,13 +400,13 @@ loss).
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
   coverage of a function list.
-    - **C.5.1 Classification and instruments — `R2`.** Adopt the registered
+    - **C.5.1 Classification and deciding instrument per family — `R2`.** Adopt the registered
       family order (`tools/diag/endgame_ranking_v2.json`), confirm each family's
       kind (verdict, scale, conversion) against the code, and name the deciding
       instrument per family: theory truth (`endgame_truth.py`), drawn-cohort
       overclaim (`endgame_drawn.py`), conversion (`endgame_conversion.py`),
       floors, and the A.4 conversion audit at the game level.
-    - **C.5.2 Generic winnability and scaling — `I2`.** The donor's scale
+    - **C.5.2 Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — `I2`.** The donor's scale
       factor logic in our form: pawn-count scaling for the stronger side,
       opposite-bishop scaling by non-pawn material and passers, rule-50
       scaling in the scale rather than only the global damping, and an
@@ -414,7 +414,7 @@ loss).
       both-flank pawns. This is what decides KRPPKRP (5.4% of games, no local
       7-man truth), KPsK (4.5%) and KBPsK (2.6%) generically. Refit, gate with
       an endgame-start cohort and STC.
-    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR — `I2`.** Mate drives and
+    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
       nodes). Rule-50 damping interaction measured here, sign not assumed.
@@ -422,14 +422,14 @@ loss).
     - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
-    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP — `R2`.** Audit
+    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`.** Audit
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
     - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.**
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
-    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP — `I1`.** Sub-1%
+    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
       where the evidence is clean (KNNK already measured clean). Option
@@ -443,31 +443,31 @@ loss).
       KBNK anchor stand until C.5's ranking says the family's 0.2% of
       games is worth 5 MB per process; if it is, this is the shape to
       build, behind the recogniser dispatcher.
-    - **C.5.8 Endgame gate and closure — `V`.** One endgame-start cohort SPRT
+    - **C.5.8 Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — `V`.** One endgame-start cohort SPRT
       plus one STC SPRT for the whole C.5 cluster after its refit; floors and
       theory vetoes re-run; conversion instrument re-measured; KRPPKRP's 7-man
       hold recorded as an explicit exclusion unless independent truth appears.
-- **C.6 Pawns and passers cluster — `I2`, then `V`.** Passed pawns with king
+- **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
   (doubled, isolated, backward, connected by rank and phalanx, weak lever).
   Refit, gate.
-- **C.7 Material, imbalance, phase and pieces cluster — `I2`, then `V`.**
+- **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
   outposts, minor behind pawn, rook on open and semi-open files, trapped
   rook, weak queen, king protector distances. Refit, gate.
-- **C.8 Refit cycles — `V`.** After the family clusters: regenerate data with
+- **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
   by a cycle quietly widening the free set.
-- **C.9 HCE SPSA of nonlinear residue — `V`.** Only the activated nonlinear or
+- **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
-- **C.10 Joint search SPSA after the new evaluation — `V`.** The search
+- **C.10 Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — `V`.** The search
   was fitted on the B-era evaluation: its cp-valued margins sit on that
   scale, and a new evaluation moves every node population the other
   coordinates were fitted on. This is the whole-surface search tune B.6
@@ -491,14 +491,14 @@ loss).
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.
-- **C.11 Checkpoint — `V`.** Same-search deficit against Stockfish's classical
+- **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch), conversion instrument,
   pooled NPS, pool gauntlet at 1T. **Freeze the classical evaluation.**
 
 ## Phase D — Clock, threads, robustness
 
-- **D.1 Time management — `R2` investigation, `I2`/`V` sub-steps.** Audit the
+- **D.1 Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — `R2` investigation, `I2`/`V` sub-steps.** Audit the
   current clock (budget, overhead, `smp_reserve`; the root-confidence
   consumers are gone since B.1 and are not rebuilt) against the Reckless
   shape; implement the soft/hard bound model with the
@@ -526,7 +526,7 @@ loss).
   downgraded mate value). Stockfish 19 took 5.6–6.4 s and about 1 s on the
   same positions. B.5.2 contains it at tablebase roots only; the general
   case is this leaf's.
-- **D.2 Lazy SMP quality — `R2` investigation, `I2`/`V` sub-steps.** 4T and
+- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
   helper depth-skip policy is designed fresh from the donor; B.1 deleted the
@@ -561,7 +561,7 @@ loss).
   **Stockfish** (`stockfish-windows-x86-64-bmi2.exe`), all present in
   `D:/chess/engines/`, and compare the three gains. SMP value grows with time
   control, so the clock is a registration decision, not a default.
-- **D.3 Engine lifecycle and protocol robustness — `R2`, then `I1`.** UCI
+- **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
   **Done out of band, 2026-10-01:**
@@ -629,7 +629,7 @@ loss).
   a mid-game resize discards warm entries, so it is at most a friendlier
   default for casual play; revisit only if the release checklist asks
   for one.
-- **D.4 Tablebase policy — `R2`.** Root and interior probing depth and limits,
+- **D.4 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.
   **Candidate, recorded 2026-09-10, not yet evaluated: replace vendored Fathom
@@ -657,18 +657,18 @@ loss).
 
 ## Phase E — Classical checkpoint and release
 
-- **E.1 Attribution checkpoint — `V`.** Re-run the B.2.0 architecture review
+- **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
   from the accepted SPRTs; deficit meters; NPS; the maturity checklist
   (family map without unknown rows, every slot with a fitting instrument,
   every accepted representation reconstructing through `EvalTrace`).
-- **E.2 Target gate — `V`.** The pool measurement defined in section 1, at 1T
+- **E.2 Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — `V`.** The pool measurement defined in section 1, at 1T
   and 4T. Met, or not met with the measured shortfall per engine recorded.
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
   of the four targets, by 26 to 75 Elo, so Phases B and C are judged against
   the 1T column.
-- **E.3 Release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
   is 3.0.0 if E.2 is met, else 2.6.0 (2.5.0 is cut at B.10, maintainer
@@ -680,7 +680,7 @@ decision 2026-10-03). The release is cut through the
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut — `M`.** E.3's own work, a leaf of its own since
+    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the PR merged with a merge commit, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
       E.2 is met, otherwise 2.6.0, behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
@@ -689,14 +689,14 @@ decision 2026-10-03). The release is cut through the
       merged with a merge commit once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
-## Phase F — NNUE
+## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
 NNUE heads. Reckless is the runtime and trainer-pipeline donor; the
 architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
 
-- **F.0 Investigation: runtime, data pipeline and first architecture — `R3`.**
+- **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread
   per-ply accumulators, king buckets, refresh cache); trainer choice
   (`D:/code/net_trainer` against Bullet) with feature ordering, quantisation
@@ -712,42 +712,42 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   pipeline (node-limited self-play with soft and hard caps, an opening book
   sampled by inverse use-count, viriformat output) is a compact reference
   for the data-format contract F.0 fixes for F.2.
-- **F.1 Board events and accumulator scaffolding — `I2`.** Behaviour-neutral
+- **F.1 Board events and accumulator scaffolding, behaviour-neutral for HCE; cost ledger — `I2`.** Behaviour-neutral
   for the HCE: factual move deltas, evaluator-owned stacks, validity and
   refresh semantics, randomized unwind tests, exact fingerprint, pooled NPS
   cost recorded.
-- **F.2 Data generation at scale — `V`.** 30–60M unique positions from the
+- **F.2 Data generation at scale: 30–60M unique positions, splits, manifests, hashes — `V`.** 30–60M unique positions from the
   classical head under the adjudication-off profile, by-game splits,
   manifests, tablebase and hard-position cohorts; hashes frozen. Maintainer-run.
   The generator follows F.0's contract; node-limited play with soft and hard
   caps and inverse-use-count book sampling are the reference forms
   (`analysis/gyatso_read_2026-09-26.md`).
-- **F.3 Trainer hardening and baseline nets — `I2`, then `V`.** Deterministic
+- **F.3 Trainer hardening and baseline nets, two seeds per configuration — `I2`, then `V`.** Deterministic
   pipeline, two seeds per configuration, validation selects, frozen test
   reports once.
-- **F.4 Scalar integration — `I2`.** `quantised.bin` contract, integer-exact
+- **F.4 Scalar integration: `quantised.bin` contract, integer-exact conformance, HCE fallback — `I2`.** `quantised.bin` contract, integer-exact
   conformance against the trainer's reference evaluation, clean HCE fallback.
-- **F.5 Incremental and SIMD — `I2`, then `V`.** Same-net incremental parity
+- **F.5 Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — `I2`, then `V`.** Same-net incremental parity
   on every move type, SIMD tiers (AVX2, PEXT builds, ARM NEON), scalar
   reference retained, pooled-PGO NPS attribution.
 - **F.6 Search re-fit for the network — `V`.** Score scale, correction
   histories, margins, qsearch and SEE thresholds re-fitted on the new
   evaluator (C.10's protocol).
-- **F.7 Architecture ladder — `R3` with `I2`/`V` sub-steps.** Output buckets,
+- **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs as in
   Reckless, one axis at a time; each net gated against the previous.
-- **F.8 Data frontier — `V`.** On-policy refresh with the strongest net,
+- **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
-- **F.9 NNUE release — `M`/`V`.** Beat the classical release at STC, LTC
+- **F.9 NNUE release: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
   and 4T; platform matrix; publish.
 - **F.10 CCRL top-100 gate — `V`.** Submit; the list decides. Shortfall
   measured against the pool and fed back into F.7/F.8.
 
 ## Phase G — Scaling, platforms and the top 50
 
-- **G.1 High-thread and NUMA — `R2`, then `I2`.** 8/16/32T scaling, TT and
+- **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and
   net placement, large pages, thread affinity policy.
-- **G.2 Platform and product — `I1`.** Chess960 on demand, distributed
+- **G.2 Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — `I1`.** Chess960 on demand, distributed
   testing when typical gains reach 1–3 Elo, and the **optional universal
   x86-64 binary**. The universal work is fully designed and deliberately
   unscheduled: `analysis/universal_binary_2026-09.md` carries the measured
@@ -759,7 +759,7 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   done. The triggers that would revive it are recorded in that document, the
   strongest being NNUE in Phase F, which is what makes a wider tier ladder pay
   (196 of Stockfish's 249 ISA-specific lines are NNUE inference).
-- **G.3 Frontier — `R3`.** Larger nets, data scaling, search fit at LTC; the
+- **G.3 Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — `R3`.** Larger nets, data scaling, search fit at LTC; the
   top-50 gate is the CCRL list again.
 
 ## 3. Measurement protocols
