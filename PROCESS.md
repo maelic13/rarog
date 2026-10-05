@@ -505,8 +505,7 @@ nothing exists on GitHub until every cell has passed.
    `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
    for `vX.Y.Z` (all but the tag's name and the commit's place on
    `master`), so a green release PR is a releasable one; a `-dev` version
-   skips it. After a release, the first change that moves the fingerprint
-   must bump the version to the next `-dev`, or every PR fails that check;
+   skips it (step 6 keeps `dev` on a `-dev` version between releases);
    merge
    only when both are green, and keep `dev` (do not let the merge delete the
    branch: the ledger cites its commits). Both workflows should be required
@@ -535,12 +534,20 @@ nothing exists on GitHub until every cell has passed.
 
    The workflow asserts one `bench 13` fingerprint across the nine assets
    equal to the one GUIDE's checkpoint declares in its *Development head*
-   row (the *Released baseline* row above it carries the previous
-   release's), then creates the release, marked latest, with the assets and
-   the changelog section as notes.
+   row (at a release commit the *Released baseline* row names the same
+   version at the same fingerprint), then creates the release, marked
+   latest, with the assets and the changelog section as notes.
 5. A failed run is repaired by deleting the tag (`git push origin
    :refs/tags/vX.Y.Z; git tag -d vX.Y.Z`), fixing `master` and tagging
    again. Never re-run a failed cell against a moved `master`.
+6. Once the release is published, the first commit on `dev` bumps
+   `Cargo.toml` to the next `-dev` version (`2.6.0-dev` after 2.5.0), with
+   `Cargo.lock` and `tools/texel-tuner/Cargo.lock` following, before any
+   other work; it rides in with the next PR rather than a PR of its own
+   (maintainer decision 2026-10-05). Otherwise the first change that moves
+   the fingerprint fails every PR's `release-check`, since a changed engine
+   would still call itself the released version. The bump is an engine
+   commit: bench unmoved, `uci` answering `id name Rarog X.Y.Z-dev`.
 
 Asset names are `rarog-vX.Y.Z-<os>-<arch>[.exe]`; GitHub's per-asset digests
 are the checksums to compare against.
