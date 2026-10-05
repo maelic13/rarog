@@ -319,10 +319,13 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Sub-steps indent by 4 spaces and addenda (`B.2.0.1`) by 8, never 6 (6
   renders as code); nothing goes deeper than three levels. Run
   `python tools/diag/check_guide.py` rather than reading the file.
-- Keep GUIDE short: its operator contract, model mapping, two prompts, board
-  and checkpoint. What a step involves goes in PLAN, a completed record in
-  HISTORY, a procedure in PROCESS, evidence in EXPERIMENTS, a derivation in
-  `analysis/`.
+- Keep GUIDE short and its board first: every phase with its checkboxes,
+  then the checkpoint, holds, model mapping, two prompts and operator
+  contract. A closed phase keeps its heading, marked `— CLOSED <date>`,
+  over a one- or two-sentence summary; PLAN and HISTORY keep its steps
+  (maintainer decision 2026-10-05). What a step involves goes in PLAN, a
+  completed record in HISTORY, a procedure in PROCESS, evidence in
+  EXPERIMENTS, a derivation in `analysis/`.
 - `HISTORY.md` is history and resolves every retired numbering scheme; never
   take a next step from it or from `docs/archive/`. When documents disagree,
   source, defaults and reproducible artifacts outrank prose; fix the prose in

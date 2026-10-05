@@ -3432,7 +3432,7 @@ and adjudication never change after games are seen.
 
 | File | Purpose |
 |---|---|
-| `GUIDE.md` | Operator guide, model mapping, prompts, the full checkbox board, checkpoint and next action |
+| `GUIDE.md` | The checkbox board first (closed phases as one- or two-sentence summaries), then checkpoint, holds, model mapping, prompts and operator guide |
 | `PLAN.md` | This roadmap: objective, rules, phases, protocols |
 | `EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
 | `PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |
