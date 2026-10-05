@@ -2872,6 +2872,18 @@ ours where the evidence says ours is better, refitting the whole surface
 after every family cluster, and giving endgame handling its own bounded
 cluster.
 
+**The search is frozen for the whole phase (B.9, 2026-10-03).** Phase C
+changes no search code and no search coordinate except through C.10's
+joint tune. A C-phase change that touches `src/search/` returns to its
+owner leaf with an explicit reason recorded there, and is gated as a search
+change. The frozen head: engine source `ee02ed1` (no engine input changed
+through 2.5.0 and `d6998db`'s version bump); the measured binary
+`tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
+`rustc 1.98.1`, pext PGO), SHA-256
+`aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`,
+fingerprint **11,171,726 / EBF 2.512**. C.11's same-search deficit and every
+C gate measure against this head or its accepted successors.
+
 **Speed, a secondary requirement (maintainer decision 2026-10-03).**
 Strength is primary and stays so; the gates are equal-time, so a family that
 costs nodes pays for them in its own SPRT. What speed adds as a requirement:

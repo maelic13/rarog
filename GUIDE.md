@@ -86,7 +86,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Item | Value |
 |---|---|
 | Released baseline | **2.5.0** on `master`, released 2026-10-05 from the `v2.5.0` tag; fingerprint **11,171,726 / EBF 2.512**. Over 2.4.0: +272.4 at `3+0.03` 1T, +260.5 ± 16.0 at `10+0.1`, +322.7 at 4T (RAR-M64, RAR-M65, RAR-M66) |
-| Development head | `dev`, version **2.6.0-dev** (`d6998db`), the 2.5.0 engine; fingerprint **11,171,726 / EBF 2.512**; `rustc 1.98.1`. The search is frozen for Phase C at engine source `ee02ed1` (the measured binary and its SHA-256 are in PLAN B.9): a C-phase change touching `src/search/` returns to its owner leaf and is gated as a search change, and search coordinates move only in C.10's joint tune |
+| Development head | `dev`, version **2.6.0-dev** (`d6998db`), the 2.5.0 engine; fingerprint **11,171,726 / EBF 2.512**; `rustc 1.98.1`. The search is frozen for Phase C at engine source `ee02ed1` (the measured binary and its SHA-256 are in PLAN's Phase C rules): a C-phase change touching `src/search/` returns to its owner leaf and is gated as a search change, and search coordinates move only in C.10's joint tune |
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
@@ -99,7 +99,7 @@ and is frozen at `ee02ed1` for Phase C.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| `archive/pr2`, `archive/pr3`, `archive/pr4` tags (PLAN B.10, *Ref review after the release*) | The next PR has merged with a merge commit and `git for-each-ref --contains` lists `master` for each tip; the maintainer then deletes them | Phase C's ref review at C.11 |
+| Tags `archive/pr2-version-2.5.0`, `archive/pr3-tag-driven-release`, `archive/pr4-release-checks`: the `dev` chains squash-merged as PRs #2–#4 (400 commits the documents cite), joined to `dev` by `e887c3f` | The next PR to `master` has merged with a merge commit and `git for-each-ref --contains <tip>` lists `master` for each; then the maintainer deletes the three tags | Phase C's ref review at C.11 |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 
