@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.0.1** (`V`): Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05).
+**Now: C.0.3** (`R2`): Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -21,7 +21,7 @@ and is frozen at `ee02ed1` for Phase C.
 ## Phase C — Evaluation programme (search frozen)
 
 - [ ] **C.0** Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — **R3**
-    - [ ] **C.0.1** Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05) — **GAME_GATE / V**
+    - [x] **C.0.1** Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05) — DONE 2026-10-05
     - [x] **C.0.2** Donor-direction residual screen (RAR-E17, RAR-E18) — DONE 2026-10-05
     - [ ] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — **RESEARCH / R2**
     - [ ] **C.0.4** King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — **RESEARCH / R3**
@@ -91,11 +91,11 @@ and is frozen at `ee02ed1` for Phase C.
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
-| Evaluation deficit | **About 329 Elo** against Stockfish's classical HCE with the same search (RAR-O02): the 2.3.2 evaluation, about 205 games, with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3. RAR-O05 (C.0.1) re-measures the current evaluation at equal nodes and at equal time; its equal-node figure becomes Phase C's baseline |
+| Evaluation deficit | **+181.7 ± 19.0 Elo at equal nodes**, Phase C's meter baseline, and +266.3 ± 19.9 at equal time: Stockfish's classical HCE over Rarog's current one inside Stockfish's search (RAR-O05, 2026-10-05). RAR-O02's earlier about 329 was the 2.3.2 evaluation with unequal throughput |
 | Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). It ranks questions; it is not Elo |
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
-| Active experiment | **RAR-O05** registered 2026-10-05, maintainer-run (C.0.1): `pwsh -File analysis\artifacts\c0-meter\run_all.ps1` |
+| Active experiment | None open. Last: RAR-O05 (C.0.1), played 2026-10-05; its equal-time match was interrupted at 982 games and is recorded, not replayed |
 
 ## Holds and obligations
 

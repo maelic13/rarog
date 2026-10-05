@@ -59,6 +59,15 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-05 — PLAN C.0.1 DONE: the evaluation meter at the start of
+  Phase C (RAR-O05).** Stockfish's classical evaluation over Rarog's current
+  one, both inside Stockfish's search: **+181.7 ± 19.0 Elo at equal nodes**
+  (1,000 games) and +266.3 ± 19.9 at equal time (980 games; the match was
+  interrupted by an application update at 982 and is recorded, not
+  replayed). Every reading fell inside its frozen 80% band. The equal-node
+  figure replaces RAR-O02's "about 329" as Phase C's meter baseline; it is
+  150 or more, so the programme's premise and order of work stand.
+
 - **2026-10-05 — Documents restructured so sessions read less (maintainer
   request).** PLAN, PROCESS, HISTORY and EXPERIMENTS moved to `docs/`; GUIDE
   stays at the root. Closed Phases A and B and step E.3.1 moved verbatim to
