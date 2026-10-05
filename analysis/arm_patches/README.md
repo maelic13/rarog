@@ -30,7 +30,7 @@ base and reproduce the commit's tree exactly
 (`analysis/artifacts/b10-release/save_branch_patches.sh`), so the branches
 are no longer the only carriers. Their bases were then reachable from `dev`.
 
-**Updated 2026-10-05 (PLAN B.10, *Ref review after the release*):** the
+**Updated 2026-10-05 (B.10's *Ref review after the release*, `docs/archive/PLAN-closed-2026-10-05.md`):** the
 `arm/*` tags are retired. The first six rows' bases (`1155ec3`, `db19aef`,
 `dfa965e`, `090dedc`, `05ba633`, `e2fd4e0`) are on no ref and restore from
 the 2026-09-27 bundle (`../ledger_commits_2026-09-27.md`), where they sit

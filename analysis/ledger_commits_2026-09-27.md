@@ -25,8 +25,8 @@ the other raw evidence on the development machine (ignored, never in Git):
   all 71 cited commits and all 499 archived ones, and its `git fsck
   --connectivity-only` passes.
 
-**2026-10-05:** the four `arm/*` tags were retired (PLAN B.10, *Ref review
-after the release*). The 23 cited commits only they held are in this
+**2026-10-05:** the four `arm/*` tags were retired (B.10's *Ref review
+after the release*, `docs/archive/PLAN-closed-2026-10-05.md`). The 23 cited commits only they held are in this
 bundle under its `refs/tags/arm/*` heads, not `refs/archive-tmp/*`, so
 they restore with
 `git fetch analysis/artifacts/git-history-2026-09-27/rarog-full-history.bundle "refs/tags/arm/*:refs/archive/arm/*"`

@@ -74,7 +74,8 @@ leaf continues here, this is the mapping; everything else is history.
   `arm/*` tags are retired: their patches change the deleted 2.4.0 search,
   and every commit only they held is in the 2026-09-27 bundle.
   `CHANGELOG.md`'s `[Unreleased]` now collects changes as they land
-  (AGENTS, *Changes*). Record: PLAN B.10, *Ref review after the release*.
+  (AGENTS, *Changes*). Record: B.10's *Ref review after the release*, now in
+  `docs/archive/PLAN-closed-2026-10-05.md`.
 
 - **2026-10-05 — PLAN B.10 DONE: Rarog 2.5.0 released, and PHASE B IS CLOSED.**
   The search release, from the frozen B.9 head (engine source `ee02ed1`,
