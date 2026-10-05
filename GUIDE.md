@@ -23,7 +23,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **C.0** Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — **R3**
     - [x] **C.0.1** Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05) — DONE 2026-10-05
     - [x] **C.0.2** Donor-direction residual screen (RAR-E17, RAR-E18) — DONE 2026-10-05
-    - [ ] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — **RESEARCH / R2**
+    - [ ] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — **GAME_GATE / R2**
     - [ ] **C.0.4** King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — **RESEARCH / R3**
 - [ ] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **READY_FOR_IMPLEMENTATION / V**
@@ -95,7 +95,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). It ranks questions; it is not Elo |
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
-| Active experiment | None open. Last: RAR-O05 (C.0.1), played 2026-10-05; its equal-time match was interrupted at 982 games and is recorded, not replayed |
+| Active experiment | **RAR-E19** (C.0.3, the lazy path) registered 2026-10-05, maintainer-run: one 2,000-game Colosseum read, `LazyMargin` 2000 against 600 on `tools/test_engines/rarog-c03-tune.exe`, harm at −13 nElo. Last played: RAR-O05 (C.0.1) |
 
 ## Holds and obligations
 

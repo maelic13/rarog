@@ -292,7 +292,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.0.3 | RESEARCH | R2 | The lazy path omits imbalance above its gate; the read (`LazyMargin` 2000 against 600) is to be registered. Needs neither C.1 nor C.2 |
+| C.0.3 | GAME_GATE | R2 | RAR-E19 registered 2026-10-05 after the zero-game cost read (`bench 13` +3.23% nodes, pooled NPS −7.52% at `LazyMargin` 2000); the maintainer runs the 2,000-game read. Needs neither C.1 nor C.2 |
 | C.0.4 | RESEARCH | R3 | King-safety card: sub-term attribution of RAR-E17's residual, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
@@ -416,14 +416,21 @@ loss).
       families added. Readings in the two entries and in the programme
       document, section 5.
     - **C.0.3 Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — `R2`.** Above
-      `LazyMargin` (600) `evaluate` skips imbalance and the bishop pair,
-      which RAR-E06 and RAR-E12 fitted to piece-value-sized amounts, while
-      every fit runs with the shortcut off. Cheapest test, no code: the head
+      `LazyMargin` (600) `evaluate` skips imbalance and the whole
+      piece-activity block (mobility, threats, king safety, hanging pieces,
+      the small terms, the bishop pair; confirmed in `src/eval.rs`
+      2026-10-05), which RAR-E06 and RAR-E12 fitted to piece-value-sized
+      amounts, while every fit runs with the shortcut off. Cheapest test, no code: the head
       built with `tune`, `LazyMargin=2000` against 600: `bench 13` and
       pooled NPS for the cost, then a registered 2,000-game fixed read
       (AGENTS' *Gating*, repair case 2). An evaluation change, so it is
       registered and gated like one; its outcome is in place before C.1
-      moves the code and before C.2 generates.
+      moves the code and before C.2 generates. **Registered 2026-10-05 as
+      RAR-E19** after the cost read on a PGO tune pool of the head:
+      `LazyMargin` 2000 costs 7.52% NPS (95% 6.29% .. 8.74%) and grows
+      `bench 13` by 3.23% nodes. The read is Colosseum, 2,000 games, harm
+      at −13 nElo; harm keeps the shortcut and opens a speed-keeping repair,
+      no harm removes the lazy path before C.1 (the entry holds the rule).
     - **C.0.4 King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — `R3`.** RAR-E17 says
       that Stockfish's king term carries a residual, not which part
       (shelter and storm, the danger index and its map, flank terms,
