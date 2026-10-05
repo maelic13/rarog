@@ -107,13 +107,23 @@ fn parse_args() -> Result<Config> {
         release::run(&check)?;
         std::process::exit(0);
     }
+    if command == "declared-fingerprint" {
+        if let Some(extra) = args.next() {
+            return Err(format!(
+                "`declared-fingerprint` takes no arguments, got `{extra}`"
+            ));
+        }
+        let guide = std::fs::read_to_string("GUIDE.md").map_err(|e| format!("GUIDE.md: {e}"))?;
+        println!("{}", release::declared_fingerprint(&guide)?);
+        std::process::exit(0);
+    }
     let command = match command.as_str() {
         "build" => CommandKind::Build,
         "verify-isa" => CommandKind::VerifyIsa,
         other => {
             return Err(format!(
-                "unknown command `{other}`; expected `build`, `verify-isa` or \
-                 `release-check`. Run `cargo xtask help`."
+                "unknown command `{other}`; expected `build`, `verify-isa`, \
+                 `release-check` or `declared-fingerprint`. Run `cargo xtask help`."
             ));
         }
     };
@@ -230,6 +240,7 @@ fn print_usage() {
   cargo xtask build [--arch base|x86-64|avx2|pext|arm64] [--native] [--target <triple>] [--pgo] [--bench-depth <n>]
   cargo xtask verify-isa [--arch <same>] [--target <triple>] [--exe <path>] [--pgo] [--native] [--default-cpu]
   cargo xtask release-check vX.Y.Z [--notes <path>] [--base <ref>]
+  cargo xtask declared-fingerprint
 
 `--arch` picks the ISA contract: which source path compiles (PEXT vs portable
 magic bitboards) and which CPU features are required.
@@ -240,8 +251,11 @@ class the tier exists to emit. Needs `rustup component add llvm-tools`.
 for this exact host CPU. LOCAL ONLY - such a binary is not guaranteed to run
 anywhere else, and is marked `-native` in its filename.
 `release-check` refuses a tag that does not name Cargo.toml's version, a HEAD
-not reachable from `--base` (default origin/master) or a CHANGELOG without a
-dated section for the version; `--notes` writes that section as the notes.
+not reachable from `--base` (default origin/master), a CHANGELOG without a
+dated section for the version, or a GUIDE whose Released baseline row does not
+name the version at the Development head row's fingerprint; `--notes` writes
+that section as the notes. `declared-fingerprint` prints the `bench 13` node
+count GUIDE's Development head row declares, which every asset must reproduce.
 
 Examples:
   cargo xtask build                              # portable x86-64
