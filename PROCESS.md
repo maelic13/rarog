@@ -494,8 +494,12 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 nothing exists on GitHub until every cell has passed.
 
 1. Close `CHANGELOG.md`'s `[Unreleased]` as `## [X.Y.Z] - YYYY-MM-DD` and
-   bump `Cargo.toml` to `X.Y.Z` (bench unmoved); PR into `master`, merge on
-   green CI.
+   bump `Cargo.toml` to `X.Y.Z` (bench unmoved); PR into `master`. A PR to
+   `master` runs both `CI` and `Release` (a candidate build of the nine
+   assets with every check the tag run makes, publishing nothing); merge
+   only when both are green, and keep `dev` (do not let the merge delete the
+   branch: the ledger cites its commits). Both workflows should be required
+   checks on `master` in the repository's branch protection.
 2. On the merged `master` commit, before pushing anything:
 
    ```powershell
@@ -506,9 +510,11 @@ nothing exists on GitHub until every cell has passed.
    It refuses a tag that does not name `Cargo.toml`'s version, a commit not
    reachable from `origin/master`, or a changelog without a dated section
    for the version, and writes that section as the notes.
-3. Rehearse once if anything in the pipeline changed: `Actions → Release →
-   Run workflow` on `master` builds, `verify-isa`-checks and benches the nine
-   assets and keeps them as a workflow artifact; it publishes nothing.
+3. The PR's `Release` run is the rehearsal. A manual one (`Actions →
+   Release → Run workflow`, or `gh workflow run release.yml --ref master`)
+   is needed only when `master` moved without a PR; it builds,
+   `verify-isa`-checks and benches the nine assets, keeps them as a workflow
+   artifact and publishes nothing.
 4. Tag and push:
 
    ```powershell
@@ -516,8 +522,10 @@ nothing exists on GitHub until every cell has passed.
    ```
 
    The workflow asserts one `bench 13` fingerprint across the nine assets
-   equal to GUIDE's checkpoint, then creates the release, marked latest, with
-   the assets and the changelog section as notes.
+   equal to the one GUIDE's checkpoint declares in its *Development head*
+   row (the *Released baseline* row above it carries the previous
+   release's), then creates the release, marked latest, with the assets and
+   the changelog section as notes.
 5. A failed run is repaired by deleting the tag (`git push origin
    :refs/tags/vX.Y.Z; git tag -d vX.Y.Z`), fixing `master` and tagging
    again. Never re-run a failed cell against a moved `master`.
