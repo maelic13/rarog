@@ -17,7 +17,11 @@ are not reliably visible by reading:
 3. **A missing phase.** GUIDE is the maintainer's week-to-week status board and
    must list EVERY phase, not only the one being worked on. Phases 6-9 were
    dropped during a shortening pass on 2026-08-30 and nobody caught it by
-   reading; the maintainer did, weeks later.
+   reading; the maintainer did, weeks later. A finished phase keeps its
+   heading, marked `— CLOSED <date>`, over a one- or two-sentence summary
+   instead of its board (maintainer decision 2026-10-05): it may carry no
+   checkbox, and PLAN's sub-steps under its letter are not required on the
+   board, since PLAN and HISTORY hold them.
 
 4. **A SUPERSEDED marker with nobody holding the debt.** A completed step whose
    RESULT was invalidated stays TICKED and carries `SUPERSEDED -> <leaf>`
@@ -86,6 +90,7 @@ PARENT = re.compile(r"^- \[([ x])\] \*\*([A-Z]\.\d+)\*\*")
 CHILD = re.compile(r"^( *)- \[([ x])\] \*\*([A-Z]\.\d+\.\d+(?:\.\d+)?)\*\*")
 STRAY = re.compile(r"^ *- \[[ x]\] \*\*[A-Z]\.\d+(\.\d+){0,2} [^*]")
 PHASE = re.compile(r"^## Phase ([A-Z])")
+CLOSED_PHASE = re.compile(r"^## Phase ([A-Z])\b.*\bCLOSED\b")
 REQUIRED_PHASES = set("ABCDEFG")
 PLAN = ROOT / "PLAN.md"
 # Every GUIDE step number must appear somewhere in PLAN. GUIDE and PLAN are
@@ -223,6 +228,30 @@ def dead_path_problems(texts, exists):
     return problems
 
 
+def closed_phase_problems(lines):
+    """Return the letters of phases marked CLOSED and any checkbox found
+    under one: a closed phase is a summary, its steps live in PLAN."""
+    closed = set()
+    problems = []
+    current = None
+    for n, line in enumerate(lines, 1):
+        ph = PHASE.match(line)
+        if ph:
+            current = ph.group(1)
+            if CLOSED_PHASE.match(line):
+                closed.add(current)
+            continue
+        if line.startswith("## "):
+            current = None
+            continue
+        if current in closed and (PARENT.match(line) or CHILD.match(line)):
+            problems.append(
+                "GUIDE.md:%d: Phase %s is marked CLOSED but carries a checkbox; "
+                "a closed phase is a summary" % (n, current)
+            )
+    return closed, problems
+
+
 def repository_path_exists(path):
     return (ROOT / path.rstrip("/")).exists()
 
@@ -262,6 +291,19 @@ def self_test():
         sys.stdout.write("FAIL: dead-path self-test expected only src/search.rs, got %r\n" % dead)
         return 1
     sys.stdout.write("dead-path negative self-test: PASS (1 dangling path detected)\n")
+    closed, closed_problems = closed_phase_problems([
+        "## Phase A — Reset — CLOSED 2026-09-11",
+        "Summary sentence.",
+        "- [x] **A.1** a step left behind",
+        "## Phase C — Evaluation programme (closed-form fits)",
+        "- [ ] **C.0** open work",
+        "## Current checkpoint",
+        "- [ ] **A.9** not under a phase heading",
+    ])
+    if closed != {"A"} or len(closed_problems) != 1 or "Phase A" not in closed_problems[0]:
+        sys.stdout.write("FAIL: closed-phase self-test got %r, %r\n" % (closed, closed_problems))
+        return 1
+    sys.stdout.write("closed-phase negative self-test: PASS (1 checkbox under a closed phase)\n")
     return 0
 
 
@@ -391,6 +433,9 @@ def main():
                 "The debt has no owner left" % (n, step, owner, owner)
             )
 
+    closed, closed_problems = closed_phase_problems(lines)
+    problems.extend(closed_problems)
+
     plan_text = PLAN.read_text(encoding="utf-8") if PLAN.is_file() else ""
     if not plan_text:
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
@@ -409,7 +454,8 @@ def main():
             )
         # Failure 5: the other direction. A sub-step PLAN defines and GUIDE
         # does not list is invisible work.
-        defined = set(PLAN_DEFINITION.findall(plan_text))
+        defined = {s for s in PLAN_DEFINITION.findall(plan_text)
+                   if s[0] not in closed}
         unlisted = sorted(defined - set(step_numbers))
         if unlisted:
             problems.append(
