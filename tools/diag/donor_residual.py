@@ -124,6 +124,11 @@ def sf11_phase(fen: str) -> int:
     return ((npm - SF11_ENDGAME_LIMIT) * 128) // (SF11_MIDGAME_LIMIT - SF11_ENDGAME_LIMIT)
 
 
+def men_count(fen: str) -> int:
+    """Pieces and pawns on the board, both kings included."""
+    return sum(1 for c in fen.split()[0] if c.isalpha())
+
+
 def has_queen(fen: str) -> bool:
     board = fen.split()[0]
     return "q" in board or "Q" in board
@@ -366,8 +371,6 @@ def analyse(args: argparse.Namespace) -> int:
     for name in FAMILIES:
         models[f"rarog+{name}"] = np.column_stack([rarog, family[name]])
 
-    errors = {name: (y - held_out_predictions(x, y)) ** 2 for name, x in models.items()}
-
     cohorts = {
         "all": np.ones(n, dtype=bool),
         "phase>=96": phase >= 96,
@@ -376,11 +379,31 @@ def analyse(args: argparse.Namespace) -> int:
         "queens": queens,
         "no queens": ~queens,
     }
+    if args.within:
+        # A monotone recalibration of Rarog's own score: what it gains is
+        # magnitude calibration, not information from the donor.
+        models["rarog+magnitude"] = np.column_stack([rarog, rarog * np.abs(rarog) / 1000.0])
+        men = np.array([men_count(f) for f in fens])
+        cohorts["men<=6"] = men <= 6
+        cohorts["men>=7"] = men >= 7
+        cohorts["|rarog|<=500"] = np.abs(rarog) <= 500.0
+        cohorts["|rarog|>500"] = np.abs(rarog) > 500.0
+
+    def squared_errors(mask):
+        return {
+            name: (y[mask] - held_out_predictions(x[mask], y[mask])) ** 2
+            for name, x in models.items()
+        }
+
+    # Default: one fit over every row, cohorts read from it. `--within` refits
+    # inside each cohort, so a cohort's weights are not set by the others.
+    global_errors = None if args.within else squared_errors(np.ones(n, dtype=bool))
 
     report: dict[str, object] = {
         "scores": os.path.abspath(args.scores),
         "scores_sha256": sha256_file(args.scores),
         "rows": int(n),
+        "fit": "within each cohort" if args.within else "all rows",
         "wire": {
             "rank_corr_control_vs_sf11_total": rank_corr(control, sf11_total),
             "rank_corr_family_sum_vs_sf11_total": rank_corr(family_sum, sf11_total),
@@ -394,12 +417,16 @@ def analyse(args: argparse.Namespace) -> int:
     }
     for cname, mask in cohorts.items():
         count = int(mask.sum())
-        base = errors["rarog"][mask]
+        if global_errors is None:
+            errors = squared_errors(mask)
+        else:
+            errors = {name: err[mask] for name, err in global_errors.items()}
+        base = errors["rarog"]
         rows = {}
         for mname, err in errors.items():
-            diff = base - err[mask]
+            diff = base - err
             rows[mname] = {
-                "mse": float(err[mask].mean()),
+                "mse": float(err.mean()),
                 "gain_vs_rarog_pct": float(100.0 * diff.mean() / base.mean()),
                 "gain_se_pct": float(100.0 * diff.std(ddof=1) / np.sqrt(count) / base.mean()),
             }
@@ -436,6 +463,11 @@ def main() -> int:
     a = sub.add_parser("analyse")
     a.add_argument("--scores", required=True)
     a.add_argument("--out", required=True)
+    a.add_argument(
+        "--within",
+        action="store_true",
+        help="refit inside each cohort and add the men-count and magnitude cohorts",
+    )
     a.set_defaults(func=analyse)
     args = parser.parse_args()
     return args.func(args)

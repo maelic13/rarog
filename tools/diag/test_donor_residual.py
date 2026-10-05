@@ -77,6 +77,11 @@ class Phase(unittest.TestCase):
         mid = "r3k2r/1b6/8/8/8/8/1B6/R3K2R w - - 0 1"
         self.assertTrue(0 < dr.sf11_phase(mid) < 128)
 
+    def test_men_count_includes_both_kings_and_ignores_other_fields(self):
+        self.assertEqual(dr.men_count("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1"), 2)
+        start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        self.assertEqual(dr.men_count(start), 32)
+
     def test_queen_detection_reads_the_board_field_only(self):
         self.assertTrue(dr.has_queen("3qk3/8/8/8/8/8/8/4K3 w - - 0 1"))
         self.assertFalse(dr.has_queen("4k3/8/8/8/8/8/8/4K3 w KQkq - 0 1"))
