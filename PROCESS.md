@@ -494,8 +494,22 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 nothing exists on GitHub until every cell has passed.
 
 1. Close `CHANGELOG.md`'s `[Unreleased]` as `## [X.Y.Z] - YYYY-MM-DD` and
-   bump `Cargo.toml` to `X.Y.Z` (bench unmoved); PR into `master`, merge on
-   green CI.
+   bump `Cargo.toml` to `X.Y.Z` (bench unmoved), and mark the release
+   released in GUIDE's checkpoint: its *Released baseline* row names
+   `X.Y.Z` at the fingerprint the *Development head* row declares, and
+   PLAN and HISTORY record it (as for 2.4.0 and 2.5.0, the release commit
+   says released; a failed tag run is repaired by retagging, after which
+   it is true). PR into `master`. A PR to
+   `master` runs both `CI` and `Release` (a candidate build of the nine
+   assets with every check the tag run makes, publishing nothing). While
+   `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
+   for `vX.Y.Z` (all but the tag's name and the commit's place on
+   `master`), so a green release PR is a releasable one; a `-dev` version
+   skips it (step 6 keeps `dev` on a `-dev` version between releases);
+   merge
+   only when both are green, and keep `dev` (do not let the merge delete the
+   branch: the ledger cites its commits). Both workflows should be required
+   checks on `master` in the repository's branch protection.
 2. On the merged `master` commit, before pushing anything:
 
    ```powershell
@@ -504,11 +518,14 @@ nothing exists on GitHub until every cell has passed.
    ```
 
    It refuses a tag that does not name `Cargo.toml`'s version, a commit not
-   reachable from `origin/master`, or a changelog without a dated section
-   for the version, and writes that section as the notes.
-3. Rehearse once if anything in the pipeline changed: `Actions → Release →
-   Run workflow` on `master` builds, `verify-isa`-checks and benches the nine
-   assets and keeps them as a workflow artifact; it publishes nothing.
+   reachable from `origin/master`, a changelog without a dated section for
+   the version, or a GUIDE that does not mark the version released at the
+   declared fingerprint, and writes that section as the notes.
+3. The PR's `Release` run is the rehearsal. A manual one (`Actions →
+   Release → Run workflow`, or `gh workflow run release.yml --ref master`)
+   is needed only when `master` moved without a PR; it builds,
+   `verify-isa`-checks and benches the nine assets, keeps them as a workflow
+   artifact and publishes nothing.
 4. Tag and push:
 
    ```powershell
@@ -516,11 +533,21 @@ nothing exists on GitHub until every cell has passed.
    ```
 
    The workflow asserts one `bench 13` fingerprint across the nine assets
-   equal to GUIDE's checkpoint, then creates the release, marked latest, with
-   the assets and the changelog section as notes.
+   equal to the one GUIDE's checkpoint declares in its *Development head*
+   row (at a release commit the *Released baseline* row names the same
+   version at the same fingerprint), then creates the release, marked
+   latest, with the assets and the changelog section as notes.
 5. A failed run is repaired by deleting the tag (`git push origin
    :refs/tags/vX.Y.Z; git tag -d vX.Y.Z`), fixing `master` and tagging
    again. Never re-run a failed cell against a moved `master`.
+6. Once the release is published, the first commit on `dev` bumps
+   `Cargo.toml` to the next `-dev` version (`2.6.0-dev` after 2.5.0), with
+   `Cargo.lock` and `tools/texel-tuner/Cargo.lock` following, before any
+   other work; it rides in with the next PR rather than a PR of its own
+   (maintainer decision 2026-10-05). Otherwise the first change that moves
+   the fingerprint fails every PR's `release-check`, since a changed engine
+   would still call itself the released version. The bump is an engine
+   commit: bench unmoved, `uci` answering `id name Rarog X.Y.Z-dev`.
 
 Asset names are `rarog-vX.Y.Z-<os>-<arch>[.exe]`; GitHub's per-asset digests
 are the checksums to compare against.

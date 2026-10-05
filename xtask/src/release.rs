@@ -3,8 +3,9 @@
 //! The checks a release tag must pass before anything is built or published,
 //! runnable locally before the tag is pushed and run first by the release
 //! workflow: the tag names `Cargo.toml`'s version, the tagged commit is on
-//! the default branch, and `CHANGELOG.md` has a dated section for that
-//! version. With `--notes`, that section's body is written out as the
+//! the default branch, `CHANGELOG.md` has a dated section for that version,
+//! and GUIDE's checkpoint marks that version released at the fingerprint it
+//! declares. With `--notes`, that section's body is written out as the
 //! release notes, so the GitHub form is never typed into.
 use std::fs;
 use std::path::Path;
@@ -31,6 +32,8 @@ pub fn run(check: &ReleaseCheck) -> Result<()> {
     }
     let changelog = fs::read_to_string("CHANGELOG.md").map_err(|e| format!("CHANGELOG.md: {e}"))?;
     let body = changelog_section(&changelog, &version)?;
+    let guide = fs::read_to_string("GUIDE.md").map_err(|e| format!("GUIDE.md: {e}"))?;
+    let fingerprint = release_marked_in_guide(&guide, &version)?;
     ensure_on_base(&check.base)?;
     if let Some(path) = &check.notes {
         fs::write(path, &body).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -41,7 +44,8 @@ pub fn run(check: &ReleaseCheck) -> Result<()> {
         );
     }
     println!(
-        "release-check {}: version {version} in Cargo.toml, CHANGELOG section present, HEAD on {}",
+        "release-check {}: version {version} in Cargo.toml, CHANGELOG section present, \
+         GUIDE marks it released at bench {fingerprint}, HEAD on {}",
         check.tag, check.base
     );
     Ok(())
@@ -118,6 +122,75 @@ fn is_date(s: &str) -> bool {
         })
 }
 
+/// The bench fingerprint GUIDE's checkpoint declares for the source in this
+/// commit: the `fingerprint **N` of its Development head row. The Released
+/// baseline row above it names the last release, which a candidate carrying
+/// a new fingerprint does not match.
+pub fn declared_fingerprint(guide: &str) -> Result<u64> {
+    fingerprint_in(guide_row(guide, "Development head")?, "Development head")
+}
+
+/// A release commit marks its own version released: GUIDE's Released
+/// baseline row names that version, at the fingerprint the Development head
+/// row declares. Returns that fingerprint.
+pub fn release_marked_in_guide(guide: &str, version: &str) -> Result<u64> {
+    let declared = declared_fingerprint(guide)?;
+    let row = guide_row(guide, "Released baseline")?;
+    let released = bold_versions(row)
+        .next()
+        .ok_or_else(|| "GUIDE's Released baseline row names no **X.Y.Z** version".to_string())?;
+    if released != version {
+        return Err(format!(
+            "GUIDE's Released baseline row names {released}; the release commit must mark {version} released"
+        ));
+    }
+    let released_nodes = fingerprint_in(row, "Released baseline")?;
+    if released_nodes != declared {
+        return Err(format!(
+            "GUIDE's Released baseline fingerprint {released_nodes} differs from the Development head's {declared}"
+        ));
+    }
+    Ok(declared)
+}
+
+/// The one line of GUIDE's checkpoint table that starts `| <name> |`.
+fn guide_row<'a>(guide: &'a str, name: &str) -> Result<&'a str> {
+    let prefix = format!("| {name} |");
+    let mut rows = guide.lines().filter(|l| l.starts_with(&prefix));
+    let row = rows
+        .next()
+        .ok_or_else(|| format!("GUIDE.md has no `{prefix}` checkpoint row"))?;
+    if rows.next().is_some() {
+        return Err(format!("GUIDE.md has more than one `{prefix}` row"));
+    }
+    Ok(row)
+}
+
+/// The number after the row's first `fingerprint **`, thousands commas removed.
+fn fingerprint_in(row: &str, name: &str) -> Result<u64> {
+    let marker = "fingerprint **";
+    let start = row
+        .find(marker)
+        .ok_or_else(|| format!("GUIDE's {name} row carries no `fingerprint **N`"))?
+        + marker.len();
+    let digits: String = row[start..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == ',')
+        .filter(char::is_ascii_digit)
+        .collect();
+    digits
+        .parse()
+        .map_err(|_| format!("GUIDE's {name} row has no number after `fingerprint **`"))
+}
+
+/// The row's bold `**X.Y.Z**` spans, in order.
+fn bold_versions(row: &str) -> impl Iterator<Item = &str> {
+    row.split("**")
+        .skip(1)
+        .step_by(2)
+        .filter(|span| version_of_tag(&format!("v{span}")).is_ok())
+}
+
 fn ensure_on_base(base: &str) -> Result<()> {
     let status = Command::new("git")
         .args(["merge-base", "--is-ancestor", "HEAD", base])
@@ -165,6 +238,38 @@ mod tests {
         let manifest = "[package]\nname = \"rarog\"\nversion = \"2.5.0\"\n\n[dependencies]\nfoo = { version = \"9.9.9\" }\n";
         assert_eq!(manifest_version(manifest).unwrap(), "2.5.0");
         assert!(manifest_version("[dependencies]\nfoo = { version = \"1\" }\n").is_err());
+    }
+
+    const GUIDE: &str = "## Current checkpoint\n\n| Item | Value |\n|---|---|\n\
+        | Released baseline | **2.4.0** on `master`; fingerprint **7,601,220 / EBF 2.474** |\n\
+        | Development head | `dev`, version **2.5.0**; fingerprint **11,171,726 / EBF 2.512** |\n";
+
+    #[test]
+    fn the_declared_fingerprint_is_the_development_heads_not_the_first_in_the_file() {
+        assert_eq!(declared_fingerprint(GUIDE).unwrap(), 11_171_726);
+        assert!(
+            declared_fingerprint("| Released baseline | fingerprint **7,601,220** |\n").is_err()
+        );
+        let twice = format!("{GUIDE}| Development head | fingerprint **1** |\n");
+        assert!(declared_fingerprint(&twice).is_err());
+        assert!(declared_fingerprint(include_str!("../../GUIDE.md")).is_ok());
+    }
+
+    #[test]
+    fn a_release_commit_marks_its_version_released_at_the_declared_fingerprint() {
+        // The previous release still standing as the baseline is refused.
+        assert!(release_marked_in_guide(GUIDE, "2.5.0").is_err());
+        let marked = GUIDE.replace(
+            "**2.4.0** on `master`; fingerprint **7,601,220 / EBF 2.474**",
+            "**2.5.0** on `master`; fingerprint **11,171,726 / EBF 2.512**",
+        );
+        assert_eq!(
+            release_marked_in_guide(&marked, "2.5.0").unwrap(),
+            11_171_726
+        );
+        assert!(release_marked_in_guide(&marked, "2.5.1").is_err());
+        let stale_fingerprint = GUIDE.replace("**2.4.0** on", "**2.5.0** on");
+        assert!(release_marked_in_guide(&stale_fingerprint, "2.5.0").is_err());
     }
 
     #[test]
