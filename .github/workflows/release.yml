@@ -67,10 +67,12 @@ jobs:
             version="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
             echo "candidate build of $GITHUB_SHA at version $version; nothing will be published" > release-notes.md
           fi
-          # GUIDE's checkpoint declares the fingerprint once; every asset
+          # GUIDE's checkpoint declares the fingerprint once, in its
+          # Development head row (the row check_guide.py reads); the Released
+          # baseline row above it carries the previous release's. Every asset
           # must reproduce it. A cross-platform mismatch is investigated,
           # never waived.
-          expected="$(grep -oP 'fingerprint \*\*\K[0-9,]+' GUIDE.md | head -1 | tr -d ,)"
+          expected="$(grep -m1 '^| Development head |' GUIDE.md | grep -oP 'fingerprint \*\*\K[0-9,]+' | head -1 | tr -d ,)"
           test -n "$expected"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
