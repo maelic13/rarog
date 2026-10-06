@@ -20,6 +20,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   - A clock-only fail-high stop would act on every overrunning iteration, so it is a time-formula change for D.1.2.
   - A mate-proved stop saves time only in won games.
   - Nothing lands ahead of Phase C, and its frozen head is unchanged.
+  - The behaviours are real, and their fix is owned by **D.1.2** (amended 2026-10-06, the maintainer's condition for closing). D.1.2's bound model decides on an in-iteration stop and a mate-proved stop, and its acceptance adds a timed rec1–rec3 probe (no move at the hard maximum) and `tm_games.py` on its gate games.
 - **Input to D.1.2:** moves at ≥ 3 × the optimum are 4.7% of non-won moves at `3+0.03` and 1.8% at `10+0.1`. Time past the optimum is 31.4% and 19.7% of all head time. A started iteration always completes, and a cascade can stretch it to about four times the soft target.
 - **Conditional lesson:** on this head, the hard maximum is reached when one iteration cannot finish: a fail-high cascade on a rising score, or a proved mate whose next iteration grows to the ply cap. Both happen mainly where the game is already won, and the records show no result they cost at `3+0.03` or `10+0.1`. Frequency alone does not size a time defect; the outcome of the games it occurs in does.
 - **Retry trigger:** reopen on any of these:

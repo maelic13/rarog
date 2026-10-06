@@ -338,7 +338,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-R10](experiments/RAR-R10.md) | Phase-4.9c-i: the powered sizing RAR-R09 said was owed | The harness now works and the answer is NO BENEFIT WHERE IT COUNTS |
 | [RAR-R11](experiments/RAR-R11.md) | A.3.3 time-forfeit repair at `3+0.03` - RUN 2026-09-09/10, forfeit rate UNDECIDABLE (0 against 0), Elo bound … | Prediction, frozen 2026-09-09 |
 | [RAR-R12](experiments/RAR-R12.md) | A.3.3 harness reserve: `Move Overhead` 40 against 10 on the same binary - RUN 2026-09-10, REJECTED at -80.85 … | Prediction, frozen 2026-09-09 |
-| [RAR-R13](experiments/RAR-R13.md) | D.1.1: the head's hard maximum in won endings; mechanisms of rec1–rec3 and their frequency in games — NO_CHANGE 2026-10-06 | NO_CHANGE: rec1 a fail-high cascade, rec2 no stop after a proved mate, rec3 the soft stop one iteration late; every won-position maximum move in 5,400 games was in a win bar one ordinary low-clock draw (≤ 0.5 Elo) |
+| [RAR-R13](experiments/RAR-R13.md) | D.1.1: the head's hard maximum in won endings; mechanisms of rec1–rec3 and their frequency in games — NO_CHANGE 2026-10-06 | NO_CHANGE: rec1 a fail-high cascade, rec2 no stop after a proved mate, rec3 the soft stop one iteration late; every won-position maximum move in 5,400 games was in a win bar one ordinary low-clock draw (≤ 0.5 Elo); the fix is owned by D.1.2 |
 
 ## 5. Evaluation and data experiments
 

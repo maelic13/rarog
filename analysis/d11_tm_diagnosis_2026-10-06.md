@@ -190,7 +190,14 @@ the measured cost is nil.
    as "no bound on deep-iteration line growth" with no measured cost, and
    the search is frozen.
 
-**Retry trigger.** Reopen if any of these happens:
+**Owner of the fix: D.1.2** (maintainer's condition for closing,
+2026-10-06). The behaviours are real and grow with the control, so the time
+manager's bound model after Phase C decides on an in-iteration stop and a
+mate-proved stop. Its acceptance adds two checks: a timed rec1–rec3 probe in
+which no move reaches the hard maximum, and `tm_games.py` on its gate games.
+PLAN D.1.2 carries the detail.
+
+**Retry trigger.** These pull the fix forward ahead of D.1.2:
 
 - A game record at any rated control shows the head failing to win, or
   forfeiting, after a won position, with one of these stalls preceding the

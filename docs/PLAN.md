@@ -793,14 +793,50 @@ loss).
       RAR-S17; it also moves `bench 13`), D.1.2's bound model (a clock-only
       fail-high stop), or a time saving in won games only (a mate-proved
       stop). Nothing lands ahead of Phase C, and its frozen head is
-      unchanged. The retry trigger is RAR-R13's.
-    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin; SPRT `[0,3]` — `R2`.**
+      unchanged. The fix moves to D.1.2, which owns it, with these
+      mechanisms and acceptance checks. RAR-R13's trigger pulls it forward
+      again if a game record shows a cost.
+    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — `R2`.**
       The rest of D.1 as written above, after Phase C, starting from
-      Phase C's head (D.1.1 changed nothing). Input from RAR-R13: moves at
-      ≥ 3 × the optimum are 4.7% of non-won moves at `3+0.03` and 1.8% at
-      `10+0.1`, time past the optimum is 31.4% and 19.7% of all head time,
-      and a started iteration always completes, so a cascade can stretch a
-      move to about four times its soft target.
+      Phase C's head (D.1.1 changed nothing). **This step owns the fix of
+      D.1.1's three behaviours** (RAR-R13,
+      `analysis/d11_tm_diagnosis_2026-10-06.md`). They are real, and they
+      had no measured cost in results at `3+0.03` and `10+0.1`, so they were
+      not pulled ahead of Phase C, but they grow with the control.
+      - **rec1:** a fail-high cascade whose late re-search never
+        finishes, so the move ends only at the hard maximum.
+      - **rec2:** a proved mate with no stop, whose next iteration grows to
+        the ply cap and never finishes.
+      - **rec3:** an iteration started under the soft target that a cascade
+        stretches to about four times it.
+
+      What the bound model must decide:
+
+      - Whether a clock search may end inside an iteration (after a
+        fail-high past the soft target, playing the fail-high move) or on a
+        proved and stable mate. ADR-0065's "optimum adjusted only by
+        completed exact iterations" is the item it interacts with.
+      - How that interacts with B.5's retry trigger (mid-iteration stops
+        above 10% reopen the discarded-best-move question).
+
+      The aspiration loop itself is not the lever. RAR-S89 and RAR-S17
+      rejected changing it, and it moves `bench 13`; the deep-iteration
+      growth to the ply cap is a search property and stays out of scope.
+      **Acceptance adds, beside the SPRT:**
+
+      - a timed probe of rec1–rec3 at `60000+600` and `180000+2000`
+        (`analysis/artifacts/basilisk-review-2026-10-06/tm_rec_probe.py`;
+        maintainer-run, idle host) in which no move reaches the hard
+        maximum;
+      - `tm_games.py` (`analysis/artifacts/d11-tm-diagnosis-2026-10-06/`) on
+        the gate's own games, reporting the share of won and mate moves at
+        ≥ 0.9 × the maximum (0.48% and 0.24% at `3+0.03`, 1.77% and 2.59%
+        at `10+0.1` on Phase C's head).
+
+      The general overrun is input too: moves at ≥ 3 × the optimum are 4.7%
+      of non-won moves at `3+0.03` and 1.8% at `10+0.1`; time past the
+      optimum is 31.4% and 19.7% of all head time; and a started iteration
+      always completes.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
