@@ -26,7 +26,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — DONE 2026-10-06
     - [x] **C.0.4** Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — DONE 2026-10-06
 - [x] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — DONE 2026-10-06
-- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **READY_FOR_IMPLEMENTATION / V**
+- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **IMPLEMENTED / V**
 - [ ] **C.3** First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — **I2**
     - [ ] **C.3.1** King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **C.3.2** Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — **READY_FOR_IMPLEMENTATION / I2**
@@ -95,7 +95,7 @@ and is frozen at `ee02ed1` for Phase C.
 |---|---|
 | Next release | **3.0.0** at E.3 if the E.2 target gate is met, otherwise 2.6.0 |
 | Released baseline | **2.5.0** on `master`, released 2026-10-05 from the `v2.5.0` tag; fingerprint **11,171,726 / EBF 2.512**. Over 2.4.0: +272.4 at `3+0.03` 1T, +260.5 ± 16.0 at `10+0.1`, +322.7 at 4T (RAR-M64, RAR-M65, RAR-M66) |
-| Development head | `dev`, version **2.6.0-dev**: the 2.5.0 engine plus behaviour-neutral source changes recorded under PLAN D.3's change log (latest `6433760`, each with the exact fingerprint) and C.1's evaluation restructure into `src/eval/` (`801f1b4`, exact); fingerprint **11,171,726 / EBF 2.512**; `rustc 1.98.1`. A registration names the revision it builds from and that fingerprint. The search is frozen for Phase C at engine source `ee02ed1` (the measured binary and its SHA-256 are in PLAN's Phase C rules): a C-phase change touching `src/search/` returns to its owner leaf and is gated as a search change, and search coordinates move only in C.10's joint tune |
+| Development head | `dev`, version **2.6.0-dev**: the 2.5.0 engine plus behaviour-neutral source changes recorded under PLAN D.3's change log (latest `6433760`, each with the exact fingerprint) and C.1's evaluation restructure into `src/eval/` (`801f1b4`, exact), then C.2's lazy gate in the `texel` build (`79c6808`, texel builds only, exact); fingerprint **11,171,726 / EBF 2.512**; `rustc 1.98.1`. A registration names the revision it builds from and that fingerprint. The search is frozen for Phase C at engine source `ee02ed1` (the measured binary and its SHA-256 are in PLAN's Phase C rules): a C-phase change touching `src/search/` returns to its owner leaf and is gated as a search change, and search coordinates move only in C.10's joint tune |
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
@@ -104,7 +104,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
 | Evaluation–search coupling | Feeding the frozen search the full fitted evaluation above the lazy gate costs **−104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal nodes** (RAR-E19, RAR-E20, 2026-10-05/06), though that function predicts outcomes better statically: the cost is per node, in a search fitted to the played function. Every evaluation unit goes through PROCESS's *Evaluation change under a fitted search*: static screens, tree read, gate 1, a margin block over the fixed 28-coordinate surface (`LazyMargin` added by the C.0 audit), gate 2 (accepts), a `10+0.1` read (maintainer decision 2026-10-06) |
-| Active experiment | None open. Last: RAR-E22 (C.0 audit), run 2026-10-06, zero games: with one Stockfish version the donor's families carry all of its gain above six men, superseding RAR-E18's total-level excess; RAR-E21's king attribution survives clipping |
+| Active experiment | Registered, not yet exposed (C.2, 2026-10-06): RAR-M67 (the `hce-v4` source games' label audit), RAR-E23 (the donor screen re-read on `hce-v4-tb` validation, one Stockfish version), RAR-E24 (the unchanged surface refitted on `hce-v4-tb`, gated by PROCESS's shape: gate 1 `[0,3]`, the `c2margin` block when gate 1 fails or the tree read flags, gate 2, cap 20,000 pairs a gate). Last run: RAR-E22 (C.0 audit), run 2026-10-06, zero games: with one Stockfish version the donor's families carry all of its gain above six men, superseding RAR-E18's total-level excess; RAR-E21's king attribution survives clipping |
 
 ## Holds and obligations
 
@@ -114,6 +114,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1` | D.1.2 opens after Phase C, which owns the fix; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2 closes (owner) |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
+| C.2 generation handed over: 612,747 games, `datagen.ps1 -Suffix b9head` with the frozen head's SHA-256 and fingerprint pinned (about 3.6 hours) | The PGN and its manifest exist; then the agent runs extraction, relabel, RAR-M67, RAR-E23 and RAR-E24's fit | C.2 closes; C.3.4 (its fit needs `hce-v4-tb` and RAR-E24's baseline) |
 | Unstoppable-passer test one tempo generous in both move orders (`src/eval/passers.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.

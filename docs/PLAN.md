@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`; the baseline refit gated by PROCESS's shape (C.0 audit). C.0.3 is decided, so generation can run in parallel with C.1 once its command is prepared and wire-checked |
+| C.2 | IMPLEMENTED | V | Tooling, fitting manifest, pilot and registrations done (RAR-M67, RAR-E23, RAR-E24); the 612,747-game generation is the maintainer's; the post-generation chain resumes when its PGN and manifest exist |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
@@ -667,6 +667,39 @@ loss).
   corpus, labelling search and structure (RAR-E12 measured +11.8 Elo from a
   corpus change alone). It also re-reads RAR-E17's screen on the new
   validation rows, registered before they are scored.
+  **Progress 2026-10-06** (`8679ba5` test precondition, `79c6808` engine,
+  `40ac508`, `fec6268` and `f3761f5` tooling). (1) The `texel` build applies
+  the lazy gate by the engine's rule (C.0.3's handoff): over all 194,444
+  `hce-v3-tb` validation rows its evaluation now hashes to the played value,
+  16.4% of the rows sit above the gate, the fingerprint is exact. The two
+  texel term-semantics tests now evaluate with the gate out of reach (one of
+  their eleven positions is above it), in their own commit first. The
+  handoff's "nothing else in the tuner changes" missed one consumer:
+  `--dump-scores` now writes the played evaluation, which C.0.4's magnitude
+  contract reads, and `--dump-scores --full` the full one, which PROCESS's
+  full-against-played screen reads. (2) The fitting manifest
+  `tools/texel/hce_fit_manifest_v1.tsv` (written by
+  `tools/texel/fit_manifest.py`): 1,074 free, 92 fixed, 52 excluded, every
+  never-active claim checked at zero activations; `rarog-texel --manifest`
+  replaces the hand-kept gauge list and coverage partition, and
+  `fit_complete.ps1` passes it to every stage. Against the old partition only
+  `king_safety_table` changes instrument (coordinate stage only, as section
+  9 records). (3) Generation: `datagen.ps1 -ExpectSha256
+  -ExpectFingerprint` verify the frozen head before the first game; the
+  3,000-game pilot ran at about 2,860 games a minute (concurrency 30) and
+  `extract.py --preflight-games 3000` recommends **612,747 games**, which
+  `fit_complete.ps1` names as the `hce-v4` contract; the full command passed
+  a dry run and is the maintainer's (about 3.6 hours at the pilot's rate).
+  (4) Registered before exposure: RAR-M67 (the source games' label audit),
+  RAR-E23 (the donor screen on `hce-v4-tb` validation, one Stockfish
+  version), RAR-E24 (the baseline refit in PROCESS's shape, cap 20,000 pairs
+  a gate, the margin block's surface `c2margin` committed). **Remaining, in
+  order, once the PGN and its manifest exist:** extraction to `hce-v4` with
+  the handbook's settings, the relabel to `hce-v4-tb`, RAR-M67, RAR-E23,
+  then RAR-E24's fit from a clean worktree at the registration commit (later
+  `dev` commits do not enter it), its static screens and tree read (a
+  two-binary form of C.0.3's `lazy_tree.py`), both PGO arms and the gate
+  handover. C.2 closes on RAR-E24's disposition.
 - **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and

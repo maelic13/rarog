@@ -459,7 +459,9 @@ PLAN Phase C's cluster shape carries them for Phase C):
 
 1. **Static screens.** The donor-direction residual
    (`tools/diag/donor_residual.py`) and the full-against-played loss by
-   |score| band (`analysis/artifacts/c03-lazy/full_vs_played.py`'s method);
+   |score| band (`analysis/artifacts/c03-lazy/full_vs_played.py`'s method;
+   the full side is `rarog-texel --dump-scores <csv> <out> --full`, the
+   played side the same command without `--full`);
    record the candidate's magnitude distribution against the head's. A
    candidate that moves the distribution is flagged before any game.
 2. **Tree read.** About 70 positions from the latest gate's games, depth
