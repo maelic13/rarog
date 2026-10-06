@@ -13,7 +13,7 @@ logistic with an intercept, gain in percent of Rarog's held-out squared error).
 
   python tools/diag/king_subterms.py collect --scores tools/results/donor-residual-20261005/scores.csv \
       --sf <instrumented stockfish.exe> --out tools/results/king-subterms-20261006
-  python tools/diag/king_subterms.py analyse --scores ... --dump .../ksdump.csv --out .../report.json
+  python tools/diag/king_subterms.py analyse --dump .../ksdump.csv --out .../report.json
 
 Static outcome loss ranks questions and accepts nothing.
 """
