@@ -293,13 +293,16 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.0.4 | RESEARCH | R3 | The first unit's card: king safety with winnability and scaling, sub-term attribution, shared inputs, the magnitude contract, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
-| C.3 | RESEARCH | I2 | The first evaluation unit (with C.5.1, C.5.2); waits for C.0.4's handoff, C.1 and C.2's corpus |
+| C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 |
+| C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
+| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
+| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
+| C.3.5 | RESEARCH | V | After gate 1 or a flagged tree read |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.1 | RESEARCH | R2 | Part of the C.3 unit; starts from RAR-E18's cut at six men |
-| C.5.2 | RESEARCH | I2 | Part of the C.3 unit; gated with it |
+| C.5.1 | RESEARCH | R2 | Owns the donor's unattributed excess above six men: first `9587eeeb`'s family table against its total, then the opposite-bishop refit candidate (RAR-E21) |
+| C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -378,7 +381,10 @@ corpus; otherwise they close `NO_CHANGE`. A wholesale port of the donor's
 evaluation was considered and declined: the screen finds the donor's
 information in two places, and broad transplants have lost more often than
 won (Basilisk 5.9 −77.9; Manta MAN-E05/E07 −16.3/−7.0; the unit that won,
-MAN-E19 +35.9, was an audited set with one constrained fit).
+MAN-E19 +35.9, was an audited set with one constrained fit). **C.0.4
+(2026-10-06):** the first unit is king safety alone; the scale factor and
+the complexity term were measured as directions and not built (RAR-E21),
+so C.5.1 and C.5.2 return to C.5's sequence.
 
 **Time control (maintainer decision 2026-10-06).** Gate 2 at `3+0.03`,
 `[0,3]`, accepts. Every accepted unit gets a `10+0.1` direction read
@@ -443,7 +449,7 @@ accepted unit then gets the `10+0.1` direction read
 screen and a falsifier, never acceptance (RAR-E03 lost 17 Elo with better
 loss).
 
-- **C.0 Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — `R3`.**
+- **C.0 Investigation: family map, residuals, donor conditioning, shared inputs, cluster order, refit protocol — `R3`, DONE 2026-10-06.**
   Produce the evaluation programme document (C.0 names it): the six-family map from the
   maturity record refreshed on the B.9 head, per-family residual and
   activation evidence, the donor comparison of conditioning, the shared-input
@@ -454,7 +460,9 @@ loss).
   `analysis/eval_programme_2026-10-05.md`. Its verdict (2026-10-05): C.1 and
   C.2 `READY_FOR_IMPLEMENTATION`; king safety confirmed as the first family
   cluster with its handoff **not** frozen (`MORE_RESEARCH`, C.0.4). C.0
-  closes when C.0.1 is played and C.0.4 has frozen C.3's handoff.
+  closes when C.0.1 is played and C.0.4 has frozen C.3's handoff. **Closed
+  2026-10-06:** C.0.1 played (RAR-O05) and C.0.4 froze C.3's handoff
+  (`analysis/c04_king_unit_2026-10-06.md`, RAR-E21).
     - **C.0.1 Evaluation meter at the phase start: the same-search gap at equal nodes and at equal time (RAR-O05) — `V`, DONE 2026-10-05.** The oracle
       package on both sides, `Use Rarog HCE` false against true: 1,000 games
       at 150,000 nodes a move, then 1,000 at `3+0.03`, no adjudication.
@@ -519,7 +527,7 @@ loss).
       if two clusters show the mismatch; neither read separates a search
       fitted to the old function from a function that is worse for this
       search, and only that retune can.
-    - **C.0.4 Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — `R3`.** RAR-E17 says
+    - **C.0.4 Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — `R3`, DONE 2026-10-06.** RAR-E17 says
       that Stockfish's king term carries a residual, not which part
       (shelter and storm, the danger index and its map, flank terms,
       king-to-pawn distance). The card attributes it (the oracle's trace
@@ -536,7 +544,20 @@ loss).
       the score's distribution by |score| band where the frozen search
       expects it (RAR-E19/E20: a shape change in decided positions cost
       about 105 Elo per node), measured by the full-vs-played method before
-      any game.
+      any game. **Done 2026-10-06 (RAR-E21,
+      `analysis/c04_king_unit_2026-10-06.md`):** the danger map carries 92%
+      of the king residual alone (+0.604 of +0.655%) and, inside it, the
+      safe checks and the weak ring the most; shelter and storm 20%; the
+      flank terms and the king-to-pawn distance nil. Rarog's three zeroed
+      inputs are active and not collinear with the units: one unit of
+      weight moves a king one bucket of a table that is flat almost
+      everywhere, so the zero is a resolution limit of the index, not
+      evidence. The scale factor adds +0.09% at seven men or more and the
+      complexity term +0.01%: C.5.2's generic scaling is `NO_CHANGE` for
+      the first unit, and the donor's excess above six men stays
+      unattributed (C.5.1, GUIDE obligation). The magnitude contract, the
+      frozen prediction and C.3's handoff are in the card; C.3 is
+      `READY_FOR_IMPLEMENTATION` as king safety alone, after C.1 and C.2.
 - **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`.** Split `eval.rs`
   into the target modules; one attack-map and mobility-area producer consumed
   by pieces, king, threats and space; `EvalTrace` unchanged in meaning. Exact
@@ -606,7 +627,42 @@ loss).
   winnability and scale factor, and the shared inputs both need, and gates
   them once by the cluster shape above (gate 1, margin block, gate 2, the
   `10+0.1` read); C.5.1 and C.5.2 keep their IDs as its parts and tick
-  with it.
+  with it. **Handoff frozen by C.0.4 (2026-10-06; RAR-E21;
+  `analysis/c04_king_unit_2026-10-06.md`):** the unit is king safety alone
+  (C.5.2's generic scaling measured and not built, so C.5.1 and C.5.2 no
+  longer tick with it): the donor's danger index in the donor's units
+  (accumulated attackers, weak ring, safe checks by piece type with the
+  exclusions, unsafe checks, pinned blockers, king-adjacent attacks, the
+  mobility difference, the no-queen and knight-defender reductions, the
+  shelter feedback) through a capped quadratic map traced as two linear
+  scales; shelter and storm by file and rank with the castling
+  destination in the pawn cache; the pawnless flank outside the index;
+  the 40-bucket table, its inputs and the linear shelter and storm terms
+  removed; the flank terms and the king-to-pawn distance not built. The
+  shared inputs with their per-node cost, the family masks
+  (`KingDangerMask`, `KingShelterMask`, `tune` builds only), the magnitude
+  contract (`KS_INDEX_CAP` 1600 under a const assertion; the
+  full-vs-played flag rule: a mean shift toward the sign above 20 cp in
+  any band ≤ 600 or 2 points of change in the share above the lazy gate
+  sends the candidate to the margin block before gate 1), the fixture
+  test against the donor's printed components, the frozen prediction
+  (gate 1 +4 Elo, 80% band [−8, +15], pass probability 0.35; gate 2
+  0.55; depth-12 tree +3% to +12%; NPS within ±1%) and the falsifiers
+  (the king family's residual against the candidate above +0.40% returns
+  the leaf to `RESEARCH` before any game) are in the card. Depends on
+  C.1 (the producer) and C.2 (the corpus and the fits describing the
+  played function).
+    - **C.3.1 King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — `I2`.** Semantics,
+      invariants and tests in the card's handoff; the blockers are the one
+      input the pooled NPS read may drop.
+    - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`.** The
+      entry grows by the king square, the castling rights and the shelter
+      score per side (12 bytes) and stays `Copy`.
+    - **C.3.3 Tuner: the nonlinear pass over the index coordinates in index units, the map scales and shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.**
+    - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
+      registration copies the card's prediction before the static screens
+      are read.
+    - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
 - **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,
@@ -631,7 +687,18 @@ loss).
       six men its total adds about 1.1 points of loss beyond its term
       families while the winnability term itself adds almost nothing, so
       the scale factor is the candidate and is unmeasured. The next cut is
-      by material signature.
+      by material signature. **RAR-E21 (2026-10-06):** measured as a
+      direction, the scale factor adds +0.09% at seven men or more, the
+      complexity term +0.01% and the rule-50 damping +0.03%: none carries
+      the 1.1 points, which stay unattributed (GUIDE obligation). First
+      steps, zero games: (i) `9587eeeb`'s own family table against its
+      total at seven men or more with RAR-E21's instrument (`V`), since
+      RAR-E17 mixed Stockfish 11's trace with `9587eeeb`'s total; (ii)
+      the pure opposite-bishop cohort (Rarog's score scaled by the
+      donor's factor, +2.13 ± 0.58% on 3,427 rows) as a candidate for
+      refitting `opposite_bishop_scale`'s constants, read on the
+      drawn-cohort instrument (`R2`). The one-queen cohort's king
+      residual (+3.61%) belongs to C.3.
     - **C.5.2 Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — `I2`.** The donor's scale
       factor logic in our form: pawn-count scaling for the stronger side,
       opposite-bishop scaling by non-pawn material and passers, rule-50
@@ -639,7 +706,13 @@ loss).
       initiative/complexity term conditioned on pawn count, king distance and
       both-flank pawns. This is what decides KRPPKRP (5.4% of games, no local
       7-man truth), KPsK (4.5%) and KBPsK (2.6%) generically. Refit, gate with
-      an endgame-start cohort and STC.
+      an endgame-start cohort and STC. **RAR-E21 (2026-10-06): `NO_CHANGE`
+      for the first unit.** The generic scale factor and the complexity
+      term were measured as directions (+0.09% and +0.01% at seven men or
+      more; their signal is at six men or fewer, +5.4% and +6.9%, and at
+      phase < 32, +0.20% and +0.93%); C.3 builds neither. C.5.2 stays
+      open for what C.5.1's material cut supports (the opposite-bishop
+      refit first) and is gated by C.5's own instruments, not with C.3.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
