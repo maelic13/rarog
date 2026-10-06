@@ -292,13 +292,13 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.0.4 | RESEARCH | R3 | King-safety card: sub-term attribution of RAR-E17's residual, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
+| C.0.4 | RESEARCH | R3 | The first unit's card: king safety with winnability and scaling, sub-term attribution, shared inputs, the magnitude contract, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
-| C.3 | RESEARCH | I2 | Waits for C.0.4's handoff, C.1 and C.2's corpus |
+| C.3 | RESEARCH | I2 | The first evaluation unit (with C.5.1, C.5.2); waits for C.0.4's handoff, C.1 and C.2's corpus |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.1 | RESEARCH | R2 | After C.3; starts from RAR-E18's cut at six men |
-| C.5.2 | RESEARCH | I2 | After C.5.1 |
+| C.5.1 | RESEARCH | R2 | Part of the C.3 unit; starts from RAR-E18's cut at six men |
+| C.5.2 | RESEARCH | I2 | Part of the C.3 unit; gated with it |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -337,17 +337,48 @@ winnability carries a small signal confined to low material, and mobility,
 pieces, material and space carry none (RAR-E17, RAR-E18; static loss, which
 ranks questions and accepts nothing). (3) The played evaluation omits
 imbalance above its lazy gate, and the unstoppable-passer test is one tempo
-generous. **Order of work:** C.0.1, C.0.3, C.0.4, C.1, C.2, C.3, C.5.1,
-C.5.2, then C.4, the rest of C.5, C.6 and C.7, each of which opens with its
-own residual step and closes `NO_CHANGE` if that step finds none. C.0's
+generous. **Order of work:** C.0.1, C.0.3, C.0.4, C.1, C.2, the C.3 unit (with
+C.5.1 and C.5.2), then C.4, the rest of C.5, C.6 and C.7, each of which
+opens with its own residual step and closes `NO_CHANGE` if that step finds
+none. C.0's
 prior for the family clusters together is 30 to 90 Elo, below the budget
 row's 100 to 160; the row is corrected at C.11 by measurement, not here.
 
-**The search is frozen for the whole phase (B.9, 2026-10-03).** Phase C
-changes no search code and no search coordinate except through C.10's
-joint tune. A C-phase change that touches `src/search/` returns to its
-owner leaf with an explicit reason recorded there, and is gated as a search
-change. The frozen head: engine source `ee02ed1` (no engine input changed
+**The search is frozen for the whole phase (B.9, 2026-10-03; amended
+2026-10-06).** Phase C changes no search code. It changes no search
+coordinate except (a) through C.10's joint tune and (b) through the
+**margin block** attached to an evaluation unit's gate (cluster shape,
+step 6): one registered SPSA block over the fixed surface of cp-valued
+search coordinates named in PROCESS, *Evaluation change under a fitted
+search*, evaluation weights fixed, seeded from the head. The argument rule
+7b asks for is measured: a statically better evaluation lost −104.5 ± 10.6
+Elo at equal time and −110.0 ± 11.5 at equal nodes through the search fitted
+to the old one (RAR-E19, RAR-E20). A C-phase change that touches
+`src/search/` returns to its owner leaf with an explicit reason recorded
+there, and is gated as a search change.
+
+**Units, not families (maintainer decision 2026-10-06).** Evaluation terms
+are made to work together by the whole-surface fit; what they interact
+with is the search. The unit of implementation and acceptance is therefore
+every term that shares inputs and moves the score's shape, built together:
+the **first unit is C.3**, king safety in the donor's shape with
+winnability and scaling (C.5.1 and C.5.2's content) and the shared inputs
+they need, one fit, one margin block, one gate. Attribution inside a unit
+uses family masks for zero-game tree reads or 2,000-game reads, never
+gates. Threats, pawns and passers, and pieces (C.4, C.6, C.7) join a unit
+only when their own evidence step finds a residual on the programme
+corpus; otherwise they close `NO_CHANGE`. A wholesale port of the donor's
+evaluation was considered and declined: the screen finds the donor's
+information in two places, and broad transplants have lost more often than
+won (Basilisk 5.9 −77.9; Manta MAN-E05/E07 −16.3/−7.0; the unit that won,
+MAN-E19 +35.9, was an audited set with one constrained fit).
+
+**Time control (maintainer decision 2026-10-06).** Gate 2 at `3+0.03`,
+`[0,3]`, accepts. Every accepted unit gets a `10+0.1` direction read
+(1,000 games, `match-fixed-ltc.toml`); a negative read reopens the unit. A
+unit that fails gate 2 inside the harm bound (above −5 Elo) and whose cost
+is nodes rather than speed may be re-gated once at `10+0.1`, `[0,3]`,
+registered before the read and never a second time. The frozen head: engine source `ee02ed1` (no engine input changed
 through 2.5.0 and `d6998db`'s version bump); the measured binary
 `tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
 `rustc 1.98.1`, pext PGO), SHA-256
@@ -387,14 +418,17 @@ existing toolchain, frozen test reported once; (6) a fixed-depth tree read on ga
 (C.0.3: about 70 positions from the latest gate's games, depth 12, both
 arms, the per-position ratio distribution and the correction-residual
 counters; `bench 13` under-reads tree growth, 3.2% against 8.1% and 22%
-in middlegames), then a PGO bake and SPRT `[0,3]`; when that gate fails, an
+in middlegames), then a PGO bake and **gate 1**, SPRT `[0,3]` at `3+0.03`
+with the search unchanged; when gate 1 fails, or the tree read flagged the
+candidate, the **margin block** (one rule-7c block, PROCESS's surface,
+evaluation weights fixed) and then **gate 2**, the candidate with its
+retuned margins against the head, SPRT `[0,3]`; gate 2 accepts. A unit
+that fails both is a worse function; one that fails gate 1 and passes gate
+2 is accepted with its margins, and the record says what they moved. An
 equal-node companion read (`colosseum.ps1 -Mode match -Nodes 150000`,
-2,000 games) is registered before the rejection counts under rule 6, so
-that a loss of time and tree size is told apart from a loss per node
-(RAR-E19 and RAR-E20 read −104.5 at equal time and −110.0 at equal nodes:
-the whole cost of a differently shaped evaluation can be per node, and a
-per-node loss still does not say whether the function or the search fitted
-to the old one is at fault)
+2,000 games) may be registered to tell a loss of time from a loss per node
+(RAR-E19 and RAR-E20 read −104.5 and −110.0); it accepts nothing. An
+accepted unit then gets the `10+0.1` direction read
 (`[3,10]` when the family's residual is large); (7) ledger row. Fit loss is a
 screen and a falsifier, never acceptance (RAR-E03 lost 17 Elo with better
 loss).
@@ -475,7 +509,7 @@ loss).
       if two clusters show the mismatch; neither read separates a search
       fitted to the old function from a function that is worse for this
       search, and only that retune can.
-    - **C.0.4 King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — `R3`.** RAR-E17 says
+    - **C.0.4 Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — `R3`.** RAR-E17 says
       that Stockfish's king term carries a residual, not which part
       (shelter and storm, the danger index and its map, flank terms,
       king-to-pawn distance). The card attributes it (the oracle's trace
@@ -484,7 +518,15 @@ loss).
       and `ks_shelter_storm` were fitted to zero, then freezes the design,
       the shared inputs it needs with their per-node cost, the prediction
       (with the `bench 13` change) and the falsifier. Scope in the programme
-      document, section 11.
+      document, section 11. **Widened 2026-10-06** to the first unit: the
+      card also freezes the winnability and scaling design (C.5.1 and
+      C.5.2's content), the shared inputs the unit needs in C.1's producer
+      and the pawn cache, the material table decision, the family masks for
+      attribution, and the unit's **magnitude contract**: how its terms keep
+      the score's distribution by |score| band where the frozen search
+      expects it (RAR-E19/E20: a shape change in decided positions cost
+      about 105 Elo per node), measured by the full-vs-played method before
+      any game.
 - **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`.** Split `eval.rs`
   into the target modules; one attack-map and mobility-area producer consumed
   by pieces, king, threats and space; `EvalTrace` unchanged in meaning. Exact
@@ -540,7 +582,7 @@ loss).
   corpus, labelling search and structure (RAR-E12 measured +11.8 Elo from a
   corpus change alone). It also re-reads RAR-E17's screen on the new
   validation rows, registered before they are scored.
-- **C.3 King safety cluster: danger units, safe/unsafe checks, weak ring, flank, shelter/storm; refit; gate — `I2`, then `V`.** King danger in the donor's
+- **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and
   storm by file with the castling-destination alternative, queen-absent
@@ -549,7 +591,12 @@ loss).
   donor's inventory, not the cluster's content: C.0.4's card selects from
   it by measured residual and freezes the handoff. RAR-E17 read this
   family's donor-direction residual at +0.66% of held-out loss (+1.58% in
-  the middlegame band), the largest of any family.
+  the middlegame band), the largest of any family. **Unit (2026-10-06):**
+  C.3 builds king safety together with C.5.1's classification and C.5.2's
+  winnability and scale factor, and the shared inputs both need, and gates
+  them once by the cluster shape above (gate 1, margin block, gate 2, the
+  `10+0.1` read); C.5.1 and C.5.2 keep their IDs as its parts and tick
+  with it.
 - **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,

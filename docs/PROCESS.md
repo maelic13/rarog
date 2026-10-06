@@ -446,6 +446,63 @@ binary are retained under `tools/results/hce-fit-<timestamp>/`; source and the
 normal release binary are restored. Review those artifacts before applying a
 patch or registering games. The command itself supplies no strength verdict.
 
+### Evaluation change under a fitted search
+
+The search's cp-valued margins, its correction history and its aspiration
+windows are fitted against the evaluation the engine plays. An evaluation
+that predicts outcomes better can still lose through them: RAR-E19 and
+RAR-E20 read −104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal
+nodes for a function whose static loss was 24% lower where it differed. The
+loss was per node, not speed. Every evaluation change, hand-crafted unit or
+network, therefore goes through these steps (maintainer decision 2026-10-06;
+PLAN Phase C's cluster shape carries them for Phase C):
+
+1. **Static screens.** The donor-direction residual
+   (`tools/diag/donor_residual.py`) and the full-against-played loss by
+   |score| band (`analysis/artifacts/c03-lazy/full_vs_played.py`'s method);
+   record the candidate's magnitude distribution against the head's. A
+   candidate that moves the distribution is flagged before any game.
+2. **Tree read.** About 70 positions from the latest gate's games, depth
+   12, both arms from a cleared table, the per-position ratio distribution
+   and the correction-residual counters (`analysis/artifacts/c03-lazy/lazy_tree.py`'s
+   method). `bench 13` under-reads it (3.2% against 8.1%).
+3. **Gate 1.** SPRT `[0,3]` at `3+0.03`, search unchanged.
+4. **Margin block**, when gate 1 fails or step 2 flagged the candidate: one
+   rule-7c SPSA block (2,000 iterations × 30 games) over the fixed surface
+   below, evaluation weights fixed, seeds the head's values, registered
+   before the first game. The surface is the same for every unit so that
+   gate-2 results are comparable and the block's movement is itself a
+   reading of how far the evaluation's shape moved:
+   `AspirationDelta`, `QsSeeMargin`, `QsFutilityMargin`, `QsDeltaMargin`,
+   `CoreEvalMaterialScale`, `CoreRazorBase`, `CoreRazorSquare`,
+   `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpImprovement`,
+   `CoreRfpCorrection`, `CoreRfpThreat`, `CoreRfpConstant`,
+   `CoreHindsightReduceMargin`, `CoreFpBase`, `CoreFpLinear`,
+   `CoreFpEvalAboveBeta`, `CoreFpCorrection`, `CoreBnfpBase`,
+   `CoreBnfpLinear`, `CoreSeeQuietConstant`, `CoreSeeNoisyConstant`,
+   `CoreNmpBase`, `CoreProbcutBase`, `CoreProbcutImproving`,
+   `CoreCorrUpdateSlope`, `CoreCorrUpdateMax` (27 coordinates: every
+   search coordinate that is compared with the static evaluation or the
+   score in centipawns, plus the correction's update scale). Rule 2 holds:
+   evaluation and search coordinates never share a tune.
+5. **Gate 2.** The candidate with its retuned margins against the head,
+   SPRT `[0,3]` at `3+0.03`. Gate 2 accepts. A unit that fails both gates
+   is a worse function for this engine; one that fails gate 1 and passes
+   gate 2 is accepted with its margins, and its record says what they
+   moved. An equal-node companion read (`colosseum.ps1 -Mode match -Nodes
+   150000`) may be registered to tell time from per-node loss; it accepts
+   nothing.
+6. **Longer control.** An accepted unit gets a `10+0.1` direction read
+   (1,000 games, `match-fixed-ltc.toml`); a negative read reopens it. A
+   unit that fails gate 2 above −5 Elo and whose cost is nodes, not speed,
+   may be re-gated once at `10+0.1`, registered before the read.
+7. **Attribution inside a unit** uses family masks for tree reads or
+   2,000-game reads, never gates. **C.10** stays the full joint tune.
+
+For a network, fix the output scale first (train to WDL, normalise so one
+logistic maps the output to win probability) so the margins keep their
+meaning across nets; the steps then apply unchanged.
+
 ### SPSA go/no-go procedure
 
 The generic harness is retained. The current roadmap owes SPSA where a

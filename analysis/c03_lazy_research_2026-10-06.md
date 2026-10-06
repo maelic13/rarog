@@ -173,8 +173,11 @@ in the entry.
 **C.0.3 closed 2026-10-06 on RAR-E20's record.** The registered use of the
 reading fired: PLAN's cluster shape now carries the fixed-depth tree read
 and the equal-node companion before a failed gate counts under rule 6.
-Decision 4's retune stays a recommendation. Nothing here blocks C.1 or C.2's
-generation.
+Decision 4 was adopted on 2026-10-06 as PROCESS's *Evaluation change under
+a fitted search* (gate 1, a margin block over a fixed 27-coordinate
+surface, gate 2, the `10+0.1` read), together with the unit shape for
+Phase C (the first unit is king safety with winnability and scaling, C.3).
+Nothing here blocks C.1 or C.2's generation.
 
 ## Implementation handoff (decision 2; owner C.2, after C.1 has moved the code)
 
