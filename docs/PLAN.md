@@ -386,7 +386,10 @@ MAN-E19 +35.9, was an audited set with one constrained fit).
 unit that fails gate 2 inside the harm bound (above −5 Elo) and whose cost
 is nodes rather than speed may be re-gated once at `10+0.1`, `[0,3]`,
 registered before the read and never a second time. The frozen head: engine source `ee02ed1` (no engine input changed
-through 2.5.0 and `d6998db`'s version bump); the measured binary
+through 2.5.0 and `d6998db`'s version bump; the behaviour-neutral source
+changes since are listed under D.3's change log with their exact
+fingerprints, latest `6433760`, and a registration names the revision it
+builds from); the measured binary
 `tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
 `rustc 1.98.1`, pext PGO), SHA-256
 `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`,
