@@ -5,7 +5,7 @@ reads a 40-entry table with it. Three inputs (`ks_weak_ring`, `ks_flank_attack`,
 `ks_shelter_storm`) have weight 0, so the engine's trace never shows how often
 they fire or how far one unit of weight would move the index. This script
 rebuilds the zone, the attack maps and every input with python-chess, exactly as
-`src/eval.rs` defines them, and reports their activation, their covariance with
+`src/eval/king.rs` defines them, and reports their activation, their covariance with
 the attacker-unit sum, and the index movement at weight 1.
 
 It is validated before use against the tuner's own trace on the same rows:
@@ -27,7 +27,7 @@ from concurrent.futures import ProcessPoolExecutor
 import chess
 
 # `king_safety_table` and the active danger weights at the frozen head
-# (src/eval.rs; RAR-E12's fit).
+# (src/eval/params.rs; RAR-E12's fit).
 TABLE = [84, 84, 98, 98, 112, 112, 153, 153, 153, 218, 248, 253, 253, 253, 253, 254, 254, 256,
          256, 256, 256, 256, 256, 315, 315, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374,
          374, 374, 440, 515]
@@ -54,7 +54,7 @@ def pawn_attacks(bb: int, white: bool) -> tuple[int, int]:
 
 
 def forward_ranks(white: bool, rank: int) -> int:
-    """Ranks strictly ahead of `rank` for the side (eval.rs FORWARD_RANKS)."""
+    """Ranks strictly ahead of `rank` for the side (FORWARD_RANKS in src/eval/pawns.rs)."""
     if white:
         return sum(chess.BB_RANKS[r] for r in range(rank + 1, 8)) if rank < 7 else 0
     return sum(chess.BB_RANKS[r] for r in range(0, rank)) if rank > 0 else 0

@@ -1,6 +1,6 @@
 """Tests for king_inputs_rarog.py: the start position is quiet, a direct queen
 attack on the zone counts as five units, a safe rook check counts eight, the
-shelter/storm deficit follows eval.rs's definition, and the index clamps to
+shelter/storm deficit follows src/eval/king.rs's definition, and the index clamps to
 the table."""
 
 import unittest

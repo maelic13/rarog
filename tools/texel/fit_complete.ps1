@@ -174,10 +174,38 @@ function Get-EpdOpeningAudit {
     return $rows
 }
 
-$sourcePath = Join-Path $repo "src/eval.rs"
-$sourceBackup = Join-Path $runDir "eval.rs.baseline"
-Copy-Item -LiteralPath $sourcePath -Destination $sourceBackup
-$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
+# The files tools/texel/bake_params.py rewrites (the weight list and the
+# material and piece-square constants); keep the two lists in step.
+$sources = foreach ($rel in @("src/eval/params.rs", "src/eval/material.rs")) {
+    $path = Join-Path $repo $rel
+    $backup = Join-Path $runDir ((Split-Path -Leaf $rel) + ".baseline")
+    Copy-Item -LiteralPath $path -Destination $backup
+    [pscustomobject]@{
+        Rel = $rel
+        Path = $path
+        Backup = $backup
+        Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash
+    }
+}
+$sourceHashes = [ordered]@{}
+foreach ($source in $sources) { $sourceHashes[$source.Rel] = $source.Hash }
+
+# Names of the baked source files whose content differs from the baseline.
+function Get-ChangedSources {
+    @($sources | Where-Object {
+        (Get-FileHash -Algorithm SHA256 -LiteralPath $_.Path).Hash -ne $_.Hash
+    } | ForEach-Object { $_.Rel })
+}
+
+function Restore-Sources {
+    foreach ($source in $sources) { Copy-Item -LiteralPath $source.Backup -Destination $source.Path -Force }
+}
+
+# Advance only the restored files' mtimes (their content hashes are the proof)
+# so Cargo must rebuild; see the note at the restored-baseline build.
+function Update-SourceTimes {
+    foreach ($source in $sources) { [IO.File]::SetLastWriteTimeUtc($source.Path, [DateTime]::UtcNow) }
+}
 $sourceRestored = $false
 
 try {
@@ -367,9 +395,9 @@ try {
     }
 
     $settings = [ordered]@{
-        schema = "rarog-complete-hce-fit-v2"
+        schema = "rarog-complete-hce-fit-v3"
         commit = $commit
-        source_sha256 = $sourceHash
+        source_sha256 = $sourceHashes
         smoke = [bool]$Smoke
         target_train = $TargetTrain
         nonlinear_positions = $NonlinearPositions
@@ -456,8 +484,7 @@ try {
     [void](Invoke-Logged "trace-verify-final-vector" $tuner @("--verify", $validation, "--weights", $final))
 
     [void](Invoke-Logged "bake-final-vector" "python" @("tools/texel/bake_params.py", $final))
-    $candidateHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
-    if ($candidateHash -eq $sourceHash) { throw "final vector baked no source movement" }
+    if (@(Get-ChangedSources).Count -eq 0) { throw "final vector baked no source movement" }
     [void](Invoke-Logged "format-candidate" "cargo" @("fmt"))
     [void](Invoke-Logged "format-check-candidate" "cargo" @("fmt", "--check"))
     if (-not $Smoke) {
@@ -470,24 +497,24 @@ try {
     Copy-Item -LiteralPath $engine -Destination (Join-Path $runDir "rarog-candidate.exe")
     $candidatePatch = Join-Path $runDir "candidate-eval.patch"
     $candidatePatchStderr = Join-Path $runDir "candidate-eval.patch.stderr.log"
-    & git diff "--output=$candidatePatch" -- src/eval.rs 2> $candidatePatchStderr
+    & git diff "--output=$candidatePatch" -- @($sources | ForEach-Object { $_.Rel }) 2> $candidatePatchStderr
     if ($LASTEXITCODE -ne 0) { throw "git diff failed" }
     if (-not (Test-Path -LiteralPath $candidatePatch) -or
         (Get-Item -LiteralPath $candidatePatch).Length -eq 0) {
         throw "candidate patch is empty"
     }
 
-    Copy-Item -LiteralPath $sourceBackup -Destination $sourcePath -Force
+    Restore-Sources
     [void](Invoke-Logged "format-restored" "cargo" @("fmt"))
-    $restoredHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
-    if ($restoredHash -ne $sourceHash) { throw "src/eval.rs did not restore byte-for-byte" }
+    $unrestored = @(Get-ChangedSources)
+    if ($unrestored.Count -ne 0) { throw "$($unrestored -join ', ') did not restore byte-for-byte" }
     [void](Invoke-Logged "check-candidate-patch" "git" @("apply", "--check", $candidatePatch))
     # The restored file can have an older timestamp than the freshly built
     # candidate. A plain cargo build then legally reuses the candidate binary.
     # Advance only its mtime (the content hash above remains the proof) so Cargo
     # must rebuild it. `cargo clean -p rarog` does not reliably remove the final
     # executable/fingerprint on this workspace layout.
-    [IO.File]::SetLastWriteTimeUtc($sourcePath, [DateTime]::UtcNow)
+    Update-SourceTimes
     [void](Invoke-Logged "build-restored-baseline" "cargo" @("build", "--release", "-p", "rarog", "--bin", "rarog"))
     $restoredBench = Invoke-Bench "bench-restored-baseline" $engine
     Assert-BaselineFingerprint $restoredBench "restored baseline"
@@ -553,13 +580,13 @@ try {
     Write-Host "Source restored and release binary rebuilt to $script:AcceptedBenchNodes / $script:AcceptedBenchEbf."
 } finally {
     if (-not $sourceRestored) {
-        Copy-Item -LiteralPath $sourceBackup -Destination $sourcePath -Force
-        $restoredHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
-        if ($restoredHash -ne $sourceHash) {
-            Write-Error "EMERGENCY RESTORE FAILED for src/eval.rs"
+        Restore-Sources
+        $unrestored = @(Get-ChangedSources)
+        if ($unrestored.Count -ne 0) {
+            Write-Error "EMERGENCY RESTORE FAILED for $($unrestored -join ', ')"
         } else {
-            Write-Warning "Restored src/eval.rs after interrupted/failed run; rebuilding the normal release binary"
-            [IO.File]::SetLastWriteTimeUtc($sourcePath, [DateTime]::UtcNow)
+            Write-Warning "Restored $($sources.Rel -join ', ') after interrupted/failed run; rebuilding the normal release binary"
+            Update-SourceTimes
             & cargo build --release -p rarog --bin rarog
             $rebuildExit = $LASTEXITCODE
             if ($rebuildExit -ne 0) {

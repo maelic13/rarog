@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """Bake a complete tuner param dump (`name idx value` lines) into the
-`EvalParams` defaults in src/eval.rs.
+`EvalParams` defaults in src/eval/params.rs and src/eval/material.rs.
 
 PST (pst_mg/pst_eg) and material (mg_val/eg_val) are baked via their named
-consts (MG_*_PST / EG_*_PST, MG_VAL / EG_VAL); every other field is an inline
-array literal in the `eval_params!` macro and is replaced in place. Comments and
-structure are preserved. Idempotent and verifiable: after baking, a normal build
-must reproduce the tune-binary bench for the same dump.
+consts (MG_*_PST / EG_*_PST, MG_VAL / EG_VAL) in material.rs; every other field
+is an inline array literal in params.rs's `eval_params!` list and is replaced
+in place. Comments, structure and each file's line endings are preserved.
+Idempotent and verifiable: after baking, a normal build must reproduce the
+tune-binary bench for the same dump.
 
 Usage: python tools/texel/bake_params.py <dump.txt>
 """
 import re
 import sys
+
+# The files this script rewrites. tools/texel/fit_complete.ps1 backs up, diffs
+# and restores exactly these; keep the two lists in step.
+PARAMS_RS = "src/eval/params.rs"
+MATERIAL_RS = "src/eval/material.rs"
 
 PIECES = ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING"]
 CONST_FIELDS = {"pst_mg", "pst_eg", "mg_val", "eg_val"}
@@ -62,29 +68,42 @@ def replace_field(text, field, vals):
     return new
 
 
+def read(path):
+    # newline="" keeps "\r\n" as is, so the write below preserves the file's
+    # line endings.
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
 def main():
     dump = load_dump(sys.argv[1])
-    with open("src/eval.rs", encoding="utf-8") as f:
-        text = f.read()
+    material = read(MATERIAL_RS)
+    params = read(PARAMS_RS)
 
     # PST consts (split the flat 384 into 6 x 64 per piece).
     for phase, field in (("MG", "pst_mg"), ("EG", "pst_eg")):
         flat = dump[field]
         assert len(flat) == 384, field
         for p, piece in enumerate(PIECES):
-            text = replace_const(text, f"{phase}_{piece}_PST", flat[p * 64:(p + 1) * 64])
+            material = replace_const(material, f"{phase}_{piece}_PST", flat[p * 64:(p + 1) * 64])
     # Material consts.
-    text = replace_const(text, "MG_VAL", dump["mg_val"])
-    text = replace_const(text, "EG_VAL", dump["eg_val"])
+    material = replace_const(material, "MG_VAL", dump["mg_val"])
+    material = replace_const(material, "EG_VAL", dump["eg_val"])
 
-    # Every other field: inline literal in the macro.
+    # Every other field: inline literal in the weight list.
     for field, vals in dump.items():
         if field in CONST_FIELDS:
             continue
-        text = replace_field(text, field, vals)
+        params = replace_field(params, field, vals)
 
-    with open("src/eval.rs", "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
+    # Both files are rewritten only after every replacement matched.
+    write(MATERIAL_RS, material)
+    write(PARAMS_RS, params)
     print(f"baked {len(dump)} fields")
 
 

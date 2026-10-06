@@ -176,7 +176,8 @@ cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --tune compl
 ```
 
 The output file loads straight into a `--features tune` engine via
-`RAROG_EVAL_FILE`, or is baked into `src/eval.rs` defaults once a stage's SPRT
+`RAROG_EVAL_FILE`, or is baked into the `src/eval/params.rs` and
+`src/eval/material.rs` defaults once a stage's SPRT
 passes its registered gate. Parallelism uses `std::thread` (no external crates), so the
 engine stays dependency-free.
 

@@ -150,7 +150,7 @@ recurring source of wrong results here.
 | `tools/texel/extract_parallel.py` | the same, parallel; what the fit driver calls |
 | `tools/texel/relabel_tb.py` | rewrites ≤6-man labels to Syzygy verdicts |
 | `tools/texel/fit_complete.ps1` | the whole fit, one command, fully audited |
-| `tools/texel/bake_params.py` | writes a fitted vector into `src/eval.rs` |
+| `tools/texel/bake_params.py` | writes a fitted vector into `src/eval/params.rs` and `src/eval/material.rs` |
 | `tools/texel/confirm_hce_fit.ps1` | re-verification of a completed fit |
 | `tools/texel/sample_fens.py` | ad-hoc FEN sampling |
 | `tools/texel/import_beast.py` | imports externally-evaluated positions (legacy) |
@@ -283,7 +283,7 @@ What the extractor does, and the settings that matter:
 
 | setting | value | why |
 |---|---|---|
-| phase buckets | 5, by **material** (`opening` = 20–24) | matches `src/eval.rs` |
+| phase buckets | 5, by **material** (`opening` = 20–24) | matches `PHASE_W` in `src/eval/material.rs` |
 | per-bucket quota | `target_train / 5`, equal | every phase equally represented |
 | `--max-per-phase-per-game` | 8 | limits within-game correlation |
 | `--max-per-game` | 16 | global safety cap; the phase cap is the primary control |
@@ -353,8 +353,8 @@ information a second look would give.
 
 Artifacts land in `tools/results/hce-fit-<timestamp>/`: every log, every
 intermediate vector, `settings.json`, `summary.json`, the source patch, the
-candidate binary, and hashes of all of it. `src/eval.rs` is restored
-byte-for-byte and the release binary rebuilt, verified against the accepted
+candidate binary, and hashes of all of it. `src/eval/params.rs` and
+`src/eval/material.rs` are restored byte-for-byte and the release binary rebuilt, verified against the accepted
 fingerprint — including in the `finally` block if the run dies partway.
 
 ---

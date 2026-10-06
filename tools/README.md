@@ -111,7 +111,7 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 | `texel/extract.py`, `texel/extract_parallel.py` | PGN to `FEN;target` datasets | `texel/README.md` |
 | `texel/sample_fens.py`, `texel/build_book.py` | Datagen start books | `texel/README.md` |
 | `texel/relabel_tb.py` | Replace <=6-man labels with Syzygy truth | RAR-E08 |
-| `texel/bake_params.py` | Bake a tuner parameter dump into `src/eval.rs` | `texel/README.md` |
+| `texel/bake_params.py` | Bake a tuner parameter dump into `src/eval/params.rs` and `src/eval/material.rs` | `texel/README.md` |
 | `texel/fit_complete.ps1`, `texel/confirm_hce_fit.ps1` | Complete HCE fit and its confirmation corpus (pin the accepted fingerprint before use) | PROCESS "Texel convergence procedure" |
 | `diag/book_yield.py` | Texel row yield per game by start phase | corpus design |
 | `diag/datagen_label_audit.py` | Datagen results against tablebase truth | label-quality decisions |
