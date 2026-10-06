@@ -2338,7 +2338,41 @@ fn usage(exe: &str) {
         "  {exe} --compare-frozen <test.csv> <source-vector.txt> <candidate-vector.txt> <marker> --fix-k K"
     );
     eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
+    eprintln!("  {exe} --dump-scores <dataset.csv> <out.csv>   (fen;label;full white-POV score)");
     print_groups();
+}
+
+/// Write every row's full evaluation (this build disables the lazy shortcut,
+/// so this is the function the fits describe) beside its FEN and label, so it
+/// can be compared row for row with the score the engine plays.
+fn cmd_dump_scores(path: &str, out: &str) {
+    let mut ev = Evaluator::default();
+    let mut lines_out = Vec::new();
+    for line in read_lines(path) {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(sep) = line.rfind(';') else { continue };
+        let Some(_) = parse_target(&line[sep + 1..]) else {
+            continue;
+        };
+        let Ok(board) = Board::from_fen(&line[..sep]) else {
+            continue;
+        };
+        let score = eval_white(&mut ev, &board);
+        lines_out.push(format!(
+            "{};{};{}",
+            &line[..sep],
+            &line[sep + 1..],
+            score as i32
+        ));
+    }
+    std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
+        eprintln!("Cannot write {out}: {e}");
+        exit(1);
+    });
+    println!("{} rows written to {out}", lines_out.len());
 }
 
 fn validate_test_contract(opts: &TuneOpts) {
@@ -2443,6 +2477,13 @@ fn main() {
             cmd_report_endgames(&args[2], &args[3]);
         }
         "--audit-coverage" => cmd_audit_coverage(),
+        "--dump-scores" => {
+            if args.len() != 4 {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_dump_scores(&args[2], &args[3]);
+        }
         "--tune" => {
             if args.len() < 5 {
                 usage(&args[0]);
