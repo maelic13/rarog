@@ -7,25 +7,18 @@
 //! count; `wac [depth]` (the engine command) is the fine-grained per-step
 //! diagnostic, this test is only the tripwire.
 //!
-//! PRODUCTION-FEATURES ONLY.
+//! PRODUCTION-FEATURES ONLY. This suite asserts SHIPPED behaviour, so it is
+//! compiled out under `texel` (whose evaluator records a trace and bypasses
+//! the caches), and CI runs the engine suites on default features
+//! (`-p rarog`) for the same reason.
 //!
-//! Under `--features texel`, LAZY EVAL IS DISABLED (`src/eval/mod.rs`: `let lazy =
-//! false`) so the tuner traces and fits the full eval. Lazy eval is an
-//! approximation by design — when material + PST + pawns already decide a
-//! position by more than any positional term could flip, the expensive
-//! positional block is skipped. Turning it off therefore produces genuinely
-//! different eval scores in lopsided positions, a different search path, and
-//! different depth-sensitive results.
-//!
-//! Verified by experiment, not assumed: forcing `lazy = false` in a normal
-//! default-feature build reproduces the identical failure. The caches are NOT
-//! the cause — `texel` also bypasses them, but both are exact memoisations
-//! (`tests/eval_cache.rs` proves a hit equals a cold recompute), so bypassing
-//! them costs speed and changes nothing else.
-//!
-//! This suite asserts SHIPPED behaviour, so under `texel` it would be
-//! asserting an engine we never release. CI runs the engine suites on default
-//! features (`-p rarog`) for the same reason.
+//! The lazy gate matters here: when material, piece-square and pawn terms
+//! already decide a position by more than the margin, the positional block is
+//! skipped, so a build without the gate scores lopsided positions differently,
+//! searches a different tree and fails this floor. Verified by experiment:
+//! forcing `lazy = false` in a default-feature build fails it. The caches are
+//! not a factor: both are exact memoisations (`tests/eval_cache.rs` proves a
+//! hit equals a cold recompute).
 #![cfg(not(feature = "texel"))]
 
 use rarog::board::Board;

@@ -192,8 +192,9 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
 // are built from these counts.
 #[cfg(all(test, feature = "texel"))]
 mod texel_tests {
+    use super::EvalTrace;
     use crate::board::Board;
-    use crate::eval::{EvalParams, Evaluator};
+    use crate::eval::{EVAL_PARAM_NAMES, EvalParams, Evaluator, TOTAL_PHASE};
 
     // Deterministic xorshift so the test is reproducible.
     struct Rng(u64);
@@ -340,5 +341,106 @@ mod texel_tests {
             t.eg.unstoppable_passer_eg[0], 0,
             "square rule should fire with a king-only defender"
         );
+    }
+
+    /// The texel build takes the lazy path by the engine's rule, so a fit
+    /// describes the function the engine plays. Above the gate the trace holds
+    /// only what `evaluate` adds before the gate (material, piece-square,
+    /// pawn structure, passer advance) and tempo; the same position with the
+    /// gate out of reach traces the piece-activity terms, so the empty set
+    /// above the gate is the gate's doing. Both traces reconstruct exactly.
+    #[test]
+    fn lazy_gate_applies_under_texel() {
+        // A queen and three pawns against a rook: far above the 600 cp gate.
+        const FEN: &str = "3rk3/8/8/8/8/8/PPP5/3QK3 w - - 0 1";
+        const BEFORE_GATE: &[&str] = &[
+            "mg_val",
+            "eg_val",
+            "pst_mg",
+            "pst_eg",
+            "passed_mg",
+            "passed_eg",
+            "passed_supported_mg",
+            "passed_supported_eg_base",
+            "passed_supported_eg_per_rank",
+            "passed_candidate_mg",
+            "passed_candidate_eg",
+            "pawn_doubled_mg",
+            "pawn_doubled_eg",
+            "pawn_isolated_mg",
+            "pawn_isolated_eg",
+            "pawn_connected_mg",
+            "pawn_connected_eg",
+            "pawn_phalanx_mg",
+            "pawn_phalanx_eg",
+            "pawn_backward_mg",
+            "pawn_backward_eg",
+            "pawn_lever_mg",
+            "pawn_lever_eg",
+            "pawn_doubled_isolated_mg",
+            "pawn_doubled_isolated_eg",
+            "pawn_islands_mg",
+            "pawn_islands_eg",
+            "passed_freestop_mg_per_rank",
+            "passed_freestop_eg_per_rank",
+            "passed_safestop_eg_per_rank",
+            "passed_freepath_mg_per_rank",
+            "passed_freepath_eg_per_rank",
+            "passed_safepath_eg_per_rank",
+            "tempo",
+        ];
+        for name in BEFORE_GATE {
+            assert!(
+                EVAL_PARAM_NAMES.iter().any(|&(n, _)| n == *name),
+                "{name} is not an eval param"
+            );
+        }
+
+        // Fields outside BEFORE_GATE with a nonzero mg or eg count. A trace
+        // at phase 24 (resp. 0) has the mg (resp. eg) counts as coefficients.
+        let after_gate = |t: &EvalTrace| -> Vec<&'static str> {
+            let mut at = t.clone();
+            at.phase = TOTAL_PHASE;
+            let mg = at.flat_coeffs();
+            at.phase = 0;
+            let eg = at.flat_coeffs();
+            let mut out = Vec::new();
+            let mut k = 0usize;
+            for &(name, len) in EVAL_PARAM_NAMES {
+                let fired = (k..k + len).any(|i| mg[i] != 0.0 || eg[i] != 0.0);
+                if fired && !BEFORE_GATE.contains(&name) {
+                    out.push(name);
+                }
+                k += len;
+            }
+            out
+        };
+
+        let defaults = EvalParams::default();
+        let lazy = trace_of(&mut Evaluator::default(), FEN);
+        let mut full_evaluator = Evaluator::default();
+        full_evaluator.set_lazy_margin(i32::MAX);
+        let full = trace_of(&mut full_evaluator, FEN);
+
+        assert_eq!(
+            lazy.reconstruct(&defaults),
+            lazy.raw,
+            "lazy trace does not reconstruct"
+        );
+        assert_eq!(
+            full.reconstruct(&defaults),
+            full.raw,
+            "full trace does not reconstruct"
+        );
+        assert!(
+            after_gate(&lazy).is_empty(),
+            "terms after the gate traced above it: {:?}",
+            after_gate(&lazy)
+        );
+        assert!(
+            !after_gate(&full).is_empty(),
+            "the full evaluation traced no term after the gate; the check is vacuous"
+        );
+        assert_ne!(lazy.raw, full.raw, "the gate did not change the evaluation");
     }
 }

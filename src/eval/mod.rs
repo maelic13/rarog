@@ -85,10 +85,8 @@ pub struct Evaluator {
     eval_table: Vec<EvalEntry>,
     params: EvalParams,
     tables: Box<EvalTables>,
-    /// Lazy-eval threshold (Phase 5.1b). Seeded from `LAZY_MARGIN` and overridden
-    /// by the `LazyMargin` UCI option (pushed in at every search start). Read only
-    /// on the non-texel lazy path, so it is unused under `--features texel`.
-    #[cfg_attr(feature = "texel", allow(dead_code))]
+    /// Lazy-eval threshold. Seeded from `LAZY_MARGIN` and overridden by the
+    /// `LazyMargin` UCI option (pushed in at every search start).
     lazy_margin: i32,
     /// The attack maps of the position being evaluated, filled at the start of
     /// piece activity and borrowed by its consumers. Kept across calls so the
@@ -265,15 +263,14 @@ impl Evaluator {
         // already decides the position by more than any positional term could
         // flip, skip the expensive block (piece activity = mobility / threats /
         // king-safety / hanging / small-terms, plus imbalance). The mop-up still
-        // runs, so mating technique (KBNK, KXK) survives a lazy skip. Disabled
-        // under `--features texel` so the tuner traces and fits the *full* eval;
-        // the eval stays a pure function of the position, so the eval cache and
-        // `tests/eval_cache.rs` remain exact. `LAZY_MARGIN` is SPRT-tunable.
-        #[cfg(not(feature = "texel"))]
+        // runs, so mating technique (KBNK, KXK) survives a lazy skip. The gate
+        // applies in every build, `texel` included, so the tuner traces and
+        // fits the function the engine plays: above the gate a position's
+        // trace holds only the terms evaluated before it, plus mop-up and
+        // tempo. The eval stays a pure function of the position, so the eval
+        // cache and `tests/eval_cache.rs` remain exact.
         let lazy =
             ((mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE).abs() > self.lazy_margin;
-        #[cfg(feature = "texel")]
-        let lazy = false;
 
         if lazy {
             self.apply_mop_up(board, &mut mg, &mut eg);
