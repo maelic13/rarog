@@ -76,6 +76,7 @@ commit that adds it.
 | [`b33_sweep_2026-09-24.md`](b33_sweep_2026-09-24.md) | B.3.3 — the `SingularTtDepthMargin=2` bake's proof and the zero-game curvature sweep of seven proof coordinates under a rule frozen first; why the SPSA surface is held | Deliverable | B.3.3, B.3.4, B.6 |
 | [`consolidation_2026-09-10.md`](consolidation_2026-09-10.md) | Codebase consolidation analysis — PLAN A.6 | Deliverable | A.6 |
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
+| [`c03_lazy_research_2026-10-06.md`](c03_lazy_research_2026-10-06.md) | C.0.3 — the lazy path: why the full evaluation loses in play, and what Phase C does about it | Deliverable | C.0.3, C.2, RAR-E19, RAR-E20 |
 | [`eval_programme_2026-10-05.md`](eval_programme_2026-10-05.md) | Evaluation programme investigation — PLAN C.0 | Deliverable | C.0, C.1–C.3, C.5, RAR-E17, RAR-E18, RAR-O05 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |
 | [`gyatso_read_2026-09-26.md`](gyatso_read_2026-09-26.md) | A reading of GyatsoChess: two post-cluster candidates (TT-hit history bonus, draw-score randomisation) | Deliverable | B.5.1 |

@@ -292,7 +292,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.0.3 | RESEARCH | R2 | RAR-E19 read: harm, `LazyMargin` 2000 −104.5 ± 10.6 Elo; the shortcut stays. Open: why the full function loses about 100 Elo above the gate (tree growth in the co-adapted search, or a worse function), and whether the fits should describe the played function. Blocks neither C.1 nor C.2's generation |
 | C.0.4 | RESEARCH | R3 | King-safety card: sub-term attribution of RAR-E17's residual, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
@@ -384,7 +383,18 @@ which terms are replaced, which stay, and which neighbouring families share
 inputs (attack maps, mobility areas, pawn structure) so that the shared inputs
 are computed once; (4) implementation with `EvalTrace` coverage for every new
 slot and the reconstruction test; (5) a whole-surface Texel refit with the
-existing toolchain, frozen test reported once; (6) a PGO bake and SPRT `[0,3]`
+existing toolchain, frozen test reported once; (6) a fixed-depth tree read on game positions beside `bench 13`
+(C.0.3: about 70 positions from the latest gate's games, depth 12, both
+arms, the per-position ratio distribution and the correction-residual
+counters; `bench 13` under-reads tree growth, 3.2% against 8.1% and 22%
+in middlegames), then a PGO bake and SPRT `[0,3]`; when that gate fails, an
+equal-node companion read (`colosseum.ps1 -Mode match -Nodes 150000`,
+2,000 games) is registered before the rejection counts under rule 6, so
+that a loss of time and tree size is told apart from a loss per node
+(RAR-E19 and RAR-E20 read −104.5 at equal time and −110.0 at equal nodes:
+the whole cost of a differently shaped evaluation can be per node, and a
+per-node loss still does not say whether the function or the search fitted
+to the old one is at fault)
 (`[3,10]` when the family's residual is large); (7) ledger row. Fit loss is a
 screen and a falsifier, never acceptance (RAR-E03 lost 17 Elo with better
 loss).
@@ -415,7 +425,7 @@ loss).
       loss of Rarog's score with Stockfish's total or one of its term
       families added. Readings in the two entries and in the programme
       document, section 5.
-    - **C.0.3 Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — `R2`.** Above
+    - **C.0.3 Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — `R2`, DONE 2026-10-06.** Above
       `LazyMargin` (600) `evaluate` skips imbalance and the whole
       piece-activity block (mobility, threats, king safety, hanging pieces,
       the small terms, the bishop pair; confirmed in `src/eval.rs`
@@ -437,7 +447,34 @@ loss).
       and it searches shallower. The shortcut stays at 600 and C.0.3 is
       research again: the open question is the mechanism, and whether C.2's
       fits should run with the lazy path on so that they describe the
-      function the engine plays.
+      function the engine plays. **Research 2026-10-06**
+      (`analysis/c03_lazy_research_2026-10-06.md`), zero games: over 72
+      positions from RAR-E19's games the depth-12 tree grows **8.1%**
+      (geometric mean 1.06; +22% in middlegames, −12% in endgames; the +63%
+      was one position), interior nodes +9%, quiescence +6%, stand-pat cuts
+      +1%, razoring +43%, quiescence delta pruning ×10.7, aspiration
+      fail-lows +17%, correction residual per update +18%. Statically the
+      full function is the **better** outcome predictor above the gate
+      (loss 24% lower on those 16.6% of validation rows) and more extreme
+      there by a median 282 cp: the harm is in how the frozen search
+      consumes it, not in static quality. **Decision:** the played function
+      is `NO_CHANGE` (the imbalance-before-the-gate repair adds magnitude
+      where magnitude is punished and is not built); the fits describe the
+      played function from C.2 on (the `texel` build honours `LazyMargin`;
+      handoff in the card); the fixed-depth tree read on game positions is
+      a standing screen (cluster shape, step 6). **RAR-E20** (equal nodes,
+      2,000 games, maintainer-run) is registered to read the per-node share
+      of the −104; the leaf closes on its record. **RAR-E20 read 2026-10-06:
+      −110.0 ± 11.5 Elo at equal nodes**, equal to the equal-time loss
+      within error: speed and tree size bought the lazy arm nothing; the
+      whole cost is per node, the frozen search deciding worse with the
+      full function's values. C.0.3 is closed: the played function
+      unchanged, parity in the fits from C.2, the tree read and the
+      equal-node companion as standing instruments (cluster shape, step 6).
+      Still pending the maintainer: a bounded cp-margin retune before C.10
+      if two clusters show the mismatch; neither read separates a search
+      fitted to the old function from a function that is worse for this
+      search, and only that retune can.
     - **C.0.4 King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — `R3`.** RAR-E17 says
       that Stockfish's king term carries a residual, not which part
       (shelter and storm, the danger index and its map, flank terms,
@@ -492,7 +529,12 @@ loss).
   `datagen-v2` at 8,000 nodes a move; `phase_book_v1.epd` from start 1, so
   every start keeps its split; 3,500,000 / 194,444 / 194,444 rows, the game
   count from the preflight; rows of six men or fewer relabelled by Syzygy;
-  `datagen-v3` not adopted. C.2 then **refits the unchanged surface on
+  `datagen-v3` not adopted. **From C.2 on the fits describe the played
+  function** (C.0.3, 2026-10-06): the `texel` build honours `LazyMargin`
+  instead of forcing the gate off, a change in the `texel` path only,
+  fingerprint-neutral by construction, with the tests the card names; its
+  effect on the weights is measured inside the baseline gate below and
+  stated there as conflated with the corpus. C.2 then **refits the unchanged surface on
   `hce-v4-tb` and gates it `[0,3]` against the head** before any structural
   cluster: the attribution baseline without which C.3's gate would conflate
   corpus, labelling search and structure (RAR-E12 measured +11.8 Elo from a
