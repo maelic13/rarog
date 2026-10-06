@@ -301,7 +301,7 @@ they open.
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
 | C.3.5 | RESEARCH | V | After gate 1 or a flagged tree read |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.1 | RESEARCH | R2 | Owns the donor's unattributed excess above six men: first `9587eeeb`'s family table against its total, then the opposite-bishop refit candidate (RAR-E21) |
+| C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
 | C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -339,7 +339,11 @@ Rarog's outcome prediction and its regular term families 1.22%; king safety
 is the one family that stands out (+0.66%, +1.58% in the middlegame band),
 winnability carries a small signal confined to low material, and mobility,
 pieces, material and space carry none (RAR-E17, RAR-E18; static loss, which
-ranks questions and accepts nothing). (3) The played evaluation omits
+ranks questions and accepts nothing). With one Stockfish version for
+families and total the families read 1.85% over all rows and carry the whole
+2.73% at seven men or more; the rest of the total's edge is exact endgame
+knowledge and magnitude at six men or fewer (RAR-E22, 2026-10-06). (3) The
+played evaluation omits
 imbalance above its lazy gate, and the unstoppable-passer test is one tempo
 generous. **Order of work:** C.0.1, C.0.3, C.0.4, C.1, C.2, the C.3 unit (with
 C.5.1 and C.5.2), then C.4, the rest of C.5, C.6 and C.7, each of which
@@ -550,12 +554,12 @@ loss).
       safe checks and the weak ring the most; shelter and storm 20%; the
       flank terms and the king-to-pawn distance nil. Rarog's three zeroed
       inputs are active and not collinear with the units: one unit of
-      weight moves a king one bucket of a table that is flat almost
-      everywhere, so the zero is a resolution limit of the index, not
-      evidence. The scale factor adds +0.09% at seven men or more and the
+      weight moves a king one bucket, onto the equal twin of a table
+      fitted in pairs, so the zero is a resolution limit of the index,
+      not evidence. The scale factor adds +0.09% at seven men or more and the
       complexity term +0.01%: C.5.2's generic scaling is `NO_CHANGE` for
-      the first unit, and the donor's excess above six men stays
-      unattributed (C.5.1, GUIDE obligation). The magnitude contract, the
+      the first unit, and the donor's excess above six men was an artefact
+      of RAR-E17's two Stockfish versions (RAR-E22). The magnitude contract, the
       frozen prediction and C.3's handoff are in the card; C.3 is
       `READY_FOR_IMPLEMENTATION` as king safety alone, after C.1 and C.2.
 - **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`.** Split `eval.rs`
@@ -687,18 +691,24 @@ loss).
       six men its total adds about 1.1 points of loss beyond its term
       families while the winnability term itself adds almost nothing, so
       the scale factor is the candidate and is unmeasured. The next cut is
-      by material signature. **RAR-E21 (2026-10-06):** measured as a
-      direction, the scale factor adds +0.09% at seven men or more, the
-      complexity term +0.01% and the rule-50 damping +0.03%: none carries
-      the 1.1 points, which stay unattributed (GUIDE obligation). First
-      steps, zero games: (i) `9587eeeb`'s own family table against its
-      total at seven men or more with RAR-E21's instrument (`V`), since
-      RAR-E17 mixed Stockfish 11's trace with `9587eeeb`'s total; (ii)
-      the pure opposite-bishop cohort (Rarog's score scaled by the
-      donor's factor, +2.13 ± 0.58% on 3,427 rows) as a candidate for
-      refitting `opposite_bishop_scale`'s constants, read on the
-      drawn-cohort instrument (`R2`). The one-queen cohort's king
-      residual (+3.61%) belongs to C.3.
+      by material signature. **RAR-E21 and RAR-E22 (2026-10-06):** measured
+      as a direction, the scale factor adds +0.09% at seven men or more,
+      the complexity term +0.01% and the rule-50 damping +0.03%; and with
+      one Stockfish version the donor's families carry exactly its total's
+      gain there (+2.73% against +2.73%), so the 1.1 points were an
+      artefact of RAR-E17's mixed versions and there is no total-level
+      knowledge above six men to chase. The per-family gains there beyond
+      king (+0.75%) are small: material and imbalance +0.12%, threats
+      +0.10%, passed +0.06%, space +0.05%, mobility +0.04%, winnable
+      +0.03%, pawns +0.03%. First step, zero games: the pure
+      opposite-bishop cohort (Rarog's score scaled by the donor's factor,
+      +2.13 ± 0.58% on 3,427 rows) as a candidate for refitting
+      `opposite_bishop_scale`'s constants, read on the drawn-cohort
+      instrument (`R2`). The one-queen cohort's king residual (+3.61%)
+      belongs to C.3. At six men or fewer the donor's edge is exact
+      knowledge and magnitude (its families +14.5% against its total
+      +29.7%), much of which the search's tablebase probing covers in
+      play; C.5's own instruments, not static loss, decide there.
     - **C.5.2 Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — `I2`.** The donor's scale
       factor logic in our form: pawn-count scaling for the stronger side,
       opposite-bishop scaling by non-pawn material and passers, rule-50

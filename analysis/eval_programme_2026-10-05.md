@@ -200,6 +200,16 @@ queens.
   (RAR-E17's phase-slope model: +1.07% at phase ≥ 96, −0.75% below 32, from
   one global fit).
 
+**Correction, 2026-10-06 (RAR-E22).** The per-family trace above is
+Stockfish 11's while the total is `9587eeeb`'s. With `9587eeeb`'s own
+families (`tools/diag/donor_terms_9587.py`), `rarog+all_families` reads
++1.85% over all rows and **+2.73% at seven men or more, equal to
+`rarog+stockfish`**: the "about 1.1 points beyond the families" in the
+third bullet was the version mixture, not scaling knowledge, and the scale
+factor measured directly as a direction adds +0.09% there (RAR-E21). The
+king reading and the six-men-or-fewer reading stand. The table and the
+bullets are preserved as measured.
+
 **Limits, all stated before the runs.** The layer is static outcome
 prediction: it ranks questions and refutes; it is not Elo and accepts
 nothing. The positions are ones Rarog's play reached, and the labels are

@@ -99,11 +99,11 @@ and is frozen at `ee02ed1` for Phase C.
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
 | Evaluation deficit | **+181.7 ± 19.0 Elo at equal nodes**, Phase C's meter baseline, and +266.3 ± 19.9 at equal time: Stockfish's classical HCE over Rarog's current one inside Stockfish's search (RAR-O05, 2026-10-05). RAR-O02's earlier about 329 was the 2.3.2 evaluation with unequal throughput |
-| Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). The king residual is the donor's danger map (92% of it; inside the map the safe checks and the weak ring), not shelter or the flank terms; Rarog's zeroed danger inputs are a resolution limit of its bucket table; the scale factor adds +0.09% above six men (RAR-E21, 2026-10-06). It ranks questions; it is not Elo |
+| Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). The king residual is the donor's danger map (92% of it; inside the map the safe checks and the weak ring), not shelter or the flank terms; Rarog's zeroed danger inputs are a resolution limit of its bucket table; the scale factor adds +0.09% above six men (RAR-E21, 2026-10-06). With one Stockfish version for families and total the families read 1.85% and carry the whole 2.73% at seven men or more, so there is no total-level knowledge above six men to chase (RAR-E22). It ranks questions; it is not Elo |
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
 | Evaluation–search coupling | Feeding the frozen search the full fitted evaluation above the lazy gate costs **−104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal nodes** (RAR-E19, RAR-E20, 2026-10-05/06), though that function predicts outcomes better statically: the cost is per node, in a search fitted to the played function. Every evaluation unit goes through PROCESS's *Evaluation change under a fitted search*: static screens, tree read, gate 1, a margin block over the fixed 27-coordinate surface, gate 2 (accepts), a `10+0.1` read (maintainer decision 2026-10-06) |
-| Active experiment | None open. Last: RAR-E21 (C.0.4), run 2026-10-06, zero games: the danger map carries 92% of the king residual; C.0.4 and C.0 closed, C.3's handoff frozen (`analysis/c04_king_unit_2026-10-06.md`) |
+| Active experiment | None open. Last: RAR-E22 (C.0 audit), run 2026-10-06, zero games: with one Stockfish version the donor's families carry all of its gain above six men, superseding RAR-E18's total-level excess; RAR-E21's king attribution survives clipping |
 
 ## Holds and obligations
 
@@ -114,7 +114,6 @@ and is frozen at `ee02ed1` for Phase C.
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 | Unstoppable-passer test one tempo generous in both move orders (`eval.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
-| The donor's excess above six men (about 1.1 points of held-out loss beyond its families, RAR-E18) is unattributed: not the scale factor, the complexity term or the rule-50 damping (RAR-E21) | C.5.1's first zero-game step: `9587eeeb`'s own family table against its total at seven men or more, with RAR-E21's instrument | C.5.1 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
 
