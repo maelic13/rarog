@@ -374,7 +374,7 @@ named), the leaf returns to `RESEARCH` with the contradiction recorded.
 | `datagen-v3` (tablebase game adjudication) | **not adopted** | untested, and it changes the label of every row of a game; a registered changed-data hypothesis if ever wanted |
 | Label audit | `datagen_label_audit.py` on the new PGN; record clean wins not won | RAR-M22 read 20.3% for the `hce-v3` source; the B.9 head's rate is the comparison |
 | Fitting manifest | free / fixed / excluded per coefficient, as PLAN C.2 states; the 30 dead imbalance slots and the 3 unreachable `pawn_connected` ranks are *fixed*, the 12 king-danger selectors and the 40-entry table *excluded* from the linear model and fitted by the coordinate stage | RAR-E07's partition; section 12, item 6 |
-| **Attribution baseline** | **refit the unchanged surface on `hce-v4-tb` with `fit_complete.ps1` and gate it `[0,3]` against the head before any structural cluster** | RAR-E12: a corpus change alone was +11.8 ± 5.3; without this, C.3's gate conflates corpus, labelling search and structure |
+| **Attribution baseline** | **refit the unchanged surface on `hce-v4-tb` with `fit_complete.ps1` and gate it against the head before any structural cluster** — amended 2026-10-06 (C.0 audit): by PROCESS's *Evaluation change under a fitted search*, not a bare `[0,3]` | RAR-E12: a corpus change alone was +11.8 ± 5.3; without this, C.3's gate conflates corpus, labelling search and structure |
 | Screen re-read | `donor_residual.py` on `hce-v4-tb/validation.csv`, registered before it is scored | RAR-E17's retry trigger: does the family ranking survive labels from the B.9 search? |
 
 Cost: generation is the maintainer's (about 600,000 games; `hce-v3` ran at

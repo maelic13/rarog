@@ -294,12 +294,13 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
-| C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
+| C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`; the baseline refit gated by PROCESS's shape (C.0 audit). C.0.3 is decided, so generation can run in parallel with C.1 once its command is prepared and wire-checked |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
 | C.3.5 | RESEARCH | V | After gate 1 or a flagged tree read |
+| C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
 | C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
@@ -324,7 +325,15 @@ the search frozen at the B.9 head, by re-implementing the evaluation families
 in Stockfish 11's classical shape where its conditioning is stronger, keeping
 ours where the evidence says ours is better, refitting the whole surface
 after every family cluster, and giving endgame handling its own bounded
-cluster.
+cluster. **Meter caveat (C.0 audit, 2026-10-06; RAR-E22):** the +181.7 was
+measured inside Stockfish's search, which is fitted to Stockfish's
+evaluation shape, and a shape mismatch alone costs about 105 Elo per node
+in a fitted search (RAR-E19, RAR-E20); with one Stockfish version the
+donor's whole static edge above six men is 2.73% of held-out loss, king
+0.75 of it. The recoverable share of the deficit is unknown, the budget
+row's 100 to 160 and C.0's 30 to 90 are unsupported in either direction,
+and the same-search deficit is re-read after the first accepted unit
+(C.3.6), not only at C.11, before C.4 to C.7 open.
 
 **What C.0 found (2026-10-05; `analysis/eval_programme_2026-10-05.md`).**
 (1) The 329 is RAR-O02's figure for the **2.3.2** evaluation, about 205
@@ -612,7 +621,12 @@ loss).
   fingerprint-neutral by construction, with the tests the card names; its
   effect on the weights is measured inside the baseline gate below and
   stated there as conflated with the corpus. C.2 then **refits the unchanged surface on
-  `hce-v4-tb` and gates it `[0,3]` against the head** before any structural
+  `hce-v4-tb` and gates it against the head by PROCESS's *Evaluation
+  change under a fitted search*** (the static screens, the tree read,
+  gate 1 `[0,3]`, the margin block when gate 1 fails or the tree read
+  flags, gate 2; RAR-E12's refit alone grew the tree 12.3%, so a bare gate
+  would count a search mismatch as a rejection; C.0 audit, 2026-10-06)
+  before any structural
   cluster: the attribution baseline without which C.3's gate would conflate
   corpus, labelling search and structure (RAR-E12 measured +11.8 Elo from a
   corpus change alone). It also re-reads RAR-E17's screen on the new
@@ -667,6 +681,13 @@ loss).
       registration copies the card's prediction before the static screens
       are read.
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
+    - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
+      recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
+      match) with the DLL rebuilt from the C.3 head by the `oracle/hybrid`
+      tag's `build.ps1`; registered with a frozen prediction. The reading
+      corrects the budget row and C.0's prior; the next unit opens only on
+      its own residual evidence and on what this reading says the
+      programme can still recover.
 - **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,
@@ -810,7 +831,8 @@ loss).
     within 5%, the leaf records that and asks the maintainer.
 - **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
-  package recipe is on the tagged `hybrid` branch), conversion instrument,
+  package recipe is on the tagged `hybrid` branch; the first re-read is
+  C.3.6), conversion instrument,
   pooled NPS, pool gauntlet at 1T. **Freeze the classical evaluation.**
 
 ## Phase D — Clock, threads, robustness

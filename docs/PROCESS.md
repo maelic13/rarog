@@ -481,9 +481,12 @@ PLAN Phase C's cluster shape carries them for Phase C):
    `CoreFpEvalAboveBeta`, `CoreFpCorrection`, `CoreBnfpBase`,
    `CoreBnfpLinear`, `CoreSeeQuietConstant`, `CoreSeeNoisyConstant`,
    `CoreNmpBase`, `CoreProbcutBase`, `CoreProbcutImproving`,
-   `CoreCorrUpdateSlope`, `CoreCorrUpdateMax` (27 coordinates: every
-   search coordinate that is compared with the static evaluation or the
-   score in centipawns, plus the correction's update scale). Rule 2 holds:
+   `CoreCorrUpdateSlope`, `CoreCorrUpdateMax`, `LazyMargin` (28 coordinates:
+   every search coordinate that is compared with the static evaluation or
+   the score in centipawns, the correction's update scale, and the lazy
+   gate, whose threshold is compared with the running evaluation sum and
+   whose meaning a new evaluation moves most directly; `LazyMargin` was
+   added by the C.0 audit, 2026-10-06, before any block ran). Rule 2 holds:
    evaluation and search coordinates never share a tune.
 5. **Gate 2.** The candidate with its retuned margins against the head,
    SPRT `[0,3]` at `3+0.03`. Gate 2 accepts. A unit that fails both gates
