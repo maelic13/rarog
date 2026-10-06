@@ -293,9 +293,8 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`; the baseline refit gated by PROCESS's shape (C.0 audit). C.0.3 is decided, so generation can run in parallel with C.1 once its command is prepared and wire-checked |
-| C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 |
+| C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
@@ -407,8 +406,9 @@ is nodes rather than speed may be re-gated once at `10+0.1`, `[0,3]`,
 registered before the read and never a second time. The frozen head: engine source `ee02ed1` (no engine input changed
 through 2.5.0 and `d6998db`'s version bump; the behaviour-neutral source
 changes since are listed under D.3's change log with their exact
-fingerprints, latest `6433760`, and a registration names the revision it
-builds from); the measured binary
+fingerprints, latest `6433760`, then C.1's evaluation restructure
+(`801f1b4`, exact, recorded under C.1), and a registration names the
+revision it builds from); the measured binary
 `tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
 `rustc 1.98.1`, pext PGO), SHA-256
 `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`,
@@ -493,7 +493,7 @@ loss).
     - **C.0.3 Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — `R2`, DONE 2026-10-06.** Above
       `LazyMargin` (600) `evaluate` skips imbalance and the whole
       piece-activity block (mobility, threats, king safety, hanging pieces,
-      the small terms, the bishop pair; confirmed in `src/eval.rs`
+      the small terms, the bishop pair; confirmed in `eval.rs`
       2026-10-05), which RAR-E06 and RAR-E12 fitted to piece-value-sized
       amounts, while every fit runs with the shortcut off. Cheapest test, no code: the head
       built with `tune`, `LazyMargin=2000` against 600: `bench 13` and
@@ -571,7 +571,7 @@ loss).
       of RAR-E17's two Stockfish versions (RAR-E22). The magnitude contract, the
       frozen prediction and C.3's handoff are in the card; C.3 is
       `READY_FOR_IMPLEMENTATION` as king safety alone, after C.1 and C.2.
-- **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`.** Split `eval.rs`
+- **C.1 Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — `I1`, DONE 2026-10-06.** Split `eval.rs`
   into the target modules; one attack-map and mobility-area producer consumed
   by pieces, king, threats and space; `EvalTrace` unchanged in meaning. Exact
   fingerprint, suites, pooled NPS inside ±0.5%. The move table is the C.1
@@ -582,7 +582,7 @@ loss).
   read partial sums; the producer's `attacks_from_sq` reads get the
   `debug_assert!` the 2026-08-19 audit asked for; `eval_params!` with its
   137 entries and the `tune`/`texel` I/O move to `eval/params.rs` and
-  `eval/trace.rs`; `src/kpk.rs` moves to `eval/endgame/`; B.8 deleted `diag_lazy_dual`
+  `eval/trace.rs`; `kpk.rs` moves to `eval/endgame/`; B.8 deleted `diag_lazy_dual`
   and the 21 `lazy_*` counters (no owner), so if C.1 keeps a lazy path and
   wants that instrument to decide `lazy_margin`, it restores them from
   `10d0e83` (`analysis/b8_removed_2026-10-03.md`, entry 5). The `texel` trace-reconstruction test is
@@ -591,12 +591,48 @@ loss).
   table at `ee02ed1`'s line numbers supersedes the consolidation
   document's; it names the three running-sum reads to preserve (the lazy
   gate, the mop-up, the initiative term's sign) and the public paths that
-  must stay; the fit tooling that patches `src/eval.rs` by path
+  must stay; the fit tooling that patches `eval.rs` by path
   (`bake_params.py`, `fit_complete.ps1`, `confirm_hce_fit.ps1`) moves to
   `src/eval/params.rs` (planned) in a tooling commit of this step; and one targeted
   check joins the fingerprint, because `bench 13` barely reaches the lazy
   path and the recognisers: every static evaluation of
   `hce-v3-tb/validation.csv`, hashed before and after.
+  **Done 2026-10-06** (engine `801f1b4`, tooling `0a85b96`). The modules
+  follow section 8's table; what it leaves unplaced went to its only or
+  natural owner: the shared square tables (files, ranks, passed masks,
+  `RELATIVE_RANKS`, `KING_DISTANCE`) in `pawns.rs`, `LONG_DIAGONALS` in
+  `pieces.rs`, the Manhattan table, the KBNK corners and
+  `kbnk_winner_bishop` in `endgame/mop_up.rs`, `PIECE_VALUES` in `mod.rs`.
+  The producer is `AttackMaps` (`attacked_by`, `attacked`, `attacked2`, the
+  mobility area, the per-square attacks), an `Evaluator` field filled at the
+  start of piece activity and borrowed by mobility, the bishop long
+  diagonal, threats, hanging pieces and king safety (`KsMaps`); every
+  per-square read goes through one accessor with the debug assertion, so
+  king safety's read gained it. Space reads only the pawn-attack sets today,
+  so "consumed by … space" above names no current consumer and none was
+  added. The trace types are generated in `trace.rs` from `params.rs`'s one
+  weight list by a callback macro. The lazy path is kept and the B.8
+  counters were not restored (nothing here decides `lazy_margin`). Two
+  premises of section 8 needed adjusting, neither touching a value:
+  `lib.rs`'s `initialize_tables` calls `kpk::initialize` (now
+  `eval::endgame::kpk::initialize`), a consumer the table does not name;
+  and `bake_params.py` patches the piece-square and material constants as
+  well as the weight list, which the table puts in `material.rs`, so the
+  tooling bakes, backs up, diffs and restores `src/eval/params.rs` and
+  `src/eval/material.rs` (fit settings schema v3 records a hash per file)
+  rather than one file, the table being the fixed part. Checks on the final
+  state: `bench 13` 11,171,726 / EBF 2.512 on generic and pext; `cargo test
+  -p rarog` 375 passed in debug and 376 in release, none failed;
+  `trace_reconstructs_eval_exactly_over_random_playouts` under `texel`
+  passed; `fmt --check` and clippy (`--all-features --all-targets` and
+  default, `-D warnings`) clean; the evaluation hash over
+  `hce-v3-tb/validation.csv` (194,444 positions, played and full path)
+  identical to `b2ed9ab`; no `memcpy` or allocation in
+  `Evaluator::evaluate` at base or candidate; the bake smoke moved both
+  files and `bench 13` to 15,168,188 / 2.560 and restored both byte for
+  byte and the fingerprint; pooled-PGO pext no-regression read **+0.28%**
+  (+0.08% to +0.48%, two cycles, base pool the `6433760` pool whose engine
+  inputs equal `b2ed9ab`'s; `analysis/artifacts/c1-nps/`).
 - **C.2 Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — `V`.** Generate the
   programme's corpus with the B.9 search under the adjudication-off datagen
   profile; audit labels against tablebase truth (existing tool); freeze
@@ -783,7 +819,7 @@ loss).
   (doubled, isolated, backward, connected by rank and phalanx, weak lever).
   Refit, gate. Opens with its own residual step (RAR-E17: passed +0.06%,
   pawns +0.04%) and closes `NO_CHANGE` if it finds none. Owns a defect C.0
-  confirmed in the source: the unstoppable-passer test in `eval.rs`
+  confirmed in the source: the unstoppable-passer test in `src/eval/passers.rs`
   (`king_steps > pawn_steps − …`) is one tempo generous in both move
   orders; the repair is a definition change plus a refit, checked against
   tablebase-labelled pawn endings.
