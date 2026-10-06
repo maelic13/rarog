@@ -152,6 +152,7 @@ recurring source of wrong results here.
 | `tools/texel/fit_complete.ps1` | the whole fit, one command, fully audited |
 | `tools/texel/bake_params.py` | writes a fitted vector into `src/eval/params.rs` and `src/eval/material.rs` |
 | `tools/texel/confirm_hce_fit.ps1` | re-verification of a completed fit |
+| `tools/texel/fit_manifest.py` | writes the fitting manifest `tools/texel/hce_fit_manifest_v1.tsv`: every coefficient free, fixed or excluded, with its reason |
 | `tools/texel/sample_fens.py` | ad-hoc FEN sampling |
 | `tools/texel/import_beast.py` | imports externally-evaluated positions (legacy) |
 | `tools/texel/test_datagen.py` | tests for the datagen path |
@@ -248,12 +249,15 @@ zero yield, which is exactly what every non-opening start bucket does.
 ### 5.3 Generate
 
 ```bash
-pwsh -File tools\datagen.ps1 -Suffix <engine-suffix> -Rounds <N> -Start 1 -Nodes 8000 -Book tools\texel\data\phase_book_v1.epd -BookFormat epd
+pwsh -File tools\datagen.ps1 -Suffix <engine-suffix> -Rounds <N> -Start 1 -Nodes 8000 -Book tools\texel\data\phase_book_v1.epd -BookFormat epd -ExpectSha256 <sha256> -ExpectFingerprint <bench-13-nodes>
 ```
 
 - The engine is `tools/test_engines/rarog-<Suffix>-pext-pgo.exe` with a JSON
   manifest beside it. **Verify its bench fingerprint before generating** — the
-  fit will be attributed to whatever binary actually played.
+  fit will be attributed to whatever binary actually played. `-ExpectSha256`
+  and `-ExpectFingerprint` make the run do it: a binary that is not the
+  registered one, or benches another count, is refused before the first
+  game, and the verified count is recorded in the run manifest.
 - `-Nodes 8000` is the standing budget. Fixed nodes, not time: results must not
   depend on machine load.
 - Concurrency is automatic and **oversubscribes** (all 32 logical processors);

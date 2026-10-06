@@ -13,6 +13,9 @@ param(
     [int]$PolishEpochs = 60,
     [double]$LinearLearningRate = 0.3,
     [double]$LinearL2 = 0.0000001,
+    # Every coefficient's status (free / fixed / excluded); the tuner reads
+    # it at every stage. tools/texel/fit_manifest.py writes it.
+    [string]$FitManifest = "tools/texel/hce_fit_manifest_v1.tsv",
     [switch]$Smoke
 )
 
@@ -304,7 +307,11 @@ try {
             # at 50/10/10/10/20, NO adjudication. The balanced book could not
             # reach the row target at any schedule; see
             # analysis/texel_corpus_book_shape_2026-09-02.md.
-            [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 602619 }
+            [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 602619 },
+            # hce-v4: the same book and profile from start 1, labelled by the
+            # Phase C frozen head; the count is the 3,000-game pilot's
+            # preflight (PLAN C.2).
+            [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 612747 }
         )
         $corpusProfile = [string]$manifest.label_contract.adjudication.Name
         $corpusStarts = [int]$manifest.independent_starts
@@ -394,8 +401,12 @@ try {
         $linearMax = 0
     }
 
+    $fitManifestPath = Resolve-RepoPath $FitManifest
+    if (-not (Test-Path -LiteralPath $fitManifestPath -PathType Leaf)) {
+        throw "missing fitting manifest $fitManifestPath"
+    }
     $settings = [ordered]@{
-        schema = "rarog-complete-hce-fit-v3"
+        schema = "rarog-complete-hce-fit-v4"
         commit = $commit
         source_sha256 = $sourceHashes
         smoke = [bool]$Smoke
@@ -410,7 +421,9 @@ try {
         validation = $validation
         frozen_test = $test
         frozen_test_baseline = (Join-Path $runDir "00-source-defaults.txt")
-        label_contract = "pure white-perspective self-play WDL"
+        label_contract = if ($Smoke) { "legacy smoke data" } else { [string]$manifest.label }
+        fit_manifest = $fitManifestPath
+        fit_manifest_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $fitManifestPath).Hash
         schedule = @("nonlinear", "complete-linear", "nonlinear", "complete-linear-polish")
     }
     $settings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "settings.json") -Encoding utf8
@@ -419,7 +432,7 @@ try {
     $tuner = Join-Path $repo "tools/texel-tuner/target/release/rarog-texel.exe"
     $baselineVector = Join-Path $runDir "00-source-defaults.txt"
     [void](Invoke-Logged "write-source-defaults" $tuner @("--write-defaults", $baselineVector))
-    [void](Invoke-Logged "instrument-coverage" $tuner @("--audit-coverage"))
+    [void](Invoke-Logged "instrument-coverage" $tuner @("--audit-coverage", $fitManifestPath))
     [void](Invoke-Logged "trace-verify-baseline" $tuner @("--verify", $validation))
     $supportArgs = @("--feature-support", $train)
     if ($linearMax -gt 0) { $supportArgs += @("--max-positions", [string]$linearMax) }
@@ -444,6 +457,7 @@ try {
 
     [void](Invoke-Logged "fit-01-kingsafety" $tuner @(
         "--tune-kingsafety", $train, $validation, $ks1,
+        "--manifest", $fitManifestPath,
         "--epochs", [string]$NonlinearEpochs,
         "--max-positions", [string]$NonlinearPositions,
         "--fix-k", $fixedK
@@ -451,6 +465,7 @@ try {
 
     $linearArgs = @(
         "--tune", "complete", $train, $validation, $linear1,
+        "--manifest", $fitManifestPath,
         "--initial", $ks1,
         "--epochs", [string]$LinearEpochs,
         "--lr", (Format-Double $LinearLearningRate),
@@ -462,6 +477,7 @@ try {
 
     [void](Invoke-Logged "fit-03-kingsafety" $tuner @(
         "--tune-kingsafety", $train, $validation, $ks2,
+        "--manifest", $fitManifestPath,
         "--initial", $linear1,
         "--epochs", [string]$NonlinearEpochs,
         "--max-positions", [string]$NonlinearPositions,
@@ -470,6 +486,7 @@ try {
 
     $polishArgs = @(
         "--tune", "complete", $train, $validation, $final,
+        "--manifest", $fitManifestPath,
         "--initial", $ks2,
         "--test", $test,
         "--test-baseline", $baselineVector,
