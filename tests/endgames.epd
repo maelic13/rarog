@@ -45,7 +45,7 @@ k7/8/8/8/8/8/P7/K7 w - - 0 1 ; draw KPK rook pawn, defender holds the corner
 8/8/6K1/8/8/8/pk6/7Q w - - 0 1 ; draw KQKP rook-pawn fortress
 
 # KRKP (~x0.25 partial scale) and OCB passer relaxation are partial-scale terms;
-# they are covered by the src/eval.rs `endgame_311c_tests` unit tests.
+# they are covered by the src/eval/endgame/mod.rs `endgame_311c_tests` unit tests.
 
 # --- Syzygy-verified theory vetoes (4.9a.3) ---
 # Generated once against the 6-man tables with seed 0xC0FFEE and FROZEN here,

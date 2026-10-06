@@ -9,7 +9,7 @@
 //!
 //! PRODUCTION-FEATURES ONLY.
 //!
-//! Under `--features texel`, LAZY EVAL IS DISABLED (`eval.rs`: `let lazy =
+//! Under `--features texel`, LAZY EVAL IS DISABLED (`src/eval/mod.rs`: `let lazy =
 //! false`) so the tuner traces and fits the full eval. Lazy eval is an
 //! approximation by design — when material + PST + pawns already decide a
 //! position by more than any positional term could flip, the expensive

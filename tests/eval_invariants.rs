@@ -9,7 +9,7 @@
 //! table, the kind of inverted-corner mistake found in 3.11) breaks it.
 //!
 //! (The trace-side assertions — nonzero activation and seeded-zero liveness —
-//! need the eval trace and live in `src/eval.rs` under `--features texel`.)
+//! need the eval trace and live in `src/eval/trace.rs` under `--features texel`.)
 
 use rarog::board::Board;
 use rarog::eval::Evaluator;

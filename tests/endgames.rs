@@ -14,7 +14,7 @@
 //!
 //! Partial-scale endings (KRKP ≈×¼, OCB passer relaxation) do not produce a
 //! clean `draw`/`win` verdict, so they are covered by the unit tests in
-//! `src/eval.rs` (`endgame_311c_tests`) rather than here.
+//! `src/eval/endgame/mod.rs` (`endgame_311c_tests`) rather than here.
 
 use rarog::board::{Board, Color, Move, Piece};
 use rarog::eval::{Evaluator, MATE_SCORE};
