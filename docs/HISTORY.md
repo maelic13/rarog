@@ -59,6 +59,19 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-06 — Allocation and copy audit of the per-node code.** Every
+  clone, lock, `Arc` and `unsafe` site in `src/` was traced to where it
+  runs, and the fat-LTO pext assembly of `dcf15c5` (fingerprint exact) was
+  searched for `memcpy` and allocator calls. No borrow was settled by a
+  clone, a lock or `unsafe`: `Board` clones are per search, locks sit
+  outside the search, and the 19 `unsafe` sites are FFI, intrinsics or
+  measured keeps. `negamax`, `quiescence` and `evaluate` carry no `memcpy`,
+  so the copies RAR-M44 and RAR-P27 found are gone. One per-node
+  allocation remained, the rule-50 mate test in check, fixed in `6433760`
+  (NPS read −0.24%, no regression). One latent hazard, the transposition
+  table's `Clone`, went to D.2 as an input. A 4 KB copy per root visit and
+  the search frames' stack probes stay, as RAR-P27 left them.
+
 - **2026-10-06 — The Basilisk review's four suspicions checked in Rarog**
   (`analysis/basilisk_review_2026-10-06.md`). Known-win evaluations cannot
   enter the decisive band (every static evaluation is clamped below it), and

@@ -852,6 +852,14 @@ loss).
     its node count); a second `const` assertion keeps the mop-up below the
     decisive band; a regression test holds that a position repeating the
     game history scores a draw before any stored result. `bench 13` exact.
+  - `6433760` (2026-10-06, from an allocation and copy audit): at a
+    halfmove clock of 100 in check, the search's draw test built a heap
+    `Vec` to ask whether the side to move is mated; it now fills a stack
+    list in a cold helper. `tests/allocation_guard.rs` counts that test
+    directly, because the growth bound cannot see a path this rare (it
+    fails on the old code with one allocation). `bench 13` exact on default
+    and pext; pooled-PGO no-regression read passed at −0.24% (−0.55% to
+    +0.07%, six cycles; `analysis/artifacts/rule50-alloc/`).
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
