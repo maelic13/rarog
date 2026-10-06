@@ -1131,8 +1131,18 @@ impl Board {
     /// (rare) legal-move probe.
     #[inline(always)]
     fn is_rule50_draw(&self) -> bool {
-        self.halfmove_clock >= 100
-            && (!self.is_in_check() || !generate_legal_moves(self).is_empty())
+        self.halfmove_clock >= 100 && (!self.is_in_check() || self.has_legal_move())
+    }
+
+    /// The search asks this per node at the rule-50 boundary, so the moves go
+    /// to a stack list, and the list is kept out of line and off the search's
+    /// frame.
+    #[cold]
+    #[inline(never)]
+    fn has_legal_move(&self) -> bool {
+        let mut moves = MoveList::new();
+        self.generate_legal_movelist_into(&mut moves);
+        !moves.is_empty()
     }
 
     pub fn can_declare_draw(&self) -> bool {
