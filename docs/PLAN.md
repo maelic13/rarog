@@ -254,6 +254,7 @@ linked analyses; this table is the index.
 | Draw, null, repetition and rule-50 policy identities | `analysis/draw_policy_2026-09-08.md` |
 | Board footprint assertions (`Board <= 264`, `UnmakeInfo <= 24` bytes) | `src/board/board.rs` const assertions |
 | Caller-owned move-list delivery; no 520-byte return copy | `analysis/movelist_delivery_2026-09-09.md` |
+| Per-node search code does not allocate | `tests/allocation_guard.rs`: whole searches at two depths, 1T and 4T, and the rule-50 boundary's mate test counted directly |
 | Diagnostic counter units and sampling | `analysis/phase4_counter_spec.md` |
 | Measurement layers for endgame work | `analysis/endgame_measurement_layers.md` |
 | Texel data contract, splits, instrument coverage | `analysis/texel_fitting_handbook.md`, `analysis/hce_archive_audit_2026-08-31.md` |
@@ -787,6 +788,12 @@ loss).
   is which shape scales to G.1, not which repairs a deficit. Gate:
   4T SPRT `[0,5]` against the 1T-accepted head at 4T, no affinity, null pair
   first. High-thread and NUMA remain G.1.
+  **Input, allocation and copy audit 2026-10-06:** `TranspositionTable`
+  derives `Clone`, and a clone of the single-thread form copies the whole
+  table. The one search-time clone, each helper's job in `search_parallel`,
+  is safe only because `make_shared` runs first. Remove `Clone` and give
+  helpers a handle only the shared form can produce, so the copy cannot be
+  written; behaviour-neutral, exact fingerprint, no gate of its own.
   **PREMISE CONTRADICTED, RAR-M46, 2026-09-11 — re-scope before spending work
   here.** This leaf is written to recover strength from immature lazy SMP. At
   4T against the reference field there is no such deficit: Rarog's deficits are
