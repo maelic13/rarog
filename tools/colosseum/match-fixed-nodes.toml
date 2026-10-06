@@ -1,0 +1,24 @@
+# A fixed-length match at a fixed node count per move: a deterministic
+# diagnostic that removes speed and time management from the comparison, never
+# an acceptance. Its first use is the equal-node companion to an equal-time
+# read (RAR-E20): per-node quality read apart from tree size and clock. The
+# node count is the wrapper's -Nodes; 150,000 a move is about what the head
+# searches per move at 3+0.03.
+#
+#   ./tools/colosseum.ps1 -Mode match -Nodes 150000 ...
+#   (the wrapper selects this file when -Nodes is given)
+
+extend = "common.toml"
+command = ["match"]
+
+[options]
+games = 2000
+concurrency = 14
+
+a-nodes = 150000
+a-margin-ms = 20
+b-nodes = 150000
+b-margin-ms = 20
+
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]
