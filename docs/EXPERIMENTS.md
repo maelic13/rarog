@@ -338,6 +338,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-R10](experiments/RAR-R10.md) | Phase-4.9c-i: the powered sizing RAR-R09 said was owed | The harness now works and the answer is NO BENEFIT WHERE IT COUNTS |
 | [RAR-R11](experiments/RAR-R11.md) | A.3.3 time-forfeit repair at `3+0.03` - RUN 2026-09-09/10, forfeit rate UNDECIDABLE (0 against 0), Elo bound … | Prediction, frozen 2026-09-09 |
 | [RAR-R12](experiments/RAR-R12.md) | A.3.3 harness reserve: `Move Overhead` 40 against 10 on the same binary - RUN 2026-09-10, REJECTED at -80.85 … | Prediction, frozen 2026-09-09 |
+| [RAR-R13](experiments/RAR-R13.md) | D.1.1: the head's hard maximum in won endings; mechanisms of rec1–rec3 and their frequency in games — NO_CHANGE 2026-10-06 | NO_CHANGE: rec1 a fail-high cascade, rec2 no stop after a proved mate, rec3 the soft stop one iteration late; every won-position maximum move in 5,400 games was in a win bar one ordinary low-clock draw (≤ 0.5 Elo) |
 
 ## 5. Evaluation and data experiments
 
@@ -471,6 +472,7 @@ evidence, or deliberately postponed to the NNUE/scaling phases.
 | RAR-S27, RAR-S29, RAR-S49 | **Closed for the flat TT-refinement depth-floor shape.** Reopen only through a materially different evidence model — a Phase-4 cluster-B contract or a post-NNUE fit — never the removed UCI coordinate. | 4.6, else 7.3 |
 | RAR-S31 | Re-evaluate `SingularTtDepthMargin` inside Phase-4 cluster D or after NNUE, in final PGO only. The historical tune-binary H1 (+3.35 ± 2.44 Elo) did not meet the later material/final-PGO policy. | 4.8, else 7.3 |
 | RAR-E03, RAR-E04, RAR-X03 | NNUE data/teacher experiment with changed representation and a frozen external holdout — not another HCE refit. The Phase-4 HCE track may study evaluator contracts but does not retry this distillation. | 4.12–4.16 for contracts; 5.0–7.2 for teacher/data |
+| RAR-R13 | A game record shows the head failing to win, or forfeiting, after a won position, the loss preceded by a deep stall (≥ 0.9 × maximum at depth 40 or more, after a mate shown, or on a root lower bound); or a CCRL-blitz-or-longer record shows such moves costing results; or D.1.2 changes the bound model (rerun `tm_games.py`). | D.1.2 |
 
 Anything not meeting its trigger stays closed. A retry is a new experiment with
 a new ID and manifest; it does not overwrite the historical row.

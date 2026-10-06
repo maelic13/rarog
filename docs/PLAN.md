@@ -360,7 +360,9 @@ there, and is gated as a search change. **Exception, maintainer decision
 2026-10-06:** D.1.1's time-management repair lands before C.2's
 baseline-refit gate and C.3's first gate, gated as a search change. It
 moves only clock play (`bench 13` unchanged), and its accepted head
-becomes this phase's frozen head, recorded here.
+becomes this phase's frozen head, recorded here. **D.1.1 closed
+`NO_CHANGE` on 2026-10-06 (RAR-R13): no repair lands, and the frozen head
+stays at engine source `ee02ed1`.**
 
 **Units, not families (maintainer decision 2026-10-06).** Evaluation terms
 are made to work together by the whole-surface fit; what they interact
@@ -755,7 +757,7 @@ loss).
   downgraded mate value). Stockfish 19 took 5.6–6.4 s and about 1 s on the
   same positions. B.5.2 contains it at tablebase roots only; the general
   case is this leaf's.
-    - **D.1.1 Time-management diagnosis, pulled forward: rec1's stalled re-search, rec2's search past a found mate, rec3's clock-independent stop; mechanism, frequency in games, the frozen fix and its gate — `R2`.**
+    - **D.1.1 Time-management diagnosis, pulled forward: rec1's stalled re-search, rec2's search past a found mate, rec3's clock-independent stop; mechanism, frequency in games, the frozen fix and its gate — `R2`, NO_CHANGE 2026-10-06.**
       Pulled forward by maintainer decision 2026-10-06, ahead of C.2's
       baseline-refit gate and C.3's first gate (Phase C's freeze rule,
       its exception). Evidence: `analysis/basilisk_review_2026-10-06.md`, item 1.
@@ -773,9 +775,32 @@ loss).
       2,000-game read with a harm rule); a change to the time formulas
       takes an SPRT `[0,3]`. The change touches only clock play (`bench
       13` unchanged); its accepted head becomes Phase C's frozen head.
+      **Closed `NO_CHANGE` 2026-10-06 (RAR-R13;
+      `analysis/d11_tm_diagnosis_2026-10-06.md`).** Untimed per-iteration
+      traces give the three mechanisms. rec1 is a fail-high cascade at
+      depth 32: nine re-searches centred on a stale `cp 534`, then a tenth
+      window, [513, 1,691], that does not finish. rec2 is a proved mate
+      (`mate 5` from depth 17) with no stop: there are no bound lines, so it
+      is not the cascade, and depth 57 grows to the ply cap and does not
+      finish. rec3 is the clock's soft stop one iteration late: both clocks'
+      targets fall inside a depth-21 iteration that a six-step cascade
+      stretched from 1.8 to 10.4 s. In 5,400 games of the head's search
+      (RAR-M64, RAR-M65, RAR-E19), every move at ≥ 0.9 × the maximum in a
+      won or mate position was in a game the head won, bar one `10+0.1`
+      draw whose long move was an ordinary low-clock overrun. The upper
+      bound on the effect is about 0.5 Elo, which no gate resolves. The
+      repairs are either refuted territory (the aspiration loop: RAR-S89,
+      RAR-S17; it also moves `bench 13`), D.1.2's bound model (a clock-only
+      fail-high stop), or a time saving in won games only (a mate-proved
+      stop). Nothing lands ahead of Phase C, and its frozen head is
+      unchanged. The retry trigger is RAR-R13's.
     - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin; SPRT `[0,3]` — `R2`.**
       The rest of D.1 as written above, after Phase C, starting from
-      D.1.1's head.
+      Phase C's head (D.1.1 changed nothing). Input from RAR-R13: moves at
+      ≥ 3 × the optimum are 4.7% of non-won moves at `3+0.03` and 1.8% at
+      `10+0.1`, time past the optimum is 31.4% and 19.7% of all head time,
+      and a started iteration always completes, so a cascade can stretch a
+      move to about four times its soft target.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
