@@ -866,6 +866,13 @@ const _: () = assert!(
     MOPUP_MAX < MATE_SCORE - MOPUP_ASSUMED_MAX_PLY,
     "mop-up drive can reach the search's mate band; lower MOPUP_DIAGONAL"
 );
+
+/// The search reads everything from the tablebase-win score up as decisive,
+/// below the mate band, so the drive must stay under that lower line too.
+const _: () = assert!(
+    MOPUP_MAX < crate::tt::TB_WIN_SCORE,
+    "mop-up drive can reach the search's decisive band; lower MOPUP_DIAGONAL"
+);
 const KBNK_LIGHT_CORNERS: [usize; 2] = [0, 63]; // a1, h8 — on LIGHT_SQUARES
 const KBNK_DARK_CORNERS: [usize; 2] = [7, 56]; // h1, a8 — on DARK_SQUARES
 /// Endgame scale-factor framework (Phase 3.11). A scale of `SCALE_NORMAL`

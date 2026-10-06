@@ -229,9 +229,9 @@ impl Engine {
                 };
 
                 if detailed {
-                    let nps = (result.nodes as u128 * 1000)
-                        .checked_div(result.elapsed_ms)
-                        .unwrap_or(result.nodes as u128);
+                    // Floored at 1 ms like the `info` lines: a position solved
+                    // inside the first millisecond printed its node count.
+                    let nps = result.nodes as u128 * 1000 / result.elapsed_ms.max(1);
                     println!(
                         "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
                         index + 1,
@@ -256,9 +256,7 @@ impl Engine {
                 }
             }
 
-            let run_nps = (total_nodes as u128 * 1000)
-                .checked_div(total_ms)
-                .unwrap_or(total_nodes as u128);
+            let run_nps = total_nodes as u128 * 1000 / total_ms.max(1);
             nps_samples.push(run_nps);
 
             if repeat == 0 {
