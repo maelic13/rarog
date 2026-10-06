@@ -2421,7 +2421,7 @@ fn usage(exe: &str) {
     );
     eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
     eprintln!(
-        "  {exe} --dump-scores <dataset.csv> <out.csv>   (fen;label;full white-POV score, lazy gate off)"
+        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full]   (fen;label;white-POV score; --full: lazy gate out of reach)"
     );
     eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
@@ -2429,13 +2429,15 @@ fn usage(exe: &str) {
     print_groups();
 }
 
-/// Write every row's full evaluation, the lazy gate held out of reach, beside
-/// its FEN and label. The texel build applies the gate as the engine does, so
-/// the fits describe the played function; this is the other side of the
-/// full-against-played comparison.
-fn cmd_dump_scores(path: &str, out: &str) {
+/// Write every row's evaluation beside its FEN and label: by default the
+/// played one, with the lazy gate applied as the engine applies it (the
+/// function the fits describe); with `full`, the gate held out of reach, the
+/// other side of the full-against-played comparison.
+fn cmd_dump_scores(path: &str, out: &str, full: bool) {
     let mut ev = Evaluator::default();
-    ev.set_lazy_margin(i32::MAX);
+    if full {
+        ev.set_lazy_margin(i32::MAX);
+    }
     let mut lines_out = Vec::new();
     for line in read_lines(path) {
         let line = line.trim();
@@ -2573,11 +2575,12 @@ fn main() {
             cmd_audit_coverage(&args[2]);
         }
         "--dump-scores" => {
-            if args.len() != 4 {
+            let full = args.len() == 5 && args[4] == "--full";
+            if args.len() != 4 && !full {
                 usage(&args[0]);
                 exit(1);
             }
-            cmd_dump_scores(&args[2], &args[3]);
+            cmd_dump_scores(&args[2], &args[3], full);
         }
         "--tune" => {
             if args.len() < 5 {
