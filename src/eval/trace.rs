@@ -250,12 +250,21 @@ mod texel_tests {
         ev.last_trace()
     }
 
+    /// An evaluator with the lazy gate out of reach. The term tests below read
+    /// terms the gate skips, so they must see the full evaluation whatever the
+    /// gate does with their positions.
+    fn full_evaluator() -> Evaluator {
+        let mut ev = Evaluator::default();
+        ev.set_lazy_margin(i32::MAX);
+        ev
+    }
+
     /// Phase 3 gate — **nonzero activation**: every new term must actually fire
     /// on a position designed to trigger it, otherwise the Phase-4 feature-support
     /// diagnostics would tune a dead term blind.
     #[test]
     fn new_terms_activate_on_curated_positions() {
-        let mut ev = Evaluator::default();
+        let mut ev = full_evaluator();
 
         // Passers (3.8) + free-stop / safe-stop (3.14): a clear, unattacked passer.
         let t = trace_of(&mut ev, "4k3/8/8/3P4/8/8/8/4K3 w - - 0 1");
@@ -289,7 +298,7 @@ mod texel_tests {
     /// Phase 7.4 HCE semantics — counterexample tests for the four fixes.
     #[test]
     fn phase_7_4_semantic_fixes() {
-        let mut ev = Evaluator::default();
+        let mut ev = full_evaluator();
 
         // (iv) Phalanx fires for pawns abreast on the same rank (d4+e4)...
         let t = trace_of(&mut ev, "4k3/8/8/8/3PP3/8/8/4K3 w - - 0 1");
