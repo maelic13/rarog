@@ -386,6 +386,7 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-E18](experiments/RAR-E18.md) | C.0 follow-up cuts of RAR-E17's rows: where the donor's total-level information sits — REGISTERED 2026-10-05, before the cuts were computed; RUN 2026-10-05 | Observation: at seven men or more the total adds +2.73% (magnitude 0.46, families 1.62); at six or fewer +29.7%, half of it magnitude |
 | [RAR-E20](experiments/RAR-E20.md) | C.0.3: the full evaluation against the lazy one at equal nodes, per-node quality apart from tree and speed — REGISTERED 2026-10-06, before any game; PLAYED 2026-10-06 | Observation: −110.0 ± 11.5 Elo at equal nodes, equal to the equal-time loss; the whole cost is per node |
 | [RAR-E19](experiments/RAR-E19.md) | C.0.3 lazy path: the played evaluation above `LazyMargin` against the full evaluation, one 2,000-game read with a harm rule — REGISTERED 2026-10-05, before any game; RUN 2026-10-05 | Harm: `LazyMargin` 2000 −104.5 ± 10.6 Elo (nElo −159.1 ± 15.2, 2,000 games); the shortcut stays at 600, C.0.3 back to research |
+| [RAR-E21](experiments/RAR-E21.md) | C.0.4 king-safety sub-term attribution, Rarog's inactive danger inputs, and the donor's scale factor as a direction — REGISTERED 2026-10-06, before any sub-term was scored | (pending) |
 
 ## 6. Throughput, build and platforms
 

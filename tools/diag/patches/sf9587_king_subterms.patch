@@ -1,0 +1,201 @@
+--- a/src/evaluate.cpp
++++ b/src/evaluate.cpp
+@@ -39,6 +39,10 @@
+   };
+ 
+   Score scores[TERM_NB][COLOR_NB];
++  // Sub-term dump (tracing only): king() components per colour and the
++  // winnable()/scale internals, printed after the table by trace().
++  int ksd[COLOR_NB][32];
++  int wind[24];
+ 
+   double to_cp(Value v) { return double(v) / PawnValueEg; }
+ 
+@@ -418,6 +422,7 @@
+ 
+     // Init the score with king shelter and enemy pawns storm
+     Score score = pe->king_safety<Us>(pos);
++    const Score shelterScore = score;
+ 
+     // Attacked squares defended at most once by our queen or king
+     weak =  attackedBy[Them][ALL_PIECES]
+@@ -470,6 +475,7 @@
+ 
+     int kingFlankAttack  = popcount(b1) + popcount(b2);
+     int kingFlankDefense = popcount(b3);
++    const int kdChecks = kingDanger;
+ 
+     kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
+                  + 185 * popcount(kingRing[Us] & weak)
+@@ -496,7 +502,42 @@
+     score -= FlankAttacks * kingFlankAttack;
+ 
+     if (T)
++    {
++        Bitboard ourPawns = pos.pieces(Us, PAWN);
++        int mpd = 6;
++        if (ourPawns & attacks_bb<KING>(ksq))
++            mpd = 1;
++        else while (ourPawns)
++            mpd = std::min(mpd, distance(ksq, pop_lsb(&ourPawns)));
++        int* d = ksd[Us];
++        d[0]  = mg_value(shelterScore);
++        d[1]  = eg_value(shelterScore) + 16 * mpd;
++        d[2]  = mpd;
++        d[3]  = kingDanger;
++        d[4]  = kingDanger > 100 ? kingDanger * kingDanger / 4096 : 0;
++        d[5]  = kingDanger > 100 ? kingDanger / 16 : 0;
++        d[6]  = !(pos.pieces(PAWN) & KingFlank[file_of(ksq)]);
++        d[7]  = kingFlankAttack;
++        d[8]  = kingFlankDefense;
++        d[9]  = kingAttackersCount[Them];
++        d[10] = kingAttackersWeight[Them];
++        d[11] = popcount(kingRing[Us] & weak);
++        d[12] = popcount(unsafeChecks);
++        d[13] = popcount(pos.blockers_for_king(Us));
++        d[14] = kingAttacksCount[Them];
++        d[15] = kdChecks;
++        d[16] = mg_value(mobility[Them] - mobility[Us]);
++        d[17] = !pos.count<QUEEN>(Them);
++        d[18] = bool(attackedBy[Us][KNIGHT] & attackedBy[Us][KING]);
++        d[19] = -6 * mg_value(shelterScore) / 8;
++        d[20] = popcount(rookChecks);
++        d[21] = popcount(queenChecks);
++        d[22] = popcount(bishopChecks);
++        d[23] = popcount(knightChecks & safe);
++        d[24] = popcount(kingRing[Us]);
++        d[25] = 1;
+         Trace::add(KING, Us, score);
++    }
+ 
+     return score;
+   }
+@@ -770,6 +811,16 @@
+     // so that the midgame and endgame scores do not change sign after the bonus.
+     int u = ((mg > 0) - (mg < 0)) * Utility::clamp(complexity + 50, -abs(mg), 0);
+     int v = ((eg > 0) - (eg < 0)) * std::max(complexity, -abs(eg));
++    if (T)
++    {
++        wind[0] = complexity; wind[1] = u; wind[2] = v;
++        wind[3] = mg; wind[4] = eg;
++        wind[9] = outflanking; wind[10] = pawnsOnBothFlanks;
++        wind[11] = almostUnwinnable; wind[12] = infiltration;
++        wind[13] = pe->passed_count(); wind[14] = !pos.non_pawn_material();
++        wind[15] = int(me->game_phase());
++    }
++    int sfBranch = 0;
+ 
+     mg += u;
+     eg += v;
+@@ -777,6 +828,7 @@
+     // Compute the scale factor for the winning side
+     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
+     int sf = me->scale_factor(pos, strongSide);
++    const int sfSpecific = sf;
+ 
+     // If scale factor is not already specific, scale down via general heuristics
+     if (sf == SCALE_FACTOR_NORMAL)
+@@ -785,21 +837,27 @@
+         {
+             if (   pos.non_pawn_material(WHITE) == BishopValueMg
+                 && pos.non_pawn_material(BLACK) == BishopValueMg)
+-                sf = 18 + 4 * popcount(pe->passed_pawns(strongSide));
++                sf = 18 + 4 * popcount(pe->passed_pawns(strongSide)), sfBranch = 1;
+             else
+-                sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide);
++                sf = 22 + 3 * pos.count<ALL_PIECES>(strongSide), sfBranch = 2;
+         }
+         else if (  pos.non_pawn_material(WHITE) == RookValueMg
+                 && pos.non_pawn_material(BLACK) == RookValueMg
+                 && pos.count<PAWN>(strongSide) - pos.count<PAWN>(~strongSide) <= 1
+                 && bool(KingSide & pos.pieces(strongSide, PAWN)) != bool(QueenSide & pos.pieces(strongSide, PAWN))
+                 && (attacks_bb<KING>(pos.square<KING>(~strongSide)) & pos.pieces(~strongSide, PAWN)))
+-            sf = 36;
++            sf = 36, sfBranch = 3;
+         else if (pos.count<QUEEN>() == 1)
+             sf = 37 + 3 * (pos.count<QUEEN>(WHITE) == 1 ? pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK)
+-                                                        : pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE));
++                                                        : pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE)), sfBranch = 4;
+         else
+-            sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide));
++            sf = std::min(sf, 36 + 7 * pos.count<PAWN>(strongSide)), sfBranch = 5;
++    }
++    else
++        sfBranch = -1;
++    if (T)
++    {
++        wind[5] = int(strongSide); wind[6] = sfSpecific; wind[7] = sf; wind[8] = sfBranch;
+     }
+ 
+     // Interpolate between the middlegame and (scaled by 'sf') endgame score
+@@ -809,6 +867,7 @@
+ 
+     if (T)
+     {
++        wind[16] = v;
+         Trace::add(WINNABLE, make_score(u, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL - eg_value(score)));
+         Trace::add(TOTAL, make_score(mg, eg * ScaleFactor(sf) / SCALE_FACTOR_NORMAL));
+     }
+@@ -832,7 +891,11 @@
+     // If we have a specialized evaluation function for the current material
+     // configuration, call it and return.
+     if (me->specialized_eval_exists())
++    {
++        if (T)
++            wind[17] = 1;
+         return me->evaluate(pos);
++    }
+ 
+     // Initialize score by reading the incrementally updated scores included in
+     // the position object (material + piece square tables) and the material
+@@ -849,7 +912,11 @@
+     };
+ 
+     if (lazy_skip(LazyThreshold1))
++    {
++        if (T)
++            wind[18] = 1;
+         goto make_v;
++    }
+ 
+     // Main evaluation begins here
+     initialize<WHITE>();
+@@ -869,7 +936,11 @@
+             + passed< WHITE>() - passed< BLACK>();
+ 
+     if (lazy_skip(LazyThreshold2))
++    {
++        if (T)
++            wind[19] = 1;
+         goto make_v;
++    }
+ 
+     score +=  threats<WHITE>() - threats<BLACK>()
+             + space<  WHITE>() - space<  BLACK>();
+@@ -920,6 +991,8 @@
+       return "Total evaluation: none (in check)";
+ 
+   std::memset(scores, 0, sizeof(scores));
++  std::memset(ksd, 0, sizeof(ksd));
++  std::memset(wind, 0, sizeof(wind));
+ 
+   pos.this_thread()->contempt = SCORE_ZERO; // Reset any dynamic contempt
+ 
+@@ -950,5 +1023,17 @@
+ 
+   ss << "\nFinal evaluation: " << to_cp(v) << " (white side)\n";
+ 
++  ss << "ksdump v " << int(v);
++  for (Color c : { WHITE, BLACK })
++  {
++      ss << (c == WHITE ? " w" : " b");
++      for (int i = 0; i < 26; ++i)
++          ss << ' ' << ksd[c][i];
++  }
++  ss << " win";
++  for (int i = 0; i < 20; ++i)
++      ss << ' ' << wind[i];
++  ss << "\n";
++
+   return ss.str();
+ }
