@@ -59,6 +59,14 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-06 — C.0.3's read (RAR-E19): the lazy path stays.** Playing the
+  full evaluation where the gate now skips it (`LazyMargin` 2000 against 600,
+  one tune build, 2,000 games) read **−104.5 ± 10.6 Elo**, against a frozen
+  prediction of −8 [−20, +4]. The speed cost is about 11 Elo of it; the rest
+  is the frozen search growing its tree on the full function (+63% nodes at
+  depth 14 on a middlegame position) and searching shallower. Harm by the
+  registered rule: the shortcut stays at 600 and C.0.3 returns to research.
+
 - **2026-10-05 — PLAN C.0.1 DONE: the evaluation meter at the start of
   Phase C (RAR-O05).** Stockfish's classical evaluation over Rarog's current
   one, both inside Stockfish's search: **+181.7 ± 19.0 Elo at equal nodes**

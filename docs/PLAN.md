@@ -292,7 +292,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.0.3 | GAME_GATE | R2 | RAR-E19 registered 2026-10-05 after the zero-game cost read (`bench 13` +3.23% nodes, pooled NPS −7.52% at `LazyMargin` 2000); the maintainer runs the 2,000-game read. Needs neither C.1 nor C.2 |
+| C.0.3 | RESEARCH | R2 | RAR-E19 read: harm, `LazyMargin` 2000 −104.5 ± 10.6 Elo; the shortcut stays. Open: why the full function loses about 100 Elo above the gate (tree growth in the co-adapted search, or a worse function), and whether the fits should describe the played function. Blocks neither C.1 nor C.2's generation |
 | C.0.4 | RESEARCH | R3 | King-safety card: sub-term attribution of RAR-E17's residual, then C.3's frozen handoff. Needs neither C.1 nor C.2 |
 | C.1 | READY_FOR_IMPLEMENTATION | I1 | Handoff frozen by C.0 (`analysis/eval_programme_2026-10-05.md`, section 8); exact fingerprint required |
 | C.2 | READY_FOR_IMPLEMENTATION | V | Protocol frozen by C.0 (section 9): corpus `hce-v4`, baseline refit gated before any cluster. Generation can be handed over once C.0.3 is decided |
@@ -431,6 +431,13 @@ loss).
       `bench 13` by 3.23% nodes. The read is Colosseum, 2,000 games, harm
       at −13 nElo; harm keeps the shortcut and opens a speed-keeping repair,
       no harm removes the lazy path before C.1 (the entry holds the rule).
+      **Read 2026-10-05: harm, −104.5 ± 10.6 Elo** (nElo −159.1 ± 15.2), far
+      beyond the speed cost (−5.5% in the games); the full function grows the
+      frozen search's tree (+63% nodes at depth 14 on a middlegame position)
+      and it searches shallower. The shortcut stays at 600 and C.0.3 is
+      research again: the open question is the mechanism, and whether C.2's
+      fits should run with the lazy path on so that they describe the
+      function the engine plays.
     - **C.0.4 King-safety research card: sub-term attribution of the residual; freezes C.3's handoff — `R3`.** RAR-E17 says
       that Stockfish's king term carries a residual, not which part
       (shelter and storm, the danger index and its map, flank terms,
