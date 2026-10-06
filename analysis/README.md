@@ -74,6 +74,7 @@ commit that adds it.
 | [`nps_method_study_2026-10-02.md`](nps_method_study_2026-10-02.md) | The pooled-PGO NPS read shortened: variance components from 288 archived runs, what cycles and builds buy, how load moves whole cycles, the revised six-cycle read (RAR-P32) | Deliverable | B.7, B.8, PROCESS |
 | [`b72_profile_2026-10-01.md`](b72_profile_2026-10-01.md) | B.7.2 — the whole-search ETW profile of the shipped pext PGO build, prediction calibration, the picker’s scans after a skip and the per-node list copies, two exact speed candidates | Record | RAR-P27, B.7.2 |
 | [`b33_sweep_2026-09-24.md`](b33_sweep_2026-09-24.md) | B.3.3 — the `SingularTtDepthMargin=2` bake's proof and the zero-game curvature sweep of seven proof coordinates under a rule frozen first; why the SPSA surface is held | Deliverable | B.3.3, B.3.4, B.6 |
+| [`basilisk_review_2026-10-06.md`](basilisk_review_2026-10-06.md) | The Basilisk review's four suspicions checked in Rarog | Deliverable | D.1.1, D.3 |
 | [`consolidation_2026-09-10.md`](consolidation_2026-09-10.md) | Codebase consolidation analysis — PLAN A.6 | Deliverable | A.6 |
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`c03_lazy_research_2026-10-06.md`](c03_lazy_research_2026-10-06.md) | C.0.3 — the lazy path: why the full evaluation loses in play, and what Phase C does about it | Deliverable | C.0.3, C.2, RAR-E19, RAR-E20 |

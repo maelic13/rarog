@@ -355,7 +355,11 @@ search*, evaluation weights fixed, seeded from the head. The argument rule
 Elo at equal time and −110.0 ± 11.5 at equal nodes through the search fitted
 to the old one (RAR-E19, RAR-E20). A C-phase change that touches
 `src/search/` returns to its owner leaf with an explicit reason recorded
-there, and is gated as a search change.
+there, and is gated as a search change. **Exception, maintainer decision
+2026-10-06:** D.1.1's time-management repair lands before C.2's
+baseline-refit gate and C.3's first gate, gated as a search change. It
+moves only clock play (`bench 13` unchanged), and its accepted head
+becomes this phase's frozen head, recorded here.
 
 **Units, not families (maintainer decision 2026-10-06).** Evaluation terms
 are made to work together by the whole-surface fit; what they interact
@@ -750,6 +754,27 @@ loss).
   downgraded mate value). Stockfish 19 took 5.6–6.4 s and about 1 s on the
   same positions. B.5.2 contains it at tablebase roots only; the general
   case is this leaf's.
+    - **D.1.1 Time-management diagnosis, pulled forward: rec1's stalled re-search, rec2's search past a found mate, rec3's clock-independent stop; mechanism, frequency in games, the frozen fix and its gate — `R2`.**
+      Pulled forward by maintainer decision 2026-10-06, ahead of C.2's
+      baseline-refit gate and C.3's first gate (Phase C's freeze rule,
+      its exception). Evidence: `analysis/basilisk_review_2026-10-06.md`, item 1.
+      Without tablebases Rarog spends its hard maximum, 52–58% of the
+      clock, on rec1 (a re-search stalled at `cp 1302 lowerbound`) and on
+      rec2 (after finding `mate 5`, its iterations stall near depth 56) at
+      both `60000+600` and `180000+2000`, where Stockfish 19 takes 9.4 and
+      43.8 s on rec1 and 1.4 and 2.7 s on rec2; on rec3 it stops at 10.4 s
+      and depth 21 at both clocks, so not by the clock. The maximum itself
+      is the donor's and not the defect. Research first: the mechanism of
+      each behaviour (is rec2 rec1's cascade or a missing stop after a
+      proved mate; what ends rec3), how often each happens in game
+      records, then the fix frozen with its prediction. Gate: a
+      correctness repair takes AGENTS' repair case 2 (a registered
+      2,000-game read with a harm rule); a change to the time formulas
+      takes an SPRT `[0,3]`. The change touches only clock play (`bench
+      13` unchanged); its accepted head becomes Phase C's frozen head.
+    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin; SPRT `[0,3]` — `R2`.**
+      The rest of D.1 as written above, after Phase C, starting from
+      D.1.1's head.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
@@ -814,6 +839,12 @@ loss).
   - `488d34a`: a tablebase root score prints without a bound (6 of 14 such
     lines carried one at a KQvK root, `go depth 8`; none now), as the donor
     prints it. Output only, both fingerprints exact.
+  - `0827ab9` (2026-10-06, from the Basilisk review, `analysis/basilisk_review_2026-10-06.md`):
+    `bench` floors its per-position and per-run nps at 1 ms like the
+    `info` lines (a position solved inside the first millisecond printed
+    its node count); a second `const` assertion keeps the mop-up below the
+    decisive band; a regression test holds that a position repeating the
+    game history scores a draw before any stored result. `bench 13` exact.
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745

@@ -8,6 +8,11 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Fixed
+
+- `bench` printed a speed equal to the node count for a position it solved
+  in under a millisecond; it now reports the rate, as the `info` lines do.
+
 ## [2.5.0] - 2026-10-05
 
 A new search. Measured head to head against 2.4.0 with no adjudication, 2.5.0

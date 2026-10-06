@@ -48,6 +48,8 @@ and is frozen at `ee02ed1` for Phase C.
 ## Phase D — Clock, threads, robustness
 
 - [ ] **D.1** Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
+    - [ ] **D.1.1** Time-management diagnosis, pulled forward: rec1's stalled re-search, rec2's search past a found mate, rec3's clock-independent stop; mechanism, frequency in games, the frozen fix and its gate — **R2**
+    - [ ] **D.1.2** Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin; SPRT `[0,3]` — **R2**
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — **R2**
 - [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — **R2**
 - [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **R2**
@@ -103,6 +105,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
 | Tags `archive/pr2-version-2.5.0`, `archive/pr3-tag-driven-release`, `archive/pr4-release-checks`: the `dev` chains squash-merged as PRs #2–#4 (400 commits the documents cite), joined to `dev` by `e887c3f` | The next PR to `master` has merged with a merge commit and `git for-each-ref --contains <tip>` lists `master` for each; then the maintainer deletes the three tags | Phase C's ref review at C.11 |
+| D.1.1 time-management diagnosis, pulled forward (maintainer, 2026-10-06; `analysis/basilisk_review_2026-10-06.md`, item 1) | Now: research, then the frozen fix and its gate | C.2's baseline-refit gate and C.3's first gate |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
 | Unstoppable-passer test one tempo generous in both move orders (`eval.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |

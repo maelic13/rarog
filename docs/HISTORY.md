@@ -59,6 +59,17 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-06 — The Basilisk review's four suspicions checked in Rarog**
+  (`analysis/basilisk_review_2026-10-06.md`). Known-win evaluations cannot
+  enter the decisive band (every static evaluation is clamped below it), and
+  a position repeating the game history is scored a draw before any stored
+  result: no defect in either. `bench` printed the node count as nps for a
+  position solved in under 1 ms; fixed with a decisive-band guard and a
+  repetition regression test in `0827ab9`. The hard time maximum is the
+  donor's, but Rarog runs into it on won endings where Stockfish 19 does
+  not (rec1 and rec2 at 52–58% of the clock); D.1.1 is pulled forward
+  ahead of Phase C's first gates by maintainer decision.
+
 - **2026-10-06 — C.0.3's read (RAR-E19): the lazy path stays.** Playing the
   full evaluation where the gate now skips it (`LazyMargin` 2000 against 600,
   one tune build, 2,000 games) read **−104.5 ± 10.6 Elo**, against a frozen
