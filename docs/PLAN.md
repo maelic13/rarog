@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | IMPLEMENTED | V | Corpus published and verified, RAR-M67 run; table kept in the linear stage (maintainer, 2026-10-07; manifest v2); RAR-E23 and RAR-E24's fit handed to the maintainer, then the agent reads the screens and tree read and prepares the gates |
+| C.2 | IMPLEMENTED | V | RAR-M67 and RAR-E23 run; RAR-E24 fitted and recovered without a refit (frozen test −0.00026, `bench 13` +4.4%); next its static screens and tree read, then the PGO arms and gate 1 |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
@@ -710,6 +710,16 @@ loss).
   corpus and the played-function fit (amended before exposure). Every
   long run is the maintainer's: RAR-E23's re-read and RAR-E24's fit
   (about nine hours, as RAR-E12's) are handed over as one chain.
+  The fit took minutes, not hours, read the frozen test once in its polish
+  (delta −0.00026) and stopped at a search test's node-floor precondition
+  that the candidate's weights moved under (one fresh depth-7 root search,
+  926 nodes against a floor of 1,000); the precondition was repaired as
+  test code only (`f5802ef`, the frozen search untouched, bench exact),
+  `fit_complete.ps1` now reads the frozen test only after the candidate's
+  suites and bench and gained `-Resume` (`bb10fd3`), and the run was
+  finished without a refit (RAR-E24's amendment holds the identities).
+  RAR-E23: the ranking holds with B.9 labels (king +0.615% at seven men
+  or more), so C.3 proceeds as frozen.
 - **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and

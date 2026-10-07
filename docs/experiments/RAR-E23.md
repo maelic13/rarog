@@ -30,8 +30,13 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
       --out tools/results/donor-residual-hce-v4/report-9587-within.json
   ```
   The binaries' SHA-256 values are checked against the ones above before the collection; the corpus hash is the `hce-v4-tb` manifest's.
-- **Result:** (to be appended)
-- **Disposition:** (to be appended)
-- **PREDICTION CALIBRATION (append after exposure):**
-- **Retry trigger or `closed`:**
+- **Result (run 2026-10-07 by the maintainer, scored once by the agent; `tools/results/donor-residual-hce-v4/`):** the void checks pass: 194,444 of 194,444 rows scored, none invalid, the corpus hash is `hce-v4-tb`'s validation hash, and the control total against `9587eeeb`'s final evaluation correlates at **1.0000** by rank. Gains in percent, `analyse --within`. Seven men or more (163,874 rows): `rarog+stockfish` +2.790 ± 0.091, `rarog+all_families` +2.719 ± 0.091; **king +0.615 ± 0.044**, mobility +0.206 ± 0.027, threats +0.144, space +0.078, pawns +0.075, material +0.062, pieces +0.059, passed +0.053, initiative (winnable) +0.039; `rarog+magnitude` +0.332. All rows: `rarog+stockfish` +3.441 ± 0.095, `rarog+all_families` +2.197, king +0.555, `rarog+magnitude` +0.668. Six men or fewer (30,570 rows): `rarog+stockfish` +29.40, `rarog+all_families` +12.66, king +0.07.
+- **Disposition:** observation. With labels from the B.9 search the ranking holds: king is the largest family at seven men or more by a factor of three over the next, the families carry all but 0.07 points of the total there, and the edge at six men or fewer is again exact endgame knowledge. By the frozen use C.3 proceeds as frozen. Mobility rose from +0.04 (RAR-E22, `hce-v3-tb` labels) to +0.21: a reading for C.4's own residual step, which decides nothing here.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 4 above.
+  - Observed: (1) hit: king first, +0.615 inside +0.45 to +1.05. (2) hit: +2.719 within 0.6 of +2.73, gap 0.071 under 0.3. (3) **miss** on mobility (+0.206 against under +0.15); pieces, space and pawns under the line. (4) hit: +3.441 inside +2.5 to +4.5.
+  - Mechanism supported? The hypothesis (the ranking belongs to the two evaluations, not to the labelling search) holds; competing (1) is refuted for king.
+  - Missed interaction or instrument limit: the stronger labeller moved one family I treated as inert; cleaner labels separate mobility's small signal from noise better than RAR-E22's did.
+  - Confidence: about right on the ranking, over-confident that every small family would stay small.
+- **Retry trigger or `closed`:** closed on its record.
 - **Artifacts / commits:** `tools/results/donor-residual-hce-v4/` (ignored storage).
