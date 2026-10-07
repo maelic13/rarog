@@ -2056,12 +2056,17 @@ fn ks_fit_k(boards: &[RawPos], evs: &mut [Evaluator], base: &EvalParams) -> f64 
 
 fn cmd_tune_kingsafety(opts: &TuneOpts) {
     let active = ks_active_indices();
-    let mut coordinate_set = active.clone();
-    coordinate_set.sort_unstable();
+    // The manifest excludes exactly the selectors from the linear model; the
+    // table they index is free there and co-fitted here.
+    let mut selectors = Vec::new();
+    for field in KS_DANGER_INPUTS {
+        push_field(&mut selectors, field);
+    }
+    selectors.sort_unstable();
     if opts.manifest.is_some()
-        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != coordinate_set
+        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != selectors
     {
-        eprintln!("The manifest's excluded set is not this stage's coordinate set.");
+        eprintln!("The manifest's excluded set is not the king-danger selectors.");
         exit(1);
     }
     let (_, table_len) = field_offset("king_safety_table");

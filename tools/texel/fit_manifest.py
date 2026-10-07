@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Write the HCE fitting manifest: every evaluation coefficient with its status.
 
-  free      receives gradient in the linear stage (`--tune complete`)
-  excluded  outside the linear model; fitted by the coordinate stage
-            (`--tune-kingsafety`) and carried as a fixed residual per row in
-            the linear stage
+  free      receives gradient in the linear stage (`--tune complete`); the
+            king-danger table's entries are free and are also co-fitted by
+            the coordinate stage with the selectors that index them
+  excluded  outside the linear model: the king-danger selectors, fitted by
+            the coordinate stage (`--tune-kingsafety`) and carried as a
+            fixed residual per row in the linear stage
   fixed     never fitted: an algebraic gauge, an invariant, or a slot the
             evaluation cannot activate
 
@@ -16,7 +18,7 @@ report: it must be listed there with zero activations, or the script fails.
 exactly once.
 
   python tools/texel/fit_manifest.py --defaults <vector.txt> \\
-      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v1.tsv
+      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v2.tsv
 """
 from __future__ import annotations
 
@@ -26,8 +28,8 @@ import sys
 
 SCHEMA = "rarog-hce-fit-manifest-v1"
 
-# The danger-index selectors (the tuner's KS_DANGER_INPUTS) and the table they
-# index: a perturbation moves the bucket, not a coefficient.
+# The danger-index selectors (the tuner's KS_DANGER_INPUTS): a perturbation
+# moves the table bucket, not a coefficient.
 DANGER_SELECTORS = [
     "king_safety_unit_minor",
     "king_safety_unit_rook",
@@ -81,8 +83,9 @@ def classify(field: str, idx: int) -> tuple[str, str, str, bool]:
         return ("excluded", "coordinate",
                 "king-danger selector: moves the table bucket, not a coefficient", False)
     if field == "king_safety_table":
-        return ("excluded", "coordinate",
-                "king-danger table: shaped against the selectors' index distribution", False)
+        return ("free", "linear",
+                "king-danger table: linear once the bucket is chosen; also co-fitted "
+                "by the coordinate stage with the selectors", False)
     if field in ("pst_mg", "pst_eg") and idx % 64 == 0 and idx // 64 < 5:
         return ("fixed", "none",
                 "material/PST gauge anchor: a piece value plus C with its 64 squares "

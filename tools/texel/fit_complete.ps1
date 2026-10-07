@@ -15,7 +15,7 @@ param(
     [double]$LinearL2 = 0.0000001,
     # Every coefficient's status (free / fixed / excluded); the tuner reads
     # it at every stage. tools/texel/fit_manifest.py writes it.
-    [string]$FitManifest = "tools/texel/hce_fit_manifest_v1.tsv",
+    [string]$FitManifest = "tools/texel/hce_fit_manifest_v2.tsv",
     [switch]$Smoke
 )
 

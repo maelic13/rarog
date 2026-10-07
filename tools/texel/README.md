@@ -166,13 +166,13 @@ never unifies into engine builds. Run it from the repo root:
 cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --verify tools\texel\data\hce-v2\validation.csv
 # The fitting manifest: every coefficient free, fixed or excluded, with its
 # reason (tools/texel/fit_manifest.py writes it; the tuner checks coverage):
-cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage tools\texel\hce_fit_manifest_v1.tsv
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage tools\texel\hce_fit_manifest_v2.tsv
 # Complete vectors can be chained without resetting a previous stage; the
 # complete group fits the manifest's free coefficients:
 cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --tune complete `
     tools\texel\data\hce-v2\train.csv tools\texel\data\hce-v2\validation.csv `
     tools\texel\out\complete.txt --initial tools\texel\out\prior.txt `
-    --manifest tools\texel\hce_fit_manifest_v1.tsv
+    --manifest tools\texel\hce_fit_manifest_v2.tsv
 # Options include --initial FILE, --epochs N, --lr X, --l2 X,
 # --max-positions N, --test FILE, --fix-k K and --manifest FILE.
 # Groups: material pawnstruct passers rooks minors mobility threats hanging
