@@ -26,7 +26,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.0.3** Lazy path: the played evaluation omits imbalance above its gate; measure, then remove, repair or keep — DONE 2026-10-06
     - [x] **C.0.4** Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — DONE 2026-10-06
 - [x] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — DONE 2026-10-06
-- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **IMPLEMENTED / V**
+- [ ] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — **GAME_GATE / V**
 - [ ] **C.3** First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — **I2**
     - [ ] **C.3.1** King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **C.3.2** Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — **READY_FOR_IMPLEMENTATION / I2**
@@ -114,7 +114,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1` | D.1.2 opens after Phase C, which owns the fix; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2 closes (owner) |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| C.2 chain: corpus, RAR-M67 and RAR-E23 done; RAR-E24 fitted and recovered (frozen test −0.00026, `bench 13` +4.4%) | The agent runs RAR-E24's static screens and tree read, builds both PGO arms and hands over gate 1 | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
+| RAR-E24 gates (maintainer): gate 1 handed over (arms `rarog-c2head-pext-pgo`, `rarog-c2refit-pext-pgo`, dry-run passed); the tree read flagged, so the `c2margin` block and gate 2 follow whatever gate 1 reads | Gate 1 finishes; then the block, then gate 2, each handed over with its command | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
 | Unstoppable-passer test one tempo generous in both move orders (`src/eval/passers.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.

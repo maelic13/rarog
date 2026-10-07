@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | IMPLEMENTED | V | RAR-M67 and RAR-E23 run; RAR-E24 fitted and recovered without a refit (frozen test −0.00026, `bench 13` +4.4%); next its static screens and tree read, then the PGO arms and gate 1 |
+| C.2 | GAME_GATE | V | RAR-E24: screens clear, tree read flagged (+5.7%), arms built and dry-run; gate 1 handed to the maintainer, then the `c2margin` block and gate 2 (gate 2 decides) |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
