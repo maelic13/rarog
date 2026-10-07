@@ -355,6 +355,16 @@ records it. If the marker exists the driver refuses to run. This is the one
 defence against selecting on the test set, and it is worth more than the extra
 information a second look would give.
 
+It is opened **after** the candidate has been baked, has passed both test
+suites and clippy and has benched (`fit-05-frozen-test`, `rarog-texel
+--compare-frozen`), so a candidate that trips a test stops the run with the
+set unread. A run that stops after its fit is finished with
+`fit_complete.ps1 -Resume tools/results/hce-fit-<timestamp>`: it re-checks
+the recorded source, manifest and dataset hashes, never refits, and writes a
+`resume-<timestamp>/` subdirectory beside the stopped attempt's logs. A run
+from before this order read the set inside its polish; resuming it takes that
+reading and does not read the set again.
+
 Artifacts land in `tools/results/hce-fit-<timestamp>/`: every log, every
 intermediate vector, `settings.json`, `summary.json`, the source patch, the
 candidate binary, and hashes of all of it. `src/eval/params.rs` and
