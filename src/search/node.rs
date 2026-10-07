@@ -2729,16 +2729,25 @@ mod tests {
     /// After a search unwinds, no ply still carries an LMR reduction: the
     /// field is non-zero only while the reduced child is being searched, and
     /// a child reads its parent's entry.
+    ///
+    /// The search is the one the engine plays, iterative deepening through
+    /// `Searcher::search`: a single full-window root search from a fresh
+    /// searcher is a path the engine never takes, and its size moved fourfold
+    /// between two fitted evaluations, enough to drop below the floor.
     #[test]
     fn stack_reductions_unwind_to_zero() {
         let mut searcher = Searcher::default();
-        let mut board =
+        let board =
             Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
                 .expect("valid FEN");
-        let score = searcher.search_root_window(&mut board, 7, -INF_SCORE, INF_SCORE, &mut || {
-            SearchEvent::None
-        });
-        assert!(score.abs() < INF_SCORE);
+        let mut options = crate::search_options::SearchOptions {
+            board: board.clone(),
+            ..crate::search_options::SearchOptions::default()
+        };
+        options.limits.depth = Some(7);
+        let result = searcher.search(board, &options, false, || SearchEvent::None);
+        assert_eq!(result.depth, 7);
+        assert!(result.score.abs() < INF_SCORE);
         assert!(
             searcher.td.nodes > 1_000,
             "the search must reach reductions"
