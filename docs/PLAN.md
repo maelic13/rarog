@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | IMPLEMENTED | V | Corpus `hce-v4`/`hce-v4-tb` published and verified (2026-10-07), RAR-M67 run (6.86% of clean wins not won, against 20.33%); RAR-E23, then RAR-E24's fit and gates |
+| C.2 | IMPLEMENTED | V | Corpus published and verified, RAR-M67 run; table kept in the linear stage (maintainer, 2026-10-07; manifest v2); RAR-E23 and RAR-E24's fit handed to the maintainer, then the agent reads the screens and tree read and prepares the gates |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
@@ -678,7 +678,7 @@ loss).
   `--dump-scores` now writes the played evaluation, which C.0.4's magnitude
   contract reads, and `--dump-scores --full` the full one, which PROCESS's
   full-against-played screen reads. (2) The fitting manifest
-  `tools/texel/hce_fit_manifest_v1.tsv` (written by
+  (v1 then, `tools/texel/hce_fit_manifest_v2.tsv` since 2026-10-07; written by
   `tools/texel/fit_manifest.py`): 1,074 free, 92 fixed, 52 excluded, every
   never-active claim checked at zero activations; `rarog-texel --manifest`
   replaces the hand-kept gauge list and coverage partition, and
@@ -700,6 +700,16 @@ loss).
   `dev` commits do not enter it), its static screens and tree read (a
   two-binary form of C.0.3's `lazy_tree.py`), both PGO arms and the gate
   handover. C.2 closes on RAR-E24's disposition.
+  **2026-10-07.** The overnight chain produced `hce-v4` and `hce-v4-tb`
+  (612,747 games, every split hash and row count verified, relabel 0.63%
+  of train rows) and RAR-M67 (6.86% of clean wins not won, against
+  20.33%). **Maintainer decision:** `king_safety_table` stays free in the
+  linear stage and is co-fitted by the coordinate stage, as RAR-E12
+  (manifest v2, `e1d46f5`: 1,114 free, 92 fixed, 12 excluded), which
+  supersedes section 9's exclusion and leaves RAR-E24's bundle at the
+  corpus and the played-function fit (amended before exposure). Every
+  long run is the maintainer's: RAR-E23's re-read and RAR-E24's fit
+  (about nine hours, as RAR-E12's) are handed over as one chain.
 - **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and

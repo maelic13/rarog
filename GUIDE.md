@@ -114,7 +114,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1` | D.1.2 opens after Phase C, which owns the fix; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2 closes (owner) |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| C.2 chain: `hce-v4` and `hce-v4-tb` published and hash-verified (2026-10-07; 612,747 games), RAR-M67 run (6.86% of clean wins not won); RAR-E23 and RAR-E24 open | RAR-E23 runs; RAR-E24's fit runs from a clean worktree at its registration commit | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
+| C.2 chain: `hce-v4`/`hce-v4-tb` published and verified, RAR-M67 run (6.86% of clean wins not won); RAR-E23 and RAR-E24's fit (about nine hours, manifest v2) handed to the maintainer | Their outputs exist; then the agent reads RAR-E23, RAR-E24's static screens and tree read, and prepares the gate | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
 | Unstoppable-passer test one tempo generous in both move orders (`src/eval/passers.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
