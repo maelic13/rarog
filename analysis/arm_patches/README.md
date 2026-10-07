@@ -21,6 +21,7 @@ any prune while those bases were on a ref.
 | `23b8a7a` | RAR-S76 | `df6308e` | B.2.3 theta at iteration 3,900 baked into the 82 `CoreParams` defaults (diagnostic peek, never merged) |
 | `883666d` | RAR-S82 | `7ba3a1b` | RAR-S82's block-1 theta baked into `ProofParams` (diagnostic probe) |
 | `11e7145` | RAR-S84 | `f5d16d8` | RAR-S83's block-2 theta baked into all 36 coordinates (the B.3.4 gate candidate; `f53ca7d` baked the same values on `dev`) |
+| `bff5fbf` | RAR-E24 | `f5802ef` | C.2's attribution-baseline candidate: the unchanged surface refitted on `hce-v4-tb` (`src/eval/params.rs`, `src/eval/material.rs`, final vector `50D7C4FE…`) and version `2.6.0-dev+e24refit`; a detached commit on no ref, proved through a temporary index to reproduce its tree (`f65a08b`) from `f5802ef` |
 
 **Added 2026-10-04 (B.10's ref review):** the last three rows came from the
 throwaway branches `diag/b23-theta3900`, `b33-block1-probe` and `b33-gate`,
