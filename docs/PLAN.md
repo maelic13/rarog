@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | IMPLEMENTED | V | Tooling, fitting manifest, pilot and registrations done (RAR-M67, RAR-E23, RAR-E24); the 612,747-game generation is the maintainer's; the post-generation chain resumes when its PGN and manifest exist |
+| C.2 | IMPLEMENTED | V | Corpus `hce-v4`/`hce-v4-tb` published and verified (2026-10-07), RAR-M67 run (6.86% of clean wins not won, against 20.33%); RAR-E23, then RAR-E24's fit and gates |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |

@@ -19,8 +19,13 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Cheapest prior falsifier:** none cheaper than the audit itself; the 3,000-game pilot is too small for a family-level rate and is not read.
 - **Registered gate and stop rule:** no gate; one audit over the complete source PGN, run once after generation and before the corpus is fitted. **Use, frozen:** recorded with the corpus; a conditional rate above **25%** (labels worse than `hce-v3`'s) holds RAR-E24's fit until the maintainer decides, since a label contract worse than the one RAR-E12 fitted would confound the refit's gate.
 - **Full conditions / provenance:** `python tools/diag/datagen_label_audit.py --pgn tools/texel/data/selfplay-b9head-n8000-s1-g612747.pgn --syzygy D:/chess/tablebases/syzygy3456 --max-men 6 --workers 30 --output tools/results/label-audit-hce-v4/report.json`; first clean win per game, cursed wins excluded, as RAR-M22.
-- **Result:** (to be appended)
-- **Disposition:** (to be appended)
-- **PREDICTION CALIBRATION (append after exposure):**
-- **Retry trigger or `closed`:**
+- **Result (run 2026-10-07, once, after generation; `tools/results/label-audit-hce-v4/report.json`):** 612,747 games (PGN `selfplay-b9head-n8000-s1-g612747.pgn`, generated 2026-10-06 21:18 to 2026-10-07 00:27 UTC at concurrency 30, engine verified in the run at SHA-256 `AAC92114…01EE` and `bench 13` 11,171,726). **259,306 games reach a first clean win (42.32%; `hce-v3` 44.22%) and 17,799 of them are not won: 6.86% of clean wins** (`hce-v3`: 20.33%), 2.90% of all games (`hce-v3`: 8.99%). Largest failing families by count: KRPP-KR 2,164 of 16,631 (13.01%), KRP-KRP 1,400 of 7,830 (17.88%), KPP-KPP 586 of 9,437 (6.21%), KRP-KBP 580 of 3,727 (15.56%), KBPP-KB 565 of 4,859 (11.63%); KRP-KR is not among the eight largest. The corpus agrees independently: the Syzygy relabel of `hce-v4` changed 22,083 train labels (0.63% of rows; `hce-v3` 113,046, 3.23%), 0 probe failures.
+- **Disposition:** observation. The B.9 head converts its clean wins at 8,000 nodes about three times as often as the `hce-v3` labeller did; by the frozen use (hold above 25%) RAR-E24's fit is not held.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): the items above.
+  - Observed: games reaching a clean win 42.32%, inside 40–48% (hit). Clean wins not won 6.86% against a point of 15% and an 80% band of 10% to 21%: **below the band** (direction hit, probability 0.75 for under 20.33%; magnitude miss). Failing families: KRPP-KR, KRP-KRP and KPP-KPP are among the five largest, KRP-KR is not (three of the four named).
+  - Mechanism supported? The hypothesis (search quality, not node budget, limits conversion at 8,000 nodes) is supported more strongly than predicted; competing (1), a node-budget limit, is refuted for this search.
+  - Missed interaction or instrument limit: I anchored on Basilisk's node-scaling figure (3.1× nodes for 31% relative), which measures a different lever; the B.9 changes (mop-up drive, recognisers, pruning) act on exactly the endings that failed.
+  - Confidence: under-confident on the size of the improvement.
+- **Retry trigger or `closed`:** closed on its record.
 - **Artifacts / commits:** `tools/results/label-audit-hce-v4/` (ignored storage).
