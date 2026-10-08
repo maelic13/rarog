@@ -627,23 +627,27 @@ mod endgame_311c_tests {
     /// The failure mode that matters: a hard `Some(0)` on a position that is
     /// actually WON would turn wins into claimed draws. The reference calls its
     /// own case analysis "far from perfect", so this is the guard that earns
-    /// porting it. All three are Syzygy WIN.
+    /// porting it. All three are Syzygy WIN, so the endgame scaling must also
+    /// leave a winning score at least half its size. The scaling is tested on
+    /// a fixed score, not the evaluation's, whose size every refit moves.
     #[test]
     fn krpkr_never_zeroes_a_won_position() {
+        const WINNING: i32 = 300;
         for fen in [
             "1R6/1P6/8/8/8/7k/r7/6K1 w - - 0 1",
             "8/8/1PK5/8/8/7k/r7/1R6 w - - 0 1",
             "8/8/8/1PK5/8/7k/r7/1R6 w - - 0 1",
         ] {
+            let position = board(fen);
             assert_ne!(
-                krpkr_scale(&board(fen)),
+                krpkr_scale(&position),
                 Some(0),
                 "won KRP-KR must not be scaled to a forced draw: {fen}"
             );
-            let score = static_eval(fen);
+            let scaled = scale_endgame(&position, WINNING);
             assert!(
-                score > 150,
-                "won KRP-KR should stay clearly winning, got {score} for {fen}"
+                scaled >= WINNING / 2,
+                "won KRP-KR should stay clearly winning, scaled {WINNING} to {scaled} for {fen}"
             );
         }
     }
