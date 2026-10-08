@@ -51,6 +51,7 @@ impl Evaluator {
             board.pieces(Color::Black, Piece::Pawn),
         ];
 
+        let shelters = self.king_shelters(board, pawn_attacks);
         self.attacks.fill(board, atk, pawn_attacks);
         let maps = &self.attacks;
         // Each side's mobility (mg), which king danger reads for both sides.
@@ -315,9 +316,9 @@ impl Evaluator {
                 color_sign(color),
                 mg,
                 eg,
-                &pawns,
                 &ks_maps,
                 &mobility_mg,
+                &shelters[color as usize],
             );
         }
 

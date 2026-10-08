@@ -69,6 +69,21 @@ struct PawnEntry {
     eg: i32,
     passed: [Bitboard; 2],
     attacks: [Bitboard; 2],
+    /// Each king's shelter and storm score over this entry's pawns, once
+    /// computed. It also depends on the king square and castling rights, so
+    /// it is kept with them and recomputed when either differs; a new entry
+    /// starts with none.
+    shelter: [Option<CachedShelter>; 2],
+}
+
+#[cfg_attr(feature = "texel", allow(dead_code))]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+struct CachedShelter {
+    king: Square,
+    /// The side's own castling rights (the other side's bits cleared).
+    castling: u8,
+    mg: i32,
+    eg: i32,
 }
 
 #[cfg_attr(feature = "texel", allow(dead_code))]

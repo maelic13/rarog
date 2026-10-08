@@ -179,7 +179,9 @@ impl Evaluator {
         // Bypass the pawn cache under `texel`: a hit skips the trace counts.
         #[cfg(not(feature = "texel"))]
         {
-            let cached = self.pawn_table[slot];
+            // Read in place: copying the whole entry out would move the
+            // cached shelters too, which this path does not need.
+            let cached = &self.pawn_table[slot];
             if cached.key == key {
                 *passed = cached.passed;
                 *attacks = cached.attacks;
@@ -343,6 +345,7 @@ impl Evaluator {
             eg,
             passed: *passed,
             attacks: *attacks,
+            shelter: [None; 2],
         };
         (mg, eg)
     }

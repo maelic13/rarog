@@ -173,12 +173,21 @@ macro_rules! eval_params {
             // converted at 100/206. Coordinates too: the map's output is untraced.
             ks_map_mg: 1 = [49];
             ks_map_eg: 1 = [49];
-            shelter_missing_file_mg: 1 = [27];
-            shelter_missing_adjacent_mg: 1 = [7];
-            shelter_dist1_mg: 1 = [25];
-            shelter_dist2_mg: 1 = [15];
-            storm_file_weight: 1 = [0];
-            storm_adjacent_weight: 1 = [2];
+            // Per 100 cp of our shelter's mg score, taken off the index.
+            kd_shelter: 1 = [155];
+            // Shelter and storm over the three files around the king, indexed
+            // `edge_distance * 7 + relative_rank` (0 = no pawn on the file): our
+            // pawn nearest our side, then theirs, unless it is blocked by ours.
+            shelter_strength: 28 = [-3, 39, 45, 28, 19, 9, 12, -21, 30, 17, -24, -14, -5, -31, -5, 36, 11, -1, 16, 1, -22, -19, -6, -14, -25, -23, -33, -81];
+            unblocked_storm: 28 = [41, -140, -81, 47, 24, 22, 24, 22, -12, 59, 22, 18, -5, 10, -3, 25, 82, 17, -1, -11, -7, -7, -5, 49, 2, 5, -7, -14];
+            // An enemy pawn standing on our pawn, by its relative rank.
+            blocked_storm_mg: 7 = [0, 0, 37, -5, -3, -2, 0];
+            blocked_storm_eg: 7 = [0, 0, 38, 7, 5, 3, 1];
+            shelter_constant_mg: 1 = [2];
+            shelter_constant_eg: 1 = [2];
+            // No pawn of either colour on the king's flank.
+            pawnless_flank_mg: 1 = [8];
+            pawnless_flank_eg: 1 = [46];
             // Old flat hanging penalty (Phase 3.6). Phase 4.2 dropped it data-driven:
             // the refined hanging term (`threat_hanging_refined`) generalises and fully
             // absorbed it, so the joint fit drove these to ~0. Kept (not deleted) so the
