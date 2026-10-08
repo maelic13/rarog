@@ -5,12 +5,9 @@
 use super::material::{EG_VAL, MG_VAL, build_default_pst};
 use crate::board::Color;
 
-/// Every tunable eval weight, hoisted out of inline literals (Phase 3.1).
-/// Uniform `[i32; N]` shape (scalars as `[i32; 1]`) so the Phase 3.2/3.3
-/// tune-time loader and Texel tuner can address every field by
-/// `(name, index)` through `EVAL_PARAM_NAMES`/`get`/`set` below. This step is
-/// a default-equivalence refactor only: every default here reproduces the
-/// constant it replaces exactly, so `bench 13` is unchanged.
+/// Every tunable eval weight. Uniform `[i32; N]` shape (scalars as `[i32; 1]`)
+/// so the tune-time loader and the Texel tuner can address every field by
+/// `(name, index)` through `EVAL_PARAM_NAMES`/`get`/`set` below.
 macro_rules! define_eval_params {
     ( $( $field:ident : $len:literal = $default:expr; )* ) => {
         #[derive(Clone)]
@@ -104,8 +101,8 @@ macro_rules! eval_params {
             blocked_passer_eg: 1 = [10];
             ideal_blockader_mg: 1 = [19];
             ideal_blockader_eg: 1 = [0];
-            // Minors & rooks (Phase 4.4 fitted). rook_7th and a few others fitted to 0 —
-            // the data verdict that they add nothing atop mobility/threats/open-file.
+            // Minors & rooks. A weight the fit holds at 0 adds nothing atop mobility,
+            // threats and the open-file terms.
             bishop_pair_mg: 1 = [24];
             bishop_pair_eg: 1 = [57];
             rook_open_mg: 1 = [51];
@@ -120,11 +117,8 @@ macro_rules! eval_params {
             enemy_rook_behind_passer_eg: 1 = [29];
             knight_outpost_mg: 1 = [55];
             knight_outpost_eg: 1 = [8];
-            // Per-count mobility tables (Phase 3.7 structure; Phase 4.3 fitted). Each is
-            // non-decreasing in the count (a trapped piece is worst); low entries can go
-            // negative (e.g. a 0-mobility bishop). Fitted at 250 epochs — the clean point
-            // where every holdout bucket still improves (a fuller fit overvalued rook
-            // activity in drawish rook endings, regressing that bucket).
+            // Per-count mobility tables. Each is non-decreasing in the count (a trapped
+            // piece is worst); low entries can go negative (e.g. a 0-mobility bishop).
             mob_n_mg: 9 = [-17, -10, 15, 27, 33, 38, 46, 53, 54];
             mob_n_eg: 9 = [-20, 11, 20, 35, 53, 75, 79, 79, 79];
             mob_b_mg: 14 = [11, 20, 30, 39, 46, 50, 54, 58, 61, 63, 70, 70, 70, 70];
@@ -133,9 +127,8 @@ macro_rules! eval_params {
             mob_r_eg: 15 = [4, 41, 41, 50, 65, 77, 86, 96, 104, 108, 111, 115, 115, 115, 121];
             mob_q_mg: 28 = [-45, 18, 63, 64, 66, 69, 69, 69, 74, 76, 82, 85, 87, 91, 91, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101];
             mob_q_eg: 28 = [-13, 8, 25, 25, 33, 33, 88, 96, 97, 101, 101, 101, 108, 111, 111, 118, 118, 121, 121, 125, 125, 125, 125, 125, 125, 125, 125, 125];
-            // Threats (Phase 3.6 structure; Phase 4.2 fitted). The base threat scalars
-            // converged to a common (38, 25) — the per-victim `threat_by_*` tables below
-            // now carry the attacker/victim-specific signal.
+            // Threats. The base threat scalars share one value per phase; the per-victim
+            // `threat_by_*` tables below carry the attacker/victim-specific signal.
             threat_minor_mg: 1 = [66];
             threat_minor_eg: 1 = [44];
             threat_rook_mg: 1 = [66];
@@ -161,17 +154,12 @@ macro_rules! eval_params {
             king_safety_unit_minor: 1 = [2];
             king_safety_unit_rook: 1 = [3];
             king_safety_unit_queen: 1 = [4];
-            // King-danger conversion table (Phase 3.5; Phase 4.1 fitted). Lengthened
-            // 16 -> 40 and the hard `.min(15)` cap removed. Phase 4.1 co-tuned this
-            // table with the danger-index inputs below by re-evaluating the 2.19M set
-            // (`--tune-kingsafety`): the tail rose well above the old 118 cap into the
-            // danger² curve strong engines use, staying monotonic non-decreasing.
+            // King-danger conversion table, indexed by the clamped danger index and
+            // kept monotonic non-decreasing by the tuner.
             king_safety_table: 40 = [102, 102, 116, 116, 123, 138, 152, 163, 198, 222, 236, 263, 263, 263, 263, 263, 263, 263, 263, 263, 263, 282, 284, 358, 358, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 384, 414, 499];
-            // King-danger inputs (Phase 3.5). Seeded 0 (danger == the old attacker-unit
-            // sum); they select the danger bucket non-linearly, so they are invisible
-            // to the linear Texel trace and were fitted in Phase 4.1 by re-evaluation
-            // (`--tune-kingsafety`). ks_weak_ring / ks_flank_attack stayed at 0 in the
-            // fit.
+            // King-danger inputs. They select the table bucket non-linearly, so the
+            // linear trace cannot see them; the fit's coordinate stage re-evaluates
+            // positions to fit them. A weight at 0 leaves its input out of the index.
             ks_weak_ring: 1 = [1];
             ks_safe_check_knight: 1 = [16];
             ks_safe_check_bishop: 1 = [13];

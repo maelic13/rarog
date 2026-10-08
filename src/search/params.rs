@@ -103,7 +103,7 @@ search_params! {
     struct SearchParams, generated_param_checks;
 
     /// Initial aspiration window half-width (centipawns).
-    aspiration_delta = 13, "AspirationDelta", 5..=100;  // was 25 → 29 → 31 → 30 → 21
+    aspiration_delta = 13, "AspirationDelta", 5..=100;
 
     // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
     // The widening loop is parameterised so its shape can be SPSA'd rather than
@@ -137,19 +137,17 @@ search_params! {
     /// runaway iteration — which is exactly what the tune explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
 
-    // ── Qsearch SEE thresholds (Phase 7.2 SEE bundle) ────────────────────────
-    // Exposed so the `config_see` SPSA can re-tune SEE's consumers alongside
-    // the pin-aware `see_ge` (lesson 15: a more accurate SEE de-tunes the
-    // constants fitted around the old one). Defaults reproduce the prior
-    // hardcoded literals exactly → bench-identical until re-tuned.
+    // ── Qsearch SEE thresholds ───────────────────────────────────────────────
+    // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
+    // accurate SEE de-tunes the constants fitted around the old one.
     /// Qsearch capture SEE-prune margin: search a capture only if
     /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
-    qs_see_margin = 266, "QsSeeMargin", 0..=600;  // was 200 → 251 → 265
+    qs_see_margin = 266, "QsSeeMargin", 0..=600;
     /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
-    qs_see_clamp_hi = 208, "QsSeeClampHi", 0..=600;  // was 200 → 218 → 212
+    qs_see_clamp_hi = 208, "QsSeeClampHi", 0..=600;
     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
     /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
-    qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;  // was -50 → -119 → -55
+    qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;
 
     /// Minimum non-pawn pieces the side to move must have for NMP.
     ///
