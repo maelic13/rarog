@@ -114,7 +114,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1` | D.1.2 opens after Phase C, which owns the fix; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2 closes (owner) |
 | KRPPKRP 7-man truth gap | Independent truth becomes available, or C.5.8 records an explicit exclusion | C.5.8 closes |
 | KRP-KB win-preserving 0.9990 → 0.9949 (−2.2 SE, RAR-M42) | Non-blocking; blocking if a later change pushes it past 3 SE | C.5.4 closes (owner) |
-| RAR-E24 gates (maintainer): gate 1 H1 (+31.0 ± 8.5 Elo, 2,442 games); the `c2margin` block running (60,000 games) | The block finishes; the agent bakes its theta onto the candidate and hands over gate 2 | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
+| RAR-E24 gates (maintainer): gate 1 H1 (+31.0 ± 8.5 Elo, 2,442 games); the `c2margin` block done (60,000 games); gate 2 handed over (`rarog-c2gate2-pext-pgo`, 12,351,448, dry-run passed) | Gate 2 finishes; on H1 the `10+0.1` read follows | C.2 closes; C.3.4 (its fit needs RAR-E24's baseline) |
 | Unstoppable-passer test one tempo generous in both move orders (`src/eval/passers.rs`; confirmed in the source by C.0, 2026-10-05) | C.6 opens: definition change plus refit, checked on tablebase-labelled pawn endings | C.6 closes (owner) |
 
 Follow the earliest unblocked leaf. Held items stay unticked in place.
