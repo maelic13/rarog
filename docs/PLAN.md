@@ -293,8 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner only; the coordinates are renamed (C.3.1, C.3.2), the steps, bounds, v3 manifest (the shelter constant and `blocked_storm` slots 0–1 noted in C.3.2) and masks remain |
-| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3; C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
+| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); C.3.1–C.3.3 done on `c3-king` (2026-10-08); C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
 | C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
@@ -832,7 +831,9 @@ loss).
       each side's score as an `Option` with its `i32` scores, about 32 bytes
       over the card's 12; the cache-hit path now reads the entry in place
       rather than copying it, and `Evaluator::evaluate`'s release assembly
-      holds no `memcpy` call. `bench 13` 12,766,450 / EBF 2.544 (unfitted).
+      holds no `memcpy` call. `bench 13` 12,766,450 / EBF 2.542 (unfitted;
+      this record read 2.544 until C.3.3, a transcription slip: C.3.2's
+      own four builds read 2.542).
       For C.3.3's manifest: the shelter constant cancels in the linear trace
       (both kings get it) but moves the index through the feedback, and
       `blocked_storm` slots 0–1 cannot fire. **Pooled-PGO NPS read**
@@ -844,7 +845,7 @@ loss).
       nodes). The budget rule (the blockers go first, then the castling
       alternatives) is decided on C.3.4's fitted candidate, which gets the
       same read before its gate.
-    - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.** C.3.1
+    - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`, DONE 2026-10-08.** C.3.1
       renamed the pass's coordinates (`kd_*`, `ks_map_*`) and re-keyed the
       king-attack bucket on the trace's `king_danger` flag; C.3.3 sets the
       steps, the bounds, a v3 fit manifest and
@@ -854,6 +855,31 @@ loss).
       coordinate, about a sixty-fourth of its range halving to 1 (the card's
       64 → 4 for the index weights), the map scales (seed 49) 4 → 1.
       `tools/diag/ks_weight_scan.py` reads one coordinate's loss surface.
+      **Done on `c3-king` (`13c372b` engine, `af36cc7` tuner):** each of
+      the 23 coordinates starts at a sixty-fourth of its range rounded up to
+      a power of two (64 an index weight, 8 an attacker weight, 32 the
+      constant, 4 a map scale) and halves its own step when neither
+      direction improves; the log's last line says whether the pass
+      converged or stopped at the epoch cap. The bounds, unchanged in value,
+      are one table the clamp and the pass read; an initial vector outside
+      them is refused. Manifest v3 (`tools/texel/hce_fit_manifest_v3.tsv`):
+      1,257 coefficients, 1,136 free, 98 fixed, 23 excluded; `blocked_storm`
+      slots 0–1 and both shelter constants fixed, each checked at zero
+      activation; v2 is refused. Feature support on `hce-v4-tb/train.csv`
+      (3.5 M rows, `analysis/artifacts/c33-manifest/`): every
+      `shelter_strength` and `unblocked_storm` slot clears the sparse cut
+      (at least 6,771 and 3,618 activations against 1,750); the pawnless
+      flank fires on 2.6–2.9% of rows. The masks are `tune`-only UCI
+      options held in `src/eval/` and fixed at the first evaluation (the
+      TT and the evaluation cache hold values of the function in force), so
+      no search file changed; each evaluates as its family at zero weight
+      over random playouts, and in the `tune` build `bench 13` reads
+      13,065,458 (`KingDangerMask`) and 10,586,566 (`KingShelterMask`)
+      against 12,766,450 unmasked. Release bench unchanged, 12,766,450 /
+      EBF 2.542. A 20,000-row smoke pass converged in 18 epochs from step
+      64 and moved 22 of 23 coordinates (a check of the path, not of the
+      fit). For C.3.4: `fit_complete.ps1` keeps 40 coordinate epochs; an
+      unconverged pass is reported before the static screens.
     - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
       registration copies the card's prediction before the static screens
       are read. Added by C.3.1's review, before exposure: a won-ending read
