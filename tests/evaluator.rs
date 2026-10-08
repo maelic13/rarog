@@ -25,6 +25,21 @@ fn evaluator_raw_eval_does_not_depend_on_the_halfmove_clock() {
     assert_eq!(evaluator.evaluate(&stale), evaluator.evaluate(&fresh));
 }
 
+/// A fresh evaluator must already hold the engine's default lazy margin. A
+/// mismatch makes the first search after process start invalidate the
+/// evaluation cache and the TT on its clock, and makes `texel` fits, which
+/// never set the margin, describe a function the engine does not play.
+#[test]
+fn fresh_evaluator_holds_the_default_lazy_margin() {
+    let mut evaluator = Evaluator::default();
+    let default = rarog::search::params::SearchParams::default().lazy_margin;
+
+    assert!(
+        !evaluator.set_lazy_margin(default),
+        "the evaluator's seed differs from the LazyMargin default {default}"
+    );
+}
+
 #[test]
 fn evaluator_rewards_advanced_protected_passers_over_back_rank_pawns() {
     let mut evaluator = Evaluator::default();

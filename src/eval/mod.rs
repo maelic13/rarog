@@ -50,12 +50,12 @@ pub(crate) const VALUE_NONE: i32 = 32_002;
 const PAWN_TABLE_SIZE: usize = 16_384;
 const EVAL_TABLE_SIZE: usize = 32_768;
 const TOTAL_PHASE: i32 = 24;
-/// Lazy-eval threshold (Phase 3.16): if the tapered material + PST + pawn score
-/// already exceeds this, the expensive positional block is skipped. Chosen so
-/// the skipped terms cannot flip the sign at the current (seeded-0) eval; it is
-/// an SPRT-tunable knob and should be re-checked once Phase 4 grows the
-/// positional weights.
-const LAZY_MARGIN: i32 = 600;
+/// Lazy-eval threshold: if the tapered material + PST + pawn score already
+/// exceeds it, the positional block is skipped. It must equal the search's
+/// `LazyMargin` default: otherwise a fresh process's first search clears the
+/// evaluation cache and the TT on its clock, and `texel` fits, which never set
+/// the margin, describe a function the engine does not play.
+const LAZY_MARGIN: i32 = 414;
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 
 // Under `texel` the caches are written but never read (hits are bypassed so
