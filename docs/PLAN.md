@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); C.3.1–C.3.3 done on `c3-king` (2026-10-08); C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
+| C.3.4 | READY_FOR_IMPLEMENTATION | V | Registered as RAR-E25 (2026-10-08, before the fit); the agent runs the fit, the screens, the won-ending, tree and NPS reads, then hands over gate 1; the frozen test is deferred to after the games |
 | C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
@@ -893,6 +893,12 @@ loss).
       baseline before the fit. The pooled-PGO NPS read is repeated on the
       fitted candidate before the gate, and the card's 1.5% budget rule is
       applied to it (C.3.2 read −1.67% unfitted, unresolved).
+      **Registered 2026-10-08 as RAR-E25, before the fit.** Maintainer
+      decisions the same day: the agent runs the fit (it takes minutes);
+      `hce-v4-tb`'s frozen test, read by RAR-E24, is not read by the fit
+      but once after the games, and only if a gate fails, as a diagnosis
+      that changes nothing (`fit_complete.ps1 -DeferFrozenTest`, `0a2ed72`,
+      which also takes the branch baseline as `-BaselineFingerprint`).
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
@@ -1014,7 +1020,12 @@ loss).
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
-  by a cycle quietly widening the free set.
+  by a cycle quietly widening the free set. **Data rotation (maintainer
+  direction 2026-10-08):** the corpus rotates with the engine: each
+  regeneration plays from the latest accepted head, whose games label
+  better as it strengthens, and brings its own unread frozen test. Whether
+  a regeneration also happens between units, before C.8, is not yet
+  decided.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
