@@ -183,7 +183,6 @@ const GAUNTLET: &[&str] = &[
     "slider_on_queen_eg",
 ];
 const KINGSAFETY: &[&str] = &[
-    "king_safety_table",
     "shelter_missing_file_mg",
     "shelter_missing_adjacent_mg",
     "shelter_dist1_mg",
@@ -484,11 +483,7 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "space_weight", 0.0, 50.0);
     clamp_field(w, "tempo", 0.0, 50.0);
 
-    // King safety: a non-decreasing danger table, positive shelter/storm.
-    clamp_field(w, "king_safety_table", 0.0, 600.0);
-    let (kst, len) = field_offset("king_safety_table");
-    let _ = kst;
-    enforce_non_decreasing(w, "king_safety_table", 0, len - 1);
+    // King safety: positive shelter/storm.
     for f in [
         "shelter_missing_file_mg",
         "shelter_missing_adjacent_mg",
@@ -499,27 +494,27 @@ fn clamp_weights(w: &mut [f64]) {
     ] {
         clamp_field(w, f, 0.0, 100.0);
     }
-    // Nonlinear danger-index inputs (SPSA/finite-difference path).
-    // All are danger *contributions* (more attack = more danger) or, for
-    // queen_relief, a danger *reduction* stored as a positive magnitude — so
-    // every one is bounded non-negative. The bucket index they feed is clamped
-    // to the table length in eval, so generous upper bounds are safe.
+    // King-danger index coordinates (the re-evaluation path), in index units.
+    // Each is a danger contribution or, for the reductions, a magnitude, so
+    // every one is non-negative except the constant; the index is capped
+    // before the map, so generous upper bounds are safe. The map scales stop
+    // at the evaluation's own clamp (`KS_MAP_SCALE_MAX`).
+    clamp_field(w, "kd_attacker_weight", 0.0, 400.0);
+    clamp_field(w, "kd_safe_check", 0.0, 4000.0);
     for f in [
-        "king_safety_unit_minor",
-        "king_safety_unit_rook",
-        "king_safety_unit_queen",
-        "ks_weak_ring",
-        "ks_safe_check_knight",
-        "ks_safe_check_bishop",
-        "ks_safe_check_rook",
-        "ks_safe_check_queen",
-        "ks_flank_attack",
-        "ks_pawnless_flank",
-        "ks_shelter_storm",
-        "ks_queen_relief",
+        "kd_weak_ring",
+        "kd_unsafe_check",
+        "kd_blockers",
+        "kd_king_attacks",
+        "kd_mobility",
+        "kd_no_queen",
+        "kd_knight_defender",
     ] {
-        clamp_field(w, f, 0.0, 20.0);
+        clamp_field(w, f, 0.0, 4000.0);
     }
+    clamp_field(w, "kd_constant", -1000.0, 1000.0);
+    clamp_field(w, "ks_map_mg", 0.0, 400.0);
+    clamp_field(w, "ks_map_eg", 0.0, 400.0);
 
     // Imbalance coefficients are signed; just bound the magnitude.
     clamp_field(w, "imbalance_ours", -300.0, 300.0);
@@ -588,13 +583,14 @@ const BUCKET_NAMES: &[&str] = &[
     "ocb",         // one bishop each, opposite colours, no knights
     "rook-ending", // rooks only (no queens, no minors)
     "pawn-ending", // kings + pawns only
-    "king-attack", // king-safety table active (enemy pressure on a king)
+    "king-attack", // king-danger map active (enemy pressure on a king)
     "passer",      // a passed pawn present
     "threat",      // a static threat present
 ];
 
-/// Flat-index ranges of the trace families used for the king-attack / passer /
-/// threat buckets, computed once from `EVAL_PARAM_NAMES`.
+/// Flat-index ranges of the trace families used for the passer and threat
+/// buckets, computed once from `EVAL_PARAM_NAMES`. The king-attack bucket
+/// reads the trace's `king_danger` flag: the map's output is untraced.
 ///
 /// Each family is a LIST of ranges, not one min..max span. The span form was a
 /// silent instrument failure: `passed*` is 13 fields totalling 27 slots but
@@ -603,19 +599,18 @@ const BUCKET_NAMES: &[&str] = &[
 /// threats, king safety, all of it. The bucket then fired whenever any of those
 /// foreign slots was nonzero, which is nearly always: it selected 127,777 of
 /// 127,778 positions and therefore measured nothing at all, while looking like
-/// a working cohort. `threat` (48 slots) and `king_safety_table` (40) happen to
-/// be contiguous, so those two buckets were correct -- which is exactly why the
-/// bug survived: two thirds of the instrument worked.
+/// a working cohort. `threat` (48 slots) and the king-safety table (40, since
+/// replaced) happened to be contiguous, so those two buckets were correct --
+/// which is exactly why the bug survived: two thirds of the instrument worked.
 struct FamilyRanges {
     passer: Vec<(usize, usize)>,
     threat: Vec<(usize, usize)>,
-    ksafe: Vec<(usize, usize)>,
 }
 
 fn family_ranges() -> &'static FamilyRanges {
     static R: OnceLock<FamilyRanges> = OnceLock::new();
     R.get_or_init(|| {
-        let (mut passer, mut threat, mut ksafe) = (Vec::new(), Vec::new(), Vec::new());
+        let (mut passer, mut threat) = (Vec::new(), Vec::new());
         let mut off = 0usize;
         for &(name, len) in EVAL_PARAM_NAMES {
             let end = off + len;
@@ -623,22 +618,17 @@ fn family_ranges() -> &'static FamilyRanges {
                 passer.push((off, end));
             } else if name.starts_with("threat") {
                 threat.push((off, end));
-            } else if name == "king_safety_table" {
-                ksafe.push((off, end));
             }
             off = end;
         }
-        FamilyRanges {
-            passer,
-            threat,
-            ksafe,
-        }
+        FamilyRanges { passer, threat }
     })
 }
 
 /// Bucket-membership bitmask for one position (bit i ⇔ `BUCKET_NAMES[i]`).
-/// `coeffs` is the position's full linear trace (`trace.flat_coeffs()`).
-fn position_buckets(board: &Board, phase: i32, coeffs: &[f64]) -> u32 {
+/// `coeffs` is the position's full linear trace (`trace.flat_coeffs()`);
+/// `king_danger` is the trace's flag that the king-danger map applied.
+fn position_buckets(board: &Board, phase: i32, coeffs: &[f64], king_danger: bool) -> u32 {
     let mut m = 0u32;
     if phase >= 16 {
         m |= 1 << 0;
@@ -695,7 +685,7 @@ fn position_buckets(board: &Board, phase: i32, coeffs: &[f64]) -> u32 {
             .iter()
             .any(|&(s, e)| s < e && coeffs[s..e].iter().any(|&c| c != 0.0))
     };
-    if any_nz(&fr.ksafe) {
+    if king_danger {
         m |= 1 << 7;
     }
     if any_nz(&fr.passer) {
@@ -932,7 +922,7 @@ fn process_line(
             row_values.push(value);
         }
     }
-    let buckets = position_buckets(&board, trace.phase, &coeffs);
+    let buckets = position_buckets(&board, trace.phase, &coeffs, trace.king_danger);
     Some(TuneRow {
         result,
         base_score: base_white as f32,
@@ -1602,38 +1592,32 @@ fn cmd_tune(opts: &TuneOpts) {
 // Nonlinear king-safety fit
 // ---------------------------------------------------------------------------
 
-/// The danger-index inputs that select the (non-linear) safety-table bucket.
-/// They are invisible to the linear trace — a perturbation moves the table
-/// *index*, not a coefficient — so they are fit here by re-evaluating positions
-/// with perturbed weights instead of through the linear gradient.
+/// The king-danger index coordinates and the map's two scales. The index
+/// reaches the score only through the capped quadratic map, whose output is
+/// untraced, so none of them has a linear coefficient: they are fit here by
+/// re-evaluating positions with perturbed weights.
 const KS_DANGER_INPUTS: &[&str] = &[
-    "king_safety_unit_minor",
-    "king_safety_unit_rook",
-    "king_safety_unit_queen",
-    "ks_weak_ring",
-    "ks_safe_check_knight",
-    "ks_safe_check_bishop",
-    "ks_safe_check_rook",
-    "ks_safe_check_queen",
-    "ks_flank_attack",
-    "ks_pawnless_flank",
-    // Shelter/storm pawn-cover deficit, folded into the danger index.
-    "ks_shelter_storm",
-    "ks_queen_relief",
+    "kd_attacker_weight",
+    "kd_safe_check",
+    "kd_weak_ring",
+    "kd_unsafe_check",
+    "kd_blockers",
+    "kd_king_attacks",
+    "kd_mobility",
+    "kd_no_queen",
+    "kd_knight_defender",
+    "kd_constant",
+    "ks_map_mg",
+    "ks_map_eg",
 ];
 
-/// Active flat indices for the king-safety fit: the 12 danger-index inputs plus
-/// the 40-entry safety table they index into. The table is co-tuned because its
-/// shape only makes sense against the index distribution the inputs produce.
-///
-/// `KS_DANGER_INPUTS` is the authority for the count (12, including
-/// `ks_shelter_storm`).
+/// Active flat indices for the king-safety fit: every slot of
+/// `KS_DANGER_INPUTS`.
 fn ks_active_indices() -> Vec<usize> {
     let mut a = Vec::new();
     for f in KS_DANGER_INPUTS {
         push_field(&mut a, f);
     }
-    push_field(&mut a, "king_safety_table");
     a
 }
 
@@ -1670,7 +1654,8 @@ fn load_raw_dataset(path: &str, max_positions: usize, base_params: &EvalParams) 
                         };
                         let _ = ev.evaluate(&board);
                         let tr = ev.last_trace();
-                        let mask = position_buckets(&board, tr.phase, &tr.flat_coeffs());
+                        let mask =
+                            position_buckets(&board, tr.phase, &tr.flat_coeffs(), tr.king_danger);
                         out.push((board, r, mask));
                     }
                     out
@@ -2069,9 +2054,8 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
         eprintln!("The manifest's excluded set is not the king-danger selectors.");
         exit(1);
     }
-    let (_, table_len) = field_offset("king_safety_table");
     println!(
-        "King-safety nonlinear fit: {} active params ({} danger inputs + {table_len}-entry table)",
+        "King-safety nonlinear fit: {} active params ({} index coordinates and map scales)",
         active.len(),
         KS_DANGER_INPUTS.len(),
     );
