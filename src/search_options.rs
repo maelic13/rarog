@@ -1,4 +1,6 @@
 use crate::board::{Board, Move};
+#[cfg(feature = "tune")]
+use crate::eval::{FAMILY_MASKS, MaskedFamily};
 use crate::search::params::CoreParams;
 use crate::search::params::ProofParams;
 use crate::search::params::QuietParams;
@@ -165,6 +167,27 @@ fn string_option_value(raw: &str) -> String {
     }
 }
 
+/// `KingDangerMask` or `KingShelterMask`: an attribution mask, which the
+/// first evaluation fixes for the life of the process.
+#[cfg(feature = "tune")]
+fn set_family_mask(family: MaskedFamily, value: &str) -> OptionUpdate {
+    let name = family.option_name();
+    let on = match value {
+        "true" => true,
+        "false" => false,
+        _ => {
+            crate::info_string!("Invalid {name} value.");
+            return OptionUpdate::Engine;
+        }
+    };
+    if FAMILY_MASKS.set(family, on).is_err() {
+        crate::info_string!(
+            "{name} is fixed once a position has been evaluated; restart the engine to change it."
+        );
+    }
+    OptionUpdate::Engine
+}
+
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
         // `mut` is needed when compiled with --features tune (the extend
@@ -198,6 +221,15 @@ impl SearchOptions {
         opts.extend(ProofParams::uci_option_strings());
         #[cfg(feature = "tune")]
         opts.extend(QuietParams::uci_option_strings());
+        #[cfg(feature = "tune")]
+        opts.extend(
+            [MaskedFamily::KingDanger, MaskedFamily::KingShelter].map(|family| {
+                format!(
+                    "option name {} type check default false",
+                    family.option_name()
+                )
+            }),
+        );
         opts
     }
 
@@ -449,6 +481,10 @@ impl SearchOptions {
                     OptionUpdate::Engine
                 }
             },
+            #[cfg(feature = "tune")]
+            "kingdangermask" => set_family_mask(MaskedFamily::KingDanger, &value),
+            #[cfg(feature = "tune")]
+            "kingsheltermask" => set_family_mask(MaskedFamily::KingShelter, &value),
             // Tunable search parameters — only active when compiled with --features tune.
             _ => {
                 // Tunables are matched by the generated

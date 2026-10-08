@@ -15,6 +15,8 @@ mod attacks;
 pub(crate) mod endgame;
 mod initiative;
 mod king;
+#[cfg(feature = "tune")]
+mod masks;
 mod material;
 mod params;
 mod passers;
@@ -40,6 +42,8 @@ use trace::{tr_eg, tr_mg};
 #[cfg_attr(not(test), expect(unused_imports))]
 pub(crate) use endgame::MOPUP_ASSUMED_MAX_PLY;
 pub use king::KS_MAP_SCALE_MAX;
+#[cfg(feature = "tune")]
+pub use masks::{FAMILY_MASKS, MaskedFamily};
 pub use params::{EVAL_PARAM_NAMES, EvalParams};
 #[cfg(feature = "texel")]
 pub use trace::{EvalCounts, EvalTrace, linear_delta_scale};
@@ -108,6 +112,12 @@ pub struct Evaluator {
     /// piece activity and borrowed by its consumers. Kept across calls so the
     /// per-square slots are not re-zeroed every evaluation (see `AttackMaps`).
     attacks: AttackMaps,
+    /// Where this evaluator reads the family masks (`FAMILY_MASKS` outside
+    /// tests), and the masks the current evaluation applies.
+    #[cfg(feature = "tune")]
+    mask_source: &'static masks::MaskCell,
+    #[cfg(feature = "tune")]
+    masks: masks::FamilyMasks,
     /// Per-call feature trace, recorded only under `--features texel`. Held in
     /// a `RefCell` so the `&self` eval helpers can append to it; the field does
     /// not exist in production builds.
@@ -129,6 +139,10 @@ impl Default for Evaluator {
             tables,
             lazy_margin: LAZY_MARGIN,
             attacks: AttackMaps::new(),
+            #[cfg(feature = "tune")]
+            mask_source: &masks::FAMILY_MASKS,
+            #[cfg(feature = "tune")]
+            masks: masks::FamilyMasks::default(),
             #[cfg(feature = "texel")]
             trace: RefCell::new(EvalTrace::default()),
         }
@@ -142,11 +156,11 @@ impl Evaluator {
         &self.params
     }
 
-    /// Swap in new parameters, rebuilding the derived tables so a changed
-    /// material/PST/king-safety weight is fully reflected. Used by the
-    /// nonlinear king-safety fit, which re-evaluates the dataset many times with
-    /// perturbed danger-index weights (those weights select a table bucket
-    /// nonlinearly, so the linear trace cannot see them). The whole-eval cache
+    /// Swap in new parameters, rebuilding the derived material/PST tables so a
+    /// changed weight is fully reflected. Used by the nonlinear king-safety
+    /// fit, which re-evaluates the dataset many times with perturbed
+    /// danger-index weights (they reach the score only through the capped
+    /// map, so the linear trace cannot see them). The whole-eval cache
     /// is never *read* under `texel` (hits are bypassed), so stale entries from
     /// a previous parameter set are harmless and need no clearing.
     pub fn set_params(&mut self, params: EvalParams) {
@@ -224,6 +238,10 @@ impl Evaluator {
         }
         #[cfg(feature = "texel")]
         self.trace.borrow_mut().reset();
+        #[cfg(feature = "tune")]
+        {
+            self.masks = self.mask_source.fix();
+        }
 
         let atk = &*ATTACKS;
         let mut mg = 0;

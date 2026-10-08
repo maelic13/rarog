@@ -311,10 +311,24 @@ impl Evaluator {
         let atk = &*ATTACKS;
         let them = !color;
 
-        *mg += sign * shelter.mg;
-        *eg += sign * shelter.eg;
+        // A `tune` build can mask shelter and storm, their feedback into the
+        // index with them, or the map's output (attribution reads only).
+        #[cfg(feature = "tune")]
+        let (shelter_on, danger_on) = (!self.masks.king_shelter, !self.masks.king_danger);
+        #[cfg(not(feature = "tune"))]
+        let (shelter_on, danger_on) = (true, true);
+        let (shelter_mg, shelter_eg) = if shelter_on {
+            (shelter.mg, shelter.eg)
+        } else {
+            (0, 0)
+        };
+
+        *mg += sign * shelter_mg;
+        *eg += sign * shelter_eg;
         #[cfg(feature = "texel")]
-        self.trace_shelter(&shelter.files, sign);
+        if shelter_on {
+            self.trace_shelter(&shelter.files, sign);
+        }
 
         if pawnless_flank(board, color) {
             *mg -= sign * self.params.pawnless_flank_mg[0];
@@ -335,10 +349,14 @@ impl Evaluator {
                 no_enemy_queen,
                 knight_defends,
                 mobility_lead,
-                shelter.mg,
+                shelter_mg,
             )
             .min(KS_INDEX_CAP);
-        let (penalty_mg, penalty_eg) = self.king_danger_penalty(index);
+        let (penalty_mg, penalty_eg) = if danger_on {
+            self.king_danger_penalty(index)
+        } else {
+            (0, 0)
+        };
         *mg -= sign * penalty_mg;
         *eg -= sign * penalty_eg;
         // The map is not linear in any weight, so its output is untraced.
@@ -347,7 +365,7 @@ impl Evaluator {
             let mut trace = self.trace.borrow_mut();
             trace.frozen_mg -= sign * penalty_mg;
             trace.frozen_eg -= sign * penalty_eg;
-            trace.king_danger |= index > KS_MAP_THRESHOLD;
+            trace.king_danger |= danger_on && index > KS_MAP_THRESHOLD;
         }
     }
 
@@ -788,5 +806,118 @@ mod tests {
         };
         assert_ne!(shelter(&on_g1), shelter(&on_e1));
         assert_ne!(shelter(&on_e1), shelter(&on_e1_castling));
+    }
+
+    #[cfg(feature = "tune")]
+    use super::super::masks::{FamilyMasks, MaskCell, MaskedFamily};
+
+    #[cfg(feature = "tune")]
+    const UNMASKED: FamilyMasks = FamilyMasks {
+        king_danger: false,
+        king_shelter: false,
+    };
+    #[cfg(feature = "tune")]
+    const DANGER_MASKED: FamilyMasks = FamilyMasks {
+        king_danger: true,
+        king_shelter: false,
+    };
+    #[cfg(feature = "tune")]
+    const SHELTER_MASKED: FamilyMasks = FamilyMasks {
+        king_danger: false,
+        king_shelter: true,
+    };
+
+    /// An evaluator with the lazy gate out of reach, its own masks and its
+    /// parameters edited by `edit`.
+    #[cfg(feature = "tune")]
+    fn masked_evaluator(
+        masks: FamilyMasks,
+        edit: impl Fn(&mut super::super::EvalParams),
+    ) -> Evaluator {
+        let cell: &'static MaskCell = Box::leak(Box::new(MaskCell::new()));
+        cell.set(MaskedFamily::KingDanger, masks.king_danger)
+            .unwrap();
+        cell.set(MaskedFamily::KingShelter, masks.king_shelter)
+            .unwrap();
+        let mut ev = Evaluator::default();
+        ev.set_lazy_margin(i32::MAX);
+        ev.mask_source = cell;
+        edit(&mut ev.params);
+        ev
+    }
+
+    /// `KingDangerMask` evaluates as the map at zero scale, and
+    /// `KingShelterMask` as zero shelter and storm tables, constants and
+    /// feedback, over random playouts; each changes many of those positions.
+    #[cfg(feature = "tune")]
+    #[test]
+    fn each_mask_evaluates_as_its_family_at_zero_weight() {
+        let mut plain = masked_evaluator(UNMASKED, |_| {});
+        let mut danger_masked = masked_evaluator(DANGER_MASKED, |_| {});
+        let mut danger_zero = masked_evaluator(UNMASKED, |p| {
+            p.ks_map_mg = [0];
+            p.ks_map_eg = [0];
+        });
+        let mut shelter_masked = masked_evaluator(SHELTER_MASKED, |_| {});
+        let mut shelter_zero = masked_evaluator(UNMASKED, |p| {
+            p.shelter_strength = [0; 28];
+            p.unblocked_storm = [0; 28];
+            p.blocked_storm_mg = [0; 7];
+            p.blocked_storm_eg = [0; 7];
+            p.shelter_constant_mg = [0];
+            p.shelter_constant_eg = [0];
+            p.kd_shelter = [0];
+        });
+
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let (mut checked, mut danger_moved, mut shelter_moved) = (0, 0, 0);
+        for _ in 0..200 {
+            let mut board = Board::starting_position();
+            for _ in 0..60 {
+                let base = plain.evaluate(&board);
+                let danger = danger_masked.evaluate(&board);
+                let shelter = shelter_masked.evaluate(&board);
+                assert_eq!(danger, danger_zero.evaluate(&board), "{}", board.to_fen());
+                assert_eq!(shelter, shelter_zero.evaluate(&board), "{}", board.to_fen());
+                checked += 1;
+                danger_moved += usize::from(danger != base);
+                shelter_moved += usize::from(shelter != base);
+
+                let moves = board.generate_legal_movelist();
+                if moves.is_empty() {
+                    break;
+                }
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                board.make_move(moves.as_slice()[infra::index(state) % moves.len()]);
+            }
+        }
+        assert!(checked > 5000, "only {checked} positions");
+        assert!(
+            danger_moved * 10 > checked,
+            "the danger mask moved {danger_moved}"
+        );
+        assert!(
+            shelter_moved * 2 > checked,
+            "the shelter mask moved {shelter_moved}"
+        );
+    }
+
+    /// The masks change a middlegame evaluation and leave a pawn ending, where
+    /// the king family is idle, as it was.
+    #[cfg(feature = "tune")]
+    #[test]
+    fn the_masks_reach_the_middlegame_and_not_a_pawn_ending() {
+        let middlegame =
+            Board::from_fen("r1bq1rk1/pppp1ppp/2n2n2/2b1p1N1/2B1P2Q/8/PPPP1PPP/RNB1K2R w KQ - 0 1")
+                .unwrap();
+        let pawn_ending = Board::from_fen("8/5pk1/6p1/8/8/6P1/5PK1/8 w - - 0 1").unwrap();
+        let plain = |board: &Board| masked_evaluator(UNMASKED, |_| {}).evaluate(board);
+        for masks in [DANGER_MASKED, SHELTER_MASKED] {
+            let masked = |board: &Board| masked_evaluator(masks, |_| {}).evaluate(board);
+            assert_ne!(masked(&middlegame), plain(&middlegame), "{masks:?}");
+            assert_eq!(masked(&pawn_ending), plain(&pawn_ending), "{masks:?}");
+        }
     }
 }
