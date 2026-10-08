@@ -661,7 +661,17 @@ loss).
   instead of forcing the gate off, a change in the `texel` path only,
   fingerprint-neutral by construction, with the tests the card names; its
   effect on the weights is measured inside the baseline gate below and
-  stated there as conflated with the corpus. C.2 then **refits the unchanged surface on
+  stated there as conflated with the corpus. The played function is the
+  evaluator's output with its lazy gate; the search's transforms of it
+  (`CoreEvalMaterialScale`, `CoreEvalRule50Damping`, correction history)
+  stay out of the fit (examined 2026-10-08 on the maintainer's request).
+  The weights cannot absorb the gate, so a fit without it misattributes the
+  terms it skips; they can absorb a smooth material factor, and would
+  cancel the one the search chose: on `hce-v4-tb` validation the raw score
+  that best fits outcomes is 1.12–1.16× the RAR-E24 head's below 4,000
+  material, where the search plays 0.72–0.80× it
+  (`analysis/artifacts/material-scale-20261008/`). Those coordinates
+  belong to the margin block and C.10 (rule 2). C.2 then **refits the unchanged surface on
   `hce-v4-tb` and gates it against the head by PROCESS's *Evaluation
   change under a fitted search*** (the static screens, the tree read,
   gate 1 `[0,3]`, the margin block when gate 1 fails or the tree read
