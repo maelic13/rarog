@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | GAME_GATE | V | RAR-E24: gate 1 H1, +31.0 ± 8.5 Elo at 2,442 games; the tree read flagged, so gate 2 decided; the `c2margin` block finished (60,000 games, three coordinates a full step: `LazyMargin` 600 → 414, `AspirationDelta` 21 → 13, `QsFutilityMargin` 178 → 208); **gate 2 H1, +35.9 ± 9.3 Elo at 2,214 games** (arm 12,351,448); the `10+0.1` read (1,000 games, a negative point estimate reopens) handed over, then the landing |
+| C.2 | GAME_GATE | V | RAR-E24: gate 1 H1, +31.0 ± 8.5 Elo at 2,442 games; the tree read flagged, so gate 2 decided; the `c2margin` block finished (60,000 games, three coordinates a full step: `LazyMargin` 600 → 414, `AspirationDelta` 21 → 13, `QsFutilityMargin` 178 → 208); **gate 2 H1, +35.9 ± 9.3 Elo at 2,214 games** (arm 12,351,448); the `10+0.1` read +39.1 ± 12.9 Elo (1,000 games), so the acceptance stands; the margin attribution read (2,000 games) handed over, then the landing |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
