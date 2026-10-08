@@ -365,6 +365,18 @@ the recorded source, manifest and dataset hashes, never refits, and writes a
 from before this order read the set inside its polish; resuming it takes that
 reading and does not read the set again.
 
+**A dataset fitted more than once** (maintainer decision 2026-10-08: a unit
+is verified by games first, and the number is read when it is needed). A
+later fit on a dataset whose test is consumed runs with
+`-DeferFrozenTest <experiment ID>`: the run reads nothing, and `summary.json`
+records the command for the later reading, with the run's K, its two vectors
+and the marker `frozen-test.<ID>.opened`. The registration says when that
+reading happens (as a diagnosis after its games, chiefly when a gate fails),
+and that it stops, accepts and changes nothing in the fit. Each experiment
+reads at most once; the first reading's marker is never touched. A fit from a
+branch whose baseline is not GUIDE's development head names it with
+`-BaselineFingerprint "N / EBF x.xxx"`, recorded in `settings.json`.
+
 Artifacts land in `tools/results/hce-fit-<timestamp>/`: every log, every
 intermediate vector, `settings.json`, `summary.json`, the source patch, the
 candidate binary, and hashes of all of it. `src/eval/params.rs` and

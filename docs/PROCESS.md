@@ -440,7 +440,10 @@ It first publishes or hash-verifies the qualified 2,300,000 / 127,778 /
 127,778 corpus. It then fixes validation-calibrated K and runs 40-epoch
 nonlinear king safety on 200k positions, 200-epoch complete sparse linear Adam
 (`lr=0.3`, L2-to-stage-prior `1e-7`), a second nonlinear pass and a 60-epoch
-linear polish. The schedule opens the frozen test only at the end. All logs,
+linear polish. The schedule opens the frozen test only at the end; a later
+fit on the same corpus defers it to its registration, which reads it after
+the games if it needs it (`-DeferFrozenTest`, the handbook's *A dataset fitted
+more than once*; maintainer decision 2026-10-08). All logs,
 vectors, settings, hashes, support/cohort reports, source patch and candidate
 binary are retained under `tools/results/hce-fit-<timestamp>/`; source and the
 normal release binary are restored. Review those artifacts before applying a

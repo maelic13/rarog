@@ -20,6 +20,14 @@ param(
     # its final vector is not refitted; verification and provenance run again
     # into a resume-<stamp> subdirectory, from the inputs the run recorded.
     [string]$Resume = "",
+    # Leave the frozen test unread: the committed registration
+    # (docs/experiments/<ID>.md) decides by games and reads the set afterwards
+    # only if it needs the number, once, through the marker
+    # frozen-test.<ID>.opened that summary.json names with the command.
+    [string]$DeferFrozenTest = "",
+    # The baseline's `bench 13` fingerprint, "N / EBF x.xxx", when the fit
+    # starts from a branch rather than the head GUIDE.md declares.
+    [string]$BaselineFingerprint = "",
     [switch]$Smoke
 )
 
@@ -50,6 +58,18 @@ if ($trackedStatus -and -not $Smoke) {
 }
 if ($trackedStatus -and $Smoke) {
     Write-Warning "SMOKE mode is running against tracked tooling changes; production mode refuses this"
+}
+
+if ($DeferFrozenTest) {
+    if ($Resume) { throw "-DeferFrozenTest applies to a new fit; a resumed run keeps its recorded choice" }
+    if ($DeferFrozenTest -notmatch '^RAR-[A-Z][0-9]+$') {
+        throw "-DeferFrozenTest takes an experiment ID such as RAR-E25, not '$DeferFrozenTest'"
+    }
+    $registration = "docs/experiments/$DeferFrozenTest.md"
+    & git ls-files --error-unmatch -- $registration *> $null
+    if ($LASTEXITCODE -ne 0 -and -not $Smoke) {
+        throw "$registration is not a committed registration; a deferred reading is declared there first"
+    }
 }
 
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -123,18 +143,28 @@ function Invoke-Bench {
 # bare-king minor-piece mate. So this guard will happily pass a tree carrying
 # an unaccepted eval change. Check `git rev-parse HEAD` against the commit the
 # fit is supposed to start from; the run manifest records it for that purpose.
+function ConvertFrom-Fingerprint {
+    param([Parameter(Mandatory)][string]$Text, [Parameter(Mandatory)][string]$Source)
+    $m = [regex]::Match($Text, '(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})')
+    if (-not $m.Success) { throw "$Source carries no 'N / EBF x.xxx' fingerprint" }
+    [pscustomobject]@{
+        Nodes  = [long]($m.Groups[1].Value -replace ',', '')
+        Ebf    = [double]::Parse($m.Groups[2].Value, [Globalization.CultureInfo]::InvariantCulture)
+        Source = $Source
+    }
+}
+
 function Get-AcceptedFingerprint {
     $guide = Join-Path $repo "GUIDE.md"
     $row = Select-String -LiteralPath $guide -Pattern '^\| Development head' | Select-Object -First 1
     if (-not $row) { throw "GUIDE.md has no '| Development head' row to read the accepted fingerprint from" }
-    $m = [regex]::Match($row.Line, '(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})')
-    if (-not $m.Success) { throw "GUIDE.md's Development head row carries no 'N / EBF x.xxx' fingerprint" }
-    [pscustomobject]@{
-        Nodes = [long]($m.Groups[1].Value -replace ',', '')
-        Ebf   = [double]::Parse($m.Groups[2].Value, [Globalization.CultureInfo]::InvariantCulture)
-    }
+    ConvertFrom-Fingerprint $row.Line "GUIDE.md's Development head row"
 }
-$accepted = Get-AcceptedFingerprint
+$accepted = if ($BaselineFingerprint) {
+    ConvertFrom-Fingerprint $BaselineFingerprint "-BaselineFingerprint"
+} else {
+    Get-AcceptedFingerprint
+}
 $script:AcceptedBenchNodes = $accepted.Nodes
 $script:AcceptedBenchEbf = $accepted.Ebf
 
@@ -236,6 +266,17 @@ try {
         # verification and provenance run, from the inputs it recorded.
         $resumed = Get-Content -LiteralPath (Join-Path $runDir "settings.json") -Raw | ConvertFrom-Json
         if ([bool]$resumed.smoke) { throw "a smoke run is not resumed" }
+        # A run that recorded its baseline fingerprint is checked against it,
+        # whatever GUIDE.md declares now.
+        if ($resumed.PSObject.Properties["baseline_fingerprint"]) {
+            $recorded = $resumed.baseline_fingerprint
+            if ($BaselineFingerprint -and
+                ($accepted.Nodes -ne [long]$recorded.nodes -or $accepted.Ebf -ne [double]$recorded.ebf)) {
+                throw "-BaselineFingerprint differs from the fingerprint this run recorded"
+            }
+            $script:AcceptedBenchNodes = [long]$recorded.nodes
+            $script:AcceptedBenchEbf = [double]$recorded.ebf
+        }
         foreach ($source in $sources) {
             if ($source.Hash -ne [string]$resumed.source_sha256.($source.Rel)) {
                 throw "$($source.Rel) differs from the source this run fitted"
@@ -258,7 +299,14 @@ try {
                 throw "$split.csv hash mismatch"
             }
         }
-        $testMarker = Join-Path $dataset "frozen-test.opened"
+        $testMarker = if ($resumed.PSObject.Properties["frozen_test_marker"]) {
+            [string]$resumed.frozen_test_marker
+        } else {
+            Join-Path $dataset "frozen-test.opened"
+        }
+        if ($resumed.PSObject.Properties["frozen_test_deferred_to"] -and $resumed.frozen_test_deferred_to) {
+            $DeferFrozenTest = [string]$resumed.frozen_test_deferred_to
+        }
         $baselineVector = Join-Path $runDir "00-source-defaults.txt"
         $final = Join-Path $runDir "04-final.txt"
         $finalFitLog = Join-Path $runDir "fit-04-final-polish.log"
@@ -270,7 +318,7 @@ try {
         # A run from before the frozen read moved behind the checks read it in
         # its polish; that reading stands and the set is not read again.
         $frozenAlreadyRead = $polishText -match "Frozen test loss = "
-        if (-not $frozenAlreadyRead -and (Test-Path -LiteralPath $testMarker)) {
+        if (-not $frozenAlreadyRead -and -not $DeferFrozenTest -and (Test-Path -LiteralPath $testMarker)) {
             throw "the frozen test is consumed but this run did not read it"
         }
         $kMatch = [regex]::Match(
@@ -306,7 +354,7 @@ try {
             $PolishEpochs = 1
             $linearMax = 1000
             $datasetManifest = $null
-            $testMarker = $null
+            $testMarker = if ($DeferFrozenTest) { Join-Path $logDir "smoke-test.$DeferFrozenTest.opened" } else { $null }
             Write-Host "SMOKE mode: legacy data, tiny bounded fits, no dataset publication"
         } else {
             $dataset = Resolve-RepoPath $DatasetDir
@@ -475,9 +523,17 @@ try {
             $validation = Join-Path $dataset "validation.csv"
             $test = Join-Path $dataset "test.csv"
             $datasetManifest = Join-Path $dataset "manifest.json"
-            $testMarker = Join-Path $dataset "frozen-test.opened"
-            if (Test-Path -LiteralPath $testMarker) {
-                throw "frozen test was already consumed; see $testMarker"
+            if ($DeferFrozenTest) {
+                $testMarker = Join-Path $dataset "frozen-test.$DeferFrozenTest.opened"
+                if (Test-Path -LiteralPath $testMarker) {
+                    throw "$DeferFrozenTest has already read the frozen test; see $testMarker"
+                }
+            } else {
+                $testMarker = Join-Path $dataset "frozen-test.opened"
+                if (Test-Path -LiteralPath $testMarker) {
+                    throw ("frozen test was already consumed; see $testMarker " +
+                           "(a registration that reads it after its games takes -DeferFrozenTest <experiment ID>)")
+                }
             }
             $linearMax = 0
         }
@@ -487,8 +543,15 @@ try {
             throw "missing fitting manifest $fitManifestPath"
         }
         $settings = [ordered]@{
-            schema = "rarog-complete-hce-fit-v5"
+            schema = "rarog-complete-hce-fit-v6"
             commit = $commit
+            baseline_fingerprint = [ordered]@{
+                nodes = $script:AcceptedBenchNodes
+                ebf = $script:AcceptedBenchEbf
+                source = $accepted.Source
+            }
+            frozen_test_marker = $testMarker
+            frozen_test_deferred_to = if ($DeferFrozenTest) { $DeferFrozenTest } else { $null }
             source_sha256 = $sourceHashes
             smoke = [bool]$Smoke
             target_train = $TargetTrain
@@ -593,7 +656,9 @@ try {
     Copy-Item -LiteralPath $engine -Destination (Join-Path $logDir "rarog-candidate.exe")
     # The frozen test is read once, only now: a candidate that fails a suite or
     # its bench stops the run with the set unread.
-    if ($frozenAlreadyRead) {
+    if ($DeferFrozenTest) {
+        $frozenLog = $null
+    } elseif ($frozenAlreadyRead) {
         $frozenLog = $finalFitLog
     } else {
         $frozenMarker = if ($testMarker) { $testMarker } else { Join-Path $logDir "smoke-test.opened" }
@@ -635,13 +700,30 @@ try {
         $finalFitText,
         "Persisted rounded validation loss = ([0-9.]+)"
     )
-    $testMatch = [regex]::Match(
-        (Get-Content -LiteralPath $frozenLog -Raw),
-        "Frozen test loss = ([0-9.]+) \(source baseline ([0-9.]+), delta ([+-][0-9.]+)\)"
-    )
-    if (-not $validationMatch.Success -or -not $persistedValidationMatch.Success -or
-        -not $testMatch.Success) {
-        throw "could not parse the validation result from $finalFitLog or the frozen result from $frozenLog"
+    if (-not $validationMatch.Success -or -not $persistedValidationMatch.Success) {
+        throw "could not parse the validation result from $finalFitLog"
+    }
+    if ($DeferFrozenTest) {
+        # The vectors and K the later reading uses, kept in the run directory.
+        $frozenResult = [ordered]@{
+            deferred_to = $DeferFrozenTest
+            marker = $testMarker
+            command = ("tools/texel-tuner/target/release/rarog-texel.exe --compare-frozen " +
+                       "`"$test`" `"$baselineVector`" `"$final`" `"$testMarker`" --fix-k $fixedK")
+        }
+        $frozenLine = "deferred to $DeferFrozenTest (summary.json names the command)"
+    } else {
+        $testMatch = [regex]::Match(
+            (Get-Content -LiteralPath $frozenLog -Raw),
+            "Frozen test loss = ([0-9.]+) \(source baseline ([0-9.]+), delta ([+-][0-9.]+)\)"
+        )
+        if (-not $testMatch.Success) { throw "could not parse the frozen result from $frozenLog" }
+        $frozenResult = [ordered]@{
+            loss = Parse-Double $testMatch.Groups[1].Value
+            source_baseline_loss = Parse-Double $testMatch.Groups[2].Value
+            delta = Parse-Double $testMatch.Groups[3].Value
+        }
+        $frozenLine = "$($testMatch.Groups[1].Value) (delta $($testMatch.Groups[3].Value))"
     }
 
     $summary = [ordered]@{
@@ -660,16 +742,12 @@ try {
             selection_loss = Parse-Double $validationMatch.Groups[2].Value
             persisted_rounded_loss = Parse-Double $persistedValidationMatch.Groups[1].Value
         }
-        frozen_test = @{
-            loss = Parse-Double $testMatch.Groups[1].Value
-            source_baseline_loss = Parse-Double $testMatch.Groups[2].Value
-            delta = Parse-Double $testMatch.Groups[3].Value
-        }
+        frozen_test = $frozenResult
         dataset_manifest_sha256 = if ($datasetManifest) {
             (Get-FileHash -Algorithm SHA256 -LiteralPath $datasetManifest).Hash
         } else { $null }
         frozen_test_marker = if ($testMarker) { $testMarker } else { $null }
-        frozen_test_marker_sha256 = if ($testMarker) {
+        frozen_test_marker_sha256 = if ($testMarker -and -not $DeferFrozenTest) {
             (Get-FileHash -Algorithm SHA256 -LiteralPath $testMarker).Hash
         } else { $null }
         final_vector_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $final).Hash
@@ -677,14 +755,15 @@ try {
         candidate_patch_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $candidatePatch).Hash
         candidate_exe_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $logDir "rarog-candidate.exe")).Hash
         source_restored = $true
-        frozen_test_opened_once = [bool]$testMarker
-        frozen_test_read_after_checks = -not $frozenAlreadyRead
+        frozen_test_opened_once = [bool]$testMarker -and -not $DeferFrozenTest
+        frozen_test_deferred_to = if ($DeferFrozenTest) { $DeferFrozenTest } else { $null }
+        frozen_test_read_after_checks = -not $frozenAlreadyRead -and -not $DeferFrozenTest
         strength_verdict = "not run; register SPRT only after reviewing this offline fit"
     }
     $summary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "summary.json") -Encoding utf8
     Write-Host "`nCOMPLETE: $runDir"
     Write-Host "Final vector: $final"
-    Write-Host "Frozen test: $($testMatch.Groups[1].Value) (delta $($testMatch.Groups[3].Value))"
+    Write-Host "Frozen test: $frozenLine"
     Write-Host "Candidate bench: $($candidateBench.Nodes) / $($candidateBench.Ebf)"
     Write-Host "Source restored and release binary rebuilt to $script:AcceptedBenchNodes / $script:AcceptedBenchEbf."
 } finally {
