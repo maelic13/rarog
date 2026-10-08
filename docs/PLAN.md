@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's current HCE inside Stockfish's search by **+181.7 ± 19.0 Elo at equal nodes** (150,000 a move), Phase C's meter baseline, and by +266.3 ± 19.9 at equal time (`3+0.03`), measured 2026-10-05. RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **11,171,726 / EBF 2.512**: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **12,351,448 / EBF 2.544**: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -293,11 +293,10 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.2 | GAME_GATE | V | RAR-E24: gate 1 H1, +31.0 ± 8.5 Elo at 2,442 games; the tree read flagged, so gate 2 decided; the `c2margin` block finished (60,000 games, three coordinates a full step: `LazyMargin` 600 → 414, `AspirationDelta` 21 → 13, `QsFutilityMargin` 178 → 208); **gate 2 H1, +35.9 ± 9.3 Elo at 2,214 games** (arm 12,351,448); the `10+0.1` read +39.1 ± 12.9 Elo (1,000 games), so the acceptance stands; the margin attribution read (2,000 games) handed over, then the landing |
 | C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
-| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
+| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3; C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
 | C.3.5 | RESEARCH | V | The block and gate 2 only after gate 1 fails (a flag alone no longer triggers them, 2026-10-08); otherwise the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
@@ -413,7 +412,10 @@ revision it builds from); the measured binary
 `rustc 1.98.1`, pext PGO), SHA-256
 `aac921141d78d202603d0810985389451c0969222e20874c3842b128905701ee`,
 fingerprint **11,171,726 / EBF 2.512**. C.11's same-search deficit and every
-C gate measure against this head or its accepted successors.
+C gate measure against this head or its accepted successors. Accepted
+successor: RAR-E24 (C.2, 2026-10-08, `1abeb46`), the refitted evaluation with
+the margin block's 28 coordinates, **12,351,448 / EBF 2.544**; the search
+code is unchanged.
 
 **Speed, a secondary requirement (maintainer decision 2026-10-03).**
 Strength is primary and stays so; the gates are equal-time, so a family that
@@ -634,7 +636,7 @@ loss).
   byte and the fingerprint; pooled-PGO pext no-regression read **+0.28%**
   (+0.08% to +0.48%, two cycles, base pool the `6433760` pool whose engine
   inputs equal `b2ed9ab`'s; `analysis/artifacts/c1-nps/`).
-- **C.2 Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — `V`.** Generate the
+- **C.2 Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — `V`, DONE 2026-10-08.** Generate the
   programme's corpus with the B.9 search under the adjudication-off datagen
   profile; audit labels against tablebase truth (existing tool); freeze
   splits and manifests under a new corpus name. Records the label-contradiction
@@ -721,6 +723,16 @@ loss).
   finished without a refit (RAR-E24's amendment holds the identities).
   RAR-E23: the ranking holds with B.9 labels (king +0.615% at seven men
   or more), so C.3 proceeds as frozen.
+  **2026-10-08, closed.** RAR-E24 gate 1 H1, +31.0 ± 8.5 Elo (2,442 games,
+  search unchanged); the tree read had flagged, so the `c2margin` block ran
+  (60,000 games: `LazyMargin` 600 → 414, `AspirationDelta` 21 → 13,
+  `QsFutilityMargin` 178 → 208 the full-step moves) and gate 2 accepted,
+  **+35.9 ± 9.3 Elo** (2,214 games); `10+0.1` +39.1 ± 12.9 (1,000 games);
+  the tuned margins +19.3 ± 9.3 over the untuned ones (2,000 games). Landed
+  in `1abeb46` with the evaluator's lazy-margin seed repaired (it had stayed
+  at 600, which cleared the caches on each fresh process's first search
+  and would have made C.3's `texel` fit describe the function at 600). The
+  new baseline reads **12,351,448 / EBF 2.544**; C.3 fits from it.
 - **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and
