@@ -293,8 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff, on branch `c3-king` after C.3.1; the pawn-cache entry grows by 12 bytes; restores the pawnless flank outside the index and adds the shelter feedback to it |
-| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner only; the coordinates are renamed (C.3.1), the steps, bounds, v3 manifest and masks remain |
+| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner only; the coordinates are renamed (C.3.1, C.3.2), the steps, bounds, v3 manifest (the shelter constant and `blocked_storm` slots 0–1 noted in C.3.2) and masks remain |
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3; C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
 | C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
@@ -818,10 +817,33 @@ loss).
       (the fixture compares counts only); the reviewer's concern that the
       fixture leaves the bishop-behind-queen exclusion and the single-blocker
       rule unexercised was checked by mutation and refuted (both fail it).
-    - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`.** The
+    - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`, DONE 2026-10-08.** The
       entry grows by the king square, the castling rights and the shelter
       score per side (12 bytes) and stays `Copy`. It also adds the shelter
       feedback to C.3.1's index (`−6·shelter_mg/8` in index units).
+      **Done on `c3-king` (`2ac24d3` engine, `dec991e` tuner; fixture
+      `6499bf8`, `tests/data/king-shelter-9587eeeb.tsv`):** the donor's
+      shelter score and pawnless flag on the 500 fixture positions are
+      reproduced exactly from its own table values; hand tests for the
+      castling square, the file clamp and a blocked storm; the cache test
+      recomputes for a moved king and for changed castling rights (each
+      key's removal fails it); six mutations of the shelter rules each fail
+      a test. Seeds at 100/206; `kd_shelter` 155 per 100 cp. The entry keeps
+      each side's score as an `Option` with its `i32` scores, about 32 bytes
+      over the card's 12; the cache-hit path now reads the entry in place
+      rather than copying it, and `Evaluator::evaluate`'s release assembly
+      holds no `memcpy` call. `bench 13` 12,766,450 / EBF 2.544 (unfitted).
+      For C.3.3's manifest: the shelter constant cancels in the linear trace
+      (both kings get it) but moves the index through the feedback, and
+      `blocked_storm` slots 0–1 cannot fire. **Pooled-PGO NPS read**
+      (`analysis/artifacts/c32-nps/`, four builds an arm, two cycles, CPU
+      12–13%, none disturbed): the unfitted unit **−1.67%** (95% −3.28% to
+      −0.06%) against the RAR-E24 head, past the card's ±1% expectation and
+      at its 1.5% budget, unresolved against it, and confounded by the
+      unfitted evaluation's different tree (12.77 M against 12.35 M bench
+      nodes). The budget rule (the blockers go first, then the castling
+      alternatives) is decided on C.3.4's fitted candidate, which gets the
+      same read before its gate.
     - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.** C.3.1
       renamed the pass's coordinates (`kd_*`, `ks_map_*`) and re-keyed the
       king-attack bucket on the trace's `king_danger` flag; C.3.3 sets the
@@ -842,7 +864,9 @@ loss).
       branch `c3-king`, while `tools/texel/fit_complete.ps1` checks the
       source baseline against GUIDE's development fingerprint (`dev`'s
       head), so C.3.4 states how the script is pointed at the branch's
-      baseline before the fit.
+      baseline before the fit. The pooled-PGO NPS read is repeated on the
+      fitted candidate before the gate, and the card's 1.5% budget rule is
+      applied to it (C.3.2 read −1.67% unfitted, unresolved).
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
