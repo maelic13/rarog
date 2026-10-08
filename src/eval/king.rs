@@ -1,160 +1,230 @@
-//! King safety: the attacker-unit danger index with its table, shelter and
-//! storm, and the central-king danger.
+//! King safety: the king-danger index through its capped quadratic map,
+//! shelter and storm, and the central-king danger.
 
-use super::attacks::KsMaps;
+use super::attacks::{KsMaps, RingAttackers};
 use super::pawns::{FILE_BBS, FORWARD_RANKS, SQUARE_FILE, SQUARE_RANK};
 use super::trace::tr_mg;
 use super::{Evaluator, color_sign, relative_rank};
+use crate::board::attacks::AttackTables;
+use crate::board::movegen::between;
 use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, Piece, Square};
 use crate::infra;
 
+/// The king-danger index is clamped here before the map, so one king's
+/// penalty is bounded whatever its inputs: 306 cp mg and 49 cp eg at the
+/// seed scales. The magnitude contract's instrument; it changes only with a
+/// new magnitude read.
+pub(super) const KS_INDEX_CAP: i32 = 1600;
+
+/// The largest map scale the evaluation applies, in hundredths of a
+/// centipawn; a loaded parameter vector above it is clamped.
+pub(super) const KS_MAP_SCALE_MAX: i32 = 400;
+
+/// The index must exceed this before the map applies.
+const KS_MAP_THRESHOLD: i32 = 100;
+
+/// The largest mg penalty the map can produce, which must stay far below the
+/// band the search reads as a decided game.
+const KS_MAP_MG_MAX: i32 = KS_MAP_SCALE_MAX * (KS_INDEX_CAP * KS_INDEX_CAP / 4096) / 100;
+const _: () = assert!(
+    KS_MAP_MG_MAX * 4 < crate::tt::TB_WIN_SCORE,
+    "the king-danger map can reach the search's decisive band; lower KS_INDEX_CAP"
+);
+
+/// One king's danger inputs, in the counts the index weighs.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub(super) struct KingDangerInputs {
+    pub(super) attackers: RingAttackers,
+    /// Ring squares the enemy attacks that we defend at most once, and then
+    /// only with the king or queen.
+    pub(super) weak_ring: i32,
+    /// Checking squares an enemy piece attacks that are not safe for it,
+    /// counted for a piece type only when it has no safe check (queens
+    /// excluded).
+    pub(super) unsafe_checks: i32,
+    /// Pieces of either colour standing alone between our king and an enemy
+    /// slider.
+    pub(super) blockers: i32,
+    /// Safe checking squares by knight, bishop, rook and queen. A queen check
+    /// is not counted where a rook could check safely or our queen defends;
+    /// a bishop check is not counted where a queen could check safely.
+    pub(super) safe_checks: [i32; 4],
+    pub(super) ring_size: i32,
+}
+
+/// Pieces of either colour standing alone between `color`'s king and an
+/// enemy slider on one of its lines. The enemy sliders on those lines are
+/// lifted off the board first, so a slider standing in front of another is
+/// not counted as its blocker.
+fn king_blockers(board: &Board, atk: &AttackTables, color: Color) -> Bitboard {
+    let them = !color;
+    let king = board.king_sq(color);
+    let queens = board.pieces(them, Piece::Queen);
+    let diagonal = board.pieces(them, Piece::Bishop) | queens;
+    let orthogonal = board.pieces(them, Piece::Rook) | queens;
+    let snipers = (atk.bishop(king, Bitboard::EMPTY) & diagonal)
+        | (atk.rook(king, Bitboard::EMPTY) & orthogonal);
+    let occupancy = board.occupied() ^ snipers;
+    let mut blockers = Bitboard::EMPTY;
+    let mut remaining = snipers;
+    while remaining.any() {
+        let line = between(king, remaining.pop_lsb()) & occupancy;
+        if line.any() && !line.more_than_one() {
+            blockers |= line;
+        }
+    }
+    blockers
+}
+
 impl Evaluator {
+    /// The danger inputs of `color`'s king from the filled attack maps.
+    pub(super) fn king_danger_inputs(
+        board: &Board,
+        atk: &AttackTables,
+        color: Color,
+        maps: &KsMaps,
+    ) -> KingDangerInputs {
+        let us = color as usize;
+        let them = (!color) as usize;
+        let king = board.king_sq(color);
+        let by_us = maps.attacked_by_us;
+        let by_them = maps.attacked_by_them;
+        let weak = maps.attacked[them]
+            & !maps.attacked2[us]
+            & (!maps.attacked[us] | by_us[Piece::King as usize] | by_us[Piece::Queen as usize]);
+        let safe = !maps.their_occ & (!maps.attacked[us] | (weak & maps.attacked2[them]));
+
+        // Checking lines see through our own queen, which can move off them.
+        let occupancy = maps.occupied ^ board.pieces(color, Piece::Queen);
+        let rook_lines = atk.rook(king, occupancy);
+        let bishop_lines = atk.bishop(king, occupancy);
+        let mut unsafe_checks = Bitboard::EMPTY;
+
+        let rook_reach = rook_lines & by_them[Piece::Rook as usize];
+        let rook_checks = rook_reach & safe;
+        if rook_checks.is_empty() {
+            unsafe_checks |= rook_reach;
+        }
+        let queen_checks = (rook_lines | bishop_lines)
+            & by_them[Piece::Queen as usize]
+            & safe
+            & !(by_us[Piece::Queen as usize] | rook_checks);
+        let bishop_reach = bishop_lines & by_them[Piece::Bishop as usize];
+        let bishop_checks = bishop_reach & safe & !queen_checks;
+        if bishop_checks.is_empty() {
+            unsafe_checks |= bishop_reach;
+        }
+        let knight_reach = atk.knight(king) & by_them[Piece::Knight as usize];
+        let knight_checks = knight_reach & safe;
+        if knight_checks.is_empty() {
+            unsafe_checks |= knight_reach;
+        }
+
+        KingDangerInputs {
+            attackers: maps.ring_attackers,
+            weak_ring: infra::to_i32((maps.king_ring & weak).count()),
+            unsafe_checks: infra::to_i32(unsafe_checks.count()),
+            blockers: infra::to_i32(king_blockers(board, atk, color).count()),
+            safe_checks: [
+                infra::to_i32(knight_checks.count()),
+                infra::to_i32(bishop_checks.count()),
+                infra::to_i32(rook_checks.count()),
+                infra::to_i32(queen_checks.count()),
+            ],
+            ring_size: infra::to_i32(maps.king_ring.count()),
+        }
+    }
+
+    /// The king-danger index: the ring attackers' count times their weight,
+    /// the other inputs at their weights, the enemy's mobility lead, less the
+    /// reductions for a missing enemy queen and a knight beside our king.
+    pub(super) fn king_danger_index(
+        &self,
+        inputs: &KingDangerInputs,
+        no_enemy_queen: bool,
+        knight_defends: bool,
+        mobility_lead_mg: i32,
+    ) -> i32 {
+        let p = &self.params;
+        let attackers = &inputs.attackers;
+        let count = attackers.pawn_attacks + attackers.pieces.iter().sum::<i32>();
+        let weight: i32 = attackers
+            .pieces
+            .iter()
+            .zip(p.kd_attacker_weight.iter())
+            .map(|(n, w)| n * w)
+            .sum();
+        let mut index = count * weight
+            + p.kd_weak_ring[0] * inputs.weak_ring
+            + p.kd_unsafe_check[0] * inputs.unsafe_checks
+            + p.kd_blockers[0] * inputs.blockers
+            + p.kd_king_attacks[0] * attackers.king_attacks
+            + p.kd_mobility[0] * mobility_lead_mg / 100
+            + p.kd_constant[0];
+        for (piece, &checks) in inputs.safe_checks.iter().enumerate() {
+            if checks > 0 {
+                index += p.kd_safe_check[2 * piece + usize::from(checks > 1)];
+            }
+        }
+        if no_enemy_queen {
+            index -= p.kd_no_queen[0];
+        }
+        if knight_defends {
+            index -= p.kd_knight_defender[0];
+        }
+        index
+    }
+
+    /// The (mg, eg) penalty for an index already clamped to the cap.
+    pub(super) fn king_danger_penalty(&self, index: i32) -> (i32, i32) {
+        if index <= KS_MAP_THRESHOLD {
+            return (0, 0);
+        }
+        let scale_mg = self.params.ks_map_mg[0].clamp(0, KS_MAP_SCALE_MAX);
+        let scale_eg = self.params.ks_map_eg[0].clamp(0, KS_MAP_SCALE_MAX);
+        (
+            scale_mg * (index * index / 4096) / 100,
+            scale_eg * (index / 16) / 100,
+        )
+    }
+
+    #[expect(clippy::too_many_arguments)]
     pub(super) fn eval_king_safety(
         &self,
         board: &Board,
         color: Color,
         sign: i32,
         mg: &mut i32,
+        eg: &mut i32,
         pawns: &[Bitboard; 2],
         maps: &KsMaps,
+        mobility_mg: &[i32; 2],
     ) {
         // One LazyLock resolution covers every king-zone attack lookup below.
         let atk = &*ATTACKS;
         let them = !color;
         let king = board.king_sq(color);
-        let king_bb = Bitboard::from(king);
-        let king_attacks = atk.king(king);
-        let mut zone = king_attacks | king_bb;
-        zone |= if color == Color::White {
-            king_attacks.north()
-        } else {
-            king_attacks.south()
-        };
 
-        // Single king-danger accumulator (Phase 3.5). The attacker-unit sum is
-        // the historical term; every other input is multiplied by a weight
-        // seeded 0, so `danger == units` today and bench is unchanged. Inputs
-        // select the (non-linear) safety-table bucket, so they are SPSA-tuned
-        // later; the table itself is Texel-tuned.
-        let mut danger = 0i32;
-        for piece in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
-            // 9.7.5(d): the per-piece unit is invariant across this piece's
-            // whole bitboard, so resolve it once instead of re-matching for
-            // every piece that attacks the zone.
-            let unit = match piece {
-                Piece::Knight | Piece::Bishop => self.params.king_safety_unit_minor[0],
-                Piece::Rook => self.params.king_safety_unit_rook[0],
-                Piece::Queen => self.params.king_safety_unit_queen[0],
-                _ => 0,
-            };
-            let mut pieces = board.pieces(them, piece);
-            while pieces.any() {
-                let sq = pieces.pop_lsb();
-                if (maps.their_from_sq(sq) & zone).any() {
-                    danger += unit;
-                }
-            }
+        let inputs = Self::king_danger_inputs(board, atk, color, maps);
+        let no_enemy_queen = board.pieces(them, Piece::Queen).is_empty();
+        let knight_defends = (maps.attacked_by_us[Piece::Knight as usize]
+            & maps.attacked_by_us[Piece::King as usize])
+            .any();
+        let mobility_lead = mobility_mg[them as usize] - mobility_mg[color as usize];
+        let index = self
+            .king_danger_index(&inputs, no_enemy_queen, knight_defends, mobility_lead)
+            .min(KS_INDEX_CAP);
+        let (penalty_mg, penalty_eg) = self.king_danger_penalty(index);
+        *mg -= sign * penalty_mg;
+        *eg -= sign * penalty_eg;
+        // The map is not linear in any weight, so its output is untraced.
+        #[cfg(feature = "texel")]
+        {
+            let mut trace = self.trace.borrow_mut();
+            trace.frozen_mg -= sign * penalty_mg;
+            trace.frozen_eg -= sign * penalty_eg;
+            trace.king_danger |= index > KS_MAP_THRESHOLD;
         }
-
-        // Weak king-ring squares: zone squares the enemy attacks but we do not
-        // defend (or defend only once while doubly attacked).
-        let weak = zone
-            & maps.attacked[them as usize]
-            & (!maps.attacked[color as usize] | maps.attacked2[them as usize]);
-        danger += self.params.ks_weak_ring[0] * infra::to_i32(weak.count());
-
-        // Safe checks: squares from which an enemy piece type could check our
-        // king, that the enemy actually attacks with that type and we do not
-        // defend (and are not occupied by an enemy piece).
-        let occ = maps.occupied;
-        let safe = !maps.attacked[color as usize] & !maps.their_occ;
-        let knight_from = atk.knight(king);
-        let bishop_from = atk.bishop(king, occ);
-        let rook_from = atk.rook(king, occ);
-        let knight_checks = knight_from & maps.attacked_by_them[Piece::Knight as usize] & safe;
-        let bishop_checks = bishop_from & maps.attacked_by_them[Piece::Bishop as usize] & safe;
-        let rook_checks = rook_from & maps.attacked_by_them[Piece::Rook as usize] & safe;
-        let queen_checks =
-            (bishop_from | rook_from) & maps.attacked_by_them[Piece::Queen as usize] & safe;
-        danger += self.params.ks_safe_check_knight[0] * infra::to_i32(knight_checks.count());
-        danger += self.params.ks_safe_check_bishop[0] * infra::to_i32(bishop_checks.count());
-        danger += self.params.ks_safe_check_rook[0] * infra::to_i32(rook_checks.count());
-        danger += self.params.ks_safe_check_queen[0] * infra::to_i32(queen_checks.count());
-
-        // King-flank pressure: enemy attacks minus our defenses over the three
-        // files around the king (clamped non-negative).
-        let king_file = infra::to_i32(SQUARE_FILE[king.index()]);
-        let mut flank = Bitboard::EMPTY;
-        for df in -1..=1 {
-            let f = king_file + df;
-            if (0..8).contains(&f) {
-                flank |= FILE_BBS[infra::to_usize(f)];
-            }
-        }
-        let flank_attack = infra::to_i32((maps.attacked[them as usize] & flank).count());
-        let flank_defense = infra::to_i32((maps.attacked[color as usize] & flank).count());
-        danger += self.params.ks_flank_attack[0] * (flank_attack - flank_defense).max(0);
-
-        // Pawnless flank: no pawns of either colour on the king's flank.
-        let all_pawns = pawns[Color::White as usize] | pawns[Color::Black as usize];
-        if (all_pawns & flank).is_empty() {
-            danger += self.params.ks_pawnless_flank[0];
-        }
-
-        // Queen relief: a danger *reduction* when the attacker has no queen.
-        if board.pieces(them, Piece::Queen).is_empty() {
-            danger -= self.params.ks_queen_relief[0];
-        }
-        let _ = maps.own_occ; // reserved for the Phase 5 blocker/pin danger input.
-
-        // Shelter/storm folded into the danger index (Phase 6.2.1, seeded 0):
-        // a small integer "pawn-cover deficit" — missing shelter files (own
-        // file 2, adjacent 1; same castled-flank gate as the linear shelter
-        // term) plus advanced storm pawns (rel_rank − 2 each, rel ≥ 3). The
-        // deficit multiplies into the nonlinear table lookup, expressing the
-        // "exposed king × piece pressure" interaction the linear terms cannot.
-        if self.params.ks_shelter_storm[0] != 0 {
-            let kf = infra::to_i32(SQUARE_FILE[king.index()]);
-            let krank = infra::to_i32(SQUARE_RANK[king.index()]);
-            let mut deficit = 0i32;
-            if kf <= 2 || kf >= 5 {
-                for df in -1..=1 {
-                    let f = kf + df;
-                    if !(0..8).contains(&f) {
-                        continue;
-                    }
-                    let file_pawns = pawns[color as usize] & FILE_BBS[infra::to_usize(f)];
-                    if (file_pawns & FORWARD_RANKS[color as usize][infra::to_usize(krank)])
-                        .is_empty()
-                    {
-                        deficit += if df == 0 { 2 } else { 1 };
-                    }
-                }
-            }
-            let mut sf = Bitboard::EMPTY;
-            for df in -1..=1 {
-                let f = kf + df;
-                if (0..8).contains(&f) {
-                    sf |= FILE_BBS[infra::to_usize(f)];
-                }
-            }
-            let mut storm_pawns = pawns[them as usize] & sf;
-            while storm_pawns.any() {
-                let p = storm_pawns.pop_lsb();
-                let rel = relative_rank(them, p) as i32;
-                if rel >= 3 {
-                    deficit += rel - 2;
-                }
-            }
-            danger += self.params.ks_shelter_storm[0] * deficit;
-        }
-
-        // Non-linear table lookup: trace one-hot on the bucket actually read.
-        let safety_idx = infra::to_usize(
-            danger.clamp(0, infra::to_i32(self.params.king_safety_table.len()) - 1),
-        );
-        *mg -= sign * self.params.king_safety_table[safety_idx];
-        tr_mg!(self, king_safety_table, safety_idx, -sign);
 
         let king_file = infra::to_i32(SQUARE_FILE[king.index()]);
         if king_file <= 2 || king_file >= 5 {
@@ -240,5 +310,121 @@ impl Evaluator {
                 tr_mg!(self, king_centrality_danger_mg, 0, -sign);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::attacks::AttackMaps;
+    use super::*;
+
+    /// The donor's ring-attacker weights for knight, bishop, rook and queen,
+    /// which the fixture's weight column was printed with.
+    const DONOR_WEIGHTS: [i32; 4] = [81, 52, 44, 10];
+
+    fn pawn_attacks(board: &Board) -> [Bitboard; 2] {
+        let white = board.pieces(Color::White, Piece::Pawn);
+        let black = board.pieces(Color::Black, Piece::Pawn);
+        [
+            white.north_east() | white.north_west(),
+            black.south_east() | black.south_west(),
+        ]
+    }
+
+    /// Both kings' danger inputs from attack maps filled for `board`.
+    fn inputs(board: &Board) -> [KingDangerInputs; 2] {
+        let atk = &*ATTACKS;
+        let mut maps = AttackMaps::new();
+        maps.fill(board, atk, &pawn_attacks(board));
+        let color_occ = [board.color_occ(Color::White), board.color_occ(Color::Black)];
+        [Color::White, Color::Black].map(|color| {
+            let ks = KsMaps::new(&maps, color, board.occupied(), &color_occ);
+            Evaluator::king_danger_inputs(board, atk, color, &ks)
+        })
+    }
+
+    /// The fixture's eleven columns for one king, in its order.
+    fn columns(king: &KingDangerInputs) -> [i32; 11] {
+        let a = &king.attackers;
+        let weight = a.pieces.iter().zip(DONOR_WEIGHTS).map(|(n, w)| n * w).sum();
+        let [knight, bishop, rook, queen] = king.safe_checks;
+        [
+            a.pawn_attacks + a.pieces.iter().sum::<i32>(),
+            weight,
+            king.weak_ring,
+            king.unsafe_checks,
+            king.blockers,
+            a.king_attacks,
+            rook,
+            queen,
+            bishop,
+            knight,
+            king.ring_size,
+        ]
+    }
+
+    /// Every king-danger component the donor printed for 500 positions, its
+    /// piece attacks made plain as Rarog's are
+    /// (`tools/diag/king_danger_fixture.py`), is reproduced exactly.
+    #[test]
+    fn king_danger_inputs_reproduce_the_donor_fixture() {
+        let fixture = include_str!("../../tests/data/king-danger-9587eeeb-plain.tsv");
+        let mut lines = fixture.lines();
+        let header = lines.next().expect("header");
+        assert_eq!(header.split('\t').count(), 23, "fixture columns: {header}");
+        let mut rows = 0;
+        for line in lines {
+            let cells: Vec<&str> = line.split('\t').collect();
+            let board = Board::from_fen(cells[0]).expect("fixture FEN");
+            let expected: Vec<i32> = cells[1..]
+                .iter()
+                .map(|c| c.parse().expect("integer cell"))
+                .collect();
+            let [white, black] = inputs(&board);
+            let actual: Vec<i32> = columns(&white).into_iter().chain(columns(&black)).collect();
+            assert_eq!(actual, expected, "{}", cells[0]);
+            rows += 1;
+        }
+        assert_eq!(rows, 500);
+    }
+
+    /// An enemy slider in front of another on the king's line is not the
+    /// rear one's blocker; a piece in front of both is, once. The fixture
+    /// holds no such line.
+    #[test]
+    fn king_blockers_lift_the_other_sliders_on_the_line() {
+        let atk = &*ATTACKS;
+        let rook_before_queen = Board::from_fen("4q2k/8/8/8/4r3/8/8/4K3 w - - 0 1").unwrap();
+        assert_eq!(
+            king_blockers(&rook_before_queen, atk, Color::White).count(),
+            0
+        );
+        let knight_before_both = Board::from_fen("4q2k/8/8/4r3/8/8/4N3/4K3 w - - 0 1").unwrap();
+        assert_eq!(
+            king_blockers(&knight_before_both, atk, Color::White),
+            knight_before_both.pieces(Color::White, Piece::Knight)
+        );
+    }
+
+    /// A king with every input saturated reads an index far beyond the cap,
+    /// and its penalty is the cap's, inside the bound the const assertion
+    /// ties to the decisive band, at any map scale the evaluation accepts.
+    #[test]
+    fn a_saturated_king_is_held_at_the_cap() {
+        let board = Board::from_fen("6k1/8/8/8/3b4/4nq2/3r4/qr4K1 w - - 0 1").unwrap();
+        let [white, _] = inputs(&board);
+        let mut ev = Evaluator::default();
+        let index = ev.king_danger_index(&white, false, false, 0);
+        assert!(
+            index > 2 * KS_INDEX_CAP,
+            "the fixture must saturate the index: {index}"
+        );
+        let capped = ev.king_danger_penalty(index.min(KS_INDEX_CAP));
+        assert_eq!(capped, ev.king_danger_penalty(KS_INDEX_CAP));
+        ev.params.ks_map_mg[0] = i32::MAX;
+        ev.params.ks_map_eg[0] = i32::MAX;
+        let (mg, eg) = ev.king_danger_penalty(KS_INDEX_CAP);
+        assert_eq!(mg, KS_MAP_MG_MAX);
+        assert!(eg < mg);
     }
 }

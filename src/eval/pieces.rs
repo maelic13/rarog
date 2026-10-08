@@ -53,6 +53,8 @@ impl Evaluator {
 
         self.attacks.fill(board, atk, pawn_attacks);
         let maps = &self.attacks;
+        // Each side's mobility (mg), which king danger reads for both sides.
+        let mut mobility_mg = [0i32; 2];
 
         for color in [Color::White, Color::Black] {
             let sign = color_sign(color);
@@ -218,6 +220,7 @@ impl Evaluator {
                         let mobility =
                             (maps.attacks_from(color, sq) & mobility_area).count() as usize;
                         let i = mobility.min(self.params.$mgf.len() - 1);
+                        mobility_mg[color as usize] += self.params.$mgf[i];
                         *mg += sign * self.params.$mgf[i];
                         *eg += sign * self.params.$egf[i];
                         tr_mg!(self, $mgf, i, sign);
@@ -298,12 +301,24 @@ impl Evaluator {
 
             self.eval_unstoppable_passers(board, color, sign, passed, occupied, eg);
 
-            let ks_maps = KsMaps::new(maps, color, occupied, &color_occ);
-            self.eval_king_safety(board, color, sign, mg, &pawns, &ks_maps);
             self.eval_rooks_behind_passers(board, color, sign, passed, mg, eg);
             self.eval_passer_blockade(board, color, sign, passed, mg, eg);
             self.eval_hanging_pieces(board, color, sign, mg, eg, &maps.attacked);
             self.eval_xray_trio(board, color, sign, occupied, &pawns, mg, eg);
+        }
+
+        for color in [Color::White, Color::Black] {
+            let ks_maps = KsMaps::new(maps, color, occupied, &color_occ);
+            self.eval_king_safety(
+                board,
+                color,
+                color_sign(color),
+                mg,
+                eg,
+                &pawns,
+                &ks_maps,
+                &mobility_mg,
+            );
         }
 
         self.eval_passed_pawn_king_proximity(board, passed, eg);

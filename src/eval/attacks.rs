@@ -4,6 +4,7 @@
 
 use crate::board::attacks::AttackTables;
 use crate::board::{Bitboard, Board, Color, Piece, Square};
+use crate::infra;
 
 /// What a debug build writes into every `attacks_from_sq` slot before a fill,
 /// so a read of a square the fill did not write is caught.
@@ -28,6 +29,15 @@ pub(super) struct AttackMaps {
     /// Squares a colour's pieces count as mobility: not attacked by an enemy
     /// pawn and not occupied by an own piece.
     pub(super) mobility_area: [Bitboard; 2],
+    /// Each king's ring, by the king's colour: the king's square and attacks
+    /// with the king moved to files B–G and ranks 2–7, less the squares two of
+    /// its own pawns defend.
+    pub(super) king_ring: [Bitboard; 2],
+    /// Ring attackers of each king, by the king's colour: the enemy pawn
+    /// attacks on the ring (counted on the ring before the doubly defended
+    /// squares leave it), then each enemy knight, bishop, rook and queen whose
+    /// attacks touch the ring.
+    pub(super) ring_attackers: [RingAttackers; 2],
     /// Each knight, bishop, rook and queen's attacks, by its square.
     ///
     /// Written for exactly the squares holding a knight, bishop, rook or queen
@@ -40,6 +50,17 @@ pub(super) struct AttackMaps {
     attacks_from_sq: [[Bitboard; 64]; 2],
 }
 
+/// The pieces attacking one king's ring.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub(super) struct RingAttackers {
+    /// Ring squares the enemy pawns attack.
+    pub(super) pawn_attacks: i32,
+    /// Enemy knights, bishops, rooks and queens whose attacks touch the ring.
+    pub(super) pieces: [i32; 4],
+    /// Those pieces' attacks on the squares next to the king, summed.
+    pub(super) king_attacks: i32,
+}
+
 impl AttackMaps {
     pub(super) fn new() -> Self {
         Self {
@@ -47,6 +68,8 @@ impl AttackMaps {
             attacked: [Bitboard::EMPTY; 2],
             attacked2: [Bitboard::EMPTY; 2],
             mobility_area: [Bitboard::EMPTY; 2],
+            king_ring: [Bitboard::EMPTY; 2],
+            ring_attackers: [RingAttackers::default(); 2],
             attacks_from_sq: [[Bitboard::EMPTY; 64]; 2],
         }
     }
@@ -59,34 +82,50 @@ impl AttackMaps {
             side.fill(UNWRITTEN);
         }
         let occupied = board.occupied();
-        for color in [Color::White, Color::Black] {
-            let ci = color as usize;
-            let mut attacked_by = [Bitboard::EMPTY; 6];
-            let mut attacked = Bitboard::EMPTY;
-            let mut attacked2 = Bitboard::EMPTY;
-            attacked_by[Piece::Pawn as usize] = pawn_attacks[ci];
-            // Squares two of this side's pawns both attack (the two diagonal
-            // directions overlap) are attacked twice; the union
-            // `pawn_attacks[ci]` loses that, so seed them into `attacked2`.
+        // Squares two of a side's pawns both attack (the two diagonal
+        // directions overlap) are attacked twice; the union `pawn_attacks`
+        // loses that.
+        let double_pawn = [Color::White, Color::Black].map(|color| {
             let pawns_bb = board.pieces(color, Piece::Pawn);
-            let double_pawn = if color == Color::White {
+            if color == Color::White {
                 pawns_bb.north_east() & pawns_bb.north_west()
             } else {
                 pawns_bb.south_east() & pawns_bb.south_west()
+            }
+        });
+        let king_atk = [Color::White, Color::Black].map(|color| atk.king(board.king_sq(color)));
+        // Both rings exist before either side's pieces are scanned, since each
+        // side's loop counts the attackers of the other king's ring.
+        for color in [Color::White, Color::Black] {
+            let ci = color as usize;
+            let ring = king_ring_before_pawns(atk, board.king_sq(color));
+            self.ring_attackers[ci] = RingAttackers {
+                pawn_attacks: infra::to_i32((ring & pawn_attacks[(!color) as usize]).count()),
+                ..RingAttackers::default()
             };
-            attacked2 |= double_pawn;
+            self.king_ring[ci] = ring & !double_pawn[ci];
+        }
+        for color in [Color::White, Color::Black] {
+            let ci = color as usize;
+            let ti = (!color) as usize;
+            let their_ring = self.king_ring[ti];
+            let their_king_atk = king_atk[ti];
+            let mut ring_attackers = self.ring_attackers[ti];
+            let mut attacked_by = [Bitboard::EMPTY; 6];
+            let mut attacked = Bitboard::EMPTY;
+            let mut attacked2 = double_pawn[ci];
+            attacked_by[Piece::Pawn as usize] = pawn_attacks[ci];
             attacked |= pawn_attacks[ci];
 
-            let king_atk = atk.king(board.king_sq(color));
-            attacked_by[Piece::King as usize] = king_atk;
-            attacked2 |= attacked & king_atk;
-            attacked |= king_atk;
+            attacked_by[Piece::King as usize] = king_atk[ci];
+            attacked2 |= attacked & king_atk[ci];
+            attacked |= king_atk[ci];
 
             // One loop per piece type, so the attack generator is a direct
             // call rather than `attacks_for`'s six-way `match piece`
             // re-evaluated for every piece on the board.
             macro_rules! attack_loop {
-                ($piece:expr, $gen:expr) => {{
+                ($piece:expr, $slot:expr, $gen:expr) => {{
                     let piece_index = $piece as usize;
                     let mut bb = board.pieces(color, $piece);
                     while bb.any() {
@@ -96,14 +135,20 @@ impl AttackMaps {
                         attacked_by[piece_index] |= atks;
                         attacked2 |= attacked & atks;
                         attacked |= atks;
+                        if (atks & their_ring).any() {
+                            ring_attackers.pieces[$slot] += 1;
+                            ring_attackers.king_attacks +=
+                                infra::to_i32((atks & their_king_atk).count());
+                        }
                     }
                 }};
             }
-            attack_loop!(Piece::Knight, |sq| atk.knight(sq));
-            attack_loop!(Piece::Bishop, |sq| atk.bishop(sq, occupied));
-            attack_loop!(Piece::Rook, |sq| atk.rook(sq, occupied));
-            attack_loop!(Piece::Queen, |sq| atk.queen(sq, occupied));
+            attack_loop!(Piece::Knight, 0, |sq| atk.knight(sq));
+            attack_loop!(Piece::Bishop, 1, |sq| atk.bishop(sq, occupied));
+            attack_loop!(Piece::Rook, 2, |sq| atk.rook(sq, occupied));
+            attack_loop!(Piece::Queen, 3, |sq| atk.queen(sq, occupied));
 
+            self.ring_attackers[ti] = ring_attackers;
             self.attacked_by[ci] = attacked_by;
             self.attacked[ci] = attacked;
             self.attacked2[ci] = attacked2;
@@ -118,6 +163,16 @@ impl AttackMaps {
     }
 }
 
+/// The king's square and attacks with the king moved to files B–G and ranks
+/// 2–7, so an edge or corner king keeps a full ring.
+#[inline(always)]
+fn king_ring_before_pawns(atk: &AttackTables, king: Square) -> Bitboard {
+    let file = (king.index() & 7).clamp(1, 6);
+    let rank = (king.index() >> 3).clamp(1, 6);
+    let centre = Square(infra::to_u8(rank * 8 + file));
+    atk.king(centre) | Bitboard::from(centre)
+}
+
 #[inline(always)]
 fn read_written(side: &[Bitboard; 64], sq: Square) -> Bitboard {
     debug_assert_ne!(
@@ -128,19 +183,20 @@ fn read_written(side: &[Bitboard; 64], sq: Square) -> Bitboard {
     side[sq.index()]
 }
 
-/// Attack-map slices the king-danger model reads, bundled to keep
-/// `eval_king_safety`'s signature small.
+/// Attack-map slices the king-danger model reads for one king, bundled to
+/// keep `eval_king_safety`'s signature small.
 pub(super) struct KsMaps<'a> {
-    /// `attacks_from_sq` for the *attacking* side (the enemy of the king).
-    their_from_sq: &'a [Bitboard; 64],
-    /// Union of squares attacked by each colour (incl. pawns + king).
+    /// Squares attacked by each colour (pawns and king included).
     pub(super) attacked: &'a [Bitboard; 2],
-    /// Squares attacked ≥2 times by each colour.
+    /// Squares attacked at least twice by each colour.
     pub(super) attacked2: &'a [Bitboard; 2],
-    /// Per-piece-type attack union for the attacking side.
+    /// Squares attacked by the king's side, by piece type.
+    pub(super) attacked_by_us: &'a [Bitboard; 6],
+    /// Squares attacked by the other side, by piece type.
     pub(super) attacked_by_them: &'a [Bitboard; 6],
+    pub(super) king_ring: Bitboard,
+    pub(super) ring_attackers: RingAttackers,
     pub(super) occupied: Bitboard,
-    pub(super) own_occ: Bitboard,
     pub(super) their_occ: Bitboard,
 }
 
@@ -152,22 +208,17 @@ impl<'a> KsMaps<'a> {
         occupied: Bitboard,
         color_occ: &[Bitboard; 2],
     ) -> Self {
-        let them = !color;
+        let us = color as usize;
+        let them = (!color) as usize;
         Self {
-            their_from_sq: &maps.attacks_from_sq[them as usize],
             attacked: &maps.attacked,
             attacked2: &maps.attacked2,
-            attacked_by_them: &maps.attacked_by[them as usize],
+            attacked_by_us: &maps.attacked_by[us],
+            attacked_by_them: &maps.attacked_by[them],
+            king_ring: maps.king_ring[us],
+            ring_attackers: maps.ring_attackers[us],
             occupied,
-            own_occ: color_occ[color as usize],
-            their_occ: color_occ[them as usize],
+            their_occ: color_occ[them],
         }
-    }
-
-    /// The attacks of the attacking side's knight, bishop, rook or queen on
-    /// `sq`.
-    #[inline(always)]
-    pub(super) fn their_from_sq(&self, sq: Square) -> Bitboard {
-        read_written(self.their_from_sq, sq)
     }
 }

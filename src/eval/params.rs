@@ -151,23 +151,28 @@ macro_rules! eval_params {
             threat_weak_piece_eg: 1 = [0];
             threat_restricted_mg: 1 = [9];
             threat_restricted_eg: 1 = [0];
-            king_safety_unit_minor: 1 = [2];
-            king_safety_unit_rook: 1 = [3];
-            king_safety_unit_queen: 1 = [4];
-            // King-danger conversion table, indexed by the clamped danger index and
-            // kept monotonic non-decreasing by the tuner.
-            king_safety_table: 40 = [102, 102, 116, 116, 123, 138, 152, 163, 198, 222, 236, 263, 263, 263, 263, 263, 263, 263, 263, 263, 263, 282, 284, 358, 358, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 384, 414, 499];
-            // King-danger inputs. They select the table bucket non-linearly, so the
-            // linear trace cannot see them; the fit's coordinate stage re-evaluates
-            // positions to fit them. A weight at 0 leaves its input out of the index.
-            ks_weak_ring: 1 = [1];
-            ks_safe_check_knight: 1 = [16];
-            ks_safe_check_bishop: 1 = [13];
-            ks_safe_check_rook: 1 = [8];
-            ks_safe_check_queen: 1 = [16];
-            ks_queen_relief: 1 = [8];
-            ks_flank_attack: 1 = [0];
-            ks_pawnless_flank: 1 = [19];
+            // King-danger index coordinates, in index units (seeded on the donor's
+            // scale, where a pawn is 206). The index reaches the score only through
+            // the quadratic map, so the linear trace cannot see them; the fit's
+            // coordinate stage re-evaluates positions to fit them.
+            // Ring attackers' weight by attacker: knight, bishop, rook, queen.
+            kd_attacker_weight: 4 = [81, 52, 44, 10];
+            // Safe checks, single then multiple: knight, bishop, rook, queen.
+            kd_safe_check: 8 = [792, 1283, 645, 967, 1084, 1897, 772, 1119];
+            kd_weak_ring: 1 = [185];
+            kd_unsafe_check: 1 = [148];
+            kd_blockers: 1 = [98];
+            kd_king_attacks: 1 = [69];
+            // Per 100 cp of the enemy's mobility (mg) over ours.
+            kd_mobility: 1 = [206];
+            kd_no_queen: 1 = [873];
+            kd_knight_defender: 1 = [100];
+            kd_constant: 1 = [37];
+            // The map from index to score, in hundredths of a centipawn per index
+            // unit of `index²/4096` (mg) and `index/16` (eg): 49 is the donor's map
+            // converted at 100/206. Coordinates too: the map's output is untraced.
+            ks_map_mg: 1 = [49];
+            ks_map_eg: 1 = [49];
             shelter_missing_file_mg: 1 = [27];
             shelter_missing_adjacent_mg: 1 = [7];
             shelter_dist1_mg: 1 = [25];
@@ -258,13 +263,6 @@ macro_rules! eval_params {
             queen_battery_eg: 1 = [21];
             slider_on_queen_mg: 1 = [35];
             slider_on_queen_eg: 1 = [8];
-            // Shelter/storm folded into the king-danger index (nonlinear — selects the
-            // safety-table bucket, so it is invisible to the linear trace and is fit by
-            // the --tune-kingsafety re-eval path, like the other ks_* inputs). The
-            // linear shelter/storm terms above stay; the Phase-4 fit zeroed the storm
-            // weights because a LINEAR term cannot express "exposed king x piece
-            // pressure" — this input is where that interaction lives.
-            ks_shelter_storm: 1 = [0];
         }
     };
 }

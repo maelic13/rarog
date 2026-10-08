@@ -77,6 +77,9 @@ macro_rules! define_eval_trace {
             /// reconstruction (they end up in the tuner's per-position `rest`).
             pub frozen_mg: i32,
             pub frozen_eg: i32,
+            /// The king-danger map penalised at least one king. Its output is
+            /// untraced, so this is how a reader sees the term was active.
+            pub king_danger: bool,
             /// White-POV raw tapered score of the *linear* part only (mg/eg with
             /// the frozen contributions removed). The reconstruction gate asserts
             /// `reconstruct(defaults) == raw`, validating every traced count.
