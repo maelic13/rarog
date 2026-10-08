@@ -1,15 +1,17 @@
-"""Held-out loss of the full evaluation as a function of one king-danger input.
+"""Held-out loss of the full evaluation as a function of one weight.
 
-For each named input and each weight, write the tuner's complete default vector
-with that one slot changed and read `rarog-texel --report-endgames`'s global
-loss at a pinned K. The tuner evaluates the function the fits describe (lazy
-shortcut off), so this is the surface the nonlinear pass saw when it left
-`ks_weak_ring`, `ks_flank_attack` and `ks_shelter_storm` at zero (RAR-E21).
+For each named field and each value, write the tuner's complete default vector
+with that field's first slot changed and read `rarog-texel --report-endgames`'s
+global loss at a pinned K. The tuner evaluates the function the fits describe
+(the lazy gate honoured, as the engine plays it), so this is the surface the
+re-evaluation pass sees for a coordinate the linear trace cannot reach, such
+as the king-danger index's `kd_*` weights and the map's `ks_map_*` scales.
+RAR-E21 used it on the earlier index's inputs.
 
   python tools/diag/ks_weight_scan.py --tuner tools/texel-tuner/target/release/rarog-texel.exe \
-      --dataset tools/texel/data/hce-v3-tb/validation.csv --k 1.34651 \
-      --inputs ks_weak_ring,ks_flank_attack,ks_shelter_storm --weights 1,2,4 \
-      --out tools/results/king-subterms-20261006/weight_scan.json
+      --dataset tools/texel/data/hce-v4-tb/validation.csv --k 1.501 \
+      --inputs kd_weak_ring,ks_map_mg --weights 0,50,100,200 \
+      --out <dir>/weight_scan.json
 """
 from __future__ import annotations
 

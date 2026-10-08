@@ -27,7 +27,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread;
 
 use rarog::board::{Board, Color, Piece};
-use rarog::eval::{EVAL_PARAM_NAMES, EvalParams, Evaluator, linear_delta_scale};
+use rarog::eval::{EVAL_PARAM_NAMES, EvalParams, Evaluator, KS_MAP_SCALE_MAX, linear_delta_scale};
 
 // ---------------------------------------------------------------------------
 // Flat-parameter / group helpers
@@ -513,8 +513,8 @@ fn clamp_weights(w: &mut [f64]) {
         clamp_field(w, f, 0.0, 4000.0);
     }
     clamp_field(w, "kd_constant", -1000.0, 1000.0);
-    clamp_field(w, "ks_map_mg", 0.0, 400.0);
-    clamp_field(w, "ks_map_eg", 0.0, 400.0);
+    clamp_field(w, "ks_map_mg", 0.0, f64::from(KS_MAP_SCALE_MAX));
+    clamp_field(w, "ks_map_eg", 0.0, f64::from(KS_MAP_SCALE_MAX));
 
     // Imbalance coefficients are signed; just bound the magnitude.
     clamp_field(w, "imbalance_ours", -300.0, 300.0);
