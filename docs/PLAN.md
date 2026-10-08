@@ -803,13 +803,21 @@ loss).
       100 cp (`kd_mobility`, seed 206); the pawnless flank is absent until
       C.3.2 puts it outside the index, and the shelter feedback arrives with
       C.3.2's shelter. `bench 13` 11,353,161 / EBF 2.527 (unfitted seeds, not
-      a fingerprint). Two effects recorded for C.3.4: at its seeds the term
-      costs a won KRP-KR 144 cp (260 → 116 on `1R6/1P6/8/8/8/7k/r7/6K1 w`;
-      `krpkr_never_zeroes_a_won_position` now tests the scaling it is about,
-      `e6c07b4`), the eg half of the map in rook endings being the refit's
-      to set; and RAR-E21's instruments for the old index are retired
-      (`9b238c1`). The pooled NPS read waits for C.3.2, which adds the
-      shelter cost.
+      a fingerprint). A known defect at the seeds, carried to C.3.4: the
+      term costs a won KRP-KR 144 cp (260 → 116 on
+      `1R6/1P6/8/8/8/7k/r7/6K1 w`), the map's eg half charging a lone king
+      in a rook ending; `krpkr_never_zeroes_a_won_position` now tests the
+      scaling it is about (`e6c07b4`), so nothing guards the evaluation's
+      size there until C.3.4's won-ending read. RAR-E21's index-specific
+      tool is retired (`9b238c1`); the field-generic weight scan was
+      restored. The pooled NPS read waits for C.3.2, which adds the shelter
+      cost. **Review (2026-10-08, Claude Fable 5.1, findings verified before
+      acting):** the map-scale bound is one public constant the tuner reads,
+      lowered from 400 to 150 (3× the seed; 937 cp per king at the cap),
+      with its const assertion stated in cp; an index-arithmetic test added
+      (the fixture compares counts only); the reviewer's concern that the
+      fixture leaves the bishop-behind-queen exclusion and the single-blocker
+      rule unexercised was checked by mutation and refuted (both fail it).
     - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`.** The
       entry grows by the king square, the castling rights and the shelter
       score per side (12 bytes) and stays `Copy`. It also adds the shelter
@@ -817,12 +825,24 @@ loss).
     - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.** C.3.1
       renamed the pass's coordinates (`kd_*`, `ks_map_*`) and re-keyed the
       king-attack bucket on the trace's `king_danger` flag; C.3.3 sets the
-      steps (64 halving to 4), the bounds, a v3 fit manifest and
+      steps, the bounds, a v3 fit manifest and
       `tools/texel/fit_manifest.py`'s selector list (v2 refuses the changed
-      parameter set).
+      parameter set). The pass still steps 4 → 1 for every coordinate,
+      which cannot move seeds of 148–1,897 index units: the steps go per
+      coordinate, about a sixty-fourth of its range halving to 1 (the card's
+      64 → 4 for the index weights), the map scales (seed 49) 4 → 1.
+      `tools/diag/ks_weight_scan.py` reads one coordinate's loss surface.
     - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
       registration copies the card's prediction before the static screens
-      are read.
+      are read. Added by C.3.1's review, before exposure: a won-ending read
+      on the fitted candidate (`tools/diag/endgame_floors.py` and
+      `endgame_truth.py` against their baselines, the three KRP-KR positions
+      among them) beside the static screens; a breach is reported and stops
+      the handover until the maintainer decides. The fit itself runs from
+      branch `c3-king`, while `tools/texel/fit_complete.ps1` checks the
+      source baseline against GUIDE's development fingerprint (`dev`'s
+      head), so C.3.4 states how the script is pointed at the branch's
+      baseline before the fit.
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
