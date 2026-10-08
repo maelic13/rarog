@@ -499,28 +499,10 @@ fn clamp_weights(w: &mut [f64]) {
     }
     clamp_field(w, "pawnless_flank_mg", 0.0, 200.0);
     clamp_field(w, "pawnless_flank_eg", 0.0, 200.0);
-    // King-danger index coordinates (the re-evaluation path), in index units.
-    // Each is a danger contribution or, for the reductions, a magnitude, so
-    // every one is non-negative except the constant; the index is capped
-    // before the map, so generous upper bounds are safe. The map scales stop
-    // at the evaluation's own clamp (`KS_MAP_SCALE_MAX`).
-    clamp_field(w, "kd_attacker_weight", 0.0, 400.0);
-    clamp_field(w, "kd_safe_check", 0.0, 4000.0);
-    for f in [
-        "kd_weak_ring",
-        "kd_unsafe_check",
-        "kd_blockers",
-        "kd_king_attacks",
-        "kd_mobility",
-        "kd_no_queen",
-        "kd_knight_defender",
-        "kd_shelter",
-    ] {
-        clamp_field(w, f, 0.0, 4000.0);
+    // The king-danger pass's coordinates, at its bounds.
+    for &(field, KsBounds { lo, hi }) in KS_FIELDS {
+        clamp_field(w, field, f64::from(lo), f64::from(hi));
     }
-    clamp_field(w, "kd_constant", -1000.0, 1000.0);
-    clamp_field(w, "ks_map_mg", 0.0, f64::from(KS_MAP_SCALE_MAX));
-    clamp_field(w, "ks_map_eg", 0.0, f64::from(KS_MAP_SCALE_MAX));
 
     // Imbalance coefficients are signed; just bound the magnitude.
     clamp_field(w, "imbalance_ours", -300.0, 300.0);
@@ -1598,34 +1580,80 @@ fn cmd_tune(opts: &TuneOpts) {
 // Nonlinear king-safety fit
 // ---------------------------------------------------------------------------
 
-/// The king-danger index coordinates and the map's two scales. The index
-/// reaches the score only through the capped quadratic map, whose output is
-/// untraced, so none of them has a linear coefficient: they are fit here by
-/// re-evaluating positions with perturbed weights.
-const KS_DANGER_INPUTS: &[&str] = &[
-    "kd_attacker_weight",
-    "kd_safe_check",
-    "kd_weak_ring",
-    "kd_unsafe_check",
-    "kd_blockers",
-    "kd_king_attacks",
-    "kd_mobility",
-    "kd_no_queen",
-    "kd_knight_defender",
-    "kd_constant",
-    "kd_shelter",
-    "ks_map_mg",
-    "ks_map_eg",
+/// The inclusive bounds of one king-danger coordinate.
+#[derive(Clone, Copy)]
+struct KsBounds {
+    lo: i32,
+    hi: i32,
+}
+
+const INDEX_WEIGHT: KsBounds = KsBounds { lo: 0, hi: 4000 };
+const ATTACKER_WEIGHT: KsBounds = KsBounds { lo: 0, hi: 400 };
+const INDEX_CONSTANT: KsBounds = KsBounds {
+    lo: -1000,
+    hi: 1000,
+};
+const MAP_SCALE: KsBounds = KsBounds {
+    lo: 0,
+    hi: KS_MAP_SCALE_MAX,
+};
+
+/// The king-danger index coordinates (in index units) and the map's two
+/// scales (in hundredths of a centipawn). The index reaches the score only
+/// through the capped quadratic map, whose output is untraced, so none of
+/// them has a linear coefficient: they are fit here by re-evaluating
+/// positions with perturbed weights. Each input is a danger contribution or,
+/// for the reductions, a magnitude, so all are non-negative but the
+/// constant; the index is capped before the map, so generous upper bounds
+/// are safe. The map scales stop at the evaluation's own clamp.
+const KS_FIELDS: &[(&str, KsBounds)] = &[
+    ("kd_attacker_weight", ATTACKER_WEIGHT),
+    ("kd_safe_check", INDEX_WEIGHT),
+    ("kd_weak_ring", INDEX_WEIGHT),
+    ("kd_unsafe_check", INDEX_WEIGHT),
+    ("kd_blockers", INDEX_WEIGHT),
+    ("kd_king_attacks", INDEX_WEIGHT),
+    ("kd_mobility", INDEX_WEIGHT),
+    ("kd_no_queen", INDEX_WEIGHT),
+    ("kd_knight_defender", INDEX_WEIGHT),
+    ("kd_constant", INDEX_CONSTANT),
+    ("kd_shelter", INDEX_WEIGHT),
+    ("ks_map_mg", MAP_SCALE),
+    ("ks_map_eg", MAP_SCALE),
 ];
 
-/// Active flat indices for the king-safety fit: every slot of
-/// `KS_DANGER_INPUTS`.
-fn ks_active_indices() -> Vec<usize> {
-    let mut a = Vec::new();
-    for f in KS_DANGER_INPUTS {
-        push_field(&mut a, f);
+/// One coordinate of the king-danger pass: a flat index, the field and slot
+/// it holds, and its bounds.
+#[derive(Clone, Copy)]
+struct KsCoordinate {
+    index: usize,
+    field: &'static str,
+    slot: usize,
+    bounds: KsBounds,
+}
+
+impl KsCoordinate {
+    /// About a sixty-fourth of the range, rounded up to a power of two so
+    /// that halving reaches 1: 64 for an index weight, 4 for a map scale.
+    fn first_step(self) -> i32 {
+        let range = self.bounds.hi.abs_diff(self.bounds.lo);
+        i32::try_from(range.div_ceil(64).next_power_of_two()).expect("a bounded range")
     }
-    a
+}
+
+/// Every slot of every `KS_FIELDS` field, in flat order within each field.
+fn ks_coordinates() -> Vec<KsCoordinate> {
+    let mut out = Vec::new();
+    for &(field, bounds) in KS_FIELDS {
+        let (off, len) = field_offset(field);
+        out.extend((0..len).map(|slot| KsCoordinate {
+            index: off + slot,
+            field,
+            slot,
+            bounds,
+        }));
+    }
+    out
 }
 
 type RawPos = (Board, f32, u32);
@@ -2047,24 +2075,22 @@ fn ks_fit_k(boards: &[RawPos], evs: &mut [Evaluator], base: &EvalParams) -> f64 
 }
 
 fn cmd_tune_kingsafety(opts: &TuneOpts) {
-    let active = ks_active_indices();
-    // The manifest excludes exactly the selectors from the linear model; the
-    // table they index is free there and co-fitted here.
-    let mut selectors = Vec::new();
-    for field in KS_DANGER_INPUTS {
-        push_field(&mut selectors, field);
-    }
-    selectors.sort_unstable();
+    let coords = ks_coordinates();
+    let active: Vec<usize> = coords.iter().map(|c| c.index).collect();
+    // The manifest excludes exactly these coordinates from the linear model,
+    // which carries the map's output as a fixed residual per row.
+    let mut excluded = active.clone();
+    excluded.sort_unstable();
     if opts.manifest.is_some()
-        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != selectors
+        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != excluded
     {
-        eprintln!("The manifest's excluded set is not the king-danger selectors.");
+        eprintln!("The manifest's excluded set is not the king-danger coordinates.");
         exit(1);
     }
     println!(
-        "King-safety nonlinear fit: {} active params ({} index coordinates and map scales)",
-        active.len(),
-        KS_DANGER_INPUTS.len(),
+        "King-safety nonlinear fit: {} coordinates in {} fields (index weights and map scales)",
+        coords.len(),
+        KS_FIELDS.len(),
     );
 
     let base_params = opts
@@ -2088,6 +2114,17 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
     println!("K = {}", k_label(k));
 
     let base_w = base_params.to_flat();
+    for c in &coords {
+        let value = base_w[c.index];
+        let KsBounds { lo, hi } = c.bounds;
+        if value < f64::from(lo) || value > f64::from(hi) {
+            eprintln!(
+                "The initial {}[{}] is {value}, outside the pass's bounds [{lo}, {hi}].",
+                c.field, c.slot
+            );
+            exit(1);
+        }
+    }
     let mut w = base_w.clone();
     let mut params = base_params.clone();
 
@@ -2099,39 +2136,42 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
     println!("Initial train  loss = {cur_train:.8}");
     println!("Initial holdout loss = {base_holdout:.8}");
 
-    // Integer coordinate descent with a shrinking step — robust to the table's
-    // step-function nonlinearity and the integer parameter grid. A whole-vector
-    // snapshot is restored between trials because `clamp_weights` re-monotonises
-    // the safety table, which can ripple into neighbouring entries.
-    let mut step = 4.0f64;
+    // Integer coordinate descent on the training loss. Each coordinate's step
+    // starts near a sixty-fourth of its range and halves when neither
+    // direction improves; the pass has converged when an epoch with every
+    // step at 1 moves nothing. A trial moves only its own coordinate, held
+    // inside its bounds.
+    let mut steps: Vec<i32> = coords.iter().map(|c| c.first_step()).collect();
     let mut epoch = 0usize;
-    while step >= 1.0 && epoch < opts.epochs {
+    let mut converged = false;
+    while epoch < opts.epochs {
         epoch += 1;
-        let mut improved = false;
-        for &idx in &active {
-            let snapshot = w.clone();
-            w[idx] = snapshot[idx] + step;
-            clamp_weights(&mut w);
-            params.set_from_flat(&w);
-            let up = ks_mse(&train, &mut evs, &params, k);
-            let up_w = w.clone();
-
-            w.copy_from_slice(&snapshot);
-            w[idx] = snapshot[idx] - step;
-            clamp_weights(&mut w);
-            params.set_from_flat(&w);
-            let dn = ks_mse(&train, &mut evs, &params, k);
-
-            if up < cur_train && up <= dn {
-                w.copy_from_slice(&up_w);
-                cur_train = up;
-                improved = true;
-            } else if dn < cur_train {
-                // w already holds the down candidate
-                cur_train = dn;
-                improved = true;
+        let finest = steps.iter().all(|&s| s == 1);
+        let mut moved = 0usize;
+        for (c, step) in coords.iter().zip(steps.iter_mut()) {
+            let old = w[c.index];
+            let KsBounds { lo, hi } = c.bounds;
+            let up = (old + f64::from(*step)).min(f64::from(hi));
+            let down = (old - f64::from(*step)).max(f64::from(lo));
+            let mut best: Option<(f64, f64)> = None;
+            for value in [up, down] {
+                if value == old {
+                    continue;
+                }
+                w[c.index] = value;
+                params.set_from_flat(&w);
+                let loss = ks_mse(&train, &mut evs, &params, k);
+                if loss < best.map_or(cur_train, |(l, _)| l) {
+                    best = Some((loss, value));
+                }
+            }
+            if let Some((loss, value)) = best {
+                w[c.index] = value;
+                cur_train = loss;
+                moved += 1;
             } else {
-                w.copy_from_slice(&snapshot);
+                w[c.index] = old;
+                *step = (*step / 2).max(1);
             }
         }
         params.set_from_flat(&w);
@@ -2140,10 +2180,22 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
             best_holdout = h;
             best_w.copy_from_slice(&w);
         }
-        println!("Epoch {epoch:>3}  step={step:>3}  train={cur_train:.8}  holdout={h:.8}");
-        if !improved {
-            step /= 2.0;
+        let largest = steps.iter().copied().max().unwrap_or(1);
+        println!(
+            "Epoch {epoch:>3}  largest step={largest:>3}  moved={moved:>3}  train={cur_train:.8}  holdout={h:.8}"
+        );
+        if moved == 0 && finest {
+            converged = true;
+            break;
         }
+    }
+    if converged {
+        println!("Coordinate pass converged after {epoch} epochs.");
+    } else {
+        let largest = steps.iter().copied().max().unwrap_or(1);
+        println!(
+            "Coordinate pass stopped at the epoch cap ({epoch}) unconverged; largest step {largest}."
+        );
     }
 
     w.copy_from_slice(&best_w);
@@ -2857,5 +2909,35 @@ fn main() {
             usage(&args[0]);
             exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each king-danger coordinate starts near a sixty-fourth of its range,
+    /// rounded up to a power of two, and every slot of every field is one
+    /// coordinate.
+    #[test]
+    fn the_king_pass_steps_from_a_sixty_fourth_of_each_range() {
+        let coords = ks_coordinates();
+        let first_steps = |field: &str| -> Vec<i32> {
+            coords
+                .iter()
+                .filter(|c| c.field == field)
+                .map(|c| c.first_step())
+                .collect()
+        };
+        assert_eq!(first_steps("kd_safe_check"), vec![64; 8]);
+        assert_eq!(first_steps("kd_attacker_weight"), vec![8; 4]);
+        assert_eq!(first_steps("kd_constant"), vec![32]);
+        assert_eq!(first_steps("ks_map_mg"), vec![4]);
+        assert_eq!(first_steps("ks_map_eg"), vec![4]);
+        let mut indices: Vec<usize> = coords.iter().map(|c| c.index).collect();
+        indices.sort_unstable();
+        indices.dedup();
+        assert_eq!(indices.len(), 23);
+        assert_eq!(coords.len(), 23);
     }
 }

@@ -152,7 +152,7 @@ recurring source of wrong results here.
 | `tools/texel/fit_complete.ps1` | the whole fit, one command, fully audited |
 | `tools/texel/bake_params.py` | writes a fitted vector into `src/eval/params.rs` and `src/eval/material.rs` |
 | `tools/texel/confirm_hce_fit.ps1` | re-verification of a completed fit |
-| `tools/texel/fit_manifest.py` | writes the fitting manifest `tools/texel/hce_fit_manifest_v2.tsv`: every coefficient free, fixed or excluded, with its reason |
+| `tools/texel/fit_manifest.py` | writes the fitting manifest `tools/texel/hce_fit_manifest_v3.tsv`: every coefficient free, fixed or excluded, with its reason |
 | `tools/texel/sample_fens.py` | ad-hoc FEN sampling |
 | `tools/texel/import_beast.py` | imports externally-evaluated positions (legacy) |
 | `tools/texel/test_datagen.py` | tests for the datagen path |
