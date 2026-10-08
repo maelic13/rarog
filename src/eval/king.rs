@@ -16,19 +16,21 @@ use crate::infra;
 /// new magnitude read.
 pub(super) const KS_INDEX_CAP: i32 = 1600;
 
-/// The largest map scale the evaluation applies, in hundredths of a
-/// centipawn; a loaded parameter vector above it is clamped.
-pub(super) const KS_MAP_SCALE_MAX: i32 = 400;
+/// The largest map scale the evaluation applies (and the tuner's bound), in
+/// hundredths of a centipawn: three times the seed. A loaded parameter
+/// vector above it is clamped.
+pub const KS_MAP_SCALE_MAX: i32 = 150;
 
 /// The index must exceed this before the map applies.
 const KS_MAP_THRESHOLD: i32 = 100;
 
-/// The largest mg penalty the map can produce, which must stay far below the
-/// band the search reads as a decided game.
+/// The largest mg penalty the map can put on one king: 937 cp, the cap at
+/// the largest scale. It must stay under ten pawns, and both kings' together
+/// under an eighth of the band the search reads as a decided game.
 const KS_MAP_MG_MAX: i32 = KS_MAP_SCALE_MAX * (KS_INDEX_CAP * KS_INDEX_CAP / 4096) / 100;
 const _: () = assert!(
-    KS_MAP_MG_MAX * 4 < crate::tt::TB_WIN_SCORE,
-    "the king-danger map can reach the search's decisive band; lower KS_INDEX_CAP"
+    KS_MAP_MG_MAX < 1000 && 2 * KS_MAP_MG_MAX * 8 < crate::tt::TB_WIN_SCORE,
+    "the king-danger map's bound grew; lower KS_INDEX_CAP or KS_MAP_SCALE_MAX"
 );
 
 /// One king's danger inputs, in the counts the index weighs.
@@ -159,6 +161,7 @@ impl Evaluator {
             + p.kd_unsafe_check[0] * inputs.unsafe_checks
             + p.kd_blockers[0] * inputs.blockers
             + p.kd_king_attacks[0] * attackers.king_attacks
+            // Truncates toward zero: under one index unit from an exact sum.
             + p.kd_mobility[0] * mobility_lead_mg / 100
             + p.kd_constant[0];
         for (piece, &checks) in inputs.safe_checks.iter().enumerate() {
@@ -426,5 +429,46 @@ mod tests {
         let (mg, eg) = ev.king_danger_penalty(KS_INDEX_CAP);
         assert_eq!(mg, KS_MAP_MG_MAX);
         assert!(eg < mg);
+    }
+
+    /// The index sums its inputs at their weights, takes the multiple-check
+    /// weight from two safe checks of a type, and applies both reductions;
+    /// the fixture compares counts only, so this pins the arithmetic.
+    #[test]
+    fn the_index_weighs_each_input() {
+        let ev = Evaluator::default();
+        let p = &ev.params;
+        let inputs = KingDangerInputs {
+            attackers: RingAttackers {
+                pawn_attacks: 1,
+                pieces: [1, 0, 2, 1],
+                king_attacks: 3,
+            },
+            weak_ring: 2,
+            unsafe_checks: 1,
+            blockers: 1,
+            safe_checks: [0, 1, 2, 0],
+            ring_size: 9,
+        };
+        let count = 1 + 1 + 2 + 1;
+        let weight =
+            p.kd_attacker_weight[0] + 2 * p.kd_attacker_weight[2] + p.kd_attacker_weight[3];
+        let expected = count * weight
+            + 2 * p.kd_weak_ring[0]
+            + p.kd_unsafe_check[0]
+            + p.kd_blockers[0]
+            + 3 * p.kd_king_attacks[0]
+            + p.kd_mobility[0] * 150 / 100
+            + p.kd_constant[0]
+            + p.kd_safe_check[2]
+            + p.kd_safe_check[5]
+            - p.kd_no_queen[0]
+            - p.kd_knight_defender[0];
+        assert_eq!(ev.king_danger_index(&inputs, true, true, 150), expected);
+        let without_reductions = expected + p.kd_no_queen[0] + p.kd_knight_defender[0];
+        assert_eq!(
+            ev.king_danger_index(&inputs, false, false, 150),
+            without_reductions
+        );
     }
 }

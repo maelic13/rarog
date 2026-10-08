@@ -39,6 +39,7 @@ use trace::{tr_eg, tr_mg};
 // Read only by the search's test that ties it to `MAX_PLY`.
 #[cfg_attr(not(test), expect(unused_imports))]
 pub(crate) use endgame::MOPUP_ASSUMED_MAX_PLY;
+pub use king::KS_MAP_SCALE_MAX;
 pub use params::{EVAL_PARAM_NAMES, EvalParams};
 #[cfg(feature = "texel")]
 pub use trace::{EvalCounts, EvalTrace, linear_delta_scale};
