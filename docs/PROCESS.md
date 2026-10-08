@@ -469,15 +469,19 @@ PLAN Phase C's cluster shape carries them for Phase C):
    and the correction-residual counters (`analysis/artifacts/c03-lazy/lazy_tree.py`'s
    method). `bench 13` under-reads it (3.2% against 8.1%).
 3. **Gate 1.** SPRT `[0,3]` at `3+0.03`, search unchanged.
-4. **Margin block**, only when gate 1 fails. A passing gate 1 accepts the
-   unit with the head's margins, which C.10's joint tune refits; a step-1
-   or step-2 flag is recorded with the result as a diagnostic and sends
-   nothing to the block by itself (maintainer decision 2026-10-08: the
-   block exists so that a search fitted to the previous evaluation does
-   not reject a better one, and a passing gate 1 has already excluded
-   that; RAR-E24 ran it on a flag after gate 1 passed, about 12.5 hours
-   of games with gate 2, and its attribution read measures what it
-   added). The block is one
+4. **Margin block**, when gate 1 fails or step 1 or 2 flagged the
+   candidate; a flag means gate 1 cannot accept alone and gate 2 decides.
+   When gate 1 passes and nothing flagged, the agent asks the maintainer
+   before handing anything else over: the block may still run when compute
+   is free (a night with nothing queued), and is otherwise skipped, the
+   unit landing on gate 1 with the head's margins until C.10. An optional
+   block's registration states how its margins are accepted: gate 2
+   against the head cannot separate them from the unit's own gain, a read
+   of the tuned against the untuned margins can (maintainer decision
+   2026-10-08, after RAR-E24's block measured +19.3 ± 9.3 Elo over the
+   untuned margins on a flagged unit that had already passed gate 1; it
+   withdraws the same day's rule that ran the block only on a gate-1
+   failure). The block is one
    rule-7c SPSA block (2,000 iterations × 30 games) over the fixed surface
    below, evaluation weights fixed, seeds the head's values, registered
    before the first game. The surface is the same for every unit so that
