@@ -899,6 +899,14 @@ loss).
       but once after the games, and only if a gate fails, as a diagnosis
       that changes nothing (`fit_complete.ps1 -DeferFrozenTest`, `0a2ed72`,
       which also takes the branch baseline as `-BaselineFingerprint`).
+      **Pre-game reads, 2026-10-08 (RAR-E25 holds the numbers):** the fit
+      converged (candidate `f68bd31`, bench 14,270,302 / EBF 2.563); the
+      king family's donor residual +0.538% → +0.086% (no stop); magnitude
+      no flag; the tree read flags (+5.2%), so the `c3margin` block runs
+      after gate 1; the won-ending read breached KBP-K's DTZ-progress floor
+      with conversion and win preservation unchanged, waived by the
+      maintainer with C.5.6 as owner. The pooled NPS read waits for an
+      idle host; gate 1 is handed over after it.
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
@@ -975,7 +983,7 @@ loss).
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
-    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.**
+    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
     - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
