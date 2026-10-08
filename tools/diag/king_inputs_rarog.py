@@ -1,12 +1,14 @@
 """Rarog's king-danger inputs recomputed from the FEN (RAR-E21, part b).
 
 `eval_king_safety` adds its weighted inputs into one integer danger index and
-reads a 40-entry table with it. Three inputs (`ks_weak_ring`, `ks_flank_attack`,
-`ks_shelter_storm`) have weight 0, so the engine's trace never shows how often
-they fire or how far one unit of weight would move the index. This script
-rebuilds the zone, the attack maps and every input with python-chess, exactly as
-`src/eval/king.rs` defines them, and reports their activation, their covariance with
-the attacker-unit sum, and the index movement at weight 1.
+reads a 40-entry table with it. An input at weight 0 never shows in the
+engine's trace, so the trace cannot say how often it fires or how far one unit
+of weight would move the index. This script rebuilds the zone, the attack maps
+and every input with python-chess, exactly as `src/eval/king.rs` defines them,
+weights them with the engine's own weights (read from `src/eval/params.rs`, so
+the tool follows every refit), and reports each input's activation, its
+covariance with the attacker-unit sum, and the index movement from one more
+unit of its weight.
 
 It is validated before use against the tuner's own trace on the same rows:
 the share of rows whose two kings read different table buckets, and the row
@@ -21,20 +23,45 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 
 import chess
 
-# `king_safety_table` and the active danger weights at the frozen head
-# (src/eval/params.rs; RAR-E12's fit).
-TABLE = [84, 84, 98, 98, 112, 112, 153, 153, 153, 218, 248, 253, 253, 253, 253, 254, 254, 256,
-         256, 256, 256, 256, 256, 315, 315, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374, 374,
-         374, 374, 440, 515]
-UNIT = {chess.KNIGHT: 2, chess.BISHOP: 2, chess.ROOK: 2, chess.QUEEN: 5}
-SAFE_CHECK = {chess.KNIGHT: 8, chess.BISHOP: 8, chess.ROOK: 8, chess.QUEEN: 16}
-PAWNLESS_FLANK = 17
-QUEEN_RELIEF = 2
+PARAMS_RS = Path(__file__).resolve().parents[2] / "src" / "eval" / "params.rs"
+FIELD = re.compile(r"^[ \t]*(\w+):\s*(\d+)\s*=\s*\[([^\]]*)\];", re.MULTILINE)
+
+
+def load_weights(text: str) -> dict[str, list[int]]:
+    """Every `name: N = [..];` weight in the text of `src/eval/params.rs`."""
+    weights = {}
+    for name, length, body in FIELD.findall(text):
+        values = [int(v) for v in body.split(",") if v.strip()]
+        if len(values) != int(length):
+            raise ValueError(f"{name}: declared {length} values, read {len(values)}")
+        weights[name] = values
+    return weights
+
+
+def scalar(weights: dict[str, list[int]], name: str) -> int:
+    (value,) = weights[name]
+    return value
+
+
+_W = load_weights(PARAMS_RS.read_text(encoding="utf-8"))
+TABLE = _W["king_safety_table"]
+TOP = len(TABLE) - 1
+UNIT = {chess.KNIGHT: scalar(_W, "king_safety_unit_minor"), chess.BISHOP: scalar(_W, "king_safety_unit_minor"),
+        chess.ROOK: scalar(_W, "king_safety_unit_rook"), chess.QUEEN: scalar(_W, "king_safety_unit_queen")}
+SAFE_CHECK = {chess.KNIGHT: scalar(_W, "ks_safe_check_knight"), chess.BISHOP: scalar(_W, "ks_safe_check_bishop"),
+              chess.ROOK: scalar(_W, "ks_safe_check_rook"), chess.QUEEN: scalar(_W, "ks_safe_check_queen")}
+PAWNLESS_FLANK = scalar(_W, "ks_pawnless_flank")
+QUEEN_RELIEF = scalar(_W, "ks_queen_relief")
+WEAK_RING = scalar(_W, "ks_weak_ring")
+FLANK_ATTACK = scalar(_W, "ks_flank_attack")
+SHELTER_STORM = scalar(_W, "ks_shelter_storm")
 PHASE_W = {chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4}
 TOTAL_PHASE = 24
 
@@ -146,8 +173,9 @@ def king_inputs(board: chess.Board) -> tuple[int, dict[bool, dict[str, int]]]:
             if rel >= 3:
                 deficit += rel - 2
 
-        danger = units + checks + pawnless - relief
-        bucket = min(max(danger, 0), len(TABLE) - 1)
+        danger = (units + WEAK_RING * weak + checks + FLANK_ATTACK * flank + pawnless - relief
+                  + SHELTER_STORM * deficit)
+        bucket = min(max(danger, 0), TOP)
         out[color] = {
             "units": units, "checks": checks, "pawnless": pawnless, "relief": relief,
             "danger": danger, "bucket": bucket, "weak": weak, "flank": flank, "deficit": deficit,
@@ -194,16 +222,19 @@ def summarise(rows: list[list[str]]) -> dict:
     rise = {}
     for f in ("weak", "flank", "deficit"):
         count = kings[f]
-        clamped_now = np.minimum(np.maximum(kings["danger"], 0), 39)
-        clamped_w1 = np.minimum(np.maximum(kings["danger"] + count, 0), 39)
+        # The index already carries each input at its current weight; one more
+        # unit of weight adds the input's count once more.
+        clamped_now = np.minimum(np.maximum(kings["danger"], 0), TOP)
+        clamped_more = np.minimum(np.maximum(kings["danger"] + count, 0), TOP)
         rise[f] = {
+            "current_weight": {"weak": WEAK_RING, "flank": FLANK_ATTACK, "deficit": SHELTER_STORM}[f],
             "share_active_all_kings": float(np.mean(count > 0)),
             "share_active_attacked_kings": float(np.mean(count[attacked] > 0)),
             "mean_count_all_kings": float(np.mean(count)),
             "mean_count_attacked_kings": float(np.mean(count[attacked])),
             "p90_count_attacked_kings": float(np.percentile(count[attacked], 90)),
-            "mean_bucket_rise_at_w1_attacked_kings": float(np.mean((clamped_w1 - clamped_now)[attacked])),
-            "share_reaching_top_bucket_at_w1_attacked_kings": float(np.mean(clamped_w1[attacked] >= 39)),
+            "mean_bucket_rise_one_more_unit_attacked_kings": float(np.mean((clamped_more - clamped_now)[attacked])),
+            "share_reaching_top_bucket_one_more_unit_attacked_kings": float(np.mean(clamped_more[attacked] >= TOP)),
             "corr_with_units_all_kings": float(np.corrcoef(count, kings["units"])[0, 1]),
             "corr_with_units_attacked_kings": float(np.corrcoef(count[attacked], kings["units"][attacked])[0, 1]),
             "corr_with_danger_attacked_kings": float(np.corrcoef(count[attacked], kings["danger"][attacked])[0, 1]),
@@ -220,7 +251,7 @@ def summarise(rows: list[list[str]]) -> dict:
         "share_kings_with_units": float(np.mean(attacked)),
         "mean_units_attacked_kings": float(np.mean(kings["units"][attacked])),
         "mean_checks_attacked_kings": float(np.mean(kings["checks"][attacked])),
-        "share_kings_in_top_bucket": float(np.mean(np.concatenate([wb, bb]) >= 39)),
+        "share_kings_in_top_bucket": float(np.mean(np.concatenate([wb, bb]) >= TOP)),
         "bucket_histogram_kings": [int(x) for x in hist],
         "inputs": rise,
     }
