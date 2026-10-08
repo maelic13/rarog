@@ -293,9 +293,8 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
-| C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
-| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
+| C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff, on branch `c3-king` after C.3.1; the pawn-cache entry grows by 12 bytes; restores the pawnless flank outside the index and adds the shelter feedback to it |
+| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner only; the coordinates are renamed (C.3.1), the steps, bounds, v3 manifest and masks remain |
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3; C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
 | C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
@@ -785,13 +784,42 @@ loss).
   the leaf to `RESEARCH` before any game) are in the card. Depends on
   C.1 (the producer) and C.2 (the corpus and the fits describing the
   played function).
-    - **C.3.1 King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — `I2`.** Semantics,
+    - **C.3.1 King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — `I2`, DONE 2026-10-08.** Semantics,
       invariants and tests in the card's handoff; the blockers are the one
-      input the pooled NPS read may drop.
+      input the pooled NPS read may drop. **Done on branch `c3-king`
+      (`51038b0` engine, `9860993` tuner; `dev` keeps the accepted head and
+      its fingerprint until the unit's gate):** the fixture
+      (`tests/data/king-danger-9587eeeb-plain.tsv`, `7e5bddc`: the donor's
+      components on 500 positions from a plain-maps build of `9587eeeb`,
+      `tools/diag/patches/sf9587_plain_maps.patch`) is reproduced exactly,
+      and the test is live under mutation. Departures from the card, each an
+      implementation fact: the map's two scales are integer coordinates in
+      hundredths (seed 49) fitted by the re-evaluation pass with the output
+      traced as frozen, because an integer linear coefficient cannot carry
+      the 100/206 scale at a useful resolution (C.3.3's title amended); the
+      blockers are the donor's (either colour, the other enemy sliders on
+      the king's lines lifted first), not only our pinned pieces, which a
+      board pin set would not have given; the mobility lead enters per
+      100 cp (`kd_mobility`, seed 206); the pawnless flank is absent until
+      C.3.2 puts it outside the index, and the shelter feedback arrives with
+      C.3.2's shelter. `bench 13` 11,353,161 / EBF 2.527 (unfitted seeds, not
+      a fingerprint). Two effects recorded for C.3.4: at its seeds the term
+      costs a won KRP-KR 144 cp (260 → 116 on `1R6/1P6/8/8/8/7k/r7/6K1 w`;
+      `krpkr_never_zeroes_a_won_position` now tests the scaling it is about,
+      `e6c07b4`), the eg half of the map in rook endings being the refit's
+      to set; and RAR-E21's instruments for the old index are retired
+      (`9b238c1`). The pooled NPS read waits for C.3.2, which adds the
+      shelter cost.
     - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`.** The
       entry grows by the king square, the castling rights and the shelter
-      score per side (12 bytes) and stays `Copy`.
-    - **C.3.3 Tuner: the nonlinear pass over the index coordinates in index units, the map scales and shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.**
+      score per side (12 bytes) and stays `Copy`. It also adds the shelter
+      feedback to C.3.1's index (`−6·shelter_mg/8` in index units).
+    - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.** C.3.1
+      renamed the pass's coordinates (`kd_*`, `ks_map_*`) and re-keyed the
+      king-attack bucket on the trace's `king_danger` flag; C.3.3 sets the
+      steps (64 halving to 4), the bounds, a v3 fit manifest and
+      `tools/texel/fit_manifest.py`'s selector list (v2 refuses the changed
+      parameter set).
     - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
       registration copies the card's prediction before the static screens
       are read.
