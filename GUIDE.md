@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.3.4** (`V`): Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover.
+**Now: C.3.5** (`V`): Margin block, gate 2, the `10+0.1` read, the ledger row.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -31,8 +31,8 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.3.1** King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — DONE 2026-10-08
     - [x] **C.3.2** Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — DONE 2026-10-08
     - [x] **C.3.3** Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — DONE 2026-10-08
-    - [ ] **C.3.4** Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — **READY_FOR_IMPLEMENTATION / V**
-    - [ ] **C.3.5** Margin block, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
+    - [x] **C.3.4** Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — DONE 2026-10-08
+    - [ ] **C.3.5** Margin block, gate 2, the `10+0.1` read, the ledger row — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **C.3.6** Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — **RESEARCH / V**
 - [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **RESEARCH / I2**
 - [ ] **C.5** Endgame handling and winnability cluster — **R3**
@@ -104,7 +104,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
 | Evaluation–search coupling | Feeding the frozen search the full fitted evaluation above the lazy gate costs **−104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal nodes** (RAR-E19, RAR-E20, 2026-10-05/06), though that function predicts outcomes better statically: the cost is per node, in a search fitted to the played function. Every evaluation unit goes through PROCESS's *Evaluation change under a fitted search*: static screens, tree read, gate 1, a margin block over the fixed 28-coordinate surface (`LazyMargin` added by the C.0 audit) when gate 1 fails or a screen flagged, gate 2 (accepts), a `10+0.1` read (maintainer decision 2026-10-06). When gate 1 passes with no flag, the agent asks the maintainer whether a free night makes the block worth running anyway (2026-10-08, after RAR-E24's block measured +19.3 ± 9.3 Elo) |
-| Active experiment | **RAR-E25** (C.3's king-safety unit), registered 2026-10-08 before its fit; the fit and the pre-game reads are agent-run, then gate 1 is handed over. Last closed: RAR-E24 (C.2's baseline refit on `hce-v4-tb`), closed 2026-10-08: gate 1 H1 +31.0 ± 8.5 Elo, the flagged tree read sent it to the `c2margin` block, gate 2 H1 +35.9 ± 9.3, `10+0.1` +39.1 ± 12.9, the tuned margins +19.3 ± 9.3 over the untuned ones; landed in `1abeb46` |
+| Active experiment | **RAR-E25** (C.3's king-safety unit), registered 2026-10-08: gate 1 H1 +34.2 ± 8.9 Elo (2,224 games); the tree read flagged (+5.2%), so the `c3margin` block runs next and gate 2 decides. Last closed: RAR-E24 (C.2's baseline refit on `hce-v4-tb`), closed 2026-10-08: gate 1 H1 +31.0 ± 8.5 Elo, the flagged tree read sent it to the `c2margin` block, gate 2 H1 +35.9 ± 9.3, `10+0.1` +39.1 ± 12.9, the tuned margins +19.3 ± 9.3 over the untuned ones; landed in `1abeb46` |
 
 ## Holds and obligations
 

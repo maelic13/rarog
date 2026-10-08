@@ -293,8 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.4 | READY_FOR_IMPLEMENTATION | V | Registered as RAR-E25 (2026-10-08, before the fit); the agent runs the fit, the screens, the won-ending, tree and NPS reads, then hands over gate 1; the frozen test is deferred to after the games |
-| C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
+| C.3.5 | READY_FOR_IMPLEMENTATION | V | RAR-E25's frozen order: the tree read flagged, so the `c3margin` block runs (command dry-run 2026-10-08), then gate 2 decides; the `10+0.1` read of an accepted unit; the frozen test only if a gate fails; then the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
@@ -880,7 +879,7 @@ loss).
       64 and moved 22 of 23 coordinates (a check of the path, not of the
       fit). For C.3.4: `fit_complete.ps1` keeps 40 coordinate epochs; an
       unconverged pass is reported before the static screens.
-    - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
+    - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-08.** The
       registration copies the card's prediction before the static screens
       are read. Added by C.3.1's review, before exposure: a won-ending read
       on the fitted candidate (`tools/diag/endgame_floors.py` and
@@ -905,8 +904,10 @@ loss).
       no flag; the tree read flags (+5.2%), so the `c3margin` block runs
       after gate 1; the won-ending read breached KBP-K's DTZ-progress floor
       with conversion and win preservation unchanged, waived by the
-      maintainer with C.5.6 as owner. The pooled NPS read waits for an
-      idle host; gate 1 is handed over after it.
+      maintainer with C.5.6 as owner. The pooled NPS read: candidate
+      +4.76% (inside the budget). **Gate 1 H1, +34.2 ± 8.9 Elo** (2,224
+      games); by the tree read's flag the `c3margin` block runs next and
+      gate 2 decides (C.3.5).
     - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
