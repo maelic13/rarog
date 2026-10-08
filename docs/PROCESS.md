@@ -469,7 +469,15 @@ PLAN Phase C's cluster shape carries them for Phase C):
    and the correction-residual counters (`analysis/artifacts/c03-lazy/lazy_tree.py`'s
    method). `bench 13` under-reads it (3.2% against 8.1%).
 3. **Gate 1.** SPRT `[0,3]` at `3+0.03`, search unchanged.
-4. **Margin block**, when gate 1 fails or step 2 flagged the candidate: one
+4. **Margin block**, only when gate 1 fails. A passing gate 1 accepts the
+   unit with the head's margins, which C.10's joint tune refits; a step-1
+   or step-2 flag is recorded with the result as a diagnostic and sends
+   nothing to the block by itself (maintainer decision 2026-10-08: the
+   block exists so that a search fitted to the previous evaluation does
+   not reject a better one, and a passing gate 1 has already excluded
+   that; RAR-E24 ran it on a flag after gate 1 passed, about 12.5 hours
+   of games with gate 2, and its attribution read measures what it
+   added). The block is one
    rule-7c SPSA block (2,000 iterations × 30 games) over the fixed surface
    below, evaluation weights fixed, seeds the head's values, registered
    before the first game. The surface is the same for every unit so that

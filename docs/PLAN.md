@@ -298,7 +298,7 @@ they open.
 | C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
 | C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
 | C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3 and C.2's corpus |
-| C.3.5 | RESEARCH | V | After gate 1 or a flagged tree read |
+| C.3.5 | RESEARCH | V | The block and gate 2 only after gate 1 fails (a flag alone no longer triggers them, 2026-10-08); otherwise the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
@@ -448,8 +448,9 @@ existing toolchain, frozen test reported once; (6) a fixed-depth tree read on ga
 arms, the per-position ratio distribution and the correction-residual
 counters; `bench 13` under-reads tree growth, 3.2% against 8.1% and 22%
 in middlegames), then a PGO bake and **gate 1**, SPRT `[0,3]` at `3+0.03`
-with the search unchanged; when gate 1 fails, or the tree read flagged the
-candidate, the **margin block** (one rule-7c block, PROCESS's surface,
+with the search unchanged, which accepts when it passes (a tree-read or
+magnitude flag is a recorded diagnostic, not a trigger: maintainer
+decision 2026-10-08, PROCESS step 4); when gate 1 fails, the **margin block** (one rule-7c block, PROCESS's surface,
 evaluation weights fixed) and then **gate 2**, the candidate with its
 retuned margins against the head, SPRT `[0,3]`; gate 2 accepts. A unit
 that fails both is a worse function; one that fails gate 1 and passes gate
@@ -751,7 +752,8 @@ loss).
   contract (`KS_INDEX_CAP` 1600 under a const assertion; the
   full-vs-played flag rule: a mean shift toward the sign above 20 cp in
   any band ≤ 600 or 2 points of change in the share above the lazy gate
-  sends the candidate to the margin block before gate 1), the fixture
+  flags the candidate, a recorded diagnostic that since 2026-10-08 no
+  longer sends it to the margin block; the card's amendment), the fixture
   test against the donor's printed components, the frozen prediction
   (gate 1 +4 Elo, 80% band [−8, +15], pass probability 0.35; gate 2
   0.55; depth-12 tree +3% to +12%; NPS within ±1%) and the falsifiers
