@@ -183,12 +183,14 @@ const GAUNTLET: &[&str] = &[
     "slider_on_queen_eg",
 ];
 const KINGSAFETY: &[&str] = &[
-    "shelter_missing_file_mg",
-    "shelter_missing_adjacent_mg",
-    "shelter_dist1_mg",
-    "shelter_dist2_mg",
-    "storm_file_weight",
-    "storm_adjacent_weight",
+    "shelter_strength",
+    "unblocked_storm",
+    "blocked_storm_mg",
+    "blocked_storm_eg",
+    "shelter_constant_mg",
+    "shelter_constant_eg",
+    "pawnless_flank_mg",
+    "pawnless_flank_eg",
 ];
 
 /// Material = mg/eg values for pawn..queen (indices 0..=4; king index 5 has a
@@ -483,17 +485,20 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "space_weight", 0.0, 50.0);
     clamp_field(w, "tempo", 0.0, 50.0);
 
-    // King safety: positive shelter/storm.
+    // King safety: the shelter and storm tables are signed (a pawn can stand
+    // where it shelters less than none); the pawnless flank is a penalty.
     for f in [
-        "shelter_missing_file_mg",
-        "shelter_missing_adjacent_mg",
-        "shelter_dist1_mg",
-        "shelter_dist2_mg",
-        "storm_file_weight",
-        "storm_adjacent_weight",
+        "shelter_strength",
+        "unblocked_storm",
+        "blocked_storm_mg",
+        "blocked_storm_eg",
+        "shelter_constant_mg",
+        "shelter_constant_eg",
     ] {
-        clamp_field(w, f, 0.0, 100.0);
+        clamp_field(w, f, -300.0, 300.0);
     }
+    clamp_field(w, "pawnless_flank_mg", 0.0, 200.0);
+    clamp_field(w, "pawnless_flank_eg", 0.0, 200.0);
     // King-danger index coordinates (the re-evaluation path), in index units.
     // Each is a danger contribution or, for the reductions, a magnitude, so
     // every one is non-negative except the constant; the index is capped
@@ -509,6 +514,7 @@ fn clamp_weights(w: &mut [f64]) {
         "kd_mobility",
         "kd_no_queen",
         "kd_knight_defender",
+        "kd_shelter",
     ] {
         clamp_field(w, f, 0.0, 4000.0);
     }
@@ -1607,6 +1613,7 @@ const KS_DANGER_INPUTS: &[&str] = &[
     "kd_no_queen",
     "kd_knight_defender",
     "kd_constant",
+    "kd_shelter",
     "ks_map_mg",
     "ks_map_eg",
 ];
