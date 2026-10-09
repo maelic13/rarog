@@ -440,7 +440,10 @@ It first publishes or hash-verifies the qualified 2,300,000 / 127,778 /
 127,778 corpus. It then fixes validation-calibrated K and runs 40-epoch
 nonlinear king safety on 200k positions, 200-epoch complete sparse linear Adam
 (`lr=0.3`, L2-to-stage-prior `1e-7`), a second nonlinear pass and a 60-epoch
-linear polish. The schedule opens the frozen test only at the end. All logs,
+linear polish. The schedule opens the frozen test only at the end; a later
+fit on the same corpus defers it to its registration, which reads it after
+the games if it needs it (`-DeferFrozenTest`, the handbook's *A dataset fitted
+more than once*; maintainer decision 2026-10-08). All logs,
 vectors, settings, hashes, support/cohort reports, source patch and candidate
 binary are retained under `tools/results/hce-fit-<timestamp>/`; source and the
 normal release binary are restored. Review those artifacts before applying a
@@ -575,8 +578,12 @@ small verified commits, engine and documentation apart.
 
 1. Before the PR, merge `master` into the branch if `master` moved, so the PR
    shows only the branch's own change; resolve conflicts there.
-2. The PR's title and description become the squash commit's message: what
-   the work is, its gate result when it has one, and `Bench: <n>`, the
+2. The PR's title and description become the squash commit's message,
+   written as Stockfish and the Linux kernel write theirs: a short
+   imperative title saying what changed ("Rebuild king safety"), with no
+   result and no phase, leaf or ledger reference; a few plain lines on what
+   and why, wrapped at 72 columns; the test results, one line each
+   (`STC 3+0.03: +32.7 ± 8.9 Elo (2,450 games)`); then `Bench: <n>`, the
    `bench 13` count `master` will have. A PR runs `CI` and `Release`; the
    maintainer squash-merges it once both are green.
 3. After the merge the branch is deleted. Live documents that cite the

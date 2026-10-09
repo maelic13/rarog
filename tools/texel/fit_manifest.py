@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Write the HCE fitting manifest: every evaluation coefficient with its status.
 
-  free      receives gradient in the linear stage (`--tune complete`); the
-            king-danger table's entries are free and are also co-fitted by
-            the coordinate stage with the selectors that index them
-  excluded  outside the linear model: the king-danger selectors, fitted by
-            the coordinate stage (`--tune-kingsafety`) and carried as a
-            fixed residual per row in the linear stage
+  free      receives gradient in the linear stage (`--tune complete`)
+  excluded  outside the linear model: the king-danger index coordinates and
+            the map's two scales, fitted by the coordinate stage
+            (`--tune-kingsafety`); the linear stage carries the map's output
+            as a fixed residual per row
   fixed     never fitted: an algebraic gauge, an invariant, or a slot the
             evaluation cannot activate
 
@@ -18,7 +17,7 @@ report: it must be listed there with zero activations, or the script fails.
 exactly once.
 
   python tools/texel/fit_manifest.py --defaults <vector.txt> \\
-      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v2.tsv
+      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v3.tsv
 """
 from __future__ import annotations
 
@@ -28,21 +27,22 @@ import sys
 
 SCHEMA = "rarog-hce-fit-manifest-v1"
 
-# The danger-index selectors (the tuner's KS_DANGER_INPUTS): a perturbation
-# moves the table bucket, not a coefficient.
-DANGER_SELECTORS = [
-    "king_safety_unit_minor",
-    "king_safety_unit_rook",
-    "king_safety_unit_queen",
-    "ks_weak_ring",
-    "ks_safe_check_knight",
-    "ks_safe_check_bishop",
-    "ks_safe_check_rook",
-    "ks_safe_check_queen",
-    "ks_flank_attack",
-    "ks_pawnless_flank",
-    "ks_shelter_storm",
-    "ks_queen_relief",
+# The king-danger coordinates (the tuner's KS_FIELDS): the index reaches the
+# score only through the capped quadratic map, so none is a coefficient.
+KING_COORDINATES = [
+    "kd_attacker_weight",
+    "kd_safe_check",
+    "kd_weak_ring",
+    "kd_unsafe_check",
+    "kd_blockers",
+    "kd_king_attacks",
+    "kd_mobility",
+    "kd_no_queen",
+    "kd_knight_defender",
+    "kd_constant",
+    "kd_shelter",
+    "ks_map_mg",
+    "ks_map_eg",
 ]
 
 
@@ -79,13 +79,20 @@ def load_zero_slots(path: str) -> set[tuple[str, int]]:
 
 def classify(field: str, idx: int) -> tuple[str, str, str, bool]:
     """(status, instrument, reason, must_be_inactive) for one coefficient."""
-    if field in DANGER_SELECTORS:
+    if field in KING_COORDINATES:
         return ("excluded", "coordinate",
-                "king-danger selector: moves the table bucket, not a coefficient", False)
-    if field == "king_safety_table":
-        return ("free", "linear",
-                "king-danger table: linear once the bucket is chosen; also co-fitted "
-                "by the coordinate stage with the selectors", False)
+                "king-danger coordinate: reaches the score only through the capped map", False)
+    if field == "shelter_constant_mg":
+        return ("fixed", "none",
+                "shelter constant: both kings carry it, so it cancels in the score; in the "
+                "index it shifts every king's feedback alike, as kd_constant does", True)
+    if field == "shelter_constant_eg":
+        return ("fixed", "none",
+                "shelter constant: both kings carry it, so it cancels in the score", True)
+    if field in ("blocked_storm_mg", "blocked_storm_eg") and idx in (0, 1):
+        return ("fixed", "none",
+                "blocked storm on relative rank 1 or 2: their pawn stands just ahead "
+                "of ours, which is on rank 2 or higher", True)
     if field in ("pst_mg", "pst_eg") and idx % 64 == 0 and idx // 64 < 5:
         return ("fixed", "none",
                 "material/PST gauge anchor: a piece value plus C with its 64 squares "
@@ -122,7 +129,7 @@ def main() -> int:
     if not zero:
         sys.exit(f"{args.feature_support}: no zero-activation slots parsed")
     names = {name for name, _ in fields}
-    for name in DANGER_SELECTORS + ["king_safety_table"]:
+    for name in KING_COORDINATES:
         if name not in names:
             sys.exit(f"{name} is not in {args.defaults}")
 

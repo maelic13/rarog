@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's current HCE inside Stockfish's search by **+181.7 ± 19.0 Elo at equal nodes** (150,000 a move), Phase C's meter baseline, and by +266.3 ± 19.9 at equal time (`3+0.03`), measured 2026-10-05. RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **12,351,448 / EBF 2.544**: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **13,187,295 / EBF 2.546**: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -293,11 +293,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.1 | READY_FOR_IMPLEMENTATION | I2 | Handoff frozen by C.0.4 (`analysis/c04_king_unit_2026-10-06.md`); after C.1 (done 2026-10-06; the producer is `src/eval/attacks.rs`) |
-| C.3.2 | READY_FOR_IMPLEMENTATION | I2 | Same handoff; the pawn-cache entry grows by 12 bytes |
-| C.3.3 | READY_FOR_IMPLEMENTATION | I1 | Tuner changes the handoff names; no engine code |
-| C.3.4 | READY_FOR_IMPLEMENTATION | V | Protocol frozen (cluster shape; the card's prediction); after C.3.1–C.3.3; C.2 closed 2026-10-08, so the fit starts from RAR-E24's baseline (`1abeb46`, 12,351,448) |
-| C.3.5 | RESEARCH | V | The block and gate 2 after gate 1 fails or a flag fired; gate 1 passed with no flag: ask the maintainer whether the block runs anyway (2026-10-08); then the `10+0.1` read and the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
@@ -414,8 +409,10 @@ revision it builds from); the measured binary
 fingerprint **11,171,726 / EBF 2.512**. C.11's same-search deficit and every
 C gate measure against this head or its accepted successors. Accepted
 successor: RAR-E24 (C.2, 2026-10-08, `1abeb46`), the refitted evaluation with
-the margin block's 28 coordinates, **12,351,448 / EBF 2.544**; the search
-code is unchanged.
+the margin block's 28 coordinates, **12,351,448 / EBF 2.544**; then RAR-E25
+(C.3, 2026-10-09, `dcef971`), the king-safety unit with the `c3margin`
+block's 28 coordinates, **13,187,295 / EBF 2.546**; the search code is
+unchanged.
 
 **Speed, a secondary requirement (maintainer decision 2026-10-03).**
 Strength is primary and stays so; the gates are equal-time, so a family that
@@ -785,17 +782,140 @@ loss).
   the leaf to `RESEARCH` before any game) are in the card. Depends on
   C.1 (the producer) and C.2 (the corpus and the fits describing the
   played function).
-    - **C.3.1 King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — `I2`.** Semantics,
+    - **C.3.1 King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — `I2`, DONE 2026-10-08.** Semantics,
       invariants and tests in the card's handoff; the blockers are the one
-      input the pooled NPS read may drop.
-    - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`.** The
+      input the pooled NPS read may drop. **Done on branch `c3-king`
+      (`51038b0` engine, `9860993` tuner; `dev` keeps the accepted head and
+      its fingerprint until the unit's gate):** the fixture
+      (`tests/data/king-danger-9587eeeb-plain.tsv`, `7e5bddc`: the donor's
+      components on 500 positions from a plain-maps build of `9587eeeb`,
+      `tools/diag/patches/sf9587_plain_maps.patch`) is reproduced exactly,
+      and the test is live under mutation. Departures from the card, each an
+      implementation fact: the map's two scales are integer coordinates in
+      hundredths (seed 49) fitted by the re-evaluation pass with the output
+      traced as frozen, because an integer linear coefficient cannot carry
+      the 100/206 scale at a useful resolution (C.3.3's title amended); the
+      blockers are the donor's (either colour, the other enemy sliders on
+      the king's lines lifted first), not only our pinned pieces, which a
+      board pin set would not have given; the mobility lead enters per
+      100 cp (`kd_mobility`, seed 206); the pawnless flank is absent until
+      C.3.2 puts it outside the index, and the shelter feedback arrives with
+      C.3.2's shelter. `bench 13` 11,353,161 / EBF 2.527 (unfitted seeds, not
+      a fingerprint). A known defect at the seeds, carried to C.3.4: the
+      term costs a won KRP-KR 144 cp (260 → 116 on
+      `1R6/1P6/8/8/8/7k/r7/6K1 w`), the map's eg half charging a lone king
+      in a rook ending; `krpkr_never_zeroes_a_won_position` now tests the
+      scaling it is about (`e6c07b4`), so nothing guards the evaluation's
+      size there until C.3.4's won-ending read. RAR-E21's index-specific
+      tool is retired (`9b238c1`); the field-generic weight scan was
+      restored. The pooled NPS read waits for C.3.2, which adds the shelter
+      cost. **Review (2026-10-08, Claude Fable 5.1, findings verified before
+      acting):** the map-scale bound is one public constant the tuner reads,
+      lowered from 400 to 150 (3× the seed; 937 cp per king at the cap),
+      with its const assertion stated in cp; an index-arithmetic test added
+      (the fixture compares counts only); the reviewer's concern that the
+      fixture leaves the bishop-behind-queen exclusion and the single-blocker
+      rule unexercised was checked by mutation and refuted (both fail it).
+    - **C.3.2 Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — `I2`, DONE 2026-10-08.** The
       entry grows by the king square, the castling rights and the shelter
-      score per side (12 bytes) and stays `Copy`.
-    - **C.3.3 Tuner: the nonlinear pass over the index coordinates in index units, the map scales and shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`.**
-    - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`.** The
+      score per side (12 bytes) and stays `Copy`. It also adds the shelter
+      feedback to C.3.1's index (`−6·shelter_mg/8` in index units).
+      **Done on `c3-king` (`2ac24d3` engine, `dec991e` tuner; fixture
+      `6499bf8`, `tests/data/king-shelter-9587eeeb.tsv`):** the donor's
+      shelter score and pawnless flag on the 500 fixture positions are
+      reproduced exactly from its own table values; hand tests for the
+      castling square, the file clamp and a blocked storm; the cache test
+      recomputes for a moved king and for changed castling rights (each
+      key's removal fails it); six mutations of the shelter rules each fail
+      a test. Seeds at 100/206; `kd_shelter` 155 per 100 cp. The entry keeps
+      each side's score as an `Option` with its `i32` scores, about 32 bytes
+      over the card's 12; the cache-hit path now reads the entry in place
+      rather than copying it, and `Evaluator::evaluate`'s release assembly
+      holds no `memcpy` call. `bench 13` 12,766,450 / EBF 2.542 (unfitted;
+      this record read 2.544 until C.3.3, a transcription slip: C.3.2's
+      own four builds read 2.542).
+      For C.3.3's manifest: the shelter constant cancels in the linear trace
+      (both kings get it) but moves the index through the feedback, and
+      `blocked_storm` slots 0–1 cannot fire. **Pooled-PGO NPS read**
+      (`analysis/artifacts/c32-nps/`, four builds an arm, two cycles, CPU
+      12–13%, none disturbed): the unfitted unit **−1.67%** (95% −3.28% to
+      −0.06%) against the RAR-E24 head, past the card's ±1% expectation and
+      at its 1.5% budget, unresolved against it, and confounded by the
+      unfitted evaluation's different tree (12.77 M against 12.35 M bench
+      nodes). The budget rule (the blockers go first, then the castling
+      alternatives) is decided on C.3.4's fitted candidate, which gets the
+      same read before its gate.
+    - **C.3.3 Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — `I1`, DONE 2026-10-08.** C.3.1
+      renamed the pass's coordinates (`kd_*`, `ks_map_*`) and re-keyed the
+      king-attack bucket on the trace's `king_danger` flag; C.3.3 sets the
+      steps, the bounds, a v3 fit manifest and
+      `tools/texel/fit_manifest.py`'s selector list (v2 refuses the changed
+      parameter set). The pass still steps 4 → 1 for every coordinate,
+      which cannot move seeds of 148–1,897 index units: the steps go per
+      coordinate, about a sixty-fourth of its range halving to 1 (the card's
+      64 → 4 for the index weights), the map scales (seed 49) 4 → 1.
+      `tools/diag/ks_weight_scan.py` reads one coordinate's loss surface.
+      **Done on `c3-king` (`13c372b` engine, `af36cc7` tuner):** each of
+      the 23 coordinates starts at a sixty-fourth of its range rounded up to
+      a power of two (64 an index weight, 8 an attacker weight, 32 the
+      constant, 4 a map scale) and halves its own step when neither
+      direction improves; the log's last line says whether the pass
+      converged or stopped at the epoch cap. The bounds, unchanged in value,
+      are one table the clamp and the pass read; an initial vector outside
+      them is refused. Manifest v3 (`tools/texel/hce_fit_manifest_v3.tsv`):
+      1,257 coefficients, 1,136 free, 98 fixed, 23 excluded; `blocked_storm`
+      slots 0–1 and both shelter constants fixed, each checked at zero
+      activation; v2 is refused. Feature support on `hce-v4-tb/train.csv`
+      (3.5 M rows, `analysis/artifacts/c33-manifest/`): every
+      `shelter_strength` and `unblocked_storm` slot clears the sparse cut
+      (at least 6,771 and 3,618 activations against 1,750); the pawnless
+      flank fires on 2.6–2.9% of rows. The masks are `tune`-only UCI
+      options held in `src/eval/` and fixed at the first evaluation (the
+      TT and the evaluation cache hold values of the function in force), so
+      no search file changed; each evaluates as its family at zero weight
+      over random playouts, and in the `tune` build `bench 13` reads
+      13,065,458 (`KingDangerMask`) and 10,586,566 (`KingShelterMask`)
+      against 12,766,450 unmasked. Release bench unchanged, 12,766,450 /
+      EBF 2.542. A 20,000-row smoke pass converged in 18 epochs from step
+      64 and moved 22 of 23 coordinates (a check of the path, not of the
+      fit). For C.3.4: `fit_complete.ps1` keeps 40 coordinate epochs; an
+      unconverged pass is reported before the static screens.
+    - **C.3.4 Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-08.** The
       registration copies the card's prediction before the static screens
-      are read.
-    - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
+      are read. Added by C.3.1's review, before exposure: a won-ending read
+      on the fitted candidate (`tools/diag/endgame_floors.py` and
+      `endgame_truth.py` against their baselines, the three KRP-KR positions
+      among them) beside the static screens; a breach is reported and stops
+      the handover until the maintainer decides. The fit itself runs from
+      branch `c3-king`, while `tools/texel/fit_complete.ps1` checks the
+      source baseline against GUIDE's development fingerprint (`dev`'s
+      head), so C.3.4 states how the script is pointed at the branch's
+      baseline before the fit. The pooled-PGO NPS read is repeated on the
+      fitted candidate before the gate, and the card's 1.5% budget rule is
+      applied to it (C.3.2 read −1.67% unfitted, unresolved).
+      **Registered 2026-10-08 as RAR-E25, before the fit.** Maintainer
+      decisions the same day: the agent runs the fit (it takes minutes);
+      `hce-v4-tb`'s frozen test, read by RAR-E24, is not read by the fit
+      but once after the games, and only if a gate fails, as a diagnosis
+      that changes nothing (`fit_complete.ps1 -DeferFrozenTest`, `0a2ed72`,
+      which also takes the branch baseline as `-BaselineFingerprint`).
+      **Pre-game reads, 2026-10-08 (RAR-E25 holds the numbers):** the fit
+      converged (candidate `f68bd31`, bench 14,270,302 / EBF 2.563); the
+      king family's donor residual +0.538% → +0.086% (no stop); magnitude
+      no flag; the tree read flags (+5.2%), so the `c3margin` block runs
+      after gate 1; the won-ending read breached KBP-K's DTZ-progress floor
+      with conversion and win preservation unchanged, waived by the
+      maintainer with C.5.6 as owner. The pooled NPS read: candidate
+      +4.76% (inside the budget). **Gate 1 H1, +34.2 ± 8.9 Elo** (2,224
+      games); by the tree read's flag the `c3margin` block runs next and
+      gate 2 decides (C.3.5).
+    - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-09.** RAR-E25: the
+      `c3margin` block (60,000 games, no coordinate a full step), **gate 2
+      H1 +32.7 ± 8.9 Elo** (2,450 games), `10+0.1` +24.4 ± 12.3 (1,000
+      games), the tuned margins −0.9 ± 9.0 over the untuned ones (2,000
+      games). Accepted with its margins (13,187,295 / EBF 2.546); the
+      frozen test stays unread. Landed in `dcef971` (2026-10-09), reaching
+      `master` with C.3's PR.
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
       match) with the DLL rebuilt from the C.3 head by the `oracle/hybrid`
@@ -871,7 +991,7 @@ loss).
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
-    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.**
+    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
     - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
@@ -916,7 +1036,12 @@ loss).
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
-  by a cycle quietly widening the free set.
+  by a cycle quietly widening the free set. **Data rotation (maintainer
+  direction 2026-10-08):** the corpus rotates with the engine: each
+  regeneration plays from the latest accepted head, whose games label
+  better as it strengthens, and brings its own unread frozen test. Whether
+  a regeneration also happens between units, before C.8, is not yet
+  decided.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.

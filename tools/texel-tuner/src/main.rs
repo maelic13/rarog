@@ -27,7 +27,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread;
 
 use rarog::board::{Board, Color, Piece};
-use rarog::eval::{EVAL_PARAM_NAMES, EvalParams, Evaluator, linear_delta_scale};
+use rarog::eval::{EVAL_PARAM_NAMES, EvalParams, Evaluator, KS_MAP_SCALE_MAX, linear_delta_scale};
 
 // ---------------------------------------------------------------------------
 // Flat-parameter / group helpers
@@ -183,13 +183,14 @@ const GAUNTLET: &[&str] = &[
     "slider_on_queen_eg",
 ];
 const KINGSAFETY: &[&str] = &[
-    "king_safety_table",
-    "shelter_missing_file_mg",
-    "shelter_missing_adjacent_mg",
-    "shelter_dist1_mg",
-    "shelter_dist2_mg",
-    "storm_file_weight",
-    "storm_adjacent_weight",
+    "shelter_strength",
+    "unblocked_storm",
+    "blocked_storm_mg",
+    "blocked_storm_eg",
+    "shelter_constant_mg",
+    "shelter_constant_eg",
+    "pawnless_flank_mg",
+    "pawnless_flank_eg",
 ];
 
 /// Material = mg/eg values for pawn..queen (indices 0..=4; king index 5 has a
@@ -484,41 +485,23 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "space_weight", 0.0, 50.0);
     clamp_field(w, "tempo", 0.0, 50.0);
 
-    // King safety: a non-decreasing danger table, positive shelter/storm.
-    clamp_field(w, "king_safety_table", 0.0, 600.0);
-    let (kst, len) = field_offset("king_safety_table");
-    let _ = kst;
-    enforce_non_decreasing(w, "king_safety_table", 0, len - 1);
+    // King safety: the shelter and storm tables are signed (a pawn can stand
+    // where it shelters less than none); the pawnless flank is a penalty.
     for f in [
-        "shelter_missing_file_mg",
-        "shelter_missing_adjacent_mg",
-        "shelter_dist1_mg",
-        "shelter_dist2_mg",
-        "storm_file_weight",
-        "storm_adjacent_weight",
+        "shelter_strength",
+        "unblocked_storm",
+        "blocked_storm_mg",
+        "blocked_storm_eg",
+        "shelter_constant_mg",
+        "shelter_constant_eg",
     ] {
-        clamp_field(w, f, 0.0, 100.0);
+        clamp_field(w, f, -300.0, 300.0);
     }
-    // Nonlinear danger-index inputs (SPSA/finite-difference path).
-    // All are danger *contributions* (more attack = more danger) or, for
-    // queen_relief, a danger *reduction* stored as a positive magnitude — so
-    // every one is bounded non-negative. The bucket index they feed is clamped
-    // to the table length in eval, so generous upper bounds are safe.
-    for f in [
-        "king_safety_unit_minor",
-        "king_safety_unit_rook",
-        "king_safety_unit_queen",
-        "ks_weak_ring",
-        "ks_safe_check_knight",
-        "ks_safe_check_bishop",
-        "ks_safe_check_rook",
-        "ks_safe_check_queen",
-        "ks_flank_attack",
-        "ks_pawnless_flank",
-        "ks_shelter_storm",
-        "ks_queen_relief",
-    ] {
-        clamp_field(w, f, 0.0, 20.0);
+    clamp_field(w, "pawnless_flank_mg", 0.0, 200.0);
+    clamp_field(w, "pawnless_flank_eg", 0.0, 200.0);
+    // The king-danger pass's coordinates, at its bounds.
+    for &(field, KsBounds { lo, hi }) in KS_FIELDS {
+        clamp_field(w, field, f64::from(lo), f64::from(hi));
     }
 
     // Imbalance coefficients are signed; just bound the magnitude.
@@ -588,13 +571,14 @@ const BUCKET_NAMES: &[&str] = &[
     "ocb",         // one bishop each, opposite colours, no knights
     "rook-ending", // rooks only (no queens, no minors)
     "pawn-ending", // kings + pawns only
-    "king-attack", // king-safety table active (enemy pressure on a king)
+    "king-attack", // king-danger map active (enemy pressure on a king)
     "passer",      // a passed pawn present
     "threat",      // a static threat present
 ];
 
-/// Flat-index ranges of the trace families used for the king-attack / passer /
-/// threat buckets, computed once from `EVAL_PARAM_NAMES`.
+/// Flat-index ranges of the trace families used for the passer and threat
+/// buckets, computed once from `EVAL_PARAM_NAMES`. The king-attack bucket
+/// reads the trace's `king_danger` flag: the map's output is untraced.
 ///
 /// Each family is a LIST of ranges, not one min..max span. The span form was a
 /// silent instrument failure: `passed*` is 13 fields totalling 27 slots but
@@ -603,19 +587,18 @@ const BUCKET_NAMES: &[&str] = &[
 /// threats, king safety, all of it. The bucket then fired whenever any of those
 /// foreign slots was nonzero, which is nearly always: it selected 127,777 of
 /// 127,778 positions and therefore measured nothing at all, while looking like
-/// a working cohort. `threat` (48 slots) and `king_safety_table` (40) happen to
-/// be contiguous, so those two buckets were correct -- which is exactly why the
-/// bug survived: two thirds of the instrument worked.
+/// a working cohort. `threat` (48 slots) and the king-safety table (40, since
+/// replaced) happened to be contiguous, so those two buckets were correct --
+/// which is exactly why the bug survived: two thirds of the instrument worked.
 struct FamilyRanges {
     passer: Vec<(usize, usize)>,
     threat: Vec<(usize, usize)>,
-    ksafe: Vec<(usize, usize)>,
 }
 
 fn family_ranges() -> &'static FamilyRanges {
     static R: OnceLock<FamilyRanges> = OnceLock::new();
     R.get_or_init(|| {
-        let (mut passer, mut threat, mut ksafe) = (Vec::new(), Vec::new(), Vec::new());
+        let (mut passer, mut threat) = (Vec::new(), Vec::new());
         let mut off = 0usize;
         for &(name, len) in EVAL_PARAM_NAMES {
             let end = off + len;
@@ -623,22 +606,17 @@ fn family_ranges() -> &'static FamilyRanges {
                 passer.push((off, end));
             } else if name.starts_with("threat") {
                 threat.push((off, end));
-            } else if name == "king_safety_table" {
-                ksafe.push((off, end));
             }
             off = end;
         }
-        FamilyRanges {
-            passer,
-            threat,
-            ksafe,
-        }
+        FamilyRanges { passer, threat }
     })
 }
 
 /// Bucket-membership bitmask for one position (bit i ⇔ `BUCKET_NAMES[i]`).
-/// `coeffs` is the position's full linear trace (`trace.flat_coeffs()`).
-fn position_buckets(board: &Board, phase: i32, coeffs: &[f64]) -> u32 {
+/// `coeffs` is the position's full linear trace (`trace.flat_coeffs()`);
+/// `king_danger` is the trace's flag that the king-danger map applied.
+fn position_buckets(board: &Board, phase: i32, coeffs: &[f64], king_danger: bool) -> u32 {
     let mut m = 0u32;
     if phase >= 16 {
         m |= 1 << 0;
@@ -695,7 +673,7 @@ fn position_buckets(board: &Board, phase: i32, coeffs: &[f64]) -> u32 {
             .iter()
             .any(|&(s, e)| s < e && coeffs[s..e].iter().any(|&c| c != 0.0))
     };
-    if any_nz(&fr.ksafe) {
+    if king_danger {
         m |= 1 << 7;
     }
     if any_nz(&fr.passer) {
@@ -932,7 +910,7 @@ fn process_line(
             row_values.push(value);
         }
     }
-    let buckets = position_buckets(&board, trace.phase, &coeffs);
+    let buckets = position_buckets(&board, trace.phase, &coeffs, trace.king_danger);
     Some(TuneRow {
         result,
         base_score: base_white as f32,
@@ -1602,39 +1580,80 @@ fn cmd_tune(opts: &TuneOpts) {
 // Nonlinear king-safety fit
 // ---------------------------------------------------------------------------
 
-/// The danger-index inputs that select the (non-linear) safety-table bucket.
-/// They are invisible to the linear trace — a perturbation moves the table
-/// *index*, not a coefficient — so they are fit here by re-evaluating positions
-/// with perturbed weights instead of through the linear gradient.
-const KS_DANGER_INPUTS: &[&str] = &[
-    "king_safety_unit_minor",
-    "king_safety_unit_rook",
-    "king_safety_unit_queen",
-    "ks_weak_ring",
-    "ks_safe_check_knight",
-    "ks_safe_check_bishop",
-    "ks_safe_check_rook",
-    "ks_safe_check_queen",
-    "ks_flank_attack",
-    "ks_pawnless_flank",
-    // Shelter/storm pawn-cover deficit, folded into the danger index.
-    "ks_shelter_storm",
-    "ks_queen_relief",
+/// The inclusive bounds of one king-danger coordinate.
+#[derive(Clone, Copy)]
+struct KsBounds {
+    lo: i32,
+    hi: i32,
+}
+
+const INDEX_WEIGHT: KsBounds = KsBounds { lo: 0, hi: 4000 };
+const ATTACKER_WEIGHT: KsBounds = KsBounds { lo: 0, hi: 400 };
+const INDEX_CONSTANT: KsBounds = KsBounds {
+    lo: -1000,
+    hi: 1000,
+};
+const MAP_SCALE: KsBounds = KsBounds {
+    lo: 0,
+    hi: KS_MAP_SCALE_MAX,
+};
+
+/// The king-danger index coordinates (in index units) and the map's two
+/// scales (in hundredths of a centipawn). The index reaches the score only
+/// through the capped quadratic map, whose output is untraced, so none of
+/// them has a linear coefficient: they are fit here by re-evaluating
+/// positions with perturbed weights. Each input is a danger contribution or,
+/// for the reductions, a magnitude, so all are non-negative but the
+/// constant; the index is capped before the map, so generous upper bounds
+/// are safe. The map scales stop at the evaluation's own clamp.
+const KS_FIELDS: &[(&str, KsBounds)] = &[
+    ("kd_attacker_weight", ATTACKER_WEIGHT),
+    ("kd_safe_check", INDEX_WEIGHT),
+    ("kd_weak_ring", INDEX_WEIGHT),
+    ("kd_unsafe_check", INDEX_WEIGHT),
+    ("kd_blockers", INDEX_WEIGHT),
+    ("kd_king_attacks", INDEX_WEIGHT),
+    ("kd_mobility", INDEX_WEIGHT),
+    ("kd_no_queen", INDEX_WEIGHT),
+    ("kd_knight_defender", INDEX_WEIGHT),
+    ("kd_constant", INDEX_CONSTANT),
+    ("kd_shelter", INDEX_WEIGHT),
+    ("ks_map_mg", MAP_SCALE),
+    ("ks_map_eg", MAP_SCALE),
 ];
 
-/// Active flat indices for the king-safety fit: the 12 danger-index inputs plus
-/// the 40-entry safety table they index into. The table is co-tuned because its
-/// shape only makes sense against the index distribution the inputs produce.
-///
-/// `KS_DANGER_INPUTS` is the authority for the count (12, including
-/// `ks_shelter_storm`).
-fn ks_active_indices() -> Vec<usize> {
-    let mut a = Vec::new();
-    for f in KS_DANGER_INPUTS {
-        push_field(&mut a, f);
+/// One coordinate of the king-danger pass: a flat index, the field and slot
+/// it holds, and its bounds.
+#[derive(Clone, Copy)]
+struct KsCoordinate {
+    index: usize,
+    field: &'static str,
+    slot: usize,
+    bounds: KsBounds,
+}
+
+impl KsCoordinate {
+    /// About a sixty-fourth of the range, rounded up to a power of two so
+    /// that halving reaches 1: 64 for an index weight, 4 for a map scale.
+    fn first_step(self) -> i32 {
+        let range = self.bounds.hi.abs_diff(self.bounds.lo);
+        i32::try_from(range.div_ceil(64).next_power_of_two()).expect("a bounded range")
     }
-    push_field(&mut a, "king_safety_table");
-    a
+}
+
+/// Every slot of every `KS_FIELDS` field, in flat order within each field.
+fn ks_coordinates() -> Vec<KsCoordinate> {
+    let mut out = Vec::new();
+    for &(field, bounds) in KS_FIELDS {
+        let (off, len) = field_offset(field);
+        out.extend((0..len).map(|slot| KsCoordinate {
+            index: off + slot,
+            field,
+            slot,
+            bounds,
+        }));
+    }
+    out
 }
 
 type RawPos = (Board, f32, u32);
@@ -1670,7 +1689,8 @@ fn load_raw_dataset(path: &str, max_positions: usize, base_params: &EvalParams) 
                         };
                         let _ = ev.evaluate(&board);
                         let tr = ev.last_trace();
-                        let mask = position_buckets(&board, tr.phase, &tr.flat_coeffs());
+                        let mask =
+                            position_buckets(&board, tr.phase, &tr.flat_coeffs(), tr.king_danger);
                         out.push((board, r, mask));
                     }
                     out
@@ -2055,25 +2075,22 @@ fn ks_fit_k(boards: &[RawPos], evs: &mut [Evaluator], base: &EvalParams) -> f64 
 }
 
 fn cmd_tune_kingsafety(opts: &TuneOpts) {
-    let active = ks_active_indices();
-    // The manifest excludes exactly the selectors from the linear model; the
-    // table they index is free there and co-fitted here.
-    let mut selectors = Vec::new();
-    for field in KS_DANGER_INPUTS {
-        push_field(&mut selectors, field);
-    }
-    selectors.sort_unstable();
+    let coords = ks_coordinates();
+    let active: Vec<usize> = coords.iter().map(|c| c.index).collect();
+    // The manifest excludes exactly these coordinates from the linear model,
+    // which carries the map's output as a fixed residual per row.
+    let mut excluded = active.clone();
+    excluded.sort_unstable();
     if opts.manifest.is_some()
-        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != selectors
+        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != excluded
     {
-        eprintln!("The manifest's excluded set is not the king-danger selectors.");
+        eprintln!("The manifest's excluded set is not the king-danger coordinates.");
         exit(1);
     }
-    let (_, table_len) = field_offset("king_safety_table");
     println!(
-        "King-safety nonlinear fit: {} active params ({} danger inputs + {table_len}-entry table)",
-        active.len(),
-        KS_DANGER_INPUTS.len(),
+        "King-safety nonlinear fit: {} coordinates in {} fields (index weights and map scales)",
+        coords.len(),
+        KS_FIELDS.len(),
     );
 
     let base_params = opts
@@ -2097,6 +2114,17 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
     println!("K = {}", k_label(k));
 
     let base_w = base_params.to_flat();
+    for c in &coords {
+        let value = base_w[c.index];
+        let KsBounds { lo, hi } = c.bounds;
+        if value < f64::from(lo) || value > f64::from(hi) {
+            eprintln!(
+                "The initial {}[{}] is {value}, outside the pass's bounds [{lo}, {hi}].",
+                c.field, c.slot
+            );
+            exit(1);
+        }
+    }
     let mut w = base_w.clone();
     let mut params = base_params.clone();
 
@@ -2108,39 +2136,42 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
     println!("Initial train  loss = {cur_train:.8}");
     println!("Initial holdout loss = {base_holdout:.8}");
 
-    // Integer coordinate descent with a shrinking step — robust to the table's
-    // step-function nonlinearity and the integer parameter grid. A whole-vector
-    // snapshot is restored between trials because `clamp_weights` re-monotonises
-    // the safety table, which can ripple into neighbouring entries.
-    let mut step = 4.0f64;
+    // Integer coordinate descent on the training loss. Each coordinate's step
+    // starts near a sixty-fourth of its range and halves when neither
+    // direction improves; the pass has converged when an epoch with every
+    // step at 1 moves nothing. A trial moves only its own coordinate, held
+    // inside its bounds.
+    let mut steps: Vec<i32> = coords.iter().map(|c| c.first_step()).collect();
     let mut epoch = 0usize;
-    while step >= 1.0 && epoch < opts.epochs {
+    let mut converged = false;
+    while epoch < opts.epochs {
         epoch += 1;
-        let mut improved = false;
-        for &idx in &active {
-            let snapshot = w.clone();
-            w[idx] = snapshot[idx] + step;
-            clamp_weights(&mut w);
-            params.set_from_flat(&w);
-            let up = ks_mse(&train, &mut evs, &params, k);
-            let up_w = w.clone();
-
-            w.copy_from_slice(&snapshot);
-            w[idx] = snapshot[idx] - step;
-            clamp_weights(&mut w);
-            params.set_from_flat(&w);
-            let dn = ks_mse(&train, &mut evs, &params, k);
-
-            if up < cur_train && up <= dn {
-                w.copy_from_slice(&up_w);
-                cur_train = up;
-                improved = true;
-            } else if dn < cur_train {
-                // w already holds the down candidate
-                cur_train = dn;
-                improved = true;
+        let finest = steps.iter().all(|&s| s == 1);
+        let mut moved = 0usize;
+        for (c, step) in coords.iter().zip(steps.iter_mut()) {
+            let old = w[c.index];
+            let KsBounds { lo, hi } = c.bounds;
+            let up = (old + f64::from(*step)).min(f64::from(hi));
+            let down = (old - f64::from(*step)).max(f64::from(lo));
+            let mut best: Option<(f64, f64)> = None;
+            for value in [up, down] {
+                if value == old {
+                    continue;
+                }
+                w[c.index] = value;
+                params.set_from_flat(&w);
+                let loss = ks_mse(&train, &mut evs, &params, k);
+                if loss < best.map_or(cur_train, |(l, _)| l) {
+                    best = Some((loss, value));
+                }
+            }
+            if let Some((loss, value)) = best {
+                w[c.index] = value;
+                cur_train = loss;
+                moved += 1;
             } else {
-                w.copy_from_slice(&snapshot);
+                w[c.index] = old;
+                *step = (*step / 2).max(1);
             }
         }
         params.set_from_flat(&w);
@@ -2149,10 +2180,22 @@ fn cmd_tune_kingsafety(opts: &TuneOpts) {
             best_holdout = h;
             best_w.copy_from_slice(&w);
         }
-        println!("Epoch {epoch:>3}  step={step:>3}  train={cur_train:.8}  holdout={h:.8}");
-        if !improved {
-            step /= 2.0;
+        let largest = steps.iter().copied().max().unwrap_or(1);
+        println!(
+            "Epoch {epoch:>3}  largest step={largest:>3}  moved={moved:>3}  train={cur_train:.8}  holdout={h:.8}"
+        );
+        if moved == 0 && finest {
+            converged = true;
+            break;
         }
+    }
+    if converged {
+        println!("Coordinate pass converged after {epoch} epochs.");
+    } else {
+        let largest = steps.iter().copied().max().unwrap_or(1);
+        println!(
+            "Coordinate pass stopped at the epoch cap ({epoch}) unconverged; largest step {largest}."
+        );
     }
 
     w.copy_from_slice(&best_w);
@@ -2866,5 +2909,35 @@ fn main() {
             usage(&args[0]);
             exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each king-danger coordinate starts near a sixty-fourth of its range,
+    /// rounded up to a power of two, and every slot of every field is one
+    /// coordinate.
+    #[test]
+    fn the_king_pass_steps_from_a_sixty_fourth_of_each_range() {
+        let coords = ks_coordinates();
+        let first_steps = |field: &str| -> Vec<i32> {
+            coords
+                .iter()
+                .filter(|c| c.field == field)
+                .map(|c| c.first_step())
+                .collect()
+        };
+        assert_eq!(first_steps("kd_safe_check"), vec![64; 8]);
+        assert_eq!(first_steps("kd_attacker_weight"), vec![8; 4]);
+        assert_eq!(first_steps("kd_constant"), vec![32]);
+        assert_eq!(first_steps("ks_map_mg"), vec![4]);
+        assert_eq!(first_steps("ks_map_eg"), vec![4]);
+        let mut indices: Vec<usize> = coords.iter().map(|c| c.index).collect();
+        indices.sort_unstable();
+        indices.dedup();
+        assert_eq!(indices.len(), 23);
+        assert_eq!(coords.len(), 23);
     }
 }

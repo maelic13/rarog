@@ -61,19 +61,19 @@ macro_rules! eval_params {
             pst_eg: 384 = build_default_pst(false);
             // Passers & pawn structure (Phase 4.4 fitted). passed_*/connected per-rank
             // tables; passed bonuses stay monotonic (rank 1/8 pinned 0).
-            passed_mg: 8 = [0, 0, 0, 9, 51, 116, 152, 0];
-            passed_eg: 8 = [0, 0, 0, 21, 60, 106, 121, 0];
-            passed_supported_mg: 1 = [9];
+            passed_mg: 8 = [0, 0, 0, 11, 51, 111, 152, 0];
+            passed_eg: 8 = [0, 0, 0, 19, 56, 105, 128, 0];
+            passed_supported_mg: 1 = [11];
             passed_supported_eg_base: 1 = [0];
             passed_supported_eg_per_rank: 1 = [0];
             passed_freestop_mg_per_rank: 1 = [0];
             passed_freestop_eg_per_rank: 1 = [1];
-            passed_safestop_eg_per_rank: 1 = [11];
+            passed_safestop_eg_per_rank: 1 = [12];
             passed_candidate_mg: 1 = [0];
             passed_candidate_eg: 1 = [0];
-            pawn_doubled_mg: 1 = [0];
+            pawn_doubled_mg: 1 = [3];
             pawn_doubled_eg: 1 = [12];
-            pawn_isolated_mg: 1 = [0];
+            pawn_isolated_mg: 1 = [1];
             pawn_isolated_eg: 1 = [6];
             // Rank-scaled pawn *support* (Phase 3.8), Phase 4.4 fitted; indexed by the
             // pawn's relative rank (0..7). NB despite the historical name, this term
@@ -82,108 +82,122 @@ macro_rules! eval_params {
             // the same rank, which do not defend each other) is the separate
             // `pawn_phalanx_*` table below. (Rename to `pawn_supported_*` deferred: it
             // churns the tuner's string-keyed param list; see PLAN 7.4.)
-            pawn_connected_mg: 8 = [7, 7, 34, 26, 27, 57, 175, 7];
-            pawn_connected_eg: 8 = [5, 5, 9, 0, 14, 24, 22, 5];
+            pawn_connected_mg: 8 = [7, 7, 31, 29, 31, 57, 175, 7];
+            pawn_connected_eg: 8 = [5, 5, 10, 0, 14, 24, 22, 5];
             // Same-rank phalanx (Phase 7.4, seeded 0): a pawn with an own pawn on an
             // adjacent file *on the same rank* (d4+e4). Rank-scaled; the refit activates
             // it. Was entirely unrepresented before 7.4.
-            pawn_phalanx_mg: 8 = [0, 0, 6, 20, 31, 4, 0, 0];
-            pawn_phalanx_eg: 8 = [0, 0, 2, 11, 29, 14, 1, 0];
+            pawn_phalanx_mg: 8 = [0, 1, 8, 21, 34, 6, 0, 0];
+            pawn_phalanx_eg: 8 = [0, 0, 3, 12, 33, 16, 1, 0];
             pawn_backward_mg: 1 = [0];
-            pawn_backward_eg: 1 = [14];
+            pawn_backward_eg: 1 = [13];
             // Pawn-structure / passer detail (Phase 3.8), Phase 4.4 fitted. pawn_lever
             // stayed frozen at 0 (feature-support: too sparse to fit reliably).
             pawn_lever_mg: 1 = [0];
             pawn_lever_eg: 1 = [0];
-            pawn_doubled_isolated_mg: 1 = [4];
+            pawn_doubled_isolated_mg: 1 = [3];
             pawn_doubled_isolated_eg: 1 = [13];
-            blocked_passer_mg: 1 = [44];
+            blocked_passer_mg: 1 = [43];
             blocked_passer_eg: 1 = [10];
-            ideal_blockader_mg: 1 = [19];
+            ideal_blockader_mg: 1 = [17];
             ideal_blockader_eg: 1 = [0];
             // Minors & rooks. A weight the fit holds at 0 adds nothing atop mobility,
             // threats and the open-file terms.
             bishop_pair_mg: 1 = [24];
             bishop_pair_eg: 1 = [57];
-            rook_open_mg: 1 = [51];
-            rook_open_eg: 1 = [17];
-            rook_semiopen_mg: 1 = [20];
+            rook_open_mg: 1 = [46];
+            rook_open_eg: 1 = [15];
+            rook_semiopen_mg: 1 = [21];
             rook_semiopen_eg: 1 = [14];
             rook_7th_mg: 1 = [0];
-            rook_7th_eg: 1 = [15];
+            rook_7th_eg: 1 = [13];
             rook_behind_passer_mg: 1 = [0];
-            rook_behind_passer_eg: 1 = [66];
-            enemy_rook_behind_passer_mg: 1 = [25];
-            enemy_rook_behind_passer_eg: 1 = [29];
-            knight_outpost_mg: 1 = [55];
+            rook_behind_passer_eg: 1 = [64];
+            enemy_rook_behind_passer_mg: 1 = [27];
+            enemy_rook_behind_passer_eg: 1 = [33];
+            knight_outpost_mg: 1 = [50];
             knight_outpost_eg: 1 = [8];
             // Per-count mobility tables. Each is non-decreasing in the count (a trapped
             // piece is worst); low entries can go negative (e.g. a 0-mobility bishop).
-            mob_n_mg: 9 = [-17, -10, 15, 27, 33, 38, 46, 53, 54];
-            mob_n_eg: 9 = [-20, 11, 20, 35, 53, 75, 79, 79, 79];
-            mob_b_mg: 14 = [11, 20, 30, 39, 46, 50, 54, 58, 61, 63, 70, 70, 70, 70];
-            mob_b_eg: 14 = [-36, -3, 37, 49, 65, 76, 83, 87, 90, 91, 91, 91, 91, 91];
-            mob_r_mg: 15 = [22, 32, 47, 54, 54, 59, 63, 63, 67, 74, 81, 88, 90, 90, 90];
-            mob_r_eg: 15 = [4, 41, 41, 50, 65, 77, 86, 96, 104, 108, 111, 115, 115, 115, 121];
-            mob_q_mg: 28 = [-45, 18, 63, 64, 66, 69, 69, 69, 74, 76, 82, 85, 87, 91, 91, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101];
-            mob_q_eg: 28 = [-13, 8, 25, 25, 33, 33, 88, 96, 97, 101, 101, 101, 108, 111, 111, 118, 118, 121, 121, 125, 125, 125, 125, 125, 125, 125, 125, 125];
+            mob_n_mg: 9 = [-17, -8, 17, 28, 33, 37, 45, 51, 52];
+            mob_n_eg: 9 = [-20, 11, 20, 35, 55, 75, 81, 81, 81];
+            mob_b_mg: 14 = [10, 22, 32, 40, 47, 50, 54, 57, 60, 63, 70, 70, 70, 70];
+            mob_b_eg: 14 = [-36, -3, 37, 50, 65, 76, 83, 88, 90, 91, 91, 91, 91, 91];
+            mob_r_mg: 15 = [26, 35, 48, 54, 54, 60, 63, 63, 66, 72, 79, 86, 89, 90, 90];
+            mob_r_eg: 15 = [4, 41, 41, 50, 65, 77, 86, 96, 104, 108, 111, 115, 115, 115, 119];
+            mob_q_mg: 28 = [-45, 18, 61, 63, 65, 69, 69, 69, 74, 76, 82, 85, 87, 93, 93, 97, 97, 97, 97, 101, 101, 101, 101, 101, 101, 101, 101, 101];
+            mob_q_eg: 28 = [-13, 8, 25, 25, 33, 33, 86, 94, 97, 101, 101, 101, 108, 111, 111, 118, 118, 121, 121, 125, 125, 125, 125, 125, 125, 125, 125, 125];
             // Threats. The base threat scalars share one value per phase; the per-victim
             // `threat_by_*` tables below carry the attacker/victim-specific signal.
-            threat_minor_mg: 1 = [66];
+            threat_minor_mg: 1 = [68];
             threat_minor_eg: 1 = [44];
-            threat_rook_mg: 1 = [66];
+            threat_rook_mg: 1 = [68];
             threat_rook_eg: 1 = [44];
-            threat_queen_mg: 1 = [66];
+            threat_queen_mg: 1 = [68];
             threat_queen_eg: 1 = [44];
             // Threats package v2 (Phase 3.6), seeded 0; fitted in Phase 4.2. Per-victim
             // arrays indexed by `Piece as usize` (0=pawn..5=king). The refined hanging
             // term absorbed the old flat hanging penalty, which the joint fit drove to
             // ~0 (see hanging_* below).
-            threat_by_minor_mg: 6 = [0, 45, 80, 81, 71, 0];
-            threat_by_minor_eg: 6 = [7, 28, 0, 0, 0, 0];
-            threat_by_rook_mg: 6 = [0, 26, 41, 4, 70, 0];
-            threat_by_rook_eg: 6 = [12, 21, 30, 1, 18, 0];
-            threat_hanging_refined_mg: 6 = [3, 22, 42, 30, 0, 0];
-            threat_hanging_refined_eg: 6 = [48, 28, 14, 2, 0, 0];
-            threat_safe_pawn_push_mg: 1 = [36];
+            threat_by_minor_mg: 6 = [0, 42, 77, 79, 70, 0];
+            threat_by_minor_eg: 6 = [6, 28, 0, 0, 0, 0];
+            threat_by_rook_mg: 6 = [0, 24, 39, 4, 68, 0];
+            threat_by_rook_eg: 6 = [11, 21, 30, 1, 18, 0];
+            threat_hanging_refined_mg: 6 = [3, 23, 40, 30, 0, 0];
+            threat_hanging_refined_eg: 6 = [48, 28, 14, 3, 0, 0];
+            threat_safe_pawn_push_mg: 1 = [34];
             threat_safe_pawn_push_eg: 1 = [2];
-            threat_weak_piece_mg: 1 = [40];
+            threat_weak_piece_mg: 1 = [38];
             threat_weak_piece_eg: 1 = [0];
-            threat_restricted_mg: 1 = [9];
+            threat_restricted_mg: 1 = [8];
             threat_restricted_eg: 1 = [0];
-            king_safety_unit_minor: 1 = [2];
-            king_safety_unit_rook: 1 = [3];
-            king_safety_unit_queen: 1 = [4];
-            // King-danger conversion table, indexed by the clamped danger index and
-            // kept monotonic non-decreasing by the tuner.
-            king_safety_table: 40 = [102, 102, 116, 116, 123, 138, 152, 163, 198, 222, 236, 263, 263, 263, 263, 263, 263, 263, 263, 263, 263, 282, 284, 358, 358, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 376, 384, 414, 499];
-            // King-danger inputs. They select the table bucket non-linearly, so the
-            // linear trace cannot see them; the fit's coordinate stage re-evaluates
-            // positions to fit them. A weight at 0 leaves its input out of the index.
-            ks_weak_ring: 1 = [1];
-            ks_safe_check_knight: 1 = [16];
-            ks_safe_check_bishop: 1 = [13];
-            ks_safe_check_rook: 1 = [8];
-            ks_safe_check_queen: 1 = [16];
-            ks_queen_relief: 1 = [8];
-            ks_flank_attack: 1 = [0];
-            ks_pawnless_flank: 1 = [19];
-            shelter_missing_file_mg: 1 = [27];
-            shelter_missing_adjacent_mg: 1 = [7];
-            shelter_dist1_mg: 1 = [25];
-            shelter_dist2_mg: 1 = [15];
-            storm_file_weight: 1 = [0];
-            storm_adjacent_weight: 1 = [2];
+            // King-danger index coordinates, in index units (seeded on the donor's
+            // scale, where a pawn is 206). The index reaches the score only through
+            // the quadratic map, so the linear trace cannot see them; the fit's
+            // coordinate stage re-evaluates positions to fit them.
+            // Ring attackers' weight by attacker: knight, bishop, rook, queen.
+            kd_attacker_weight: 4 = [45, 33, 20, 43];
+            // Safe checks, single then multiple: knight, bishop, rook, queen.
+            kd_safe_check: 8 = [648, 611, 645, 951, 588, 1161, 412, 623];
+            kd_weak_ring: 1 = [73];
+            kd_unsafe_check: 1 = [171];
+            kd_blockers: 1 = [194];
+            kd_king_attacks: 1 = [87];
+            // Per 100 cp of the enemy's mobility (mg) over ours.
+            kd_mobility: 1 = [0];
+            kd_no_queen: 1 = [1113];
+            kd_knight_defender: 1 = [0];
+            kd_constant: 1 = [55];
+            // The map from index to score, in hundredths of a centipawn per index
+            // unit of `index²/4096` (mg) and `index/16` (eg): 49 is the donor's map
+            // converted at 100/206. Coordinates too: the map's output is untraced.
+            ks_map_mg: 1 = [73];
+            ks_map_eg: 1 = [41];
+            // Per 100 cp of our shelter's mg score, taken off the index.
+            kd_shelter: 1 = [243];
+            // Shelter and storm over the three files around the king, indexed
+            // `edge_distance * 7 + relative_rank` (0 = no pawn on the file): our
+            // pawn nearest our side, then theirs, unless it is blocked by ours.
+            shelter_strength: 28 = [-2, 38, 42, 26, 17, 9, 12, -26, 31, 18, -19, -14, -5, -31, -2, 34, 14, 0, 13, -1, -22, -18, -6, -12, -23, -21, -33, -81];
+            unblocked_storm: 28 = [43, -140, -81, 45, 26, 22, 26, 27, -12, 57, 22, 21, -4, 3, 2, 25, 80, 15, 0, -9, -11, -9, -5, 49, 2, 5, -9, -14];
+            // An enemy pawn standing on our pawn, by its relative rank.
+            blocked_storm_mg: 7 = [0, 0, 37, -5, -3, -2, 1];
+            blocked_storm_eg: 7 = [0, 0, 38, 11, 9, 5, 1];
+            shelter_constant_mg: 1 = [2];
+            shelter_constant_eg: 1 = [2];
+            // No pawn of either colour on the king's flank.
+            pawnless_flank_mg: 1 = [8];
+            pawnless_flank_eg: 1 = [52];
             // Old flat hanging penalty (Phase 3.6). Phase 4.2 dropped it data-driven:
             // the refined hanging term (`threat_hanging_refined`) generalises and fully
             // absorbed it, so the joint fit drove these to ~0. Kept (not deleted) so the
             // term stays available; the values are now near-inert.
             hanging_minor: 1 = [0];
-            hanging_rook: 1 = [0];
-            hanging_queen: 1 = [0];
+            hanging_rook: 1 = [1];
+            hanging_queen: 1 = [1];
             passer_proximity_base: 1 = [11];
             space_weight: 1 = [0];
-            tempo: 1 = [36];
+            tempo: 1 = [34];
             // trapped_bishop frozen at hand value (feature-support: too sparse to fit).
             trapped_bishop_mg: 1 = [60];
             trapped_bishop_eg: 1 = [40];
@@ -198,23 +212,23 @@ macro_rules! eval_params {
             // linear and Texel-tunable; the scale is the tuner's to find (Phase 4.5).
             // Phase 4.5 fitted (lower triangle; upper entries never fire). Rows/cols in
             // the imbalance "piece" order [bishop_pair, pawn, knight, bishop, rook, queen].
-            imbalance_ours: 36 = [25, 0, 0, 0, 0, 0, 3, 7, 0, 0, 0, 0, -11, 46, -23, 0, 0, 0, 26, 41, -30, -36, 0, 0, -5, 54, -50, -38, -41, 0, 1, 100, -101, -67, -135, -99];
-            imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, -9, 45, 0, 0, 0, 0, 6, 50, -10, 0, 0, 0, -14, 66, 9, 10, 0, 0, 13, 130, 7, 35, 1, 0];
+            imbalance_ours: 36 = [25, 0, 0, 0, 0, 0, 6, 7, 0, 0, 0, 0, -11, 45, -23, 0, 0, 0, 26, 38, -32, -36, 0, 0, -5, 53, -51, -38, -44, 0, -1, 97, -104, -71, -139, -101];
+            imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, -9, 45, 0, 0, 0, 0, 6, 50, -10, 0, 0, 0, -14, 65, 7, 10, 0, 0, 13, 127, 10, 35, 0, 0];
             // Small positional terms (Phase 3.10), all seeded 0 (bench unchanged),
             // tuned in Phase 4.4/4.5.
             // Small positional terms (Phase 3.10), Phase 4.4 fitted. rook_trapped frozen
             // (feature-support: too sparse).
             bishop_pair_pawn_mg: 1 = [1];
             bishop_pair_pawn_eg: 1 = [-3];
-            bishop_outpost_mg: 1 = [45];
+            bishop_outpost_mg: 1 = [43];
             bishop_outpost_eg: 1 = [1];
             rook_trapped_mg: 1 = [0];
             rook_trapped_eg: 1 = [0];
-            rook_connected_mg: 1 = [6];
+            rook_connected_mg: 1 = [8];
             rook_connected_eg: 1 = [47];
-            bishop_long_diagonal_mg: 1 = [26];
-            bishop_long_diagonal_eg: 1 = [1];
-            bad_bishop_mg: 1 = [1];
+            bishop_long_diagonal_mg: 1 = [21];
+            bishop_long_diagonal_eg: 1 = [0];
+            bad_bishop_mg: 1 = [0];
             bad_bishop_eg: 1 = [19];
             initiative_weight: 1 = [1];
             // Closedness (rammed-pawn count) value swing: per own-piece-count, added
@@ -230,15 +244,15 @@ macro_rules! eval_params {
             king_centrality_danger_mg: 1 = [65];
             // Gauntlet-driven additions (Phase 3.12), Phase 4.4 fitted. king_protector /
             // space_piece fitted to 0 (no marginal value atop the rest).
-            unstoppable_passer_eg: 1 = [66];
+            unstoppable_passer_eg: 1 = [70];
             minor_behind_pawn_mg: 1 = [16];
             minor_behind_pawn_eg: 1 = [0];
-            pawn_islands_mg: 1 = [9];
-            pawn_islands_eg: 1 = [1];
-            queen_infiltration_mg: 1 = [48];
+            pawn_islands_mg: 1 = [8];
+            pawn_islands_eg: 1 = [0];
+            queen_infiltration_mg: 1 = [45];
             queen_infiltration_eg: 1 = [85];
             king_protector_mg: 1 = [6];
-            king_protector_eg: 1 = [4];
+            king_protector_eg: 1 = [5];
             space_piece_mg: 1 = [1];
             // Phase 6.2.1 refresh structure — all seeded 0 (inert, bench-identical);
             // activated by the 6.2.2 on-policy joint refit.
@@ -248,23 +262,16 @@ macro_rules! eval_params {
             // Passed-pawn whole-path weighting: the entire path to promotion is empty
             // ("free path") / never attacked by the enemy ("safe path"), scaled by
             // relative rank like the existing free/safe-stop terms.
-            passed_freepath_mg_per_rank: 1 = [-7];
+            passed_freepath_mg_per_rank: 1 = [-3];
             passed_freepath_eg_per_rank: 1 = [8];
             passed_safepath_eg_per_rank: 1 = [24];
             // Deferred §3.12 trio.
-            bishop_xray_pawns_mg: 1 = [-8];
+            bishop_xray_pawns_mg: 1 = [-7];
             bishop_xray_pawns_eg: 1 = [4];
-            queen_battery_mg: 1 = [15];
-            queen_battery_eg: 1 = [21];
-            slider_on_queen_mg: 1 = [35];
-            slider_on_queen_eg: 1 = [8];
-            // Shelter/storm folded into the king-danger index (nonlinear — selects the
-            // safety-table bucket, so it is invisible to the linear trace and is fit by
-            // the --tune-kingsafety re-eval path, like the other ks_* inputs). The
-            // linear shelter/storm terms above stay; the Phase-4 fit zeroed the storm
-            // weights because a LINEAR term cannot express "exposed king x piece
-            // pressure" — this input is where that interaction lives.
-            ks_shelter_storm: 1 = [0];
+            queen_battery_mg: 1 = [14];
+            queen_battery_eg: 1 = [25];
+            slider_on_queen_mg: 1 = [41];
+            slider_on_queen_eg: 1 = [10];
         }
     };
 }
