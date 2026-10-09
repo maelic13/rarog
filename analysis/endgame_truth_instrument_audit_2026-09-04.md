@@ -106,7 +106,7 @@ job and the label is semantically correct. It needs no change.
 
 ## Defect B: two disjoint position sets
 
-`b9cc252` ("Seed endgame_truth families by name, not list index") changed which
+A commit ("Seed endgame_truth families by name, not list index") changed which
 positions the harness generates. Regenerating with the current code and seed
 `6200600` and comparing FENs position-for-position:
 
@@ -140,7 +140,7 @@ aborts out of 100 in the Rarog arm and 62 in the reference arm.
 
 ## Defect C: the floors have no artifact
 
-`tools/diag/endgame_floors.json` at `b711d4d` records KBN-K conversion 0.8980
+`tools/diag/endgame_floors.json` at that time records KBN-K conversion 0.8980
 (88/98) and dtz progress 0.6753 over n=3178. **No truth report on disk carries
 those numbers** -- the run that produced them is gone. `tools/results/*` is
 gitignored, so nothing there is in git either. The 0.7260 acceptance target

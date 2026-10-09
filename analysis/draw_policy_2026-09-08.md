@@ -5,7 +5,7 @@
 **Disposition, 2026-09-08: `NO_CHANGE` on all four policies; two contracts
 pinned by test.** No playing change is proposed and none is registered. The
 engine source is untouched, so the fingerprint holds at **7,601,220 / EBF
-2.474**; the only change is `tests/draw_semantics.rs` (`df94b7d`).
+2.474**; the only change is `tests/draw_semantics.rs`.
 
 The leaf asks for keep/change/retry-trigger **per policy**, explicitly warning
 against bundling and against treating the historical combined losses as proof

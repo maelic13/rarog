@@ -9,7 +9,7 @@ retired step numbers and paths are left as they were written.
 ## RAR-M21 (Measurement, harness and tuning)
 
 **RAR-M21 — 4.11.7 budget transfer, registered 2026-09-05; COMPLETE 2026-09-06.**
-Baseline `6e8044a`, exact production features (empty), bench 13
+Baseline with exact production features (empty), bench 13
 6,901,489 / EBF 2.458. Frozen Stockfish 18 reference; full corrected 19-family
 cohort, 100 positions/family, seed 6200600, 60k/200k/600k nodes/move,
 100-ply cap, Hash 16, Threads 1, engine TB disabled, 30 workers.
@@ -143,7 +143,7 @@ itself authorize production tuning or SPSA.
 ## RAR-M27 (Measurement, harness and tuning)
 
 **RAR-M27 — 4.11b.4 SEE contracts and independent fixtures, COMPLETE
-2026-09-06.** Baseline `6d1a670`, engine `a170f8c`; no production changes.
+2026-09-06.** No production changes.
 Ten threshold calls (two diag-only) and one full-SEE call inventoried with
 their ordering/pruning/LMR/history consumers. Eighteen python-chess legal
 same-square capture-tree fixtures, independently hand-scored, expose three
@@ -164,7 +164,7 @@ baseline observations; all three acceptance tests are now active and passing.
 ## RAR-M28 (Measurement, harness and tuning)
 
 **RAR-M28 — 4.11b.5 SEE legality and promotion repair, COMPLETE 2026-09-07.**
-Engine/test `fce0b44`, entry `e954e38`. Current-occupancy king safety replaces
+Current-occupancy king safety replaces
 stale pin masks; king captures terminate legally, recapture promotions include
 the promotion gain and promoted victim value, and threshold comparisons preserve
 equality. Values remain 100/320/330/500/900/20000; quiet/promotion shortcut
@@ -184,7 +184,7 @@ diff against the entry source: `analysis/see_repair_2026-09-06.md` and
 ## RAR-M29 (Measurement, harness and tuning)
 
 **RAR-M29 — 4.11b.6 neutral SEE injection and normalized timing, COMPLETE
-2026-09-07.** Engine/test `46f1af2`, entry `2c59911`. `SeeValues` owns the
+2026-09-07.** `SeeValues` owns the
 board scale; production remains 100/320/330/500/900/20000 with no runtime
 engine option. Explicit production and normalized 100/300/300/500/900/20000
 injection each pass all 41 independent fixtures. Complete suites pass **270
@@ -213,8 +213,7 @@ changes. No value fit, games, NPS or Elo claim. Evidence:
 
 ## RAR-M30 (Measurement, harness and tuning)
 
-**RAR-M30 — 4.11b.7 full-search board profile, COMPLETE 2026-09-07.** Source
-`02420dc`, 20 frozen roots in five cohorts, 600,000 nodes, three counter and
+**RAR-M30 — 4.11b.7 full-search board profile, COMPLETE 2026-09-07.** 20 frozen roots in five cohorts, 600,000 nodes, three counter and
 five ETW repeats. Production SHA-256 `3c81ef95...bf1d904dfd0`; diagnostic
 `aaeda618...25d42e1`; all **60/60** instrumentation-off searches match depth,
 seldepth, reported nodes, score type/value and best move; PV and ponder move
@@ -232,8 +231,8 @@ full hashes, time budget and reproduction:
 ## RAR-M31 (Measurement, harness and tuning)
 
 **RAR-M31 — 4.11b.8 pin discovery measurement, recorded 2026-09-07;
-research disposition CLOSED: candidate withdrawn in `c44608a`.**
-Baseline `407de51`, engine `2ea279f`; replace four x-ray slider lookups by two
+research disposition CLOSED: candidate withdrawn.**
+Replace four x-ray slider lookups by two
 empty-board lookups and test all occupied squares between king and aligned
 enemy slider. Keep a sole friendly blocker as pinned. Local board-v2 median
 gains over three alternating rounds: legal **+8.54%**, capture **+11.43%**,
@@ -245,14 +244,14 @@ All four production fingerprints are **7,601,220 / EBF 2.474**; 480 paired
 root answers match including PV and ponder. Independent pin-ray oracle,
 debug/release suites, PEXT board tests, fmt and Clippy pass. Retained for local
 generation gains under the original execution contract; no games or strength
-acceptance. The later `b592b40` research card requires a prospective practical
+acceptance. The later research card requires a prospective practical
 whole-search floor, which this run did not register. It does not qualify the
 leaf under that new contract. **Original retention decision SUPERSEDED:**
 restore the prior x-ray algorithm and retain its independent oracle. Decline
 another standalone campaign before shared-geometry research; this is a research
 prioritization decision, not a statistical finding of no gain or a post-hoc
 floor. Later cache/search changes were not measured in the timing study.
-Restoration against `b90232b`: 274 debug / 275 release tests, fmt and Clippy
+Restoration: 274 debug / 275 release tests, fmt and Clippy
 pass; fresh no-feature before/after builds reproduce 7,601,220 / EBF 2.474;
 20 roots match standard harness identity fields (not full PV/ponder). No new
 performance or Elo claim. 4.11b.10 owns any justified, prospectively registered retry.
@@ -269,8 +268,8 @@ the comparable 4.11b.8 run; re-measured idle, the same baseline code runs at
 3,071,903 nps versus this run's 2,182,590 nps. The full-search timing conclusion
 is withdrawn; the deterministic findings below (fingerprint parity, 240 paired
 root answers, emitted-code comparison) stand. Original record follows.
-**RAR-M32 original text —** Baseline `af83abf` on
-`dev`; qualification frozen in `86e39f8` **before** any timing. Candidate fuses
+**RAR-M32 original text —** Baseline on
+`dev`; qualification frozen **before** any timing. Candidate fuses
 ordinary `QUIET` make/unmake relocation into one from/to mask and one paired
 key across mailbox, piece/colour occupancy, `all_occ` and the pawn/minor/
 non-pawn keys; captures, double pushes, en passant, promotion, castling and
@@ -296,8 +295,8 @@ so the mechanism behaved as predicted and the miss is **instrument power**, not
 mechanism: twelve pairs cannot resolve a ~1% effect. This is insufficient
 evidence of deployable value, **not** proof of zero benefit, regression or
 defect. No games, NPS acceptance or Elo claim. `src/` restored byte-identical
-to `af83abf`; the targeted per-piece-class relocation test is retained in
-`8a73cfd`. Closure on the restored tree: fmt exit 0, **275 debug / 276 release**
+to the baseline; the targeted per-piece-class relocation test is retained.
+Closure on the restored tree: fmt exit 0, **275 debug / 276 release**
 tests pass, Clippy `--all-features --all-targets` zero warnings. Retry is not
 authorized standalone; it belongs to **4.11b.16** under a pooled-PGO build with
 a precision calculation and whole-search floor registered before the run.
@@ -308,8 +307,7 @@ Recipe, hashes and raw observations: `analysis/relocation_2026-09-07.md` and
 ## RAR-M33 (Measurement, harness and tuning)
 
 **RAR-M33 — 4.11b.9 fused ordinary relocation re-measured on a verified-idle
-host, COMPLETE 2026-09-07; ACCEPTED and integrated in `5c439da`.** Baseline
-`1d720af` on `dev`; contract frozen in `tools/results/relocation-411b9-v2/
+host, COMPLETE 2026-09-07; ACCEPTED and integrated.** Baseline on `dev`; contract frozen in `tools/results/relocation-411b9-v2/
 registration.md` and reproduced in the analysis document **before** the
 candidate was compiled. Candidate re-implemented from the PLAN handoff because
 RAR-M32 saved no patch; scope is **`flags == QUIET` only**, adding
@@ -358,7 +356,7 @@ the committed source reproduces 7,601,220 / EBF 2.474. At this closure point,
 ## RAR-M34 (Measurement, harness and tuning)
 
 **RAR-M34 — 4.11b.10 shared pin/check information, COMPLETE 2026-09-08;
-research disposition `NO_CHANGE`.** Source `33c373c` on `dev`. Closed on
+research disposition `NO_CHANGE`.** Source on `dev`. Closed on
 **structure, not cost**: the three producers share no work. `compute_pinned`
 queries from our king against their sliders, `check_info` from their king
 against our sliders — different square, different piece sets, only `all_occ`
@@ -383,7 +381,7 @@ Units were reconciled before differencing: generator calls 2,243,478 minus
 `compute_pinned` 2,079,992 leaves **163,486**, exactly the `generate_captures`
 early-out that increments its counter and returns before computing pins. No
 ETW re-profile was requested — it needs an elevated prompt, is a maintainer
-job, and cannot make un-shareable work shareable; the post-`5c439da` share
+job, and cannot make un-shareable work shareable; the post-integration share
 update is derived arithmetically and moves every unchanged region by at most
 **0.06 percentage points**, explicitly not a measurement. No implementation,
 no games, no timing claim and no Elo claim. Owed to 4.11b.11: a fresh profile
@@ -398,7 +396,7 @@ check geometry, never on donor-engine similarity. At this closure point,
 ## RAR-M35 (Measurement, harness and tuning)
 
 **RAR-M35 -- 4.11b.11 incremental SEE attacker maintenance, COMPLETE 2026-09-08;
-`NO_CHANGE`, production path withdrawn.** Baseline `8d7da2c` on `dev`; contract
+`NO_CHANGE`, production path withdrawn.** Baseline on `dev`; contract
 frozen in `tools/results/see-kernel-411b11/registration.md` before any timing,
 with correctness gates run first and no throughput number observed at freeze.
 The candidate carried an all-colour attacker set (`attackers_to(target, occ) &
@@ -434,7 +432,7 @@ calls per exchange step are not duplicates. The second is the mandatory
 per-candidate king-legality test at a different square under a different
 occupancy, which a carried target-attacker set cannot serve; future SEE work
 must target that test, not the attacker set. `src/` was restored byte-identical
-to `8d7da2c` with the fingerprint re-verified after withdrawal. No games, no
+to the baseline with the fingerprint re-verified after withdrawal. No games, no
 Elo, no timing claim retained. A fresh ETW profile is still owed and is now more
 valuable, since it can attribute SEE's 5.3% between recapturer rebuild and
 legality test; it needs an elevated prompt and is a maintainer job. At this
@@ -445,10 +443,10 @@ closure point, 4.11b.12 is next. Evidence:
 ## RAR-M36 (Measurement, harness and tuning)
 
 **RAR-M36 — full-search board profile refreshed at head, COMPLETE 2026-09-08.**
-Source `2d621ff`; production `a3cca8dc...`, PDB `c61e93e3...`, 162,846 process
+Production `a3cca8dc...`, PDB `c61e93e3...`, 162,846 process
 samples, five cohorts, 600,000 nodes, 5 repeats. **Recipe recovered.** RAR-M30's
 per-sample attribution was a side effect of xperf failing to discover the PDB;
-`952711f` fixed that discovery and silently switched the report to per-function
+a later fix of that discovery and silently switched the report to per-function
 aggregation, where board work inlined into `negamax`/`evaluate` is charged to
 those functions and `summarize_board_search_etw.py` — reading a fixed column
 that had been correct for the per-address table — resolved `limit`, the byte one
@@ -483,7 +481,7 @@ per-candidate king-legality test, not the attacker set. It cannot split the two
 ## RAR-M37 (Measurement, harness and tuning)
 
 **RAR-M37 — 4.11b.12 king-square caching, COMPLETE 2026-09-08; research
-disposition `NO_CHANGE`, no prototype built.** Source `edfb35b` on `dev`. The
+disposition `NO_CHANGE`, no prototype built.** Source on `dev`. The
 leaf's conditional trigger — material cost remaining after shared-geometry work
 — is not met: RAR-M36 reads king-square lookup at **0.502%** (RAR-M30 0.544%),
 and 4.11b.10/4.11b.11 both closed without touching the board, so the small move
@@ -510,7 +508,7 @@ engine change, no prototype, no games, no Elo claim. At this closure point,
 ## RAR-M38 (Measurement, harness and tuning)
 
 **RAR-M38 — 4.11b.13 history capacity and mutation contracts, COMPLETE
-2026-09-08; tightened and integrated in `f70ac19`.** Baseline `745976b` on
+2026-09-08; tightened and integrated.** Baseline on
 `dev`. Behaviour-neutral, **no speed claim in either direction**, per the
 register's own condition that zero observed growth events cannot support one.
 `Board::reserve_history` (`pub(crate)`) reserves further make/unmake pairs, and
@@ -546,7 +544,7 @@ closure point, 4.11b.14 is next. Evidence:
 
 **RAR-M39 — 4.11b.14 larger board representation, COMPLETE 2026-09-08; research
 disposition `NO_CHANGE`, no comparison registered and no implementation
-opened.** Source `0d69c5f` on `dev`. The leaf's gate — open an implementation
+opened.** Source on `dev`. The leaf's gate — open an implementation
 only if the preceding profile still identifies substantial representation cost —
 is **not met**: RAR-M36 puts no board region above **6.7%** (make/unmake 6.677%,
 generation and legality 6.556%, SEE 5.239%, check queries 5.179%), and those are
@@ -583,9 +581,9 @@ NNUE stacks remain Phase 5. At this closure point, 4.11b.15 is next. Evidence:
 ## RAR-M40 (Measurement, harness and tuning)
 
 **RAR-M40 — 4.11b.15 draw-state policy boundary, COMPLETE 2026-09-08; research
-disposition `NO_CHANGE` on all four policies.** Source `95db376` on `dev`;
+disposition `NO_CHANGE` on all four policies.** Source on `dev`;
 engine source untouched, so `bench 13` holds at **7,601,220 / EBF 2.474**. The
-only change is `tests/draw_semantics.rs` (`df94b7d`). **What RAR-S18
+only change is `tests/draw_semantics.rs`. **What RAR-S18
 establishes and what it does not**: arm A (null-clock + cross-null fence +
 root-aware) **−7.21 ± 6.03**, arm B (same without root-aware) **−11.91 ± 7.67**;
 both exclude zero so both bundles were harmful, but **neither isolates a single
@@ -623,7 +621,7 @@ no Elo, no playing change proposed and no bundle rescued. At this closure point,
 
 **RAR-M41 — 4.11b.16 integrated board cluster qualification, COMPLETE
 2026-09-08; QUALIFIED, speed claim banked, no Elo claimed.** Registration frozen
-in `120b8d9` before the run; arms `1d720af` against head `1be34ac`, which is
+before the run; the arms are the baseline against the head, which is
 exactly the fused relocation, history reservation and footprint assertions. Both
 arms **behaviour-identical**: all six PGO binaries reproduce `bench 13` at
 **7,601,220 / EBF 2.474**, so trees match and fixed-node NPS is a clean
@@ -832,12 +830,12 @@ directly and what 4.7 delivered +15.56 of structurally.
 ## RAR-S54 (Search and selectivity)
 
 **RAR-S54 reconstruction recipe, recovered 2026-08-18.** The probe's source
-commit `7693010d` was found DANGLING — its branch `probe/10.0c-less-pruning`
+commit was found DANGLING — its branch `probe/10.0c-less-pruning`
 no longer existed and the next `git gc` would have deleted it. The recipe is
 recorded here so the experiment is reproducible from this document alone, and
 no branch or tag is needed to keep it.
 
-Baseline arm: `c907c2e8` on the then-`development`, bench **5,173,540**.
+Baseline arm: the then-`development` head, bench **5,173,540**.
 Probe arm: the 12 values below, bench **6,373,363**. Both final-PGO,
 rustc 1.97.1, clean manifests, `git_dirty = False`. Rebuild both, confirm the
 two bench fingerprints, and the arms are reproduced exactly — the fingerprints
@@ -1023,7 +1021,7 @@ Frozen local Stage-1 package SHA-256 hashes: executable
 - **Arms.** Identical vectors except one block. Arm A is RAR-E12's candidate,
   `rarog-e09cand-pext-pgo.exe`, bench 8,044,078 / 2.481. Arm B is
   `rarog-e09noks-pext-pgo.exe`, bench **6,972,274 / 2.466**, built from
-  `d306e21` plus `analysis/artifacts/rar-e13-candidate-eval.patch` (SHA-256
+  the then-accepted head plus `analysis/artifacts/rar-e13-candidate-eval.patch` (SHA-256
   `7ADC9C44...`) -- the same fit with `king_safety_table` alone restored to the
   accepted head's 40 values. Both binaries were built from a dirty tree, so
   both patches are committed; a rebuild must reproduce those fingerprints.
@@ -1058,10 +1056,10 @@ Frozen local Stage-1 package SHA-256 hashes: executable
   result to any one of them.** That is a deliberate cluster under the strength
   rule, not an oversight, and it is written here so no post-hoc attribution can
   be made later.
-- **Baseline.** `tools/test_engines/rarog-e08head-pext-pgo.exe`, git `a52f4d2`,
+- **Baseline.** `tools/test_engines/rarog-e08head-pext-pgo.exe`,
   clean tree, bench **7,165,683 / 2.462**.
 - **Candidate.** `tools/test_engines/rarog-e09cand-pext-pgo.exe`, bench
-  **8,044,078 / 2.481**. Built from `d306e21` plus
+  **8,044,078 / 2.481**. Built from the then-accepted head plus
   `analysis/artifacts/rar-e12-candidate-eval.patch` (SHA-256 `0A7187F8...`),
   which is the diff produced by baking
   `analysis/artifacts/rar-e12-final-vector.txt` (SHA-256 `EA932B46...`) with
@@ -1206,8 +1204,7 @@ Frozen local Stage-1 package SHA-256 hashes: executable
   candidate **0.12252203**, delta **-0.00078088**; every registered broad
   cohort improved. Candidate bounds/tests are valid. Candidate fingerprint is
   **7,226,051 / 2.460** versus source **6,977,070 / 2.466**.
-- **Baseline / candidate.** Baseline `6357856e21219d040d5bac7cba13e95c3107e4a4`;
-  candidate `5188eca576755932b31ad634af7821cae5291cf3`. Only `src/eval.rs`
+- **Baseline / candidate.** Only `src/eval.rs`
   differs in engine behavior. Baseline binary
   `rarog-hce-refit-base-pext-pgo.exe`, SHA-256
   `04572BA2AC87C9A8E334D838D98A2E074C87232180DA8DEFAF1BFAFC4E5AC481`;
@@ -1231,13 +1228,13 @@ Frozen local Stage-1 package SHA-256 hashes: executable
   another 30,000 identical-engine games. The real gate's anomaly checks remain
   mandatory.
 - **Harness repair before launch (2026-09-01).** The registered command could
-  not start. `d2c7788` rewrote `sprt.ps1`'s option-advertisement guard and
+  not start. A rewrite of `sprt.ps1`'s option-advertisement guard and
   dropped its empty-list early return; because `$splitOpts` unrolls an empty
   result to `$null` and `[string[]]$null` rebuilds a one-element array holding
   `$null`, every gate invoked **without** `-OptionsA/-OptionsB` threw
   `does not advertise:` with an empty name. The same `$null` also emitted a
-  bare `option.` argument to fastchess on that path from `ce4a334` onward. No
-  gate had run since `d2c7788`, so no recorded result is affected; the last
+  bare `option.` argument to fastchess on that path from an earlier change onward. No
+  gate had run since the rewrite, so no recorded result is affected; the last
   options-free run (`sprt_SearchCore_vs_Head_20260822_101254`) predates the
   guard rewrite and logged no fastchess option warning. Fixed by returning the
   array with `,@(...)` and restoring the empty-list return. Verified in three
@@ -1287,12 +1284,12 @@ Frozen local Stage-1 package SHA-256 hashes: executable
   on 3 time forfeits in 3,915 games (**0.077%**). Under the registered stop
   rule as written, any anomaly rejects. The maintainer waived that clause on
   2026-09-01 after the following analysis, and the guard was rate-limited in
-  `334c084` so the clause is enforceable in future.
+  a later change so the clause is enforceable in future.
     - All three flagged sides were already decisively lost: round 3 HCEBase at
       -5.32, round 792 HCERefit at -8.72, round 1477 HCEBase at -8.55.
     - The split was 2 baseline / 1 candidate. Reversing all three moves the
       estimate by about 0.3 Elo against a +22.04 result.
-    - The guard was added in `d2c7788` and no match had ever run under it.
+    - The guard was added in that rewrite and no match had ever run under it.
       Applied to the stored logs it voids nearly every accepted gate,
       including two null calibrations of identical binaries (0.135% and
       0.172%), which is what establishes the forfeits as a harness property.

@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Experiment and conditions
 
-**Phase-4 cluster 4.7 — ACCEPTED.** The 4.7a+4.7c selectivity bundle: null-move entry moved to a hard `nmp_eval >= beta` with the old margin re-homed onto raw `static_eval`, plus a ProbCut move filter tying capture eligibility to the gap the capture must bridge (`probcut_beta - static_eval`, floored at 0), capping moves SEARCHED rather than candidates examined, and scaling that cap by `cut_node`. Candidate `dfa965e` on `p47c-probcut-filter`, baseline `dev` `aaa715a`. Final-PGO both arms, `3+0.03`, 1T, 64 MB, paired UHO_Lichess_4852_v1, registered `[3,10]` nElo, cap 16,000. **First gate run under RAR-M13 two-sided adjudication.**
+**Phase-4 cluster 4.7 — ACCEPTED.** The 4.7a+4.7c selectivity bundle: null-move entry moved to a hard `nmp_eval >= beta` with the old margin re-homed onto raw `static_eval`, plus a ProbCut move filter tying capture eligibility to the gap the capture must bridge (`probcut_beta - static_eval`, floored at 0), capping moves SEARCHED rather than candidates examined, and scaling that cap by `cut_node`. Candidate on `p47c-probcut-filter`, baseline `dev`. Final-PGO both arms, `3+0.03`, 1T, 64 MB, paired UHO_Lichess_4852_v1, registered `[3,10]` nElo, cap 16,000. **First gate run under RAR-M13 two-sided adjudication.**
 
 ## Result / disposition
 

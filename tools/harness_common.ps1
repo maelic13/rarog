@@ -451,7 +451,7 @@ function Assert-NoMatchAnomaly {
     # fastchess 1.8.0 affinity pinning, 184/528). Two orders of magnitude
     # separate them, so a ceiling discriminates and zero tolerance does not.
     #
-    # This threshold replaces a zero-tolerance test added in d2c7788 that no
+    # This threshold replaces a zero-tolerance test added earlier that no
     # match had ever run under. RAR-E06 was the first to reach it: it hit H1
     # at 3,914 games with 3 forfeits (0.077%) and was declared invalid, even
     # though all three flagged sides were already lost by 5-9 pawns and the

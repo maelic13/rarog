@@ -4,7 +4,7 @@ Rarog is a UCI chess engine in Rust (HCE eval, PVS/negamax search, PGO builds).
 Sibling projects share methodology and data: **Basilisk** (C++, `D:/code/basilisk`),
 **Hydra** (Python, `D:/code/hydra`); position corpus **Beast** (`A:\Chess\Beast\data`).
 
-**Pruned 2026-07-11** (pre-prune history: commit `d9e0d85` and earlier). This
+**Pruned 2026-07-11** (pre-prune history: the commits before it). This
 document keeps: the development process, the release procedure, the version
 record, the lessons that must not be re-learned, and the forward plan.
 
@@ -550,8 +550,8 @@ Bench 13 = **5,173,540**, geomean EBF **2.406**.
     randomized state-reconstruction walks, not more mirror tests. All four
     bugs were independently reproduced at head before planning the fixes.
 12. **Audits describe the revision they read — re-verify every claim at the
-    served head (hce-audit merge, 2026-07-14).** `hce_analysis.md` was cut at
-    `ff21dc1`, *inside* the later-reverted 6.2.2 refit: its "negative
+    served head (hce-audit merge, 2026-07-14).** `hce_analysis.md` was cut
+    *inside* the later-reverted 6.2.2 refit: its "negative
     whole-path passer coefficients" (§9) and several king-safety numbers
     describe values that no longer exist at head (the three path params are
     0/inert; the safety table starts at 29, not 51; `space_piece_mg` is 0).
@@ -670,7 +670,7 @@ Phase 13** (2026-07-16): it is HCE eval *strength*, which NNUE subsumes — not
 pre-NNUE-durable, so it no longer sits in Phase 7.
 
 **Renumbering map:** old 6.2/6.3 are closed (→ §S4). The history bonus/malus
-split implemented as "Phase 7.1" (commits `fe5810a`/`e0362b8`) is now
+split implemented as "Phase 7.1" is now
 **8.1**; pre-audit 7.2–7.6 became first-pass 8.2–8.6; old Phase 8 (speed +
 menu) → Phase 10; old Phase 9 (NNUE) → Phase 12. Search-audit merge
 (2026-07-14 second pass): first-pass 8.2 (correction margins) folded into
@@ -818,7 +818,7 @@ confirmed too**.
 Basilisk 1.9.1 − 1.9.0 = −6 ± 21, i.e. that C++23 cleanup release was
 strength-neutral as its author expected.
 
-Per-item detail is in git history (commits `cfb75ba`…`d11fbe9`).
+Per-item detail is in git history.
 
 **1T NPS CONFIRMATION — ✅ DISCHARGED 2026-07-28. Net +1.0…+1.6%, no
 regression.** This was owed since 9.7.5 opened, and it exists because of 9.0's
@@ -827,7 +827,7 @@ regression, and eight of them compounded to −3.2%. **A change program needs ON
 end-to-end measurement against its own starting point.** This is that
 measurement for 9.7.5.
 
-Current HEAD vs `24c6b9c` (the last commit before any 9.7.5 code), built in a
+Current HEAD vs the last commit before any 9.7.5 code, built in a
 clean worktree so both trees were pristine. **Both bench 5,173,540**, so 9.7.5
 changed no 1T search behaviour at all and this isolates execution speed —
 the same clean property that made 10.3's gate the project's best speed→Elo
@@ -1135,7 +1135,7 @@ explanation is needed.
 - **10.4.6 SPSA re-fit under the fixed schedule (added 2026-07-27, user
   request; REVISED same day to minimize tune count — SPSAs are the
   most expensive thing this project runs).** Every existing fit was
-  annealed ~8× too fast (the schedule bug, fixed `a0fbc9f`): each tune
+  annealed ~8× too fast (the schedule bug, since fixed): each tune
   spent ~19% of its intended adaptation budget. Accepted bakes all won
   real SPRTs and stand; this step collects the unrealized upside at
   **minimum cost: ONE mandatory tune night + one gate**, exploiting the
@@ -1695,7 +1695,7 @@ and 2/4/8-thread gauntlet infrastructure; needs 10.1 `RootMove` records):
 | `D:/code/net_trainer` | Phase-12 NNUE training stack (bullet, CUDA GPU): `tools/datagen.py` / `extract_nnue.py` → `net-trainer convert/shuffle/train` → `quantised.bin` |
 | `D:/code/net_trainer/docs/nnue_format.md` + `models/test/` | the net consumer contract + integer-exact conformance vectors (12.1's acceptance gate); reference impls in `examples/` |
 | `D:/code/hydra/tools/texel/data/sf_*.csv` | SF-60k cp labels (2M; rejected for Rarog — lesson 1) |
-| `analysis/{infra,search,hce}_analysis.md` | Codex 5.6 audit (2026-07-13, at `ff21dc1`); basis of Phases 7–14. `search_analysis.md` verified line-by-line at head + fully merged 2026-07-14 (→ 7.5/7.6, 8.2–8.9, 10.1/10.2/10.4, Phase-14 SMP). `hce_analysis.md` merged same day after live re-verification (→ 7.4, 8.5c, 9.6, 11.1, Phase-12 ladder, Phase 13) — its §7/§9 fitted-value tables quote the rejected 6.2.2 refit, and two consequence claims are disproven; see lesson 12 |
+| `analysis/{infra,search,hce}_analysis.md` | Codex 5.6 audit (2026-07-13); basis of Phases 7–14. `search_analysis.md` verified line-by-line at head + fully merged 2026-07-14 (→ 7.5/7.6, 8.2–8.9, 10.1/10.2/10.4, Phase-14 SMP). `hce_analysis.md` merged same day after live re-verification (→ 7.4, 8.5c, 9.6, 11.1, Phase-12 ladder, Phase 13) — its §7/§9 fitted-value tables quote the rejected 6.2.2 refit, and two consequence claims are disproven; see lesson 12 |
 
 **Milestones:** M1 SF-capped-2600 ✅ · M2 Basilisk 1.5.0 ✅ (2.2.0 gauntlet) ·
 M3 ≈ 3150+ (Critter 1.6a) — the multi-cycle grind target.

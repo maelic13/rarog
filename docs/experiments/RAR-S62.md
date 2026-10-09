@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Experiment and conditions
 
-**Phase-4 cluster 4.5 ablation — REGISTERED, NOT YET RUN.** Isolates the marginal contribution of the 4.5.3 ProbCut piece-desync correctness fix INSIDE Cluster A, measured directly rather than inferred by subtracting two gates. Arm A `rarog-45cluster` `774000b`, bench 7,587,235. Arm B `rarog-45nofix` `46fa4c4`, bench 7,560,177 — identical except the ProbCut site writes `mv` without its piece, reintroducing the desync. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[-5,5]` nElo, cap 12,000, fixed before any games.**
+**Phase-4 cluster 4.5 ablation — REGISTERED, NOT YET RUN.** Isolates the marginal contribution of the 4.5.3 ProbCut piece-desync correctness fix INSIDE Cluster A, measured directly rather than inferred by subtracting two gates. Arm A `rarog-45cluster`, bench 7,587,235. Arm B `rarog-45nofix`, bench 7,560,177 — identical except the ProbCut site writes `mv` without its piece, reintroducing the desync. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[-5,5]` nElo, cap 12,000, fixed before any games.**
 
 ## Result / disposition
 

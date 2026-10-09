@@ -16,4 +16,4 @@ Search-quality ratio readout at the 2.3.1 head. `bench 13`, 1T, 40 per-position 
 
 ## Source
 
-`tools/diag_search_quality.ps1`; `src/diag.rs`; branch `spsa_impr` at `36bced4`
+`tools/diag_search_quality.ps1`; `src/diag.rs`; branch `spsa_impr`

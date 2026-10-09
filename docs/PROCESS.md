@@ -586,10 +586,10 @@ small verified commits, engine and documentation apart.
    (`STC 3+0.03: +32.7 ± 8.9 Elo (2,450 games)`); then `Bench: <n>`, the
    `bench 13` count `master` will have. A PR runs `CI` and `Release`; the
    maintainer squash-merges it once both are green.
-3. After the merge the branch is deleted. Live documents that cite the
-   branch's own commits are rewritten to the squash commit (or the hash is
-   dropped where the sentence carries the information) in the next change;
-   GitHub keeps the PR's commits as `refs/pull/<n>/head`.
+3. Before the PR, `python tools/diag/check_citations.py` passes (AGENTS,
+   *Changes*). After the merge the branch is deleted; its commits stay
+   citable under the PR, and the next change names the squash commit as the
+   landed state in the records.
 4. A gate arm or other throwaway branch is deleted once its recipe is
    recorded (AGENTS, *Evidence*). No permanent release branches and no
    history tags: a tag or kept branch is proposed to the maintainer, never

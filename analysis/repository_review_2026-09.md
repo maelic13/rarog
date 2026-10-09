@@ -76,7 +76,7 @@ tools directory and the two must not overlap.
 |---|---|
 | Tracked files | 273: `tools/` 99, `analysis/` 71, `src/` 37, `tests/` 27, `logo/` 9, `vendor/` 6, root documents 9, `docs/archive/` 2, `xtask` 2, `benches/` 2, `.github/` 2, configuration 5 |
 | Top-level Markdown | README 178 lines, AGENTS 447, CLAUDE 8, GUIDE 249, PLAN 1,508 (106 KB), PROCESS 448, EXPERIMENTS 1,674 (427 KB), HISTORY 928 (64 KB), CHANGELOG 912 (45 KB) |
-| `analysis/` | 71 Markdown files, 1,539 KB in total across the tree; 2 cited by no other tracked file; 5 carry a "historical" or "superseded" banner; 3 are dated 2026-07-13 audits of revision `ff21dc1` |
+| `analysis/` | 71 Markdown files, 1,539 KB in total across the tree; 2 cited by no other tracked file; 5 carry a "historical" or "superseded" banner; 3 are dated 2026-07-13 audits of that day's `development` revision |
 | `docs/archive/` | the Phase-4 PLAN (4,401 lines) and GUIDE (351 lines), verbatim |
 | Ledger | 183 rows in eight series (M 30, S 82, E 16, O 3, R 13, P 26, C 4, X 9); section 2: 20 rows, 589 prose lines; section 5: 18 rows plus four prose registrations (RAR-E06, E08, E12, E13) |
 | Dangling paths | 44 distinct backticked repository paths that exist nowhere: PLAN 5, EXPERIMENTS 9, analysis 21, `docs/archive` 8, `tools/texel/README.md` 1 |

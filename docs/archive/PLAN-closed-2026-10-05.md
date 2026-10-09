@@ -39,7 +39,7 @@ figures are in section 1.
 - **A.6 Codebase consolidation analysis — DONE 2026-09-10, `NO_CHANGE`.**
   `analysis/consolidation_2026-09-10.md`: Phase A refactors nothing; the B.1
   and C.1 handoffs.
-- **A.7 Version bump to 2.4.0 — DONE 2026-09-10 (`c6a548f`).**
+- **A.7 Version bump to 2.4.0 — DONE 2026-09-10.**
 - **A.8 Baselines on the release binary — CLOSED 2026-09-11.** A.8.1
   reference pool (RAR-M45); A.8.2 four-thread gauntlet (RAR-M46); A.8.3
   oracle deficit meter (RAR-O03); A.8.4 speed baseline (RAR-M48).
@@ -2548,9 +2548,9 @@ diagnostics; two rejections stop B.
 
   | Ref | Kind | What it holds | Cited by | Contained by | Recommendation |
   |---|---|---|---|---|---|
-  | `diag/b23-theta3900` | local branch, not on `origin` | `23b8a7a`, RAR-S76's theta at 3,900 baked into `CoreParams`, on `df6308e`; its two later commits are on `dev` as `b940fc2` and `7edd3ca` (`git cherry`) | RAR-S76 | itself only | **delete**: the diff is `analysis/arm_patches/23b8a7a-theta3900-coreparams.patch`, proved to reproduce the commit's tree |
-  | `b33-block1-probe` | local branch, not on `origin` | `883666d`, RAR-S82's block-1 probe, on `7ba3a1b` | RAR-S82; `analysis/ledger_commits_2026-09-27.md` | itself only | **delete**: `analysis/arm_patches/883666d-b33-block1-probe-proofparams.patch` |
-  | `b33-gate` | local branch, not on `origin` | `11e7145`, RAR-S84's gate candidate, on `f5d16d8`; `f53ca7d` baked the same theta on `dev` | RAR-S84 | itself only | **delete**: `analysis/arm_patches/11e7145-b33-gate-proofparams.patch` |
+  | `diag/b23-theta3900` | local branch, not on `origin` | A commit with RAR-S76's theta at 3,900 baked into `CoreParams`, on `df6308e`; its two later commits are on `dev` as `b940fc2` and `7edd3ca` (`git cherry`) | RAR-S76 | itself only | **delete**: the diff is `analysis/arm_patches/23b8a7a-theta3900-coreparams.patch`, proved to reproduce the commit's tree |
+  | `b33-block1-probe` | local branch, not on `origin` | A commit with RAR-S82's block-1 probe, on `7ba3a1b` | RAR-S82; `analysis/ledger_commits_2026-09-27.md` | itself only | **delete**: `analysis/arm_patches/883666d-b33-block1-probe-proofparams.patch` |
+  | `b33-gate` | local branch, not on `origin` | A commit with RAR-S84's gate candidate, on `f5d16d8`; `f53ca7d` baked the same theta on `dev` | RAR-S84 | itself only | **delete**: `analysis/arm_patches/11e7145-b33-gate-proofparams.patch` |
   | `arm/p410-jitter-1t`, `arm/p410-lmr-relief`, `arm/p410-margin-relief`, `arm/p46-root-relief` | tags, on `origin` | four one-file arms of 2026-08-20, each a change to the 2.4.0-era parameter file (`params.rs`, since moved) (RAR-S67, RAR-S68, RAR-S69, superseded and never run; an `LmrRootRelief` 1536 arm); together the only refs holding the bases of the six recipes in `analysis/arm_patches/` of 2026-09-10 | `analysis/arm_patches/README.md`; the archived closed-leaves PLAN | the four tags only | **keep**; retire when those six recipes are re-based on commits `dev` reaches, or retired with their rows |
   | `oracle/hybrid` | tag, on `origin` | `75d0d43`, the G(0) oracle's source and build recipe | RAR-O03, RAR-O04, PROCESS | itself and the two tags below | **keep** while G(0) is measured (C.11, E.1) |
   | `oracle/hybrid-ablate` | tag, on `origin` | `984f478`, the oracle's ablation bitmask | PROCESS *Matched ablation* | itself only | **keep** until PLAN E.1 (PROCESS) |

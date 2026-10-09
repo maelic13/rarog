@@ -900,7 +900,7 @@ loss).
       that changes nothing (`fit_complete.ps1 -DeferFrozenTest`, `0a2ed72`,
       which also takes the branch baseline as `-BaselineFingerprint`).
       **Pre-game reads, 2026-10-08 (RAR-E25 holds the numbers):** the fit
-      converged (candidate `f68bd31`, bench 14,270,302 / EBF 2.563); the
+      converged (bench 14,270,302 / EBF 2.563); the
       king family's donor residual +0.538% → +0.086% (no stop); magnitude
       no flag; the tree read flags (+5.2%), so the `c3margin` block runs
       after gate 1; the won-ending read breached KBP-K's DTZ-progress floor
@@ -922,7 +922,9 @@ loss).
       tag's `build.ps1`; registered with a frozen prediction. The reading
       corrects the budget row and C.0's prior; the next unit opens only on
       its own residual evidence and on what this reading says the
-      programme can still recover.
+      programme can still recover. **Delivery (maintainer decision
+      2026-10-09):** no PR of its own; its registration and result reach
+      `master` with C.4's PR, or with the next PR if C.4 does not open.
 - **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,

@@ -4,7 +4,7 @@ Indexed under *2. Measurement, harness and tuning* in [`docs/EXPERIMENTS.md`](..
 
 ## Experiment and conditions
 
-**Phase-4 step 4.0 — baseline and oracle freeze**, 2026-08-12 on the Ryzen 9 5950X. Reproduced the 2.3.2 baseline from `dev` at `5294e2c`, first confirming its code tree is byte-identical to `master` `f931722` (the diff is documentation only, so the build is the released revision). Toolchain `rustc 1.97.1 (8bab26f4f 2026-07-14)`, matching the `rust-toolchain.toml` pin.
+**Phase-4 step 4.0 — baseline and oracle freeze**, 2026-08-12 on the Ryzen 9 5950X. Reproduced the 2.3.2 baseline from `dev`, first confirming its code tree is byte-identical to `master` `f931722` (the diff is documentation only, so the build is the released revision). Toolchain `rustc 1.97.1 (8bab26f4f 2026-07-14)`, matching the `rust-toolchain.toml` pin.
 
 ## Result / disposition
 

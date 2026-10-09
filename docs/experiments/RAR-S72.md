@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Closed 4.6 follow-ups* in [`docs/EX
 
 ## Experiment and reconstruction
 
-**4.6.1 quiet SEE oracle screen.** Rarog ablation arm at `e438ced`, exact options `QuietSeePruneDepth=6,QuietSeePruneCoeff=25`; oracle `AblationMask=0`. Fixed 4,000-game screen, `3+0.03`, 1T, Hash 64, paired UHO, concurrency 14, strength-v2. Candidate/oracle executable SHA-256: `F8710A9A5ABD8E3CF7B708AC096E77F06F79848C8F7E8170F3F1F8A986BDF79A` / `10EB7301E01842C5FF2C70930A0BB01EB079163AEA50FB58871453F717D2A75E`. The option recipe plus current default-off implementation reproduces the arm; require accepted switch-off fingerprint **6,977,070 / EBF 2.466** before using it.
+**4.6.1 quiet SEE oracle screen.** Rarog ablation arm, exact options `QuietSeePruneDepth=6,QuietSeePruneCoeff=25`; oracle `AblationMask=0`. Fixed 4,000-game screen, `3+0.03`, 1T, Hash 64, paired UHO, concurrency 14, strength-v2. Candidate/oracle executable SHA-256: `F8710A9A5ABD8E3CF7B708AC096E77F06F79848C8F7E8170F3F1F8A986BDF79A` / `10EB7301E01842C5FF2C70930A0BB01EB079163AEA50FB58871453F717D2A75E`. The option recipe plus current default-off implementation reproduces the arm; require accepted switch-off fingerprint **6,977,070 / EBF 2.466** before using it.
 
 ## Result / disposition
 

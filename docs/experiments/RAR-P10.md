@@ -12,7 +12,7 @@ Phase-4.8b: port the AArch64 TT prefetch from `origin/arm_fix` onto current deve
 
 ## Conditional lesson and retry trigger
 
-**A missing cache hint is invisible to every instrument this project owns.** The engine plays identically with and without a prefetch - same nodes, same moves, same fingerprint, same tests - it merely plays slower, so node agreement across CI cells cannot see it and neither can a strength gate on x86. A REQUIRED instruction class is the only check that catches it, which generalises: for a hint-shaped optimisation, verify the instruction, not the behaviour. The A/B PLAN 4.8 item 3 requires has now run (RAR-P11) and the port is KEPT. The sibling `origin/arm_fix` commit (`3ee4660`, Apple TT cache-line alignment) is deliberately NOT ported - it has no ARM timing evidence and PLAN 4.8 item 4 requires an Apple result first.
+**A missing cache hint is invisible to every instrument this project owns.** The engine plays identically with and without a prefetch - same nodes, same moves, same fingerprint, same tests - it merely plays slower, so node agreement across CI cells cannot see it and neither can a strength gate on x86. A REQUIRED instruction class is the only check that catches it, which generalises: for a hint-shaped optimisation, verify the instruction, not the behaviour. The A/B PLAN 4.8 item 3 requires has now run (RAR-P11) and the port is KEPT. The sibling `origin/arm_fix` commit (Apple TT cache-line alignment) is deliberately NOT ported - it has no ARM timing evidence and PLAN 4.8 item 4 requires an Apple result first.
 
 ## Source
 

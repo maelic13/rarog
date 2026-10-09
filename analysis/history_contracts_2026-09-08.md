@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Disposition, 2026-09-08: tightened and closed.** Integrated in `f70ac19`.
+**Disposition, 2026-09-08: tightened and closed.** Integrated.
 Behaviour-neutral, so no playing gate is owed. **No speed claim is made**, per
 the register's own condition: RAR-M30 observed zero growth events, and zero
 events cannot support a speed argument in either direction.

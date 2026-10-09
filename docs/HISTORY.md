@@ -12,7 +12,7 @@ None of them is the current roadmap's, which uses lettered phases (`A.2.1`).
 |---|---|---|
 | Legacy Rarog phases 7–14 (`7.0b`, `8.2(a)`, `9.0a`, `10.3 speed pass`, `11.x`–`14`) | older source comments and tool prose, the oldest ledger rows, releases up to 2.3.1 | [docs/archive/GUIDE-legacy-2026-07-29.md](archive/GUIDE-legacy-2026-07-29.md) (the tracker) and [docs/archive/PLAN-legacy-2026-07-29.md](archive/PLAN-legacy-2026-07-29.md) (§S6, rationale per item), both verbatim from the 2.3.1 release commit `a5fd288` |
 | Phase 4 roadmap before the 2026-09-04 renumbering (`4.9b`) | ledger rows and analyses written 2026-08-11…2026-09-03 | [docs/archive/GUIDE-phase4-tracker-2026-08-21.md](archive/GUIDE-phase4-tracker-2026-08-21.md); its old numbers map to the renumbered ones in section 13 of the archived Phase-4 PLAN |
-| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to `c80df74` | [docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
+| Phase 4 roadmap after the renumbering (`4.5`, `4.9a.4`, `4.11b.19`), Phases 5–9 | `EXPERIMENTS.md`, `analysis/*.md`, commits up to the 2026-09-09 archive | [docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md) and [docs/archive/GUIDE-phase4-2026-09-09.md](archive/GUIDE-phase4-2026-09-09.md); the retired-to-current map is the number map below |
 | Current roadmap (`A`–`G`) | `PLAN.md`, `GUIDE.md`, ledger rows from RAR-M45 on | `PLAN.md` |
 
 ## The Phase-4 line, 2026-08-11 to 2026-09-09: what it established
@@ -29,7 +29,7 @@ durable results, each with its ledger row:
 | Board: SEE king legality, created pins and recapture promotions repaired against 41 external fixtures; fused relocation +17.5% make/unmake; caller-owned move-list delivery +2.48% NPS; generation constant-factor candidates measured −0.55% in search and reverted | RAR-M25…M44 |
 | Endgame instruments: truth, drawn-overclaim, conversion, floors, occurrence and ranking tools with cohort digests and guard self-tests; registered family order v2; KBN-K conversion 19.4% → 96.9% from the mate drive | 4.9a, 4.10, 4.11 in the archive |
 | Instruments: paired matched ablation against the frozen `hybrid` oracle; pooled-PGO NPS with null pairs; cross-engine board benchmark with harness parity; counter-unit discipline | `analysis/ablation_design.md`, `analysis/phase4_counter_spec.md`, `tools/nps_multibuild.ps1` |
-| Fingerprint at the rewrite: `bench 13` **7,601,220 / EBF 2.474** at `c80df74` | GUIDE checkpoint |
+| Fingerprint at the rewrite: `bench 13` **7,601,220 / EBF 2.474** | GUIDE checkpoint |
 
 What it did not do, and why the roadmap was rewritten: it was about to spend
 twenty-three frontier-research leaves on endgame recognisers worth ten to
@@ -510,7 +510,7 @@ leaf continues here, this is the mapping; everything else is history.
   the released binary that Phase B and C are measured against.
 
 - **2026-09-11 — PLAN A.7 and A.8 COMPLETE: 2.4.0 bumped, all four baselines
-  measured on it.** The version bump (`c6a548f`) moved `Cargo.toml` to 2.4.0
+  measured on it.** The version bump moved `Cargo.toml` to 2.4.0
   with `bench 13` unmoved at **7,601,220 / EBF 2.474**, and A.8 then measured
   the released engine rather than a predecessor of it. **A.8.1 (RAR-M45)**,
   twelve engines, 600 games per pair, 39,600 games, **zero forfeits and zero
@@ -558,13 +558,13 @@ leaf continues here, this is the mapping; everything else is history.
   needed nothing: their content is already in the documents they edited. Nine sit
   deep on a 113-commit line that forked from `a5fd288` and was never merged, so a
   diff to any reachable base is a whole-branch snapshot rather than a recipe;
-  those rows are closed findings, and `ba3170b` (RAR-S20), the only one with a
+  those rows are closed findings, and RAR-S20, the only one with a
   parameter recipe, already carries its seven values and both fingerprints inline.
   That line is unreachable from refs but still held by the reflog, so `git gc`
   does not remove it. `analysis/arm_patches/README.md` has the detail.
 
-  **Three cited SHAs were already gone before this audit** — `0ddc8e5` and
-  `3ee4660` (RAR-P16) and `7693010` (RAR-S54). All three rows anticipated it and
+  **Three cited SHAs were already gone before this audit** — two in RAR-P16
+  and `7693010` (RAR-S54). All three rows anticipated it and
   carry their recipes, which is why nothing was lost.
 - **2026-09-09 — Test-engine store cleared.**
   `tools/test_engines/` held 183
@@ -650,7 +650,7 @@ leaf continues here, this is the mapping; everything else is history.
   Neutral at 7,601,220 / EBF 2.474; debug 280 / release 281, fmt and Clippy
   clean. No games. 4.11b.15 is next.
 
-- **2026-09-08 — PLAN 4.11b.13 done, RAR-M38:** `f70ac19` reserves `MAX_PLY`
+- **2026-09-08 — PLAN 4.11b.13 done, RAR-M38:** the change reserves `MAX_PLY`
   of history headroom on the root before the hot path, with worker clones
   inheriting it through `Board::clone`'s capacity preservation. The gap was
   real but invisible to the instrument that looked for it: peak depth is
@@ -675,7 +675,7 @@ leaf continues here, this is the mapping; everything else is history.
 
 - **2026-09-08 — board profile recipe recovered and refreshed, RAR-M36:**
   RAR-M30's per-sample attribution turned out to be a side effect of xperf
-  failing to find the PDB, which `952711f` then fixed — silently switching the
+  failing to find the PDB, which a later fix then fixed — silently switching the
   report to per-function aggregation and making the summarizer resolve function
   END addresses while reporting "100% resolved". The recipe is to deny xperf
   symbols deliberately (empty symbol path AND symcache AND no adjacent PDB).
@@ -709,7 +709,7 @@ leaf continues here, this is the mapping; everything else is history.
   elevation and cannot change a structural finding. No code, no games, no Elo.
   4.11b.11 is next and owes an SEE re-baseline.
 
-- **2026-09-07 — PLAN 4.11b.9 ACCEPTED, RAR-M33:** `5c439da` fuses ordinary
+- **2026-09-07 — PLAN 4.11b.9 ACCEPTED, RAR-M33:** the change fuses ordinary
   quiet relocation behind `Board::move_piece`. Behaviour-neutral — both builds
   fingerprint 7,601,220 / EBF 2.474 and 640/640 paired root answers match
   including full PV and ponder. Isolated make/unmake +16.33/+17.30/+19.32%;
@@ -731,22 +731,22 @@ leaf continues here, this is the mapping; everything else is history.
   EBF 2.474; 240 paired root answers match including full PV and ponder) and
   gained +16.28/+15.21/+15.27% on the isolated make/unmake primitive, but its
   full-search median of +1.016% carried a bootstrap interval of -0.450% to
-  +3.609% and failed the rule frozen in `86e39f8` before timing. Emitted code
+  +3.609% and failed the rule frozen before timing. Emitted code
   grew (`make_move_inner` 468 -> 568 instrs), so LLVM was not already fusing
   it; the miss is instrument power, not mechanism. Production path withdrawn,
-  `src/` byte-identical to `af83abf`; per-piece-class test retained in
-  `8a73cfd`. Debug 275 / release 276 tests, fmt and Clippy pass. No games.
+  `src/` byte-identical to the baseline; per-piece-class test retained.
+  Debug 275 / release 276 tests, fmt and Clippy pass. No games.
   4.11b.10 is next; a powered retry belongs to 4.11b.16.
 
-- **2026-09-07 — PLAN 4.11b.8 closed by withdrawal, RAR-M31:** `c44608a`
+- **2026-09-07 — PLAN 4.11b.8 closed by withdrawal, RAR-M31:** the withdrawal
   restores the prior pin calculation and retains the independent oracle.
   This supersedes the retention below, not the historical local gains; useful
   whole-search value remains uncertain. Debug 274 / release 275 tests, fmt,
   Clippy, fresh before/after fingerprints and 20 profile identities pass.
   No new timing/games. 4.11b.9 is next; conditional retry belongs to 4.11b.10.
 
-- **2026-09-07 — measured work within PLAN 4.11b.8, RAR-M31:** simplified pin discovery in
-  `2ea279f`; local legal/capture/staged generation gains 8.54%/11.43%/7.41%.
+- **2026-09-07 — measured work within PLAN 4.11b.8, RAR-M31:** simplified pin discovery;
+  local legal/capture/staged generation gains 8.54%/11.43%/7.41%.
   Generic/PEXT search estimates +0.57%/+1.45% are inconclusive. Debug/release,
   independent board/pin oracles, PEXT checks, fmt and Clippy pass; fingerprints
   and 480 paired root answers match. Strength gate remains 4.11b.17.
@@ -772,7 +772,7 @@ leaf continues here, this is the mapping; everything else is history.
   `analysis/see_value_injection_2026-09-07.md`. Next is 4.11b.7.
 
 - **2026-09-07 — PLAN 4.11b.5, RAR-M28:** repaired evolving SEE legality,
-  selected-king handling and recapture promotion accounting in `fce0b44`.
+  selected-king handling and recapture promotion accounting.
   All 41 independent fixtures and 1,802-capture parity checks pass; complete
   debug/release suites, Python, fmt and Clippy pass. Production fingerprint
   **7,601,220 / EBF 2.474**; playing qualification remains at 4.11b.17.

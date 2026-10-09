@@ -72,10 +72,10 @@ difference from them.
 
 ## The repair
 
-1. `d93f808` throttled `info` lines to one per 250 ms. **Reverted at
-   `e3430d9`**: it made Rarog behave unlike every other engine on the basis
+1. A commit throttled `info` lines to one per 250 ms. **Reverted
+   later**: it made Rarog behave unlike every other engine on the basis
    of an artifact, and the donors show the volume is not the difference.
-2. **`79d3974`: the clock starts when `go` is parsed.** `SearchLimits.issued`
+2. **The clock starts when `go` is parsed.** `SearchLimits.issued`
    is stamped on the UCI thread in `set_search_parameters` and reset per
    `go`; `reset_search_state` uses it as the clock origin, falling back to
    `Instant::now()` for tests and bench. Wake-up and setup latency now count
@@ -97,7 +97,7 @@ stalls at a cost on every last move, and stays with D.1.
 ## Verification
 
 `cargo fmt --check`, `cargo clippy --all-features --all-targets -D warnings`,
-`cargo test` debug and release (567 tests) clean on `79d3974`. Fresh
+`cargo test` debug and release (567 tests) clean on the final state. Fresh
 no-feature builds: PEXT native and magic both **7,601,220 / EBF 2.474**;
 bench does not use a `go` clock, so the change is bench-invisible by
 construction. The registered RAR-R11 run decides the forfeit rate.

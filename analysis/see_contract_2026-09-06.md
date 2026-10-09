@@ -1,9 +1,9 @@
 # SEE contracts — RAR-M27 / 4.11b.4
 
-Source baseline: `6d1a670` (engine `a170f8c`). No production code changed
+Source baseline: the `dev` head of 2026-09-06. No production code changed
 in this contract step. **Historical RAR-M27 snapshot:** “current” observations
 and ignored tests below describe that baseline, not the development head.
-The unresolved-defect status is **SUPERSEDED by RAR-M28 / 4.11b.5** (`fce0b44`):
+The unresolved-defect status is **SUPERSEDED by RAR-M28 / 4.11b.5**:
 all three debt tests are now active and pass. See
 [the repair record](see_repair_2026-09-06.md) for the 41-fixture extension and
 new development fingerprint. Playing qualification remains at 4.11b.17.

@@ -4,7 +4,7 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
 
 ## Experiment and conditions
 
-Phase-4.8h: first full CI matrix dispatch carrying the 4.8 work — the `verify-isa` steps added in 4.8a and the AArch64 prefetch added in 4.8b had never executed on the five-cell matrix. Manual `workflow_dispatch` of `ci.yml` against `development` at `f7f424a`.
+Phase-4.8h: first full CI matrix dispatch carrying the 4.8 work — the `verify-isa` steps added in 4.8a and the AArch64 prefetch added in 4.8b had never executed on the five-cell matrix. Manual `workflow_dispatch` of `ci.yml` against `development`.
 
 ## Result / disposition
 

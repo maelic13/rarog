@@ -1,9 +1,9 @@
 # Codebase consolidation analysis — PLAN A.6
 
-Revision `7cffce5` on `dev`, 2026-09-10. Research leaf, class `R2`: this
+Revision: `dev`, 2026-09-10. Research leaf, class `R2`: this
 document decides what Phase A refactors, what Phases B and C replace, and what
 is deleted, and hands B.1 and C.1 their restructure scope. **No source
-changed.** Line numbers below are at `7cffce5` and will drift; the region
+changed.** Line numbers below are as of that revision and will drift; the region
 names will not.
 
 Method: every module was outlined mechanically (`rg` over `fn`/`struct`/
@@ -105,7 +105,7 @@ B.1 proves it. None is removed in Phase A.
 
 The 2026-08-19 code audit (`analysis/code_audit_2026_08_19.md`) is now
 disposed: item 1 (`stack[ply].reduction` stale) is **resolved** — neither the
-field nor `lmr_prior_reduction_adj` exists at `7cffce5`; item 2
+field nor `lmr_prior_reduction_adj` exists at that revision; item 2
 (`improving` after check) was **rejected** by RAR-S66 and is B.2's to
 revisit inside the donor's improving rule; item 3 (killer travel) is
 subsumed by B.2's picker; item 4 (`attacks_from_sq` guarded by
@@ -133,7 +133,7 @@ C.1 is told to create; today it is 60 lines inside `eval_piece_activity`
 Scope is fixed by PLAN B.1; this section says where today's code goes.
 B.0 may re-cut module boundaries; it may not change any mechanism here.
 
-| Target module | From `search.rs` (line spans at `7cffce5`) and elsewhere |
+| Target module | From `search.rs` (line spans at that revision) and elsewhere |
 |---|---|
 | `search/mod.rs` | `SearchEvent`/`SearchExit`/`SearchResult` (100–132), `RootMove` (132–229), `Searcher` (634–785), `configure`/`new_game`/`clear_history`/`search`/`search_impl`/`reset_search_state` (956–1235), `search_root` (1391–1856, 465 lines: iterative deepening, aspiration, TM decisions), `syzygy_root_moves` and the syzygy helpers (1269–1335, 4753–4804), `check_stop`/`record_node`/info output (5017–5179), `format_score` |
 | `search/node.rs` | `negamax` (2201–3885, 1,684 lines), `quiescence` (3885–4169), `nmp_material_ok`, `lmr_reduction_units`, `ReductionInputs` (554–578), `late_move_prune_count`, `move_gives_check`, `build_lmr_table`/`lmr_reduction` (76–100) |
@@ -167,7 +167,7 @@ in the same documentation commit.
 
 ## C.1 handoff — evaluation restructure, behaviour-neutral
 
-| Target module | From `eval.rs` (line spans at `7cffce5`) |
+| Target module | From `eval.rs` (line spans at that revision) |
 |---|---|
 | `eval/mod.rs` | score constants (13–33), `Evaluator` with both caches (1060–1227), `evaluate` (1227–1379: cache, phase, lazy gate, tempo, rule-50 damping), `evaluate_result`, `set_lazy_margin`, `piece_value`, `color_sign` and the small helpers (3026–3054) |
 | `eval/params.rs` | `eval_params!` and its 137 entries (135–505), `EvalTables`/`build_tables` (1060–1085), the `tune` load/dump (533–619) |

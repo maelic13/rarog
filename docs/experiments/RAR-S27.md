@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [
 
 ## Experiment and conditions
 
-Phase-4.3a **arm A**, `EvalPruneTtMinDepth=2` versus the seeded 0. Registered `[0,3]` nElo SPRT, `3+0.03`, 1T, 64 MB, paired UHO, concurrency 14 with `-use-affinity`, one `rarog-43a-tune.exe` both sides differing only by the option (SHA `559E0522…`), repo `040b49e`, seed 1246079384.
+Phase-4.3a **arm A**, `EvalPruneTtMinDepth=2` versus the seeded 0. Registered `[0,3]` nElo SPRT, `3+0.03`, 1T, 64 MB, paired UHO, concurrency 14 with `-use-affinity`, one `rarog-43a-tune.exe` both sides differing only by the option (SHA `559E0522…`), seed 1246079384.
 
 ## Result / disposition
 

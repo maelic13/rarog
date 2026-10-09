@@ -6,7 +6,7 @@ Date: 2026-09-07.
 > records the decision and repository identities examined on the date above.
 > Use `GUIDE.md` and `PLAN.md` for current status, sequencing, and model
 > assignments. Later work repaired the LazyMargin cache invalidation discussed
-> here (`e52074e`, `d07454a`), and the HTML snapshots mentioned below were not
+> here, and the HTML snapshots mentioned below were not
 > retained in this repository.
 
 ## Recommendation
@@ -32,7 +32,7 @@ No repository source, plan, settings or commits were changed by this audit.
 
 | Item | Audited identity |
 |---|---|
-| Rarog | `d9d8b26337bc46e0782243cb13dd6781b873c4f1` |
+| Rarog | — |
 | Basilisk | `da4d1c8b5a25777b0737451d6a798df8def45a41` |
 | Shared Net Trainer | `59d190e22162c53efe630938d1609c5baa57d18d` |
 | Trainer's pinned Bullet | `cebc78a093d92cbc87e56cfef049184c225270b0` |

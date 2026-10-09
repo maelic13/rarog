@@ -5,7 +5,7 @@
 **Disposition, 2026-09-08: `NO_CHANGE`. The candidate was implemented in full,
 measured against a contract frozen before timing, and rejected by its own
 stage-1 screen. The production path is withdrawn; `src/` is byte-identical to
-`8d7da2c`.**
+the baseline.**
 
 The candidate was not merely unprofitable — it made its own target region
 **slower** in all three alternating rounds. No games, no Elo claim, no adjacent

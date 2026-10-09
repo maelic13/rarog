@@ -16,4 +16,4 @@ An **untuned, uniform, blind** de-selectivity shift beat the fitted values, whic
 
 ## Source
 
-`tools/test_engines/rarog-p100*-pext-pgo.exe` and their JSON manifests; **reconstruction recipe below this table** — `d472f6c` was a docs-only commit and the probe's real source `7693010d` was dangling, so the recipe replaces both; record: `analysis/ledger_records_2026-09-14.md`, RAR-S54 (Search and selectivity)
+`tools/test_engines/rarog-p100*-pext-pgo.exe` and their JSON manifests; **reconstruction recipe below this table** — the recorded commit was a docs-only commit and the probe's real source was dangling, so the recipe replaces both; record: `analysis/ledger_records_2026-09-14.md`, RAR-S54 (Search and selectivity)

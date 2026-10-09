@@ -1,10 +1,10 @@
-# RAR-S20 — Half-run aspiration SPSA snapshot `ba3170b` (`15/148/149/9/20/8/0`) versus clean `p1043-base`
+# RAR-S20 — Half-run aspiration SPSA snapshot (`15/148/149/9/20/8/0`) versus clean `p1043-base`
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Half-run aspiration SPSA snapshot `ba3170b` (`15/148/149/9/20/8/0`) versus clean `p1043-base`; `[0,+3]`, `3+0.03`, 1T, 64 MB, paired UHO.
+Half-run aspiration SPSA snapshot (`15/148/149/9/20/8/0`) versus clean `p1043-base`; `[0,+3]`, `3+0.03`, 1T, 64 MB, paired UHO.
 
 ## Result / disposition
 
@@ -16,4 +16,4 @@ In this incomplete fit, narrowing the initial window widened the tree without de
 
 ## Source
 
-snapshot `ba3170b`; Plan 4.0
+snapshot; Plan 4.0

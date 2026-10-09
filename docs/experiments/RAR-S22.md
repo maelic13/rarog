@@ -1,10 +1,10 @@
-# RAR-S22 — Phase-4.2 opening static audit of the TT producer/consumer graph at `f35bc09`, plus a re-run of RAR-S21's …
+# RAR-S22 — Phase-4.2 opening static audit of the TT producer/consumer graph, plus a re-run of RAR-S21's …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.2 opening static audit of the TT producer/consumer graph at `f35bc09`, plus a re-run of RAR-S21's reading on a freshly built diag binary.
+Phase-4.2 opening static audit of the TT producer/consumer graph, plus a re-run of RAR-S21's reading on a freshly built diag binary.
 
 ## Result / disposition
 

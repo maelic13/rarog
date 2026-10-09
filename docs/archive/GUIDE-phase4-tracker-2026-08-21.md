@@ -57,7 +57,7 @@ classical fallback (9, last, may never run). Per-item rationale is in
 ### Phase 4 — Reference-accelerated search and HCE work (→ conditional 2.4.0)
 
 - [x] 4.0 **[DONE, no games]** Evidence, baseline and oracle freeze — RAR-M12.
-      2.3.2 reproduced from `dev` `5294e2c` (code byte-identical to `master`,
+      2.3.2 reproduced from `dev` (code byte-identical to `master`,
       doc-only diff), rustc 1.97.1 as pinned. fmt and all-feature clippy
       clean; tests 258/0 debug and 259/0 release, the one-test gap being a
       documented release-only `cfg`. Bench **6,519,711 / 2.449**; tune build
@@ -273,7 +273,7 @@ classical fallback (9, last, may never run). Per-item rationale is in
           now exist on both engines, and the oracle's TT-served returns are
           split out as `probcut_tt_served`. Re-ran the 4.2 suite as
           `analysis/phase4_differential_v3_depth8.txt`. Oracle side `2682f64`
-          on `hybrid-diag`; Rarog side `cf4e475`; reading `8142d5a`.
+          on `hybrid-diag`.
     - [x] (b) 4.7a **[REVERTED]** null-move entry.
           Primary gate becomes `nmp_eval >= beta`, the old margin re-homed
           onto raw `static_eval`. `nmp_attempt` −21.4%, `nmp_cut` −2.4%,

@@ -21,7 +21,7 @@ its evaluator-specific implementation in Phase 5/6.
 
 ## Evidence and scope
 
-Measured Rarog source: ca03a46db74197bc32c8cf3441359de421fcddd5.
+Measured Rarog source: the development head of 2026-09-05 (kept in the 2026-09-27 history bundle).
 Basilisk: d73476614701863e61871de62f12568b52191d79.
 Reckless: 91b56c29861f0a5713204bdeffd6c45e9eb9f649 plus the included adapter.
 Stockfish reference: 1dc0912d86dafb99e96d679a6ac76cbdf1553459; not timed.
@@ -29,7 +29,7 @@ Stockfish reference: 1dc0912d86dafb99e96d679a6ac76cbdf1553459; not timed.
 Rarog advanced through 3be1c05 (endgame ranking), 60bd1f1 (panic reporting)
 and a0aeb68 (rated-game occurrence) during this work. At the final source
 comparison its board modules, board benchmark and Cargo.toml remained
-unchanged from ca03a46. This does not freeze concurrent future work. The live
+unchanged from the measured source. This does not freeze concurrent future work. The live
 GUIDE still identified 4.11.7 budget transfer as current at the snapshot.
 
 Supporting files: [manifest](artifacts/board-audit-20260905/manifest.json),

@@ -1,10 +1,10 @@
-# RAR-S30 — Phase-4.3a refinement shadow at `8822cf2`, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour …
+# RAR-S30 — Phase-4.3a refinement shadow, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.3a refinement shadow at `8822cf2`, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour change (fingerprint 6,502,902).
+Phase-4.3a refinement shadow, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour change (fingerprint 6,502,902).
 
 ## Result / disposition
 
@@ -16,4 +16,4 @@ The data show directional predicate sensitivity in this bench; they do **not** e
 
 ## Source
 
-`tools/diag_search_quality.ps1`; `8822cf2`; Plan 4.3, 4.10
+`tools/diag_search_quality.ps1`; Plan 4.3, 4.10

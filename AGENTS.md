@@ -228,11 +228,16 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   the merge commits of 2026-10-05; the procedure is PROCESS, *Branches and
   pull requests* and *Release*). The small, separate commits above stay on
   the branch.
-- Documents cite `master` commits, and the PR number where the steps
-  matter (GitHub keeps every PR's commits as `refs/pull/<n>/head`). A
-  branch's own hashes are working pointers while it is in flight: when it
-  lands, the live documents' references to them are rewritten to its squash
-  commit, or dropped where the sentence already carries the information.
+- A cited commit stays reachable: on `master`, under a PR (GitHub keeps
+  every PR's commits as `refs/pull/<n>/head`), on a kept tag, or on the
+  local branch of work in flight. The landed state is cited by its squash
+  commit on `master`; a branch's own commits stay citable for the step each
+  made. A gate arm is cited by its recipe file once its branch is deleted.
+  `python tools/diag/check_citations.py` fails on any other commit, and on
+  hex that is neither a commit here nor listed in
+  `tools/diag/citation_foreign.tsv`; it needs the PR refs fetched once per
+  clone (`git fetch origin "+refs/pull/*/head:refs/remotes/origin/pr/*"`)
+  (maintainer decisions 2026-10-09).
 - `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
   of the engine would notice (a gate-accepted strength change; a UCI option,
   output or default; a fixed defect; a removal; a build or asset change)

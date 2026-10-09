@@ -1,7 +1,7 @@
 # Refreshed full-search board profile — RAR-M36 / recipe recovery
 
 Supersedes the shares in `board_search_profile_2026-09-07.md` (RAR-M30) for the
-current head. RAR-M30 is not withdrawn: it measured `02420dc` correctly, and the
+current head. RAR-M30 is not withdrawn: it measured its own head correctly, and the
 two agree closely everywhere except the region 4.11b.9 changed.
 
 ## The recipe, recovered
@@ -9,15 +9,15 @@ two agree closely everywhere except the region 4.11b.9 changed.
 RAR-M30's per-sample attribution was not a setting — it was a side effect of a
 bug, and fixing that bug silently broke the instrument.
 
-Before `952711f`, `_NT_SYMBOL_PATH` pointed at the directory holding
+Before the fix, `_NT_SYMBOL_PATH` pointed at the directory holding
 `rarog-production.pdb`. rustc embeds the name `rarog.pdb` in the executable, so
 xperf could not discover it and emitted **one row per sampled address**, named
-`***unknown***`. `summarize_board_search_etw.py` (`ec9e0de`) exists precisely to
+`***unknown***`. `summarize_board_search_etw.py` exists precisely to
 recover those addresses with llvm-symbolizer, which yields the **complete inline
 chain** and lets a hot inlined helper be charged to its board *caller* rather
 than its leaf.
 
-`952711f` "Fix ETW profile symbol resolution" made xperf resolve symbols. xperf
+The commit "Fix ETW profile symbol resolution" made xperf resolve symbols. xperf
 then aggregated **per function**, board work inlined into `negamax` or
 `evaluate` was charged to those functions, and the summarizer — reading a fixed
 column index that had been correct for the per-address table — began resolving
@@ -44,12 +44,12 @@ header: `base == limit, size == 0` is per-address and accepted; any hits in rows
 with non-zero size are per-function and **refused** with the regeneration
 recipe in the message.
 
-## Refreshed shares at `2d621ff`
+## Refreshed shares
 
 162,846 process samples, five cohorts, 600,000 nodes, 5 repeats, production
 `a3cca8dc...`, PDB `c61e93e3...`.
 
-| Region | RAR-M30 (`02420dc`) | **RAR-M36 (head)** |
+| Region | RAR-M30 | **RAR-M36 (head)** |
 |---|---:|---:|
 | generation and legality | 6.751% | **6.556%** |
 | make/unmake | 7.143% | **6.677%** |

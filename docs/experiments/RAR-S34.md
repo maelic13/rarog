@@ -1,10 +1,10 @@
-# RAR-S34 — Phase-4.3c **gate result and cost attribution.** Gate: candidate `1dc4bc6` versus baseline `d00e1ac` …
+# RAR-S34 — Phase-4.3c **gate result and cost attribution.** Gate: candidate versus baseline …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.3c **gate result and cost attribution.** Gate: candidate `1dc4bc6` versus baseline `d00e1ac`, final-PGO, registered `[3,10]` nElo at `3+0.03`, 1T, 64 MB, paired UHO, budget 16,000. Attribution: 4.3c peeled into its three sub-changes, three independent PGO builds each, bench fingerprints plus one interleaved 5-cycle NPS pass over all twelve binaries on an idle 5950X.
+Phase-4.3c **gate result and cost attribution.** Gate: candidate versus baseline, final-PGO, registered `[3,10]` nElo at `3+0.03`, 1T, 64 MB, paired UHO, budget 16,000. Attribution: 4.3c peeled into its three sub-changes, three independent PGO builds each, bench fingerprints plus one interleaved 5-cycle NPS pass over all twelve binaries on an idle 5950X.
 
 ## Result / disposition
 

@@ -1,7 +1,7 @@
 # Universal x86-64 binary — design record and deferral
 
 **Status: OPTIONAL, not scheduled, may never be done.** Owner: PLAN `G.2`.
-Written 2026-09-10 from the A.4 investigation, at `1eb3f23`. Nothing here is a
+Written 2026-09-10 from the A.4 investigation. Nothing here is a
 commitment to build it; it exists so the work does not have to be redone if the
 triggers in section 6 ever fire.
 
