@@ -1,0 +1,49 @@
+# Backticked hex in the documents that is not a Rarog commit: other projects'
+# commits, tournament IDs, binary and file SHA-256 prefixes, tool revisions.
+# One `hash<TAB>what it is` per line; check_citations.py reads it and fails on
+# an entry no document cites any more.
+04e07a9	PlentyChess commit (board-state reading)
+051fdfa7	SHA-256 prefix of a cluster-qualification candidate binary (2026-09-08)
+0a215d6c	Stockfish commit (search probes and PV reference)
+0a2e2e1420f75bf8	SHA-256 prefix of RAR-M54's census summary
+0b78c29	Colosseum cli local build revision
+19b4805c	weather-factory revision
+1a0f8ea1091031f0380ca2ea7d80a52f14c29118	Manta snapshot commit
+1dc0912d	Stockfish commit (see_ge reference)
+21acb7bc7eee43b4	SHA-256 prefix of RAR-M54's occurrence summary
+31d9cd6	Reckless commit (form reference)
+32dd3fae	SHA-256 prefix of a cluster-qualification candidate binary (2026-09-08)
+40425b2ddc86e94f	SHA-256 prefix of RAR-M54's 2.4.0 conversion summary
+40a15b1	Colosseum cli-v0.1.0 revision
+40a15b1b	Colosseum cli-v0.1.0 revision
+41768fe9	Colosseum tournament ID
+45ea6a9	Reckless dev commit (local build)
+48a229cea	rustc 1.98.1 commit hash
+4b72663d	SHA-256 prefix of a cluster-qualification baseline binary (2026-09-08)
+59aae690	Stockfish commit (search reference)
+59d190e22162c53efe630938d1609c5baa57d18d	Shared Net Trainer commit
+5e539523	Colosseum tournament ID (RAR-M45)
+66638ae04bbce4d1ffdecfcf19fd7d65ce88e5f7	Basilisk initial snapshot commit
+7551803d287e404cbc746b2e3ba743c463a8b80c	Basilisk follow-up snapshot commit
+75d38ad	GyatsoChess commit
+8791a27e	Colosseum tournament ID (RAR-M57)
+8c4e18fb	SHA-256 prefix of a cluster-qualification baseline binary (2026-09-08)
+91b56c2	Reckless commit of the binary RAR-M20 measured
+9587eeeb	Stockfish commit (the C.0 donor instrument)
+9587eeeb5ed29f834d4f956b92e0e732877c47a7	Stockfish commit (the C.0 donor instrument, full)
+9a8dd81	Stockfish commit (position-state reading)
+9f94aa9	Colosseum cli revision of the qualified binary
+ae3a6170	Colosseum tournament ID (RAR-M63, stopped first start)
+ca05dfa	Colosseum cli-v0.2.0 revision (the pinned runner)
+ca05dfa2	Colosseum cli-v0.2.0 revision (the pinned runner)
+cb8575cdc51dda07	SHA-256 prefix of RAR-M54's Basilisk conversion summary
+cebc78a093d92cbc87e56cfef049184c225270b0	Bullet trainer commit pinned by the Shared Net Trainer
+cfea92a7	SHA-256 prefix of rarog-c03-tune.exe (RAR-E19)
+d3431afa	SHA-256 prefix of a cluster-qualification candidate binary (2026-09-08)
+d6574360	Colosseum tournament ID (RAR-M58)
+d734766	Basilisk commit of the binary RAR-M20 measured
+da4d1c8b5a25777b0737451d6a798df8def45a41	Basilisk commit (engine-choice audit)
+dc34c33d	SHA-256 prefix of a cluster-qualification baseline binary (2026-09-08)
+dd0e676	Reckless commit (board-state reading)
+dfb84c19	Colosseum tournament ID (RAR-M46)
+e91b8e63	Colosseum tournament ID (RAR-M63)
