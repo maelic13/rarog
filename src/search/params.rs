@@ -103,7 +103,7 @@ search_params! {
     struct SearchParams, generated_param_checks;
 
     /// Initial aspiration window half-width (centipawns).
-    aspiration_delta = 13, "AspirationDelta", 5..=100;
+    aspiration_delta = 14, "AspirationDelta", 5..=100;
 
     // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
     // The widening loop is parameterised so its shape can be SPSA'd rather than
@@ -142,7 +142,7 @@ search_params! {
     // accurate SEE de-tunes the constants fitted around the old one.
     /// Qsearch capture SEE-prune margin: search a capture only if
     /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
-    qs_see_margin = 266, "QsSeeMargin", 0..=600;
+    qs_see_margin = 287, "QsSeeMargin", 0..=600;
     /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
     qs_see_clamp_hi = 208, "QsSeeClampHi", 0..=600;
     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
@@ -179,7 +179,7 @@ search_params! {
     /// exceeds it, the positional block is skipped. Pushed into the evaluator
     /// at every search start; the default must equal `eval::LAZY_MARGIN`, the
     /// evaluator's own seed and the margin `texel` fits use.
-    lazy_margin = 414, "LazyMargin", 200..=2000;
+    lazy_margin = 423, "LazyMargin", 200..=2000;
 
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
@@ -215,10 +215,10 @@ search_params! {
 
     // Correction update and blend.
     /// Update slope in 128ths: `bonus = slope * depth * residual / 128`.
-    corr_update_slope = 217, "CoreCorrUpdateSlope", 32..=512;
+    corr_update_slope = 237, "CoreCorrUpdateSlope", 32..=512;
     /// Clamps of one update, in table units (64 per evaluation unit).
     corr_update_min = -1_742, "CoreCorrUpdateMin", -8192..=-256;
-    corr_update_max = 735, "CoreCorrUpdateMax", 128..=8192;
+    corr_update_max = 789, "CoreCorrUpdateMax", 128..=8192;
     /// Blend weights of the six tables, in 128ths.
     corr_weight_pawn = 121, "CoreCorrWeightPawn", 0..=384;
     corr_weight_minor = 42, "CoreCorrWeightMinor", 0..=384;
@@ -228,7 +228,7 @@ search_params! {
     corr_weight_cont4 = 147, "CoreCorrWeightCont4", 0..=384;
     // Corrected-eval formula, neutral at zero.
     /// Material scaling of the raw eval, in 64ths per starting-material unit.
-    eval_material_scale = 21, "CoreEvalMaterialScale", -64..=64;
+    eval_material_scale = 20, "CoreEvalMaterialScale", -64..=64;
     /// Rule-50 damping, in percent of `eval * min(clock, 100) / 199`. The
     /// evaluator's own damping is compiled out under the core, so the eval the
     /// table stores does not depend on the clock and the search damps it here.
@@ -236,24 +236,24 @@ search_params! {
 
     // Node-level pruning.
     /// Razoring margin `base + square * depth^2`, evaluation units.
-    razor_base = 289, "CoreRazorBase", 50..=800;
-    razor_square = 184, "CoreRazorSquare", 20..=400;
+    razor_base = 279, "CoreRazorBase", 50..=800;
+    razor_square = 164, "CoreRazorSquare", 20..=400;
     /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
     /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
     /// unthreatened + constant`, floored at 2.
-    rfp_square = 143, "CoreRfpSquare", 0..=320;
-    rfp_linear = 19, "CoreRfpLinear", -100..=200;
-    rfp_improvement = 50, "CoreRfpImprovement", 0..=512;
-    rfp_correction = 88, "CoreRfpCorrection", 0..=2048;
-    rfp_threat = 20, "CoreRfpThreat", 0..=120;
-    rfp_constant = -31, "CoreRfpConstant", -100..=100;
+    rfp_square = 139, "CoreRfpSquare", 0..=320;
+    rfp_linear = 16, "CoreRfpLinear", -100..=200;
+    rfp_improvement = 63, "CoreRfpImprovement", 0..=512;
+    rfp_correction = 80, "CoreRfpCorrection", 0..=2048;
+    rfp_threat = 14, "CoreRfpThreat", 0..=120;
+    rfp_constant = -24, "CoreRfpConstant", -100..=100;
     /// Reverse-futility return, in 1024ths of the way from the estimate to beta.
     rfp_lerp = 586, "CoreRfpLerp", 0..=1024;
     /// Hindsight: a parent reduction (1024ths of a ply) at or above this
     /// deepens a child whose eval says the parent's opponent got worse.
     hindsight_deepen_reduction = 1_676, "CoreHindsightDeepenReduction", 512..=6144;
     /// Hindsight: an eval swing above this reduces a reduced child one ply.
-    hindsight_reduce_margin = 31, "CoreHindsightReduceMargin", 0..=200;
+    hindsight_reduce_margin = 34, "CoreHindsightReduceMargin", 0..=200;
     /// Internal iterative reduction: the least depth at which a missing or
     /// shallow TT move costs a ply.
     iir_min_depth = 4, "CoreIirMinDepth", 2..=10;
@@ -267,15 +267,15 @@ search_params! {
     lmp_history = 75, "CoreLmpHistory", 0..=400;
     /// Quiet futility value: `eval + base + linear * depth + history *
     /// history/1024 + above_beta * (eval >= beta) + correction * |corr|/1024`.
-    fp_base = 147, "CoreFpBase", -100..=500;
-    fp_linear = 35, "CoreFpLinear", 10..=300;
+    fp_base = 132, "CoreFpBase", -100..=500;
+    fp_linear = 40, "CoreFpLinear", 10..=300;
     fp_history = 44, "CoreFpHistory", 0..=200;
-    fp_eval_above_beta = 39, "CoreFpEvalAboveBeta", 0..=200;
-    fp_correction = 166, "CoreFpCorrection", 0..=2048;
+    fp_eval_above_beta = 44, "CoreFpEvalAboveBeta", 0..=200;
+    fp_correction = 213, "CoreFpCorrection", 0..=2048;
     /// Bad-noisy futility value: `eval + base + linear * depth + history *
     /// history/1024 + victim value`.
-    bnfp_base = 37, "CoreBnfpBase", -100..=400;
-    bnfp_linear = 44, "CoreBnfpLinear", 10..=300;
+    bnfp_base = 46, "CoreBnfpBase", -100..=400;
+    bnfp_linear = 47, "CoreBnfpLinear", 10..=300;
     bnfp_history = 36, "CoreBnfpHistory", 0..=200;
     /// History pruning below `-slope * depth`.
     hp_slope = 1_019, "CoreHpSlope", 100..=4000;
@@ -284,13 +284,13 @@ search_params! {
     see_quiet_square = 7, "CoreSeeQuietSquare", 0..=40;
     see_quiet_linear = 31, "CoreSeeQuietLinear", 0..=200;
     see_quiet_history = 18, "CoreSeeQuietHistory", 0..=120;
-    see_quiet_constant = 20, "CoreSeeQuietConstant", -100..=100;
+    see_quiet_constant = 16, "CoreSeeQuietConstant", -100..=100;
     /// SEE-pruning allowance for noisy moves: `min(0, -square * depth^2 -
     /// linear * depth - history * history/1024 + constant)`.
     see_noisy_square = 5, "CoreSeeNoisySquare", 0..=40;
     see_noisy_linear = 12, "CoreSeeNoisyLinear", 0..=200;
     see_noisy_history = 33, "CoreSeeNoisyHistory", 0..=120;
-    see_noisy_constant = 29, "CoreSeeNoisyConstant", -100..=100;
+    see_noisy_constant = 24, "CoreSeeNoisyConstant", -100..=100;
 
     // Late-move reductions, in 1024ths of a ply.
     lmr_log = 150, "CoreLmrLog", 0..=1024;
@@ -364,7 +364,7 @@ search_params! {
     /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
     /// (child cutoffs < 2))`, evaluation units; the depth term is in
     /// quarters of a unit per ply.
-    nmp_base = 180, "CoreNmpBase", 0..=400;
+    nmp_base = 174, "CoreNmpBase", 0..=400;
     nmp_depth = 16, "CoreNmpDepth", 0..=80;
     nmp_tt_pv = 48, "CoreNmpTtPv", 0..=200;
     nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
@@ -383,8 +383,8 @@ search_params! {
     // ProbCut.
     /// `probcut_beta = beta + base - improving_term * improving`, evaluation
     /// units; the base is Rarog's fitted `ProbCutMargin`.
-    probcut_base = 172, "CoreProbcutBase", 50..=400;
-    probcut_improving = 43, "CoreProbcutImproving", 0..=150;
+    probcut_base = 159, "CoreProbcutBase", 50..=400;
+    probcut_improving = 42, "CoreProbcutImproving", 0..=150;
     /// Captures searched at most per node.
     probcut_move_cap = 5, "CoreProbcutMoveCap", 1..=16;
     /// The verification depth falls one ply below `depth - 4 - improving`
@@ -454,10 +454,10 @@ search_params! {
     qs_count_limit = 3, "QsCountLimit", 2..=8;
     /// A capture is skipped when the stand pat, its victim and this margin
     /// cannot reach alpha; evaluation units over the search's piece scale.
-    qs_futility_margin = 208, "QsFutilityMargin", 0..=400;
+    qs_futility_margin = 232, "QsFutilityMargin", 0..=400;
     /// With more than eight pieces on the board, the stand pat, a queen and
     /// this margin below alpha end the node.
-    qs_delta_margin = 212, "QsDeltaMargin", 0..=800;
+    qs_delta_margin = 237, "QsDeltaMargin", 0..=800;
 }
 
 #[cfg(test)]
