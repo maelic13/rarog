@@ -2469,7 +2469,7 @@ fn usage(exe: &str) {
     );
     eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
     eprintln!(
-        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full]   (fen;label;white-POV score; --full: lazy gate out of reach)"
+        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor)"
     );
     eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
@@ -2480,8 +2480,11 @@ fn usage(exe: &str) {
 /// Write every row's evaluation beside its FEN and label: by default the
 /// played one, with the lazy gate applied as the engine applies it (the
 /// function the fits describe); with `full`, the gate held out of reach, the
-/// other side of the full-against-played comparison.
-fn cmd_dump_scores(path: &str, out: &str, full: bool) {
+/// other side of the full-against-played comparison. With `scale`, a fourth
+/// field carries the engine's own multiplicative endgame factor for the row
+/// (`linear_delta_scale`), so an offline model of a scale rule can be checked
+/// against the engine row by row instead of being assumed to match it.
+fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool) {
     let mut ev = Evaluator::default();
     if full {
         ev.set_lazy_margin(i32::MAX);
@@ -2500,12 +2503,11 @@ fn cmd_dump_scores(path: &str, out: &str, full: bool) {
             continue;
         };
         let score = eval_white(&mut ev, &board);
-        lines_out.push(format!(
-            "{};{};{}",
-            &line[..sep],
-            &line[sep + 1..],
-            score as i32
-        ));
+        let mut row = format!("{};{};{}", &line[..sep], &line[sep + 1..], score as i32);
+        if scale {
+            row.push_str(&format!(";{}", linear_delta_scale(&board)));
+        }
+        lines_out.push(row);
     }
     std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
         eprintln!("Cannot write {out}: {e}");
@@ -2623,12 +2625,14 @@ fn main() {
             cmd_audit_coverage(&args[2]);
         }
         "--dump-scores" => {
-            let full = args.len() == 5 && args[4] == "--full";
-            if args.len() != 4 && !full {
+            let flags = args.get(4..).unwrap_or_default();
+            let known = |f: &String| f == "--full" || f == "--scale";
+            if args.len() < 4 || !flags.iter().all(known) {
                 usage(&args[0]);
                 exit(1);
             }
-            cmd_dump_scores(&args[2], &args[3], full);
+            let has = |name: &str| flags.iter().any(|f| f == name);
+            cmd_dump_scores(&args[2], &args[3], has("--full"), has("--scale"));
         }
         "--tune" => {
             if args.len() < 5 {
