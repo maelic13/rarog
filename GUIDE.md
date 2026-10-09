@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.3.6** (`V`): Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open.
+**Now: C.4** (`I2`): Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -27,13 +27,13 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.0.4** Research card for the first evaluation unit: king safety with winnability and scaling; sub-term attribution, shared inputs, the magnitude contract; freezes C.3's handoff — DONE 2026-10-06
 - [x] **C.1** Evaluation restructure, behaviour-neutral: modules, one attack-map producer, `eval/params.rs`, `kpk` under `endgame/`; exact fingerprint — DONE 2026-10-06
 - [x] **C.2** Datagen and label contract for the programme; corpus frozen under a new name; fitting manifest (free/fixed/excluded) — DONE 2026-10-08
-- [ ] **C.3** First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — **I2**
+- [x] **C.3** First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — DONE 2026-10-09
     - [x] **C.3.1** King danger in the donor's shape: ring, accumulated attackers, weak ring, safe and unsafe checks, blockers, king-adjacent attacks, the reductions, the capped quadratic map; the old table and inputs removed; the fixture test — DONE 2026-10-08
     - [x] **C.3.2** Shelter and storm by file and rank with the castling destination in the pawn cache; the linear terms replaced; the pawnless flank outside the index — DONE 2026-10-08
     - [x] **C.3.3** Tuner: the nonlinear pass over the index coordinates and the map scales in index units, the shelter tables in the linear groups, the two family masks, feature-support coverage — DONE 2026-10-08
     - [x] **C.3.4** Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — DONE 2026-10-08
     - [x] **C.3.5** Margin block, gate 2, the `10+0.1` read, the ledger row — DONE 2026-10-09
-    - [ ] **C.3.6** Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — **READY_FOR_IMPLEMENTATION / V**
+    - [x] **C.3.6** Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — DONE 2026-10-09
 - [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **RESEARCH / I2**
 - [ ] **C.5** Endgame handling and winnability cluster — **R3**
     - [ ] **C.5.1** Classification and deciding instrument per family — **RESEARCH / R2**
@@ -99,12 +99,12 @@ and is frozen at `ee02ed1` for Phase C.
 | Pool position, `3+0.03` 1T | **3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +37.5, Critter 1.6a +96.2, Fritz 16 +87.8, Rybka 4.1 +167.3, so all four E.2 targets pass at 1T |
 | Pool position, `3+0.03` 4T | **3,340.0 ± 16.7** (RAR-M66): Houdini 3 +113, Critter 1.6a +148, Fritz 16 +132, Rybka 4.1 +210 |
 | Search deficit | Closed: G(0) **+24.24 ± 8.01** against the oracle (RAR-O04), from −247.97 at 2.4.0 (RAR-O03) |
-| Evaluation deficit | **+181.7 ± 19.0 Elo at equal nodes**, Phase C's meter baseline, and +266.3 ± 19.9 at equal time: Stockfish's classical HCE over Rarog's current one inside Stockfish's search (RAR-O05, 2026-10-05). RAR-O02's earlier about 329 was the 2.3.2 evaluation with unequal throughput. **Caveat (C.0 audit, 2026-10-06):** measured inside a search fitted to Stockfish's evaluation shape, where a shape mismatch alone costs about 105 Elo per node (RAR-E19/E20); the recoverable share is unknown and is re-read after the first accepted unit (C.3.6) |
+| Evaluation deficit | **+129.4 ± 17.1 Elo at equal nodes** on the C.3 evaluation (RAR-O06, 2026-10-09), the current meter: Stockfish's classical HCE over Rarog's inside Stockfish's search, 52.4 ± 25.6 below Phase C's baseline of +181.7 ± 19.0 at equal nodes and +266.3 ± 19.9 at equal time on the 2.4.0 evaluation (RAR-O05, 2026-10-05; equal time not re-read). RAR-O02's earlier about 329 was the 2.3.2 evaluation with unequal throughput. **Caveat (C.0 audit, 2026-10-06):** measured inside a search fitted to Stockfish's evaluation shape, where a shape mismatch alone costs about 105 Elo per node (RAR-E19/E20); the recoverable share is unknown; RAR-O06 refuted little transfer of Rarog's own gains into that search |
 | Evaluation residual (static layer) | On 194,444 held-out positions Stockfish's total adds **3.59%** to Rarog's outcome prediction and its term families **1.22%**; king safety +0.66% (+1.58% in the middlegame band), winnability +0.12%, mobility, pieces, material and space nil (RAR-E17, RAR-E18). The king residual is the donor's danger map (92% of it; inside the map the safe checks and the weak ring), not shelter or the flank terms; Rarog's zeroed danger inputs are a resolution limit of its bucket table; the scale factor adds +0.09% above six men (RAR-E21, 2026-10-06). With one Stockfish version for families and total the families read 1.85% and carry the whole 2.73% at seven men or more, so there is no total-level knowledge above six men to chase (RAR-E22). It ranks questions; it is not Elo |
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
 | Evaluation–search coupling | Feeding the frozen search the full fitted evaluation above the lazy gate costs **−104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal nodes** (RAR-E19, RAR-E20, 2026-10-05/06), though that function predicts outcomes better statically: the cost is per node, in a search fitted to the played function. Every evaluation unit goes through PROCESS's *Evaluation change under a fitted search*: static screens, tree read, gate 1, a margin block over the fixed 28-coordinate surface (`LazyMargin` added by the C.0 audit) when gate 1 fails or a screen flagged, gate 2 (accepts), a `10+0.1` read (maintainer decision 2026-10-06). When gate 1 passes with no flag, the agent asks the maintainer whether a free night makes the block worth running anyway (2026-10-08, after RAR-E24's block measured +19.3 ± 9.3 Elo) |
-| Active experiment | **RAR-O06** (C.3.6, the same-search meter on the C.3 evaluation), registered 2026-10-09 before any game; the maintainer runs it. Last closed: RAR-E25 (C.3's king-safety unit), accepted 2026-10-09: gate 2 H1 +32.7 ± 8.9 Elo, `10+0.1` +24.4 ± 12.3; on `master` as `cc13320` |
+| Active experiment | None. Last closed: **RAR-O06** (C.3.6, the same-search meter on the C.3 evaluation), 2026-10-09: +129.4 ± 17.1 Elo at equal nodes, 52.4 ± 25.6 below RAR-O05; at +100 or more, so C.4 opens as planned. Before it: RAR-E25 (C.3's king-safety unit), accepted 2026-10-09: gate 2 H1 +32.7 ± 8.9 Elo, `10+0.1` +24.4 ± 12.3; on `master` as `cc13320` |
 
 ## Holds and obligations
 

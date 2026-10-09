@@ -46,7 +46,7 @@ top 100, established by CCRL's own testing after a public release.
 | Head-to-head at `3+0.03`, **4T**, 400 games each | Houdini 3 **−169**, Fritz 16 **−149**, Critter 1.6a **−109**, Rybka 4 **−73**; Basilisk 1.10.0 **+25**, Rarog 2.3.2 +45, Rybka 3 +79. Performance rating 3034 against a frozen 3003. **4T is the easier arm for three of the four targets**, by 26 to 75 Elo | RAR-M46, Colosseum `dfb84c19`, 2026-09-11 |
 | Search deficit with Rarog's own evaluation | **−247.97 ± 10.89 Elo** at equal time on the 2.4.0 release head, evaluation proved constant, no adjudication (RAR-O03). Non-mate depth from the PGN 14.94 against 16.33 (the recorded 19.68 against 20.65 mis-attributed Black-to-move openings; corrected in RAR-O03, 2026-10-03). The superseded −250.8 was adjudicated and is not comparable | RAR-O03; `analysis/ablation_results.md` for the ablation |
 | Where the search deficit lives | LMR plus shallow-depth pruning explain **272 ± 18** of it, near-additively; everything else about 30 | matched ablation, mask 160 |
-| Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's current HCE inside Stockfish's search by **+181.7 ± 19.0 Elo at equal nodes** (150,000 a move), Phase C's meter baseline, and by +266.3 ± 19.9 at equal time (`3+0.03`), measured 2026-10-05. RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O05; RAR-O02 |
+| Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's C.3 evaluation inside Stockfish's search by **+129.4 ± 17.1 Elo at equal nodes** (150,000 a move; RAR-O06, 2026-10-09), the current meter, 52.4 ± 25.6 below Phase C's baseline: +181.7 ± 19.0 at equal nodes and +266.3 ± 19.9 at equal time (`3+0.03`) on the 2.4.0 evaluation, measured 2026-10-05 (equal time not re-read). RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O06; RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
 | Fingerprint | `bench 13` **13,187,295 / EBF 2.546**: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
@@ -69,7 +69,7 @@ classical stage.
 | Programme | Measured deficit | Planned recovery | Basis |
 |---|---:|---:|---|
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
-| C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). The band is corrected at C.11 by measurement |
+| C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by measurement |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C |
 
@@ -293,8 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.6 | READY_FOR_IMPLEMENTATION | V | Registered as RAR-O06 (2026-10-09, before any game): the oracle package with the DLL rebuilt from `master` (`tools/oracle-hce-ffi`), RAR-O05's equal-node match; the maintainer runs it; at +100 or more C.4 opens, under +100 the clusters are reviewed first; rides with C.4's PR |
-| C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
+| C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
 | C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
@@ -326,7 +325,10 @@ donor's whole static edge above six men is 2.73% of held-out loss, king
 0.75 of it. The recoverable share of the deficit is unknown, the budget
 row's 100 to 160 and C.0's 30 to 90 are unsupported in either direction,
 and the same-search deficit is re-read after the first accepted unit
-(C.3.6), not only at C.11, before C.4 to C.7 open.
+(C.3.6), not only at C.11, before C.4 to C.7 open. **Re-read
+2026-10-09 (RAR-O06):** +129.4 ± 17.1 at equal nodes on the C.3
+evaluation, 52.4 ± 25.6 below the baseline; at +100 or more, so C.4 to
+C.7 open in the order below.
 
 **What C.0 found (2026-10-05; `analysis/eval_programme_2026-10-05.md`).**
 (1) The 329 is RAR-O02's figure for the **2.3.2** evaluation, about 205
@@ -742,7 +744,7 @@ loss).
   at 600, which cleared the caches on each fresh process's first search
   and would have made C.3's `texel` fit describe the function at 600). The
   new baseline reads **12,351,448 / EBF 2.544**; C.3 fits from it.
-- **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`.** King danger in the donor's
+- **C.3 First evaluation unit: king safety (danger units, safe/unsafe checks, weak ring, flank, shelter/storm) with winnability and scaling (C.5.1, C.5.2); shared inputs; one refit; margin block; one gate — `I2`, then `V`, DONE 2026-10-09.** King danger in the donor's
   shape: attacker units and weights, safe and unsafe checks by piece type,
   weak squares in the king ring, king-flank attacks and defence, shelter and
   storm by file with the castling-destination alternative, queen-absent
@@ -916,7 +918,7 @@ loss).
       games). Accepted with its margins (13,187,295 / EBF 2.546); the
       frozen test stays unread. Landed in `dcef971` (2026-10-09), reaching
       `master` with C.3's PR.
-    - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
+    - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`, DONE 2026-10-09.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
       match) with the DLL rebuilt from the C.3 head by the `oracle/hybrid`
       tag's `build.ps1`; registered with a frozen prediction. The reading
@@ -925,6 +927,15 @@ loss).
       programme can still recover. **Delivery (maintainer decision
       2026-10-09):** no PR of its own; its registration and result reach
       `master` with C.4's PR, or with the next PR if C.4 does not open.
+      **Read 2026-10-09 (RAR-O06):** +129.4 ± 17.1 Elo at equal nodes
+      (1,000 games, RAR-O05's openings), 52.4 ± 25.6 below RAR-O05's
+      +181.7, inside the frozen prediction's band (+145, [+110, +175]).
+      Little transfer is refuted, full transfer not excluded. At +100 or
+      more, so C.4 opens as planned, after C.5.2, with its own residual
+      step first. C.0's prior (30 to 90 for the family clusters
+      together) stands: the 52 includes C.2's refit, which is not a
+      family cluster, and this reading cannot split it from the king
+      unit.
 - **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,
