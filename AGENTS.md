@@ -209,9 +209,14 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 ## Changes
 
 - Engine changes and tooling or documentation changes go in separate commits.
-  Commit after each finished and verified step. No `Co-Authored-By` trailers.
-  Never relax a correctness test in the commit whose change made it fail; fix
-  its precondition in its own commit, with the justifying measurement.
+  Commit after each finished and verified step. Never relax a correctness
+  test in the commit whose change made it fail; fix its precondition in its
+  own commit, with the justifying measurement.
+- No attribution to Claude or any other AI tool, anywhere: no
+  `Co-Authored-By` trailer, no "Generated with" line, in commits, PR titles
+  and descriptions, squash messages or files. The maintainer adds
+  attribution where they want it (maintainer decision 2026-10-09;
+  `.claude/settings.json` turns Claude Code's own attribution off).
 - Never push, create a release tag, publish or merge to `master`; the
   maintainer does, on instruction. Do not amend or rewrite a commit that has
   left this machine. Archive tags follow *Evidence*.
