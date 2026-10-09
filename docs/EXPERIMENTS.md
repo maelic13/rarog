@@ -229,6 +229,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-O03](experiments/RAR-O03.md) | A.8.3 oracle deficit meter G(0) on the release head - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
 | [RAR-O04](experiments/RAR-O04.md) | B.9 oracle deficit meter G(0) on the search head — REGISTERED 2026-10-03, before any game; PLAYED 2026-10-03 … | Played 2026-10-03 18:00:29–18:34:15 UTC |
 | [RAR-O05](experiments/RAR-O05.md) | C.0 evaluation meter at the start of Phase C: the same-search gap at equal nodes and at equal time — REGISTERED 2026-10-05, before any game; RUN 2026-10-05 | Observation: equal nodes +181.7 ± 19.0 (1,000 games), equal time +266.3 ± 19.9 (980 games, interrupted); the equal-node figure is Phase C's meter baseline |
+| [RAR-O06](experiments/RAR-O06.md) | C.3.6 same-search evaluation meter on the accepted C.3 evaluation: equal nodes, RAR-O05's conditions and seed, the DLL rebuilt from `master` `cc13320` — REGISTERED 2026-10-09, before any game | Pending (prediction +145, 80% band [+110, +175]; RAR-O05 read +181.7 ± 19.0) |
 
 ### Registered, open
 

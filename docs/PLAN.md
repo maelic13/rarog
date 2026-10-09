@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
+| C.3.6 | READY_FOR_IMPLEMENTATION | V | Registered as RAR-O06 (2026-10-09, before any game): the oracle package with the DLL rebuilt from `master` (`tools/oracle-hce-ffi`), RAR-O05's equal-node match; the maintainer runs it; at +100 or more C.4 opens, under +100 the clusters are reviewed first; rides with C.4's PR |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
 | C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
