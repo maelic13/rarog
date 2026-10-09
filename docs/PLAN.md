@@ -294,7 +294,7 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
+| C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate, registered as RAR-E26 (2026-10-09, zero games: held-out outcome loss, then a static read on Syzygy-labelled endings), then the family order by C.5's instruments |
 | C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
