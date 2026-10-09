@@ -1359,13 +1359,13 @@ decision 2026-10-03). The release is cut through the
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the PR merged with a merge commit, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
       E.2 is met, otherwise 2.6.0, behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
       builds; GUIDE's checkpoint marks the release; the PR to `master`,
-      merged with a merge commit once `CI` and `Release` are green; the
+      squash-merged once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
 ## Phase F — NNUE (own data only)

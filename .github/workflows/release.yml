@@ -1,9 +1,12 @@
 name: Release
 run-name: ${{ github.ref_type == 'tag' && github.ref_name || format('release candidate {0}', github.sha) }}
 
-# A release is cut by pushing a `vX.Y.Z` tag on master; nothing else. The
-# workflow validates first (the tag names Cargo.toml's version, the tagged
-# commit is on master, CHANGELOG.md has a dated section for it), builds the
+# A release is cut by pushing a `vX.Y.Z` tag on master; nothing else. A patch
+# release that cannot wait for master (it already holds unreleased work) is
+# tagged on a temporary branch of its line's first release, `vX.Y.0`, which is
+# on master. The workflow validates first (the tag names Cargo.toml's version,
+# the tagged commit is on master or such a patch, CHANGELOG.md has a dated
+# section for it), builds the
 # nine PGO assets read-only, benches every one and asserts a single `bench 13`
 # fingerprint across the matrix equal to the one GUIDE's checkpoint declares,
 # and only then one job with write permission publishes the release with every
@@ -294,10 +297,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: The tagged commit is on master
+      - name: The tagged commit is on master, or a patch on its line's first release
         run: |
-          git fetch origin master
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+          git fetch origin master --tags
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then exit 0; fi
+          version="${GITHUB_REF_NAME#v}"
+          line="v${version%.*}.0"
+          test "${version##*.}" != 0
+          git merge-base --is-ancestor "$line" "$GITHUB_SHA"
+          git merge-base --is-ancestor "$line" origin/master
 
       - uses: actions/download-artifact@v8
         with:

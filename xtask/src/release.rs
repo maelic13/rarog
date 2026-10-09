@@ -3,7 +3,8 @@
 //! The checks a release tag must pass before anything is built or published,
 //! runnable locally before the tag is pushed and run first by the release
 //! workflow: the tag names `Cargo.toml`'s version, the tagged commit is on
-//! the default branch, `CHANGELOG.md` has a dated section for that version,
+//! the default branch (or, for a patch release, descends from its line's
+//! first release there), `CHANGELOG.md` has a dated section for that version,
 //! and GUIDE's checkpoint marks that version released at the fingerprint it
 //! declares. With `--notes`, that section's body is written out as the
 //! release notes, so the GitHub form is never typed into.
@@ -34,7 +35,7 @@ pub fn run(check: &ReleaseCheck) -> Result<()> {
     let body = changelog_section(&changelog, &version)?;
     let guide = fs::read_to_string("GUIDE.md").map_err(|e| format!("GUIDE.md: {e}"))?;
     let fingerprint = release_marked_in_guide(&guide, &version)?;
-    ensure_on_base(&check.base)?;
+    let placement = ensure_on_base(&version, &check.base)?;
     if let Some(path) = &check.notes {
         fs::write(path, &body).map_err(|e| format!("{}: {e}", path.display()))?;
         println!(
@@ -45,8 +46,8 @@ pub fn run(check: &ReleaseCheck) -> Result<()> {
     }
     println!(
         "release-check {}: version {version} in Cargo.toml, CHANGELOG section present, \
-         GUIDE marks it released at bench {fingerprint}, HEAD on {}",
-        check.tag, check.base
+         GUIDE marks it released at bench {fingerprint}, {placement}",
+        check.tag
     );
     Ok(())
 }
@@ -191,17 +192,51 @@ fn bold_versions(row: &str) -> impl Iterator<Item = &str> {
         .filter(|span| version_of_tag(&format!("v{span}")).is_ok())
 }
 
-fn ensure_on_base(base: &str) -> Result<()> {
-    let status = Command::new("git")
-        .args(["merge-base", "--is-ancestor", "HEAD", base])
-        .status()
-        .map_err(|e| format!("git: {e}"))?;
-    if !status.success() {
+/// A release is cut from the default branch. A patch release that cannot
+/// wait for it (the branch already holds unreleased work) is cut from a
+/// temporary branch of its line's first release, so its commit descends from
+/// `vX.Y.0`, which is on the default branch. Returns where HEAD was found.
+fn ensure_on_base(version: &str, base: &str) -> Result<String> {
+    if is_ancestor("HEAD", base)? {
+        return Ok(format!("HEAD on {base}"));
+    }
+    let Some(line) = line_start_tag(version) else {
         return Err(format!(
             "HEAD is not reachable from {base}; a release is cut from the default branch"
         ));
+    };
+    if is_ancestor(&line, "HEAD")? && is_ancestor(&line, base)? {
+        return Ok(format!(
+            "HEAD on a patch branch from {line}, which is on {base}"
+        ));
     }
-    Ok(())
+    Err(format!(
+        "HEAD is neither reachable from {base} nor a descendant of {line} on {base}; \
+         a patch release is cut from a branch of its line's first release"
+    ))
+}
+
+/// The first release of a patch version's line (`2.6.3` -> `v2.6.0`); none
+/// for an `X.Y.0`, which has no line to descend from.
+pub fn line_start_tag(version: &str) -> Option<String> {
+    let (line, patch) = version.rsplit_once('.')?;
+    (patch != "0").then(|| format!("v{line}.0"))
+}
+
+/// `git merge-base --is-ancestor`: exit 0 is yes, 1 is no, anything else
+/// (an unknown ref) is an error rather than a no.
+fn is_ancestor(ancestor: &str, descendant: &str) -> Result<bool> {
+    let status = Command::new("git")
+        .args(["merge-base", "--is-ancestor", ancestor, descendant])
+        .status()
+        .map_err(|e| format!("git: {e}"))?;
+    match status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(format!(
+            "git merge-base --is-ancestor {ancestor} {descendant} failed"
+        )),
+    }
 }
 
 /// `--notes` may name a directory that does not exist yet.
@@ -217,6 +252,14 @@ pub fn ensure_parent(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_patch_version_belongs_to_its_lines_first_release() {
+        assert_eq!(line_start_tag("2.6.1").as_deref(), Some("v2.6.0"));
+        assert_eq!(line_start_tag("2.6.10").as_deref(), Some("v2.6.0"));
+        assert_eq!(line_start_tag("3.0.2").as_deref(), Some("v3.0.0"));
+        assert_eq!(line_start_tag("2.6.0"), None);
+    }
 
     #[test]
     fn only_a_plain_three_number_tag_is_a_release() {
