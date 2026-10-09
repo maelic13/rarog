@@ -578,8 +578,12 @@ small verified commits, engine and documentation apart.
 
 1. Before the PR, merge `master` into the branch if `master` moved, so the PR
    shows only the branch's own change; resolve conflicts there.
-2. The PR's title and description become the squash commit's message: what
-   the work is, its gate result when it has one, and `Bench: <n>`, the
+2. The PR's title and description become the squash commit's message,
+   written as Stockfish and the Linux kernel write theirs: a short
+   imperative title saying what changed ("Rebuild king safety"), with no
+   result and no phase, leaf or ledger reference; a few plain lines on what
+   and why, wrapped at 72 columns; the test results, one line each
+   (`STC 3+0.03: +32.7 ± 8.9 Elo (2,450 games)`); then `Bench: <n>`, the
    `bench 13` count `master` will have. A PR runs `CI` and `Release`; the
    maintainer squash-merges it once both are green.
 3. After the merge the branch is deleted. Live documents that cite the
