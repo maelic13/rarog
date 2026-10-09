@@ -293,7 +293,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.3.5 | READY_FOR_IMPLEMENTATION | V | RAR-E25's frozen order: the tree read flagged, so the `c3margin` block runs (command dry-run 2026-10-08), then gate 2 decides; the `10+0.1` read of an accepted unit; the frozen test only if a gate fails; then the ledger row |
 | C.3.6 | RESEARCH | V | After C.3.5 accepts; its reading decides whether C.4 to C.7 open |
 | C.4 | RESEARCH | I2 | After C.5.2; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
 | C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate on the drawn-cohort instrument, then the family order by C.5's instruments |
@@ -908,7 +907,13 @@ loss).
       +4.76% (inside the budget). **Gate 1 H1, +34.2 ± 8.9 Elo** (2,224
       games); by the tree read's flag the `c3margin` block runs next and
       gate 2 decides (C.3.5).
-    - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`.**
+    - **C.3.5 Margin block, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-09.** RAR-E25: the
+      `c3margin` block (60,000 games, no coordinate a full step), **gate 2
+      H1 +32.7 ± 8.9 Elo** (2,450 games), `10+0.1` +24.4 ± 12.3 (1,000
+      games), the tuned margins −0.9 ± 9.0 over the untuned ones (2,000
+      games). Accepted with its margins (13,187,295 / EBF 2.546); the
+      frozen test stays unread. Landing waits for the branch model agreed
+      2026-10-09 to be written into AGENTS and PROCESS.
     - **C.3.6 Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — `V`.** C.0.1's
       recipe (`analysis/artifacts/c0-meter/run_all.ps1`, the equal-node
       match) with the DLL rebuilt from the C.3 head by the `oracle/hybrid`
