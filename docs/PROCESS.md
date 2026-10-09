@@ -565,6 +565,29 @@ Before any SPSA:
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
    and run a paired SPRT, then LTC/4T where appropriate.
 
+### Branches and pull requests
+
+`master` is the trunk (maintainer decision 2026-10-09). Each coherent piece
+of work lives on its own short-lived branch: a PLAN unit (`c3-king` for
+C.3), or one between-units change (a tooling fix, a documentation pass, a
+research leaf's close). On the branch the AGENTS rules hold unchanged:
+small verified commits, engine and documentation apart.
+
+1. Before the PR, merge `master` into the branch if `master` moved, so the PR
+   shows only the branch's own change; resolve conflicts there.
+2. The PR's title and description become the squash commit's message: what
+   the work is, its gate result when it has one, and `Bench: <n>`, the
+   `bench 13` count `master` will have. A PR runs `CI` and `Release`; the
+   maintainer squash-merges it once both are green.
+3. After the merge the branch is deleted. Live documents that cite the
+   branch's own commits are rewritten to the squash commit (or the hash is
+   dropped where the sentence carries the information) in the next change;
+   GitHub keeps the PR's commits as `refs/pull/<n>/head`.
+4. A gate arm or other throwaway branch is deleted once its recipe is
+   recorded (AGENTS, *Evidence*). No permanent release branches and no
+   history tags: a tag or kept branch is proposed to the maintainer, never
+   created alone.
+
 ### Release
 
 A release is cut by pushing one tag; the GitHub form is never typed into.
@@ -578,21 +601,16 @@ nothing exists on GitHub until every cell has passed.
    `X.Y.Z` at the fingerprint the *Development head* row declares, and
    PLAN and HISTORY record it (as for 2.4.0 and 2.5.0, the release commit
    says released; a failed tag run is repaired by retagging, after which
-   it is true). PR into `master`. A PR to
+   it is true). These go on a short release branch and reach `master` by a
+   squash PR like any other change. A PR to
    `master` runs both `CI` and `Release` (a candidate build of the nine
    assets with every check the tag run makes, publishing nothing). While
    `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
    for `vX.Y.Z` (all but the tag's name and the commit's place on
    `master`), so a green release PR is a releasable one; a `-dev` version
-   skips it (step 6 keeps `dev` on a `-dev` version between releases);
-   merge only when both are green, **with a merge commit**, never a squash
-   (a squash leaves `dev`'s commits, which the documents cite, on no ref;
-   the repository must allow merge commits and `master`'s protection must
-   not require linear history). Afterwards `dev` fast-forwards to `master`
-   (`git switch dev; git merge --ff-only origin/master; git push origin
-   dev`), or is deleted and recreated from it, since `master` now holds
-   every commit it had. Both workflows should be required checks on
-   `master` in the repository's branch protection.
+   skips it (step 6 keeps `master` on a `-dev` version between releases);
+   squash-merge only when both are green. Both workflows should be required
+   checks on `master` in the repository's branch protection.
 2. On the merged `master` commit, before pushing anything:
 
    ```powershell
@@ -623,14 +641,36 @@ nothing exists on GitHub until every cell has passed.
 5. A failed run is repaired by deleting the tag (`git push origin
    :refs/tags/vX.Y.Z; git tag -d vX.Y.Z`), fixing `master` and tagging
    again. Never re-run a failed cell against a moved `master`.
-6. Once the release is published, the first commit on `dev` bumps
-   `Cargo.toml` to the next `-dev` version (`2.6.0-dev` after 2.5.0), with
-   `Cargo.lock` and `tools/texel-tuner/Cargo.lock` following, before any
-   other work; it rides in with the next PR rather than a PR of its own
-   (maintainer decision 2026-10-05). Otherwise the first change that moves
+6. Once the release is published, the first commit of the next branch to
+   reach `master` bumps `Cargo.toml` to the next `-dev` version
+   (`2.6.0-dev` after 2.5.0), with `Cargo.lock` and
+   `tools/texel-tuner/Cargo.lock` following, before any other work; it
+   rides in with that PR rather than a PR of its own (maintainer decision
+   2026-10-05). Otherwise the first change that moves
    the fingerprint fails every PR's `release-check`, since a changed engine
    would still call itself the released version. The bump is an engine
    commit: bench unmoved, `uci` answering `id name Rarog X.Y.Z-dev`.
+7. **A patch release.** When a released version needs a fix and `master`
+   is shippable, the fix lands on `master` and a new release is cut from it
+   as above. When `master` already holds work that should not ship yet:
+   land the fix on `master` by its own PR first, then cut the patch from a
+   temporary branch of the line's last release (the maintainer decides; it
+   is the one branch made only for a release):
+
+   ```powershell
+   git switch -c patch-X.Y.Z vX.Y.(Z-1)
+   git cherry-pick -x <the fix's squash commit on master>
+   ```
+
+   On that branch: `Cargo.toml` and both locks to `X.Y.Z`, a dated
+   `## [X.Y.Z]` CHANGELOG section, GUIDE's *Released baseline* row naming
+   `X.Y.Z` at the fingerprint its *Development head* row declares (updated
+   there if the fix moves `bench 13`); suites green; `cargo xtask
+   release-check vX.Y.Z` passes, since the commit descends from `vX.Y.0` on
+   `master`. Then tag and push the tag alone (`git tag vX.Y.Z; git push
+   origin vX.Y.Z`); `release.yml` accepts it on the same rule. Delete the
+   branch: the tag keeps the commit. `master`'s CHANGELOG gets the same
+   dated section by its next PR.
 
 Asset names are `rarog-vX.Y.Z-<os>-<arch>[.exe]`; GitHub's per-asset digests
 are the checksums to compare against.

@@ -215,9 +215,19 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Never push, create a release tag, publish or merge to `master`; the
   maintainer does, on instruction. Do not amend or rewrite a commit that has
   left this machine. Archive tags follow *Evidence*.
-- `dev` reaches `master` by a merge commit, never a squash, so every
-  development commit the documents cite stays on `master` and needs no tag
-  (maintainer decision 2026-10-05; the procedure is PROCESS, *Release*).
+- `master` is the trunk. Each coherent piece of work (a PLAN unit such as
+  C.3, or one between-units change: tooling, documentation, a research
+  close) lives on its own branch and reaches `master` as one squash commit
+  through a PR the maintainer merges; `master` may run ahead of the latest
+  release, which is a tag on it (maintainer decision 2026-10-09, replacing
+  the merge commits of 2026-10-05; the procedure is PROCESS, *Branches and
+  pull requests* and *Release*). The small, separate commits above stay on
+  the branch.
+- Documents cite `master` commits, and the PR number where the steps
+  matter (GitHub keeps every PR's commits as `refs/pull/<n>/head`). A
+  branch's own hashes are working pointers while it is in flight: when it
+  lands, the live documents' references to them are rewritten to its squash
+  commit, or dropped where the sentence already carries the information.
 - `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
   of the engine would notice (a gate-accepted strength change; a UCI option,
   output or default; a fixed defect; a removal; a build or asset change)
@@ -256,7 +266,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Only where exactness is needed and a recipe is impractical (an
   implementation too large to be a patch, or the base a patch applies to)
   is a commit preserved, and then by an annotated tag named
-  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch. The
+  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch, and
+  only once the maintainer agrees: an agent proposes such a tag and never
+  creates one alone (maintainer decision 2026-10-09). The
   citing document names the tag, why it exists and the condition that
   retires it. Neither a plain `git push` nor `--follow-tags` sends a tag on a
   commit outside the pushed branches: after creating one, tell the
