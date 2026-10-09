@@ -117,6 +117,11 @@ param(
     [int]$BaseMs = 3000,
     [int]$IncrementMs = 30,
     [int]$MarginMs = 20,
+    # Fixed nodes per move instead of the clock, -Mode match only: a
+    # deterministic diagnostic that removes speed and time management (the
+    # equal-node companion of an equal-time read). Selects match-fixed-nodes.toml
+    # and is checked against the resolved configuration like the clock is.
+    [long]$Nodes = 0,
     [int]$Concurrency = 0,
     [string]$ExpectRevision = "",
     [long[]]$ExpectBench = @(),
@@ -222,9 +227,10 @@ $hostState = Assert-HarnessHostIdle -MaxBusyPercent $MaxHostBusyPercent -Allow:$
 $cli = Assert-ColosseumCli -Path $CliPath -PinPath $PinPath
 
 # ─── Guard 3: inputs exist ────────────────────────────────────────────────
+if ($Nodes -gt 0 -and $Mode -ne "match") { throw "-Nodes is for -Mode match only: a fixed-node read is a diagnostic, never a gate or a tune." }
 $runFileDefaults = @{
     sprt      = Join-Path $PSScriptRoot "colosseum\sprt-$Bracket.toml"
-    match     = Join-Path $PSScriptRoot "colosseum\match-fixed.toml"
+    match     = Join-Path $PSScriptRoot ("colosseum\" + $(if ($Nodes -gt 0) { "match-fixed-nodes.toml" } else { "match-fixed.toml" }))
     calibrate = Join-Path $PSScriptRoot "colosseum\calibrate-null.toml"
     spsa      = Join-Path $PSScriptRoot "spsa_configs\colosseum\$ConfigGroup.run.toml"
     gauntlet  = Join-Path $PSScriptRoot "colosseum\gauntlet.toml"
@@ -441,6 +447,7 @@ if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
     if ($OptionsB.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsB)) { $commandArgs += @('--b-option', $option) } }
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
+if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
 $commandArgs += @('--seed', "$Seed", '--dir', $Dir)
 if ($ExtraArgs.Count -gt 0) { $commandArgs += $ExtraArgs }
 
@@ -464,7 +471,9 @@ $dryNotes = "$(if (Test-Path -LiteralPath $dryNotesPath) { Get-Content -LiteralP
 if ($dryNotes.Trim()) { Write-Host "  Runner: $($dryNotes.Trim())" -ForegroundColor Yellow }
 if ($LASTEXITCODE -ne 0) {
     Write-Host (Get-Content -LiteralPath $dryPath -Raw)
-    throw "colosseum-cli refused the dry run (exit $LASTEXITCODE); nothing was played."
+    # The runner's own reason travels in the refusal, so a guard the CLI
+    # enforces (one time control per side, say) is named like the wrapper's.
+    throw "colosseum-cli refused the dry run (exit $LASTEXITCODE): $($dryNotes.Trim()); nothing was played."
 }
 $dry = Get-Content -LiteralPath $dryPath -Raw | ConvertFrom-Json
 $resolved = $dry.resolved_configuration
@@ -490,11 +499,26 @@ foreach ($field in @('engine_a_time_control', 'engine_b_time_control', 'engine_t
 if ($controls.Count -eq 0) { Add-Violation "the resolved configuration states no time control" }
 foreach ($pair in $controls) {
     $name = $pair[0]; $control = $pair[1]
-    if ([int]$control.control.Increment.base_ms -ne $BaseMs) {
-        Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $BaseMs"
-    }
-    if ([int]$control.control.Increment.inc_ms -ne $IncrementMs) {
-        Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $IncrementMs"
+    $kind = @($control.control.PSObject.Properties.Name)[0]
+    if ($Nodes -gt 0) {
+        # A fixed-node read must resolve to fixed nodes on every side; a clock
+        # here would measure speed under a label that says it does not.
+        if ($kind -ne 'Nodes') {
+            Add-Violation "$name is a '$kind' control, expected fixed nodes (-Nodes $Nodes)"
+        } elseif ([long]$control.control.Nodes.nodes -ne $Nodes) {
+            Add-Violation "$name is $($control.control.Nodes.nodes) nodes a move, expected $Nodes"
+        }
+    } else {
+        if ($kind -ne 'Increment') {
+            Add-Violation "$name is a '$kind' control, expected the clock ${BaseMs}+${IncrementMs} ms (pass -Nodes for a fixed-node read)"
+        } else {
+            if ([int]$control.control.Increment.base_ms -ne $BaseMs) {
+                Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $BaseMs"
+            }
+            if ([int]$control.control.Increment.inc_ms -ne $IncrementMs) {
+                Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $IncrementMs"
+            }
+        }
     }
     if ([int]$control.margin_ms -ne $MarginMs) {
         Add-Violation "$name margin is $($control.margin_ms) ms, expected $MarginMs"
@@ -672,7 +696,7 @@ $lines.Add("book:             $Book")
 $lines.Add("book_sha256:      $(Get-HarnessSha256 $Book)")
 $lines.Add("opening_order:    $($resolved.openings.order)")
 $lines.Add("opening_seed:     $Seed")
-$lines.Add("time_control:     ${BaseMs}ms + ${IncrementMs}ms; margin ${MarginMs}ms")
+$lines.Add("time_control:     $(if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" } else { "${BaseMs}ms + ${IncrementMs}ms" }); margin ${MarginMs}ms")
 $lines.Add("adjudication:     none (games play to a rules result)")
 $lines.Add("hash_mb:          $Hash")
 $lines.Add("threads:          $Threads")
@@ -708,7 +732,7 @@ if ($Mode -eq "sprt") {
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
     Write-Host "  Cap: $($resolved.design.max_pairs) pairs; no boundary at the cap is unresolved, not an acceptance"
 }
-Write-Host "  TC: ${BaseMs}+${IncrementMs}ms  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $Threads  Conc: $($resolved.execution.concurrency)"
+Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $Threads  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
 Write-Host "  Runner: $($cli.Version), sha256 $($cli.Sha256.Substring(0,8))..., pinned at $($cli.Pin.revision.Substring(0,7))"
 Write-Host "  Manifest: $manifestPath"

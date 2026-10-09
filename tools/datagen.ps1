@@ -115,6 +115,12 @@ param(
     # strength gate. Mutually exclusive with -Adjudicate.
     [string]$SyzygyPath = "",
     [int]$SyzygyPieces = 6,
+    # Registered identity of the label generator: its SHA-256 and its
+    # `bench 13` node count. When given, a binary that differs or benches
+    # anything else is refused before the first game (the sidecar alone
+    # only proves the binary matches its own record).
+    [string]$ExpectSha256 = "",
+    [long]$ExpectFingerprint = 0,
     [switch]$SetupOnly
 )
 
@@ -262,6 +268,21 @@ try {
     if ($binaryHashProperty.Value -ne $engineHash) {
         throw "Engine binary SHA-256 does not match its sidecar; rebuild before generating labels."
     }
+    if ($ExpectSha256 -and $engineHash -ne $ExpectSha256.ToUpperInvariant()) {
+        throw "Engine SHA-256 $engineHash is not the registered $ExpectSha256."
+    }
+    $verifiedBenchNodes = $null
+    if ($ExpectFingerprint -gt 0) {
+        $benchOut = & $enginePath bench 13 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "Engine bench 13 exited $LASTEXITCODE." }
+        $benchMatch = [regex]::Match($benchOut, 'Nodes searched\s*:\s*(\d+)')
+        if (-not $benchMatch.Success) { throw "Engine bench 13 printed no node count." }
+        $verifiedBenchNodes = [long]$benchMatch.Groups[1].Value
+        if ($verifiedBenchNodes -ne $ExpectFingerprint) {
+            throw "Engine benches $verifiedBenchNodes, not the registered $ExpectFingerprint."
+        }
+        Write-Host "Engine verified: SHA-256 $engineHash, bench 13 $verifiedBenchNodes nodes."
+    }
     foreach ($requiredOption in @("Hash", "Threads")) {
         if (-not (Test-EngineSupportsOption -Path $enginePath -Name $requiredOption)) {
             throw "Datagen engine does not advertise required UCI option '$requiredOption'."
@@ -368,6 +389,7 @@ try {
             git_branch  = $engineManifest.git_branch
             git_dirty   = [bool]$engineManifest.git_dirty
             bench_nodes = [int64]$engineManifest.bench_nodes
+            verified_bench_nodes = $verifiedBenchNodes
             built_utc   = $engineManifest.built_utc
         }
         book               = [ordered]@{

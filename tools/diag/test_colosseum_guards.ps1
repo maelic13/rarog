@@ -169,6 +169,20 @@ try {
     Invoke-Case -Name "categorical waiver with equal options" -Expect "differ by UCI options" `
         -Arguments (Merge-Arguments $categorical @{ OptionsA = @() })
 
+    # -Nodes: a fixed-node read resolves fixed nodes on both sides and nothing
+    # else; the clock run file under -Nodes, or -Nodes outside a match, is
+    # refused before any game.
+    Invoke-Case -Name "control: a fixed-node read resolves" -Expect "" `
+        -Arguments (Merge-Arguments $categorical @{ Nodes = 150000 })
+    # The CLI itself refuses two time controls on one side; the wrapper relays
+    # its reason.
+    Invoke-Case -Name "-Nodes with the clock run file" -Expect "only one of movetime, base/increment, nodes" `
+        -Arguments (Merge-Arguments $categorical @{ Nodes = 150000; RunFile = (Join-Path $repo "tools\colosseum\match-fixed.toml") })
+    Invoke-Case -Name "-Nodes in a gate" -Expect "-Nodes is for -Mode match only" `
+        -Arguments (Merge-Arguments $base @{ Nodes = 150000 })
+    Invoke-Case -Name "fixed-node run file without -Nodes" -Expect "expected the clock" `
+        -Arguments (Merge-Arguments $categorical @{ RunFile = (Join-Path $repo "tools\colosseum\match-fixed-nodes.toml") })
+
     $otherCompiler = Copy-Arm -Source $EngineB -Name "otherCompiler"
     Set-Sidecar -EnginePath $otherCompiler -Fields @{ rustc = "rustc 1.97.0 (not the pinned toolchain)" }
     Invoke-Case -Name "arms built by different compilers" -Expect "COMPILER MISMATCH" `

@@ -3,7 +3,7 @@
 One line per tool: what it does, and where the method that uses it lives.
 Run everything from the repository root. Measurement rules (rebuild with the
 exact features, sum per-position counters, check exit status directly) are in
-`AGENTS.md`; procedures are in `PROCESS.md`. Raw outputs go to ignored
+`AGENTS.md`; procedures are in `docs/PROCESS.md`. Raw outputs go to ignored
 `tools/results/`. Tool and fixture names are cited by ledger rows, so they do
 not change.
 
@@ -111,7 +111,8 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 | `texel/extract.py`, `texel/extract_parallel.py` | PGN to `FEN;target` datasets | `texel/README.md` |
 | `texel/sample_fens.py`, `texel/build_book.py` | Datagen start books | `texel/README.md` |
 | `texel/relabel_tb.py` | Replace <=6-man labels with Syzygy truth | RAR-E08 |
-| `texel/bake_params.py` | Bake a tuner parameter dump into `src/eval.rs` | `texel/README.md` |
+| `texel/bake_params.py` | Bake a tuner parameter dump into `src/eval/params.rs` and `src/eval/material.rs` | `texel/README.md` |
 | `texel/fit_complete.ps1`, `texel/confirm_hce_fit.ps1` | Complete HCE fit and its confirmation corpus (pin the accepted fingerprint before use) | PROCESS "Texel convergence procedure" |
 | `diag/book_yield.py` | Texel row yield per game by start phase | corpus design |
 | `diag/datagen_label_audit.py` | Datagen results against tablebase truth | label-quality decisions |
+| `diag/donor_residual.py` | Held-out outcome loss of Rarog's evaluation with the classical Stockfish total or one of its term families added (a screen that ranks questions; never acceptance) | RAR-E17, PLAN C.0 |

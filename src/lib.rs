@@ -25,7 +25,7 @@ compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing r
 /// so the engine builds them all before it reads a command.
 pub fn initialize_tables() {
     std::sync::LazyLock::force(&board::ATTACKS);
-    kpk::initialize();
+    eval::endgame::kpk::initialize();
 }
 
 /// The engine version as reported to the user.
@@ -40,7 +40,6 @@ pub mod engine;
 pub mod engine_command;
 pub mod eval;
 pub mod infra;
-mod kpk;
 pub mod search;
 pub mod search_options;
 pub mod syzygy;

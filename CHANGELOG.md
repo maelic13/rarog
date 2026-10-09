@@ -1,11 +1,27 @@
 # Changelog
 
-All notable changes to Rarog are documented in this file.
+All notable changes to Rarog are documented in this file. Each is added under
+`[Unreleased]` when it lands; a release dates that section.
 
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
+
+### Changed
+
+- **The evaluation was refitted** on 612,747 new self-play games labelled by
+  the 2.5 search and corrected by endgame tablebases, fitting the evaluation
+  the engine actually plays (including its fast path for lopsided
+  positions). The search's evaluation-dependent margins were re-tuned for it
+  in a 60,000-game tune. Against the previous development version it
+  measured **+35.9 ± 9.3 Elo at `3+0.03`** (2,214 games) and **+39.1 ± 12.9
+  at `10+0.1`** (1,000 games). `bench` now reports 12,351,448 nodes.
+
+### Fixed
+
+- `bench` printed a speed equal to the node count for a position it solved
+  in under a millisecond; it now reports the rate, as the `info` lines do.
 
 ## [2.5.0] - 2026-10-05
 

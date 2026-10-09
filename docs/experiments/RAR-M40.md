@@ -1,0 +1,19 @@
+# RAR-M40 — RAR-M40 — 4.11b.15 draw-state policy boundary, COMPLETE 2026-09-08
+
+Indexed under *2. Measurement, harness and tuning* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+## Experiment and conditions
+
+RAR-M40 — 4.11b.15 draw-state policy boundary, COMPLETE 2026-09-08; research
+
+## Result / disposition
+
+Recorded in full in the packet; its disposition and evidence are there.
+
+## Conditional lesson and retry trigger
+
+See the record.
+
+## Source
+
+`analysis/ledger_records_2026-09-14.md`, RAR-M40 (Measurement, harness and tuning); `analysis/draw_policy_2026-09-08.md`

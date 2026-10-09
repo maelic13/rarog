@@ -154,7 +154,7 @@ class WireTests(unittest.TestCase):
         build (or accept a wrong one) and this would catch it."""
         seen = []
 
-        def fake_read(exe, fingerprint):
+        def fake_read(exe, fingerprint, options=()):
             seen.append((str(exe), fingerprint))
             return [{"nodes": fingerprint, "ms": 1, "nps": 1}]
 
@@ -175,6 +175,57 @@ class WireTests(unittest.TestCase):
             self.assertEqual(fingerprint, fingerprints[arm], exe)
         self.assertEqual(sorted(rec["cycles"][0]["readings"]["base"]), ["0", "1", "2"])
         self.assertEqual(rec["cycles"][0]["readings"]["base"]["1"][0]["nodes"], 7_601_220)
+
+
+class OptionArmTests(unittest.TestCase):
+    """Arms that differ by UCI options on one tune build."""
+
+    def test_options_are_set_before_the_bench(self):
+        self.assertEqual(nps_read.bench_input(()), "bench 13 3\n")
+        self.assertEqual(nps_read.bench_input([("LazyMargin", "2000")]),
+                         "setoption name LazyMargin value 2000\nbench 13 3\n")
+        self.assertEqual(nps_read.parse_option("LazyMargin=2000"), ("LazyMargin", "2000"))
+        for bad in ("LazyMargin", "=2000", "LazyMargin="):
+            with self.assertRaises(SystemExit):
+                nps_read.parse_option(bad)
+
+    def test_each_arm_runs_with_its_own_options_and_fingerprint(self):
+        seen = []
+
+        def fake_read(exe, fingerprint, options=()):
+            seen.append((pathlib.Path(exe).name, fingerprint, list(options)))
+            return [{"nodes": fingerprint, "ms": 1, "nps": 1}]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp)
+            same = [out / "t0", out / "t1"]
+            original = nps_read.read
+            nps_read.read = fake_read
+            try:
+                nps_read.run_cycles({"cycles": []}, out, {"base": same, "cand": same}, 1,
+                                    {"base": HEAD, "cand": 11_000_000},
+                                    {"base": [], "cand": [("LazyMargin", "2000")]})
+            finally:
+                nps_read.read = original
+        self.assertEqual(len(seen), 4)
+        self.assertIn(("t0", HEAD, []), seen)
+        self.assertIn(("t0", 11_000_000, [("LazyMargin", "2000")]), seen)
+
+    def test_one_pool_needs_differing_options_and_two_pools_distinct_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp) / "p"
+            q = pathlib.Path(tmp) / "q"
+            p.mkdir()
+            q.mkdir()
+            WireTests.write_pool(p, HEAD, 2)
+            WireTests.write_pool(q, HEAD, 2)  # the same bytes as p
+            same = {"base": nps_read.pool(p), "cand": nps_read.pool(p)}
+            nps_read.check_arms(p, p, same, {"base": [], "cand": [("LazyMargin", "2000")]})
+            with self.assertRaises(SystemExit):
+                nps_read.check_arms(p, p, same, {"base": [], "cand": []})
+            twin = {"base": nps_read.pool(p), "cand": nps_read.pool(q)}
+            with self.assertRaises(SystemExit):
+                nps_read.check_arms(p, q, twin, {"base": [], "cand": [("LazyMargin", "2000")]})
 
 
 class UnequalPoolTests(unittest.TestCase):

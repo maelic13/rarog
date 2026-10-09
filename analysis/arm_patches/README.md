@@ -1,14 +1,14 @@
 # Preserved arm patches
 
-Six experiment arms that `EXPERIMENTS.md` cites by SHA and that live only on
-deleted branches, captured as diffs against a baseline that is reachable from
-`dev`. A ledger row must reproduce its artifact without the branch it came
-from; for these arms the recipe is the diff, and this is where the diff lives.
+Six experiment arms that `docs/EXPERIMENTS.md` cites by SHA and that live only on
+deleted branches, captured as diffs against a base commit (where each base
+lives now: *Updated 2026-10-05*, below). A ledger row must reproduce its
+artifact without the branch it came from; for these arms the recipe is the diff, and this is where the diff lives.
 
 Captured 2026-09-10. Each was generated with `git diff <base> <arm>` and each
 was verified to apply cleanly to `<base>` through a temporary index, and to
-depend only on blobs reachable from a ref — so they stay applicable after any
-prune.
+depend only on blobs reachable from a ref — so they stayed applicable after
+any prune while those bases were on a ref.
 
 | Patch | Row | Applies to | Content |
 |---|---|---|---|
@@ -21,6 +21,8 @@ prune.
 | `23b8a7a` | RAR-S76 | `df6308e` | B.2.3 theta at iteration 3,900 baked into the 82 `CoreParams` defaults (diagnostic peek, never merged) |
 | `883666d` | RAR-S82 | `7ba3a1b` | RAR-S82's block-1 theta baked into `ProofParams` (diagnostic probe) |
 | `11e7145` | RAR-S84 | `f5d16d8` | RAR-S83's block-2 theta baked into all 36 coordinates (the B.3.4 gate candidate; `f53ca7d` baked the same values on `dev`) |
+| `bff5fbf` | RAR-E24 | `f5802ef` | C.2's attribution-baseline candidate: the unchanged surface refitted on `hce-v4-tb` (`src/eval/params.rs`, `src/eval/material.rs`, final vector `50D7C4FE…`) and version `2.6.0-dev+e24refit`; a detached commit on no ref, proved through a temporary index to reproduce its tree (`f65a08b`) from `f5802ef` |
+| `be5a802` | RAR-E24 | `bff5fbf` | Gate 2's arm: the `c2margin` block's rounded theta baked into the 28 `src/search/params.rs` defaults on the refit candidate, version `2.6.0-dev+e24gate2` (bench 12,351,448); applied after `bff5fbf`'s patch on `f5802ef`, proved through a temporary index to reproduce its tree (`2832703`); the throwaway branch is deleted |
 
 **Added 2026-10-04 (B.10's ref review):** the last three rows came from the
 throwaway branches `diag/b23-theta3900`, `b33-block1-probe` and `b33-gate`,
@@ -28,8 +30,21 @@ each one diagnostic commit on a parent `dev` contains. Each was captured with
 `git diff <base> <arm>` and proved, through a temporary index, to apply to its
 base and reproduce the commit's tree exactly
 (`analysis/artifacts/b10-release/save_branch_patches.sh`), so the branches
-are no longer the only carriers. Their bases are reachable from `dev`, not
-from the `arm/*` tags; the six rows above still need those tags.
+are no longer the only carriers. Their bases were then reachable from `dev`.
+
+**Updated 2026-10-05 (B.10's *Ref review after the release*, `docs/archive/PLAN-closed-2026-10-05.md`):** the
+`arm/*` tags are retired. The first six rows' bases (`1155ec3`, `db19aef`,
+`dfa965e`, `090dedc`, `05ba633`, `e2fd4e0`) are on no ref and restore from
+the 2026-09-27 bundle (`../ledger_commits_2026-09-27.md`), where they sit
+under `refs/tags/arm/*`:
+`git fetch analysis/artifacts/git-history-2026-09-27/rarog-full-history.bundle "refs/tags/arm/*:refs/archive/arm/*"`
+(proved 2026-10-05 into an empty repository: all six patches apply). A
+prune may drop them from the working repository, so fetch them before
+applying one of those patches. Those arms change the
+2.4.0 search, which B.8 deleted. The last three rows' bases left `dev`
+when it was reset to `master` after the 2.5.0 squash merge;
+`archive/pr2-version-2.5.0` holds them, and `master` will once the next
+merge commit lands.
 
 ## What was deliberately NOT preserved, and why
 
@@ -54,5 +69,5 @@ in this clean-up expired a reflog.
 and every other unreachable commit are preserved in the bundle recorded in
 `../ledger_commits_2026-09-27.md`, which also lists every cited commit outside
 the refs, so the reflog may be expired without losing anything the bundle
-holds. The six patches here still apply: their bases are reachable from the
-`arm/*` tags.
+holds. The six patches here still apply: their bases are in the bundle
+(the `arm/*` tags that also held them were retired on 2026-10-05).

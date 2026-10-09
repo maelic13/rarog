@@ -34,6 +34,7 @@ or CPU-topology change on this host — and `calibrate-null.toml` is what runs i
 | `sprt-repair.toml` | a repair of unknown sign | `[-5, 5]` |
 | `sprt-wide.toml` | a genuinely large prior, stated in the registration | `[0, 10]` |
 | `match-fixed.toml` | a measurement with an interval, never an acceptance | 2,000 games |
+| `match-fixed-nodes.toml` | a fixed-node diagnostic (`-Mode match -Nodes <n>`): speed and time management removed, the equal-node companion of an equal-time read; never an acceptance | 2,000 games |
 | `match-fixed-ltc.toml` | the same at the direction-check control `10+0.1` (with `-BaseMs 10000 -IncrementMs 100`) | 1,000 games |
 | `spsa-tune.toml` | a tune | horizon per registration |
 | `calibrate-null.toml` | the null pair, on its trigger | 30,000 games |
@@ -66,7 +67,7 @@ The same run, called directly (no guards, no manifest):
 ```
 
 The cap, the seed and the directory stay on the command line: the cap belongs to
-the registration in `EXPERIMENTS.md`, and a seed is chosen and recorded per run.
+the registration in `docs/EXPERIMENTS.md`, and a seed is chosen and recorded per run.
 Bounds, book and adjudication never change after games are seen.
 
 `tournament` needs its command spelled on the command line, because its options

@@ -17,7 +17,11 @@ are not reliably visible by reading:
 3. **A missing phase.** GUIDE is the maintainer's week-to-week status board and
    must list EVERY phase, not only the one being worked on. Phases 6-9 were
    dropped during a shortening pass on 2026-08-30 and nobody caught it by
-   reading; the maintainer did, weeks later.
+   reading; the maintainer did, weeks later. A finished phase keeps its
+   heading, marked `— CLOSED <date>`, over a one- or two-sentence summary
+   instead of its board (maintainer decision 2026-10-05): it may carry no
+   checkbox, and PLAN's sub-steps under its letter are not required on the
+   board, since PLAN and HISTORY hold them.
 
 4. **A SUPERSEDED marker with nobody holding the debt.** A completed step whose
    RESULT was invalidated stays TICKED and carries `SUPERSEDED -> <leaf>`
@@ -34,7 +38,7 @@ are not reliably visible by reading:
    GUIDE's titles also off by one against PLAN's. Both directions are compared
    now.
 
-6. **Invalid or drifting active workflow metadata.** Open leaves in the active phases (A and B)
+6. **Invalid or drifting active workflow metadata.** Open leaves in the active phase (C since 2026-10-05)
    must have one PLAN row using a canonical state/capability class, and GUIDE's
    compact suffix must agree. Vendor/model tags do not belong on those active
    checklist lines; GUIDE's model mapping owns them.
@@ -44,6 +48,17 @@ are not reliably visible by reading:
    own with its own state and class; it does not turn its leaf into a heading,
    so the leaf stays actionable and the hanging-parent rule does not apply
    between them. Deeper than three levels is not accepted.
+
+8. **A stale board.** Since 2026-10-05 the board is generated from
+   `docs/PLAN.md` by `tools/diag/guide_board.py`; a board that differs from
+   what PLAN generates fails here. The checks above still run over the
+   generated board, so a generator defect cannot pass silently.
+
+9. **A ledger index out of step with its entries.** Since 2026-10-05 each
+   experiment is `docs/experiments/<ID>.md` and `docs/EXPERIMENTS.md` is
+   its index. Every index row must link an entry file that exists, every
+   entry file must have exactly one index row, and each file's heading must
+   name its own ID.
 
 The child pattern is checked against the format GUIDE actually uses --
 `- [ ] **A.2.1** ...`, bold, lettered phase, dotted step. The first version
@@ -75,6 +90,8 @@ import pathlib
 import re
 import sys
 
+import guide_board
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "GUIDE.md"
 
@@ -86,8 +103,9 @@ PARENT = re.compile(r"^- \[([ x])\] \*\*([A-Z]\.\d+)\*\*")
 CHILD = re.compile(r"^( *)- \[([ x])\] \*\*([A-Z]\.\d+\.\d+(?:\.\d+)?)\*\*")
 STRAY = re.compile(r"^ *- \[[ x]\] \*\*[A-Z]\.\d+(\.\d+){0,2} [^*]")
 PHASE = re.compile(r"^## Phase ([A-Z])")
+CLOSED_PHASE = re.compile(r"^## Phase ([A-Z])\b.*\bCLOSED\b")
 REQUIRED_PHASES = set("ABCDEFG")
-PLAN = ROOT / "PLAN.md"
+PLAN = ROOT / "docs" / "PLAN.md"
 # Every GUIDE step number must appear somewhere in PLAN. GUIDE and PLAN are
 # required to change in the same commit, and three times in one session a
 # scripted PLAN edit matched no anchor, reported success, and was committed with
@@ -124,7 +142,7 @@ VALID_STATES = {
     "CLOSED",
 }
 VALID_CLASSES = {"R3", "R2", "I2", "I1", "M", "V"}
-ACTIVE_PREFIXES = ("A.", "B.")
+ACTIVE_PREFIXES = ("C.",)
 
 
 def parse_workflow_rows(lines):
@@ -192,7 +210,7 @@ def fingerprint_problems(guide_text, agents_text, plan_text):
 
 # The current documents a reader acts on. The ledger, HISTORY and analysis/
 # are exempt: their historical paths are evidence of what existed.
-CURRENT_DOCS = ("GUIDE.md", "PLAN.md", "PROCESS.md", "AGENTS.md")
+CURRENT_DOCS = ("GUIDE.md", "docs/PLAN.md", "docs/PROCESS.md", "AGENTS.md")
 # A backticked repository path: a known top-level directory, then segments.
 # Placeholders (`<name>`, globs, ellipses) are templates, not paths.
 REPO_PATH = re.compile(
@@ -223,20 +241,78 @@ def dead_path_problems(texts, exists):
     return problems
 
 
+def closed_phase_problems(lines):
+    """Return the letters of phases marked CLOSED and any checkbox found
+    under one: a closed phase is a summary, its steps live in PLAN."""
+    closed = set()
+    problems = []
+    current = None
+    for n, line in enumerate(lines, 1):
+        ph = PHASE.match(line)
+        if ph:
+            current = ph.group(1)
+            if CLOSED_PHASE.match(line):
+                closed.add(current)
+            continue
+        if line.startswith("## "):
+            current = None
+            continue
+        if current in closed and (PARENT.match(line) or CHILD.match(line)):
+            problems.append(
+                "GUIDE.md:%d: Phase %s is marked CLOSED but carries a checkbox; "
+                "a closed phase is a summary" % (n, current)
+            )
+    return closed, problems
+
+
+LEDGER = ROOT / "docs" / "EXPERIMENTS.md"
+ENTRIES = ROOT / "docs" / "experiments"
+INDEX_ROW = re.compile(r"^\| \[(RAR-[A-Z]+\d+)\]\(experiments/(RAR-[A-Z]+\d+)\.md\) \|")
+
+
+def ledger_problems(ledger_text, headings):
+    """`headings` maps each entry file's ID (its name without .md) to its
+    first line. Returns the disagreements between index and entries."""
+    problems = []
+    indexed = []
+    for n, line in enumerate(ledger_text.splitlines(), 1):
+        m = INDEX_ROW.match(line)
+        if m:
+            if m.group(1) != m.group(2):
+                problems.append("docs/EXPERIMENTS.md:%d: %s links %s.md"
+                                % (n, m.group(1), m.group(2)))
+            indexed.append(m.group(1))
+    for rid in sorted({r for r in indexed if indexed.count(r) > 1}):
+        problems.append("docs/EXPERIMENTS.md: %s is indexed more than once" % rid)
+    for rid in sorted(set(indexed) - set(headings)):
+        problems.append("docs/EXPERIMENTS.md: %s has no docs/experiments/%s.md" % (rid, rid))
+    for rid in sorted(set(headings) - set(indexed)):
+        problems.append("docs/experiments/%s.md has no index row in docs/EXPERIMENTS.md" % rid)
+    for rid, first in sorted(headings.items()):
+        if not first.startswith("# %s — " % rid):
+            problems.append("docs/experiments/%s.md: heading does not read '# %s — <title>'"
+                            % (rid, rid))
+    return problems
+
+
 def repository_path_exists(path):
     return (ROOT / path.rstrip("/")).exists()
 
 
 def self_test():
     """Prove the workflow guard rejects intentionally malformed input."""
+    # The samples sit in the active phase: rows of any other phase are skipped
+    # before they are checked, and the test would then prove nothing.
+    lead = ACTIVE_PREFIXES[0]
+    deep = lead + "2.0.1"
     sample = [
-        "| A.2.1 | WRONG_STATE | R3 | synthetic |",
-        "| A.2.1 | RESEARCH | Z9 | duplicate and invalid |",
-        "| B.2.0.1 | RESEARCH | I2 | three levels are accepted |",
-        "| B.2.0.1.1 | RESEARCH | I2 | four levels are not |",
+        "| %s2.1 | WRONG_STATE | R3 | synthetic |" % lead,
+        "| %s2.1 | RESEARCH | Z9 | duplicate and invalid |" % lead,
+        "| %s | RESEARCH | I2 | three levels are accepted |" % deep,
+        "| %s.1 | RESEARCH | I2 | four levels are not |" % deep,
     ]
     rows, problems = parse_workflow_rows(sample)
-    if "B.2.0.1" not in rows or "B.2.0.1.1" in rows:
+    if deep not in rows or deep + ".1" in rows:
         sys.stdout.write("FAIL: workflow self-test: three-level IDs parse, four-level do not\n")
         return 1
     expected = ("invalid workflow state", "duplicate workflow", "invalid capability")
@@ -262,7 +338,31 @@ def self_test():
         sys.stdout.write("FAIL: dead-path self-test expected only src/search.rs, got %r\n" % dead)
         return 1
     sys.stdout.write("dead-path negative self-test: PASS (1 dangling path detected)\n")
-    return 0
+    closed, closed_problems = closed_phase_problems([
+        "## Phase A — Reset — CLOSED 2026-09-11",
+        "Summary sentence.",
+        "- [x] **A.1** a step left behind",
+        "## Phase C — Evaluation programme (closed-form fits)",
+        "- [ ] **C.0** open work",
+        "## Current checkpoint",
+        "- [ ] **A.9** not under a phase heading",
+    ])
+    if closed != {"A"} or len(closed_problems) != 1 or "Phase A" not in closed_problems[0]:
+        sys.stdout.write("FAIL: closed-phase self-test got %r, %r\n" % (closed, closed_problems))
+        return 1
+    sys.stdout.write("closed-phase negative self-test: PASS (1 checkbox under a closed phase)\n")
+    ledger = ("| ID | Experiment | Disposition |\n|---|---|---|\n"
+              "| [RAR-S1](experiments/RAR-S1.md) | a | b |\n"
+              "| [RAR-S2](experiments/RAR-S3.md) | a | b |\n"
+              "| [RAR-S4](experiments/RAR-S4.md) | a | b |\n")
+    found = ledger_problems(ledger, {"RAR-S1": "# RAR-S1 — a", "RAR-S3": "# RAR-S3 — c",
+                                     "RAR-S5": "# RAR-S5 — e", "RAR-S6": "RAR-S6 untitled"})
+    # S2 links S3's file; S2 and S4 lack files; S3, S5 and S6 lack rows; S6's heading.
+    if len(found) != 7:
+        sys.stdout.write("FAIL: ledger self-test expected 7 problems, got %r\n" % found)
+        return 1
+    sys.stdout.write("ledger negative self-test: PASS (7 disagreements detected)\n")
+    return guide_board.self_test()
 
 
 def actionable(lines):
@@ -391,10 +491,20 @@ def main():
                 "The debt has no owner left" % (n, step, owner, owner)
             )
 
+    closed, closed_problems = closed_phase_problems(lines)
+    problems.extend(closed_problems)
+
     plan_text = PLAN.read_text(encoding="utf-8") if PLAN.is_file() else ""
     if not plan_text:
         problems.append("PLAN.md missing; GUIDE and PLAN must change together")
     else:
+        problems.extend(guide_board.board_problems("\n".join(lines), plan_text))
+        # Not `headings`: that name is the set of parent steps, read again
+        # below to tell a parent from a leaf.
+        entry_headings = {p.stem: (p.read_text(encoding="utf-8").splitlines() or [""])[0]
+                          for p in ENTRIES.glob("*.md")} if ENTRIES.is_dir() else {}
+        ledger_text = LEDGER.read_text(encoding="utf-8") if LEDGER.is_file() else ""
+        problems.extend(ledger_problems(ledger_text, entry_headings))
         agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
         problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
         texts = {name: (ROOT / name).read_text(encoding="utf-8")
@@ -409,7 +519,8 @@ def main():
             )
         # Failure 5: the other direction. A sub-step PLAN defines and GUIDE
         # does not list is invisible work.
-        defined = set(PLAN_DEFINITION.findall(plan_text))
+        defined = {s for s in PLAN_DEFINITION.findall(plan_text)
+                   if s[0] not in closed}
         unlisted = sorted(defined - set(step_numbers))
         if unlisted:
             problems.append(

@@ -34,7 +34,7 @@ GUIDE still identified 4.11.7 budget transfer as current at the snapshot.
 
 Supporting files: [manifest](artifacts/board-audit-20260905/manifest.json),
 [reproduction instructions](board_benchmark_recipe_2026-09-05.md),
-[PLAN](../PLAN.md), [GUIDE](../GUIDE.md).
+[PLAN](../docs/PLAN.md), [GUIDE](../GUIDE.md).
 The adopted plan contains 18 HCE board leaves, nine detailed Phase-5 leaves
 and three Phase-6.4 leaves. It preserves the current 4.11.7 next step, every
 existing checkbox status and Claude's registered v2 endgame ordering.

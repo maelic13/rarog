@@ -251,7 +251,8 @@ class the tier exists to emit. Needs `rustup component add llvm-tools`.
 for this exact host CPU. LOCAL ONLY - such a binary is not guaranteed to run
 anywhere else, and is marked `-native` in its filename.
 `release-check` refuses a tag that does not name Cargo.toml's version, a HEAD
-not reachable from `--base` (default origin/master), a CHANGELOG without a
+not reachable from `--base` (default origin/master) unless it is a patch
+descending from its line's `vX.Y.0` on `--base`, a CHANGELOG without a
 dated section for the version, or a GUIDE whose Released baseline row does not
 name the version at the Development head row's fingerprint; `--notes` writes
 that section as the notes. `declared-fingerprint` prints the `bench 13` node

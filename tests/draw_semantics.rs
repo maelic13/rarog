@@ -100,6 +100,48 @@ fn a_single_prior_twofold_is_a_search_draw() {
 }
 
 #[test]
+fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
+    // KQ v K. The position after d1d2 is first searched as a root, so the
+    // table holds a deep winning entry for exactly that position. The game
+    // then shuffles back (d1d2 h8g8 d2d1 g8h8), and d1d2 from the repeated
+    // root reaches that position again: repetition detection must score it
+    // a draw before any table probe could return the stored win. Both the
+    // main search and quiescence check repetition before probing, and the
+    // root (a PV node) never takes a table cutoff; with both checks removed
+    // this reads the stored mate instead of 0.
+    const START: &str = "7k/8/8/8/8/2K5/8/3Q4 w - - 0 1";
+    let mut searcher = Searcher::default();
+    let search = |searcher: &mut Searcher, board: &Board, root_move: Option<&str>, depth: u32| {
+        let mut options = SearchOptions {
+            board: board.clone(),
+            ..SearchOptions::default()
+        };
+        options.limits.depth = Some(depth);
+        if let Some(uci) = root_move {
+            options.limits.search_moves = vec![mv(board, uci)];
+        }
+        searcher
+            .search(board.clone(), &options, false, || SearchEvent::None)
+            .score
+    };
+
+    let mut after_d1d2 = Board::from_fen(START).unwrap();
+    after_d1d2.make_move(mv(&after_d1d2, "d1d2"));
+    let stored = search(&mut searcher, &after_d1d2, None, 12);
+    assert!(
+        stored <= -1_000,
+        "the warm-up must store a win for White, got {stored}"
+    );
+
+    let mut repeated = Board::from_fen(START).unwrap();
+    for uci in ["d1d2", "h8g8", "d2d1", "g8h8"] {
+        repeated.make_move(mv(&repeated, uci));
+    }
+    assert_eq!(search(&mut searcher, &repeated, Some("d1d2"), 6), 0);
+    assert!(search(&mut searcher, &repeated, Some("d1d3"), 6) >= 300);
+}
+
+#[test]
 fn three_occurrences_are_a_threefold_for_the_arbiter() {
     let mut board = Board::from_fen("6k1/5ppp/8/8/8/8/8/R5K1 w - - 10 40").unwrap();
     for _ in 0..2 {

@@ -97,9 +97,16 @@ $candidateVector = Resolve-InputPath ([string]$fitSummary.final_vector)
 if ((Get-HarnessSha256 $candidateVector) -ne [string]$fitSummary.final_vector_sha256) {
     throw "final candidate vector hash differs from the completed fit summary"
 }
-$evalPath = Join-Path $repo "src/eval.rs"
-if ((Get-HarnessSha256 $evalPath) -ne [string]$fitSettings.source_sha256) {
-    throw "src/eval.rs no longer matches the fitted source baseline"
+# fit_complete.ps1 records one hash per file the bake rewrites
+# (src/eval/params.rs and src/eval/material.rs).
+$fitSources = $fitSettings.source_sha256
+if ($fitSources -is [string] -or -not $fitSources) {
+    throw "$fitSettingsPath records no per-file source hashes (a fit from before the src/eval/ split); refit before confirming"
+}
+foreach ($source in $fitSources.PSObject.Properties) {
+    if ((Get-HarnessSha256 (Join-Path $repo $source.Name)) -ne [string]$source.Value) {
+        throw "$($source.Name) no longer matches the fitted source baseline"
+    }
 }
 & git diff --quiet ([string]$fitSettings.commit) -- src
 if ($LASTEXITCODE -ne 0) {

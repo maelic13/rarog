@@ -1,0 +1,20 @@
+diff --git a/src/evaluate.cpp b/src/evaluate.cpp
+index 6c6ad24..65dab5c 100644
+--- a/src/evaluate.cpp
++++ b/src/evaluate.cpp
+@@ -283,13 +283,8 @@ namespace {
+ 
+     for (Square s = *pl; s != SQ_NONE; s = *++pl)
+     {
+-        // Find attacked squares, including x-ray attacks for bishops and rooks
+-        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
+-          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
+-                         : attacks_bb<Pt>(s, pos.pieces());
+-
+-        if (pos.blockers_for_king(Us) & s)
+-            b &= line_bb(pos.square<KING>(Us), s);
++        // Plain attacks with the full occupancy (fixture variant: Rarog's maps)
++        b = attacks_bb<Pt>(s, pos.pieces());
+ 
+         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
+         attackedBy[Us][Pt] |= b;

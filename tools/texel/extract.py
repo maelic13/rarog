@@ -45,7 +45,7 @@ except ImportError:
 
 RESULT_MAP = {"1-0": 1.0, "0-1": 0.0, "1/2-1/2": 0.5}
 
-# Matches src/eval.rs: N=B=1, R=2, Q=4, capped at 24.
+# Matches PHASE_W in src/eval/material.rs: N=B=1, R=2, Q=4, capped at 24.
 PHASE_W = {chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4}
 PHASE_BUCKETS = (
     ("opening", 20, 24),

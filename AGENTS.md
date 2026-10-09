@@ -1,9 +1,9 @@
 # Agent operating rules for Rarog
 
 The rules an agent follows while working on Rarog. `GUIDE.md` says what to work
-on; the relevant section of `PLAN.md` says why; `PROCESS.md` holds the
+on; the relevant section of `docs/PLAN.md` says why; `docs/PROCESS.md` holds the
 procedures these rules assume. Each rule is stated once, here. The incidents
-that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
+that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
 
 ## Classify the work
 
@@ -47,7 +47,7 @@ that produced a rule are in the ledger rows it cites or in `HISTORY.md`.
   by PROCESS's method. A shared atomic states what it signals and which search
   it belongs to. B.7.1's allocation test checks the first clause.
 - Donor engines teach mechanisms, contracts, dependencies, failure modes and
-  methods. What may cross is `PROCESS.md`, *The independence boundary*. Neither
+  methods. What may cross is `docs/PROCESS.md`, *The independence boundary*. Neither
   similarity nor a copied value is acceptance evidence.
 - For nontrivial playing work, check shared signals and feedback: search
   changes move evaluation populations, evaluation changes move pruning,
@@ -197,7 +197,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **11,171,726 / EBF 2.512**) plus targeted checks
+  fingerprint (currently **12,351,448 / EBF 2.544**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
@@ -215,6 +215,25 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Never push, create a release tag, publish or merge to `master`; the
   maintainer does, on instruction. Do not amend or rewrite a commit that has
   left this machine. Archive tags follow *Evidence*.
+- `master` is the trunk. Each coherent piece of work (a PLAN unit such as
+  C.3, or one between-units change: tooling, documentation, a research
+  close) lives on its own branch and reaches `master` as one squash commit
+  through a PR the maintainer merges; `master` may run ahead of the latest
+  release, which is a tag on it (maintainer decision 2026-10-09, replacing
+  the merge commits of 2026-10-05; the procedure is PROCESS, *Branches and
+  pull requests* and *Release*). The small, separate commits above stay on
+  the branch.
+- Documents cite `master` commits, and the PR number where the steps
+  matter (GitHub keeps every PR's commits as `refs/pull/<n>/head`). A
+  branch's own hashes are working pointers while it is in flight: when it
+  lands, the live documents' references to them are rewritten to its squash
+  commit, or dropped where the sentence already carries the information.
+- `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
+  of the engine would notice (a gate-accepted strength change; a UCI option,
+  output or default; a fixed defect; a removal; a build or asset change)
+  gets its entry, written for users, in the commit that records it.
+  Experiments, refutations and internal refactors get none. A release dates
+  the section and never reconstructs it.
 - Most of the tree is CRLF. A scripted edit preserves the file's existing line
   endings, asserts each anchor is present exactly once, and re-reads the
   region afterwards; a mixed-ending file or a silently unmatched anchor is a
@@ -247,7 +266,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Only where exactness is needed and a recipe is impractical (an
   implementation too large to be a patch, or the base a patch applies to)
   is a commit preserved, and then by an annotated tag named
-  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch. The
+  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch, and
+  only once the maintainer agrees: an agent proposes such a tag and never
+  creates one alone (maintainer decision 2026-10-09). The
   citing document names the tag, why it exists and the condition that
   retires it. Neither a plain `git push` nor `--follow-tags` sends a tag on a
   commit outside the pushed branches: after creating one, tell the
@@ -262,9 +283,10 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 ## Gating
 
 - The strength unit is one dependency-complete, locally fitted cluster;
-  internal sub-steps get no gates of their own. Register it in `EXPERIMENTS.md`
-  (hypothesis, baseline SHA, gate, cap, stop rule) before any games, and never
-  change bounds, cap, book or adjudication after seeing games.
+  internal sub-steps get no gates of their own. Register it before any games
+  as a ledger entry, `docs/experiments/<ID>.md` with its index row in
+  `docs/EXPERIMENTS.md` (hypothesis, baseline SHA, gate, cap, stop rule), and
+  never change bounds, cap, book or adjudication after seeing games.
 - `[0,3]` nElo is the default bracket. Widen only for a genuinely large prior
   and say why; a wide bracket resolves a large effect fast (RAR-S57, `[3,10]`,
   2,838 games). Compute the games at the expected value from RAR-M10 first.
@@ -303,18 +325,27 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Documents
 
-- `GUIDE.md` and `PLAN.md` change in the same commit when roadmap status or
-  requirements change; an AGENTS-only edit needs no PLAN or GUIDE churn.
-- GUIDE carries status. Tick a step only when finished and verified, in the
-  commit that finishes it; tick the parent when its last sub-step is ticked.
-- Sub-steps indent by 4 spaces and addenda (`B.2.0.1`) by 8, never 6 (6
-  renders as code); nothing goes deeper than three levels. Run
-  `python tools/diag/check_guide.py` rather than reading the file.
-- Keep GUIDE short: its operator contract, model mapping, two prompts, board
-  and checkpoint. What a step involves goes in PLAN, a completed record in
-  HISTORY, a procedure in PROCESS, evidence in EXPERIMENTS, a derivation in
-  `analysis/`.
-- `HISTORY.md` is history and resolves every retired numbering scheme; never
+- GUIDE's board is generated from `docs/PLAN.md` by
+  `python tools/diag/guide_board.py`; never edit it by hand. A PLAN step
+  head reads ``- **<ID> <title> — `<class>`….**``: the title is what the
+  board shows, the first backticked class is the step's class, and
+  `DONE <date>` (or CLOSED, NO_CHANGE) in the field ticks it. Mark a step
+  DONE only when finished and verified, in the commit that finishes it,
+  and a parent when its last sub-step is; then regenerate. Run
+  `python tools/diag/check_guide.py`, which fails on a stale board, rather
+  than reading the file.
+- PLAN, the regenerated board and GUIDE's hand-kept checkpoint and holds
+  change in the same commit when roadmap status or requirements change; an
+  AGENTS-only edit needs no PLAN or GUIDE churn. Sub-steps nest one level
+  (`C.5.1`) and addenda two (`B.2.0.1`); nothing goes deeper.
+- Keep GUIDE short and its board first: every phase, then the checkpoint,
+  holds, model mapping, two prompts and operator contract. A finished
+  phase's PLAN heading is marked `— CLOSED <date>` over the one- or
+  two-sentence summary the board shows, and its text moves verbatim to
+  `docs/archive/` (maintainer decision 2026-10-05). What a step involves goes in PLAN, a
+  completed record in HISTORY, a procedure in PROCESS, evidence in
+  EXPERIMENTS, a derivation in `analysis/`.
+- `docs/HISTORY.md` is history and resolves every retired numbering scheme; never
   take a next step from it or from `docs/archive/`. When documents disagree,
   source, defaults and reproducible artifacts outrank prose; fix the prose in
   the same change.

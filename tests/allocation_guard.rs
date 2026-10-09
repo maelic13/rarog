@@ -96,8 +96,31 @@ fn measured_search(searcher: &mut Searcher, options: &SearchOptions, depth: u32)
     (allocations, result.nodes)
 }
 
+/// Positions in check at the rule-50 boundary, and whether the search scores
+/// each as a draw. Only there does the search's draw test ask whether the side
+/// to move is mated, a per-node path too rare for the growth bound to see.
+const RULE50_BOUNDARY: [(&str, bool); 2] = [
+    // Checked, with an escape: drawn.
+    ("R3k3/8/8/8/8/8/8/4K3 b - - 100 120", true),
+    // Mated by the move that reached the boundary: the mate stands.
+    ("R3k3/8/4K3/8/8/8/8/8 b - - 100 120", false),
+];
+
 #[test]
 fn allocations_grow_per_iteration_never_per_node() {
+    for (fen, drawn) in RULE50_BOUNDARY {
+        let board = Board::from_fen(fen).expect("FEN parses");
+        assert!(
+            board.halfmove_clock() >= 100 && board.is_in_check(),
+            "{fen} must be in check at the boundary to reach the mate test"
+        );
+        let before = ALLOCATIONS.load(Ordering::Relaxed);
+        let result = board.can_declare_draw_in_search();
+        let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
+        assert_eq!(result, drawn, "{fen}");
+        assert_eq!(allocations, 0, "the rule-50 draw test allocated at {fen}");
+    }
+
     for index in POSITIONS {
         // The single-thread shallow tree is the honest size of a depth-5
         // search of this position. The threaded searches are sized against it

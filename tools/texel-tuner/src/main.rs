@@ -199,21 +199,6 @@ fn push_material(out: &mut Vec<usize>) {
     push_field_indices(out, "eg_val", 0, 5);
 }
 
-/// One PST square per non-king piece and phase is pinned to remove the exact
-/// material/PST gauge: adding C to a piece value and subtracting C from all 64
-/// of its PST entries represents the same evaluator. Pinning square 0 retains
-/// all 64 identifiable piece-square scores while keeping material interpretable.
-fn pst_gauge_anchors() -> Vec<usize> {
-    let mut out = Vec::with_capacity(10);
-    for field in ["pst_mg", "pst_eg"] {
-        let (off, _) = field_offset(field);
-        for piece in 0..5 {
-            out.push(off + piece * 64);
-        }
-    }
-    out
-}
-
 fn active_indices_for_group(group: &str) -> Vec<usize> {
     let mut active = Vec::new();
     let push_all = |a: &mut Vec<usize>, fields: &[&str]| {
@@ -307,14 +292,10 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, KINGSAFETY);
             push_all(&mut active, IMBALANCE);
         }
-        // Complete existing-surface fit. This is `all` with the ten
-        // exact material/PST gauge anchors removed. The two king material
-        // values are invariant (both kings are always present), and the twelve
-        // danger-index selectors use the nonlinear re-evaluation instrument.
+        // The complete fit's active set is the manifest's free coefficients.
         "complete" => {
-            active = active_indices_for_group("all");
-            let anchors = pst_gauge_anchors();
-            active.retain(|i| !anchors.contains(i));
+            eprintln!("Group 'complete' reads its active set from --manifest.");
+            exit(1);
         }
         // Global polish: everything linearly tunable, but the three
         // feature-support sparse pairs stay frozen. The nonlinear king-danger
@@ -357,7 +338,8 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
 fn print_groups() {
     eprintln!(
         "Groups: material pawnstruct passers rooks minors mobility threats \
-         threats42 hanging misc kingsafety imbalance smallpos gauntlet scalars scalars44 pst all complete"
+         threats42 hanging misc kingsafety imbalance smallpos gauntlet scalars scalars44 pst all \
+         complete (with --manifest)"
     );
 }
 
@@ -1351,6 +1333,127 @@ struct TuneOpts {
     /// unless the data pulls it away — the standard guard against a broad fit
     /// learning implausible signs/magnitudes off thin signal. 0 disables it.
     l2: f64,
+    /// Fitting manifest: `complete` takes its active set from it and the
+    /// coordinate stage checks its own set against it.
+    manifest: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Fitting manifest
+// ---------------------------------------------------------------------------
+
+/// A coefficient's status in the fitting manifest
+/// (`tools/texel/fit_manifest.py` writes it).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FitStatus {
+    /// Receives gradient in the linear stage.
+    Free,
+    /// Never fitted: a gauge, an invariant, or a slot that cannot activate.
+    Fixed,
+    /// Outside the linear model, where its contribution stays a fixed part of
+    /// each row's score; fitted by the coordinate stage.
+    Excluded,
+}
+
+/// One status per flat coefficient, in `EVAL_PARAM_NAMES` order, with the
+/// instrument and reason the manifest gives for it.
+struct FitManifest {
+    status: Vec<FitStatus>,
+    detail: Vec<(String, String)>,
+}
+
+impl FitManifest {
+    /// Load and check a manifest: every coefficient exactly once, a known
+    /// status with its instrument, and a reason for every fixed or excluded
+    /// slot. Any violation is fatal, so a stale manifest cannot fit a
+    /// surface it does not describe.
+    fn load(path: &str) -> Self {
+        let fail = |line_no: usize, msg: &str| manifest_fail(path, line_no, msg);
+        let mut offsets = HashMap::new();
+        let mut off = 0usize;
+        for &(name, len) in EVAL_PARAM_NAMES {
+            offsets.insert(name, (off, len));
+            off += len;
+        }
+        let mut status: Vec<Option<FitStatus>> = vec![None; EvalParams::FLAT_SIZE];
+        let mut detail = vec![(String::new(), String::new()); EvalParams::FLAT_SIZE];
+        for (i, line) in read_lines(path).iter().enumerate() {
+            let line_no = i + 1;
+            if line.trim().is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let cols: Vec<&str> = line.trim_end_matches('\r').split('\t').collect();
+            if cols.len() != 5 {
+                fail(line_no, "expected field, index, status, instrument, reason");
+            }
+            let Some(&(field_off, len)) = offsets.get(cols[0]) else {
+                fail(line_no, &format!("unknown field '{}'", cols[0]))
+            };
+            let idx: usize = cols[1]
+                .parse()
+                .unwrap_or_else(|_| fail(line_no, "bad index"));
+            if idx >= len {
+                fail(
+                    line_no,
+                    &format!("{}[{idx}] beyond its length {len}", cols[0]),
+                );
+            }
+            let (st, instrument) = match cols[2] {
+                "free" => (FitStatus::Free, "linear"),
+                "fixed" => (FitStatus::Fixed, "none"),
+                "excluded" => (FitStatus::Excluded, "coordinate"),
+                other => fail(line_no, &format!("unknown status '{other}'")),
+            };
+            if cols[3] != instrument {
+                fail(
+                    line_no,
+                    &format!("status {} needs instrument {instrument}", cols[2]),
+                );
+            }
+            if st != FitStatus::Free && cols[4].trim().is_empty() {
+                fail(line_no, "a fixed or excluded coefficient needs its reason");
+            }
+            let flat = field_off + idx;
+            if status[flat].is_some() {
+                fail(line_no, &format!("{}[{idx}] listed twice", cols[0]));
+            }
+            status[flat] = Some(st);
+            detail[flat] = (cols[3].to_string(), cols[4].to_string());
+        }
+        let missing = status.iter().filter(|s| s.is_none()).count();
+        if missing > 0 {
+            eprintln!("{path}: {missing} coefficients have no status");
+            exit(1);
+        }
+        let status: Vec<FitStatus> = status.into_iter().flatten().collect();
+        let count = |s: FitStatus| status.iter().filter(|&&x| x == s).count();
+        println!(
+            "Fitting manifest {path}: free {}, fixed {}, excluded {}",
+            count(FitStatus::Free),
+            count(FitStatus::Fixed),
+            count(FitStatus::Excluded)
+        );
+        Self { status, detail }
+    }
+
+    fn indices(&self, wanted: FitStatus) -> Vec<usize> {
+        (0..self.status.len())
+            .filter(|&i| self.status[i] == wanted)
+            .collect()
+    }
+}
+
+fn manifest_fail(path: &str, line_no: usize, msg: &str) -> ! {
+    eprintln!("{path} line {line_no}: {msg}");
+    exit(1)
+}
+
+fn load_manifest_or_exit(opts: &TuneOpts) -> FitManifest {
+    let Some(path) = opts.manifest.as_deref() else {
+        eprintln!("This stage reads its coefficient partition from --manifest.");
+        exit(1);
+    };
+    FitManifest::load(path)
 }
 
 fn cmd_tune(opts: &TuneOpts) {
@@ -1358,7 +1461,15 @@ fn cmd_tune(opts: &TuneOpts) {
     const BETA2: f64 = 0.999;
     const EPS: f64 = 1e-8;
 
-    let active = active_indices_for_group(&opts.group);
+    let active = if opts.group == "complete" {
+        load_manifest_or_exit(opts).indices(FitStatus::Free)
+    } else {
+        if opts.manifest.is_some() {
+            eprintln!("--manifest applies to the complete group and the coordinate stage.");
+            exit(1);
+        }
+        active_indices_for_group(&opts.group)
+    };
     println!(
         "Tune group: {} ({} active params)",
         opts.group,
@@ -1764,6 +1875,7 @@ fn cmd_compare_frozen(test_path: &str, baseline_path: &str, candidate_path: &str
         lr: 0.0,
         max_positions: 0,
         l2: 0.0,
+        manifest: None,
     };
     report_frozen_test(&opts, k);
 }
@@ -1944,6 +2056,19 @@ fn ks_fit_k(boards: &[RawPos], evs: &mut [Evaluator], base: &EvalParams) -> f64 
 
 fn cmd_tune_kingsafety(opts: &TuneOpts) {
     let active = ks_active_indices();
+    // The manifest excludes exactly the selectors from the linear model; the
+    // table they index is free there and co-fitted here.
+    let mut selectors = Vec::new();
+    for field in KS_DANGER_INPUTS {
+        push_field(&mut selectors, field);
+    }
+    selectors.sort_unstable();
+    if opts.manifest.is_some()
+        && load_manifest_or_exit(opts).indices(FitStatus::Excluded) != selectors
+    {
+        eprintln!("The manifest's excluded set is not the king-danger selectors.");
+        exit(1);
+    }
     let (_, table_len) = field_offset("king_safety_table");
     println!(
         "King-safety nonlinear fit: {} active params ({} danger inputs + {table_len}-entry table)",
@@ -2237,59 +2362,21 @@ fn cmd_feature_support(path: &str, max_positions: usize) {
     }
 }
 
-/// Exact primary instrument/disposition for every EvalParams scalar. The
-/// nonlinear king-safety fit also co-tunes the linearly traced safety table,
-/// but its primary owner remains the complete linear surface so this partition
-/// totals exactly once to FLAT_SIZE.
-fn coverage_partition() -> Vec<&'static str> {
-    let mut owner = vec![""; EvalParams::FLAT_SIZE];
-    let mut claim = |idx: usize, label: &'static str| {
-        assert!(owner[idx].is_empty(), "slot {idx} claimed twice");
-        owner[idx] = label;
-    };
-    for idx in active_indices_for_group("complete") {
-        claim(idx, "linear");
-    }
-    for field in KS_DANGER_INPUTS {
-        let (off, len) = field_offset(field);
-        for idx in off..off + len {
-            claim(idx, "nonlinear");
-        }
-    }
-    for idx in pst_gauge_anchors() {
-        claim(idx, "gauge");
-    }
-    for field in ["mg_val", "eg_val"] {
-        let (off, len) = field_offset(field);
-        claim(off + len - 1, "invariant");
-    }
-    assert!(owner.iter().all(|label| !label.is_empty()));
-    owner
-}
-
-fn cmd_audit_coverage() {
-    let owner = coverage_partition();
+/// Print the fitting manifest's partition, one line per coefficient, after
+/// `FitManifest::load` has checked that it covers every slot exactly once.
+fn cmd_audit_coverage(path: &str) {
+    let manifest = FitManifest::load(path);
     let mut flat = 0usize;
-    let mut counts = std::collections::BTreeMap::<&str, usize>::new();
-    println!("EvalParams instrument coverage (primary owner per scalar):");
+    println!("EvalParams fitting partition ({path}):");
     for &(name, len) in EVAL_PARAM_NAMES {
         for index in 0..len {
-            let label = owner[flat];
-            *counts.entry(label).or_default() += 1;
-            println!("{flat:>4} {name:<30} {index:>3} {label}");
+            let (instrument, reason) = &manifest.detail[flat];
+            println!("{flat:>4} {name:<30} {index:>3} {instrument:<10} {reason}");
             flat += 1;
         }
     }
-    println!("Coverage summary:");
-    for (label, count) in counts {
-        println!("  {label:<10} {count:>4}");
-    }
-    println!("  total      {flat:>4}");
     assert_eq!(flat, EvalParams::FLAT_SIZE);
-    println!(
-        "PASS: all {} EvalParams slots have exactly one primary disposition; nonlinear fit additionally co-tunes the 40-entry king_safety_table.",
-        EvalParams::FLAT_SIZE
-    );
+    println!("PASS: all {flat} EvalParams slots have exactly one status.");
 }
 
 /// Readiness — per-bucket loss snapshot of the *current* eval, no
@@ -2311,7 +2398,7 @@ fn cmd_buckets(path: &str, max_positions: usize) {
 fn usage(exe: &str) {
     eprintln!("Usage:");
     eprintln!("  {exe} --verify <dataset.csv> [--weights complete-vector.txt]");
-    eprintln!("  {exe} --audit-coverage");
+    eprintln!("  {exe} --audit-coverage <manifest.tsv>");
     eprintln!("  {exe} --feature-support <dataset.csv> [--max-positions N]");
     eprintln!("  {exe} --buckets <dataset.csv> [--max-positions N] [--from-cp] [--fix-k K]");
     eprintln!(
@@ -2338,7 +2425,50 @@ fn usage(exe: &str) {
         "  {exe} --compare-frozen <test.csv> <source-vector.txt> <candidate-vector.txt> <marker> --fix-k K"
     );
     eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
+    eprintln!(
+        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full]   (fen;label;white-POV score; --full: lazy gate out of reach)"
+    );
+    eprintln!(
+        "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
+    );
     print_groups();
+}
+
+/// Write every row's evaluation beside its FEN and label: by default the
+/// played one, with the lazy gate applied as the engine applies it (the
+/// function the fits describe); with `full`, the gate held out of reach, the
+/// other side of the full-against-played comparison.
+fn cmd_dump_scores(path: &str, out: &str, full: bool) {
+    let mut ev = Evaluator::default();
+    if full {
+        ev.set_lazy_margin(i32::MAX);
+    }
+    let mut lines_out = Vec::new();
+    for line in read_lines(path) {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(sep) = line.rfind(';') else { continue };
+        let Some(_) = parse_target(&line[sep + 1..]) else {
+            continue;
+        };
+        let Ok(board) = Board::from_fen(&line[..sep]) else {
+            continue;
+        };
+        let score = eval_white(&mut ev, &board);
+        lines_out.push(format!(
+            "{};{};{}",
+            &line[..sep],
+            &line[sep + 1..],
+            score as i32
+        ));
+    }
+    std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
+        eprintln!("Cannot write {out}: {e}");
+        exit(1);
+    });
+    println!("{} rows written to {out}", lines_out.len());
 }
 
 fn validate_test_contract(opts: &TuneOpts) {
@@ -2442,7 +2572,21 @@ fn main() {
             }
             cmd_report_endgames(&args[2], &args[3]);
         }
-        "--audit-coverage" => cmd_audit_coverage(),
+        "--audit-coverage" => {
+            if args.len() != 3 {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_audit_coverage(&args[2]);
+        }
+        "--dump-scores" => {
+            let full = args.len() == 5 && args[4] == "--full";
+            if args.len() != 4 && !full {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_dump_scores(&args[2], &args[3], full);
+        }
         "--tune" => {
             if args.len() < 5 {
                 usage(&args[0]);
@@ -2461,6 +2605,7 @@ fn main() {
                 lr: 0.3,
                 max_positions: 0,
                 l2: 0.0,
+                manifest: None,
             };
             let mut i = 5;
             if i < args.len() && !args[i].starts_with("--") {
@@ -2521,6 +2666,10 @@ fn main() {
                         });
                         i += 1;
                     }
+                    "--manifest" => {
+                        opts.manifest = Some(val().clone());
+                        i += 1;
+                    }
                     other => {
                         if !parse_global_flag(other, &args, &mut i) {
                             eprintln!("Unknown option {other}");
@@ -2555,6 +2704,7 @@ fn main() {
                 lr: 0.0,
                 max_positions: 0,
                 l2: 0.0,
+                manifest: None,
             };
             let mut i = 4;
             if i < args.len() && !args[i].starts_with("--") {
@@ -2599,6 +2749,10 @@ fn main() {
                             eprintln!("Bad --max-positions");
                             exit(1)
                         });
+                        i += 1;
+                    }
+                    "--manifest" => {
+                        opts.manifest = Some(val().clone());
                         i += 1;
                     }
                     other => {

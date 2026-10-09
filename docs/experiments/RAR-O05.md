@@ -1,0 +1,78 @@
+# RAR-O05 — C.0 evaluation meter at the start of Phase C: the same-search gap at equal nodes and at equal time
+
+Indexed under *3. Search and selectivity › Search-oracle observations* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+- **Date / owner:** registered 2026-10-05, before any game; maintainer-run (two fixed matches, about 12 minutes each).
+- **Baseline SHA / candidate SHA / dirty-diff hash:** `dev` at `44034ca`; engine source `ee02ed1`. No candidate: both arms are the RAR-O03 oracle package, unchanged.
+- **Binary / compiler / PGO identity:** `tools/test_engines/oracle-hybrid-2.4.0/rarog-stockfish-hce-hybrid.exe` (`42abbdca…41ed`) with `rarog_hce.dll` (`1e192a58…ded8`), re-hashed 2026-10-05 and equal to RAR-O03's and RAR-O04's. One binary on both sides; the arms differ by one UCI option. Arm `sf-hce`: `Use Rarog HCE=false` (Stockfish `9587eeeb` search with its own classical evaluation). Arm `rarog-hce`: `Use Rarog HCE=true` (the same search calling Rarog's 2.4.0 evaluation, the head's raw evaluation by RAR-O04's premise check).
+- **Research question:** how large is the same-search evaluation gap today, and how much of the recorded "about 329 Elo" (RAR-O02) is evaluation quality rather than the instrument? RAR-O02 measured the **2.3.2** evaluation, about 205 games per pair, with the Rarog-evaluation arm running at **1.5 Mnps against the control's 2.3 Mnps** through the FFI adapter. Phase C's target, its recovery band (100 to 160 Elo) and C.11's re-measurement all rest on that one number.
+- **Hypothesis / proposed mechanism:** a material part of the 329 is not evaluation quality: about 40 Elo of evaluation gains accepted since 2.3.2 (RAR-E06, RAR-E08, RAR-E12, measured in Rarog's own search), and 0.5 to 0.6 doublings of throughput lost in the adapter and in Rarog's slower evaluation. At equal nodes with the current evaluation the gap is nearer 215 than 329.
+- **Competing hypotheses:** (1) the gap is evaluation quality nearly in full: the accepted gains do not carry into Stockfish's search and throughput matters little at this depth, so equal nodes still reads near 300. (2) The gap is mostly the instrument: equal nodes reads under 100, and the evaluation programme's band is not credible. Not separated here: how much of the equal-node gap is Stockfish's search being fitted to its own evaluation's scale and shape (B.0 measured the scale factor 0.485); neither arm can remove that, and Rarog's own search is fitted to Rarog's evaluation.
+- **Interacting mechanisms / consumers:** PLAN's Phase C goal and budget row, GUIDE's checkpoint ("Evaluation deficit"), C.11's same-search re-measurement, rule 10's deficit meter. RAR-E17 reads the static layer of the same question.
+- **PRE-REGISTERED PREDICTION (freeze before exposure):** Elo of `sf-hce` over `rarog-hce`.
+  - Expected diagnostic movement: equal time (`3+0.03`) **+285**, 80% band [+240, +330]. Equal nodes (150,000 per move) **+215**, 80% band [+160, +265]. Their difference, the throughput share, **+70**, band [+35, +110].
+  - Expected Elo sign/range, if defensible: as above; these are observations of an instrument, not strength claims for Rarog.
+  - Probability positive/useful and confidence basis: probability the equal-node gap is at least 150: 0.85; under 100: 0.04. Basis: RAR-O02's 328.6; RAR-O03's 1.64 against 2.95 Mnps; about 2 Elo per 1% NPS on Rarog at this control (RAR-S98), taken as an upper guide for another search.
+  - Most likely failure mode: the equal-node figure is read as what Phase C can recover. It is the gap inside Stockfish's search; what Rarog's search can use of it is a separate question that only C's own gates answer.
+- **Falsification criteria:** the hypothesis is refuted if the equal-node gap is 280 or more (the instrument share is small) and the competing "mostly instrument" reading is refuted at 150 or more.
+- **Cheapest prior falsifier:** none exists; RAR-O01 and RAR-O02 are the only readings and both carry the confounds above.
+- **Registered gate and stop rule:** no gate. Two fixed matches of 1,000 games each, no early stop, the equal-node match first. Use of the reading, frozen: the equal-node figure replaces "about 329" as Phase C's meter baseline in PLAN and GUIDE, with the equal-time figure beside it for continuity with RAR-O02; C.11 re-measures both with the C head's evaluation in the DLL. At 150 or more the programme's premise stands. Under 100, C.0 recommends re-scoping the family clusters with the maintainer before C.3 is built. Between the two, the recovery band is scaled in proportion and the order of work is unchanged.
+- **Full conditions / provenance:** `tools/sprt.ps1 -Mode fixed -Games 1000 -NoAdjudication -Seed 20261005`, `-EngineA` and `-EngineB` the oracle executable, `-NameA sf-hce -NameB rarog-hce` (`sf-hce-tc` and `rarog-hce-tc` in the equal-time match, so the two result sets keep distinct file names), `-OptionsA "Use Rarog HCE=false" -OptionsB "Use Rarog HCE=true"`; the equal-node match adds `-Nodes 150000`, the equal-time match runs the default `3+0.03` with the 20 ms margin. 1T, Hash 64, concurrency 14 with affinity, UHO_Lichess_4852_v1 in random order at the fixed seed, fastchess 1.8.0, no adjudication (RAR-O04's conditions). 150,000 nodes is the middle of what the two arms search per move at `3+0.03` (about 2.3 and 1.6 Mnps at about 73 ms a move). Driver: `analysis/artifacts/c0-meter/run_all.ps1` (`05ee209e…4d99`, ignored storage), which waits for an idle host before each match and refuses to run twice. sprt.ps1 is the runner because RAR-O03 and RAR-O04 used it for this package; it does not change.
+- **Result (2026-10-05, maintainer-run by `run_all.ps1`):**
+  - Equal nodes (150,000 a move), 1,000 games, every one to a rules result:
+    `sf-hce` over `rarog-hce` **+181.70 ± 18.99 Elo** (nElo +246.10 ± 21.53),
+    74.0%, W-D-L 610-260-130, pentanomial [5, 32, 114, 176, 173], LOS 100%.
+  - Equal time (`3+0.03`): **interrupted at 982 games** by an application
+    update (game 995 stalled and fastchess stopped the match); recorded as
+    such and not replayed (maintainer, 2026-10-05). All 982 games ended by
+    rule. Scored over the 490 complete colour-reversed pairs (980 games, two
+    partial rounds excluded) with `tools/pgn_result.ps1`: **+266.31 ± 19.89
+    Elo**, 82.2%, pentanomial [0, 5, 74, 185, 226], LOS 100%. The same parser
+    reproduces the equal-node match's fastchess summary exactly.
+  - Throughput share (equal time minus equal nodes): **+84.6**, about ±27.5
+    (the two intervals combined as independent).
+  - Checked against this registration: one engine hash `42abbdca…41ed` on
+    both sides of both matches and `rarog_hce.dll` re-hashed `1e192a58…ded8`;
+    options `Use Rarog HCE=false` and `=true`; seed 20261005 with the book in
+    random order; 150,000 nodes, and `3+0.03` with the 20 ms margin; 1T,
+    Hash 64, concurrency 14 with explicit affinity, no adjudication,
+    fastchess 1.8.0; the equal-node PGN and log hash to the manifest's
+    values. Neither log records a time forfeit, illegal move, crash or
+    disconnection apart from the stall that ended the equal-time match, and
+    every finished game terminated `normal`.
+- **Disposition:** observation, recorded. The equal-node figure, +181.7, is
+  Phase C's meter baseline in PLAN and GUIDE, with the equal-time +266.3
+  beside it. It is 150 or more, so by the registered use the programme's
+  premise stands and the order of work is unchanged.
+- **PREDICTION CALIBRATION (appended 2026-10-05, after exposure):**
+  - Original prediction (not rewritten): equal time +285 [240, 330], equal
+    nodes +215 [160, 265], throughput share +70 [35, 110]; P(equal nodes
+    ≥ 150) 0.85, P(< 100) 0.04.
+  - Observed +266.3, +181.7 and +84.6: every sign right and every reading
+    inside its 80% band; equal nodes 33 below the centre, equal time 19
+    below, the throughput share 15 above.
+  - Mechanism supported in direction: the current evaluation at equal time
+    reads about 62 below RAR-O02's 329, and equal nodes removes another 85.
+    The competing "mostly instrument" reading is refuted (equal nodes is
+    150 or more), and so is "nearly all evaluation" (it is under 280).
+  - Instrument: the throughput share above its centre matches the wire
+    check's 0.73 doublings against the 0.5 to 0.6 the prediction assumed.
+    These two matches cannot split the 62 into accepted evaluation gains
+    (about 40 predicted) and RAR-O02's own noise at about 205 games a pair.
+  - Confidence: the bands held; both gap readings sat below their centres,
+    a small optimistic bias about the size of the evaluation gap.
+- **Conditional lesson:** inside Stockfish's search at 150,000 nodes a move,
+  Rarog's evaluation is about 182 Elo short of Stockfish's classical one; at
+  equal time a further 85 comes from evaluation and adapter throughput.
+  Neither is what Rarog's own search can recover (the registered failure
+  mode); C's gates answer that. A meter read on an older evaluation with
+  unequal throughput overstated the equal-node gap by about 147 Elo.
+- **Retry trigger or `closed`:** re-measured at C.11 by PLAN.
+- **Wire check (2026-10-05, after the registration commit `c0a67f1`; it decided nothing):** 4 games of the same pair under other names (`wire-sf`, `wire-rarog`) at seed 777 and 150,000 nodes, `tools/results/sprt_wire-sf_vs_wire-rarog_20261005_213232.*`. The option reaches both arms: the manifest records `Use Rarog HCE=false` and `Use Rarog HCE=true`; at the fixed node count the mean time per move is 0.049 s for `wire-sf` and 0.075 s for `wire-rarog` (229 and 228 moves, each game's first mover taken from its starting FEN); and a direct `go nodes 1500000` on one middlegame position reads 2.31 Mnps with the option false and 1.39 Mnps with it true, with different best moves. The registered seed 20261005 was not used. That direct reading is 0.73 doublings, more than the 0.5 to 0.6 the prediction assumed; the prediction stands as written.
+- **Artifacts / commits:** registration `c0a67f1`; equal nodes
+  `tools/results/sprt_sf-hce_vs_rarog-hce_20261005_215723.{pgn,log,manifest.txt}`
+  (PGN `48efb061…4ec7`, log `13144e5c…7593`); equal time
+  `tools/results/sprt_sf-hce-tc_vs_rarog-hce-tc_20261005_220738.{pgn,log,manifest.txt}`
+  (PGN `5e37ac08…ed55`, log `3c9e04df…b386`; the manifest has no completion
+  fields because the match was stopped); driver log
+  `analysis/artifacts/c0-meter/run_all.log` (`ea7156b5…6f67`).

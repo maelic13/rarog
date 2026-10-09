@@ -150,8 +150,9 @@ recurring source of wrong results here.
 | `tools/texel/extract_parallel.py` | the same, parallel; what the fit driver calls |
 | `tools/texel/relabel_tb.py` | rewrites ≤6-man labels to Syzygy verdicts |
 | `tools/texel/fit_complete.ps1` | the whole fit, one command, fully audited |
-| `tools/texel/bake_params.py` | writes a fitted vector into `src/eval.rs` |
+| `tools/texel/bake_params.py` | writes a fitted vector into `src/eval/params.rs` and `src/eval/material.rs` |
 | `tools/texel/confirm_hce_fit.ps1` | re-verification of a completed fit |
+| `tools/texel/fit_manifest.py` | writes the fitting manifest `tools/texel/hce_fit_manifest_v2.tsv`: every coefficient free, fixed or excluded, with its reason |
 | `tools/texel/sample_fens.py` | ad-hoc FEN sampling |
 | `tools/texel/import_beast.py` | imports externally-evaluated positions (legacy) |
 | `tools/texel/test_datagen.py` | tests for the datagen path |
@@ -248,12 +249,15 @@ zero yield, which is exactly what every non-opening start bucket does.
 ### 5.3 Generate
 
 ```bash
-pwsh -File tools\datagen.ps1 -Suffix <engine-suffix> -Rounds <N> -Start 1 -Nodes 8000 -Book tools\texel\data\phase_book_v1.epd -BookFormat epd
+pwsh -File tools\datagen.ps1 -Suffix <engine-suffix> -Rounds <N> -Start 1 -Nodes 8000 -Book tools\texel\data\phase_book_v1.epd -BookFormat epd -ExpectSha256 <sha256> -ExpectFingerprint <bench-13-nodes>
 ```
 
 - The engine is `tools/test_engines/rarog-<Suffix>-pext-pgo.exe` with a JSON
   manifest beside it. **Verify its bench fingerprint before generating** — the
-  fit will be attributed to whatever binary actually played.
+  fit will be attributed to whatever binary actually played. `-ExpectSha256`
+  and `-ExpectFingerprint` make the run do it: a binary that is not the
+  registered one, or benches another count, is refused before the first
+  game, and the verified count is recorded in the run manifest.
 - `-Nodes 8000` is the standing budget. Fixed nodes, not time: results must not
   depend on machine load.
 - Concurrency is automatic and **oversubscribes** (all 32 logical processors);
@@ -283,7 +287,7 @@ What the extractor does, and the settings that matter:
 
 | setting | value | why |
 |---|---|---|
-| phase buckets | 5, by **material** (`opening` = 20–24) | matches `src/eval.rs` |
+| phase buckets | 5, by **material** (`opening` = 20–24) | matches `PHASE_W` in `src/eval/material.rs` |
 | per-bucket quota | `target_train / 5`, equal | every phase equally represented |
 | `--max-per-phase-per-game` | 8 | limits within-game correlation |
 | `--max-per-game` | 16 | global safety cap; the phase cap is the primary control |
@@ -351,10 +355,20 @@ records it. If the marker exists the driver refuses to run. This is the one
 defence against selecting on the test set, and it is worth more than the extra
 information a second look would give.
 
+It is opened **after** the candidate has been baked, has passed both test
+suites and clippy and has benched (`fit-05-frozen-test`, `rarog-texel
+--compare-frozen`), so a candidate that trips a test stops the run with the
+set unread. A run that stops after its fit is finished with
+`fit_complete.ps1 -Resume tools/results/hce-fit-<timestamp>`: it re-checks
+the recorded source, manifest and dataset hashes, never refits, and writes a
+`resume-<timestamp>/` subdirectory beside the stopped attempt's logs. A run
+from before this order read the set inside its polish; resuming it takes that
+reading and does not read the set again.
+
 Artifacts land in `tools/results/hce-fit-<timestamp>/`: every log, every
 intermediate vector, `settings.json`, `summary.json`, the source patch, the
-candidate binary, and hashes of all of it. `src/eval.rs` is restored
-byte-for-byte and the release binary rebuilt, verified against the accepted
+candidate binary, and hashes of all of it. `src/eval/params.rs` and
+`src/eval/material.rs` are restored byte-for-byte and the release binary rebuilt, verified against the accepted
 fingerprint — including in the `finally` block if the run dies partway.
 
 ---

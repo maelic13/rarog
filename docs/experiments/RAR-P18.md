@@ -1,0 +1,19 @@
+# RAR-P18 — A.3.1 toolchain bump 1.97.1 -> 1.98.1, behaviour-neutral qualification, COMPLETE 2026-09-09 (`ca8988a`)
+
+Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+## Experiment and conditions
+
+**A.3.1 toolchain bump 1.97.1 -> 1.98.1, behaviour-neutral qualification, COMPLETE 2026-09-09 (`ca8988a`).** `rust-toolchain.toml` channel only. **Provenance correction, 2026-09-09:** the commit message says the source is `7d8b013`, which is where the 1.97.1 arm was built; a docs-only commit `2faa542` landed on `dev` mid-session, so the 1.98.1 arm was built at `2faa542`. `git diff --name-only 7d8b013 2faa542` is GUIDE.md, PLAN.md and one analysis file and **zero** paths under `src`, `xtask`, `tests`, `Cargo.toml`, `Cargo.lock`, `build.rs` — the two arms are engine-identical by construction, which is also what the shared fingerprint shows. New pin `rustc 1.98.1 (48a229cea 2026-09-01)` / `cargo 1.98.1 (797e8a9bc 2026-08-05)`, `x86_64-pc-windows-msvc`, Ryzen 5950X, host idle at 1-5% for the A/B. **Recipe:** three independent `cargo xtask build --arch pext --pgo` builds per arm, the 1.97.1 arm built BEFORE the pin was changed, then `tools/nps_multibuild.ps1 -Cycles 10 -Repeats 3`, plus a same-source null pair under the same instrument. Binaries (ignored, `tools/results/toolchain-1981-20260909/`): base `9EC19139...4D08CF13`, `4E2345C6...02A1B6AA`, `CA3FD735...B9408F86`; candidate `6871B104...FBF144FE`, `EE25D1BF...C7E1F44A`, `763B2EFF...4FA6DC4C` — all six distinct, so pooling is meaningful.
+
+## Result / disposition
+
+**NEUTRAL; no behaviour change and no resolvable speed change.** Fingerprint **7,601,220 / geomean EBF 2.474** exact on the 1.98.1 `x86-64`, `avx2` and `pext` plain builds and on all three `pext` PGO builds. `cargo test -p rarog` debug **and** release green, `-p xtask -p texel-tuner` green, `cargo fmt --check` and `cargo clippy --workspace --all-targets --all-features -- -D warnings` clean, `cargo xtask verify-isa` clean for `base`, `avx2`, `pext` and `pext --pgo`. **Pooled PGO NPS 1.98.1 vs 1.97.1: -0.53%** (base 3,091,812 -> cand 3,075,549 n/s; best-of -0.29%), 95% bootstrap **[-1.99%, +0.08%]**, inside the registered +/-1% band. **Null pair** `cand-198-1` vs `cand-198-2`, same source and same toolchain: **-0.42% [-1.30%, +0.33%]** — the same sign and the same magnitude as the arm difference, so the instrument cannot separate the compiler from per-build profile luck at this resolution.
+
+## Conditional lesson and retry trigger
+
+**Read this as "no detected change", not as "1.98.1 is 0.5% slower".** The null pair is the whole reason: a single-build offset of about 0.4% is documented (RAR-P17, RAR-M44) and it reproduced here, so a -0.53% pooled delta whose CI straddles zero is not a compiler finding. Three builds per arm is the minimum this instrument supports and it did not resolve the effect; a claim about the compiler's speed would need more builds per arm, not more cycles. **Two obligations this bump creates and that this row does NOT discharge.** (1) RAR-P08's `rust-lld` Windows ARM64 PGO workaround is versioned debt that must be re-verified on every pinned compiler bump; RAR-P14 did that for 1.97.1 on a native Windows ARM64 host and **1.98.1 is unverified** — it needs the ARM64 compatibility host, not this one. (2) The CI matrix has not run on 1.98.1; RAR-P15 is the precedent that matrix cells catch what local checks do not. **Retry trigger:** re-run this whole row on the next pinned bump. Never bump between an SPRT baseline and its candidate — the bump landed with no experiment in flight and before RAR-E16's binaries are built, which is the only safe window.
+
+## Source
+
+`tools/results/toolchain-1981-20260909/` (ignored: six PGO binaries, build/test/clippy/ISA logs, `fingerprint-plain.txt`, `fingerprint-pgo.txt`, `nps-pooled.log`, `nps-null.log`); PLAN A.3.1; RAR-P08; RAR-P14; RAR-P15; RAR-P17; RAR-M41; RAR-M44
