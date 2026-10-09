@@ -294,8 +294,7 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.1 | RESEARCH | R2 | The excess above six men was an artefact (RAR-E22); first the opposite-bishop refit candidate, registered as RAR-E26 (2026-10-09, zero games: held-out outcome loss, then a static read on Syzygy-labelled endings), then the family order by C.5's instruments |
-| C.5.2 | RESEARCH | I2 | `NO_CHANGE` for the first unit (RAR-E21); open for what C.5.1's cut supports, gated by C.5's instruments |
+| C.5.2 | RESEARCH | I2 | **Held for the maintainer (2026-10-09):** RAR-E26's opposite-bishop candidate (pure endings `s = 2·pawns + 10·passers`, +21.0 ± 1.3% of that cohort's held-out loss) fired its registered veto on win preservation at six men or fewer, so it is not built until the maintainer decides; the rest of C.5.2's list has no support from C.5.1's cut |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -949,7 +948,7 @@ loss).
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
   coverage of a function list.
-    - **C.5.1 Classification and deciding instrument per family — `R2`.** Adopt the registered
+    - **C.5.1 Classification and deciding instrument per family — `R2`, DONE 2026-10-09.** Adopt the registered
       family order (`tools/diag/endgame_ranking_v2.json`), confirm each family's
       kind (verdict, scale, conversion) against the code, and name the deciding
       instrument per family: theory truth (`endgame_truth.py`), drawn-cohort
@@ -978,6 +977,27 @@ loss).
       knowledge and magnitude (its families +14.5% against its total
       +29.7%), much of which the search's tablebase probing covers in
       play; C.5's own instruments, not static loss, decide there.
+      **Record (2026-10-09; `analysis/c051_endgame_classification_2026-10-09.md`):** the
+      registered order is adopted unchanged; its defect columns are
+      2.4.0-era, so each family cluster re-reads its own families on the
+      current head first. Kinds checked against the code: KPK is a verdict
+      family (the bitbase), KXK, KQKR and KBNK are conversion families,
+      the rest scale families; KRKN, KRKB, KBPKN, KNNKP, KPKP, same-colour
+      KBPKB and the measure-first families have no recogniser at all. One
+      deciding instrument per kind: the drawn cohort for scale, theory
+      truth for verdict, bracketed conversion for conversion, held-out
+      outcome loss for a generic rule, each with the others as vetoes.
+      **RAR-E26** (the first step): Rarog's opposite-bishop rule does not
+      scale a pure bishop ending with four or more pawns at all; refitted
+      inside its own form it becomes `s = 2·pawns + 10·passers` and gains
+      +21.0 ± 1.3% of the pure cohort's held-out loss (+0.24% of the whole
+      file); with other pieces the rule stays. Its registered veto fired:
+      on Syzygy-labelled KBP-KB the draws scored above +100 cp fall from
+      509 to 104 of 704 but the wins scored under +100 cp rise from 12 to
+      75 of 253 (KBP-KBP the same way), so C.5.2 holds for the
+      maintainer. KRPPKRP's 7-man truth is on this machine
+      (`syzygy7`, since 2026-09-04) and probes; the tools' six-man limit is
+      the remaining gap.
     - **C.5.2 Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — `I2`.** The donor's scale
       factor logic in our form: pawn-count scaling for the stronger side,
       opposite-bishop scaling by non-pawn material and passers, rule-50
@@ -992,6 +1012,11 @@ loss).
       phase < 32, +0.20% and +0.93%); C.3 builds neither. C.5.2 stays
       open for what C.5.1's material cut supports (the opposite-bishop
       refit first) and is gated by C.5's own instruments, not with C.3.
+      **Held 2026-10-09 (RAR-E26):** the opposite-bishop candidate exists
+      (pure endings only, `s = clamp(2·pawns + 10·passers, 0, 48)`; the
+      head's rule kept with other pieces) and its static veto fired on
+      win preservation in KBP-KB and KBP-KBP. It is not built until the
+      maintainer decides how it proceeds (C.5.1's packet, §4).
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
