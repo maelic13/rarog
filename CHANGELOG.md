@@ -16,7 +16,17 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   positions). The search's evaluation-dependent margins were re-tuned for it
   in a 60,000-game tune. Against the previous development version it
   measured **+35.9 ± 9.3 Elo at `3+0.03`** (2,214 games) and **+39.1 ± 12.9
-  at `10+0.1`** (1,000 games). `bench` now reports 12,351,448 nodes.
+  at `10+0.1`** (1,000 games). `bench` then reported 12,351,448 nodes.
+- **King safety was rebuilt.** The danger to each king is now an index of
+  attackers, safe and unsafe checks, weak squares around the king, pieces
+  standing alone on its lines and the attacker's mobility lead, scored
+  through a smooth capped curve; pawn shelter and pawn storms are read file
+  by file and rank by rank, counting the shelter a king could still castle
+  into. The evaluation was refitted around it and the search's
+  evaluation-dependent margins re-tuned. Against the previous development
+  version it measured **+32.7 ± 8.9 Elo at `3+0.03`** (2,450 games) and
+  **+24.4 ± 12.3 at `10+0.1`** (1,000 games). `bench` now reports
+  13,187,295 nodes.
 
 ### Fixed
 
