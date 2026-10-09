@@ -9,17 +9,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import check_citations as cc  # noqa: E402
 
 LIVE = "1abeb46aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-DANGLING = "bff5fbfbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+DANGLING = "abcdef1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 
 def resolve(token):
-    return {"1abeb46": LIVE, "bff5fbf": DANGLING}.get(token)
+    return {"1abeb46": LIVE, "abcdef1": DANGLING}.get(token)
 
 
 class Citations(unittest.TestCase):
     def test_backticked_hex_with_or_without_an_ellipsis(self):
-        text = "landed in `1abeb46`; arm `bff5fbf…`\nplain 1abeb46 and `12345678`"
-        self.assertEqual(cc.citations(text), [(1, "1abeb46", False), (1, "bff5fbf", True)])
+        text = "landed in `1abeb46`; arm `abcdef1…`\nplain 1abeb46 and `12345678`"
+        self.assertEqual(cc.citations(text), [(1, "1abeb46", False), (1, "abcdef1", True)])
 
     def test_short_or_uppercase_hex_is_not_a_citation(self):
         self.assertEqual(cc.citations("`abc123` `B2F65630` `ABCDEF0`"), [])
@@ -30,7 +30,7 @@ class Classify(unittest.TestCase):
         self.assertIsNone(cc.classify("1abeb46", resolve, {LIVE}, {}))
 
     def test_a_commit_on_no_kept_ref_is_a_problem(self):
-        self.assertIn("no kept ref", cc.classify("bff5fbf", resolve, {LIVE}, {}))
+        self.assertIn("no kept ref", cc.classify("abcdef1", resolve, {LIVE}, {}))
 
     def test_a_listed_foreign_identifier_is_fine_and_an_unknown_one_is_not(self):
         foreign = {"9587eeeb": "Stockfish commit"}
@@ -39,11 +39,11 @@ class Classify(unittest.TestCase):
 
     def test_a_truncated_digest_is_fine_but_a_truncated_dead_commit_is_not(self):
         self.assertIsNone(cc.classify("aac92114", resolve, {LIVE}, {}, truncated=True))
-        self.assertIsNotNone(cc.classify("bff5fbf", resolve, {LIVE}, {}, truncated=True))
+        self.assertIsNotNone(cc.classify("abcdef1", resolve, {LIVE}, {}, truncated=True))
         self.assertIsNotNone(cc.classify("aac92114", resolve, {LIVE}, {}, truncated=False))
 
     def test_a_foreign_entry_never_excuses_a_dangling_rarog_commit(self):
-        self.assertIsNotNone(cc.classify("bff5fbf", resolve, {LIVE}, {"bff5fbf": "x"}))
+        self.assertIsNotNone(cc.classify("abcdef1", resolve, {LIVE}, {"abcdef1": "x"}))
 
 
 class Foreign(unittest.TestCase):
