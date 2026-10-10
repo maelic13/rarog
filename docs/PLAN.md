@@ -294,7 +294,7 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.2 | RESEARCH | I2 | The opposite-bishop rule: RAR-E26's all-men candidate lost KBPP-KB conversion (RAR-E27), so by maintainer decision (2026-10-10) the seven-men split, registered as RAR-E28 with the boundary hazard; once built, its own gate (an opposite-bishop endgame-start cohort SPRT plus STC). The rest of C.5.2's list has no support from C.5.1's cut |
+| C.5.2 | GAME_GATE | I2 | RAR-E28's rule built (`78deb3d`: pure opposite-bishop endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`; bench 13,562,404 / EBF 2.546 on branch `c4`) and locally qualified; its gate RAR-E29 (an opposite-bishop endgame-start cohort SPRT `[0,10]`, cap 8,000 pairs, plus a 2,000-game STC harm read) is registered and with the maintainer. The rest of C.5.2's list has no support from C.5.1's cut |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -1035,6 +1035,19 @@ loss).
       of three pawns or more, the head's rule kept at six men or fewer),
       with its score jump at the boundary registered as a hazard and read
       in C.5.2's gate; the proper fix is C.5.2.1, after C.4.
+      **RAR-E28 (2026-10-10):** refitted on pure endings of three pawns
+      or more, `s = 1 + 2·pawns + 10·passers` gains +15.7 ± 1.4% of that
+      cohort's held-out loss. **Built and locally qualified (`78deb3d`):**
+      debug and release tests (385 and 386, three new boundary tests),
+      fmt and clippy at zero warnings; bench 13,562,404 / EBF 2.546; the
+      split's check, the built engine against RAR-E27's head reports on
+      KBP-KB, KBPP-KB and KBP-KBP, is identical in all 6,000 truth
+      records and all three drawn families. **Gate RAR-E29** (maintainer
+      decisions 2026-10-10): an opposite-bishop endgame-start cohort SPRT
+      `[0,10]`, cap 8,000 pairs, on an 8,000-position book from `hce-v3-tb`
+      game positions (`tools/diag/ocb_book.py`), plus a 2,000-game STC
+      harm read; registered before any game, both commands dry-run clean.
+      Branch `c4` carries this ungated change until the gate decides.
         - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`.** Added
           2026-10-10 by maintainer decision, after C.4. C.5.2's split scales
           pure endings of seven men or more hard and keeps the head's rule at
