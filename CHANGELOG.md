@@ -25,8 +25,17 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   into. The evaluation was refitted around it and the search's
   evaluation-dependent margins re-tuned. Against the previous development
   version it measured **+32.7 ± 8.9 Elo at `3+0.03`** (2,450 games) and
-  **+24.4 ± 12.3 at `10+0.1`** (1,000 games). `bench` now reports
+  **+24.4 ± 12.3 at `10+0.1`** (1,000 games). `bench` then reported
   13,187,295 nodes.
+- **Opposite-coloured-bishop endings are judged as the draws they mostly
+  are.** With one bishop each on opposite colours, only pawns besides, and
+  three pawns or more, the evaluation now shrinks the stronger side's
+  advantage heavily unless passed pawns back it up; before, such an
+  ending with four or more pawns was not scaled at all. Played from
+  opposite-bishop endgame positions it measured **+12.7 ± 9.8 normalized
+  Elo** (4,792 games) against the previous development version, and from
+  standard openings at `3+0.03` +4.5 ± 8.3 Elo (2,000 games). `bench` now
+  reports 13,562,404 nodes.
 
 ### Fixed
 
