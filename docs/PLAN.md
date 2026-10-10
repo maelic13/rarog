@@ -294,7 +294,8 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.2 | RESEARCH | I2 | RAR-E26's opposite-bishop candidate (pure endings `s = 2·pawns + 10·passers`, +21.0 ± 1.3% of that cohort's held-out loss) fired its static win-preservation veto; **Maintainer decision 2026-10-10:** the candidate first gets a search-level read (RAR-E27: Syzygy-won KBP-KB, KBPP-KB, KBP-KBP played out at 60,000 nodes, head against candidate); it is built only if conversion holds within two standard errors, otherwise C.5.2 falls back to a seven-men-or-more fit. Once built, C.5.2 takes its own gate (an opposite-bishop endgame-start cohort SPRT plus STC), so C.4 starts from a gated head. **RAR-E27 (2026-10-10):** not built. Conversion of Syzygy-won opposite-bishop positions at 60,000 nodes holds in KBP-KB (253 of 253 both arms) and KBP-KBP, and falls in KBPP-KB, 732 → 717 of 754 (−2.0 ± 0.78 points, −2.55 SE; the lost games drift to the ply limit or simplify to insufficient material), while KBPP-KB's drawn overclaim halves (71% → 39%). By the frozen use C.5.2 falls back to the seven-men split, whose score jump at the six-to-seven-men boundary is with the maintainer before it is registered. The rest of C.5.2's list has no support from C.5.1's cut |
+| C.5.2 | RESEARCH | I2 | The opposite-bishop rule: RAR-E26's all-men candidate lost KBPP-KB conversion (RAR-E27), so by maintainer decision (2026-10-10) the seven-men split, registered as RAR-E28 with the boundary hazard; once built, its own gate (an opposite-bishop endgame-start cohort SPRT plus STC). The rest of C.5.2's list has no support from C.5.1's cut |
+| C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -1017,8 +1018,39 @@ loss).
       head's rule kept with other pieces) and its static veto fired on
       win preservation in KBP-KB and KBP-KBP. It is not built until the
       maintainer decides how it proceeds (C.5.1's packet, §4).
-      **Maintainer decision 2026-10-10:** the candidate first gets a search-level read (RAR-E27: Syzygy-won KBP-KB, KBPP-KB, KBP-KBP played out at 60,000 nodes, head against candidate); it is built only if conversion holds within two standard errors, otherwise C.5.2 falls back to a seven-men-or-more fit. Once built, C.5.2 takes its own gate (an opposite-bishop endgame-start cohort SPRT plus STC), so C.4 starts from a gated head.
-      **RAR-E27 (2026-10-10):** not built. Conversion of Syzygy-won opposite-bishop positions at 60,000 nodes holds in KBP-KB (253 of 253 both arms) and KBP-KBP, and falls in KBPP-KB, 732 → 717 of 754 (−2.0 ± 0.78 points, −2.55 SE; the lost games drift to the ply limit or simplify to insufficient material), while KBPP-KB's drawn overclaim halves (71% → 39%). By the frozen use C.5.2 falls back to the seven-men split, whose score jump at the six-to-seven-men boundary is with the maintainer before it is registered.
+      **Maintainer decision 2026-10-10:** the candidate first gets a
+      search-level read (RAR-E27: Syzygy-won KBP-KB, KBPP-KB and KBP-KBP
+      played out at 60,000 nodes, head against candidate); it is built
+      only if conversion holds within two standard errors, otherwise C.5.2
+      falls back to a seven-men-or-more fit. Once built, C.5.2 takes its own
+      gate (an opposite-bishop endgame-start cohort SPRT plus STC), so C.4
+      starts from a gated head.
+      **RAR-E27 (2026-10-10):** not built. Conversion holds in KBP-KB (253
+      of 253 in both arms) and KBP-KBP, and falls in KBPP-KB, 732 → 717 of
+      754 (−2.0 ± 0.78 points, −2.55 SE; the lost games drift to the ply
+      limit or simplify to insufficient material), while KBPP-KB's drawn
+      overclaim halves (71% → 39%).
+      **Maintainer decision 2026-10-10 (the boundary):** C.5.2 takes the
+      seven-men split now (RAR-E28: the pure rule refitted on pure endings
+      of three pawns or more, the head's rule kept at six men or fewer),
+      with its score jump at the boundary registered as a hazard and read
+      in C.5.2's gate; the proper fix is C.5.2.1, after C.4.
+        - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`.** Added
+          2026-10-10 by maintainer decision, after C.4. C.5.2's split scales
+          pure endings of seven men or more hard and keeps the head's rule at
+          six or fewer, so one pawn exchange across the boundary can double
+          the score and invite the search into the six-man endings the head
+          overclaims (KBPP-KB 71% of draws above +100 cp at 60,000 nodes).
+          A count-only factor cannot do better below the boundary: RAR-E26's
+          all-men rule lost KBPP-KB conversion (RAR-E27). The step
+          establishes what separates won from drawn KBP-KB, KBPP-KB and
+          KBP-KBP opposite-bishop endings (the defending king and bishop
+          against the passers' paths, the passers' distance) on Syzygy
+          truth, then fits one rule continuous in pawns and men whose
+          six-man region carries that knowledge, read on RAR-E27's
+          conversion and drawn instruments and on held-out outcome loss.
+          C.5.2's gate games (the hazard read) are its first evidence; it
+          coordinates with C.5.6 (KBPPKB) and C.5.7 (KBPKB).
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
