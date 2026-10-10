@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.3 | IMPLEMENTED | I2 | Built unfitted (`f962c0d`, bench 12,943,117 / EBF 2.550; tooling and manifest v4 `49e2eea`); RAR-E32 registered before the fit: the refit on `hce-v4-tb`, the static screens (donor screen, sub-term removals, magnitude), the tree and NPS reads, then the PGO bake and gate 1 `[0,3]` for the maintainer |
+| C.4.3 | GAME_GATE | I2 | RAR-E32: fitted (`6c73d65`, bench 12,567,796 / EBF 2.535; king threat (14, 40), queen threat (20, 6) cp); screens with no stop and no flag: threats +0.107 → +0.037% over all rows, both terms' removal costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the donor's pieces family rose +0.036 (the removed x-ray term's information); both PGO arms built and gate 1 `[0,3]` dry-run clean, with the maintainer |
 | C.4.4 | RESEARCH | V | After C.4.3's gate 1 |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
@@ -994,7 +994,11 @@ loss).
       `hce-v4-tb` under C.2's manifest, the screens (RAR-E25's donor screen
       with the candidate substituted, the magnitude read, the tree read),
       the PGO bake and gate 1's registration. The attack-map producer is
-      unchanged.
+      unchanged. **Built and screened 2026-10-10 (RAR-E32):** the engine
+      change `f962c0d` (tests, clippy and fmt clean; the restricted term
+      now counts a square both sides attack twice), manifest v4 `49e2eea`,
+      the refit `6c73d65`. fitted (`6c73d65`, bench 12,567,796 / EBF 2.535; king threat (14, 40), queen threat (20, 6) cp); screens with no stop and no flag: threats +0.107 → +0.037% over all rows, both terms' removal costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the donor's pieces family rose +0.036 (the removed x-ray term's information). Gate 1 is with the
+      maintainer.
     - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** PROCESS's
       *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
