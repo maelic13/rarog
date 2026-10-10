@@ -293,7 +293,8 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.2 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 read threats with signal (+0.107% all rows, +0.122 at seven men or more) and mobility with signal in the opening band only; RAR-E31, the attribution, registered 2026-10-10 after the instrument's exact-reproduction check and before any model was fitted, result pending |
+| C.4.3 | READY_FOR_IMPLEMENTATION | I2 | C.4's threats part, decided 2026-10-10 by RAR-E30 and RAR-E31: the king threat and the safe-square slider threat on the queen in the donor's shape, Rarog's x-ray slider term removed; handoff frozen in `analysis/c4_threats_mobility_2026-10-10.md`; mobility closed `NO_CHANGE` inside C.4 |
+| C.4.4 | RESEARCH | V | After C.4.3's gate 1 |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -962,7 +963,7 @@ loss).
       +0.060 at seven men or more (no signal) but +0.184 ± 0.044 in the
       opening band (signal there only); king +0.079. Both families go to
       C.4.2; neither closes.
-    - **C.4.2 Sub-term attribution: the donor's threats components and its mobility under four area definitions, rebuilt offline and verified exactly, read as directions (RAR-E31) — `V`.** Zero
+    - **C.4.2 Sub-term attribution: the donor's threats components and its mobility under four area definitions, rebuilt offline and verified exactly, read as directions (RAR-E31) — `V`, DONE 2026-10-10.** Zero
       games. The instrument rebuilds Stockfish `9587eeeb`'s threats
       components and per-piece-type mobility from the FEN and must
       reproduce the printed `threats` and `mobility` rows on every row
@@ -971,7 +972,31 @@ loss).
       x-rays, without the pin restriction and under Rarog's area, and the
       Rarog-shaped counterparts of the gated terms. Registered before any
       model is fitted; its frozen use names what a unit would build and
-      what closes `NO_CHANGE`.
+      what closes `NO_CHANGE`. **Read 2026-10-10** (`tools/diag/threat_subterms.py`,
+      reproduction exact on all 194,444 rows): two components carry the
+      threats residual, the king threat (a term Rarog lacks; −0.108 and
+      −0.100 points by removal in the endgame band and without queens)
+      and the slider threat on the queen in the donor's safe-square form
+      (−0.047 over all rows, −0.048 at seven men or more; Rarog's x-ray
+      form is already in the fitted score); the ungated family loses
+      −0.062, so gating matters, but no gated term reaches the line on
+      its own; the donor's hanging, restricted, safe-pawn and minor forms
+      are redundant with Rarog's. Separate weights per component add
+      +0.092, so the refit fits each term. **Mobility closes `NO_CHANGE`
+      inside C.4:** the donor's definition over Rarog's reads +0.144 ±
+      0.039 in the opening band, 3.7 standard errors against the
+      registered four (the pin restriction carries most of it); retry on
+      C.8's corpus or on the head after C.4.3 lands.
+    - **C.4.3 Threats unit: the king threat and the safe-square slider threat on the queen in the donor's shape, Rarog's x-ray slider term removed, one strongly-protected set shared; refit; static screens; tree read; PGO bake; gate 1 — `I2`.** The
+      handoff is frozen in `analysis/c4_threats_mobility_2026-10-10.md`
+      (*Implementation handoff*): semantics, the shared set, what is
+      removed, trace slots, the per-node cost statement, the refit on
+      `hce-v4-tb` under C.2's manifest, the screens (RAR-E25's donor screen
+      with the candidate substituted, the magnitude read, the tree read),
+      the PGO bake and gate 1's registration. The attack-map producer is
+      unchanged.
+    - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** PROCESS's
+      *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not

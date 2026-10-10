@@ -247,39 +247,157 @@ decide material; mobility's is in the opening, where the area definition
   even odds of passing `[0,3]` on gate 1), and a failed pair of gates is a
   rejected cluster under PLAN rule 6.
 
+## RAR-E31, read 2026-10-10
+
+The instrument (`tools/diag/threat_subterms.py`) rebuilt the donor's ten
+threats components and its mobility from the FEN and reproduced the
+printed rows on all 194,444 rows with zero mismatches before any direction
+was read. Paired removal cost of one component against the whole family,
+in points of the head's held-out squared error (negative carries gain):
+
+| Component | all | men ≥ 7 | phase < 32 | no queens |
+|---|---:|---:|---:|---:|
+| slider threat on the queen (safe squares) | **−0.047 ± 0.008** | **−0.048 ± 0.008** | +0.004 | 0 |
+| king threat | −0.024 ± 0.004 | −0.025 ± 0.004 | **−0.108 ± 0.022** | **−0.100 ± 0.019** |
+| rook threat (gated) | −0.017 ± 0.005 | −0.021 ± 0.005 | −0.044 ± 0.017 | −0.042 ± 0.017 |
+| weak queen protection | −0.011 ± 0.002 | −0.012 ± 0.002 | 0 | 0 |
+| safe pawn push | +0.001 | 0.000 | −0.031 ± 0.010 | −0.033 ± 0.012 |
+| minor threat (gated) | 0.000 | +0.001 | −0.019 ± 0.014 | −0.034 ± 0.017 |
+| hanging, restricted, safe pawn, knight on queen | +0.007 to +0.010, −0.002 | the same | +0.021 to +0.037, 0 | +0.004 to +0.035, 0 |
+
+The family with every gated term replaced by its ungated counterpart
+loses −0.062 ± 0.008 over all rows (−0.121 without queens): gating
+matters, but no single gated term reaches 0.04 points by removal in a
+signal cohort, and the ungated rook and push forms are worse than
+removing the terms, so what Rarog's ungated counts add is the wrong
+direction. The ten components as separate regressors gain +0.092 ± 0.020
+over the single family: the donor's internal weights are not fitted to
+this corpus. Mobility in the opening band: the donor's definition over
+Rarog's reads +0.144 ± 0.039 (3.7 standard errors; the registered line
+was four), of which the pin restriction carries −0.045 ± 0.011 and the
+x-rays −0.029 ± 0.016; Rarog's area with the donor's tables recovers a
+third of the donor's +0.183.
+
+What this says about the hypotheses: H1's general claim held (gating
+matters) and its specific one failed (the minor and rook gating and the
+safe pawn are not the carriers); H2 is supported for exactly two terms,
+one Rarog lacks (the king as an attacker, worth 89 of the donor's endgame
+units) and one Rarog conditions differently (the queen threat on safe
+double-attacked squares against Rarog's x-ray through pawns). H3 held in
+direction and missed the registered line; H4 is refuted (x-rays carry
+little); H0 is refuted for threats.
+
 ## Decision
 
-**`MORE_RESEARCH` after RAR-E30 (2026-10-10).** Both families stay open:
-threats by signal in four registered cohorts, mobility by signal in the
-opening band only. Neither is `READY_FOR_IMPLEMENTATION`: the mechanism is
-not yet attributed, and a unit built on "the family in the donor's shape"
-alone would be the kind of transplant the programme declined. The next
-step is C.4.2, the attribution (RAR-E31), zero games, registered before
-any model is fitted on the component directions. Its frozen use decides
-what, if anything, a unit builds:
+**C.4's threats part: `READY_FOR_IMPLEMENTATION` (2026-10-10), as C.4.3
+with the handoff below. Mobility: `NO_CHANGE` inside C.4.** The threats
+unit is two terms, not the family: the king threat and the slider threat
+on the queen in the donor's safe-square form, with Rarog's x-ray slider
+term removed and one strongly-protected set shared with the restricted
+term. The donor's hanging, restricted, safe-pawn and minor-threat forms
+are not built: Rarog's own versions suffice on this reading. The rook
+gating, the push safety and weak queen protection are measured below the
+registered line and are not built; they get one registered joint read
+after the unit's screen if the threats family still reads 0.05% or more
+there. Mobility's area, pins and x-rays miss the registered lines (3.7
+standard errors for the area); the retry is the same read on C.8's corpus
+or on the head after C.4.3 lands.
 
-- threats: a component set carrying at least 0.10% at four standard errors
-  in a cohort where the family has signal, and that Rarog's current terms
-  cannot express by re-pricing (the gating and the safe sets, or a term
-  Rarog lacks), is the unit's content; a residual that re-pricing of the
-  Rarog-shaped counterparts recovers is a refit question, not a unit;
-- mobility: the unit includes the area only if the donor's tables under
-  the donor's area beat them under Rarog's area by at least 0.10% at four
-  standard errors in the opening band, and the x-rays only if the
-  no-x-ray variant loses as much; otherwise mobility closes `NO_CHANGE`.
+Expected value, stated so it can be wrong: the two terms carry about
+0.07 points of held-out loss over all rows and 0.10 in the endgame band,
+a tenth of what king carried before C.3 (+0.66, which became +32.7 Elo
+after a margin block). Prior for gate 1: +0 to +8 Elo, probability of
+passing `[0,3]` about 0.3; with the margin block, about 0.45. No exchange
+rate is claimed; the gate decides, and a failed pair of gates is a
+rejected cluster under PLAN rule 6.
+
+## Implementation handoff (C.4.3)
+
+**Goal.** Add two threat terms in the donor's shape to `src/eval/threats.rs`,
+remove the x-ray slider-on-queen term from `src/eval/pieces.rs`, share one
+strongly-protected set, refit the whole surface, run the cluster shape's
+screens and gate 1. No search code; the attack-map producer unchanged.
+
+**Semantics, per side `us` (fixed).**
+
+- *Strongly protected* (the donor's): `pawn_attacks[them] | (attacked2[them] & !attacked2[us])`.
+  Computed once per side and used by the restricted term (whose current
+  definition lacks the `& !attacked2[us]` clause, and so changes with it;
+  a consequence, recorded, read in the screen), the king threat and the
+  queen threat.
+- *Weak*: `color_occ(them) & !strongly_protected & attacked[us]` (pawns and
+  the king included, as the donor has it).
+- **King threat:** one flat bonus `threat_by_king_{mg,eg}` when
+  `(weak & king_attacks(us)).any()`; seeds from the donor's S(24, 89) on
+  its 206-per-pawn scale, so about (12, 43) cp before the refit; the refit
+  fits them.
+- **Slider threat on the queen:** when `them` has exactly one queen on
+  `q`: `safe = !pawns[us] & !(king[us] | queen[us]) & !pawn_attacks[them]
+  & !strongly_protected` (the donor's mobility area without the king's
+  blockers, which Rarog's evaluator does not compute; the omission is a
+  deliberate simplification, read in the screen); `b = (attacked_by[us][Bishop]
+  & bishop_attacks(q, occupied)) | (attacked_by[us][Rook] & rook_attacks(q,
+  occupied))`; count `= popcount(b & safe & attacked2[us])`, doubled when
+  the board holds exactly one queen; bonus `count × threat_slider_on_queen_{mg,eg}`,
+  seeds from S(60, 18), about (29, 9) cp. The knight form (measured nil)
+  is not built.
+- **Removed:** `slider_on_queen_{mg,eg}` (the x-ray form through pawns) and
+  its loop in `eval_xray_trio`; `queen_battery` and `bishop_xray_pawns`
+  stay.
+
+**Invariants and tests.** `EvalTrace` slots for the two new terms and the
+removed one (the reconstruction test); unit tests on crafted positions
+for the weak set, the king threat, the safe set (own pawn, own king and
+queen squares, enemy-pawn-attacked and strongly-protected squares
+excluded), the double-attack requirement and the single-queen doubling;
+the `texel` build's `linear_delta_scale` untouched. Rust changes need
+debug and release tests, `cargo fmt --check` and clippy at zero warnings.
+The bench fingerprint moves (a behaviour change) and the new one is
+recorded with gate 1's registration.
+
+**Per-node cost (statement before implementation).** Per side: two
+bitboard operations for the strongly-protected set (already partly
+computed for the restricted term), one AND and `any` for the king threat,
+and for the queen threat two slider lookups from the queen's square plus
+about six bitboard operations and one popcount; minus the removed x-ray
+loop (two slider lookups per own rook and bishop). Expected pooled-PGO
+NPS within ±0.5% of the head; measured by the cluster shape's NPS read.
+
+**Refit and screens (the cluster shape, as C.3).** Whole-surface Texel
+refit on `hce-v4-tb` under C.2's manifest with the two new slots free and
+the removed one gone, the frozen test reported once; then, before any
+game: (1) the donor screen, RAR-E25's method, head and candidate
+substituted into RAR-E23's rows, with `threat_subterms.py analyse` on the
+candidate as well (the `by_king` and `slider_on_queen` directions should
+fall under 0.02 points by removal, and the threats family under +0.06%
+over all rows; above +0.09% the implementation did not capture the
+mechanism and C.4.3 returns to `RESEARCH`); (2) the magnitude read by
+band (C.0.4's contract); (3) the tree read (72 positions, depth 12, both
+arms); (4) the pooled-PGO NPS read; then the PGO bake and gate 1's
+registration (`[0,3]` at `3+0.03`, search unchanged), with the margin
+block when flagged or when gate 1 fails, gate 2, and the `10+0.1` read
+(C.4.4). Predictions for the screens and the gate are frozen in gate 1's
+registration, not here.
 
 ## Sub-steps spawned under C.4 (classes in PLAN)
 
 - **C.4.1** Residual step (RAR-E30) — `V`, done 2026-10-10.
-- **C.4.2** Sub-term attribution (RAR-E31) — `V`: the offline instrument
-  with its exact-reproduction check, then the read.
-- The unit's design, implementation, refit and gate are added when C.4.2
-  names a mechanism.
+- **C.4.2** Sub-term attribution (RAR-E31) — `V`, done 2026-10-10.
+- **C.4.3** The threats unit: implementation, refit, screens, tree read,
+  PGO bake, gate 1 — `I2`.
+- **C.4.4** Margin block when flagged, gate 2, the `10+0.1` read, the
+  ledger row — `V`.
 
 ## What this did not establish
 
 - No game-level read of either family exists; the static layer is the only
-  evidence, and it ranks questions only.
-- The donor's per-node cost of the area and x-rays in Rarog's structure is
-  unmeasured; it is stated before implementation, as PLAN's speed
-  requirement asks.
+  evidence, and it ranks questions only. Whether two terms worth 0.07
+  points of held-out loss are worth anything in play is gate 1's question.
+- The joint value of the sub-line components (rook gating, push safety,
+  weak queen protection) was not read as a set; RAR-E31 registered single
+  removals only, and a set read is a separate registration.
+- The effect of dropping the king's blockers from the queen-threat safe
+  set was not measured; the candidate's screen reads it indirectly.
+- Mobility's reading at 3.7 standard errors is neither a refutation nor
+  support of the area; it is below a line set before the numbers were
+  seen, and the retry is named.
