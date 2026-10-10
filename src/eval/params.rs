@@ -151,6 +151,13 @@ macro_rules! eval_params {
             threat_weak_piece_eg: 1 = [0];
             threat_restricted_mg: 1 = [8];
             threat_restricted_eg: 1 = [0];
+            // The king attacking a weak enemy piece, and bishops or rooks attacking
+            // the safe squares around the enemy's only queen; seeded from the
+            // donor's values on its 206-per-pawn scale.
+            threat_by_king_mg: 1 = [12];
+            threat_by_king_eg: 1 = [43];
+            threat_slider_on_queen_mg: 1 = [29];
+            threat_slider_on_queen_eg: 1 = [9];
             // King-danger index coordinates, in index units (seeded on the donor's
             // scale, where a pawn is 206). The index reaches the score only through
             // the quadratic map, so the linear trace cannot see them; the fit's
@@ -265,13 +272,11 @@ macro_rules! eval_params {
             passed_freepath_mg_per_rank: 1 = [-3];
             passed_freepath_eg_per_rank: 1 = [8];
             passed_safepath_eg_per_rank: 1 = [24];
-            // Deferred §3.12 trio.
+            // Bishop x-rays on enemy pawns and queen batteries.
             bishop_xray_pawns_mg: 1 = [-7];
             bishop_xray_pawns_eg: 1 = [4];
             queen_battery_mg: 1 = [14];
             queen_battery_eg: 1 = [25];
-            slider_on_queen_mg: 1 = [41];
-            slider_on_queen_eg: 1 = [10];
         }
     };
 }

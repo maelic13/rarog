@@ -294,6 +294,18 @@ mod texel_tests {
             "threat_by_minor dead"
         );
 
+        // King threat: the white king on d5 attacks the undefended pawn on e5.
+        let t = trace_of(&mut ev, "4k3/8/8/3Kp3/8/8/8/8 w - - 0 1");
+        assert_ne!(t.mg.threat_by_king_mg[0], 0, "threat_by_king dead");
+
+        // Slider threat on the queen: the rook on h5 and the knight on f4
+        // both attack d5, on the black queen's file.
+        let t = trace_of(&mut ev, "3q4/8/k7/7R/5N2/8/8/K7 w - - 0 1");
+        assert_ne!(
+            t.mg.threat_slider_on_queen_mg[0], 0,
+            "threat_slider_on_queen dead"
+        );
+
         // Minor-behind-pawn (3.12): white knight d3 shielded by the pawn on d4.
         let t = trace_of(&mut ev, "4k3/8/8/8/3P4/3N4/8/4K3 w - - 0 1");
         assert_ne!(t.mg.minor_behind_pawn_mg[0], 0, "minor_behind_pawn dead");
