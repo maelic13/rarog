@@ -4,9 +4,13 @@ rule predict game outcomes better, with the rest of the evaluation fixed?
 
 Rarog scales the whole tapered score by `s / 48` whenever each side has
 exactly one bishop and the two stand on opposite colours, whatever else is on
-the board, with `s = min(32 + 4 * pawns + 4 * passers, 48)` (pawns and passed
-pawns of both sides). This tool reads that rule against outcome labels at the
-static layer. It ranks candidates and accepts nothing.
+the board (pawns and passed pawns of both sides): in a pure bishop ending with
+three pawns or more `s = min(1 + 2 * pawns + 10 * passers, 48)`; otherwise
+`s = min(32 + 4 * pawns + 4 * passers, 48)`. `classify` is the offline copy
+of that rule and must follow `opposite_bishop_scale` in
+`src/eval/endgame/mod.rs`; `verify` fails against a dump written by an engine
+with another rule, which is what it is for. This tool reads the rule against
+outcome labels at the static layer. It ranks candidates and accepts nothing.
 
 Inputs are `rarog-texel --dump-scores <csv> <out> --scale` files: one
 `fen;label;white-POV score;engine scale` row per position, the scale being
@@ -37,6 +41,9 @@ from pathlib import Path
 import numpy as np
 
 OCB_NORMAL = 48
+# Pure bishop endings with at least this many pawns take the fitted rule
+# (`PURE_OCB_MIN_PAWNS` in the engine).
+PURE_MIN_PAWNS = 3
 
 # Cohort codes.
 NOT_OCB, PURE, PIECES, PAWNLESS = 0, 1, 2, 3
@@ -104,7 +111,10 @@ def classify(fen: str):
             return PAWNLESS, 0, 0, 0, 0
         return PAWNLESS, 0, 0, 0, 32
     pw, pb = passers_by_side(squares)
-    scale = min(32 + 4 * pawns + 4 * (pw + pb), OCB_NORMAL)
+    if not others and pawns >= PURE_MIN_PAWNS:
+        scale = min(1 + 2 * pawns + 10 * (pw + pb), OCB_NORMAL)
+    else:
+        scale = min(32 + 4 * pawns + 4 * (pw + pb), OCB_NORMAL)
     return (PURE if not others else PIECES), pawns, pw, pb, scale
 
 

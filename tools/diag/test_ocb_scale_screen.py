@@ -16,6 +16,20 @@ class RuleTests(unittest.TestCase):
         cohort, pawns, pw, pb, s = oc.classify("4k3/7p/P7/3b4/8/8/8/2B1K3 w - - 0 1")
         self.assertEqual((cohort, pawns, pw, pb, s), (oc.PURE, 2, 1, 1, 48))
 
+    def test_the_engines_pure_cases_from_three_pawns(self):
+        # src/eval/endgame/mod.rs, opposite_bishop_scale_pure_endings_from_three_pawns.
+        cohort, pawns, pw, pb, s = oc.classify("4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1")
+        self.assertEqual((cohort, pawns, pw + pb, s), (oc.PURE, 3, 0, 7))
+        cohort, pawns, pw, pb, s = oc.classify("4k3/7p/P7/3b4/8/8/P7/2B1K3 w - - 0 1")
+        self.assertEqual((cohort, pawns, pw + pb, s), (oc.PURE, 3, 3, 37))
+        cohort, pawns, pw, pb, s = oc.classify("r3k3/p7/8/3b4/8/8/PP6/2B1K2R w - - 0 1")
+        self.assertEqual((cohort, pawns, pw + pb, s), (oc.PIECES, 3, 0, 44))
+
+    def test_the_fitted_rule_is_capped_at_the_basis(self):
+        # Five pawns, all passed: 1 + 10 + 50 exceeds 48.
+        _, pawns, pw, pb, s = oc.classify("4k3/6pp/PP6/3b4/8/8/P7/2B1K3 w - - 0 1")
+        self.assertEqual((pawns, pw + pb, s), (5, 5, 48))
+
     def test_same_coloured_bishops_are_not_ocb(self):
         self.assertEqual(oc.classify("4k3/p7/8/4b3/8/8/P7/2B1K3 w - - 0 1")[0], oc.NOT_OCB)
 
@@ -82,9 +96,9 @@ class AnalyseFilterTests(unittest.TestCase):
         rows = [
             # pure, 2 pawns (six men)
             "4k3/p7/8/3b4/8/8/P7/2B1K3 w - - 0 1;0.5;40;0.8333333333333334",
-            # pure, 3 pawns (seven men)
-            "4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1;0.5;90;1",
-            "4k3/pp6/8/3b4/8/8/P7/2B1K3 w - - 0 1;1;60;1",
+            # pure, 3 pawns (seven men), scaled 7/48 by the fitted rule
+            "4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1;0.5;13;0.14583333333333334",
+            "4k3/pp6/8/3b4/8/8/P7/2B1K3 w - - 0 1;1;8;0.14583333333333334",
             # pieces
             "r3k3/p7/8/3b4/8/8/P7/2B1K2R w - - 0 1;0.5;30;0.8333333333333334",
         ]
