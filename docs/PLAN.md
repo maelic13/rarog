@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.2 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 read threats with signal (+0.107% all rows, +0.122 at seven men or more) and mobility with signal in the opening band only; RAR-E31, the attribution, is registered before any model is fitted on the component directions |
+| C.4.2 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 read threats with signal (+0.107% all rows, +0.122 at seven men or more) and mobility with signal in the opening band only; RAR-E31, the attribution, registered 2026-10-10 after the instrument's exact-reproduction check and before any model was fitted, result pending |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
