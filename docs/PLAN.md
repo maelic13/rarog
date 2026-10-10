@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.3 | READY_FOR_IMPLEMENTATION | I2 | C.4's threats part, decided 2026-10-10 by RAR-E30 and RAR-E31: the king threat and the safe-square slider threat on the queen in the donor's shape, Rarog's x-ray slider term removed; handoff frozen in `analysis/c4_threats_mobility_2026-10-10.md`; mobility closed `NO_CHANGE` inside C.4 |
+| C.4.3 | IMPLEMENTED | I2 | Built unfitted (`f962c0d`, bench 12,943,117 / EBF 2.550; tooling and manifest v4 `49e2eea`); RAR-E32 registered before the fit: the refit on `hce-v4-tb`, the static screens (donor screen, sub-term removals, magnitude), the tree and NPS reads, then the PGO bake and gate 1 `[0,3]` for the maintainer |
 | C.4.4 | RESEARCH | V | After C.4.3's gate 1 |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
