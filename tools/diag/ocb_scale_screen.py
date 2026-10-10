@@ -287,9 +287,15 @@ def cmd_analyse(args) -> int:
     report = {"k": k, "train": str(args.train), "held_out": str(args.held_out),
               "held_out_rows": int(len(held_labels)),
               "held_out_global_mse": float(global_err.mean()), "cohorts": {}}
+    report["pure_min_pawns"] = args.pure_min_pawns
     for code, name in ((PURE, "pure"), (PIECES, "pieces")):
         tm = train["cohort"] == code
         hm = held["cohort"] == code
+        if code == PURE:
+            # A pure ending has 4 + pawns men, so `--pure-min-pawns 3` keeps
+            # the pure rows of seven men or more.
+            tm &= train["pawns"] >= args.pure_min_pawns
+            hm &= held["pawns"] >= args.pure_min_pawns
         t = {key: v[tm] for key, v in train.items()}
         h = {key: v[hm] for key, v in held.items()}
         h_err0 = (h["label"] - sigmoid(scaled(h["raw"], h["s0"]), k)) ** 2
@@ -403,6 +409,8 @@ def main() -> int:
     p.add_argument("--train", required=True, type=Path)
     p.add_argument("--held-out", required=True, type=Path)
     p.add_argument("--k", required=True, type=float)
+    p.add_argument("--pure-min-pawns", type=int, default=1,
+                   help="restrict the pure cohort to rows with at least this many pawns")
     p.add_argument("--output", type=Path)
     p = sub.add_parser("drawn")
     p.add_argument("--families", default="KBP-KB,KBPP-KB,KBP-KBP")

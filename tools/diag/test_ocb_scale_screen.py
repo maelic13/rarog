@@ -70,5 +70,35 @@ class ArithmeticTests(unittest.TestCase):
         self.assertLess(np.abs(s_fit - true_s).mean(), 3.0)
 
 
+class AnalyseFilterTests(unittest.TestCase):
+    def test_pure_min_pawns_keeps_only_the_larger_pure_endings(self):
+        import argparse
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from pathlib import Path
+
+        rows = [
+            # pure, 2 pawns (six men)
+            "4k3/p7/8/3b4/8/8/P7/2B1K3 w - - 0 1;0.5;40;0.8333333333333334",
+            # pure, 3 pawns (seven men)
+            "4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1;0.5;90;1",
+            "4k3/pp6/8/3b4/8/8/P7/2B1K3 w - - 0 1;1;60;1",
+            # pieces
+            "r3k3/p7/8/3b4/8/8/P7/2B1K2R w - - 0 1;0.5;30;0.8333333333333334",
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = Path(tmp) / "d.csv"
+            dump.write_text("\n".join(rows) + "\n")
+            args = argparse.Namespace(train=dump, held_out=dump, k=1.5,
+                                      pure_min_pawns=3, output=None)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                oc.cmd_analyse(args)
+        report = json.loads(out.getvalue())
+        self.assertEqual(report["cohorts"]["pure"]["held_out_rows"], 2)
+        self.assertEqual(report["cohorts"]["pieces"]["held_out_rows"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
