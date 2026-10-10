@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4 | RESEARCH | I2 | Next: C.5.2 accepted 2026-10-10 (RAR-E29), and RAR-O06 read +129.4, at or above +100, so it opens as planned; opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
+| C.4.1 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 registered before any model was fitted, result pending; a family with signal continues into sub-term attribution, one without closes `NO_CHANGE` |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -943,7 +943,19 @@ loss).
   Refit, gate. C.0 found no donor-direction residual for mobility (+0.01%;
   +0.11% in the middlegame band) and a small one for threats (+0.07%;
   +0.20% without queens): the cluster opens with its own residual step and
-  closes `NO_CHANGE` if that step finds none.
+  closes `NO_CHANGE` if that step finds none. **Opened 2026-10-10** (C.5.2
+  accepted, RAR-O06 at +129.4): the research record is
+  `analysis/c4_threats_mobility_2026-10-10.md`. Readings since C.0, on
+  `hce-v4-tb` labels: the pre-refit evaluation read mobility +0.21% and
+  threats +0.14% at seven men or more (RAR-E23); the C.3 candidate's
+  pre-game screen read mobility +0.07% and threats +0.13% there, with
+  mobility +0.19% in the opening band and threats +0.20% without queens.
+    - **C.4.1 Residual step: the donor's threats and mobility families against the C.5.2 head (RAR-E30) — `V`.** Zero
+      games: RAR-E23's donor rows with the head's played score substituted
+      (RAR-E25's method), `analyse --within`; a family has signal at a
+      gain of 0.10% or more at four standard errors in a registered
+      cohort. A family with signal continues into a sub-term attribution;
+      one without closes `NO_CHANGE` inside C.4; both without close C.4.
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not

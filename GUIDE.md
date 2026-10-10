@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.4** (`I2`): Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate.
+**Now: C.4.1** (`V`): Residual step: the donor's threats and mobility families against the C.5.2 head (RAR-E30).
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -34,7 +34,8 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.3.4** Refit on `hce-v4-tb`, static screens (the king family's residual re-read, the magnitude read), the tree read, PGO bake, gate-1 registration and handover — DONE 2026-10-08
     - [x] **C.3.5** Margin block, gate 2, the `10+0.1` read, the ledger row — DONE 2026-10-09
     - [x] **C.3.6** Same-search deficit re-read on the accepted unit: the oracle package rebuilt with the C.3 evaluation in `rarog_hce.dll`, 1,000 games at 150,000 nodes a move against the Stockfish control; decides whether C.4 to C.7 open — DONE 2026-10-09
-- [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **RESEARCH / I2**
+- [ ] **C.4** Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — **I2**
+    - [ ] **C.4.1** Residual step: the donor's threats and mobility families against the C.5.2 head (RAR-E30) — **RESEARCH / V**
 - [ ] **C.5** Endgame handling and winnability cluster — **R3**
     - [x] **C.5.1** Classification and deciding instrument per family — DONE 2026-10-09
     - [x] **C.5.2** Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — DONE 2026-10-10
@@ -105,7 +106,7 @@ and is frozen at `ee02ed1` for Phase C.
 | Speed | **2.33 MNPS**, −26.23% against 2.4.0 (RAR-P35); the host drifts between days, so compare pools interleaved only |
 | Conversion | **15.8 draws and 0.8 losses per 1,000 games** after a persistent piece-up (RAR-M64's games; 2.4.0: 24.4 and 5.3) |
 | Evaluation–search coupling | Feeding the frozen search the full fitted evaluation above the lazy gate costs **−104.5 ± 10.6 Elo at equal time and −110.0 ± 11.5 at equal nodes** (RAR-E19, RAR-E20, 2026-10-05/06), though that function predicts outcomes better statically: the cost is per node, in a search fitted to the played function. Every evaluation unit goes through PROCESS's *Evaluation change under a fitted search*: static screens, tree read, gate 1, a margin block over the fixed 28-coordinate surface (`LazyMargin` added by the C.0 audit) when gate 1 fails or a screen flagged, gate 2 (accepts), a `10+0.1` read (maintainer decision 2026-10-06). When gate 1 passes with no flag, the agent asks the maintainer whether a free night makes the block worth running anyway (2026-10-08, after RAR-E24's block measured +19.3 ± 9.3 Elo) |
-| Active experiment | None. Last closed: **RAR-E29** (C.5.2's gate), 2026-10-10: the opposite-bishop cohort SPRT `[0,10]` H1 at +12.7 ± 9.8 nElo (4,792 games), the STC harm read +8.3 ± 15.2 nElo (2,000 games); C.5.2 accepted, fingerprint 13,562,404 / EBF 2.546. Before it: RAR-E28, RAR-E27, RAR-E26 |
+| Active experiment | **RAR-E30** (C.4.1, the residual step), registered 2026-10-10 before any model was fitted: the donor's threats and mobility families against the C.5.2 head on `hce-v4-tb` validation rows, zero games, agent-run. Last closed: **RAR-E29** (C.5.2's gate), 2026-10-10: the opposite-bishop cohort SPRT `[0,10]` H1 at +12.7 ± 9.8 nElo (4,792 games), the STC harm read +8.3 ± 15.2 nElo (2,000 games); C.5.2 accepted, fingerprint 13,562,404 / EBF 2.546 |
 
 ## Holds and obligations
 
