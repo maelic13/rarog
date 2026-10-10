@@ -204,6 +204,34 @@ RAR-E30's (frozen in its entry): threats +0.11% over all rows (band
 family within 0.03 points of the C.3 screen outside six men or fewer
 (0.85); king under +0.15% (0.85).
 
+## RAR-E30, read 2026-10-10
+
+On the C.5.2 head, gains in percent of its held-out squared error:
+
+| Cohort | Mobility | Threats | King |
+|---|---:|---:|---:|
+| all | +0.048 ± 0.012 | **+0.107 ± 0.020** | +0.079 ± 0.014 |
+| phase ≥ 96 | **+0.184 ± 0.044** | +0.138 ± 0.038 | +0.120 ± 0.038 |
+| phase 32–95 | +0.054 ± 0.029 | +0.113 ± 0.031 | +0.357 ± 0.059 |
+| phase < 32 | +0.012 ± 0.020 | **+0.178 ± 0.040** | −0.012 ± 0.006 |
+| men ≥ 7 | +0.060 ± 0.016 | **+0.122 ± 0.020** | +0.105 ± 0.017 |
+| no queens | +0.011 ± 0.021 | **+0.197 ± 0.042** | +0.004 ± 0.006 |
+
+Threats has signal in four of the six registered cohorts and is the
+largest regular family over all rows (passed +0.091 is next). Mobility
+has signal in the opening band only. The predictions held except for the
+donor's winnable family, which fell by 0.12 to 0.17 points in the endgame
+and no-queens cohorts: that is the share of the donor's scale-factor
+direction C.5.2's opposite-bishop rule took, a side reading that says the
+screen also measures what an accepted unit captured.
+
+In squared-error terms the two families together carry about a quarter
+of what the king family carried before C.3 (+0.66 over all rows, +1.58
+in the middlegame band). Threats' signal is in the endgame band and
+without queens, where pawn threats and attacks on undefended pieces
+decide material; mobility's is in the opening, where the area definition
+(blocked and low pawns, the queen's square) differs most from Rarog's.
+
 ## Falsifiers and stop conditions
 
 - Neither family has signal in any registered cohort: C.4 closes
@@ -221,14 +249,32 @@ family within 0.03 points of the C.3 screen outside six men or fewer
 
 ## Decision
 
-Pending RAR-E30.
+**`MORE_RESEARCH` after RAR-E30 (2026-10-10).** Both families stay open:
+threats by signal in four registered cohorts, mobility by signal in the
+opening band only. Neither is `READY_FOR_IMPLEMENTATION`: the mechanism is
+not yet attributed, and a unit built on "the family in the donor's shape"
+alone would be the kind of transplant the programme declined. The next
+step is C.4.2, the attribution (RAR-E31), zero games, registered before
+any model is fitted on the component directions. Its frozen use decides
+what, if anything, a unit builds:
+
+- threats: a component set carrying at least 0.10% at four standard errors
+  in a cohort where the family has signal, and that Rarog's current terms
+  cannot express by re-pricing (the gating and the safe sets, or a term
+  Rarog lacks), is the unit's content; a residual that re-pricing of the
+  Rarog-shaped counterparts recovers is a refit question, not a unit;
+- mobility: the unit includes the area only if the donor's tables under
+  the donor's area beat them under Rarog's area by at least 0.10% at four
+  standard errors in the opening band, and the x-rays only if the
+  no-x-ray variant loses as much; otherwise mobility closes `NO_CHANGE`.
 
 ## Sub-steps spawned under C.4 (classes in PLAN)
 
-- **C.4.1** Residual step (RAR-E30) — `V`.
-- Further sub-steps (the attribution instrument and read; the unit's
-  design, implementation, refit and gate) are added when RAR-E30 keeps a
-  family open.
+- **C.4.1** Residual step (RAR-E30) — `V`, done 2026-10-10.
+- **C.4.2** Sub-term attribution (RAR-E31) — `V`: the offline instrument
+  with its exact-reproduction check, then the read.
+- The unit's design, implementation, refit and gate are added when C.4.2
+  names a mechanism.
 
 ## What this did not establish
 

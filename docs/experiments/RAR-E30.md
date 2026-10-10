@@ -31,9 +31,25 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
       --out analysis/artifacts/c4-screens/report-head.json
   ```
   Corpus `hce-v4-tb/validation.csv` (SHA-256 `3588865C…14BA`), which calibrated K and selected the epoch in the C.2 and C.3 fits and fitted no weight; the frozen test is not read. The dump without `--scale` equals the `--scale` dump used for the join check in its first three fields on every row (checked).
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (appended after exposure):** pending.
-- **Conditional lesson:** pending.
-- **Retry trigger or `closed`:** pending.
-- **Artifacts / commits:** `analysis/artifacts/c4-screens/` (ignored storage): `head_played.csv`, `dump_head.log`; the substituted scores, the report and the log are written by the run.
+- **Result (run 2026-10-10, once, after the registration commit `ac9a27b`):** 194,444 rows substituted and scored (`scores-9587-head.csv`, `report-head.json`, `analyse-head.log`). Wire: control against the donor's final evaluation 1.0000 by rank, head against control 0.9482, 673 head scores clipped. Gains in percent of the head's held-out squared error ± one standard error, the registered cohorts first:
+
+  | Cohort (rows) | Mobility | Threats | King | `rarog+all_families` | `rarog+stockfish` |
+  |---|---:|---:|---:|---:|---:|
+  | all (194,444) | +0.048 ± 0.012 | **+0.107 ± 0.020** | +0.079 ± 0.014 | +1.485 | +2.493 |
+  | phase ≥ 96 (42,953) | **+0.184 ± 0.044** | +0.138 ± 0.038 | +0.120 ± 0.038 | +1.226 | +1.245 |
+  | phase 32–95 (50,906) | +0.054 ± 0.029 | +0.113 ± 0.031 | +0.357 ± 0.059 | +1.398 | +1.463 |
+  | phase < 32 (100,585) | +0.012 ± 0.020 | **+0.178 ± 0.040** | −0.012 ± 0.006 | +4.188 | +7.798 |
+  | men ≥ 7 (163,874) | +0.060 ± 0.016 | **+0.122 ± 0.020** | +0.105 ± 0.017 | +1.760 | +1.720 |
+  | no queens (86,806) | +0.011 ± 0.021 | **+0.197 ± 0.042** | +0.004 ± 0.006 | +3.897 | +6.631 |
+  | queens (107,638) | +0.062 ± 0.017 | +0.091 ± 0.022 | +0.189 ± 0.027 | +1.050 | +1.500 |
+  | \|head\| ≤ 500 (138,350) | +0.064 ± 0.016 | +0.133 ± 0.022 | +0.116 ± 0.020 | +1.839 | +2.016 |
+
+  Bold: signal by the registered rule (0.10% at four standard errors). The other families over all rows: passed +0.091 ± 0.013, material +0.071, pawns +0.028, pieces +0.016, space and initiative nil; `rarog+magnitude` +0.671 ± 0.041. Against the C.3 candidate's screen, every family in the registered cohorts moved by under 0.03 points except the donor's winnable family (its `Winnable` row folds the scale factor): +0.384 → +0.266 at phase < 32 and +0.456 → +0.285 without queens, and the two whole-donor models (`rarog+stockfish` +2.686 → +2.493, `rarog+all_families` +1.624 → +1.485 over all rows), which is what the opposite-bishop rule took from the donor's direction.
+- **Disposition:** observation. By the frozen use: **threats has signal** (all rows, seven men or more, phase < 32, no queens; 5.4, 6.1, 4.5 and 4.7 standard errors) and keeps C.4 open for a zero-game sub-term attribution; **mobility has signal in one registered cohort only**, the opening band (+0.184 at 4.2 standard errors), and keeps C.4 open for that band's question alone (the area against the x-rays; under 0.10% everywhere else, including seven men or more and the middlegame band). King stays under +0.15% over all rows. C.4 does not close `NO_CHANGE` here; the research record names the attribution as the next registration (RAR-E31), before any model is fitted on the component directions.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 4 above.
+  - Observed: (1) hit on both clauses: +0.107 at 5.4 standard errors over all rows, +0.122 at 6.1 at seven men or more. (2) hit on both clauses: +0.048 over all rows, +0.184 at 4.2 standard errors in the opening band. (3) **miss** for one family: the winnable family moved by 0.12 and 0.17 points in the endgame and no-queens cohorts; every other family within 0.03. (4) hit: king +0.079.
+  - Which assumption failed: that the opposite-bishop rule, acting on 1.8% of the rows, could move no family by 0.03 points. The donor's winnable row carries its scale factor, and C.5.2's rule is a share of exactly that direction in pure opposite-bishop endings, which the endgame and no-queens cohorts concentrate. A miss in mechanism (the family the rule touches), not in sign; the instrument is fine.
+- **Conditional lesson:** the residual screen reads an accepted unit's effect as the fall of the donor family it overlaps (king +0.62 → +0.08 across C.3; winnable −0.12 to −0.17 across C.5.2), so the screen is also a cheap check that a unit captured what it was built for.
+- **Retry trigger or `closed`:** closed on its record; the attribution is RAR-E31.
+- **Artifacts / commits:** `analysis/artifacts/c4-screens/` (ignored storage): `head_played.csv` (`28BA5396…9475`), `dump_head.log`, `substitute.log`, `scores-9587-head.csv`, `report-head.json`, `analyse-head.log`. Research record `analysis/c4_threats_mobility_2026-10-10.md`.

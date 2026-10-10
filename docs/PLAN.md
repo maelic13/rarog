@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.1 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 registered before any model was fitted, result pending; a family with signal continues into sub-term attribution, one without closes `NO_CHANGE` |
+| C.4.2 | RESEARCH | V | C.4 open since 2026-10-10 (C.5.2 accepted, RAR-O06 +129.4); RAR-E30 read threats with signal (+0.107% all rows, +0.122 at seven men or more) and mobility with signal in the opening band only; RAR-E31, the attribution, is registered before any model is fitted on the component directions |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -950,12 +950,28 @@ loss).
   threats +0.14% at seven men or more (RAR-E23); the C.3 candidate's
   pre-game screen read mobility +0.07% and threats +0.13% there, with
   mobility +0.19% in the opening band and threats +0.20% without queens.
-    - **C.4.1 Residual step: the donor's threats and mobility families against the C.5.2 head (RAR-E30) — `V`.** Zero
+    - **C.4.1 Residual step: the donor's threats and mobility families against the C.5.2 head (RAR-E30) — `V`, DONE 2026-10-10.** Zero
       games: RAR-E23's donor rows with the head's played score substituted
       (RAR-E25's method), `analyse --within`; a family has signal at a
       gain of 0.10% or more at four standard errors in a registered
       cohort. A family with signal continues into a sub-term attribution;
       one without closes `NO_CHANGE` inside C.4; both without close C.4.
+      **Read 2026-10-10:** threats +0.107 ± 0.020% over all rows, +0.122
+      at seven men or more, +0.178 in the endgame band and +0.197 without
+      queens (signal in all four); mobility +0.048 over all rows and
+      +0.060 at seven men or more (no signal) but +0.184 ± 0.044 in the
+      opening band (signal there only); king +0.079. Both families go to
+      C.4.2; neither closes.
+    - **C.4.2 Sub-term attribution: the donor's threats components and its mobility under four area definitions, rebuilt offline and verified exactly, read as directions (RAR-E31) — `V`.** Zero
+      games. The instrument rebuilds Stockfish `9587eeeb`'s threats
+      components and per-piece-type mobility from the FEN and must
+      reproduce the printed `threats` and `mobility` rows on every row
+      before any loss is computed; then leave-one-out of the threats
+      components, the mobility tables under the donor's area, without
+      x-rays, without the pin restriction and under Rarog's area, and the
+      Rarog-shaped counterparts of the gated terms. Registered before any
+      model is fitted; its frozen use names what a unit would build and
+      what closes `NO_CHANGE`.
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
