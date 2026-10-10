@@ -25,7 +25,16 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   (iii) The gate is a separate registration before any game (an opposite-bishop endgame-start cohort from pure positions of seven men or more, plus an STC SPRT, with the hazard read above), handed to the maintainer.
   (iv) Otherwise C.5.2's opposite-bishop part closes `NO_CHANGE` on RAR-E26 to RAR-E28, and C.5.2.1 stays open after C.4.
 - **Full conditions / provenance:** as RAR-E26; the pure cohort restricted by `--pure-min-pawns 3` (a pure ending has four men plus its pawns); `--pure-min-pawns 1` reproduces RAR-E26's `analyse.json` exactly (checked before this registration).
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
-- **Artifacts / commits:** `5f108fb` (the screen's option and its test); `analysis/artifacts/c51-ocb/analyse-7men.json` once run.
+- **Result (run 2026-10-10, once, after the registration commit `3e61469`):** `analyse-7men.json` (`4f771fce…f54a`). Pure, three pawns or more: 61,722 training and 3,460 held-out rows; head MSE 0.05174, head mean `s` 47.95 (the head barely scales these rows), stronger side's mean label 0.662.
+  - **F1 `(a, b, c) = (1, 2, 10)`**, `s = 1 + 2·pawns + 10·passers` capped at 48: **+15.66 ± 1.35%** of the cohort's held-out squared error, +0.153% of the whole file's; mean `s` 28.3.
+  - No scaling: −0.084 ± 0.022% (the head's rule is nearly inactive here).
+  - The strong-side form (computed by the tool, not registered for use) is `(0, 2, 12)`, +15.90 ± 1.40%, +0.28 ± 0.39 over F1.
+  - Pieces are unchanged from RAR-E26 (F1 +0.075 ± 0.025%).
+- **Disposition:** by the frozen use, (i) **C.5.2 builds the rule**: in a pure opposite-bishop ending with three pawns or more, `s = min(1 + 2·pawns + 10·passers, 48)`; otherwise the head's `32 + 4·pawns + 4·passers`. H1 holds (11.6 standard errors). Competing (1) is refuted: the seven-plus rows gain +15.7% on their own. Competing (2) stays open for the gate. The boundary hazard is now concrete. A three-pawn pure ending with one passer is scaled to 17/48; one exchange that leaves KBP-KB or KBPP-KB returns it to 40/48 or 48/48.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed: (1) hit: +15.7 inside [+7, +20], near the centre of +13. (2) hit: `b = 2`, `c = 10`. (3) pending, read in the gate.
+  - Which assumption failed: none on (1) and (2), but they were informed by RAR-E26's breakdown of the same held-out rows (registered as known exposure), so this hit says little about calibration.
+- **Conditional lesson:** none beyond RAR-E26's.
+- **Retry trigger or `closed`:** closed as a screen. The rule is C.5.2's implementation input; its gate is a separate registration.
+- **Artifacts / commits:** `5f108fb` (the screen's option and its test); `analysis/artifacts/c51-ocb/analyse-7men.json` and `analyse-7men.log`.
