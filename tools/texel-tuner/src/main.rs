@@ -138,6 +138,10 @@ const THREATS: &[&str] = &[
     "threat_weak_piece_eg",
     "threat_restricted_mg",
     "threat_restricted_eg",
+    "threat_by_king_mg",
+    "threat_by_king_eg",
+    "threat_slider_on_queen_mg",
+    "threat_slider_on_queen_eg",
 ];
 const HANGING: &[&str] = &["hanging_minor", "hanging_rook", "hanging_queen"];
 const MISC: &[&str] = &["passer_proximity_base", "space_weight", "tempo"];
@@ -179,8 +183,6 @@ const GAUNTLET: &[&str] = &[
     "bishop_xray_pawns_eg",
     "queen_battery_mg",
     "queen_battery_eg",
-    "slider_on_queen_mg",
-    "slider_on_queen_eg",
 ];
 const KINGSAFETY: &[&str] = &[
     "shelter_strength",
