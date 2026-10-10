@@ -294,7 +294,7 @@ they open.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.4 | RESEARCH | I2 | After C.5.2 (RAR-O06 read +129.4, at or above +100, so it opens as planned); opens with its own residual step (RAR-E17: threats +0.07%, mobility +0.01%) and closes `NO_CHANGE` if it finds none |
-| C.5.2 | RESEARCH | I2 | **Held for the maintainer (2026-10-09):** RAR-E26's opposite-bishop candidate (pure endings `s = 2·pawns + 10·passers`, +21.0 ± 1.3% of that cohort's held-out loss) fired its registered veto on win preservation at six men or fewer, so it is not built until the maintainer decides; the rest of C.5.2's list has no support from C.5.1's cut |
+| C.5.2 | RESEARCH | I2 | RAR-E26's opposite-bishop candidate (pure endings `s = 2·pawns + 10·passers`, +21.0 ± 1.3% of that cohort's held-out loss) fired its static win-preservation veto; **Maintainer decision 2026-10-10:** the candidate first gets a search-level read (RAR-E27: Syzygy-won KBP-KB, KBPP-KB, KBP-KBP played out at 60,000 nodes, head against candidate); it is built only if conversion holds within two standard errors, otherwise C.5.2 falls back to a seven-men-or-more fit. Once built, C.5.2 takes its own gate (an opposite-bishop endgame-start cohort SPRT plus STC), so C.4 starts from a gated head; RAR-E27 registered 2026-10-10. The rest of C.5.2's list has no support from C.5.1's cut |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -1017,6 +1017,7 @@ loss).
       head's rule kept with other pieces) and its static veto fired on
       win preservation in KBP-KB and KBP-KBP. It is not built until the
       maintainer decides how it proceeds (C.5.1's packet, §4).
+      **Maintainer decision 2026-10-10:** the candidate first gets a search-level read (RAR-E27: Syzygy-won KBP-KB, KBPP-KB, KBP-KBP played out at 60,000 nodes, head against candidate); it is built only if conversion holds within two standard errors, otherwise C.5.2 falls back to a seven-men-or-more fit. Once built, C.5.2 takes its own gate (an opposite-bishop endgame-start cohort SPRT plus STC), so C.4 starts from a gated head.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
