@@ -333,10 +333,12 @@ impl Evaluator {
         self.eval_initiative(board, eg);
     }
 
-    /// Deferred §3.12 trio (Phase 6.2.1, all seeded 0): bishop x-ray on enemy
-    /// pawns, queen batteries, and sliders x-raying the enemy queen. X-rays are
-    /// slider attacks computed with pawns-only occupancy (seeing through
-    /// pieces), the cheap standard formulation.
+    /// Two line terms for one side: its bishops' x-ray on enemy pawns (the
+    /// diagonals computed with pawns-only occupancy, so they see through
+    /// pieces and stop at the first pawn), and queen batteries (an own rook
+    /// or bishop directly aligned with the queen through true occupancy).
+    /// The enemy queen's exposure to sliders is scored in the threats terms
+    /// (squares from which a slider would attack it), not here.
     fn eval_xray_and_battery(
         &self,
         board: &Board,
