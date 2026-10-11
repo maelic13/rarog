@@ -2474,6 +2474,9 @@ fn usage(exe: &str) {
         "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor)"
     );
     eprintln!(
+        "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;net White-minus-Black trace count per index of one weight field)"
+    );
+    eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
     );
     print_groups();
@@ -2510,6 +2513,46 @@ fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool) {
             row.push_str(&format!(";{}", linear_delta_scale(&board)));
         }
         lines_out.push(row);
+    }
+    std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
+        eprintln!("Cannot write {out}: {e}");
+        exit(1);
+    });
+    println!("{} rows written to {out}", lines_out.len());
+}
+
+/// Write every row's net trace count for one named weight field beside its
+/// FEN (White minus Black, one value per index of the field, comma-separated),
+/// from the played evaluation or, with `full`, with the lazy gate out of
+/// reach. An offline model of a term can then be checked against the engine
+/// row by row instead of being assumed to match it.
+fn cmd_dump_feature(path: &str, out: &str, field: &str, full: bool) {
+    if !EVAL_PARAM_NAMES.iter().any(|&(name, _)| name == field) {
+        eprintln!("Unknown eval field '{field}'.");
+        exit(1);
+    }
+    let (off, len) = field_offset(field);
+    let mut ev = Evaluator::default();
+    if full {
+        ev.set_lazy_margin(i32::MAX);
+    }
+    let mut lines_out = Vec::new();
+    for line in read_lines(path) {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let fen = line.rfind(';').map_or(line, |sep| &line[..sep]);
+        let Ok(board) = Board::from_fen(fen) else {
+            continue;
+        };
+        let _ = ev.evaluate(&board);
+        let coeffs = ev.last_trace().flat_coeffs();
+        let values: Vec<String> = coeffs[off..off + len]
+            .iter()
+            .map(|c| format!("{c}"))
+            .collect();
+        lines_out.push(format!("{fen};{}", values.join(",")));
     }
     std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
         eprintln!("Cannot write {out}: {e}");
@@ -2635,6 +2678,14 @@ fn main() {
             }
             let has = |name: &str| flags.iter().any(|f| f == name);
             cmd_dump_scores(&args[2], &args[3], has("--full"), has("--scale"));
+        }
+        "--dump-feature" => {
+            let flags = args.get(5..).unwrap_or_default();
+            if args.len() < 5 || !flags.iter().all(|f| f == "--full") {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_dump_feature(&args[2], &args[3], &args[4], !flags.is_empty());
         }
         "--tune" => {
             if args.len() < 5 {
