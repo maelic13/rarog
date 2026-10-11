@@ -1233,7 +1233,12 @@ loss).
   regeneration plays from the latest accepted head, whose games label
   better as it strengthens, and brings its own unread frozen test. Whether
   a regeneration also happens between units, before C.8, is not yet
-  decided.
+  decided. **Tuner (2026-10-11):** the texel delta scale no longer carries
+  the rule-50 factor the evaluator dropped (`0fe4702`;
+  `analysis/texel_delta_scale_rule50_2026-10-11.md`: no loss changes at a
+  fixed vector, 1.25% of the per-row gradient weight came back, most of it
+  at clocks of 10 or more), so the next fit, C.6's or the first cycle's, is
+  the first under it and its coefficient changes include this one.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
