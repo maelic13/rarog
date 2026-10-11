@@ -293,7 +293,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.4 | GAME_GATE | V | C.4.3 accepted on gate 1 with no flag; margin block skipped (maintainer decision 2026-10-11), so no gate 2; the 1,000-game `10+0.1` direction read is registered in RAR-E32 (below 0 Elo reopens the unit) and dry-run clean, with the maintainer |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -935,7 +934,7 @@ loss).
       together) stands: the 52 includes C.2's refit, which is not a
       family cluster, and this reading cannot split it from the king
       unit.
-- **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`.** Mobility with a
+- **C.4 Threats and mobility cluster: mobility area, weak enemies, hanging, restricted, pawn push, queen threats; refit; gate — `I2`, then `V`, DONE 2026-10-11.** Mobility with a
   mobility area that excludes own king, queen, blocked pawns and pawn-attacked
   squares; threats: minor and rook attacks on weak enemies, hanging pieces,
   restricted squares, threat by pawn push, king threats, slider and knight
@@ -1000,11 +999,14 @@ loss).
       time losses, both the head's in games the candidate led by ten
       pawns. Fingerprint 12,567,796 / EBF 2.535. fitted (`6c73d65`, bench 12,567,796 / EBF 2.535; king threat (14, 40), queen threat (20, 6) cp); screens with no stop and no flag: threats +0.107 → +0.037% over all rows, both terms' removal costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the donor's pieces family rose +0.036 (the removed x-ray term's information). Gate 1 is with the
       maintainer.
-    - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** PROCESS's
+    - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-11.** PROCESS's
       *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
       **2026-10-11:** nothing flagged and gate 1 passed, so by step 4 the
       block was the maintainer's question; skipped. The `10+0.1` read
       (1,000 games) is registered in RAR-E32 and with the maintainer.
+      **Read 2026-10-11:** +12.9 ± 12.2 Elo (+22.7 ± 21.5 nElo), 0 or
+      above, so the acceptance stands. C.4 closes: threats accepted
+      (RAR-E32), mobility `NO_CHANGE` (RAR-E31).
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not

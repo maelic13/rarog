@@ -43,7 +43,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   counted sliders lined up on the queen through pawns was removed, and the
   evaluation was refitted around the change. Against the previous
   development version it measured **+13.0 ± 5.3 Elo at `3+0.03`** (5,898
-  games). `bench` now reports 12,567,796 nodes.
+  games) and **+12.9 ± 12.2 at `10+0.1`** (1,000 games). `bench` now
+  reports 12,567,796 nodes.
 
 ### Fixed
 
