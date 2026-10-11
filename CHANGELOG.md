@@ -34,8 +34,16 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   ending with four or more pawns was not scaled at all. Played from
   opposite-bishop endgame positions it measured **+12.7 ± 9.8 normalized
   Elo** (4,792 games) against the previous development version, and from
-  standard openings at `3+0.03` +4.5 ± 8.3 Elo (2,000 games). `bench` now
-  reports 13,562,404 nodes.
+  standard openings at `3+0.03` +4.5 ± 8.3 Elo (2,000 games). `bench` then
+  reported 13,562,404 nodes.
+- **Threats to weak pieces by the king, and to the queen by sliders, are
+  now evaluated.** A king attacking an undefended or weakly defended enemy
+  piece earns a bonus, and so do bishops and rooks covering safe squares
+  from which they would attack the enemy's only queen; an older term that
+  counted sliders lined up on the queen through pawns was removed, and the
+  evaluation was refitted around the change. Against the previous
+  development version it measured **+13.0 ± 5.3 Elo at `3+0.03`** (5,898
+  games). `bench` now reports 12,567,796 nodes.
 
 ### Fixed
 
