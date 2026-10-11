@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.5.4** (`I2`): Rook versus minor cluster: KRKN, KRKB, KRPKB.
+**Now: C.6** (`I2`): Pawns and passers cluster; refit; gate.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 

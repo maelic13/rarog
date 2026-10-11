@@ -289,20 +289,21 @@ One row per open leaf in the active phase. The checker requires the state
 and class here to match GUIDE's suffix. Phases A and B are closed; Phase C
 is the active phase since C.0 opened it (2026-10-05), and `check_guide.py`'s
 `ACTIVE_PREFIXES` names it. Later phases carry only a class until
-they open.
+they open. The rows are in the order of work, which may differ from the
+numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.4 | RESEARCH | I2 | RAR-E36 (2026-10-11): the overclaim persists on the current head (KR-KN 98.4%, KR-KB 94.6%, KRP-KB 97.4% of draws above +100 cp, means +182 to +208); the wins convert like Stockfish's; the strongest won/drawn separator is the defending king's distance from its own minor piece. Next: a scale candidate for KR-KN and KR-KB, registered with the drawn cohort deciding and conversion, win-preservation and transition vetoes |
-| C.5.5 | RESEARCH | R2 | After C.5.2 |
-| C.5.6 | RESEARCH | R2 | After C.5.2 |
-| C.5.7 | RESEARCH | I1 | After C.5.2 |
-| C.5.8 | RESEARCH | V | Closes C.5 |
-| C.6 | RESEARCH | I2 | Opens with its own residual step (RAR-E17: passed +0.06%, pawns +0.04%); owns the unstoppable-passer tempo defect |
-| C.7 | RESEARCH | I2 | Opens with its own residual step (RAR-E17: pieces and material nil) |
-| C.8 | RESEARCH | V | After the family clusters |
+| C.6 | RESEARCH | I2 | Next (order of work, 2026-10-11): opens with its own residual step on the current head (passed +0.091 ± 0.013%, the largest regular residual; pawns +0.028); owns the unstoppable-passer tempo defect |
+| C.5.4 | RESEARCH | I2 | Measure-first (2026-10-11): RAR-E36 found the overclaim persists on the current head (KR-KN 98.4%, KR-KB 94.6%, KRP-KB 97.4% of draws above +100 cp, means +182 to +208), the wins convert like Stockfish's, and the defending king's distance from its own minor separates most; a candidate is built only if it shows a game-level or transition effect, and any build waits for C.6 |
+| C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
+| C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
+| C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
+| C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
+| C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
+| C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
-| C.10 | RESEARCH | V | After C.9 or its skip |
+| C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
@@ -351,6 +352,26 @@ opens with its own residual step and closes `NO_CHANGE` if that step finds
 none. C.0's
 prior for the family clusters together is 30 to 90 Elo, below the budget
 row's 100 to 160; the row is corrected at C.11 by measurement, not here.
+**Order amended 2026-10-11 (maintainer decision; the register below
+carries it):** C.6 runs next, before any build in C.5.4 to C.5.7; then
+C.8's regeneration and refit and C.10's joint tune are the next two large
+items. C.5.4 to C.5.7 are measure-first and expected to close `NO_CHANGE`
+unless a candidate shows a game-level or transition effect; their zero-game
+reads may run between the large items. C.7 opens on RAR-E37's reading,
+without a named weak-queen candidate. Why: on the current head's screen
+(RAR-E32's candidate file read by RAR-E37's instrument) the donor's passed
+family is the largest regular residual, +0.091 ± 0.013% over all rows, and
+C.6 also owns the unstoppable-passer tempo defect. The largest direction
+of all, the magnitude recalibration (+0.621 ± 0.040% over all rows, +0.37
+at seven men or more, +13.2 at six or fewer), is a monotone rescaling of
+Rarog's own total: minimax ordering is invariant to it, so it acts only
+through cp-valued margins and other fixed-centipawn comparisons, which is
+C.10's job, and through the refit's scale (C.8). The six-men exact
+knowledge behind most of it is already handled in play: with the engine's
+tablebases off, the head converts KQ-K, KR-K, KBB-K and KQ-KR level with
+Stockfish at 200k and 600k nodes (RAR-E34, KBN-K 2 of 98 behind at 600k
+only), and where tables are set the search also probes WDL at interior
+nodes.
 
 **The search is frozen for the whole phase (B.9, 2026-10-03; amended
 2026-10-06).** Phase C changes no search code. It changes no search
