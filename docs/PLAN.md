@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.3 | RESEARCH | V | Next: both families have signal (RAR-E39), and the square rule is in the unit (RAR-E40); the instrument first, verified exactly against the printed rows, then the registration |
+| C.6.3 | RESEARCH | V | Next: RAR-E41 registered (instrument `8d93ccb`, smoke-verified exactly); collect, verify on every row, then one analyse |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1324,7 +1324,13 @@ loss).
       and `Pawns` rows on every row before any loss is computed; then
       leave-one-out of the components in the endgame band and without
       queens, registered before any model is fitted. Its frozen use names
-      what a unit would build and what closes `NO_CHANGE`.
+      what a unit would build and what closes `NO_CHANGE`. **Registered
+      2026-10-11 (RAR-E41)** with `tools/diag/pawn_subterms.py`, exact on
+      a 4,000-row smoke: a component carries when its removal costs 0.04
+      points at four standard errors in the endgame band or without queens;
+      carriers Rarog lacks (block-square king proximity, the defended block,
+      the file adjustment, weak unopposed, weak lever, blocked pawns) become
+      the unit, carriers Rarog already has are left to the refit.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
