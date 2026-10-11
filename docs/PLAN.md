@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
+| C.5.2.1 | RESEARCH | R2 | Opened 2026-10-11 on `c5`: RAR-E33 registered (zero games): free passed pawns, unguarded by the defending bishop and king, as the knowledge one rule across the boundary needs; separation on Syzygy truth, one-rule fits by men region, then RAR-E27's conversion read as the veto |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
