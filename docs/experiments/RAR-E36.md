@@ -50,5 +50,5 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
     - (3) KR-KN **miss**: 1.9× against 2×. KR-KB **miss**: 1.28× against 2×.
   - Which assumption failed: I carried the old magnitude forward, but the refits did lower the rook-minus-minor balance (by about 125 cp), just not enough to change the verdict. And I expected textbook geometry (edge, corner colour) to separate random positions. Random placements are decided mostly by whether the minor piece is loose, a tactical fact the textbook features miss. The miss is in magnitude and mechanism.
 - **Conditional lesson:** on generated endgame positions, read the tactical separators (piece cohesion) before the textbook ones; game positions may weight them differently.
-- **Retry trigger or `closed`:** not closed; the candidate's registration follows.
+- **Retry trigger or `closed`:** not closed; the candidate's registration follows. **2026-10-11:** RAR-E38 read these endings in the gate's games first (expected value at most 0.18 Elo) and recommends no candidate; its retry trigger names this read's separator as the shape.
 - **Artifacts / commits:** `analysis/artifacts/c54/` (ignored storage): `separation.py`, the drawn report, the bracket and the separation table.

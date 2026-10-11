@@ -295,7 +295,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.6 | RESEARCH | I2 | Next (order of work, 2026-10-11): opens with its own residual step on the current head (passed +0.091 ± 0.013%, the largest regular residual; pawns +0.028); owns the unstoppable-passer tempo defect |
-| C.5.4 | RESEARCH | I2 | Measure-first (2026-10-11): RAR-E36 found the overclaim persists on the current head (KR-KN 98.4%, KR-KB 94.6%, KRP-KB 97.4% of draws above +100 cp, means +182 to +208), the wins convert like Stockfish's, and the defending king's distance from its own minor separates most; a candidate is built only if it shows a game-level or transition effect, and any build waits for C.6 |
+| C.5.4 | RESEARCH | I2 | RAR-E38 (2026-10-11) recommends `NO_CHANGE`: the static overclaim (RAR-E36) costs nothing measurable in the gate's games (no worsening trade, wins 55 of 55, drawn entries 65 of 68 held; expected value at most 0.18 Elo); awaiting the maintainer's confirmation to close |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1213,6 +1213,19 @@ loss).
       with the knight beside its king, 64% at four or more squares); the
       king on the edge matters in KR-KN only and the bishop's corner
       colour barely. The candidate is a separate registration.
+      **Read in games first (RAR-E38, 2026-10-11):** with `SyzygyPath` set
+      the search probes WDL at interior nodes of depth 1 or more up to seven
+      men, so a scale here acts only without tables, which is how every
+      gate plays. In RAR-E32's 5,930 gate games KR-KN or KR-KB occurs in
+      1.43% and KRP-KB in 0.78%; no trade into them changed its mover's
+      Syzygy result, every won entry converted (55 of 55), and 65 of 68
+      drawn entries ended drawn. The expected value is at most 0.18 Elo,
+      under the STC gate's 1 Elo line, so the recommendation is to close
+      C.5.4 `NO_CHANGE` and build nothing (awaiting the maintainer). Retry
+      trigger: a trade into these endings that worsens its mover's Syzygy
+      result, or drawn KR-KN and KR-KB endings lost at more than 5% over at
+      least 100 gate entries; the shape would then be the defending king's
+      distance from its minor.
     - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`.** Audit
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
