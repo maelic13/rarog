@@ -2474,7 +2474,7 @@ fn usage(exe: &str) {
         "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor)"
     );
     eprintln!(
-        "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;net White-minus-Black trace count per index of one weight field)"
+        "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;tapered White-minus-Black coefficient per index of one weight field;phase)"
     );
     eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
@@ -2521,11 +2521,14 @@ fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool) {
     println!("{} rows written to {out}", lines_out.len());
 }
 
-/// Write every row's net trace count for one named weight field beside its
-/// FEN (White minus Black, one value per index of the field, comma-separated),
-/// from the played evaluation or, with `full`, with the lazy gate out of
-/// reach. An offline model of a term can then be checked against the engine
-/// row by row instead of being assumed to match it.
+/// Write every row's coefficient for one named weight field beside its FEN,
+/// then the row's phase: `fen;c0,c1,...;phase`. A coefficient is the tuner's
+/// tapered sensitivity `(count_mg·phase + count_eg·(24 − phase)) / 24` of the
+/// White-minus-Black trace counts, so for an eg-only field the count is
+/// `c · 24 / (24 − phase)` (and `c · 24 / phase` for an mg-only one). From the
+/// played evaluation or, with `full`, with the lazy gate out of reach. An
+/// offline model of a term can then be checked against the engine row by row
+/// instead of being assumed to match it.
 fn cmd_dump_feature(path: &str, out: &str, field: &str, full: bool) {
     if !EVAL_PARAM_NAMES.iter().any(|&(name, _)| name == field) {
         eprintln!("Unknown eval field '{field}'.");
@@ -2547,12 +2550,13 @@ fn cmd_dump_feature(path: &str, out: &str, field: &str, full: bool) {
             continue;
         };
         let _ = ev.evaluate(&board);
-        let coeffs = ev.last_trace().flat_coeffs();
+        let trace = ev.last_trace();
+        let coeffs = trace.flat_coeffs();
         let values: Vec<String> = coeffs[off..off + len]
             .iter()
             .map(|c| format!("{c}"))
             .collect();
-        lines_out.push(format!("{fen};{}", values.join(",")));
+        lines_out.push(format!("{fen};{};{}", values.join(","), trace.phase));
     }
     std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
         eprintln!("Cannot write {out}: {e}");

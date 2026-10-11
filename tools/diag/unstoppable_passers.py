@@ -19,7 +19,8 @@ orders. `square` is that stricter rule.
              from endgame_truth.py's generator; `fen;label` (White's result)
   verify     the offline engine rule equals the engine's own trace count
              (`rarog-texel --dump-feature <csv> <out> unstoppable_passer_eg
-             --full`) on every row; exit 1 otherwise
+             --full`, whose coefficient is tapered by phase and is turned
+             back into a whole count) on every row; exit 1 otherwise
   read       per rule, each (position, side) where the side has a counted
              passer is an event; its truth is that side's Syzygy result
   corpus     on a `fen;label` file (e.g. hce-v4-tb validation): how often each
@@ -143,17 +144,40 @@ def read_rows(path: Path):
                 yield fen, rest
 
 
+TOTAL_PHASE = 24
+
+
+def engine_count(value: str, phase: str) -> int | None:
+    """The eg-only term's integer count from the dump's tapered coefficient
+    `count · (24 − phase) / 24`, or None when it is not a whole count."""
+    weight = (TOTAL_PHASE - int(phase)) / TOTAL_PHASE
+    if weight <= 0:
+        return None
+    count = float(value) / weight
+    return round(count) if abs(count - round(count)) < 1e-9 else None
+
+
+def read_dump(path: Path):
+    """(fen, coefficient, phase) from `rarog-texel --dump-feature` rows."""
+    with path.open() as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                fen, value, phase = line.rsplit(";", 2)
+                yield fen, value, phase
+
+
 def cmd_verify(args) -> int:
     checked = mismatched = fired = 0
     examples = []
-    for (fen_a, _), (fen_b, value) in zip(read_rows(args.positions), read_rows(args.dump),
-                                          strict=True):
+    for (fen_a, _), (fen_b, value, phase) in zip(read_rows(args.positions),
+                                                 read_dump(args.dump), strict=True):
         if fen_a.split()[:4] != fen_b.split()[:4]:
             raise SystemExit(f"row {checked + 1}: FENs differ")
-        engine = int(float(value))
+        engine = engine_count(value, phase)
         offline = net(chess.Board(fen_a), "engine")
         checked += 1
-        fired += engine != 0
+        fired += bool(engine)
         if engine != offline:
             mismatched += 1
             if len(examples) < 10:

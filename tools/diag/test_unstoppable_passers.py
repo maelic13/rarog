@@ -66,19 +66,30 @@ class Preconditions(unittest.TestCase):
 
 
 class Verify(unittest.TestCase):
+    FENS = ["8/P7/1K6/8/8/8/8/7k w - - 0 1", "8/P7/1K6/8/8/8/6n1/7k w - - 0 1",
+            "8/4k3/1R5P/8/6K1/8/8/8 b - - 0 27"]
+
     def run_verify(self, values):
-        fens = ["8/P7/1K6/8/8/8/8/7k w - - 0 1", "8/P7/1K6/8/8/8/6n1/7k w - - 0 1"]
         with tempfile.TemporaryDirectory() as tmp:
             pos = Path(tmp) / "p.csv"
             dump = Path(tmp) / "d.csv"
-            pos.write_text("".join(f"{f};0.5\n" for f in fens))
-            dump.write_text("".join(f"{f};{v}\n" for f, v in zip(fens, values)))
+            pos.write_text("".join(f"{f};0.5\n" for f in self.FENS))
+            dump.write_text("".join(f"{f};{v}\n" for f, v in zip(self.FENS, values)))
             with contextlib.redirect_stdout(io.StringIO()):
                 return up.cmd_verify(argparse.Namespace(positions=pos, dump=dump))
 
     def test_the_engines_counts_pass_and_a_wrong_one_fails(self):
-        self.assertEqual(self.run_verify(["1", "0"]), 0)
-        self.assertEqual(self.run_verify(["0", "0"]), 1)
+        # The dump's coefficient is tapered: a rook is phase 2, so one counted
+        # passer reads 22/24 (the engine's own value for the third position).
+        good = ["1;0", "0;1", "0.9166666666666666;2"]
+        self.assertEqual(self.run_verify(good), 0)
+        self.assertEqual(self.run_verify(["0;0", "0;1", "0.9166666666666666;2"]), 1)
+        self.assertEqual(self.run_verify(["1;0", "0;1", "0.5;2"]), 1)
+
+    def test_a_tapered_coefficient_turns_back_into_its_count(self):
+        self.assertEqual(up.engine_count("0.9166666666666666", "2"), 1)
+        self.assertEqual(up.engine_count("-1.8333333333333333", "2"), -2)
+        self.assertIsNone(up.engine_count("0.5", "2"))
 
 
 if __name__ == "__main__":
