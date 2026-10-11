@@ -1221,7 +1221,12 @@ loss).
   rook, weak queen, king protector distances. Refit, gate. Opens with its
   own residual step (RAR-E17: pieces +0.00%, material and piece-square
   tables −0.02%, and +2.41% only at six men or fewer) and closes
-  `NO_CHANGE` if it finds none.
+  `NO_CHANGE` if it finds none. **RAR-E37 (2026-10-11):** the donor's
+  pieces family rose by +0.035 when C.4.3 removed Rarog's x-ray slider
+  term, but the weak-queen row holds only 0.39 of it; the rest is in the
+  knight, bishop and rook rows, about two standard errors in all. So C.7
+  opens without a named weak-queen candidate, and its residual step reads
+  the piece rows one by one.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral

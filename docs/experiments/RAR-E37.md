@@ -24,5 +24,24 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Nothing is added after the numbers are seen.
 - **Use, frozen (maintainer direction 2026-10-11):** if H1 holds, C.7's residual step opens with a weak-queen (pinnable queen) term as a named candidate, and C.8's refit restores Rarog's x-ray slider term beside the new queen threat as a free slot. If not, the record says where the rise sits and nothing is scheduled.
 - **Full conditions / provenance:** as RAR-E30 and RAR-E32 (Stockfish `9587eeeb`'s per-term trace, two-fold held-out logistic models, K-free); the files are read as they stand.
-- **Result:** pending.
-- **Artifacts / commits:** `043c8f9` (the instrument and its tests); `analysis/artifacts/coherence-2026-10-11/e37/` (ignored storage).
+- **Result (run 2026-10-11, once, after the registration commit `dc4703d`; `analysis/artifacts/coherence-2026-10-11/e37/read.txt`, by `compare.py` there):**
+  - *Files:* head `2ea0f29b…` (the same bytes as `c43-screens/scores-9587-head.csv`), candidate `7963307b…`.
+  - *Reproduction:* 480 values a report (every shared model, cohort and field) match RAR-E30's and RAR-E32's reports exactly (largest difference 0), `pieces+queens` included. Not void.
+  - *Gains*, `all` cohort, head → candidate (rise; the conservative interval is √(se_head² + se_cand²)):
+
+    | Family | Head | Candidate | Rise |
+    |---|---:|---:|---:|
+    | `queens` (the Queens row) | +0.0092 ± 0.0071 | +0.0230 ± 0.0105 | **+0.0138 ± 0.0127** |
+    | `pieces` (Knights, Bishops, Rooks) | +0.0108 ± 0.0066 | +0.0366 ± 0.0121 | **+0.0258 ± 0.0138** |
+    | `pieces+queens` (RAR-E32's `pieces`) | +0.0162 ± 0.0082 | +0.0515 ± 0.0145 | +0.0353 ± 0.0166 |
+
+  - *Reported, deciding nothing:* in the middlegame band the rises are `queens` +0.018, `pieces` +0.054, both +0.067; in the queens cohort +0.018, +0.026, +0.039.
+  - *Decision:* rise(`queens`) +0.0138 against ⅔ × +0.0353 = +0.0235: **H1 refuted**; the Queens row holds 0.39 of the rise.
+- **Disposition:** observation. **The rise sits mostly in the Knights, Bishops and Rooks rows** (0.61 of it over all rows, 0.81 in the middlegame band), not in the weak-queen term; which of the three rows was not read (this registration did not split them). By the frozen use, nothing is scheduled: C.7's residual step opens without a named weak-queen candidate, and C.8's refit gets no x-ray slot from this read. The whole rise is about two conservative standard errors from zero, so it is a direction at the screen's resolution, not a measured loss. Competing (1) or (2) is the better account; (3) cannot be told from them here. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed: (1) hit (exact). (2) the Queens rise +0.0138 is inside the band [+0.012, +0.040] at its low end; H1 (probability 0.55) did not happen. (3) **miss**: the other piece rows rose +0.026, not under +0.012.
+  - Which assumption failed: I mapped the removed term to the donor's closest-looking term by geometry (a slider on the queen's line through one blocker) and gave too little weight to the donor's other piece terms that read the same lines (the rook on the queen's file among them). The miss is in mechanism attribution, with the magnitude of the total right.
+- **Conditional lesson:** a removed term's information can land in several donor rows; register the row-by-row split with the first read when the family has more than one plausible carrier.
+- **Retry trigger or `closed`:** closed. C.7's own residual step reads the piece rows on its head; a split of N/B/R for this rise would be a new registration.
+- **Artifacts / commits:** `043c8f9` (the instrument and its tests); `analysis/artifacts/coherence-2026-10-11/e37/` (ignored storage): both reports, the logs, `compare.py`, `read.txt`, `source.txt`.
