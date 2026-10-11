@@ -37,5 +37,5 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Observed: (1) **miss** for KR-KN and KR-KB (1.43% against the band [0.3%, 1.2%]); KRP-KB hit (0.78%, at the band's top). (2) hit (0 of 131 worsened). (3) hit (95.6%, just over the line). (4) hit (0.18 Elo).
   - Which assumption failed: I scaled the 2.4.0-era pool's occurrence, which mixes opponents; self-play between two Rarog versions reaches these endings about three times as often. The miss is in magnitude; it does not move the decision, which the upper bound clears by a factor of five.
 - **Conditional lesson:** read occurrence in the gate's own games, not a pool's, when the gate is what the expected value is compared with.
-- **Retry trigger or `closed`:** closed as a read; the retry trigger above belongs to C.5.4.
+- **Retry trigger or `closed`:** closed as a read; the retry trigger above belongs to C.5.4, which the maintainer closed `NO_CHANGE` on this recommendation (2026-10-11).
 - **Artifacts / commits:** `analysis/artifacts/coherence-2026-10-11/e38/` (ignored storage): `rook_minor_games.py`, `report.json` (every entry with its FEN and grading), `run.log`, `source.txt` (the PGN's SHA-256).

@@ -295,7 +295,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.6 | RESEARCH | I2 | Next (order of work, 2026-10-11): opens with its own residual step on the current head (passed +0.091 ± 0.013%, the largest regular residual; pawns +0.028); owns the unstoppable-passer tempo defect |
-| C.5.4 | RESEARCH | I2 | RAR-E38 (2026-10-11) recommends `NO_CHANGE`: the static overclaim (RAR-E36) costs nothing measurable in the gate's games (no worsening trade, wins 55 of 55, drawn entries 65 of 68 held; expected value at most 0.18 Elo); awaiting the maintainer's confirmation to close |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1200,7 +1199,7 @@ loss).
       Stockfish or better, mates as fast, and gives up its pawn less often
       in KBNP-K. C.5.3 stays closed; any change to the mop-up term re-reads
       these families.
-    - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
+    - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`, NO_CHANGE 2026-10-11.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
       **Residual step 2026-10-11 (RAR-E36):** on the current head the drawn
@@ -1221,7 +1220,10 @@ loss).
       Syzygy result, every won entry converted (55 of 55), and 65 of 68
       drawn entries ended drawn. The expected value is at most 0.18 Elo,
       under the STC gate's 1 Elo line, so the recommendation is to close
-      C.5.4 `NO_CHANGE` and build nothing (awaiting the maintainer). Retry
+      C.5.4 `NO_CHANGE` and build nothing; **closed `NO_CHANGE` on the
+      maintainer's confirmation, 2026-10-11**, with KRP-KB's
+      win-preservation hold (38 of 38 won entries converted in the games,
+      and nothing touched KRP-KB). Retry
       trigger: a trade into these endings that worsens its mover's Syzygy
       result, or drawn KR-KN and KR-KB endings lost at more than 5% over at
       least 100 gate entries; the shape would then be the defending king's
