@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.2 | RESEARCH | V | Next: RAR-E40 registered; the unstoppable-passer test against Syzygy and in the corpus |
-| C.6.3 | RESEARCH | V | After RAR-E39 (both families have signal in the endgame band and without queens): the instrument first, verified exactly, then the registration |
+| C.6.3 | RESEARCH | V | Next: both families have signal (RAR-E39), and the square rule is in the unit (RAR-E40); the instrument first, verified exactly against the printed rows, then the registration |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1301,13 +1300,20 @@ loss).
       0.028 and +0.141 ± 0.031 there; both are nil above |score| 500 and
       with queens on, so the residual is conditioning, not magnitude. Both
       go to C.6.3.
-    - **C.6.2 The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — `V`.** Zero
+    - **C.6.2 The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — `V`, DONE 2026-10-11.** Zero
       games: the engine's rule, verified row by row against its own trace,
       against the square rule one tempo stricter, on Syzygy-labelled pawn
       endings in both move orders and in `hce-v4-tb` validation with and
       without the lazy gate. The square rule becomes C.6's first engine
       change if its share of real wins is 5 points higher at three standard
-      errors.
+      errors. **Read 2026-10-11:** it is, 0.740 against 0.683 on 263,736
+      Syzygy-labelled rows, so the square rule joins C.6's unit as a
+      definition change, fitted in its refit and gated with it, never alone.
+      Its weight is small: in `hce-v4-tb` validation the positions where
+      the rules disagree were won 84% of the time anyway, and the lazy gate
+      hides 85% of the term's firings in play (recorded for C.8). The first
+      verify failed on the instrument's own parsing, fixed before the
+      re-verify passed with no mismatch.
     - **C.6.3 Sub-term attribution: the donor's passed and pawns components rebuilt offline and verified exactly, read as directions — `V`.** Zero
       games, as RAR-E31 did for threats: an instrument rebuilds Stockfish
       `9587eeeb`'s passed-pawn components (rank bonus, king proximity by

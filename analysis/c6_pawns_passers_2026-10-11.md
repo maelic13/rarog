@@ -119,6 +119,20 @@ and king-proximity terms, which the refit already weighs.
 
 Predictions, falsifiers and the frozen use are in the two registrations.
 
+## Readings so far (2026-10-11)
+
+- **RAR-E39 (C.6.1):** both families have signal: passed +0.204 ± 0.031 in
+  the endgame band and +0.196 ± 0.035 without queens, pawns +0.121 ± 0.028
+  and +0.141 ± 0.031; both nil above |score| 500 and with queens on. The
+  residual is conditioning inside the band, not magnitude. Both go to the
+  attribution (C.6.3).
+- **RAR-E40 (C.6.2):** the square rule's counted passers are Syzygy wins
+  0.740 of the time against the engine rule's 0.683, so it replaces the
+  engine's rule inside C.6's unit (a definition change, fitted with the
+  unit, never gated alone). Expect little from it: the disagreements in the
+  corpus were won 84% of the time anyway, and the lazy gate hides 85% of the
+  term's firings in play.
+
 ## Sub-steps spawned under C.6 (classes in PLAN)
 
 - C.6.1 Residual step (`V`).
