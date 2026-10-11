@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.5 | RESEARCH | V | Next: the unit is built unfitted (`bc69c46`, 13,034,451 / EBF 2.541; manifest v5 `da9c8a4`); register the fit, screens, tree and NPS reads and gate 1 before the fit (RAR-E32's shape) |
+| C.6.5 | RESEARCH | V | Next: RAR-E42 registered before the fit; the fit, the screens, the tree and NPS reads, then gate 1's arms and dry run |
 | C.6.6 | RESEARCH | V | After gate 1 |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
