@@ -1159,6 +1159,13 @@ loss).
       king and a winner without pawn, rook or queen, so the score can jump
       by thousands of centipawns across KBNP-K → KBN-K; a static read and
       playouts from the neighbouring families decide whether C.5.3 reopens.
+      **Read 2026-10-11: it does not bite.** Statically the score is higher
+      without the winner's own pawn in 80% of KBNP-K and 99% of KBBP-K
+      positions (medians +595 and +1,178 cp), but at 200k and 600k nodes
+      the head converts KBNP-K, KBBP-K, KBN-KP and KQ-KRP as well as
+      Stockfish or better, mates as fast, and gives up its pawn less often
+      in KBNP-K. C.5.3 stays closed; any change to the mop-up term re-reads
+      these families.
     - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.

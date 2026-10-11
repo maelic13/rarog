@@ -26,7 +26,34 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - In KBNP-K or KBBP-K its median plies to mate exceed Stockfish's by 20% or more.
 
   If it bites, C.5.3 reopens to `RESEARCH`, and a unit making the drive continuous across the boundary goes to registration (the mechanism named here, a cohort read and a harm read as C.5.2). If it does not, C.5.3 stays closed, and the static jump is recorded with this read as the evidence that play does not feel it.
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
+- **Result (run 2026-10-11, once each, after the registration commit `7dc9fef`):**
+  - *Static* (`transition_static.json`; 1,165 pairs from 400 generated positions a family), the score's change, White's view, when the pawn leaves the board:
+
+    | Family (pawn removed) | Pairs | Score rises | Rises by more than 500 cp | Median (quartiles) |
+    |---|---:|---:|---:|---|
+    | KBNP-K (White's own) | 399 | **79.9%** | 56.6% | **+595** (+130, +1,207) |
+    | KBBP-K (White's own) | 394 | **98.7%** | 87.3% | **+1,178** (+767, +1,525) |
+    | KBN-KP (Black's last) | 372 | 99.7% | 77.7% | +919 (+556, +1,502) |
+
+  - *Play* (`run_trans.sh`, both brackets exit 0, cohort hashes equal; `compare_trans.json`), head / Stockfish over the clean wins:
+
+    | Family | Wins | Converted 200k · 600k | Median plies 200k · 600k | Winner's material fell, 200k · 600k |
+    |---|---:|---|---|---|
+    | KBNP-K | 100 | 100/100 · 100/100 | 17/17 · 17/17 | 0.14/0.20 · 0.12/0.18 |
+    | KBBP-K | 100 | 100/100 · 100/100 | 15/14 · 14/13 | 0.12/0.05 · 0.05/0.06 |
+    | KBN-KP | 92 | 90/88 · 91/89 | 63/57 · 61/55 | 0/0 · 0/0 |
+    | KQ-KRP | 91 | 89/89 · 90/89 | 27/27 · 27/29 | 0.011/0 · 0/0 |
+
+    The head's failed wins: KBN-KP, one ply limit and one insufficient material at 200k, one ply limit at 600k; KQ-KRP, one insufficient material and one stalemate at 200k, one stalemate at 600k. Stockfish failed more in both families.
+- **Disposition:** **the boundary does not bite; C.5.3 stays closed `NO_CHANGE`.**
+  - The static incentive is real and large: without the winner's own pawn the score is higher in 80% of KBNP-K positions and 99% of KBBP-K positions.
+  - Play does not feel it at 200k or 600k nodes. The head converts as many positions as Stockfish or more in every family, mates KBNP-K and KBBP-K as fast (17 and 15 plies), and gives up material in KBNP-K less often than Stockfish does. The closest line is KBBP-K's shedding at 200k (+7 points against the 10 registered); its plies to mate are within 7%.
+  - H-static and H-play both hold, and competing (1) and (2) are refuted at these budgets. The search reaches promotion and mate before the jump matters, so a static preference for the pawnless ending costs nothing it can see.
+  - **Recorded as a known shape of the evaluation, not a defect.** Any change to the mop-up term (C.5.7's KBNK table, a continuous drive) re-reads these families with this read as its baseline. Untested: budgets below 200k nodes. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 and 2 above.
+  - Observed: (1) hit on both clauses: 79.9% and a +595 median against +600, and 99.7% for KBN-KP; the bishop pair's jump, which I did not predict separately, is twice the knight's. (2) hit on both clauses (shedding within 10 points; conversion level or better everywhere).
+  - Which assumption failed: none; confidence about right (0.6 to 0.8 on outcomes that happened).
+- **Conditional lesson:** a static discontinuity is a hypothesis about play, read where the search acts; here mate scores dominate before the evaluation's preference can.
+- **Retry trigger or `closed`:** closed; re-read with any change to the mop-up term.
 - **Artifacts / commits:** `analysis/artifacts/c53/` (ignored storage): `transition_static.py`, its pairs and dump, and the two brackets.
