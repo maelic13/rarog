@@ -1154,6 +1154,11 @@ loss).
       The search's rule-50 damping shows no systematic effect at this
       resolution (recorded for C.10). Retry trigger: a KBN-K conversion
       failure in game records, or C.5.7's KBNK distance-to-mate table.
+      **Transition read registered 2026-10-11 (RAR-E35, maintainer
+      request):** the minor-piece drive applies only with a bare defending
+      king and a winner without pawn, rook or queen, so the score can jump
+      by thousands of centipawns across KBNP-K → KBN-K; a static read and
+      playouts from the neighbouring families decide whether C.5.3 reopens.
     - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
