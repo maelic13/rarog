@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.5 | RESEARCH | V | Next: RAR-E42 registered before the fit; the fit, the screens, the tree and NPS reads, then gate 1's arms and dry run |
-| C.6.6 | RESEARCH | V | After gate 1 |
+| C.6.6 | RESEARCH | V | Next: gate 1 (RAR-E42, `[0,3]`, cap 20,000 pairs) is with the maintainer; no screen flagged, so a pass accepts and PROCESS step 4's question follows |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1372,11 +1371,21 @@ loss).
       unaccepted engine: the development fingerprint stays 12,567,796 /
       EBF 2.535 until C.6's gate accepts, and a rejected unit is reverted in
       its own commits.
-    - **C.6.5 Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** PROCESS's
+    - **C.6.5 Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-11.** PROCESS's
       *Evaluation change under a fitted search*, steps 1 to 3, registered
-      before the fit as RAR-E32 was.
-    - **C.6.6 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** Steps
-      4 to 7, as C.4.4.
+      before the fit as RAR-E32 was. **RAR-E42 (2026-10-11):** the refit
+      `38cbb02` (both coordinate passes converged; our king's block
+      distance 3, the enemy king's 4, the next square 0 cp per count; weak
+      unopposed (10, 8); isolated to (0, 0)); **fitted bench 14,197,472 /
+      EBF 2.557**. Screens with no stop and no flag: the donor's passed
+      family in the endgame band +0.204 → −0.015 (absorbed), pawns +0.121
+      → +0.120 (not absorbed: weak unopposed still carries +0.055, probably
+      because Rarog's backward definition differs from the donor's),
+      magnitude unmoved, tree +1.7%, NPS +0.07% (−0.31 to +0.46). Gate 1
+      `[0,3]` (20,000-pair cap) is with the maintainer; arms built and the
+      command dry-run clean.
+    - **C.6.6 Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** Steps
+      3's result to 7, as C.4.4.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
