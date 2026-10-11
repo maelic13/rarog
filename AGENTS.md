@@ -237,7 +237,13 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   hex that is neither a commit here nor listed in
   `tools/diag/citation_foreign.tsv`; it needs the PR refs fetched once per
   clone (`git fetch origin "+refs/pull/*/head:refs/remotes/origin/pr/*"`)
-  (maintainer decisions 2026-10-09).
+  (maintainer decisions 2026-10-09). A one-off fetch does not keep them:
+  `refs/remotes/origin/pr/*` lies under the branch refspec's destination, so
+  the next `git fetch --prune` deletes them as branches the remote lacks. Add
+  the refspec to the remote once per clone instead,
+  `git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pr/*"`,
+  and every fetch, pruning or not, keeps them (maintainer decision
+  2026-10-11; on 2026-10-11 this clone held none and the check failed).
 - `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
   of the engine would notice (a gate-accepted strength change; a UCI option,
   output or default; a fixed defect; a removal; a build or asset change)
