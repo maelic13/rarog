@@ -1196,6 +1196,25 @@ loss).
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
+      **KRPPKRP, decided 2026-10-11: excluded from the family instruments**
+      (maintainer rule of that day: exclusion unless the extension costs
+      under half a day). The hold's resume condition fired on 2026-10-09
+      (`syzygy7` holds `KRPPvKRP`, 22 GB WDL and 8.8 GB DTZ on an NVMe
+      disk, and python-chess probes it), but it is the only seven-man table
+      here. Extending `endgame_truth.py` and the drawn and bracket tools
+      that share its generator costs about 5 to 6 hours: the six-man check
+      in `parse_family` and a second tablebase directory (about 1 hour with
+      tests); a game-sourced cohort, because random seven-man placements
+      are decided by loose pieces, not by the rook ending (RAR-E36's
+      lesson; about 2 hours with its provenance and digest); grading that
+      stops at a promotion into a table that is not here, and a new
+      Stockfish reference arm for the bracket, since the 2026-09-05
+      reference has no seven-man family (about 1 hour plus a short run);
+      a wire check and the record (about 1 to 1.5 hours). The family stays
+      served by C.5.2's generic scale and read through held-out outcome
+      loss at seven men and C.5.8's game-level conversion re-read.
+      Retry trigger: a candidate that acts specifically on KRPP-KRP, or a
+      game record showing a conversion loss there.
     - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
