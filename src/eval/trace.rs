@@ -157,24 +157,18 @@ macro_rules! define_eval_trace {
 
 #[cfg(feature = "texel")]
 eval_params!(define_eval_trace);
-/// The multiplicative factor `scale_drawish_endgames` + the rule-50 damping
-/// apply to the raw tapered score, as an `f64` (Phase 3.3, texel only). The
-/// tuner uses it to scale per-position weight *deltas* the same way the engine
-/// scales the eval, so a small weight change predicts the right score change.
-/// Mirrors `scale_drawish_endgames` and the `score -= score*rule50/199` line.
+/// The multiplicative factor `scale_endgame` applies to the raw tapered score,
+/// as an `f64` (texel only). The tuner scales each position's weight *deltas*
+/// by it, so a small weight change predicts the score change the evaluator
+/// would make. The evaluator applies no rule-50 damping (the search does,
+/// outside the evaluation), so neither does this factor: the fit's base score
+/// and its deltas must be on the same footing.
 #[cfg(feature = "texel")]
 pub fn linear_delta_scale(board: &Board) -> f64 {
-    // Specialised endgame scale factors (Phase 3.11) apply first, mirroring
-    // `scale_endgame`. A dead-draw pattern zeroes the delta scale.
+    // Specialised endgame scale factors apply first, as in `scale_endgame`.
+    // A dead-draw pattern zeroes the delta scale.
     if let Some(sf) = specialized_endgame_scale(board) {
-        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock().min(100) as f64)
-            / 199.0;
-    }
-
-    let mut scale = 1.0f64;
-
-    if let Some(ocb) = opposite_bishop_scale(board) {
-        scale *= ocb as f64 / OCB_SCALE_NORMAL as f64;
+        return sf as f64 / SCALE_NORMAL as f64;
     }
 
     if (has_only_king(board, Color::White) && has_only_knights(board, Color::Black, 2))
@@ -183,9 +177,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
         return 0.0;
     }
 
-    let rule50 = board.halfmove_clock().min(100) as f64;
-    scale *= (199.0 - rule50) / 199.0;
-    scale
+    opposite_bishop_scale(board).map_or(1.0, |ocb| ocb as f64 / OCB_SCALE_NORMAL as f64)
 }
 
 // Phase 3.3 reconstruction acceptance gate: for a large, diverse set of
@@ -309,6 +301,53 @@ mod texel_tests {
         // Minor-behind-pawn (3.12): white knight d3 shielded by the pawn on d4.
         let t = trace_of(&mut ev, "4k3/8/8/8/3P4/3N4/8/4K3 w - - 0 1");
         assert_ne!(t.mg.minor_behind_pawn_mg[0], 0, "minor_behind_pawn dead");
+    }
+
+    /// The fit's base score is the evaluator's, which ignores the halfmove
+    /// clock, so the factor on its weight deltas must ignore it too, while
+    /// keeping the endgame scale factors.
+    #[test]
+    fn delta_scale_follows_the_evaluator_not_the_clock() {
+        use super::linear_delta_scale;
+        // Opposite bishops with pawns (scaled), a plain position (unscaled)
+        // and a drawn KPK (zeroed), each at a fresh and a late clock.
+        const CASES: &[(&str, &str, Option<f64>)] = &[
+            (
+                "4k3/8/2b5/3p4/3P4/8/5B2/4K3 w - - 0 1",
+                "4k3/8/2b5/3p4/3P4/8/5B2/4K3 w - - 90 80",
+                None,
+            ),
+            (
+                "4k3/8/8/8/8/2N5/PPP5/4K3 w - - 0 1",
+                "4k3/8/8/8/8/2N5/PPP5/4K3 w - - 90 80",
+                Some(1.0),
+            ),
+            (
+                "k7/8/K7/P7/8/8/8/8 w - - 0 1",
+                "k7/8/K7/P7/8/8/8/8 w - - 90 80",
+                Some(0.0),
+            ),
+        ];
+        let mut ev = full_evaluator();
+        for &(fresh, late, expected) in CASES {
+            let fresh = Board::from_fen(fresh).expect("fresh FEN");
+            let late = Board::from_fen(late).expect("late FEN");
+            let factor = linear_delta_scale(&fresh);
+            assert_eq!(
+                factor,
+                linear_delta_scale(&late),
+                "clock moved the delta scale"
+            );
+            assert_eq!(
+                ev.evaluate(&fresh),
+                ev.evaluate(&late),
+                "clock moved the score"
+            );
+            match expected {
+                Some(value) => assert_eq!(factor, value),
+                None => assert!(factor > 0.0 && factor < 1.0, "OCB factor {factor}"),
+            }
+        }
     }
 
     /// Phase 7.4 HCE semantics — counterexample tests for the four fixes.
