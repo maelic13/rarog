@@ -1147,6 +1147,10 @@ loss).
           split stays; C.5.2's gate measured its boundary incentive as
           small. Retry trigger: a KBPPKB or KBPKB recogniser with
           reachability (C.5.6, C.5.7), then one rule refitted above it.
+          The retry's content is the two-regressor form, passers and free
+          passers in one rule at every men count, which nests the count
+          and cannot reintroduce a boundary (RAR-E33's addendum; the
+          below-boundary column rests on 637 rows, about ±4 points).
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
