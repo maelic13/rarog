@@ -108,6 +108,52 @@ class PlantedSignal(unittest.TestCase):
         self.assertGreater(gain_real.mean(), 10 * se_real)
         self.assertLess(abs(gain_null.mean()), 4 * se_null)
 
+    def test_a_queens_row_signal_is_read_as_queens_not_pieces(self):
+        import argparse
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from pathlib import Path
+
+        rng = np.random.default_rng(13)
+        n = 20_000
+        rarog = rng.normal(0.0, 1.5, n)
+        queens = rng.normal(0.0, 0.6, n)
+        p = 1.0 / (1.0 + np.exp(-(rarog + queens) / 1.7))
+        y = (rng.random(n) < p).astype(float)
+        names = dr.header().split(";")
+        lines = [";".join(names)]
+        for i in range(n):
+            cells = {name: 0.0 for name in names}
+            cells.update(idx=i, label=y[i], rarog=rarog[i], sf_control=rarog[i],
+                         sf11_total=rarog[i], queens_mg=queens[i], queens_eg=queens[i],
+                         knights_mg=rng.normal(0.0, 0.6), knights_eg=0.0)
+            cells["fen"] = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"
+            lines.append(";".join(str(cells[name]) for name in names))
+        with tempfile.TemporaryDirectory() as tmp:
+            scores = Path(tmp) / "scores.csv"
+            scores.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            out = Path(tmp) / "report.json"
+            args = argparse.Namespace(scores=str(scores), out=str(out), within=False)
+            with contextlib.redirect_stdout(io.StringIO()):
+                dr.analyse(args)
+            models = json.loads(out.read_text())["cohorts"]["all"]["models"]
+        gain = {name: models[name]["gain_vs_rarog_pct"] for name in models}
+        se = {name: models[name]["gain_se_pct"] for name in models}
+        self.assertGreater(gain["rarog+queens"], 10 * se["rarog+queens"])
+        self.assertLess(abs(gain["rarog+pieces"]), 4 * se["rarog+pieces"])
+        self.assertGreater(gain["rarog+pieces+queens"], 10 * se["rarog+pieces+queens"])
+
+    def test_the_joint_model_keeps_the_four_piece_rows_in_one_column(self):
+        family = {name: np.full(3, float(i + 1)) for i, name in enumerate(dr.FAMILIES)}
+        columns = dr.joint_columns(family)
+        self.assertEqual(len(columns), len(dr.FAMILIES) - 1)
+        joined = family["pieces"] + family["queens"]
+        self.assertTrue(any(np.array_equal(c, joined) for c in columns))
+        self.assertEqual(dr.FAMILIES["queens"], ["Queens"])
+        self.assertNotIn("Queens", dr.FAMILIES["pieces"])
+
     def test_fractional_labels_fit(self):
         rng = np.random.default_rng(11)
         x = rng.normal(0.0, 1.0, (5_000, 1))
