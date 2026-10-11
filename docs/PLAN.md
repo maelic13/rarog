@@ -993,13 +993,19 @@ loss).
       unchanged. **Built and screened 2026-10-10 (RAR-E32):** the engine
       change `f962c0d` (tests, clippy and fmt clean; the restricted term
       now counts a square both sides attack twice), manifest v4 `49e2eea`,
-      the refit `6c73d65`. **Accepted 2026-10-11:** gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag. The
+      the refit `6c73d65` (bench 12,567,796 / EBF 2.535; king threat
+      (14, 40), queen threat (20, 6) cp). The screens raised no stop and no
+      flag: threats +0.107 → +0.037% over all rows, both terms' removal
+      costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the
+      donor's pieces family rose +0.036, mostly in its knight, bishop and
+      rook rows rather than the weak-queen row (RAR-E37).
+      **Accepted 2026-10-11:** gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at
+      +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag. The
       +13.0 is a first-crossing estimate, which overstates, and about +5 of it
       is speed: the removed x-ray loop ran on every evaluation, and the +2.57%
       NPS it gave back is worth about 5 Elo at PROCESS's 2 Elo per 1%. Two
       time losses, both the head's in games the candidate led by ten
-      pawns. Fingerprint 12,567,796 / EBF 2.535. fitted (`6c73d65`, bench 12,567,796 / EBF 2.535; king threat (14, 40), queen threat (20, 6) cp); screens with no stop and no flag: threats +0.107 → +0.037% over all rows, both terms' removal costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the donor's pieces family rose +0.036 (the removed x-ray term's information). Gate 1 is with the
-      maintainer.
+      pawns. Fingerprint 12,567,796 / EBF 2.535.
     - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-11.** PROCESS's
       *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
       **2026-10-11:** nothing flagged and gate 1 passed, so by step 4 the
