@@ -25,7 +25,30 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Families with a residual continue into C.5.4's candidate design: a scale for the rook-against-minor endings, registered separately, with the drawn cohort as the deciding instrument and three vetoes: conversion of the wins in read 2 (within two standard errors), win preservation, and a transition read into and out of the scaled endings.
   - A family converting 3 or more fewer wins than Stockfish at 200k is recorded as a separate conversion defect.
   - Without a residual anywhere, C.5.4 closes `NO_CHANGE`.
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
+- **Result (run 2026-10-11, once each, after the registration commit `97cd6da`):**
+  - *Overclaim* (`drawn-head.json`; cohort hashes equal to census v1's), drawn positions above +100 cp, old (census v1) → head:
+    - KR-KN: 100% of 796 (mean +346) → **98.4%** (783 of 796; mean +208, median +212, max +333)
+    - KR-KB: 99.6% of 1,002 (mean +307) → **94.6%** (948; mean +182, median +186, max +340)
+    - KRP-KB: 100% of 38 (mean +328) → **97.4%** (37; mean +195, median +203)
+    - No mate claims.
+  - *Wins* (`compare.json`; cohort hashes equal to the reference's), Stockfish / head converted at 60k · 200k · 600k: KR-KN 45/44 · 45/45 · 45/45; KR-KB 28/28 · 28/28 · 28/28; KRP-KB 95/92 · 96/94 · 96/94. KRP-KB's failures are ply limits (3, 2, 1) and insufficient material (1, 0, 1). Win preservation 0.984 to 0.999.
+  - *Separation* (`separation.json`; 1,500 generated positions a family, 704 and 498 Syzygy wins), win rate:
+    - KR-KN by defending king to knight distance: 1: 0.03 (167); 2: 0.27 (234); 3: 0.41 (293); 4 or more: 0.64 (806).
+    - KR-KN by the defending king's edge distance: 0: 0.57; 1: 0.40; 2: 0.40; 3: 0.26. On the edge with the knight 3 or more away: 0.66 (560), against 0.35 otherwise.
+    - KR-KB by king to bishop distance: 1: 0.03; 2: 0.27; 3: 0.43; 4 or more: 0.38. By edge distance, 0.31 to 0.35 throughout.
+    - KR-KB by corner: in or next to a corner of the bishop's colour 0.37 (217); of the other colour 0.29 (190); no corner 0.33.
+- **Disposition:** **all three families have a residual; C.5.4 continues into candidate design.**
+  - The refits since 2.4.0 cut the drawn positions' scores by about 125 cp, but 94.6% to 98.4% of draws are still scored above +100 cp. Competing (1) holds for the magnitude only.
+  - The wins convert like Stockfish's (competing (2) refuted), so a scale has a clean baseline for its conversion veto.
+  - On generated positions the strongest separator is the defending king's distance from its own minor piece: a minor next to its king is almost never lost (3%), one 4 or more squares away usually is (64% in KR-KN). The theory features are weaker here: the defending king on the edge matters in KR-KN (2.2× between edge and centre) and not in KR-KB, and the bishop's corner colour barely separates (1.28×). Random placements are dominated by tactics against a loose minor piece, so competing (3) holds in part.
+  - The candidate (a scale for KR-KN and KR-KB, with KRP-KB's existing fortress scale kept) is a separate registration. Its deciding instrument is the drawn cohort, with three vetoes: this read's conversion as the baseline (within two standard errors), win preservation, and a transition read into and out of the scaled endings (RAR-E35's design). Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed:
+    - (1) KR-KN hit (98.4%); **KR-KB miss** by 0.4 points (94.6% against 95%); KRP-KB hit (97.4%); means: KR-KN hit (+208), **KR-KB miss** (+182, below the +200 to +400 band).
+    - (2) hit (KRP-KB exactly 2 behind at 200k).
+    - (3) KR-KN **miss**: 1.9× against 2×. KR-KB **miss**: 1.28× against 2×.
+  - Which assumption failed: I carried the old magnitude forward, but the refits did lower the rook-minus-minor balance (by about 125 cp), just not enough to change the verdict. And I expected textbook geometry (edge, corner colour) to separate random positions. Random placements are decided mostly by whether the minor piece is loose, a tactical fact the textbook features miss. The miss is in magnitude and mechanism.
+- **Conditional lesson:** on generated endgame positions, read the tactical separators (piece cohesion) before the textbook ones; game positions may weight them differently.
+- **Retry trigger or `closed`:** not closed; the candidate's registration follows.
 - **Artifacts / commits:** `analysis/artifacts/c54/` (ignored storage): `separation.py`, the drawn report, the bracket and the separation table.

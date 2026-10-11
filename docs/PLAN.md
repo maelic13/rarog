@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.4 | RESEARCH | I2 | Opened 2026-10-11: its residual step, RAR-E36 (zero games), re-reads the drawn-cohort overclaim (census v1's cohorts), the wins against Stockfish at 60k/200k/600k, and a won-against-drawn separation on Syzygy truth; a family overclaiming 50% or more continues into a scale candidate with conversion, win-preservation and transition vetoes |
+| C.5.4 | RESEARCH | I2 | RAR-E36 (2026-10-11): the overclaim persists on the current head (KR-KN 98.4%, KR-KB 94.6%, KRP-KB 97.4% of draws above +100 cp, means +182 to +208); the wins convert like Stockfish's; the strongest won/drawn separator is the defending king's distance from its own minor piece. Next: a scale candidate for KR-KN and KR-KB, registered with the drawn cohort deciding and conversion, win-preservation and transition vetoes |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
 | C.5.6 | RESEARCH | R2 | After C.5.2 |
 | C.5.7 | RESEARCH | I1 | After C.5.2 |
@@ -1169,6 +1169,16 @@ loss).
     - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
+      **Residual step 2026-10-11 (RAR-E36):** on the current head the drawn
+      cohort still overclaims (KR-KN 98.4% of 796 draws above +100 cp, mean
+      +208; KR-KB 94.6% of 1,002, +182; KRP-KB 97.4% of 38, +195; the
+      refits took about 125 cp off, not the verdict). The wins convert
+      like Stockfish's at 200k and 600k (KR-KN 45/45, KR-KB 28/28,
+      KRP-KB 94/96). On Syzygy truth the defending king's distance from
+      its own minor piece separates won from drawn most (KR-KN: 3% won
+      with the knight beside its king, 64% at four or more squares); the
+      king on the edge matters in KR-KN only and the bishop's corner
+      colour barely. The candidate is a separate registration.
     - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`.** Audit
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
