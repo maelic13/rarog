@@ -293,7 +293,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.3 | RESEARCH | I2 | Opened 2026-10-11: its residual step, RAR-E34 (zero games), re-reads the 2.4.0-era conversion deficits on the current head at 60k/200k/600k nodes against Stockfish's reports, with the search's rule-50 damping off as the interaction arm; a family 3 or more behind at 200k (or 2 at 600k) continues into diagnosis, none closes C.5.3 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
 | C.5.6 | RESEARCH | R2 | After C.5.2 |
@@ -1139,11 +1138,22 @@ loss).
           split stays; C.5.2's gate measured its boundary incentive as
           small. Retry trigger: a KBPPKB or KBPKB recogniser with
           reachability (C.5.6, C.5.7), then one rule refitted above it.
-    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
+    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
       nodes). Rule-50 damping interaction measured here, sign not assumed.
       Deciding instrument: conversion at bracketed budgets plus theory vetoes.
+      **Closed `NO_CHANGE` 2026-10-11 (RAR-E34):** on the current head, at
+      60k/200k/600k nodes against Stockfish on the same 100 positions a
+      family, KQ-K, KR-K and KBB-K convert everything and KQ-KR is 1/0/0
+      behind (it was 23/13/3 on the 2.4.0 engine). The one residual is
+      KBN-K, 2 of 98 behind at 600k only: two starts 52 and 58 plies from
+      mate lost the race against the fifty-move rule, because the mop-up
+      drive does not speed up with nodes (median 57 plies at every budget,
+      Stockfish 59 → 47). At 0.3% of games that is below a unit's worth.
+      The search's rule-50 damping shows no systematic effect at this
+      resolution (recorded for C.10). Retry trigger: a KBN-K conversion
+      failure in game records, or C.5.7's KBNK distance-to-mate table.
     - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
