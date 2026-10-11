@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.4.4 | RESEARCH | V | C.4.3 accepted on gate 1 with no flag (2026-10-11): PROCESS step 4's optional margin block is the maintainer's question, then the `10+0.1` read; no gate 2 unless the block runs |
+| C.4.4 | GAME_GATE | V | C.4.3 accepted on gate 1 with no flag; margin block skipped (maintainer decision 2026-10-11), so no gate 2; the 1,000-game `10+0.1` direction read is registered in RAR-E32 (below 0 Elo reopens the unit) and dry-run clean, with the maintainer |
 | C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
@@ -1002,6 +1002,9 @@ loss).
       maintainer.
     - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** PROCESS's
       *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
+      **2026-10-11:** nothing flagged and gate 1 passed, so by step 4 the
+      block was the maintainer's question; skipped. The `10+0.1` read
+      (1,000 games) is registered in RAR-E32 and with the maintainer.
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
   `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
