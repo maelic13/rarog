@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.3 | RESEARCH | I2 | After C.5.2 |
+| C.5.3 | RESEARCH | I2 | Opened 2026-10-11: its residual step, RAR-E34 (zero games), re-reads the 2.4.0-era conversion deficits on the current head at 60k/200k/600k nodes against Stockfish's reports, with the search's rule-50 damping off as the interaction arm; a family 3 or more behind at 200k (or 2 at 600k) continues into diagnosis, none closes C.5.3 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
 | C.5.6 | RESEARCH | R2 | After C.5.2 |
