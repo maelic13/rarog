@@ -97,6 +97,11 @@ macro_rules! eval_params {
             pawn_lever_eg: 1 = [0];
             pawn_doubled_isolated_mg: 1 = [3];
             pawn_doubled_isolated_eg: 1 = [13];
+            // An isolated or backward pawn with no enemy pawn ahead on its
+            // file: open to attack down the file. Seed the donor's (13, 27) at
+            // 100/206.
+            pawn_weak_unopposed_mg: 1 = [6];
+            pawn_weak_unopposed_eg: 1 = [13];
             blocked_passer_mg: 1 = [42];
             blocked_passer_eg: 1 = [7];
             ideal_blockader_mg: 1 = [15];
@@ -202,7 +207,12 @@ macro_rules! eval_params {
             hanging_minor: 1 = [0];
             hanging_rook: 1 = [1];
             hanging_queen: 1 = [1];
-            passer_proximity_base: 1 = [9];
+            // Kings' distances to the square in front of a passer (and our
+            // king's to the square after it), per unit of distance × rank
+            // weight; eg-only. Seeds are the donor's 19/4, 2 and 1 at 100/206.
+            passer_king_them_eg: 1 = [2];
+            passer_king_us_eg: 1 = [1];
+            passer_king_next_eg: 1 = [1];
             space_weight: 1 = [0];
             tempo: 1 = [33];
             // trapped_bishop frozen at hand value (feature-support: too sparse to fit).

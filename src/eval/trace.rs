@@ -350,6 +350,82 @@ mod texel_tests {
         }
     }
 
+    /// Passer king proximity at the block square: counts are capped distance
+    /// times `5·rank − 13`, our king's next-square count skipped on the
+    /// seventh rank.
+    #[test]
+    fn passer_king_proximity_counts() {
+        let mut ev = full_evaluator();
+        // e5 (w = 7): black king two from e6 (14), ours five from e6 (35) and
+        // six, capped at five, from e7 (35).
+        let t = trace_of(&mut ev, "4k3/8/8/4P3/8/8/8/4K3 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 14);
+        assert_eq!(t.eg.passer_king_us_eg[0], -35);
+        assert_eq!(t.eg.passer_king_next_eg[0], -35);
+        // a7 (w = 17): the block square is the promotion square, no next.
+        let t = trace_of(&mut ev, "4k3/P7/8/8/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 4 * 17);
+        assert_eq!(t.eg.passer_king_us_eg[0], -5 * 17);
+        assert_eq!(t.eg.passer_king_next_eg[0], 0);
+        // A passer on its third rank takes no proximity term.
+        let t = trace_of(&mut ev, "4k3/8/8/8/8/4P3/8/4K3 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 0);
+        assert_eq!(t.eg.passer_king_us_eg[0], 0);
+        // Colour symmetry.
+        let t = trace_of(&mut ev, "4k3/8/8/8/4p3/8/8/4K3 b - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], -14);
+        assert_eq!(t.eg.passer_king_us_eg[0], 35);
+    }
+
+    /// Weak unopposed: an isolated or backward pawn with no enemy pawn ahead on
+    /// its file, counted once per pawn.
+    #[test]
+    fn weak_unopposed_pawns() {
+        let mut ev = full_evaluator();
+        let count = |ev: &mut Evaluator, fen: &str| {
+            let t = trace_of(ev, fen);
+            (
+                t.mg.pawn_weak_unopposed_mg[0],
+                t.eg.pawn_weak_unopposed_eg[0],
+            )
+        };
+        // An isolated unopposed pawn.
+        assert_eq!(count(&mut ev, "4k3/8/8/8/4P3/8/8/4K3 w - - 0 1"), (-1, -1));
+        // Both pawns isolated and opposed: nothing.
+        assert_eq!(count(&mut ev, "4k3/4p3/8/8/4P3/8/8/4K3 w - - 0 1"), (0, 0));
+        // e3 backward (d5 attacks e4, d4 is ahead of it) and unopposed; d4 and
+        // d5 face each other.
+        assert_eq!(
+            count(&mut ev, "4k3/8/8/3p4/3P4/4P3/8/4K3 w - - 0 1"),
+            (-1, -1)
+        );
+        // e3 both isolated and backward: counted once; Black's c6-d5 chain is
+        // neither.
+        assert_eq!(
+            count(&mut ev, "4k3/8/2p5/3p4/8/4P3/8/4K3 w - - 0 1"),
+            (-1, -1)
+        );
+    }
+
+    /// The unstoppable passer follows the rule of the square, counting the
+    /// king's capture of the new queen.
+    #[test]
+    fn unstoppable_passer_square_rule() {
+        let mut ev = full_evaluator();
+        // a5 against a king on e5: moving first, the king catches it (1...Kd6
+        // 2.a6 Kc7 3.a7 Kb7 4.a8=Q+ Kxa8); moving second, it does not.
+        let t = trace_of(&mut ev, "8/8/8/P3k3/8/8/8/K7 b - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
+        let t = trace_of(&mut ev, "8/8/8/P3k3/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 1);
+        // One square further, it queens whoever moves.
+        let t = trace_of(&mut ev, "8/8/8/P4k2/8/8/8/K7 b - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 1);
+        // With the pawn's side to move, a king three from a8 still catches it.
+        let t = trace_of(&mut ev, "8/8/8/P2k4/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
+    }
+
     /// Phase 7.4 HCE semantics — counterexample tests for the four fixes.
     #[test]
     fn phase_7_4_semantic_fixes() {

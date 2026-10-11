@@ -311,14 +311,28 @@ impl Evaluator {
                 } else {
                     sq.0.checked_sub(8)
                 };
-                if (our_pawns & PASSED_PAWN_MASKS[them as usize][sq.index()] & adjacent).is_empty()
-                    && let Some(stop) = stop_sq.filter(|sq| *sq < 64)
-                    && (atk.pawn(us, Square(stop)) & their_pawns).any()
-                {
+                let is_backward =
+                    (our_pawns & PASSED_PAWN_MASKS[them as usize][sq.index()] & adjacent)
+                        .is_empty()
+                        && stop_sq
+                            .filter(|sq| *sq < 64)
+                            .is_some_and(|stop| (atk.pawn(us, Square(stop)) & their_pawns).any());
+                if is_backward {
                     mg -= sign * self.params.pawn_backward_mg[0];
                     eg -= sign * self.params.pawn_backward_eg[0];
                     tr_mg!(self, pawn_backward_mg, 0, -sign);
                     tr_eg!(self, pawn_backward_eg, 0, -sign);
+                }
+                // A weak pawn no enemy pawn faces on its file can be attacked
+                // down the file by rooks and queens; counted once per pawn.
+                let unopposed =
+                    (their_pawns & file_bb & FORWARD_RANKS[us as usize][SQUARE_RANK[sq.index()]])
+                        .is_empty();
+                if (is_isolated || is_backward) && unopposed {
+                    mg -= sign * self.params.pawn_weak_unopposed_mg[0];
+                    eg -= sign * self.params.pawn_weak_unopposed_eg[0];
+                    tr_mg!(self, pawn_weak_unopposed_mg, 0, -sign);
+                    tr_eg!(self, pawn_weak_unopposed_eg, 0, -sign);
                 }
             }
 
