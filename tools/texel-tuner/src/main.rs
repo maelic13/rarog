@@ -69,6 +69,8 @@ const PAWNSTRUCT: &[&str] = &[
     "pawn_lever_eg",
     "pawn_doubled_isolated_mg",
     "pawn_doubled_isolated_eg",
+    "pawn_weak_unopposed_mg",
+    "pawn_weak_unopposed_eg",
     // Same-rank phalanx.
     "pawn_phalanx_mg",
     "pawn_phalanx_eg",
@@ -88,7 +90,9 @@ const PASSERS: &[&str] = &[
     "passed_safepath_eg_per_rank",
     "passed_candidate_mg",
     "passed_candidate_eg",
-    "passer_proximity_base",
+    "passer_king_them_eg",
+    "passer_king_us_eg",
+    "passer_king_next_eg",
     // Passer detail.
     "blocked_passer_mg",
     "blocked_passer_eg",
@@ -144,7 +148,7 @@ const THREATS: &[&str] = &[
     "threat_slider_on_queen_eg",
 ];
 const HANGING: &[&str] = &["hanging_minor", "hanging_rook", "hanging_queen"];
-const MISC: &[&str] = &["passer_proximity_base", "space_weight", "tempo"];
+const MISC: &[&str] = &["space_weight", "tempo"];
 const IMBALANCE: &[&str] = &["imbalance_ours", "imbalance_theirs"];
 // Small positional terms.
 const SMALLPOS: &[&str] = &[
@@ -400,6 +404,8 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "pawn_lever_eg", 0.0, 100.0);
     clamp_field(w, "pawn_doubled_isolated_mg", 0.0, 200.0);
     clamp_field(w, "pawn_doubled_isolated_eg", 0.0, 200.0);
+    clamp_field(w, "pawn_weak_unopposed_mg", 0.0, 200.0);
+    clamp_field(w, "pawn_weak_unopposed_eg", 0.0, 200.0);
 
     // Passers: rank 0 and 7 stay 0, middle ranks non-decreasing bonuses.
     for f in ["passed_mg", "passed_eg"] {
@@ -419,7 +425,10 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "passed_safestop_eg_per_rank", 0.0, 100.0);
     clamp_field(w, "passed_candidate_mg", 0.0, 200.0);
     clamp_field(w, "passed_candidate_eg", 0.0, 200.0);
-    clamp_field(w, "passer_proximity_base", 0.0, 50.0);
+    // Per unit of capped distance times rank weight (up to 5 x 17).
+    clamp_field(w, "passer_king_them_eg", 0.0, 30.0);
+    clamp_field(w, "passer_king_us_eg", 0.0, 30.0);
+    clamp_field(w, "passer_king_next_eg", 0.0, 30.0);
     // Blocked-passer penalty magnitude, ideal-blockader bonus.
     clamp_field(w, "blocked_passer_mg", 0.0, 200.0);
     clamp_field(w, "blocked_passer_eg", 0.0, 200.0);

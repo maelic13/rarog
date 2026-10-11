@@ -76,7 +76,8 @@ class Verify(unittest.TestCase):
             pos.write_text("".join(f"{f};0.5\n" for f in self.FENS))
             dump.write_text("".join(f"{f};{v}\n" for f, v in zip(self.FENS, values)))
             with contextlib.redirect_stdout(io.StringIO()):
-                return up.cmd_verify(argparse.Namespace(positions=pos, dump=dump))
+                return up.cmd_verify(argparse.Namespace(positions=pos, dump=dump,
+                                                        rule="engine"))
 
     def test_the_engines_counts_pass_and_a_wrong_one_fails(self):
         # The dump's coefficient is tapered: a rook is phase 2, so one counted
@@ -96,7 +97,8 @@ class Verify(unittest.TestCase):
             pos.write_text(f"{start};0.5\n")
             dump.write_text(f"{start};0;24\n")
             with contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(up.cmd_verify(argparse.Namespace(positions=pos, dump=dump)), 0)
+                self.assertEqual(up.cmd_verify(argparse.Namespace(
+                    positions=pos, dump=dump, rule="engine")), 0)
 
     def test_a_tapered_coefficient_turns_back_into_its_count(self):
         self.assertEqual(up.engine_count("0.9166666666666666", "2"), 1)

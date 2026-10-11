@@ -12,7 +12,9 @@ counts the pawn when `dist > steps` with the defender to move and
 counting the king's capture of the new queen, catches the pawn with
 `dist <= steps + 1` when the defender moves first and `dist <= steps` when
 the pawn moves first, so the engine's rule is one tempo generous in both
-orders. `square` is that stricter rule.
+orders. `square` is that stricter rule. The engine has played `square`
+since C.6.4 (2026-10-11); `engine` names the rule it played before, which
+RAR-E40 read. `verify --rule` says which one the dump must match.
 
   positions  Syzygy-labelled pawn endings of six men or fewer with at least
              one passer the engine's preconditions admit, both sides to move,
@@ -174,7 +176,7 @@ def cmd_verify(args) -> int:
                                                  read_dump(args.dump), strict=True):
         if fen_a.split()[:4] != fen_b.split()[:4]:
             raise SystemExit(f"row {checked + 1}: FENs differ")
-        offline = net(chess.Board(fen_a), "engine")
+        offline = net(chess.Board(fen_a), args.rule)
         checked += 1
         if int(phase) >= TOTAL_PHASE:
             # The eg weight is zero at full phase: the term cannot move the
@@ -272,6 +274,9 @@ def main() -> int:
     p = sub.add_parser("verify")
     p.add_argument("--positions", required=True, type=Path)
     p.add_argument("--dump", required=True, type=Path)
+    p.add_argument("--rule", choices=RULES, default="square",
+                   help="the rule the dumping engine plays: square since C.6.4, "
+                        "engine before it")
     p = sub.add_parser("read")
     p.add_argument("--positions", required=True, type=Path)
     p.add_argument("--output", type=Path)
