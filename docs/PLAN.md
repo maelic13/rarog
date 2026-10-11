@@ -294,7 +294,8 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6 | RESEARCH | I2 | Next (order of work, 2026-10-11): opens with its own residual step on the current head (passed +0.091 ± 0.013%, the largest regular residual; pawns +0.028); owns the unstoppable-passer tempo defect |
+| C.6.1 | RESEARCH | V | Next (order of work, 2026-10-11): RAR-E39 registered; the residual step on the seven cohorts not yet read |
+| C.6.2 | RESEARCH | V | RAR-E40 registered; the unstoppable-passer test against Syzygy and in the corpus |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1286,7 +1287,23 @@ loss).
   confirmed in the source: the unstoppable-passer test in `src/eval/passers.rs`
   (`king_steps > pawn_steps − …`) is one tempo generous in both move
   orders; the repair is a definition change plus a refit, checked against
-  tablebase-labelled pawn endings.
+  tablebase-labelled pawn endings. **Opened 2026-10-11** (the order of
+  work): the research card is `analysis/c6_pawns_passers_2026-10-11.md`.
+  The unstoppable term also sits after the lazy gate, so in play it fires
+  only below 600 cp (found while building the instrument).
+    - **C.6.1 Residual step: the donor's passed and pawns families on the current head, by cohort (RAR-E39) — `V`.** Zero
+      games: the current head's donor report (RAR-E37's, which reproduced
+      RAR-E32's), read in the seven cohorts not yet looked at; a family has
+      signal at 0.10% or more at four standard errors. A family with signal
+      goes to a sub-term attribution; one without closes `NO_CHANGE` inside
+      C.6.
+    - **C.6.2 The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — `V`.** Zero
+      games: the engine's rule, verified row by row against its own trace,
+      against the square rule one tempo stricter, on Syzygy-labelled pawn
+      endings in both move orders and in `hce-v4-tb` validation with and
+      without the lazy gate. The square rule becomes C.6's first engine
+      change if its share of real wins is 5 points higher at three standard
+      errors.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,

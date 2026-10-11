@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.6** (`I2`): Pawns and passers cluster; refit; gate.
+**Now: C.6.1** (`V`): Residual step: the donor's passed and pawns families on the current head, by cohort (RAR-E39).
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -49,7 +49,9 @@ and is frozen at `ee02ed1` for Phase C.
     - [ ] **C.5.6** Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — **RESEARCH / R2**
     - [ ] **C.5.7** Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — **RESEARCH / I1**
     - [ ] **C.5.8** Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — **RESEARCH / V**
-- [ ] **C.6** Pawns and passers cluster; refit; gate — **RESEARCH / I2**
+- [ ] **C.6** Pawns and passers cluster; refit; gate — **I2**
+    - [ ] **C.6.1** Residual step: the donor's passed and pawns families on the current head, by cohort (RAR-E39) — **RESEARCH / V**
+    - [ ] **C.6.2** The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — **RESEARCH / V**
 - [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **RESEARCH / I2**
 - [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **RESEARCH / V**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**

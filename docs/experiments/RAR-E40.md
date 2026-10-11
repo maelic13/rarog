@@ -1,0 +1,28 @@
+# RAR-E40 — C.6.2 the unstoppable-passer test: the engine's rule against the square rule one tempo stricter, on Syzygy truth and in the fitting corpus
+
+Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+- **Date / owner:** registered 2026-10-11, after the instrument was built and smoke-tested on a throwaway seed and before any position of the registered seed or any corpus row was read; agent-run (zero games).
+- **Baseline SHA / candidate SHA / dirty-diff hash:** the current head's evaluation (12,567,796 / EBF 2.535); the instrument `tools/diag/unstoppable_passers.py` (`2fc1491`) and the tuner's `--dump-feature` (`379a7d5`). No candidate binary: the stricter rule is applied offline.
+- **Binary / compiler / PGO identity:** `tools/texel-tuner` built at the registration commit (`rustc 1.98.1`), its SHA-256 recorded with the result; Syzygy `D:/chess/tablebases/syzygy3456` through python-chess.
+- **Research question:** the engine counts a passer unstoppable when the defending king's distance to the promotion square exceeds `steps` (defender to move) or `steps − 1` (pawn's side to move); the rule of the square, counting the capture of the new queen, needs `steps + 1` and `steps` (the card, `analysis/c6_pawns_passers_2026-10-11.md`). How often is the engine's rule wrong on Syzygy truth, how much better is the square rule, and how often do they disagree in the positions the fit sees, with and without the lazy gate?
+- **Hypothesis / proposed mechanism:** H3 of the card: the generous tempo counts pawns the king catches, so the engine's rule fires on draws a clear share of the time and the square rule removes most of them; the disagreements are a small share of the corpus.
+- **Competing hypotheses:** (1) *harmless:* in the generated endings the extra positions the engine counts are still won (another pawn, or the attacking king's support), so the win shares differ little. (2) *the gate hides it:* in the corpus most firings are above the lazy gate and never reach the played score. (3) *the square rule is too strict:* it drops real wins (pawns the defending king cannot reach because its own pawns or the attacking king block it), so its share of real wins rises but its count of wins falls sharply.
+- **Interacting mechanisms / consumers:** the free-path, safe-path and king-proximity passer terms (they share the positions); the lazy gate; the refit (the weight is fitted on the corpus where the rule fires); C.5.2's opposite-bishop rule does not use this term.
+- **PRE-REGISTERED PREDICTION (freeze before exposure):**
+  1. *Verify:* the offline engine rule equals the engine's trace count on every generated row and every validation row (probability 0.97).
+  2. *Truth* (events = a side with a counted passer; truth = that side's Syzygy result): the engine rule's share of wins **0.80**, 80% band [0.68, 0.90]; the square rule's **0.92**, band [0.85, 0.98]; the square rule higher by 5 points or more (probability 0.8).
+  3. *Disagreements:* events the engine counts and the square rule does not are wins in **0.45** of cases, band [0.25, 0.65]; the square rule counts nothing the engine does not (by construction, probability 1, a check of the tool).
+  4. *Corpus* (`hce-v4-tb` validation): the engine rule fires in 0.3% to 2% of side events with the full evaluation; at least a third of those firings are hidden by the lazy gate in the played evaluation (probability 0.6); the two rules disagree in under 0.5% of rows (probability 0.8).
+  - Expected Elo: none.
+- **Falsification criteria:** the read is void if verify finds a mismatch. H3 is refuted if the square rule's share of wins is not at least 5 points above the engine's.
+- **Cheapest prior falsifier:** the theory (the card's a5/e5 example) and the tool's tests; this read is the measurement.
+- **Registered order (frozen):** into `analysis/artifacts/c6/`:
+  1. `python tools/diag/unstoppable_passers.py positions --syzygy D:/chess/tablebases/syzygy3456 --per-family 20000 --seed 6200600 --output up_positions.csv` (families `KP-K,KPP-K,KPPP-K,KP-KP,KPP-KP,KPPP-KP,KPP-KPP`, both sides to move, kept when a side has a passer with an empty path and the other no piece).
+  2. `rarog-texel --dump-feature up_positions.csv up_full.csv unstoppable_passer_eg --full`, then `unstoppable_passers.py verify`; the same for `tools/texel/data/hce-v4-tb/validation.csv`. Any mismatch voids the read.
+  3. `unstoppable_passers.py read --positions up_positions.csv --output read.json`.
+  4. `unstoppable_passers.py corpus --csv tools/texel/data/hce-v4-tb/validation.csv --output corpus.json`, and the played activation: `rarog-texel --dump-feature validation.csv played.csv unstoppable_passer_eg` (no `--full`) against the full dump, counting rows where the full count is non-zero and the played count is zero.
+  - Nothing is added after the numbers are seen.
+- **Use, frozen:** if H3 holds (the square rule's win share at least 5 points above the engine's, at three standard errors), the square rule becomes C.6's first engine change, implemented in the engine as a definition change and fitted in C.6's refit (or C.8's, if C.6 builds no unit), gated with whatever unit carries it, never alone: its bench change and refit move shared signals. If H3 fails, the defect is recorded as theoretically real and immaterial on truth, C.6's hold on it closes `NO_CHANGE`, and the retry trigger is a game record where the term misjudged a pawn race. Either way the lazy-gate interaction is recorded for C.8.
+- **Result:** pending.
+- **Artifacts / commits:** `2fc1491`, `379a7d5`; `analysis/artifacts/c6/` (ignored storage).
