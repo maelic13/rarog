@@ -293,7 +293,6 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.1 | RESEARCH | R2 | Opened 2026-10-11 on `c5`: RAR-E33 registered (zero games): free passed pawns, unguarded by the defending bishop and king, as the knowledge one rule across the boundary needs; separation on Syzygy truth, one-rule fits by men region, then RAR-E27's conversion read as the veto |
 | C.5.3 | RESEARCH | I2 | After C.5.2 |
 | C.5.4 | RESEARCH | I2 | After C.5.2 |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
@@ -1115,7 +1114,7 @@ loss).
       +8 pawns by both engines' scores. Fingerprint 13,562,404 / EBF
       2.546. The rest of C.5.2's list closes without support from C.5.1's
       cut; C.5.2.1 stays open after C.4.
-        - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`.** Added
+        - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`, NO_CHANGE 2026-10-11.** Added
           2026-10-10 by maintainer decision, after C.4. C.5.2's split scales
           pure endings of seven men or more hard and keeps the head's rule at
           six or fewer, so one pawn exchange across the boundary can double
@@ -1131,6 +1130,15 @@ loss).
           conversion and drawn instruments and on held-out outcome loss.
           C.5.2's gate games (the hazard read) are its first evidence; it
           coordinates with C.5.6 (KBPPKB) and C.5.7 (KBPKB).
+          **Closed `NO_CHANGE` 2026-10-11 (RAR-E33):** free passed pawns
+          (no defending bishop or king on or guarding the path) separate
+          won from drawn about fourfold in KBP-KB (0.44 against 0.11 on
+          Syzygy truth), but one rule built on them is worse than the head
+          above the boundary (−3.5 ± 0.9% of held-out loss) and worse than
+          the plain count everywhere: static control misses tempo. The
+          split stays; C.5.2's gate measured its boundary incentive as
+          small. Retry trigger: a KBPPKB or KBPKB recogniser with
+          reachability (C.5.6, C.5.7), then one rule refitted above it.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k

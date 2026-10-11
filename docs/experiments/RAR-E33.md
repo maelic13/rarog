@@ -32,7 +32,29 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   5. The conversion read: a scratch build of the selected rule. It replaces both regimes for pure endings with pawns, and the pieces cohort and the pawnless cases are unchanged. A plain release build of each arm (head and candidate) runs RAR-E27's `endgame_truth.py --per-position` (`KBP-KB,KBPP-KB,KBP-KBP`, 2,000 positions, 60,000 nodes, 100 plies, seed `0x5E9D18`, 14 workers) and `endgame_drawn.py` (the same families, 2,000 positions, 60,000 nodes, +100 cp). They are paired on opposite-bishop clean wins with RAR-E27's `analyse.py` logic. **The veto:** conversion within two standard errors of the head's in every family with at least 25 such wins.
   - Nothing is added after the numbers are seen.
 - **Use of the readings (frozen):** passing the selection and the veto makes C.5.2.1 `READY_FOR_IMPLEMENTATION`, with the rule and its constants as the handoff. The implementation and its gate (RAR-E29's design: an opposite-bishop cohort SPRT `[0,10]` on the same book, plus a 2,000-game STC harm read) are a separate registration. Failing either closes C.5.2.1 `NO_CHANGE` for this mechanism: the split stays, and the retry trigger is C.5.6 or C.5.7 building KBPPKB or KBPKB recognisers.
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
+- **Result (run 2026-10-11, once each, after the registration commit `f9a86b8`):**
+  - *Separation* (`separation.json`; the 2,973 opposite-bishop positions, White with the extra pawn; won / n):
+    - KBP-KB: passer free **194/439 (0.44)**, not free **59/518 (0.11)**; bishop-free 0.39 against 0.12.
+    - KBP-KBP: free 0.42 against 0.06.
+    - KBPP-KB: two free **207/228 (0.91)**, one free 401/495 (0.81), none **146/289 (0.51)**. By file distance between the pawns: 0 files 0.61, 1 file 0.71, 2 files 0.64, 3 or more 0.83.
+  - *Rule fits* (`rule.json`; 72,904 training and 4,097 held-out pure rows), gain against the head's two-regime rule in percent of its squared error:
+
+    | Form | Fitted (a, b, c) | All | ≤ 6 men (637) | ≥ 7 men (3,460) |
+    |---|---|---:|---:|---:|
+    | count (reference) | (0, 2, 9) | +9.62 ± 0.81 | +56.52 ± 4.05 | −0.13 ± 0.24 |
+    | free | (14, 2, 13) | +6.40 ± 1.13 | +54.20 ± 4.45 | **−3.54 ± 0.90** |
+    | bishop-free | (13, 2, 6) | +5.10 ± 1.06 | +53.22 ± 4.27 | **−4.89 ± 0.81** |
+
+    Free against count: −3.57 ± 0.83 over all rows, −5.36 ± 2.90 at six men or fewer, −3.40 ± 0.86 at seven or more. Free against bishop-free: +1.36 ± 0.45 over all rows.
+  - Steps 4 and 5 (the static drawn read, the scratch build and the conversion read) were **not run**: the selection stopped the order, as registered.
+- **Disposition:** **no form selected; C.5.2.1 closes `NO_CHANGE` on this mechanism.** Each free form gains below the boundary but is worse than the head above it by more than two standard errors (3.9 and 6.0). H1 is refuted in its rule clause, while its separation clause holds in part. Freedom from the defending bishop and king does separate won from drawn, about fourfold in KBP-KB, but it predicts the outcome worse than the plain passer count at every men count, so it is not the knowledge one continuous rule needs. Competing (1) (tempo: 56% of free-passer KBP-KB positions are still drawn) and (4) (above the boundary the free count carries less than the count) are supported; (2) is supported in its weak form (bishop-free is close to free, 1.4 points worse). The split rule stays. RAR-E29's hazard read found the boundary incentive small (280 against 260 first crossings, not more drawn). **Retry trigger:** C.5.6 (KBPPKB) or C.5.7 (KBPKB) builds a recogniser that decides the six-man region with reachability, not static control; then a single rule above it can be refitted. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 4 above.
+  - Observed:
+    - (1) first clause **miss** by a hair (0.44 against the 0.45 line; the 0.15 side held at 0.11); second clause hit (0.91 and 0.51); third clause hit (0.83 against 0.61 and 0.71).
+    - (2) first clause hit below the boundary but above the band (+54.2 against [+8, +45]) and **miss** above it (−3.54 against ±2); second clause **miss** (free worse than count by 5.4).
+    - (3) and (4) were not reached.
+  - Which assumption failed: I took a feature that *separates* outcomes for one that *predicts them better than the count*. The count already carries most of what static control adds, because passers that exist in a game are mostly ones the defender is already stopping or is about to. The static snapshot misses tempo, and above the boundary it throws away passers the count rightly keeps. The miss is in mechanism, plus magnitude below the boundary, where the old rule's error is larger than I assumed.
+- **Conditional lesson:** read a candidate feature against the incumbent feature, not against nothing; a fourfold separation can still lose to a coarser count.
+- **Retry trigger or `closed`:** closed `NO_CHANGE`; retry as above.
 - **Artifacts / commits:** `fe8286c` (the instrument and its tests); `analysis/artifacts/c521/` (ignored storage): the dumps, `verify.json`, `census.json`, `source.txt`, and the reports once run.
