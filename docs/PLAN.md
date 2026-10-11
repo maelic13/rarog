@@ -293,7 +293,7 @@ they open.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.4 | RESEARCH | I2 | After C.5.2 |
+| C.5.4 | RESEARCH | I2 | Opened 2026-10-11: its residual step, RAR-E36 (zero games), re-reads the drawn-cohort overclaim (census v1's cohorts), the wins against Stockfish at 60k/200k/600k, and a won-against-drawn separation on Syzygy truth; a family overclaiming 50% or more continues into a scale candidate with conversion, win-preservation and transition vetoes |
 | C.5.5 | RESEARCH | R2 | After C.5.2 |
 | C.5.6 | RESEARCH | R2 | After C.5.2 |
 | C.5.7 | RESEARCH | I1 | After C.5.2 |
