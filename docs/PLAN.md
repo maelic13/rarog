@@ -1232,10 +1232,15 @@ loss).
       KBNK anchor stand until C.5's ranking says the family's 0.2% of
       games is worth 5 MB per process; if it is, this is the shape to
       build, behind the recogniser dispatcher.
-    - **C.5.8 Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — `V`.** One endgame-start cohort SPRT
-      plus one STC SPRT for the whole C.5 cluster after its refit; floors and
-      theory vetoes re-run; conversion instrument re-measured; KRPPKRP's 7-man
-      hold recorded as an explicit exclusion unless independent truth appears.
+    - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
+      measurement checkpoint that closes C.5, not a cluster strength gate
+      (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
+      and C.5.2.1 and C.5.3 closed `NO_CHANGE`, so a cluster SPRT would gate
+      nothing unless C.5.4 to C.5.7 land a change, and a change that lands
+      carries the gate its own registration names. The checkpoint re-reads
+      the game-level conversion instrument on the head that closes C.5,
+      re-runs the floors and the theory vetoes, and records KRPPKRP's
+      seven-man exclusion (decided in C.5.5's text, 2026-10-11).
 - **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality

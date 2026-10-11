@@ -48,7 +48,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [ ] **C.5.5** Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — **RESEARCH / R2**
     - [ ] **C.5.6** Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — **RESEARCH / R2**
     - [ ] **C.5.7** Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — **RESEARCH / I1**
-    - [ ] **C.5.8** Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — **RESEARCH / V**
+    - [ ] **C.5.8** Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — **RESEARCH / V**
 - [ ] **C.6** Pawns and passers cluster; refit; gate — **RESEARCH / I2**
 - [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **RESEARCH / I2**
 - [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **RESEARCH / V**
