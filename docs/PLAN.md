@@ -297,6 +297,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | C.6.4 | READY_FOR_IMPLEMENTATION | I2 | Next: RAR-E41 (2026-10-11) found our king's block-square distance and weak unopposed pawns carry the residual; the handoff, with RAR-E40's square rule, is frozen in `analysis/c6_pawns_passers_2026-10-11.md` |
 | C.6.5 | RESEARCH | V | After C.6.4: refit, screens, tree and NPS reads, PGO bake, gate-1 registration |
 | C.6.6 | RESEARCH | V | After gate 1 |
+| C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1173,6 +1174,25 @@ loss).
           passers in one rule at every men count, which nests the count
           and cannot reintroduce a boundary (RAR-E33's addendum; the
           below-boundary column rests on 637 rows, about ±4 points).
+        - **C.5.2.2 The opposite-bishop boundary hazard: the two-regressor read, and one rule replacing the split if it holds — `R2`.** Added
+          2026-10-11 by maintainer request, so GUIDE's hold has a step that
+          discharges it. C.5.2's split scales pure endings of seven men or
+          more hard and keeps the old rule at six or fewer; RAR-E29 measured
+          the incentive across that boundary as small (280 against 260 first
+          crossings, not more drawn) and RAR-E33 closed the free-passer fix.
+          **When:** after C.6 and before C.8, so a rule that replaces the
+          split is fitted in C.8's refit rather than in a refit of its own.
+          **What:** zero games first, registered before any fit: the
+          two-regressor form `s = clamp(a + b·pawns + c·passers + d·free,
+          0, 48)`, one rule at every men count, fitted on RAR-E33's training
+          dump and read on its held-out rows against the head's split, above
+          and below the boundary, by `ocb_free_passers.py`'s method. If it
+          is no worse than the split above the boundary (within two standard
+          errors) and better below it (three standard errors), it is built
+          (`I2`), checked on RAR-E27's conversion instrument, and gated as
+          C.5.2 was (RAR-E29's cohort SPRT design and an STC harm read);
+          otherwise the hold closes on RAR-E29's measurement, with the retry
+          trigger a game record showing a cost at the boundary.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
@@ -1526,6 +1546,31 @@ loss).
       of non-won moves at `3+0.03` and 1.8% at `10+0.1`; time past the
       optimum is 31.4% and 19.7% of all head time; and a started iteration
       always completes.
+
+      D.1.2 is carried out in three addenda (added 2026-10-11 by maintainer
+      request, so the two GUIDE holds it owns have steps that discharge
+      them), gated together by D.1.2.3's SPRT:
+        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.** First
+          in D.1, after Phase C; earlier if RAR-R13's trigger fires (a game
+          record shows a cost). Reproduce each with the timed probe
+          (`tm_rec_probe.py`) on the head D.1 starts from, fix it inside the
+          bound model (an end inside an iteration after a fail-high past the
+          soft target; a stop on a proved, stable mate), and show the probe
+          with no move at the hard maximum and `tm_games.py`'s won and mate
+          shares at ≥ 0.9 × the maximum below their Phase C values (above).
+        - **D.1.2.2 The forfeit margin against OS holds — `R2`.** The
+          three gate time losses since 2026-10-10 (RAR-E29 round 3068,
+          RAR-E32 rounds 1777 and 1855) each came on a short search whose
+          process the OS held for 88.0, 82.4 and 69.4 ms with deadlines of
+          89.2, 69.9 and 75.0 ms. Measure the hold distribution on this host
+          from the gates' own `failed-games` and per-move timing records,
+          then decide the engine's minimum move reserve at low clock (and
+          whether the harness's 20 ms margin should change, a maintainer
+          decision recorded in PROCESS) so that a hold of that size does not
+          forfeit; a deterministic test with an injected delay checks it.
+        - **D.1.2.3 The audit and the bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier; one SPRT `[0,3]` for D.1.2 — `R2`, then `V`.** The
+          rest of D.1.2 as written above, with D.1.2.1 and D.1.2.2 inside
+          the one gated change.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
