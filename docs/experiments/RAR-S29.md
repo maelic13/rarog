@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [
 
 ## Experiment and conditions
 
-Phase-4.3a **arm A**, `EvalPruneTtMinDepth=1` — denying depth-0 entries the right to refine the main-search pruning eval. Same registered design as RAR-S27, repo `adf3f22`, one `rarog-43a-tune.exe` both sides.
+Phase-4.3a **arm A**, `EvalPruneTtMinDepth=1` — denying depth-0 entries the right to refine the main-search pruning eval. Same registered design as RAR-S27, one `rarog-43a-tune.exe` both sides.
 
 ## Result / disposition
 

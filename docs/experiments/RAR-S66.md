@@ -6,7 +6,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Part 1
 
-**SUPERSEDED by B.2, never run (B.1, 2026-09-14): the switch or parameter this arm needed was removed as inert; its question is answered inside B.2's cluster and SPSA or not at all, no retry trigger.** **Audit finding 2 — `improving` loses its fallback after a check. REGISTERED, NOT YET RUN.** When the node two plies back was in check its `static_eval` is `VALUE_NONE`, so `improving` is forced false regardless of the real trend. There is no walk-back to `ply - 4`. The candidate adds one. Arm A `rarog-46improving` `b517991`, bench **6,969,327 / EBF 2.459**. Arm B `rarog-46base` `e2fd4e0`, bench **7,467,143 / EBF 2.477** — the accepted head. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[0,3]` nElo, cap 60,000, fixed before any games.**
+**SUPERSEDED by B.2, never run (B.1, 2026-09-14): the switch or parameter this arm needed was removed as inert; its question is answered inside B.2's cluster and SPSA or not at all, no retry trigger.** **Audit finding 2 — `improving` loses its fallback after a check. REGISTERED, NOT YET RUN.** When the node two plies back was in check its `static_eval` is `VALUE_NONE`, so `improving` is forced false regardless of the real trend. There is no walk-back to `ply - 4`. The candidate adds one. Arm A `rarog-46improving`, bench **6,969,327 / EBF 2.459**. Arm B `rarog-46base`, bench **7,467,143 / EBF 2.477** — the accepted head. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[0,3]` nElo, cap 60,000, fixed before any games.**
 
 ## Part 2
 

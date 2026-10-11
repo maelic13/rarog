@@ -1,10 +1,10 @@
-# RAR-P21 — A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10 (`1bf8171`)
+# RAR-P21 — A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-**A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10 (`1bf8171`).** `cc` compiles `vendor/fathom/src/tbprobe.c`, and `build.rs` hands it a tier-dependent `TB_NO_HW_POP_COUNT` derived from `CARGO_CFG_TARGET_FEATURE`; mis-handling that define is how the 2.3.0 and 2.3.1 baseline assets shipped **15 illegal `popcntq`**, so a `cc` bump is a build-contract change and not a version number. Manifest floor raised `cc = "1.3"` -> `"1.4"` so it tracks what has been verified rather than what merely resolves; `find-msvc-tools` follows 0.1.9 -> 0.1.12. The bump also exposed an **A.3.1 oversight**: `Cargo.toml` asserted in a comment that MSRV is kept in lockstep with `rust-toolchain.toml`, but the toolchain moved to 1.98.1 while `rust-version` stayed at `1.97` - visible because cargo reported "Locking 2 packages to latest Rust 1.97 compatible versions". Corrected to `1.98`; it changed nothing here (1.4.5 is latest under either floor) but the asserted invariant was false. Hosts: 5950X Windows x86-64 and the MacBook Air M4, both on `rustc 1.98.1`.
+**A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10.** `cc` compiles `vendor/fathom/src/tbprobe.c`, and `build.rs` hands it a tier-dependent `TB_NO_HW_POP_COUNT` derived from `CARGO_CFG_TARGET_FEATURE`; mis-handling that define is how the 2.3.0 and 2.3.1 baseline assets shipped **15 illegal `popcntq`**, so a `cc` bump is a build-contract change and not a version number. Manifest floor raised `cc = "1.3"` -> `"1.4"` so it tracks what has been verified rather than what merely resolves; `find-msvc-tools` follows 0.1.9 -> 0.1.12. The bump also exposed an **A.3.1 oversight**: `Cargo.toml` asserted in a comment that MSRV is kept in lockstep with `rust-toolchain.toml`, but the toolchain moved to 1.98.1 while `rust-version` stayed at `1.97` - visible because cargo reported "Locking 2 packages to latest Rust 1.97 compatible versions". Corrected to `1.98`; it changed nothing here (1.4.5 is latest under either floor) but the asserted invariant was false. Hosts: 5950X Windows x86-64 and the MacBook Air M4, both on `rustc 1.98.1`.
 
 ## Result / disposition
 

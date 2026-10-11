@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [
 
 ## Experiment and conditions
 
-Phase-4.3c gate preparation and independent verification of the landed implementation. Baseline `d00e1ac`, candidate `1dc4bc6`, three clean-manifest PGO builds per arm on an idle 5950X; median-NPS build selected per side. **Then:** Phase-4.3c implementation candidate: persist one speculative TT bit by reducing age 5→4 bits, store the actual ProbCut fail-high and deny that class only at singular seeding. Non-PGO release/diag `bench 13`, 1T; baseline `d00e1ac`.
+Phase-4.3c gate preparation and independent verification of the landed implementation. Three clean-manifest PGO builds per arm (baseline and candidate) on an idle 5950X; median-NPS build selected per side. **Then:** Phase-4.3c implementation candidate: persist one speculative TT bit by reducing age 5→4 bits, store the actual ProbCut fail-high and deny that class only at singular seeding. Non-PGO release/diag `bench 13`, 1T; baseline.
 
 ## Result / disposition
 

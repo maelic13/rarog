@@ -1,6 +1,6 @@
 # SEE exchange repair — RAR-M28 / 4.11b.5
 
-Completed 2026-09-07 against `e954e38`; engine/test commit `fce0b44`.
+Completed 2026-09-07.
 Measurements and artifact names retain their 2026-09-06 collection date. This supersedes
 the unresolved-defect status in RAR-M27, not its historical observations.
 All three named debt tests are now active and pass. No value tuning, HCE
@@ -106,7 +106,7 @@ copy, so no additional rebuild was needed after detecting the invocation error.
 `analysis/artifacts/see-repair-20260906/` contains commands and direct statuses,
 full test logs, the valid bench transcript, compiler/features/source/binary
 identity, file hashes, and `engine.patch.gz` (exact engine diff against
-`e954e38`, recoverable with Python `gzip.decompress`). The production SHA-256
+the baseline, recoverable with Python `gzip.decompress`). The production SHA-256
 is `C87F0063983C32ADE8EE771EB89C2D50DD32921653772F1B9B02FEA6C98F2347`.
 Use the committed repair or apply the archived diff to that baseline; do not
 copy another engine's SEE values. From the repository root:

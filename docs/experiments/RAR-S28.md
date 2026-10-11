@@ -1,10 +1,10 @@
-# RAR-S28 — Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? `47f3ac6` versus `1cf9c51`, **three …
+# RAR-S28 — Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? Refactor versus its parent, **three …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? `47f3ac6` versus `1cf9c51`, **three independent PGO builds per arm** (all six SHA-distinct), pooled and interleaved, `bench 13 3`, 10 cycles per direction, idle 5950X. Run in BOTH directions to cancel the estimator's slot bias.
+Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? Refactor versus its parent, **three independent PGO builds per arm** (all six SHA-distinct), pooled and interleaved, `bench 13 3`, 10 cycles per direction, idle 5950X. Run in BOTH directions to cancel the estimator's slot bias.
 
 ## Result / disposition
 
@@ -16,4 +16,4 @@ Under these conditions the eager per-node `NodeEvidence` construction did not co
 
 ## Source
 
-`47f3ac6`; `1cf9c51`; `tools/nps_multibuild.ps1`
+`tools/nps_multibuild.ps1`

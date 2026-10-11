@@ -6,7 +6,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Part 1
 
-**Phase-4 step 4.7a — null-move entry contract, PREPARED AND HELD.** Candidate branch `p47a-nmp-entry` at `76e72bb`, baseline `dev` `090dedc`. Replaces Rarog's single relaxed entry test `nmp_eval >= beta − 12·depth − 35·improving` (which at depth 8 admits nodes ~131 cp below beta) with a hard `nmp_eval >= beta` primary gate, re-homing the old margin onto raw `static_eval` as a secondary floor so both tuned parameters stay live. Measured on the 4.2 suite, 50 positions, depth 8, against the identical baseline reading.
+**Phase-4 step 4.7a — null-move entry contract, PREPARED AND HELD.** Candidate branch `p47a-nmp-entry`, baseline `dev` of that time. Replaces Rarog's single relaxed entry test `nmp_eval >= beta − 12·depth − 35·improving` (which at depth 8 admits nodes ~131 cp below beta) with a hard `nmp_eval >= beta` primary gate, re-homing the old margin onto raw `static_eval` as a secondary floor so both tuned parameters stay live. Measured on the 4.2 suite, 50 positions, depth 8, against the identical baseline reading.
 
 ## Part 2
 

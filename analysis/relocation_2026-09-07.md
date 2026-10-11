@@ -2,7 +2,7 @@
 
 ## Prospective registration
 
-This is a behavior-neutral board-throughput candidate against `af83abf` on
+This is a behavior-neutral board-throughput candidate against its baseline on
 `dev`. The baseline no-feature executable is
 `fde1ed0edf2658f487d9959784dbe3634ee830347153feb80f940b8b38bf59a4`.
 Only ordinary `QUIET` make/unmake relocations change: mailbox endpoints, the
@@ -64,7 +64,7 @@ transcripts and recipes remain in ignored `tools/results/relocation-411b9/`.
 
 
 **Disposition: the frozen retention rule rejects the candidate. The production
-path is withdrawn; `src/` is byte-identical to `af83abf`.** The targeted
+path is withdrawn; `src/` is byte-identical to the baseline.** The targeted
 relocation test is retained because it covers baseline behaviour that no
 existing test reached. No games, no Elo claim, no adjacent optimization.
 
@@ -190,7 +190,7 @@ the 7,601,220 / EBF 2.474 fingerprint.
 
 # Re-measurement — RAR-M33, 2026-09-07 — **ACCEPTED**
 
-Integrated in `5c439da`. Behaviour-neutral, so no playing gate is owed;
+Integrated. Behaviour-neutral, so no playing gate is owed;
 cluster playing qualification remains 4.11b.17.
 
 ## Prospective registration — frozen 22:56, before any build or timing

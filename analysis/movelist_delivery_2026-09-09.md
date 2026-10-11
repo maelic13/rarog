@@ -92,12 +92,12 @@ python tools/results/board-copy-probe-20260909/ab.py
 
 Directory contents: `probe.diff`, `ab.py`, `ab.log`, `ab_result.json`,
 `board-base.exe`, `board-variant.exe`, `binaries.sha256`, build logs,
-`README.txt`. Base SHA-256 `a64057a1…`, variant `ddb78137…`. Source `c1a7713`
+`README.txt`. Base SHA-256 `a64057a1…`, variant `ddb78137…`. Source: the base revision
 plus `probe.diff`. Ignored directory; not in Git.
 
 ## Implementation and the registered production measurement (2026-09-09)
 
-Committed as `021dc98` (engine) and `55e228a` (harness); recorded in PLAN
+Committed as an engine commit and a harness commit; recorded in PLAN
 4.11b.19 and RAR-M44. One deviation from the registered caller list, reported
 rather than taken silently: **ProbCut's capture generation** reached the same
 copy through `Board::generate_legal_captures` and was converted with the rest.
@@ -115,7 +115,7 @@ wrappers, so a clean line is a measurement and not an absent pattern. `bench
 
 | Arm | pooled median n/s |
 |---|---:|
-| base (`f10b999`, three PGO builds) | 3,142,298 |
+| base (three PGO builds) | 3,142,298 |
 | cand (head, three PGO builds) | 3,220,173 |
 
 **+2.48% whole-search NPS, 95% bootstrap [+2.29%, +2.65%]**; best-of +2.81%.

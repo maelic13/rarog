@@ -23,8 +23,7 @@ being played and can still make this release if it passes its checks.
   `check_guide.py` adapted to lettered phases; AGENTS and PROCESS references
   updated.
 - **A.2 Repository and branch cleanup.**
-    - **A.2.1 Tracked-file cleanup — DONE 2026-09-09.** Removed, all last
-      present at `6fa6731`: the 4.11.7 study runners (`archive_4117.py`,
+    - **A.2.1 Tracked-file cleanup — DONE 2026-09-09.** Removed: the 4.11.7 study runners (`archive_4117.py`,
       `run_4117_registered.py`, `summarize_4117.py`; RAR-M21's outputs are
       archived locally), `run_board_search_profile_411b7.ps1` (one remote
       measurement; the reusable ETW capture and summarizer stay),
@@ -47,9 +46,9 @@ being played and can still make this release if it passes its checks.
       are intact; only the record was wrong. That DLL carries the **2.3.2**
       evaluation (built 2026-08-11) and must not be used for A.8.3. Tags `oracle/hybrid`
       (75d0d43), `oracle/hybrid-diag` (2682f64), `oracle/hybrid-ablate`
-      (984f478), `arm/p410-jitter-1t` (e7965b9), `arm/p410-lmr-relief`
-      (5dbeb52), `arm/p410-margin-relief` (e950f03) and `arm/p46-root-relief`
-      (2a64941) were created and pushed; the seven branches were deleted
+      (984f478), `arm/p410-jitter-1t`, `arm/p410-lmr-relief`,
+      `arm/p410-margin-relief` (e950f03) and `arm/p46-root-relief`
+      were created and pushed; the seven branches were deleted
       locally and on `origin`, and three stale worktrees (a temporary
       `hybrid-ablate` checkout, `target/411b7-probe-work`,
       `D:/code/rarog-411b8-baseline`) were removed. Only `master` and `dev`
@@ -92,7 +91,7 @@ being played and can still make this release if it passes its checks.
   labels and the board cluster are all gated individually. The version follows
   the release rule in section 4: 2.4.0 if the registered STC gate's point
   estimate is at least +40 with the lower bound above +25, else 2.3.3.
-    - **A.3.1 Toolchain bump, behaviour-neutral — DONE 2026-09-09 (`ca8988a`),
+    - **A.3.1 Toolchain bump, behaviour-neutral — DONE 2026-09-09,
       RAR-P18.** `rust-toolchain.toml` moved from 1.97.1 to 1.98.1
       (`48a229cea`), with no experiment in flight and before RAR-E16's binaries
       exist. Every done criterion met: fingerprint 7,601,220 / EBF 2.474 exact
@@ -104,7 +103,7 @@ being played and can still make this release if it passes its checks.
       instrument cannot separate the compiler from per-build profile luck.
       **Of the two obligations this bump created, one is now paid.** RAR-P08's
       `rust-lld` Windows ARM64 PGO workaround was re-verified on 1.98.1 by
-      **RAR-P19** (2026-09-10, `ef9c6ae`): the workaround still links, and
+      **RAR-P19** (2026-09-10): the workaround still links, and
       `verify-isa` passed on an ARM64 PGO asset for the first time, on both a
       Windows ARM64 and a macOS ARM64 host, with the fingerprint matching
       x86-64 on both. **Discharged 2026-09-11:** the A.9 squash to `master` ran the CI
@@ -193,10 +192,10 @@ being played and can still make this release if it passes its checks.
       thread while parsing `go` (Stockfish `limits.startTime`, Reckless
       `TimeManager::new`); Rarog stamped it on the engine thread after the
       command hand-off and configuration invalidation, so that latency under a
-      loaded host was invisible to its budget. Repair `79d3974`: the clock
+      loaded host was invisible to its budget. Repair: the clock
       starts when `go` is parsed (`SearchLimits.issued`), with a test that a
       search issued past its budget returns at once. An interim throttle of
-      `info` output (`d93f808`) was reverted at `e3430d9`: neither donor
+      `info` output was reverted: neither donor
       throttles and the reproduction behind it measured the driver's own
       per-line lag. Bench-invisible by construction and reproduced at
       7,601,220 / EBF 2.474 on both slider backends; 567 tests, fmt and clippy
@@ -238,7 +237,7 @@ being played and can still make this release if it passes its checks.
   identical bench, so each leaf below also names the targeted check for the
   behaviour it actually touches.
     - **A.4.1 `cc` bump and Fathom build verification — DONE 2026-09-10
-      (`1bf8171`), RAR-P21.** `cc` 1.3.0 -> 1.4.5 and the manifest floor to
+     , RAR-P21.** `cc` 1.3.0 -> 1.4.5 and the manifest floor to
       `"1.4"`; `verify-isa` holds on `base`, `avx2`, `pext`, `pext --pgo` and
       macOS `arm64 --pgo`, with **base at `popcnt 0`**; fingerprint
       **7,601,220** on all three x86 tiers; debug 283 and release 284 tests
@@ -272,7 +271,7 @@ being played and can still make this release if it passes its checks.
       `--all-features --all-targets` at zero warnings; the macOS question
       answered on the ARM64 compatibility host. A dependency change ships in
       its own commit, apart from tooling and documentation.
-    - **A.4.2 CPU advisory at startup — DONE 2026-09-10 (`e66bb51`).**
+    - **A.4.2 CPU advisory at startup — DONE 2026-09-10.**
       Implemented in `src/cpu_advice.rs`. **No new `unsafe` after all** —
       `__cpuid` requires no `target_feature`, so it is a safe function on the
       pinned toolchain and the unsafe floor is untouched; the leaf had assumed
@@ -333,7 +332,7 @@ being played and can still make this release if it passes its checks.
       Zen 2 in the slow-PEXT row, and **removes a claim A.4.2 had just made
       false**: the README said the engine "cannot reliably detect this about
       itself", which A.4.2 made true only of the crash case. The agent's draft
-      split the two cases explicitly; the maintainer's prune (`f5a96e9`) deleted
+      split the two cases explicitly; the maintainer's prune deleted
       the passage instead, reaching the same end - no false claim survives - by
       a shorter route. The crash guidance it also carried still stands in the
       asset table's "Use when" column. Checked
@@ -346,7 +345,7 @@ being played and can still make this release if it passes its checks.
       be told to take `avx2`, not `pext` — so the guidance exists in writing
       even for someone who never sees A.4.2's startup line. Documentation only;
       no build, no engine change.
-    - **A.4.5 Engine argument handling — DONE 2026-09-10 (`63843f5`).**
+    - **A.4.5 Engine argument handling — DONE 2026-09-10.**
       Arguments now run through the same dispatch stdin uses; the loop body
       became `handle_command`, returning a `CommandOutcome` so a caller knows
       whether to keep reading and what to exit with. The load-bearing detail is
@@ -369,7 +368,7 @@ being played and can still make this release if it passes its checks.
       unchanged at 7,601,220 via stdin, an argv invocation now doing what it
       says, and the UCI handshake unaffected — a GUI passes no arguments and
       must see byte-identical behaviour.
-- **A.5 Conversion instrument — DONE 2026-09-10 (`208e06c`), RAR-M47.**
+- **A.5 Conversion instrument — DONE 2026-09-10, RAR-M47.**
   `tools/diag/conversion_audit.py` reads **PGN**, not Colosseum's database:
   the seed's dependency on one program's schema on one machine is replaced by
   `export_tournament_pgn.py`, which is now the only tool that knows that
@@ -395,8 +394,8 @@ being played and can still make this release if it passes its checks.
   re-run at every programme checkpoint; it is a diagnostic layer, never an
   acceptance layer.
 - **A.6 Codebase consolidation analysis — DONE 2026-09-10, `NO_CHANGE` to
-  source.** `analysis/consolidation_2026-09-10.md` inventories the crate at
-  `7cffce5` (24,641 lines; `search.rs` 6,319 with a 1,684-line `negamax`
+  source.** `analysis/consolidation_2026-09-10.md` inventories the crate
+  (24,641 lines; `search.rs` 6,319 with a 1,684-line `negamax`
   and 1,031 lines of in-file tests; `eval.rs` 3,756 with 137 `eval_params!`
   entries) and decides that **Phase A refactors nothing**: every candidate
   sits in a file B.1 or C.1 splits, so moving it now would be qualified
@@ -441,7 +440,7 @@ src/uci/…                  protocol, options, engine loop
 src/diag.rs                counters (feature `diag`)
 ```
 
-- **A.7 Version bump to 2.4.0 — DONE 2026-09-10 (`c6a548f`).** `Cargo.toml` to
+- **A.7 Version bump to 2.4.0 — DONE 2026-09-10.** `Cargo.toml` to
   `2.4.0`, the `rust-version` line kept in lockstep with `rust-toolchain.toml`, and
   `CHANGELOG.md` opened for the release from the accepted ledger rows since
   2.3.2 (RAR-E16 +54.77 ± 17.04 licenses 2.4.0 under the section 4 rule; the

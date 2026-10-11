@@ -6,7 +6,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
 
 ## Part 1
 
-**A.3.3 harness reserve: `Move Overhead` 40 against 10 on the same binary - RUN 2026-09-10, REJECTED at -80.85 Elo.** `rarog-r11cand-pext-pgo.exe` (`5073e37`) on both sides, arm A `option.Move Overhead=40`, arm B the default 10; `tools/sprt.ps1 -Mode fixed -Games 10000 -NoAdjudication`, `3+0.03`, 1T, Hash 64, paired UHO, concurrency 14 with affinity, `timemargin` 20 ms. Runs in the 2026-09-09 night script after RAR-R11. Why: the reconstructed forfeits are 50-500 ms stalls; the engine now counts pre-search latency (RAR-R11) but a stall that lands mid-search is visible to no engine, and Basilisk, which has counted dispatch latency since its Step 5.4, still forfeits at the same rate. The reserve is the only lever left, and it is a harness/profile setting, not an engine change.
+**A.3.3 harness reserve: `Move Overhead` 40 against 10 on the same binary - RUN 2026-09-10, REJECTED at -80.85 Elo.** `rarog-r11cand-pext-pgo.exe` on both sides, arm A `option.Move Overhead=40`, arm B the default 10; `tools/sprt.ps1 -Mode fixed -Games 10000 -NoAdjudication`, `3+0.03`, 1T, Hash 64, paired UHO, concurrency 14 with affinity, `timemargin` 20 ms. Runs in the 2026-09-09 night script after RAR-R11. Why: the reconstructed forfeits are 50-500 ms stalls; the engine now counts pre-search latency (RAR-R11) but a stall that lands mid-search is visible to no engine, and Basilisk, which has counted dispatch latency since its Step 5.4, still forfeits at the same rate. The reserve is the only lever left, and it is a harness/profile setting, not an engine change.
 
 ## Part 2
 

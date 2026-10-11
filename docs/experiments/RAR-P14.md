@@ -8,7 +8,7 @@ Phase-4.8g: retest the Windows ARM64 PGO path on the pinned toolchain. PLAN 4.8 
 
 ## Result / disposition
 
-**PASSES — the last release-blocking unknown in 4.8 is cleared.** The instrumented binary trained, `llvm-profdata merge` accepted the profile (`Merging 1 profile file(s)`) and the optimised build linked to `rarog-v2.4.0-windows-arm64-pgo.exe`. Fingerprint **6,502,902 / EBF 2.449**, so **three platforms now agree exactly** — Windows x86-64, macOS ARM64 and Windows ARM64. ⚠ The ISA contract check did NOT run: `verify-isa` looked for the non-PGO asset name while the PGO one sat beside it (tool bug, fixed in `2b6d2c0`), so `prfm` presence on the Windows ARM64 asset is still owed as one command.
+**PASSES — the last release-blocking unknown in 4.8 is cleared.** The instrumented binary trained, `llvm-profdata merge` accepted the profile (`Merging 1 profile file(s)`) and the optimised build linked to `rarog-v2.4.0-windows-arm64-pgo.exe`. Fingerprint **6,502,902 / EBF 2.449**, so **three platforms now agree exactly** — Windows x86-64, macOS ARM64 and Windows ARM64. ⚠ The ISA contract check did NOT run: `verify-isa` looked for the non-PGO asset name while the PGO one sat beside it (a tool bug, since fixed), so `prfm` presence on the Windows ARM64 asset is still owed as one command.
 
 ## Conditional lesson and retry trigger
 

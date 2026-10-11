@@ -4,7 +4,7 @@ Indexed under *2. Measurement, harness and tuning* in [`docs/EXPERIMENTS.md`](..
 
 ## Experiment and conditions
 
-**Board audit and native three-engine comparison, 2026-09-05.** Rarog ca03a46; Basilisk d734766; Reckless 91b56c2 plus the complete benchmark-only adapter. Native optimized non-PGO builds, Ryzen 9 5950X, affinity mask 4; three cyclic rounds, 150ms warmup + 11x150ms per workload.
+**Board audit and native three-engine comparison, 2026-09-05.** Rarog, the development head of that day; Basilisk d734766; Reckless 91b56c2 plus the complete benchmark-only adapter. Native optimized non-PGO builds, Ryzen 9 5950X, affinity mask 4; three cyclic rounds, 150ms warmup + 11x150ms per workload.
 
 ## Result / disposition
 

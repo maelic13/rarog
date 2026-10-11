@@ -17,7 +17,7 @@ report: it must be listed there with zero activations, or the script fails.
 exactly once.
 
   python tools/texel/fit_manifest.py --defaults <vector.txt> \\
-      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v3.tsv
+      --feature-support <feature-support.txt> --out tools/texel/hce_fit_manifest_v4.tsv
 """
 from __future__ import annotations
 

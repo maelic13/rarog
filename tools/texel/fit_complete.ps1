@@ -15,7 +15,7 @@ param(
     [double]$LinearL2 = 0.0000001,
     # Every coefficient's status (free / fixed / excluded); the tuner reads
     # it at every stage. tools/texel/fit_manifest.py writes it.
-    [string]$FitManifest = "tools/texel/hce_fit_manifest_v3.tsv",
+    [string]$FitManifest = "tools/texel/hce_fit_manifest_v4.tsv",
     # Finish a run that stopped after its fit (tools/results/hce-fit-<stamp>):
     # its final vector is not refitted; verification and provenance run again
     # into a resume-<stamp> subdirectory, from the inputs the run recorded.

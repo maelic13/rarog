@@ -1,10 +1,10 @@
-# RAR-S23 — Phase-4.2 typed evidence refactor at `47f3ac6`: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers …
+# RAR-S23 — Phase-4.2 typed evidence refactor: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.2 typed evidence refactor at `47f3ac6`: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers typed, all 13 read sites routed through named capability predicates. Ryzen 9 5950X, non-PGO, debug+release+diag.
+Phase-4.2 typed evidence refactor: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers typed, all 13 read sites routed through named capability predicates. Ryzen 9 5950X, non-PGO, debug+release+diag.
 
 ## Result / disposition
 
@@ -16,4 +16,4 @@ Two conditional lessons. (a) Sampled counters taken at different node classes do
 
 ## Source
 
-`src/evidence.rs`; `47f3ac6`; Plan 4.2–4.3
+`src/evidence.rs`; Plan 4.2–4.3

@@ -191,7 +191,7 @@ Basilisk 1.9.1, so magnitudes are not comparable to the 2.3.2-era oracle rows.
 | [RAR-E15](experiments/RAR-E15.md) | Phase-4 step 4.11b.17 — integrated board cluster playing gate. ACCEPTED, H1 at 1,950 games | Registered bounds `[-5,5]` nElo, cap 16,000 games, Alpha/Beta 0.05, fixed before any games |
 | [RAR-M42](experiments/RAR-M42.md) | 4.11b.18 endgame evidence refresh after the accepted board head, COMPLETE 2026-09-09; section 4.11b CLOSED | Layer 1 clean, floors PASS both arms, 4.12 order verified UNCHANGED |
 | [RAR-M43](experiments/RAR-M43.md) | SUPERSEDED 2026-09-09 by RAR-M44(d); raw session retained | The control did not reproduce RAR-M20, which governs how everything else may be read |
-| [RAR-M44](experiments/RAR-M44.md) | 4.11b.19 research: move-list delivery probe, 2026-09-09; (a) and (b) IMPLEMENTED 2026-09-09 (`55e228a` … | Legal captures +40.52% |
+| [RAR-M44](experiments/RAR-M44.md) | 4.11b.19 research: move-list delivery probe, 2026-09-09; (a) and (b) IMPLEMENTED 2026-09-09 … | Legal captures +40.52% |
 | [RAR-M45](experiments/RAR-M45.md) | A.8.1 reference pool refresh with Houdini 3, 1T - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
 | [RAR-M46](experiments/RAR-M46.md) | A.8.2 four-thread pool against the four targets and Basilisk - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
 | [RAR-E16](experiments/RAR-E16.md) | A.3.2 consolidation release gate - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
@@ -209,7 +209,7 @@ boundary; both are dispositions, not accepted H0 claims.
 
 | ID | Experiment | Disposition |
 |---|---|---|
-| [RAR-S71](experiments/RAR-S71.md) | 4.6.2 SearchCore rewrite, registered before games at `43d5174` | Stopped manually before a boundary; rejected as the development route and reverted |
+| [RAR-S71](experiments/RAR-S71.md) | 4.6.2 SearchCore rewrite, registered before games | Stopped manually before a boundary; rejected as the development route and reverted |
 | [RAR-S72](experiments/RAR-S72.md) | 4.6.1 quiet SEE oracle screen | Stopped diagnostic null; candidate remains default-off |
 
 ### Search-oracle observations
@@ -229,6 +229,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-O03](experiments/RAR-O03.md) | A.8.3 oracle deficit meter G(0) on the release head - REGISTERED, NOT YET RUN | Prediction, frozen 2026-09-09 |
 | [RAR-O04](experiments/RAR-O04.md) | B.9 oracle deficit meter G(0) on the search head — REGISTERED 2026-10-03, before any game; PLAYED 2026-10-03 … | Played 2026-10-03 18:00:29–18:34:15 UTC |
 | [RAR-O05](experiments/RAR-O05.md) | C.0 evaluation meter at the start of Phase C: the same-search gap at equal nodes and at equal time — REGISTERED 2026-10-05, before any game; RUN 2026-10-05 | Observation: equal nodes +181.7 ± 19.0 (1,000 games), equal time +266.3 ± 19.9 (980 games, interrupted); the equal-node figure is Phase C's meter baseline |
+| [RAR-O06](experiments/RAR-O06.md) | C.3.6 same-search evaluation meter on the accepted C.3 evaluation: equal nodes, RAR-O05's conditions and seed, the DLL rebuilt from `master` `cc13320` — REGISTERED 2026-10-09, before any game; RUN 2026-10-09 | Observation: equal nodes +129.4 ± 17.1 (1,000 games), 52.4 ± 25.6 below RAR-O05's +181.7; inside the prediction's band (+145, [+110, +175]); Phase C's current meter, and at +100 or more C.4 opens as planned |
 
 ### Registered, open
 
@@ -289,17 +290,17 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-S17](experiments/RAR-S17.md) | Aspiration re-centering, verified mechanically against the tuned head | Rejected, −4.52 Elo |
 | [RAR-S18](experiments/RAR-S18.md) | Full FIDE-like draw/repetition bundle, then a reduced null-clock/fence variant | Rejected, −7.21 ± 6.03 and −11.91 ± 7.67 |
 | [RAR-S19](experiments/RAR-S19.md) | SEE pin-awareness verified against an independent legal-exchange oracle | Standalone rejected, −8.49 Elo |
-| [RAR-S20](experiments/RAR-S20.md) | Half-run aspiration SPSA snapshot `ba3170b` (`15/148/149/9/20/8/0`) versus clean `p1043-base` | Rejected by acceptance rule after manual stop |
+| [RAR-S20](experiments/RAR-S20.md) | Half-run aspiration SPSA snapshot (`15/148/149/9/20/8/0`) versus clean `p1043-base` | Rejected by acceptance rule after manual stop |
 | [RAR-S21](experiments/RAR-S21.md) | Phase-4.1 diagnostic `bench 13`, 1T, deterministic sampled interaction map on the retained 6,502,902-node … | Observation |
-| [RAR-S22](experiments/RAR-S22.md) | Phase-4.2 opening static audit of the TT producer/consumer graph at `f35bc09`, plus a re-run of RAR-S21's … | Observation |
-| [RAR-S23](experiments/RAR-S23.md) | Phase-4.2 typed evidence refactor at `47f3ac6`: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers … | Retained infrastructure, behaviour-neutral |
+| [RAR-S22](experiments/RAR-S22.md) | Phase-4.2 opening static audit of the TT producer/consumer graph, plus a re-run of RAR-S21's … | Observation |
+| [RAR-S23](experiments/RAR-S23.md) | Phase-4.2 typed evidence refactor: `OutcomeKind`/`NodeEvidence`/`MoveEvidence`, all 7 producers … | Retained infrastructure, behaviour-neutral |
 | [RAR-S24](experiments/RAR-S24.md) | Phase-4.2b shadow test at `7815054`: what a confidence/depth penalty on window-contradicting inexact bounds … | Observation, and it contradicts the hypothesis that motivated it |
-| [RAR-S25](experiments/RAR-S25.md) | Phase-4.3a provenance-hazard census at `d354d02`: can a consumer infer a producer from entry shape, given … | Observation; the absolute counts are exact but every PERCENTAGE below is provisional and biased low |
-| [RAR-S26](experiments/RAR-S26.md) | Phase-4.3a arm sizing at `8acfd22`: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth … | Diagnostic, not a verdict |
+| [RAR-S25](experiments/RAR-S25.md) | Phase-4.3a provenance-hazard census: can a consumer infer a producer from entry shape, given … | Observation; the absolute counts are exact but every PERCENTAGE below is provisional and biased low |
+| [RAR-S26](experiments/RAR-S26.md) | Phase-4.3a arm sizing: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth … | Diagnostic, not a verdict |
 | [RAR-S27](experiments/RAR-S27.md) | Phase-4.3a **arm A**, `EvalPruneTtMinDepth=2` versus the seeded 0 | Rejected by the registered acceptance rule after a manual stop at 23,044 games |
-| [RAR-S28](experiments/RAR-S28.md) | Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? `47f3ac6` versus `1cf9c51`, **three … | Retained: no measurable throughput cost |
+| [RAR-S28](experiments/RAR-S28.md) | Owed 4.2 throughput check: does the typed-evidence refactor cost NPS? Before versus after the refactor, **three … | Retained: no measurable throughput cost |
 | [RAR-S29](experiments/RAR-S29.md) | Phase-4.3a **arm A**, `EvalPruneTtMinDepth=1` — denying depth-0 entries the right to refine the main-search … | Rejected at formal H0 |
-| [RAR-S30](experiments/RAR-S30.md) | Phase-4.3a refinement shadow at `8822cf2`, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour … | Observation with important scope limits |
+| [RAR-S30](experiments/RAR-S30.md) | Phase-4.3a refinement shadow, sampled 1/1024 over `bench 13`, 1T diagnostic build, no behaviour … | Observation with important scope limits |
 | [RAR-S31](experiments/RAR-S31.md) | Phase-4.3a **arm B**, `SingularTtDepthMargin=2` versus 3 | H1 reached on the tune binary |
 | [RAR-S32](experiments/RAR-S32.md) | Build-transfer diagnostics for arm B on an idle 5950X: tune option and baked PGO fingerprints plus pooled NPS … | Both forms produced 6,100,099 nodes / EBF 2.437 |
 | [RAR-S33](experiments/RAR-S33.md) | Phase-4.3c gate preparation and independent verification of the landed implementation | Implementation verified; the gate carries a measurable speed headwind |
@@ -320,7 +321,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-S37](experiments/RAR-S37.md) | Phase-4.4c: potential-singularity guard, tightenable NMP material floor, and the double-extension margin as a … | Diagnostic |
 | [RAR-S36](experiments/RAR-S36.md) | Phase-4.4b guards landed inert and sized: NMP cut-node guard, NMP decisive-window guard, NMP … | Diagnostic, no strength claim |
 | [RAR-S35](experiments/RAR-S35.md) | Phase-4.4a switch sizing: five mechanisms landed inert, then each measured alone on `bench 13` (deterministic … | Diagnostic, no strength claim |
-| [RAR-S34](experiments/RAR-S34.md) | Phase-4.3c **gate result and cost attribution.** Gate: candidate `1dc4bc6` versus baseline `d00e1ac` … | Gate: not promoted — dead neutral |
+| [RAR-S34](experiments/RAR-S34.md) | Phase-4.3c **gate result and cost attribution.** Gate: candidate versus baseline … | Gate: not promoted — dead neutral |
 
 ## 4. Root search, time management and SMP
 
@@ -392,6 +393,13 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-E23](experiments/RAR-E23.md) | C.2 re-read of the donor-direction screen on `hce-v4-tb` validation rows, one Stockfish version for families and total — REGISTERED 2026-10-06, before the corpus exists; RUN 2026-10-07 | Observation: the ranking holds with B.9 labels: king +0.615% at seven men or more (next mobility +0.206), families +2.72 against the total +2.79; C.3 proceeds as frozen |
 | [RAR-E24](experiments/RAR-E24.md) | C.2 attribution baseline: the unchanged surface refitted on `hce-v4-tb`, gated by PROCESS's *Evaluation change under a fitted search* (gate 1 `[0,3]`, the `c2margin` block, gate 2; cap 20,000 pairs) — REGISTERED 2026-10-06, before any fit or game; fit run 2026-10-07; CLOSED 2026-10-08 | **Accepted, landed `1abeb46`** (12,351,448 / EBF 2.544): gate 1 H1 +31.0 ± 8.5 Elo (2,442 games; the flagged tree read sent it to the block); `c2margin` block 60,000 games (`LazyMargin` 600 → 414 the largest move); **gate 2 H1 +35.9 ± 9.3 Elo** (2,214 games); `10+0.1` +39.1 ± 12.9 (1,000 games); tuned against untuned margins +19.3 ± 9.3 (2,000 games) |
 | [RAR-E25](experiments/RAR-E25.md) | C.3 king-safety unit: the donor-shaped danger index, shelter and storm by file and rank, refitted on `hce-v4-tb`, gated by PROCESS's *Evaluation change under a fitted search* (gate 1 `[0,3]`, the `c3margin` block, gate 2; cap 20,000 pairs; the frozen test deferred, read after the games only if a gate fails) — REGISTERED 2026-10-08, before the fit or any game; CLOSED 2026-10-09 | **Accepted (gate 2), landed `dcef971`** (13,187,295 / EBF 2.546; reaches `master` with C.3's PR): king residual +0.538% → +0.086%; gate 1 H1 +34.2 ± 8.9 Elo (2,224 games); tree flag, `c3margin` block 60,000 games; **gate 2 H1 +32.7 ± 8.9 Elo** (2,450 games); `10+0.1` +24.4 ± 12.3 (1,000 games); tuned against untuned margins −0.9 ± 9.0 (2,000 games); KBP-K DTZ floor waived to C.5.6 |
+| [RAR-E26](experiments/RAR-E26.md) | C.5.1 opposite-bishop scale: Rarog's rule refitted against outcomes on `hce-v4-tb`, read on held-out rows and on Syzygy-labelled endings — REGISTERED 2026-10-09, before any loss was computed; RUN 2026-10-09 | Observation: the pure-cohort refit `s = 2·pawns + 10·passers` gains +21.0 ± 1.3% of that cohort's held-out loss (prediction +3.0, band to +8.0: a magnitude miss); pieces keep the head's rule; the win-preservation veto fired in KBP-KB and KBP-KBP, so the candidate is held for the maintainer |
+| [RAR-E27](experiments/RAR-E27.md) | C.5.2 opposite-bishop candidate at the search level: conversion of Syzygy-won KBP-KB, KBPP-KB and KBP-KBP, head against candidate — REGISTERED 2026-10-10, before either arm played the cohort; RUN 2026-10-10 | Observation: KBP-KB 253/253 in both arms, KBP-KBP holds, **KBPP-KB 732 → 717 of 754 (−2.55 SE)**: the candidate is not built; C.5.2 falls back to the seven-men split |
+| [RAR-E28](experiments/RAR-E28.md) | C.5.2 opposite-bishop scale, seven men or more: the pure rule refitted where no tablebase reaches, the head's rule kept at six or fewer — REGISTERED 2026-10-10, before the restricted fit was computed; RUN 2026-10-10 | Observation: `s = 1 + 2·pawns + 10·passers` gains +15.7 ± 1.4% of the seven-plus pure cohort's held-out loss (prediction +13, band [+7, +20]); C.5.2 builds it; the boundary hazard is read in C.5.2's gate |
+| [RAR-E29](experiments/RAR-E29.md) | C.5.2 gate: the opposite-bishop rule at seven men or more, an opposite-bishop endgame-start cohort SPRT `[0,10]` and a 2,000-game STC harm read — REGISTERED 2026-10-10, before any game; PLAYED 2026-10-10 | **Accepted:** cohort H1 at +12.7 ± 9.8 nElo (4,792 games), STC +8.3 ± 15.2 nElo (2,000 games); fingerprint 13,562,404 / EBF 2.546 |
+| [RAR-E30](experiments/RAR-E30.md) | C.4 residual step: the donor's threats and mobility families against the C.5.2 head on `hce-v4-tb` validation rows, the head's played score substituted into RAR-E23's donor rows — REGISTERED 2026-10-10, before any model was fitted; RUN 2026-10-10 | Observation: threats +0.107 ± 0.020% over all rows and +0.122 at seven men or more (signal; +0.197 without queens), mobility +0.048 (signal only in the opening band, +0.184 ± 0.044), king +0.079; C.4 stays open for a sub-term attribution of both; the opposite-bishop rule took 0.12 to 0.17 points of the donor's winnable direction |
+| [RAR-E31](experiments/RAR-E31.md) | C.4.2 sub-term attribution: the donor's threats components and its mobility under four area definitions, rebuilt offline from the FEN, verified against the printed rows on all 194,444 rows with zero mismatches, read as directions beside the head's score — REGISTERED 2026-10-10, before any model was fitted; RUN 2026-10-10 | Observation: the king threat (−0.108 and −0.100 points by removal in the endgame band and without queens) and the safe-square slider threat on the queen (−0.047 over all rows, −0.048 at seven men or more) carry the threats residual; the ungated family loses −0.062; separate weights add +0.092; the donor's mobility definition over Rarog's reads +0.144 ± 0.039 in the opening band, 3.7 standard errors against the registered four. Threats `READY_FOR_IMPLEMENTATION` with those two terms (C.4.3); mobility `NO_CHANGE` inside C.4 |
+| [RAR-E32](experiments/RAR-E32.md) | C.4.3 threats unit: the king threat and the safe-square slider threat on the queen, refitted on `hce-v4-tb`; static screens, tree and NPS reads, gate 1 `[0,3]` — REGISTERED 2026-10-10, before the fit, any screen and any game; FITTED AND SCREENED 2026-10-10 | Screens: threats +0.107 → +0.037% (no stop), no flag, NPS +2.57%, pieces +0.036; **gate 1 H1, +13.0 ± 5.3 Elo** (5,898 games); accepted, fingerprint 12,567,796 / EBF 2.535; margin block skipped; `10+0.1` +12.9 ± 12.2 (1,000 games) |
 
 ## 6. Throughput, build and platforms
 
@@ -411,10 +419,10 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-P24](experiments/RAR-P24.md) | B.1 search restructure, behaviour-neutral, COMPLETE 2026-09-14 | Fingerprint exact at every commit: 7,601,220 / EBF 2.474, 40/40 positions identical |
 | [RAR-P23](experiments/RAR-P23.md) | Windows ABI comparison for the shipped `pext` configuration - `msvc` versus `gnullvm` versus `gnu`. Ad-hoc … | NO MEANINGFUL DIFFERENCE; `msvc` retained, nothing changed |
 | [RAR-P22](experiments/RAR-P22.md) | A.4.3 direct `pext` versus `base` NPS - REGISTERED 2026-09-10, prediction frozen while the run was in flight … | Prediction, frozen 2026-09-10 before exposure |
-| [RAR-P21](experiments/RAR-P21.md) | A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10 (`1bf8171`) | GREEN on every checked surface, and one prior claim of mine is corrected below |
+| [RAR-P21](experiments/RAR-P21.md) | A.4.1 `cc` 1.3.0 -> 1.4.5 and the Fathom build contract, COMPLETE 2026-09-10 | GREEN on every checked surface, and one prior claim of mine is corrected below |
 | [RAR-P20](experiments/RAR-P20.md) | A.4.1 per-tier NPS: what does the ISA tier actually buy? REGISTERED 2026-09-10, NOT YET RUN | Prediction, frozen 2026-09-10 before any run |
 | [RAR-P19](experiments/RAR-P19.md) | A.9 (registered as A.3.4 before the 2026-09-10 Phase A reorder) ARM64 compatibility re-verification of the … | ALL GREEN; the `rust-lld` workaround still works on 1.98.1 and all three platforms agree at this head |
-| [RAR-P18](experiments/RAR-P18.md) | A.3.1 toolchain bump 1.97.1 -> 1.98.1, behaviour-neutral qualification, COMPLETE 2026-09-09 (`ca8988a`) | NEUTRAL; no behaviour change and no resolvable speed change |
+| [RAR-P18](experiments/RAR-P18.md) | A.3.1 toolchain bump 1.97.1 -> 1.98.1, behaviour-neutral qualification, COMPLETE 2026-09-09 | NEUTRAL; no behaviour change and no resolvable speed change |
 | [RAR-P01](experiments/RAR-P01.md) | Phase-9 clean-code/build program, each step bench-identical and spot-checked | End-to-end result was about −3.2% NPS, inferred around −2 to −3 Elo |
 | [RAR-P02](experiments/RAR-P02.md) | Phase-10.3 bench-identical hot-path wave with two PGO builds/arm | Accepted, +10.35% NPS and +20.31 ± 7.13 Elo at `3+0.03` |
 | [RAR-P03](experiments/RAR-P03.md) | Post-SMP duplicate-compute/index-hoist cleanup | Retained, +0.99% then +1.56% median NPS |
@@ -423,7 +431,7 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-P06](experiments/RAR-P06.md) | `origin/arm_fix` added AArch64 `PRFM PLDL1KEEP` and hoisted two HCE `LazyLock` accesses | Unverified when written; now CLOSED — both halves have had their target-native A/B |
 | [RAR-P07](experiments/RAR-P07.md) | `origin/arm_fix` wrapped TT clusters in 128-byte Apple-oriented blocks | Unverified when written; now CLOSED and rejected — see RAR-P16 |
 | [RAR-P08](experiments/RAR-P08.md) | Windows ARM64 PGO with pinned Rust used `rust-lld` to work around profile-link failure | Retained in 2.3.1 |
-| [RAR-P16](experiments/RAR-P16.md) | Finish the two outstanding `origin/arm_fix` changes on current dev and measure them on Apple Silicon | NEITHER CHANGE IS MEASURABLE; `3ee4660` stays REJECTED, third time |
+| [RAR-P16](experiments/RAR-P16.md) | Finish the two outstanding `origin/arm_fix` changes on current dev and measure them on Apple Silicon | NEITHER CHANGE IS MEASURABLE; the earlier-rejected change stays REJECTED, third time |
 | [RAR-P17](experiments/RAR-P17.md) | Phase-4 step 4.5.1 — typed per-ply search context, pooled-PGO NPS | Behaviour-neutral and NPS-neutral — a clean null |
 | [RAR-P15](experiments/RAR-P15.md) | Phase-4.8h: first full CI matrix dispatch carrying the 4.8 work — the `verify-isa` steps added in 4.8a and … | GREEN, 14/14 jobs, 4m 0s |
 | [RAR-P14](experiments/RAR-P14.md) | Phase-4.8g: retest the Windows ARM64 PGO path on the pinned toolchain | PASSES — the last release-blocking unknown in 4.8 is cleared |

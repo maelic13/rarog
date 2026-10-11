@@ -38,7 +38,7 @@ toolchains, flags and binary hashes are embedded below.
 The historical working directories were D:\code\rarog, D:\code\basilisk and
 D:\code\Reckless. Rarog board sources/benchmark remained unchanged through
 a0aeb68, but a rebuild on a newer whole-engine revision must be labelled with
-that actual revision, never silently called the original ca03a46 build.
+that actual revision, never silently called the original RAR-M20 build.
 
 Reckless was initially clean at 91b56c2. Its complete benchmark-only change is
 reckless-board-adapter.patch (included below). Apply it only to a clean

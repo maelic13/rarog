@@ -11,23 +11,17 @@ use crate::infra;
 
 pub(crate) use mop_up::MOPUP_ASSUMED_MAX_PLY;
 
-/// Endgame scale-factor framework (Phase 3.11). A scale of `SCALE_NORMAL`
-/// leaves the tapered endgame score untouched; specialised functions return a
-/// smaller scale (down to 0 = dead draw) for known material patterns. Kept as
-/// a `/64` basis (SF convention) for the new patterns; the pre-existing OCB
-/// scaling retains its own exact `/48` arithmetic so the bench fingerprint is
-/// unchanged.
+/// Endgame scale-factor framework. A scale of `SCALE_NORMAL` leaves the
+/// tapered endgame score untouched; specialised functions return a smaller
+/// scale (down to 0 = dead draw) for known material patterns, on a `/64` basis.
+/// The opposite-coloured-bishop rule has its own `/48` basis.
 pub(super) const SCALE_NORMAL: i32 = 64;
-/// Opposite-coloured-bishop scaling keeps its own `/48` basis, preserved
-/// verbatim from the pre-3.11 code so passer-free OCB positions are unchanged
-/// (the bench fingerprint is unaffected).
+/// The `/48` basis of `opposite_bishop_scale`.
 pub(super) const OCB_SCALE_NORMAL: i32 = 48;
 
-/// Endgame scale-factor framework dispatch (Phase 3.11). Specialised material
-/// patterns are checked first (they are absent from the bench suite, so the
-/// fingerprint is unchanged); everything else falls through to the pre-existing
-/// opposite-coloured-bishop scaling and the KNNK draw, whose exact integer
-/// arithmetic is preserved verbatim.
+/// Endgame scale-factor dispatch. Specialised material patterns are checked
+/// first; everything else falls through to the opposite-coloured-bishop rule
+/// and the KNNK draw.
 pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
     if let Some(sf) = specialized_endgame_scale(board) {
         return score * sf / SCALE_NORMAL;
@@ -458,10 +452,20 @@ fn krkp_drawish_scale(board: &Board) -> Option<i32> {
     None
 }
 
-/// Opposite-coloured-bishop scaling (single bishop each, opposite colours), on
-/// the `/48` basis. Passed pawns make OCB endings less drawish, so the scale is
-/// relaxed upward by them (Phase 3.11c refinement). Passer-free positions keep
-/// the exact pre-3.11 value, so the bench fingerprint is unaffected.
+/// Pure bishop endings with at least this many pawns take the fitted rule.
+const PURE_OCB_MIN_PAWNS: i32 = 3;
+
+/// Opposite-coloured-bishop scaling (one bishop each, on opposite colours), on
+/// the `/48` basis, applied to the whole score.
+///
+/// A pure bishop ending (no knight, rook or queen) with three pawns or more is
+/// mostly drawn whatever the pawn balance, so its scale starts near zero and
+/// rises with passed pawns: `1 + 2·pawns + 10·passers`, fitted against game
+/// outcomes. Below three pawns, and with other pieces on the board, the older
+/// `32 + 4·pawns + 4·passers` stays, because the fitted rule applied there
+/// cost conversion of won two-pawn endings at a fixed node budget. The two
+/// regimes do not meet continuously: an exchange from three pawns to two can
+/// raise the score.
 pub(super) fn opposite_bishop_scale(board: &Board) -> Option<i32> {
     let white_bishops = board.pieces(Color::White, Piece::Bishop);
     let black_bishops = board.pieces(Color::Black, Piece::Bishop);
@@ -481,6 +485,15 @@ pub(super) fn opposite_bishop_scale(board: &Board) -> Option<i32> {
         (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn)).count(),
     );
     let passers = count_passed_pawns(board);
+    let pieces = board.pieces(Color::White, Piece::Knight)
+        | board.pieces(Color::Black, Piece::Knight)
+        | board.pieces(Color::White, Piece::Rook)
+        | board.pieces(Color::Black, Piece::Rook)
+        | board.pieces(Color::White, Piece::Queen)
+        | board.pieces(Color::Black, Piece::Queen);
+    if pieces.is_empty() && pawns >= PURE_OCB_MIN_PAWNS {
+        return Some((1 + pawns * 2 + passers * 10).min(OCB_SCALE_NORMAL));
+    }
     Some((32 + pawns * 4 + passers * 4).min(OCB_SCALE_NORMAL))
 }
 
@@ -668,8 +681,8 @@ mod endgame_311c_tests {
         );
     }
 
-    /// Passed pawns relax OCB scaling upward (less drawish); passer-free OCB
-    /// keeps the exact pre-3.11 value.
+    /// Below three pawns a pure bishop ending keeps the older rule, which
+    /// passed pawns relax upward.
     #[test]
     fn opposite_bishop_scale_relaxed_by_passers() {
         assert_eq!(
@@ -679,6 +692,24 @@ mod endgame_311c_tests {
         assert_eq!(
             opposite_bishop_scale(&board("4k3/7p/P7/3b4/8/8/8/2B1K3 w - - 0 1")),
             Some(48) // 2 passed pawns relax to the /48 cap
+        );
+    }
+
+    /// From three pawns a pure bishop ending takes the fitted rule; other
+    /// pieces on the board keep the older one at any pawn count.
+    #[test]
+    fn opposite_bishop_scale_pure_endings_from_three_pawns() {
+        assert_eq!(
+            opposite_bishop_scale(&board("4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1")),
+            Some(7) // 3 pawns, no passers: 1 + 3*2
+        );
+        assert_eq!(
+            opposite_bishop_scale(&board("4k3/7p/P7/3b4/8/8/P7/2B1K3 w - - 0 1")),
+            Some(37) // 3 pawns, all passed: 1 + 3*2 + 3*10
+        );
+        assert_eq!(
+            opposite_bishop_scale(&board("r3k3/p7/8/3b4/8/8/PP6/2B1K2R w - - 0 1")),
+            Some(44) // rooks on: 32 + 3*4
         );
     }
 }

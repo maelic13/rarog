@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [
 
 ## Experiment and conditions
 
-Phase-4.3a **arm B**, `SingularTtDepthMargin=2` versus 3. Former-policy `[0,3]` nElo SPRT, `3+0.03`, 1T, 64 MB, paired UHO, one non-PGO tune binary both sides, repo `3eeea89`.
+Phase-4.3a **arm B**, `SingularTtDepthMargin=2` versus 3. Former-policy `[0,3]` nElo SPRT, `3+0.03`, 1T, 64 MB, paired UHO, one non-PGO tune binary both sides.
 
 ## Result / disposition
 

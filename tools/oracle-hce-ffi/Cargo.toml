@@ -1,0 +1,18 @@
+# The oracle's evaluation adapter: Rarog's HCE as rarog_hce.dll for the
+# Stockfish hybrid of the `oracle/hybrid` tag (same ABI, version 1). Build:
+#   cargo build --release --manifest-path tools/oracle-hce-ffi/Cargo.toml
+[package]
+name = "rarog-hce-ffi"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.97"
+publish = false
+
+[lib]
+name = "rarog_hce"
+crate-type = ["cdylib"]
+
+[dependencies]
+rarog = { path = "../.." }
+
+[workspace]

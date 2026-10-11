@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Experiment and conditions
 
-**SUPERSEDED by B.2, never run (B.1, 2026-09-14): the switch or parameter this arm needed was removed as inert; its question is answered inside B.2's cluster and SPSA or not at all, no retry trigger.** **Unconditional LMR-reduction relief — REGISTERED, NOT YET RUN.** Subtracts a fixed **336/1024 ply (15% of the 2.19-ply mean reduction)** from every LMR reduction. The DIRECTIONAL form of what RAR-S54 and RAR-S64 measured, replacing the symmetric form RAR-S67 disproved. Arm A `rarog-47relief` `5dbeb52`, bench **6,539,063 / EBF 2.449**. Arm B `rarog-47base2` `23b21b8`, bench **7,467,143 / EBF 2.477** — the accepted head. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[0,3]` nElo, cap 60,000, fixed before any games.**
+**SUPERSEDED by B.2, never run (B.1, 2026-09-14): the switch or parameter this arm needed was removed as inert; its question is answered inside B.2's cluster and SPSA or not at all, no retry trigger.** **Unconditional LMR-reduction relief — REGISTERED, NOT YET RUN.** Subtracts a fixed **336/1024 ply (15% of the 2.19-ply mean reduction)** from every LMR reduction. The DIRECTIONAL form of what RAR-S54 and RAR-S64 measured, replacing the symmetric form RAR-S67 disproved. Arm A `rarog-47relief`, bench **6,539,063 / EBF 2.449**. Arm B `rarog-47base2`, bench **7,467,143 / EBF 2.477** — the accepted head. Final-PGO both, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 adjudication. **Registered bounds `[0,3]` nElo, cap 60,000, fixed before any games.**
 
 ## Result / disposition
 

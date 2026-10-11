@@ -162,7 +162,7 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
       (5,480,624), so this gate measured **execution speed and nothing else** —
       the cleanest speed→Elo datapoint the project has.
       **COLLECTIVE SPEED: +10.35%** (CI 10.10…10.65) — 3,003,789 → 3,314,560
-      NPS, pre-10.3 `c1fe620` vs 10.3 head `1d8afaa`, two independent PGO
+      NPS, pre-10.3 vs the 10.3 head, two independent PGO
       builds per arm, both base builds below both head builds. Target was
       ≥2.7M nps native; now ~3.31M pext-PGO ✓
       (Caveat on the speed figure: the pre-10.3 arm still carries 8.10,
@@ -212,20 +212,17 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           buying rounds it cannot resolve.
     - [x] **(1) cont_history → boxed const-size tables — +1.15%.** A
           7-waypoint compiler-fixed bisect pinned the whole Phase-9 NPS loss to
-          one commit (`886916b`): four `Vec` headers with runtime lengths
+          one commit: four `Vec` headers with runtime lengths
           defeated bounds-check elision in the hottest loops. Boxed
           `[[i16; CONT_SIZE]; 4]` restores compile-time layout, keeps 9.0a's
-          table-driven source shape. Commit `8fdedc3`.
-    - [x] **(2) per-node CheckInfo — +2.75%.** `gives_check` was called for
+          table-driven source shape.    - [x] **(2) per-node CheckInfo — +2.75%.** `gives_check` was called for
           EVERY scored quiet at EVERY node. Now per-node masks (check squares
           per piece + discovered-check blockers), per-move test = two bitboard
           tests. Promo/EP/castling fall back. Equivalence `debug_assert!`ed
-          through the whole debug suite. Commit `dcdba44`.
-    - [x] **(3) check-hinted `make_move` — +1.08%.** `calculate_checkers()` ran
+          through the whole debug suite.    - [x] **(3) check-hinted `make_move` — +1.08%.** `calculate_checkers()` ran
           on every move; now the search passes the answer it already has, so
           non-checking moves store `EMPTY`. Hint asserted both directions +
           `board_differential` rebuilds `checkers` after every make/unmake.
-          Commit `6b316af`.
     - [x] **(4) MovePicker single-buffer collapse — +2.04%, 9,288 → 3,136 B
           per frame (−66%).** The `Staged` variant held THREE 3,080-byte
           lists and the enum is sized to its largest variant, so every frame
@@ -233,8 +230,7 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           bad captures / quiets, each phase scanning only its own sub-slice.
           Pushes stay sequential so the `MaybeUninit` prefix invariant (and
           the KEEP-UNSAFE accessors) are untouched; captures+quiets provably
-          fit 256. 12 rounds: +2.04% mean, positive in 10/12. Commit
-          `17289ac`.
+          fit 256. 12 rounds: +2.04% mean, positive in 10/12.
     - [x] **(5) pin/blocker sharing — ≲+1%, BELOW RESOLUTION, KEPT.**
           `compute_pinned` ran 2–3× per staged node: `generate_captures`
           computed it and `gen_moves` promptly recomputed it, then the quiet
@@ -247,7 +243,7 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           two quiet batches disagree in sign, so the effect is **not
           resolvable** above this machine's noise. Kept on the structural
           argument alone: strictly less work, bench bit-identical, no
-          complexity cost. Commit `961e535`.
+          complexity cost.
     - [x] **(6) qsearch make_move hint — MEASURED, REJECTED (−0.79%).**
           Implemented exactly as (3) and measured: mean −0.79%, only 2 of 6
           paired rounds positive, spread +2.0%..−3.3%. The deferral reason was
@@ -274,7 +270,7 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           the effect sits above this machine's ~1% resolution limit.
     - [x] **(8) small sweeps — +1.18% combined** (CI 0.69…1.39, two PGO builds
           per arm, both cand builds above both base builds). All four named
-          candidates were tried; commit `286995b`. Detail below.
+          candidates were tried. Detail below.
         - [x] **(8d) move-picker scan — the whole gain.** `pick_next` is the
               hottest loop in the engine and it indexed `moves[current]` AND
               `moves[best]` every iteration: two loads where one suffices, plus an
@@ -313,7 +309,7 @@ pure execution speed — **≈ +2 to +3 Elo at 1T, no regression.**
           the baked constants ARE what it computes; it verifies each baked value
           and falls back to searching if one fails, so a stale constant costs
           startup time, never correctness. `baked_magics_cover_every_square`
-          asserts the fallback stays unused. Commit `1d8afaa`.
+          asserts the fallback stays unused.
           **The old figures in this item were stale** — PEXT startup is ~19 ms
           today, not 174–199 ms, so there was never anything to win there; the
           375–429 ms generic figure is the one that was real.

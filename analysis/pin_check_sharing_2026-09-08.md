@@ -90,7 +90,7 @@ That is **4.11b.11**'s subject, not this leaf's.
 
 ## Remaining cost after 4.11b.9 — derived, not re-measured
 
-RAR-M30's profile predates `5c439da`. A fresh ETW capture requires an elevated
+RAR-M30's profile predates the fused-relocation integration (RAR-M33). A fresh ETW capture requires an elevated
 prompt and is a maintainer job, and it cannot change this leaf's structural
 conclusion, so it was not requested for 4.11b.10. The share update is instead
 derived and bounded.
@@ -100,7 +100,7 @@ the change confined to the `make/unmake only` column. Taking the gain as
 entirely from that region, new total time is `1/1.00876 = 0.99132` of old, so
 every unchanged region's share rises by the same 0.876% factor:
 
-| Region | RAR-M30 | Derived post-`5c439da` |
+| Region | RAR-M30 | Derived post-integration |
 |---|---|---|
 | make/unmake | 7.143% | **6.330%** |
 | generation/legality | 6.751% | 6.810% |
@@ -120,7 +120,7 @@ other noise controls. SEE calls no changed code, so the likely cause is code
 layout shifting after `make_move_inner` grew 468 -> 542 instructions. It is
 already inside the accepted net-positive whole-search result and changes
 nothing here, but **4.11b.11 starts from a slightly perturbed SEE baseline**
-and should re-baseline rather than compare against pre-`5c439da` SEE numbers.
+and should re-baseline rather than compare against pre-integration SEE numbers.
 
 ## Retry trigger
 

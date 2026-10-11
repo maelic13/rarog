@@ -1,7 +1,7 @@
 # Feature, option and parameter inventory — PLAN A.2.3
 
 Classification of every Cargo feature, UCI option and `SearchParams` entry on
-`dev` at `7d8b013`, from the source (every `.rs` under `src/`), not from
+`dev` as of 2026-09-09, from the source (every `.rs` under `src/`), not from
 documents. Disposition rule from PLAN A.2.3: removals land in **B.1** (the
 behaviour-neutral search restructure), never here; nothing in this document
 changes engine behaviour.

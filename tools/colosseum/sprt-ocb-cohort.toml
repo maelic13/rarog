@@ -1,0 +1,15 @@
+# C.5.2's cohort gate: the wide [0, 10] nElo bracket on an opposite-bishop
+# endgame-start book instead of UHO (RAR-E29). Every start is a pure
+# opposite-bishop ending of seven men or more, or the same with one matching
+# piece each, so the rule the gate measures is in play from the first move.
+# The book is built by tools/diag/ocb_book.py and lives in ignored storage; its
+# recipe and SHA-256 are in the registration, and colosseum.ps1 checks the
+# resolved book against its -Book argument.
+#
+#   ./tools/colosseum.ps1 -Mode sprt -Bracket wide `
+#     -RunFile tools/colosseum/sprt-ocb-cohort.toml -Book tools/books/ocb_cohort_v1.epd ...
+
+extend = "sprt-wide.toml"
+
+[options]
+book = "../books/ocb_cohort_v1.epd"

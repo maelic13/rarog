@@ -31,7 +31,7 @@ Input hashes:
 | pilot manifest | `B3CE9056D1C6EF93182CFB4AFA8E4E095B3C4BECBCBF66DE0149D11DE759CC3C` |
 | continuation manifest | `4F4A494C03A6DE99D0D7FD1FF4F106DD0A1EDD9441411B632EF7ECE43EEECF59` |
 
-Both manifests bind the same engine (`74d4426ff3c4`, binary SHA-256
+Both manifests bind the same engine (binary SHA-256
 `9AC35CC26D954E55E394E5AAE5FE4FCE09E6F2D3ECE0DF135F1009FF0917E0C9`),
 8,000 nodes/move, book hash, shuffle seed 10403 and
 `datagen-v1` adjudication profile. Their book ranges are disjoint: 1–20,000

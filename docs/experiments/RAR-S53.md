@@ -16,4 +16,4 @@ The deficit **survives** with speed and time management removed entirely: at mos
 
 ## Source
 
-`tools/sprt.ps1 -Nodes`; `tools/pgn_depth_at_nodes.py`; branch `spsa_impr` at `eaf0965`, design at `1696028`
+`tools/sprt.ps1 -Nodes`; `tools/pgn_depth_at_nodes.py`; branch `spsa_impr`, design at `1696028`

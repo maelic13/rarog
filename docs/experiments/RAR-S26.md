@@ -1,10 +1,10 @@
-# RAR-S26 — Phase-4.3a arm sizing at `8acfd22`: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth …
+# RAR-S26 — Phase-4.3a arm sizing: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.3a arm sizing at `8acfd22`: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth 12 with a cleared table per position. Node counts and best moves only.
+Phase-4.3a arm sizing: four registered knobs A–D, one `tune` binary, 4 positions at fixed depth 12 with a cleared table per position. Node counts and best moves only.
 
 ## Result / disposition
 

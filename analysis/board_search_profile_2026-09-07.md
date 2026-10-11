@@ -18,7 +18,7 @@ lookup.
 
 ## Frozen protocol and identity
 
-The source was `02420dcdecf5baff5c33859832c09e3e7f581828`; the 20-position
+The source was the head of that day; the 20-position
 suite contains four roots each for opening, middlegame, check-heavy, promotion
 and sparse endgame. Diagnostic counters used three repeats at 600,000 nodes;
 ETW used five. The suite SHA-256 is
@@ -36,7 +36,7 @@ The received archive SHA-256 is
 `2beb0f272df7eca6d89f800e1f663378395ce9ecaffad19335901159331e81cb`.
 Its first xperf reports contained unresolved engine names because the PDB had
 been archived as `rarog-production.pdb` rather than the embedded `rarog.pdb`.
-Commit `952711f` fixes future reports and rejects this state. For this archive,
+A later commit fixes future reports and rejects this state. For this archive,
 the matching PDB was restored under its embedded name and every engine RVA was
 resolved with Visual Studio LLVM's symbolizer. All **151,142/151,142** engine
 samples resolved. `tools/diag/summarize_board_search_etw.py` performs and
@@ -123,7 +123,7 @@ Run the original one-command capture from an elevated PowerShell 7 prompt:
 pwsh -File tools/diag/run_board_search_profile_411b7.ps1
 ```
 
-If a pre-`952711f` archive needs symbol recovery, put its exact production PE
+If an archive from before that fix needs symbol recovery, put its exact production PE
 and matching PDB together, preserve the PDB's embedded `rarog.pdb` name, then
 run:
 
@@ -142,7 +142,7 @@ python tools/diag/summarize_board_search_etw.py `
 
 ## Symbolization defect found 2026-09-08 (affects re-runs, not this record)
 
-A refresh of this profile at `cf10a46` produced impossible region shares —
+A refresh of this profile produced impossible region shares —
 `make_unmake` **0.756%**, `see` **0.464%**, `king_square_lookup` **27.496%**,
 with `core::num::trailing_zeros` as a 38% exclusive leaf. The numbers were
 discarded and are not recorded anywhere as measurements.
@@ -204,9 +204,9 @@ reverted to emitting the single `-symbols` report it had before.
 
 **RESOLVED 2026-09-08 — the recipe was recovered.** RAR-M30's per-sample
 attribution was a side effect of xperf being unable to find the PDB, which
-`952711f` then "fixed". Denying xperf symbols deliberately — empty
+a later commit then "fixed". Denying xperf symbols deliberately — empty
 `_NT_SYMBOL_PATH`, empty `_NT_SYMCACHE_PATH`, and no `rarog.pdb` beside the
 executable — restores the per-address table this tool is built for. The profile
 has been refreshed at head and reproduces this document's shares closely; see
 `analysis/board_search_profile_2026-09-08.md` (RAR-M36). The shares here remain
-valid for `02420dc` and are superseded only for the current head.
+valid for the head measured here and are superseded only for the current head.

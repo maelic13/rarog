@@ -14,11 +14,11 @@ leaf measured.
 
 ## The control reproduced, which is what makes this session readable
 
-RAR-M43's own control did **not** reproduce RAR-M20: the identical `ca03a46`
+RAR-M43's own control did **not** reproduce RAR-M20: the identical control
 binary measured 0.7–6.1% faster on that day, so RAR-M43 had to be read
 within-session only. Neither of today's sessions has that problem.
 
-| Workload | `ca03a46` today | in RAR-M43 | drift | Basilisk drift |
+| Workload | Rarog control today | in RAR-M43 | drift | Basilisk drift |
 |---|---:|---:|---:|---:|
 | legal moves | 447.47 | 450.15 | −0.59% | −1.21% |
 | legal captures | 99.31 | 99.87 | −0.55% | −0.61% |
@@ -33,7 +33,7 @@ Host busy stayed 5.1–5.8% against the recipe's 12% rejection threshold.
 
 ## All four arms, one session, medians of three cyclic rounds (M ops/s)
 
-| Workload | Rarog head | Rarog `ca03a46` | Basilisk | Reckless |
+| Workload | Rarog head | Rarog control | Basilisk | Reckless |
 |---|---:|---:|---:|---:|
 | legal moves | **482.53** | 447.47 | 642.61 | 347.22 |
 | legal captures | **126.96** | 99.31 | 120.03 | 62.41 |
@@ -46,7 +46,7 @@ Host busy stayed 5.1–5.8% against the recipe's 12% rejection threshold.
 
 How much faster Basilisk is. RAR-M43's "now" column becomes the "was" column.
 
-| Workload | RAR-M20 (`ca03a46`) | RAR-M43 | **RAR-M44(d)** | closed since RAR-M43 |
+| Workload | RAR-M20 | RAR-M43 | **RAR-M44(d)** | closed since RAR-M43 |
 |---|---:|---:|---:|---:|
 | legal moves | 44.5% | 46.2% | **33.2%** | 13.0pp |
 | legal captures | 20.9% | 26.2% | **−5.5%** | **31.7pp — Rarog is now 5.8% ahead** |
@@ -60,7 +60,7 @@ harness and the search. Make/unmake and SEE were not touched by this leaf and
 did not move, which is the internal consistency check on the table. Reckless
 is unchanged and remains slowest in every comparable column.
 
-## What 4.11b.19 did, measured against the same `ca03a46` control
+## What 4.11b.19 did, measured against the same control
 
 | Workload | RAR-M43 (4.11b only) | **now (4.11b + 4.11b.19)** |
 |---|---:|---:|
@@ -176,5 +176,5 @@ twelve raw round files, `run.log`. Head binary SHA-256 `ecf4462d…`, built with
 `RUSTFLAGS='-C target-cpu=native --cfg rarog_pext'`, no features.
 `tools/results/board-compare-d-20260909/` is the superseded (c)-head session,
 head binary `5aab250f…`. The three archived peer binaries hash-match the
-RAR-M20 manifest: `ca03a46` `40f8fa53…`, Basilisk `7eeaff0c…`, Reckless
+RAR-M20 manifest: Rarog control `40f8fa53…`, Basilisk `7eeaff0c…`, Reckless
 `449897a1…`. Recipe: `board_benchmark_recipe_2026-09-05.md`.

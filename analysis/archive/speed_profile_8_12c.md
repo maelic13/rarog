@@ -1,6 +1,6 @@
 # 8.12(c) Profile pass — where Rarog's search time actually goes
 
-**Date:** 2026-07-23 · **Binary:** non-PGO release at `4b83e5a` (bench
+**Date:** 2026-07-23 · **Binary:** non-PGO release (bench
 5,480,624) · **Machine:** idle Zen 3, SPSA stopped · **Harness:**
 `tools/profile_probe.py` + `tools/profile_attrib.ps1`
 

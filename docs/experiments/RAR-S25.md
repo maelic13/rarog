@@ -1,10 +1,10 @@
-# RAR-S25 — Phase-4.3a provenance-hazard census at `d354d02`: can a consumer infer a producer from entry shape, given …
+# RAR-S25 — Phase-4.3a provenance-hazard census: can a consumer infer a producer from entry shape, given …
 
 Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Experiment and conditions
 
-Phase-4.3a provenance-hazard census at `d354d02`: can a consumer infer a producer from entry shape, given provenance is not persisted? Exact counters in the store path, `bench 13`, 1T.
+Phase-4.3a provenance-hazard census: can a consumer infer a producer from entry shape, given provenance is not persisted? Exact counters in the store path, `bench 13`, 1T.
 
 ## Result / disposition
 
@@ -16,4 +16,4 @@ Under this state 4.3 cannot cleanly separate stand pat from searched qmoves with
 
 ## Source
 
-`src/tt.rs`; `tools/diag_search_quality.ps1`; `d354d02`; Plan 4.2–4.3
+`src/tt.rs`; `tools/diag_search_quality.ps1`; Plan 4.2–4.3

@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Experiment and conditions
 
-**Phase-4 cluster 4.5 (A) — REGISTERED, NOT YET RUN.** Candidate: `dev` at `c399435` (4.5.1 per-ply context, 4.5.2 named picker stages, 4.5.3 continuation key plus the ProbCut piece-desync fix, 4.5.4 prior-reduction authority at 512/1024 ply). Baseline: the pre-Cluster-A head `36dad5f`, fingerprint **6,922,439 / EBF 2.451** (confirmed by the baked manifest — an earlier attempt baked `aaa715a`, which predates the 4.7 merge and benched 6,519,711; the manifest's recorded fingerprint is what caught it). Candidate **7,587,235 / EBF 2.477**, +9.6% nodes. Final-PGO both arms, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 two-sided adjudication. **Registered bounds `[3,10]` nElo, cap 16,000, prior 5–20, all fixed before any games.**
+**Phase-4 cluster 4.5 (A) — REGISTERED, NOT YET RUN.** Candidate: `dev` of that time (4.5.1 per-ply context, 4.5.2 named picker stages, 4.5.3 continuation key plus the ProbCut piece-desync fix, 4.5.4 prior-reduction authority at 512/1024 ply). Baseline: the pre-Cluster-A head, fingerprint **6,922,439 / EBF 2.451** (confirmed by the baked manifest — an earlier attempt baked the pre-bundle baseline, which predates the 4.7 merge and benched 6,519,711; the manifest's recorded fingerprint is what caught it). Candidate **7,587,235 / EBF 2.477**, +9.6% nodes. Final-PGO both arms, `3+0.03`, 1T, 64 MB, paired UHO, RAR-M13 two-sided adjudication. **Registered bounds `[3,10]` nElo, cap 16,000, prior 5–20, all fixed before any games.**
 
 ## Result / disposition
 

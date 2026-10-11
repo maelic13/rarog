@@ -24,7 +24,7 @@ Four arms were measured **in one session**, not three:
 
 | Arm | Binary | SHA-256 |
 |---|---|---|
-| `rarog-head` | built 2026-09-09 from `c1a7713` with the RAR-M20 recipe flags | `fd4c83af...` |
+| `rarog-head` | built 2026-09-09 with the RAR-M20 recipe flags | `fd4c83af...` |
 | `rarog-ca03a46` | **the exact binary RAR-M20 measured** | `40f8fa53...` |
 | `basilisk` | **the exact binary RAR-M20 measured** (`d734766`) | `7eeaff0c...` |
 | `reckless` | **the exact binary RAR-M20 measured** (`91b56c2`) | `449897a1...` |
@@ -34,7 +34,7 @@ RAR-M20 manifest, so re-timing them is strictly better than reusing their old
 numbers, and it keeps every arm mutually comparable.
 
 **The control did not reproduce RAR-M20, and that is the finding that governs
-how everything else may be read.** The identical `ca03a46` binary measured
+how everything else may be read.** The identical binary measured
 faster today than it did on 2026-09-05:
 
 | Workload | RAR-M20 | Today | Offset |
@@ -60,7 +60,7 @@ Median M ops/s of three round medians, affinity mask 4, 150 ms warmup plus
 eleven 150 ms samples per workload, three cyclic orders, host busy 5.01–6.25%
 against the runner's 12% rejection threshold.
 
-| Workload | ca03a46 | **head** | basilisk | reckless |
+| Workload | RAR-M20 Rarog | **head** | basilisk | reckless |
 |---|---:|---:|---:|---:|
 | legal moves | 450.15 | **444.99** | 650.47 | 348.27 |
 | legal captures | 99.87 | **95.72** | 120.77 | 62.46 |
@@ -74,7 +74,7 @@ vectors, per RAR-M19 and RAR-M29. It is comparable between the two Rarog arms.
 
 ## What 4.11b actually did to the board
 
-| Workload | head vs ca03a46 |
+| Workload | head vs RAR-M20 Rarog |
 |---|---:|
 | make/unmake | **+17.48%** |
 | two-ply simulation | +5.44% |
@@ -94,7 +94,7 @@ layout; against the pre-repair binary the true cost is visible. It is bought and
 paid for: RAR-E15 gated the whole package at **+12.12 ± 10.17 Elo**.
 
 Legal moves −1.15% sits inside the round-to-round spread (2.81% for head, 5.80%
-for ca03a46). Legal captures −4.16% is marginally outside it and was not a
+for RAR-M20's Rarog). Legal captures −4.16% is marginally outside it and was not a
 target of any 4.11b leaf.
 
 ## The gap to Basilisk, then and now — both measured today
@@ -106,7 +106,7 @@ The current table is in
 
 How much faster Basilisk is:
 
-| Workload | was (ca03a46) | **now (head)** | change |
+| Workload | was (RAR-M20) | **now (head)** | change |
 |---|---:|---:|---:|
 | make/unmake | 31.3% | **11.8%** | **19.5pp closed** |
 | two-ply simulation | 46.5% | **38.9%** | 7.6pp closed |
@@ -156,7 +156,7 @@ two of the three candidates tried measured negative or unresolvable.
 - **Non-PGO, native, single-threaded microbenchmark.** It measures board
   primitives, not playing strength, and no Elo is claimed from it.
 - **Threshold SEE is intra-Rarog only** across the two Rarog arms.
-- Round-to-round spread reached 9.41% for Reckless and 5.80% for ca03a46, so
+- Round-to-round spread reached 9.41% for Reckless and 5.80% for RAR-M20's Rarog, so
   differences below roughly 5% on a single column are not resolved by this
   instrument.
 

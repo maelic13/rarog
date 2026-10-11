@@ -16,7 +16,7 @@ truth, persistent TT within each game and reset between games, 30 workers.
 Use the unchanged `endgame_budget_bracket.py` / `endgame_truth.py` instrument,
 per-position output, sequential engine arms. No reuse of existing reports.
 
-Rarog source is `6e8044a` on dev, rebuilt with no Cargo features,
+Rarog source is the `dev` branch, rebuilt with no Cargo features,
 `RUSTFLAGS=-C target-cpu=native --cfg rarog_pext`, release, locked, no PGO.
 The isolated build reproduces bench 13: **6,901,489 / EBF 2.458**.
 The reference is the existing Stockfish 18 BMI2 executable used by the v2

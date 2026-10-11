@@ -41,7 +41,7 @@ Two reps × two middlegame positions, medians; ~±0.3M repeatability at 16T.
 ### RE-MEASURED 2026-07-25, after 8.13 + the TT repack — the deficit is GONE
 
 Same protocol (movetime 5000, 256 MB, cold `ucinewgame`, 2 reps × 2 positions,
-medians), idle box. Engine under test is HEAD `1cc4a85` (8.13 SMP rework +
+medians), idle box. Engine under test is the HEAD of that time (8.13 SMP rework +
 10 B shared-TT slots + the 8.12(g2) hoist). **Basilisk 1.9.0 was re-measured
 in the same session**, which is what makes the comparison valid — see the
 caveat below.

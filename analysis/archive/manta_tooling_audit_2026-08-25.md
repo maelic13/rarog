@@ -6,7 +6,7 @@ Audit date: 2026-08-25
 
 Manta snapshot: clean `1a0f8ea1091031f0380ca2ea7d80a52f14c29118`
 
-Rarog integration: tooling commit `d2c7788`; plan/guide commit containing this
+Rarog integration: the tooling commit; plan/guide commit containing this
 record
 
 Scope: every first-party executable/script/config under Manta `tools/` and its
@@ -32,7 +32,7 @@ show that a Manta formula or Manta's measured Elo is portable to Rarog.
 
 ### Adopted or upgraded in Rarog
 
-| Manta source | Rarog disposition in `d2c7788` |
+| Manta source | Rarog disposition in the tooling commit |
 |---|---|
 | `harness_common.ps1` | Added timeout/`uciok`-checked option discovery, option metadata, case/whitespace normalization, atomic JSON and shared match-anomaly checks |
 | `build_test.ps1` | Upgraded to schema-v2 hash-bound assets: executable, tree, compiler, command, flavor, benchmark and size; fixed native PGO flavor/name collision |

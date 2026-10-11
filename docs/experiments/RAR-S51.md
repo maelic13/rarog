@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Rejected, neutral or deferred* in [
 
 ## Experiment and conditions
 
-NMP mate-clamp correctness repair: keep an unproven mate score from satisfying a null-move cutoff. Candidate `8557b18`, merged as `1358b19`, versus pre-clamp `d12d15d`; final-PGO `[−5,0]` nElo gate at `3+0.03`, 1T/64 MB, paired UHO.
+NMP mate-clamp correctness repair: keep an unproven mate score from satisfying a null-move cutoff. Candidate merged, versus the pre-clamp baseline; final-PGO `[−5,0]` nElo gate at `3+0.03`, 1T/64 MB, paired UHO.
 
 ## Result / disposition
 

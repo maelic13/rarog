@@ -8,10 +8,10 @@ may change once games are seen.
 
 | Arm | Engine | Git | Bench 13 | Binary SHA-256 |
 |---|---|---|---:|---|
-| Candidate | `rarog-411b-cand-pext-pgo.exe` | `b33d3ad` (head) | **7,601,220** | `8916725E...D958B617` |
-| Baseline | `rarog-411b-base-pext-pgo.exe` | `fd21612` | **6,901,489** | `6F1592FF...3A5F92C6` |
+| Candidate | `rarog-411b-cand-pext-pgo.exe` | head | **7,601,220** | `8916725E...D958B617` |
+| Baseline | `rarog-411b-base-pext-pgo.exe` | — | **6,901,489** | `6F1592FF...3A5F92C6` |
 
-`fd21612` is the 4.11b **section entry** — the last revision before any 4.11b
+The baseline is the 4.11b **section entry** — the last revision before any 4.11b
 source change. Both are final-PGO pext builds from `tools/build_test.ps1`,
 `rustc 1.97.1`, and both manifests record `git_dirty: false`.
 
@@ -39,7 +39,7 @@ plausibly worth roughly −2 Elo.
 
 **For.** RAR-M41 measured **+1.421% [+0.953%, +1.764%]** whole-search NPS, worth
 about +2.8 Elo at the project's ~2 Elo per 1% NPS constant. **Caveat:** that was
-measured over `1d720af..head` only, so the SEE repair's own throughput effect is
+measured over the range from the pre-fusion baseline to head only, so the SEE repair's own throughput effect is
 **unmeasured** and is not in that figure.
 
 Net time-to-depth is about **8.6% worse** (1.1014 / 1.0142). Combining the two

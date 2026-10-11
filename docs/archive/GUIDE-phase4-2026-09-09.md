@@ -85,8 +85,8 @@ together, and `python tools/diag/check_guide.py` must pass.
 |---|---|
 | Released baseline | **2.3.2** at `f931722` on `master` |
 | Last strength-qualified head | RAR-E12 + 4.9a.7, **6,901,489 nodes / EBF 2.458**. Includes the 4.9a.4 mate drive, which is bench-INVISIBLE |
-| Development fingerprint | **7,601,220 / EBF 2.474**, SEE repair `fce0b44`; **cluster ACCEPTED by RAR-E15**, +12.12 +/- 10.17 Elo |
-| Integration branch | `dev`; the hce-v3 refit `d1d95ab` is accepted |
+| Development fingerprint | **7,601,220 / EBF 2.474**, SEE repair; **cluster ACCEPTED by RAR-E15**, +12.12 +/- 10.17 Elo |
+| Integration branch | `dev`; the hce-v3 refit is accepted |
 | Frozen oracle | `hybrid` at `75d0d43`; never merge it into Rarog |
 | Measured search deficit | **355.26 +/- 27.03 Elo** equal nodes; **250.77 +/- 13.12** equal time; speed worth **104.5 Elo** |
 | Accepted Phase-4 gains | ProbCut **+15.56 +/- 10.02**; root LMR relief **+2.33 +/- 1.85**; HCE refit **+22.04 +/- 7.51**; TB-corrected labels **+6.73 +/- 3.82**; hce-v3 refit **+11.81 +/- 5.33** |
@@ -101,11 +101,11 @@ together, and `python tools/diag/check_guide.py` must pass.
 recognizer-vs-scale classification**, `RESEARCH / R3`. Nothing is owed to the
 maintainer.
 
-**4.11b.19 is CLOSED and section 4.11b with it.** (a) `55e228a` fixed the
-cross-engine harness, (b) `021dc98` **BANKED +2.48% whole-search NPS**
+**4.11b.19 is CLOSED and section 4.11b with it.** (a) fixed the
+cross-engine harness, (b) **BANKED +2.48% whole-search NPS**
 [+2.29%, +2.65%], (c) closed **`NO_CHANGE`** -- two candidates cleared the
 bench gate at +12.7% and the bundled pooled-PGO run then measured **−0.55%**
-[−0.76%, −0.30%], so both were reverted at `39542b7` -- and (d) re-measured
+[−0.76%, −0.30%], so both were reverted -- and (d) re-measured
 all four arms on the reverted head. **The generation gap to Basilisk is now
 33.2%, down from 46.2%, and capture generation is 5.8% AHEAD**; RAR-M43's
 table and Elo arithmetic are superseded by
@@ -142,10 +142,10 @@ holds still come from PLAN; a readiness label never lifts one.
 - [x] **4.1** Instrumented oracle — `hybrid-diag` `de568b3`
 - [x] **4.2** Differential observation harness — RAR-S55
 - [x] **4.2a** Harness and instrument integrity sweep — Basilisk-derived
-    - [x] **4.2a.1** `sprt.ps1` options-free repair and `-NoAdjudication` wire proof — `cb5ed2a`
+    - [x] **4.2a.1** `sprt.ps1` options-free repair and `-NoAdjudication` wire proof
     - [x] **4.2a.2** Exit-status sweep: no unguarded native call found; already protected
-    - [x] **4.2a.3** Anomaly guard rate-limited so it discriminates instead of voiding every gate — `334c084`
-    - [x] **4.2a.4** `sprt.ps1` refuses options its mode cannot honor — `3fb9f57`
+    - [x] **4.2a.3** Anomaly guard rate-limited so it discriminates instead of voiding every gate
+    - [x] **4.2a.4** `sprt.ps1` refuses options its mode cannot honor
 - [x] **4.2b** Time-forfeit diagnosis at test concurrency — RAR-M14; fixes belong to 4.17
     - [x] **4.2b.1** Games end at 97-99% of clock; ~2% aggregate slack, ~100ms per game
 - [x] **4.3** Mechanism map and order freeze

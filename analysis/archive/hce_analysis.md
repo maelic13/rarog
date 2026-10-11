@@ -1,6 +1,6 @@
 # Rarog HCE analysis
 
-> **Historical audit.** This report describes revision `ff21dc1` on
+> **Historical audit.** This report describes the revision of
 > 2026-07-13. Its four concrete activation defects (`attacked2`, enemy rook
 > behind a passer, unstoppable passers, and phalanx detection) were fixed by
 > `d5a6054` and are covered by current evaluator tests. Do not use their old
@@ -10,7 +10,7 @@
 
 Status: working analysis, intended to be extended  
 Analysis date: 2026-07-13  
-Rarog revision: `ff21dc1` (`development`)  
+Rarog revision: `development` branch (2026-07-13)  
 Comparison baseline: Stockfish 18/current SFNNv13 development, PlentyChess 7/current development, other mid-2026 top engines where their implementation is public, Stockfish 11 as a mature classical reference, and Basilisk's HCE audit as a sibling-engine checklist
 
 ## Executive summary

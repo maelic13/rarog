@@ -8,10 +8,10 @@ maintainer to run on an idle host; no pooled-PGO A/B result exists yet.
 
 | Arm | Revision | Contents |
 |---|---|---|
-| Baseline | `1d720af` | state at the end of 4.11b.9's registration, before the fused relocation landed |
-| Candidate | `1be34ac` (head) | plus `5c439da` fused relocation, `f70ac19` history reservation, `20ee114` footprint assertions |
+| Baseline | — | state at the end of 4.11b.9's registration, before the fused relocation landed |
+| Candidate | head | plus the fused relocation, the history reservation and the footprint assertions |
 
-`1d720af..HEAD` contains exactly three engine-source commits; everything else in
+The range from baseline to head contains exactly three engine-source commits; everything else in
 that range is documentation or tooling. Both arms are **behaviour-identical** —
 all six built binaries reproduce `bench 13` at **7,601,220 nodes / EBF 2.474** —
 so the trees are the same and NPS at fixed nodes is a clean throughput
@@ -19,7 +19,7 @@ comparison rather than a confounded one.
 
 **Why not section entry.** The leaf asks to explain differences from section
 entry. The one behaviour change inside 4.11b is the 4.11b.5 SEE repair
-(`fce0b44`), which established the current fingerprint. Measuring across it
+, which established the current fingerprint. Measuring across it
 would compare different trees and confound throughput with a correctness fix
 whose value belongs to the 4.11b.17 playing gate. The baseline is therefore the
 last point at which the fingerprint already equalled today's, isolating exactly
@@ -142,7 +142,7 @@ at 95%. The interval's upper bound, **0.630%**, is the measured noise floor
 including PGO build-to-build variance, and it exceeds the 0.5% practical floor,
 so it becomes the effective floor as registered.
 
-## Main comparison — baseline `1d720af` against head
+## Main comparison — baseline against head
 
 | Quantity | Value |
 |---|---|
@@ -177,7 +177,7 @@ so it becomes the effective floor as registered.
   measurement is simply far more precise. Two reasons the point estimate is
   higher, neither established here: PGO may amplify the fused relocation path
   through better inlining and layout, and this candidate additionally contains
-  `f70ac19` and `20ee114`, which RAR-M33's arm did not.
+  the history reservation and the footprint assertions, which RAR-M33's arm did not.
 - **The registered pessimism did not materialise.** The registration warned the
   effect could prove unbankable if PGO build variance exceeded it. Variance came
   in at 0.630% against an effect of 1.421%, so it did not.

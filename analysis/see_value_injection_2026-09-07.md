@@ -1,6 +1,6 @@
 # Neutral SEE values and normalized comparison — RAR-M29 / 4.11b.6
 
-Entry `2c59911`; engine/test commit `46f1af2`. No SEE value was tuned and no
+No SEE value was tuned and no
 search caller changed. This step adds a board-owned `SeeValues` value object,
 keeps production fixed at **100/320/330/500/900/20000**, and lets diagnostics
 call the same full and threshold kernels with an explicit vector. There is no

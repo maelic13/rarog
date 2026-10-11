@@ -236,6 +236,7 @@ impl Evaluator {
 
             self.eval_threats(
                 board,
+                atk,
                 color,
                 sign,
                 maps,
@@ -305,7 +306,7 @@ impl Evaluator {
             self.eval_rooks_behind_passers(board, color, sign, passed, mg, eg);
             self.eval_passer_blockade(board, color, sign, passed, mg, eg);
             self.eval_hanging_pieces(board, color, sign, mg, eg, &maps.attacked);
-            self.eval_xray_trio(board, color, sign, occupied, &pawns, mg, eg);
+            self.eval_xray_and_battery(board, color, sign, occupied, &pawns, mg, eg);
         }
 
         for color in [Color::White, Color::Black] {
@@ -336,7 +337,7 @@ impl Evaluator {
     /// pawns, queen batteries, and sliders x-raying the enemy queen. X-rays are
     /// slider attacks computed with pawns-only occupancy (seeing through
     /// pieces), the cheap standard formulation.
-    fn eval_xray_trio(
+    fn eval_xray_and_battery(
         &self,
         board: &Board,
         color: Color,
@@ -386,22 +387,6 @@ impl Evaluator {
             *eg += sign * battery * self.params.queen_battery_eg[0];
             tr_mg!(self, queen_battery_mg, 0, sign * battery);
             tr_eg!(self, queen_battery_eg, 0, sign * battery);
-        }
-
-        // Slider on queen: our rooks/bishops on a line to the enemy queen
-        // through at most pawns (latent pins/skewers/attacks on the queen).
-        let mut on_queen = 0i32;
-        let mut enemy_queens = board.pieces(them, Piece::Queen);
-        while enemy_queens.any() {
-            let q = enemy_queens.pop_lsb();
-            on_queen += infra::to_i32((atk.rook(q, pawns_only) & own_rooks).count());
-            on_queen += infra::to_i32((atk.bishop(q, pawns_only) & own_bishops).count());
-        }
-        if on_queen != 0 {
-            *mg += sign * on_queen * self.params.slider_on_queen_mg[0];
-            *eg += sign * on_queen * self.params.slider_on_queen_eg[0];
-            tr_mg!(self, slider_on_queen_mg, 0, sign * on_queen);
-            tr_eg!(self, slider_on_queen_eg, 0, sign * on_queen);
         }
     }
 

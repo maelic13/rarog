@@ -37,7 +37,7 @@ static judgment into Rarog's weights (a common strong-HCE technique). Denser and
 often higher-quality than self-play results, but can chase SF quirks that do not
 transfer. Rarog measured exactly that failure in RAR-E03 (**−17.11 Elo**), so
 do not use this path for a fit candidate. The `import_beast.py` converter was removed
-on 2026-09-09 (last at `6fa6731`); reproduce that result from git history if ever needed, with `FEN<TAB>target` files (e.g. from
+on 2026-09-09; reproduce that result from git history if ever needed, with `FEN<TAB>target` files (e.g. from
 running an SF `go nodes`/`go depth` pass over the sampled FENs and writing its
 WDL as the side-to-move target). No SF binary was found in this repo; point the
 labeller at your capped/full Stockfish when you choose this path.
@@ -166,13 +166,13 @@ never unifies into engine builds. Run it from the repo root:
 cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --verify tools\texel\data\hce-v2\validation.csv
 # The fitting manifest: every coefficient free, fixed or excluded, with its
 # reason (tools/texel/fit_manifest.py writes it; the tuner checks coverage):
-cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage tools\texel\hce_fit_manifest_v3.tsv
+cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --audit-coverage tools\texel\hce_fit_manifest_v4.tsv
 # Complete vectors can be chained without resetting a previous stage; the
 # complete group fits the manifest's free coefficients:
 cargo run --release --manifest-path tools/texel-tuner/Cargo.toml -- --tune complete `
     tools\texel\data\hce-v2\train.csv tools\texel\data\hce-v2\validation.csv `
     tools\texel\out\complete.txt --initial tools\texel\out\prior.txt `
-    --manifest tools\texel\hce_fit_manifest_v3.tsv
+    --manifest tools\texel\hce_fit_manifest_v4.tsv
 # Options include --initial FILE, --epochs N, --lr X, --l2 X,
 # --max-positions N, --test FILE, --fix-k K and --manifest FILE.
 # Groups: material pawnstruct passers rooks minors mobility threats hanging

@@ -7,7 +7,7 @@ node budget, together with their true baselines:
 
 | arm | binary | bench | known result |
 |---|---|---|---|
-| pre-4.7 base | `rarog-47prebundle` (rebuilt from `aaa715a`) | 6,519,711 | baseline |
+| pre-4.7 base | `rarog-47prebundle` (rebuilt) | 6,519,711 | baseline |
 | 4.7c | `rarog-47c-only` | 6,922,439 | **+15.56 Elo** (RAR-S58) |
 | pre-S70 head | `rarog-46base` | 7,467,143 | baseline |
 | RAR-S70 | `rarog-46root` | 6,977,070 | **+2.33 Elo** |
@@ -67,6 +67,6 @@ known to be unable to distinguish that gain from a much larger one.
 `tools/test_engines/rarog-47base-pext-pgo.exe` is cited by RAR-S58 at bench
 **6,519,711** and by RAR-S67 at **7,467,143**. Two different experiments reused
 one filename, so RAR-S58's baseline binary no longer exists. It was recoverable
-only because the row also records the SHA, and `aaa715a` rebuilds to 6,519,711
+only because the row also records the SHA, and it rebuilds to 6,519,711
 exactly -- which is precisely the reason the ledger rule demands a recipe and a
 fingerprint rather than a path. **Experiment binaries must never reuse a name.**

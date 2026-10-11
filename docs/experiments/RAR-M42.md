@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity › Search-accuracy decomposition* in [
 
 ## Experiment and conditions
 
-**4.11b.18 endgame evidence refresh after the accepted board head, COMPLETE 2026-09-09; section 4.11b CLOSED.** Arms are the binaries RAR-E15 gated (`b33d3ad` bench 7,601,220 against `fd21612` bench 6,901,489); nothing rebuilt, every instrument node-budgeted and seeded so none of it depends on host load.
+**4.11b.18 endgame evidence refresh after the accepted board head, COMPLETE 2026-09-09; section 4.11b CLOSED.** Arms are the binaries RAR-E15 gated (the candidate, bench 7,601,220, against the section-entry baseline, bench 6,901,489); nothing rebuilt, every instrument node-budgeted and seeded so none of it depends on host load.
 
 ## Result / disposition
 

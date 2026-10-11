@@ -197,7 +197,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **13,187,295 / EBF 2.546**) plus targeted checks
+  fingerprint (currently **12,567,796 / EBF 2.535**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
@@ -209,9 +209,14 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 ## Changes
 
 - Engine changes and tooling or documentation changes go in separate commits.
-  Commit after each finished and verified step. No `Co-Authored-By` trailers.
-  Never relax a correctness test in the commit whose change made it fail; fix
-  its precondition in its own commit, with the justifying measurement.
+  Commit after each finished and verified step. Never relax a correctness
+  test in the commit whose change made it fail; fix its precondition in its
+  own commit, with the justifying measurement.
+- No attribution to Claude or any other AI tool, anywhere: no
+  `Co-Authored-By` trailer, no "Generated with" line, in commits, PR titles
+  and descriptions, squash messages or files. The maintainer adds
+  attribution where they want it (maintainer decision 2026-10-09;
+  `.claude/settings.json` turns Claude Code's own attribution off).
 - Never push, create a release tag, publish or merge to `master`; the
   maintainer does, on instruction. Do not amend or rewrite a commit that has
   left this machine. Archive tags follow *Evidence*.
@@ -223,11 +228,16 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   the merge commits of 2026-10-05; the procedure is PROCESS, *Branches and
   pull requests* and *Release*). The small, separate commits above stay on
   the branch.
-- Documents cite `master` commits, and the PR number where the steps
-  matter (GitHub keeps every PR's commits as `refs/pull/<n>/head`). A
-  branch's own hashes are working pointers while it is in flight: when it
-  lands, the live documents' references to them are rewritten to its squash
-  commit, or dropped where the sentence already carries the information.
+- A cited commit stays reachable: on `master`, under a PR (GitHub keeps
+  every PR's commits as `refs/pull/<n>/head`), on a kept tag, or on the
+  local branch of work in flight. The landed state is cited by its squash
+  commit on `master`; a branch's own commits stay citable for the step each
+  made. A gate arm is cited by its recipe file once its branch is deleted.
+  `python tools/diag/check_citations.py` fails on any other commit, and on
+  hex that is neither a commit here nor listed in
+  `tools/diag/citation_foreign.tsv`; it needs the PR refs fetched once per
+  clone (`git fetch origin "+refs/pull/*/head:refs/remotes/origin/pr/*"`)
+  (maintainer decisions 2026-10-09).
 - `CHANGELOG.md`'s `[Unreleased]` grows as the work lands: a change a user
   of the engine would notice (a gate-accepted strength change; a UCI option,
   output or default; a fixed defect; a removal; a build or asset change)

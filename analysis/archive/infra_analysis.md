@@ -1,7 +1,7 @@
 # Rarog Board and Infrastructure Analysis
 
 **Audit date:** 2026-07-13  
-**Engine version:** Rarog 2.3.0, `development` at `ff21dc1`  
+**Engine version:** Rarog 2.3.0, `development` branch  
 **Scope:** board representation, move/state transitions, legal move generation,
 SEE, hashing and repetition, evaluation-facing state, transposition-table
 layout, build/release configuration, correctness/performance testing, and

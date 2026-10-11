@@ -16,8 +16,8 @@ Both binaries are the ones RAR-E15 gated, so no rebuild was needed:
 
 | Arm | Engine | Git | Bench |
 |---|---|---|---:|
-| Accepted head | `rarog-411b-cand-pext-pgo.exe` | `b33d3ad` | 7,601,220 |
-| 4.11 head | `rarog-411b-base-pext-pgo.exe` | `fd21612` | 6,901,489 |
+| Accepted head | `rarog-411b-cand-pext-pgo.exe` | — | 7,601,220 |
+| 4.11 head | `rarog-411b-base-pext-pgo.exe` | — | 6,901,489 |
 
 Every instrument below is node-budgeted and seeded, so all of it is
 deterministic and independent of host load.

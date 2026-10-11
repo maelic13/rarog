@@ -300,7 +300,7 @@ serial and parallel paths reset and dump at exactly one point each.
 
 Choices carrying a measurement in the source or the ledger, all **keep**:
 `MaybeUninit` move and score lists (−10% NPS when initialised, 2026-07-19);
-boxed continuation tables rather than `Vec` (−2.1% NPS, commit 886916b);
+boxed continuation tables rather than `Vec` (−2.1% NPS);
 `Board` ≤ 264 bytes and `UnmakeInfo` ≤ 24 bytes pinned by `const` asserts
 (RAR-M39); `LocalCluster` 32 bytes and `SharedCluster` 64 bytes with equal
 entry density (RAR-P12/P16); the `_into` generator forms (RAR-M44, +11.2%
