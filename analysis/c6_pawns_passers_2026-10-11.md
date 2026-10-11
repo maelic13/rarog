@@ -133,9 +133,98 @@ Predictions, falsifiers and the frozen use are in the two registrations.
   corpus were won 84% of the time anyway, and the lazy gate hides 85% of the
   term's firings in play.
 
+- **RAR-E41 (C.6.3):** the instrument (`tools/diag/pawn_subterms.py`)
+  reproduced the donor's `Passed` and `Pawns` rows on all 194,444 rows. Three
+  components carry (0.04 points at four standard errors): our king's
+  distance to the block square and the next square (+0.131 ± 0.017 in the
+  endgame band, +0.123 without queens), weak unopposed pawns (+0.060 ±
+  0.013 in the endgame band) and the free-path bonus (+0.083 ± 0.017
+  without queens, a shape Rarog already has: pricing). The enemy king's
+  distance does not reach the line (+0.038). The donor's rank bonus is worse
+  than nothing beside Rarog's (its removal gains 0.30 points), and its
+  passed components with free weights gain four times its own weighting,
+  so the refit's weights matter more than the donor's constants.
+
+## Decision (2026-10-11)
+
+**`READY_FOR_IMPLEMENTATION`** by RAR-E41's frozen use: a unit of three
+changes, built together, refitted together, gated together.
+
+## Implementation handoff (C.6.4)
+
+**1. Passer king proximity in the donor's shape, replacing Rarog's form.**
+For each passed pawn in Rarog's own passed set (the set is not changed) of
+the side `us`, at relative rank `r` (0-based) of 3 or more, with
+`w = 5r − 13`, `block` the square in front of it and `next` the square in
+front of `block`, and `d(k, s) = min(chebyshev(k, s), 5)`:
+- `passer_king_them_eg += sign · d(their king, block) · w`
+- `passer_king_us_eg   −= sign · d(our king, block) · w`
+- `passer_king_next_eg −= sign · d(our king, next) · w`, only when
+  `block` is not the promotion square (`r ≠ 6`).
+
+Three eg-only weights, one slot each, traced by those counts. Seeds from
+the donor's 19/4, 2 and 1 internal units per `w` converted at 100/206 and
+rounded: (2), (1), (1) cp per count. `eval_passed_pawn_king_proximity`'s
+current body (one weight on the symmetric difference of the kings'
+distances to the pawn itself, plus the frozen `rel_rank` constant carried
+in `frozen_eg`) is removed with `passer_proximity_base`; nothing frozen
+remains in this term. It stays where it runs now, after the lazy gate.
+
+**2. Weak unopposed pawns.** In `eval_pawns` (pawn-cached), a pawn that
+Rarog scores isolated or backward, and that has no enemy pawn ahead on its
+own file, takes one penalty `pawn_weak_unopposed` (mg, eg), once per pawn
+even when it is both isolated and backward. Seed (6, 13) cp (the donor's
+(13, 27) at 100/206). Rarog's isolated and backward definitions are not
+changed.
+
+**3. The square rule** (RAR-E40): in `eval_unstoppable_passers` the
+threshold becomes `steps + 1` with the defender to move and `steps` with
+the pawn's side to move (was `steps` and `steps − 1`). Nothing else in the
+term changes.
+
+**Trace and tuner.** New fields `passer_king_them_eg`, `passer_king_us_eg`,
+`passer_king_next_eg` (one slot each) and `pawn_weak_unopposed_mg`/`_eg`;
+`passer_proximity_base` removed;
+the texel reconstruction test and the activation test cover the new slots;
+the tuner's group lists and clamps follow (`passer_proximity_base` leaves
+`MISC` and its clamp); a manifest v5 frees the new slots under C.2's rules,
+differing from v4 by exactly those rows (`fit_manifest.py`,
+`--write-defaults`, `--feature-support`, `--audit-coverage`).
+
+**Per-node cost.** The proximity loop visits the same passers as today
+with three capped distance lookups instead of two; weak unopposed lives in
+the pawn cache (free on a hit); the square rule changes a comparison. Expect
+pooled NPS within ±0.5%.
+
+**Invariants and tests.** Crafted positions for each proximity count
+(including `r = 6`, where `next` is skipped, and the cap at 5), for weak
+unopposed (isolated unopposed, backward unopposed, opposed, both isolated
+and backward counted once), and RAR-E40's square-rule cases in both move
+orders (the a5/e5 position no longer counts with the defender to move).
+The eval and pawn caches stay pure functions of the position.
+
+**Interactions.** The opposite-bishop rule counts passers from the same
+set, which does not change. The proximity term overlaps the free- and
+safe-path terms and the mop-up only through the fit. The lazy gate decides
+where the per-evaluation terms (1 and 3) act, as today.
+
+**Then (C.6.5, a separate registration before the fit):** the refit on
+`hce-v4-tb` under manifest v5 (`fit_complete.ps1`, RAR-E32's settings), the
+static screens (RAR-E39's donor screen re-read on the candidate's file and
+RAR-E41's components on it, the magnitude read), the tree read, the pooled
+NPS read, the PGO bake and gate 1 `[0,3]`, by PROCESS's *Evaluation change
+under a fitted search*; C.6.6 holds the margin block when flagged, gate 2
+and the `10+0.1` read. Prior: small; the families' residuals are about
+0.2% of held-out loss in the endgame band, and RAR-E32's threats unit took
++0.107 to +0.037 for +13 Elo at gate 1 (about +5 of it speed).
+
 ## Sub-steps spawned under C.6 (classes in PLAN)
 
 - C.6.1 Residual step (`V`).
 - C.6.2 The unstoppable-passer test against Syzygy and in the corpus (`V`).
-- Later steps (a sub-term attribution, a unit, its refit and gate) are
-  spawned by what these two find.
+- C.6.3 Sub-term attribution (`V`), RAR-E41.
+- C.6.4 The unit: block-square king proximity, weak unopposed, the square
+  rule (`I2`), from the handoff above.
+- C.6.5 Refit, static screens, tree and NPS reads, PGO bake, gate 1 (`V`).
+- C.6.6 Margin block when flagged, gate 2, the `10+0.1` read, the ledger
+  row (`V`).

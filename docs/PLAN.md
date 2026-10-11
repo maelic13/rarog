@@ -294,7 +294,9 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.3 | RESEARCH | V | Next: RAR-E41 registered (instrument `8d93ccb`, smoke-verified exactly); collect, verify on every row, then one analyse |
+| C.6.4 | READY_FOR_IMPLEMENTATION | I2 | Next: RAR-E41 (2026-10-11) found our king's block-square distance and weak unopposed pawns carry the residual; the handoff, with RAR-E40's square rule, is frozen in `analysis/c6_pawns_passers_2026-10-11.md` |
+| C.6.5 | RESEARCH | V | After C.6.4: refit, screens, tree and NPS reads, PGO bake, gate-1 registration |
+| C.6.6 | RESEARCH | V | After gate 1 |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1314,7 +1316,7 @@ loss).
       hides 85% of the term's firings in play (recorded for C.8). The first
       verify failed on the instrument's own parsing, fixed before the
       re-verify passed with no mismatch.
-    - **C.6.3 Sub-term attribution: the donor's passed and pawns components rebuilt offline and verified exactly, read as directions — `V`.** Zero
+    - **C.6.3 Sub-term attribution: the donor's passed and pawns components rebuilt offline and verified exactly, read as directions — `V`, DONE 2026-10-11.** Zero
       games, as RAR-E31 did for threats: an instrument rebuilds Stockfish
       `9587eeeb`'s passed-pawn components (rank bonus, king proximity by
       rank, path and block-square safety, the halving rules, the file
@@ -1330,7 +1332,22 @@ loss).
       points at four standard errors in the endgame band or without queens;
       carriers Rarog lacks (block-square king proximity, the defended block,
       the file adjustment, weak unopposed, weak lever, blocked pawns) become
-      the unit, carriers Rarog already has are left to the refit.
+      the unit, carriers Rarog already has are left to the refit. **Read
+      2026-10-11:** exact on all 194,444 rows; three carriers: our king's
+      distance to the block square (+0.131 ± 0.017 in the endgame band),
+      weak unopposed pawns (+0.060 ± 0.013) and the free path (+0.083
+      without queens, pricing). **C.6 is `READY_FOR_IMPLEMENTATION`**: the
+      handoff is frozen in the research card (*Implementation handoff*).
+    - **C.6.4 Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — `I2`.** From
+      the card's handoff: semantics, seeds, what is removed
+      (`passer_proximity_base` and its frozen constant), the tests, the
+      per-node cost statement. Unfitted, it changes the bench; nothing is
+      measured for strength before C.6.5's registration.
+    - **C.6.5 Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** PROCESS's
+      *Evaluation change under a fitted search*, steps 1 to 3, registered
+      before the fit as RAR-E32 was.
+    - **C.6.6 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** Steps
+      4 to 7, as C.4.4.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
