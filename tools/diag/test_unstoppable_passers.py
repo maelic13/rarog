@@ -86,6 +86,18 @@ class Verify(unittest.TestCase):
         self.assertEqual(self.run_verify(["0;0", "0;1", "0.9166666666666666;2"]), 1)
         self.assertEqual(self.run_verify(["1;0", "0;1", "0.5;2"]), 1)
 
+    def test_a_full_phase_row_is_unreadable_and_must_read_zero_offline(self):
+        # The third position at phase 24 cannot be read; its offline count is 1.
+        self.assertEqual(self.run_verify(["1;0", "0;1", "0;24"]), 1)
+        start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        with tempfile.TemporaryDirectory() as tmp:
+            pos = Path(tmp) / "p.csv"
+            dump = Path(tmp) / "d.csv"
+            pos.write_text(f"{start};0.5\n")
+            dump.write_text(f"{start};0;24\n")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(up.cmd_verify(argparse.Namespace(positions=pos, dump=dump)), 0)
+
     def test_a_tapered_coefficient_turns_back_into_its_count(self):
         self.assertEqual(up.engine_count("0.9166666666666666", "2"), 1)
         self.assertEqual(up.engine_count("-1.8333333333333333", "2"), -2)

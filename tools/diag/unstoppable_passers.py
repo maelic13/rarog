@@ -168,23 +168,35 @@ def read_dump(path: Path):
 
 
 def cmd_verify(args) -> int:
-    checked = mismatched = fired = 0
+    checked = mismatched = fired = unreadable = 0
     examples = []
     for (fen_a, _), (fen_b, value, phase) in zip(read_rows(args.positions),
                                                  read_dump(args.dump), strict=True):
         if fen_a.split()[:4] != fen_b.split()[:4]:
             raise SystemExit(f"row {checked + 1}: FENs differ")
-        engine = engine_count(value, phase)
         offline = net(chess.Board(fen_a), "engine")
         checked += 1
+        if int(phase) >= TOTAL_PHASE:
+            # The eg weight is zero at full phase: the term cannot move the
+            # score and its count cannot be read back. A defender without
+            # pieces cannot reach full phase without promoted pieces, so the
+            # offline count must be zero here; anything else is a mismatch.
+            unreadable += 1
+            if offline != 0:
+                mismatched += 1
+                if len(examples) < 10:
+                    examples.append((fen_a, "unreadable", offline))
+            continue
+        engine = engine_count(value, phase)
         fired += bool(engine)
         if engine != offline:
             mismatched += 1
             if len(examples) < 10:
                 examples.append((fen_a, engine, offline))
     ok = mismatched == 0 and checked > 0
-    print(json.dumps({"rows": checked, "rows_where_engine_fires": fired,
-                      "mismatches": mismatched, "examples": examples, "pass": ok}, indent=2))
+    print(json.dumps({"rows": checked, "rows_at_full_phase_unreadable": unreadable,
+                      "rows_where_engine_fires": fired, "mismatches": mismatched,
+                      "examples": examples, "pass": ok}, indent=2))
     return 0 if ok else 1
 
 
