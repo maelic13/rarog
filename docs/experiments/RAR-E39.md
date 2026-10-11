@@ -19,5 +19,26 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Cheapest prior falsifier:** this read.
 - **Registered order and rule (frozen):** read `rarog+passed` and `rarog+pawns` (gain and standard error) in the seven deciding cohorts of the report, once, and print all ten cohorts. A family **has signal** at a gain of 0.10% or more at four standard errors in a deciding cohort.
 - **Use, frozen:** a family with signal continues into a sub-term attribution (C.6.3, its own registration: the donor's components rebuilt from the FEN and verified against the printed rows before any loss, as RAR-E31). A family without signal closes `NO_CHANGE` inside C.6. Both without: C.6's residual part closes `NO_CHANGE`, and C.6 continues only as far as C.6.2 (RAR-E40) takes the unstoppable-passer test.
-- **Result:** pending.
-- **Artifacts / commits:** the report above; the read's output under `analysis/artifacts/c6/` (ignored storage).
+- **Result (read 2026-10-11, once, after the registration commit `254c9b4`; `analysis/artifacts/c6/e39_read.txt`):** gain in percent of Rarog's held-out squared error, ± one standard error; deciding cohorts marked *.
+
+  | Cohort | Rows | Passed | Pawns |
+  |---|---:|---:|---:|
+  | all | 194,444 | +0.091 ± 0.013 | +0.028 ± 0.009 |
+  | phase ≥ 96 * | 42,953 | +0.048 ± 0.019 | +0.011 ± 0.014 |
+  | phase 32–95 * | 50,906 | −0.003 ± 0.003 | +0.044 ± 0.019 |
+  | **phase < 32** * | 100,585 | **+0.204 ± 0.031 (6.5 SE)** | **+0.121 ± 0.028 (4.3 SE)** |
+  | queens * | 107,638 | +0.001 ± 0.004 | +0.011 ± 0.006 |
+  | **no queens** * | 86,806 | **+0.196 ± 0.035 (5.7 SE)** | **+0.141 ± 0.031 (4.6 SE)** |
+  | men ≤ 6 | 30,570 | +0.348 ± 0.095 | +0.210 ± 0.122 |
+  | men ≥ 7 | 163,874 | +0.078 ± 0.014 | +0.029 ± 0.008 |
+  | |score| ≤ 500 * | 138,507 | +0.095 ± 0.016 | +0.038 ± 0.012 |
+  | |score| > 500 * | 55,937 | −0.013 ± 0.011 | +0.014 ± 0.024 |
+
+- **Disposition:** observation. **Both families have signal** in the endgame band and without queens; **both continue into a sub-term attribution** (C.6.3, its own registration, the donor's components rebuilt from the FEN and verified against the printed rows before any loss). H1 holds; H2 is refuted. The residual is conditioning, not magnitude: both families are nil above |score| 500 and carry their gain inside ±500 (competing (1) refuted), and both are nil with queens on. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed: (1) hit: endgame band +0.204 (band [+0.15, +0.50]), without queens +0.196 (band [+0.10, +0.28]), both signal. (2) **miss**: pawns has signal in two cohorts, and its largest is without queens (+0.141), not the endgame band (+0.121). (3) **miss** in sign: passed above |score| 500 reads −0.013, below it +0.095.
+  - Which assumption failed: I took pawn structure for a middlegame matter already rich in Rarog's terms; its residual sits in queenless and endgame positions, where structure decides which passers appear and which pawns fall. The miss is in mechanism; magnitude and confidence on passed were right.
+- **Conditional lesson:** pawn structure's value is read where pawns decide the game, not where the terms are most numerous.
+- **Retry trigger or `closed`:** closed as a read; C.6.3 follows.
+- **Artifacts / commits:** the report above; `analysis/artifacts/c6/e39_read.txt` (ignored storage).
