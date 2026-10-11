@@ -113,6 +113,33 @@ class AnalyseFilterTests(unittest.TestCase):
         self.assertEqual(report["cohorts"]["pure"]["held_out_rows"], 2)
         self.assertEqual(report["cohorts"]["pieces"]["held_out_rows"], 1)
 
+    def test_verify_reads_the_factor_with_and_without_the_rule50_damping(self):
+        import argparse
+        import contextlib
+        import io
+        import tempfile
+        from pathlib import Path
+
+        # An OCB row (s = 40 of 48) and a plain row, both at clock 90.
+        ocb_fen = "4k3/p7/8/3b4/8/8/P7/2B1K3 w - - 90 80"
+        plain_fen = "4k3/p7/8/8/8/8/P7/4K3 w - - 90 80"
+        r50 = (199.0 - 90) / 199.0
+        current = [f"{ocb_fen};0.5;10;{40 / 48!r}", f"{plain_fen};0.5;0;1.0"]
+        legacy = [f"{ocb_fen};0.5;10;{40 / 48 * r50!r}", f"{plain_fen};0.5;0;{r50!r}"]
+
+        def verify(rows, with_rule50):
+            with tempfile.TemporaryDirectory() as tmp:
+                dump = Path(tmp) / "d.csv"
+                dump.write_text("\n".join(rows) + "\n")
+                args = argparse.Namespace(dumps=[dump], with_rule50=with_rule50)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    return oc.cmd_verify(args)
+
+        self.assertEqual(verify(current, False), 0)
+        self.assertEqual(verify(legacy, True), 0)
+        self.assertEqual(verify(legacy, False), 1)
+        self.assertEqual(verify(current, True), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
