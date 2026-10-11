@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.4 | READY_FOR_IMPLEMENTATION | I2 | Next: RAR-E41 (2026-10-11) found our king's block-square distance and weak unopposed pawns carry the residual; the handoff, with RAR-E40's square rule, is frozen in `analysis/c6_pawns_passers_2026-10-11.md` |
-| C.6.5 | RESEARCH | V | After C.6.4: refit, screens, tree and NPS reads, PGO bake, gate-1 registration |
+| C.6.5 | RESEARCH | V | Next: the unit is built unfitted (`bc69c46`, 13,034,451 / EBF 2.541; manifest v5 `da9c8a4`); register the fit, screens, tree and NPS reads and gate 1 before the fit (RAR-E32's shape) |
 | C.6.6 | RESEARCH | V | After gate 1 |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
@@ -1358,11 +1357,21 @@ loss).
       weak unopposed pawns (+0.060 ± 0.013) and the free path (+0.083
       without queens, pricing). **C.6 is `READY_FOR_IMPLEMENTATION`**: the
       handoff is frozen in the research card (*Implementation handoff*).
-    - **C.6.4 Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — `I2`.** From
+    - **C.6.4 Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — `I2`, DONE 2026-10-11.** From
       the card's handoff: semantics, seeds, what is removed
       (`passer_proximity_base` and its frozen constant), the tests, the
       per-node cost statement. Unfitted, it changes the bench; nothing is
-      measured for strength before C.6.5's registration.
+      measured for strength before C.6.5's registration. **Built
+      2026-10-11:** the engine change `bc69c46` as handed off (debug 390
+      and release 391 tests, texel 205 with the exact reconstruction and
+      three new tests, clippy at zero warnings, fmt clean; unfitted bench
+      **13,034,451 / EBF 2.541**), and the tooling `da9c8a4` (tuner groups
+      and clamps, manifest v5 differing from v4 by exactly the five new
+      slots and the removed one, coverage on all 1,263 slots; the new slots
+      are active on 30% to 50% of training rows). The branch now carries an
+      unaccepted engine: the development fingerprint stays 12,567,796 /
+      EBF 2.535 until C.6's gate accepts, and a rejected unit is reverted in
+      its own commits.
     - **C.6.5 Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** PROCESS's
       *Evaluation change under a fitted search*, steps 1 to 3, registered
       before the fit as RAR-E32 was.

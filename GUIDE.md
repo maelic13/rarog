@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.6.4** (`I2`): Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5.
+**Now: C.6.5** (`V`): Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -54,7 +54,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.6.1** Residual step: the donor's passed and pawns families on the current head, by cohort (RAR-E39) — DONE 2026-10-11
     - [x] **C.6.2** The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — DONE 2026-10-11
     - [x] **C.6.3** Sub-term attribution: the donor's passed and pawns components rebuilt offline and verified exactly, read as directions — DONE 2026-10-11
-    - [ ] **C.6.4** Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — **READY_FOR_IMPLEMENTATION / I2**
+    - [x] **C.6.4** Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — DONE 2026-10-11
     - [ ] **C.6.5** Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — **RESEARCH / V**
     - [ ] **C.6.6** Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
 - [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **RESEARCH / I2**
