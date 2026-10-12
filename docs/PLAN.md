@@ -1350,7 +1350,12 @@ loss).
       carries the gate its own registration names. The checkpoint re-reads
       the game-level conversion instrument on the head that closes C.5,
       re-runs the floors and the theory vetoes, and records KRPPKRP's
-      seven-man exclusion (decided in C.5.5's text, 2026-10-11).
+      seven-man exclusion (decided in C.5.5's text, 2026-10-11). It also
+      owns KRP-KB's DTZ-progress report (RAR-E49): no slowdown at 400
+      positions and the floor re-baselined, but the floors read's own
+      100 KRP-KB positions read 2.7 SE under it; the maintainer chooses
+      between reading that family at 400 positions and a per-game
+      standard error in `endgame_floors.py`, or leaving it reported.
 - **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`, DONE 2026-10-12.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
