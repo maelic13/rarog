@@ -26,6 +26,18 @@ component, and each component alone, by cohort.
   python tools/diag/pawn_subterms.py verify --dump <dir>/pawn_subterms.csv
   python tools/diag/pawn_subterms.py analyse --dump <dir>/pawn_subterms.csv --out <dir>/report.json
 
+C.6.7 adds Rarog's own definitions beside the donor's (`eval_pawns`:
+isolated, doubled, doubled-isolated, backward, weak unopposed, lever,
+candidate passers, islands, support, phalanx and the passed set by rank),
+and the donor's passed() over Rarog's passed set. `verify-rarog` checks
+those counts against the engine's own trace, field by field
+(`rarog-texel --dump-feature ... --full`); `compare` reads, for each
+definition the two engines draw differently, whether the donor's form adds
+outcome information beyond Rarog's.
+
+  python tools/diag/pawn_subterms.py verify-rarog --dump <dir>/pawn_subterms.csv --engine-dumps <dir>/engine
+  python tools/diag/pawn_subterms.py compare --dump <dir>/pawn_subterms.csv --out <dir>/compare.json
+
 Static outcome loss ranks questions and accepts nothing; it is not Elo.
 """
 from __future__ import annotations
@@ -252,10 +264,103 @@ def components_for(fen: str) -> dict[str, tuple[int, int]]:
     return out
 
 
+# Rarog's own pawn and passer definitions (`eval_pawns`, `src/eval/pawns.rs`),
+# counted White minus Black, so each donor form can be read against Rarog's.
+RAROG_SCALARS = ["r_isolated", "r_doubled", "r_doubled_isolated", "r_backward",
+                 "r_unopposed", "r_lever", "r_candidate", "r_islands"]
+RAROG_RANKED = ["r_support", "r_phalanx", "r_passed"]
+RAROG_COLUMNS = RAROG_SCALARS + [f"{n}_{r}" for n in RAROG_RANKED for r in range(8)]
+# The donor's passed() over Rarog's passed set, beside its own set's family.
+PASSED_ON_RAROG_SET = ["pr_total"]
+
+# Each engine trace field, the offline column(s) it must equal and the sign it
+# is traced with (penalties are traced negative).
+ENGINE_FIELDS = {
+    "pawn_isolated_eg": (["r_isolated"], -1),
+    "pawn_doubled_eg": (["r_doubled"], -1),
+    "pawn_doubled_isolated_eg": (["r_doubled_isolated"], -1),
+    "pawn_backward_eg": (["r_backward"], -1),
+    "pawn_weak_unopposed_eg": (["r_unopposed"], -1),
+    "pawn_lever_eg": (["r_lever"], 1),
+    "passed_candidate_eg": (["r_candidate"], 1),
+    "pawn_islands_eg": (["r_islands"], -1),
+    "pawn_connected_eg": ([f"r_support_{r}" for r in range(8)], 1),
+    "pawn_phalanx_eg": ([f"r_phalanx_{r}" for r in range(8)], 1),
+    "passed_eg": ([f"r_passed_{r}" for r in range(8)], 1),
+}
+
+
+def rarog_side(board: chess.Board, us: chess.Color) -> tuple[dict, int]:
+    """`Evaluator::eval_pawns` for `us`: occurrence counts and the passed set."""
+    them = not us
+    ours = board.pawns & board.occupied_co[us]
+    theirs = board.pawns & board.occupied_co[them]
+    c = {name: 0 for name in RAROG_SCALARS}
+    for name in RAROG_RANKED:
+        c[name] = [0] * 8
+    passed_set = 0
+    for s in chess.scan_forward(ours):
+        f = chess.square_file(s)
+        r = rel_rank(us, s)
+        adjacent = adjacent_files(s)
+        supported = bool(chess.BB_PAWN_ATTACKS[them][s] & ours)
+        if not (passed_span(us, s) & theirs):
+            passed_set |= chess.BB_SQUARES[s]
+            c["r_passed"][r] += 1
+        elif r >= 3 and supported and not (theirs & adjacent & forward_ranks(us, s)):
+            c["r_candidate"] += 1
+        doubled = ts.popcount(ours & chess.BB_FILES[f]) > 1
+        isolated = not (ours & adjacent)
+        c["r_doubled"] += doubled
+        c["r_isolated"] += isolated
+        c["r_doubled_isolated"] += doubled and isolated
+        if supported:
+            c["r_support"][r] += 1
+        phalanx = ((f > 0 and ours & chess.BB_SQUARES[s - 1])
+                   or (f < 7 and ours & chess.BB_SQUARES[s + 1]))
+        if phalanx:
+            c["r_phalanx"][r] += 1
+        c["r_lever"] += bool(chess.BB_PAWN_ATTACKS[us][s] & theirs)
+        stop = step(us, s)
+        backward = (not (ours & forward_ranks(them, s) & adjacent)
+                    and 0 <= stop < 64
+                    and bool(chess.BB_PAWN_ATTACKS[us][stop] & theirs))
+        c["r_backward"] += backward
+        unopposed = not (theirs & forward_file(us, s))
+        c["r_unopposed"] += (isolated or backward) and unopposed
+    files = 0
+    for f in range(8):
+        if ours & chess.BB_FILES[f]:
+            files |= 1 << f
+    c["r_islands"] = bin(files & ~(files << 1)).count("1")
+    return c, passed_set
+
+
+def rarog_terms_for(fen: str) -> dict[str, int]:
+    """Rarog's counts White minus Black, and the donor's passed() family
+    (summed, in its internal units) over Rarog's passed set."""
+    board = chess.Board(fen)
+    rw, set_w = rarog_side(board, chess.WHITE)
+    rb, set_b = rarog_side(board, chess.BLACK)
+    out = {}
+    for name in RAROG_SCALARS:
+        out[name] = int(rw[name]) - int(rb[name])
+    for name in RAROG_RANKED:
+        for r in range(8):
+            out[f"{name}_{r}"] = rw[name][r] - rb[name][r]
+    white, black = ts.Side(board, chess.WHITE), ts.Side(board, chess.BLACK)
+    qw = passed_side(board, chess.WHITE, set_w, white, black)
+    qb = passed_side(board, chess.BLACK, set_b, black, white)
+    out["pr_total_mg"] = sum(qw[n][0] for n in PASSED_COMPONENTS) - sum(qb[n][0] for n in PASSED_COMPONENTS)
+    out["pr_total_eg"] = sum(qw[n][1] for n in PASSED_COMPONENTS) - sum(qb[n][1] for n in PASSED_COMPONENTS)
+    return out
+
+
 def header() -> str:
     cells = ["idx", "label", "rarog", "passed_mg", "passed_eg", "pawns_mg", "pawns_eg"]
     for name in COLUMNS:
         cells += [f"{name}_mg", f"{name}_eg"]
+    cells += RAROG_COLUMNS + ["pr_total_mg", "pr_total_eg"]
     cells.append("fen")
     return ";".join(cells)
 
@@ -264,9 +369,12 @@ def score_chunk(rows) -> list[str]:
     out = []
     for idx, label, rarog, pmg, peg, wmg, weg, fen in rows:
         comps = components_for(fen)
+        own = rarog_terms_for(fen)
         cells = [idx, label, rarog, pmg, peg, wmg, weg]
         for name in COLUMNS:
             cells += [str(comps[name][0]), str(comps[name][1])]
+        cells += [str(own[name]) for name in RAROG_COLUMNS]
+        cells += [str(own["pr_total_mg"]), str(own["pr_total_eg"])]
         cells.append(fen)
         out.append(";".join(cells))
     return out
@@ -429,6 +537,154 @@ def analyse(args: argparse.Namespace) -> int:
     return 0
 
 
+def verify_rarog(args: argparse.Namespace) -> int:
+    """Every row: the offline Rarog counts equal the engine's own trace, read
+    from `rarog-texel --dump-feature <csv> <dir>/<field>.csv <field> --full`
+    for each field in ENGINE_FIELDS. The dump's coefficient of an eg-only
+    field is `count · (24 − phase) / 24`; at full phase it cannot be read and
+    the row is counted as unreadable."""
+    col, data, fens = ts.load_dump(args.dump)
+    report = {"rows": len(fens), "fields": {}}
+    ok = True
+    for field, (names, sign) in ENGINE_FIELDS.items():
+        path = os.path.join(args.engine_dumps, f"{field}.csv")
+        engine_rows = {}
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if line:
+                    fen, values, phase = line.rsplit(";", 2)
+                    engine_rows[fen] = (values, phase)
+        checked = unreadable = mismatched = missing = 0
+        examples = []
+        for i, fen in enumerate(fens):
+            if fen not in engine_rows:
+                missing += 1
+                continue
+            values, phase = engine_rows[fen]
+            weight = (24 - int(phase)) / 24
+            if weight <= 0:
+                unreadable += 1
+                continue
+            checked += 1
+            for name, value in zip(names, values.split(","), strict=True):
+                engine = float(value) / weight
+                offline = sign * data[i, col[name]]
+                if abs(engine - offline) > 1e-6:
+                    mismatched += 1
+                    if len(examples) < 5:
+                        examples.append((fen, name, engine, float(offline)))
+                    break
+        fine = mismatched == 0 and missing == 0 and checked > 0
+        ok &= fine
+        report["fields"][field] = {"checked": checked, "unreadable_full_phase": unreadable,
+                                   "missing": missing, "mismatched_rows": mismatched,
+                                   "examples": examples, "pass": fine}
+    report["pass"] = ok
+    print(json.dumps(report, indent=2))
+    return 0 if ok else 1
+
+
+# Each definition the two engines draw differently: the donor's form (its
+# columns in the dump) against Rarog's (counts, split into mg and eg parts by
+# the donor's phase so the model may price them freely).
+DEFINITIONS = {
+    "backward": (["w_backward"], ["r_backward"]),
+    "weak_unopposed": (["w_unopposed"], ["r_unopposed"]),
+    "isolated": (["w_isolated"], ["r_isolated"]),
+    "doubled": (["w_doubled"], ["r_doubled"]),
+    "doubled_isolated": (["w_doubled_isolated"], ["r_doubled_isolated"]),
+    "connected": (["w_connected"], [f"r_support_{r}" for r in range(1, 7)]
+                  + [f"r_phalanx_{r}" for r in range(1, 7)]),
+    "lever": (["w_lever"], ["r_lever"]),
+    "blocked": (["w_blocked"], []),
+    "passed_set": (["p_total"], ["pr_total"]),
+}
+
+
+def compare(args: argparse.Namespace) -> int:
+    """For each definition: Rarog's form, the donor's, and both, beside
+    Rarog's score; the donor's form over Rarog's (paired) is what Rarog's
+    definition misses."""
+    import numpy as np
+
+    col, data, fens = ts.load_dump(args.dump)
+    n = data.shape[0]
+    y = data[:, col["label"]]
+    rarog = np.clip(data[:, col["rarog"]] * 100.0, -dr.CLIP_CP, dr.CLIP_CP)
+    phase = np.array([dr.sf11_phase(f) for f in fens], dtype=float)
+    queens = np.array([dr.has_queen(f) for f in fens])
+    men = np.array([dr.men_count(f) for f in fens])
+
+    def taper(mg, eg):
+        return (mg * phase + eg * (128.0 - phase)) / 128.0 / PAWN_EG * 100.0
+
+    def donor(name):
+        if name == "p_total":
+            return sum(taper(data[:, col[f"{c}_mg"]], data[:, col[f"{c}_eg"]])
+                       for c in PASSED_COMPONENTS)
+        return taper(data[:, col[f"{name}_mg"]], data[:, col[f"{name}_eg"]])
+
+    def rarog_cols(name):
+        if name == "pr_total":
+            return [taper(data[:, col["pr_total_mg"]], data[:, col["pr_total_eg"]])]
+        count = data[:, col[name]]
+        return [count * phase / 128.0, count * (128.0 - phase) / 128.0]
+
+    rng = np.random.default_rng(20261012)
+    models: dict[str, np.ndarray] = {"rarog": rarog[:, None]}
+    pairs = []
+    for name, (dcols, rcols) in DEFINITIONS.items():
+        d = [donor(c) for c in dcols]
+        r = [x for c in rcols for x in rarog_cols(c)]
+        models[f"{name}:rarog_form"] = np.column_stack([rarog] + r)
+        models[f"{name}:donor_form"] = np.column_stack([rarog] + d)
+        models[f"{name}:both"] = np.column_stack([rarog] + r + d)
+        pairs.append((f"{name}:rarog_form", f"{name}:both", f"{name}: donor's beyond Rarog's"))
+        pairs.append((f"{name}:rarog_form", f"{name}:donor_form", f"{name}: donor's instead of Rarog's"))
+    # The null: the backward pair with the donor's column shuffled.
+    rb = [x for x in rarog_cols("r_backward")]
+    models["null:both"] = np.column_stack([rarog] + rb + [rng.permutation(donor("w_backward"))])
+    pairs.append(("backward:rarog_form", "null:both", "null: shuffled donor backward beyond Rarog's"))
+
+    cohorts = {
+        "all": np.ones(n, dtype=bool),
+        "phase<32": phase < 32,
+        "no queens": ~queens,
+        "men>=7": men >= 7,
+        "phase 32-95": (phase >= 32) & (phase < 96),
+    }
+    report = {"dump": os.path.abspath(args.dump), "dump_sha256": dr.sha256_file(args.dump),
+              "rows": int(n), "cohorts": {}}
+    for cname, mask in cohorts.items():
+        count = int(mask.sum())
+        errors = {name: (y[mask] - dr.held_out_predictions(x[mask], y[mask])) ** 2
+                  for name, x in models.items()}
+        base = errors["rarog"]
+        rows = {}
+        for mname, err in errors.items():
+            diff = base - err
+            rows[mname] = {
+                "gain_vs_rarog_pct": float(100.0 * diff.mean() / base.mean()),
+                "gain_se_pct": float(100.0 * diff.std(ddof=1) / np.sqrt(count) / base.mean()),
+            }
+        paired = {}
+        for a, b, label in pairs:
+            diff = errors[a] - errors[b]
+            paired[label] = {
+                "gain_pct": float(100.0 * diff.mean() / base.mean()),
+                "se_pct": float(100.0 * diff.std(ddof=1) / np.sqrt(count) / base.mean()),
+            }
+        report["cohorts"][cname] = {"rows": count, "models": rows, "paired": paired}
+    with open(args.out, "w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2)
+    for cname, entry in report["cohorts"].items():
+        print(f"\ncohort {cname} (n={entry['rows']})")
+        for label, row in entry["paired"].items():
+            print(f"  {label:<52} {row['gain_pct']:>+8.3f} {row['se_pct']:>7.3f}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -442,8 +698,16 @@ def main() -> int:
     a = sub.add_parser("analyse")
     a.add_argument("--dump", required=True)
     a.add_argument("--out", required=True)
+    vr = sub.add_parser("verify-rarog")
+    vr.add_argument("--dump", required=True)
+    vr.add_argument("--engine-dumps", required=True,
+                    help="directory of <field>.csv files from rarog-texel --dump-feature --full")
+    cp = sub.add_parser("compare")
+    cp.add_argument("--dump", required=True)
+    cp.add_argument("--out", required=True)
     args = parser.parse_args()
-    return {"collect": collect, "verify": verify, "analyse": analyse}[args.command](args)
+    return {"collect": collect, "verify": verify, "analyse": analyse,
+            "verify-rarog": verify_rarog, "compare": compare}[args.command](args)
 
 
 if __name__ == "__main__":
