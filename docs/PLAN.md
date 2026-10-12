@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.2 | RESEARCH | R2 | Next (C.6 closed 2026-10-12), before C.8: the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
+| C.5.2.2 | RESEARCH | R2 | Next: RAR-E45 registered 2026-10-12 (fresh dumps by the current head, since C.6 changed passer scoring; a static wins-under-claim veto added), before C.8: the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
