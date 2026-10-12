@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import chess
+
 import pawn_subterms as ps
 
 
@@ -84,7 +86,9 @@ class VerifyRarog(unittest.TestCase):
         for name in ps.COLUMNS:
             cells += [str(comps[name][0]), str(comps[name][1])]
         cells += [str(own[name]) for name in ps.RAROG_COLUMNS]
-        cells += [str(own["pr_total_mg"]), str(own["pr_total_eg"]), fen]
+        cells += [str(own["pr_total_mg"]), str(own["pr_total_eg"])]
+        groups = ps.group_values_for(chess.Board(fen))
+        cells += [str(groups[name]) for name in ps.GROUP_COLUMNS] + [fen]
 
         def run(tamper):
             with tempfile.TemporaryDirectory() as tmp:
@@ -107,6 +111,44 @@ class VerifyRarog(unittest.TestCase):
         self.assertEqual(run(True), 1)
 
 
+class PassedSetGroups(unittest.TestCase):
+    def groups(self, fen):
+        board = chess.Board(fen)
+        white = ps.ts.Side(board, chess.WHITE)
+        black = ps.ts.Side(board, chess.BLACK)
+        return (ps.passed_groups(board, chess.WHITE, white, black),
+                ps.passed_groups(board, chess.BLACK, black, white))
+
+    def test_the_rear_doubled_passer_is_rarogs_only(self):
+        w, _ = self.groups("4k3/8/8/8/4P3/8/4P3/4K3 w - - 0 1")
+        self.assertEqual(w["g_rear"], chess.BB_E2)
+
+    def test_a_pawn_stopped_only_by_a_lever_is_the_donors_only(self):
+        # e5 and d6 lever each other; each is passed for the donor only.
+        w, b = self.groups("4k3/8/3p4/4P3/8/8/8/4K3 w - - 0 1")
+        self.assertEqual(w["g_lever"], chess.BB_E5)
+        self.assertEqual(b["g_lever"], chess.BB_D6)
+
+    def test_a_blocked_fifth_rank_pawn_with_a_supported_push_and_a_helper(self):
+        # e5 blocked by e6, supported by d4 whose push to d5 is safe; d5 helps.
+        w, _ = self.groups("4k3/8/4p3/4P3/3P4/8/8/4K3 w - - 0 1")
+        self.assertEqual(w["g_blocked_kept"], chess.BB_E5)
+        self.assertEqual(w["g_blocked_dropped"], 0)
+
+    def test_the_groups_rebuild_the_donors_family_exactly(self):
+        fens = ["4k3/8/8/8/4P3/8/4P3/4K3 w - - 0 1",
+                "4k3/8/3p4/4P3/8/8/8/4K3 w - - 0 1",
+                "4k3/8/4p3/4P3/3P4/8/8/4K3 w - - 0 1",
+                "r3k3/pp3ppp/2p5/3pP3/3P1P2/2P5/PP4PP/4K2R w - - 0 1"]
+        rows = [(str(i), "0.5", "0.1", "0", "0", "0", "0", fen) for i, fen in enumerate(fens)]
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = Path(tmp) / "d.csv"
+            dump.write_text(ps.header() + "\n" + "\n".join(ps.score_chunk(rows)) + "\n",
+                            encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(ps.verify_split(argparse.Namespace(dump=str(dump))), 0)
+
+
 class Verify(unittest.TestCase):
     def test_verify_passes_the_donors_rows_and_fails_a_tampered_one(self):
         fen = "4k3/8/8/8/4P3/8/8/4K3 w - - 0 1"
@@ -123,6 +165,8 @@ class Verify(unittest.TestCase):
             own = ps.rarog_terms_for(fen)
             cells += [str(own[name]) for name in ps.RAROG_COLUMNS]
             cells += [str(own["pr_total_mg"]), str(own["pr_total_eg"])]
+            groups = ps.group_values_for(chess.Board(fen))
+            cells += [str(groups[name]) for name in ps.GROUP_COLUMNS]
             cells.append(fen)
             with tempfile.TemporaryDirectory() as tmp:
                 dump = Path(tmp) / "d.csv"

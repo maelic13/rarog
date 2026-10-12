@@ -200,8 +200,11 @@ def pawns_side(board: chess.Board, us: chess.Color) -> tuple[dict, int]:
 
 
 def passed_side(board: chess.Board, us: chess.Color, passed_set: int,
-                mine: ts.Side, theirs_side: ts.Side) -> dict:
-    """`Evaluation::passed<Us>()`, component by component."""
+                mine: ts.Side, theirs_side: ts.Side, filter_blocked: bool = True) -> dict:
+    """`Evaluation::passed<Us>()`, component by component. Each pawn's bonus
+    depends on the board, not on the rest of the set, so the family is
+    additive over pawns; `filter_blocked=False` skips the donor's removal of
+    blocked candidates without help, to value a chosen group of pawns."""
     them = not us
     comp = {name: (0, 0) for name in PASSED_COMPONENTS}
     our_pawns = board.pawns & board.occupied_co[us]
@@ -210,7 +213,7 @@ def passed_side(board: chess.Board, us: chess.Color, passed_set: int,
 
     b = passed_set
     blocked_passers = b & down(us, their_pawns)
-    if blocked_passers:
+    if blocked_passers and filter_blocked:
         helpers = (up(us, our_pawns) & ~board.occupied_co[them]
                    & ((~theirs_side.attacked2 & BB_ALL) | mine.attacked))
         b &= (~blocked_passers & BB_ALL) | shift_west(helpers) | shift_east(helpers)
@@ -336,6 +339,76 @@ def rarog_side(board: chess.Board, us: chess.Color) -> tuple[dict, int]:
     return c, passed_set
 
 
+# The pawns on which the two passed sets disagree, by why they differ: Rarog's
+# rear pawn of a doubled passer (Rarog's set only); the donor's extra passers
+# (only levers in the way; lever pushes outnumbered by the phalanx; a single
+# blocker on the fifth rank or higher with a supported push), the last split
+# by the donor's removal of blocked candidates without help.
+GROUPS = ["g_rear", "g_lever", "g_leverpush", "g_blocked_kept", "g_blocked_dropped"]
+
+
+def passed_groups(board: chess.Board, us: chess.Color, mine: ts.Side,
+                  theirs_side: ts.Side) -> dict[str, int]:
+    them = not us
+    ours = board.pawns & board.occupied_co[us]
+    theirs = board.pawns & board.occupied_co[them]
+    double_attack_them = ts.pawn_double_attacks_bb(them, theirs)
+    g = {name: 0 for name in GROUPS}
+    blocked = 0
+    for s in chess.scan_forward(ours):
+        bit = chess.BB_SQUARES[s]
+        r = rel_rank(us, s)
+        s_up, s_down = step(us, s), step(them, s)
+        stoppers = theirs & passed_span(us, s)
+        own_ahead = forward_file(us, s) & ours
+        if not stoppers:
+            if own_ahead:
+                g["g_rear"] |= bit
+            continue
+        if own_ahead:
+            continue
+        lever = theirs & chess.BB_PAWN_ATTACKS[us][s]
+        lever_push = theirs & chess.BB_PAWN_ATTACKS[us][s_up]
+        blocker = theirs & chess.BB_SQUARES[s_up]
+        neighbours = ours & adjacent_files(s)
+        phalanx = neighbours & chess.BB_RANKS[chess.square_rank(s)]
+        support = neighbours & chess.BB_RANKS[chess.square_rank(s_down)]
+        if not (stoppers ^ lever):
+            g["g_lever"] |= bit
+        elif not (stoppers ^ lever_push) and ts.popcount(phalanx) >= ts.popcount(lever_push):
+            g["g_leverpush"] |= bit
+        elif (stoppers == blocker and r >= 4
+              and up(us, support) & ~(theirs | double_attack_them) & BB_ALL):
+            blocked |= bit
+    # Only the blocked group has an enemy pawn directly in front, so only it
+    # meets the donor's removal of blocked candidates without help.
+    helpers = (up(us, ours) & ~board.occupied_co[them]
+               & ((~theirs_side.attacked2 & BB_ALL) | mine.attacked))
+    kept = blocked & (shift_west(helpers) | shift_east(helpers))
+    g["g_blocked_kept"] = kept
+    g["g_blocked_dropped"] = blocked & ~kept & BB_ALL
+    return g
+
+
+def group_values_for(board: chess.Board) -> dict[str, int]:
+    """Each group's passed() value White minus Black (mg, eg), and its pawn
+    count over both sides."""
+    white, black = ts.Side(board, chess.WHITE), ts.Side(board, chess.BLACK)
+    gw = passed_groups(board, chess.WHITE, white, black)
+    gb = passed_groups(board, chess.BLACK, black, white)
+    out = {}
+    for name in GROUPS:
+        vw = passed_side(board, chess.WHITE, gw[name], white, black, filter_blocked=False)
+        vb = passed_side(board, chess.BLACK, gb[name], black, white, filter_blocked=False)
+        out[f"{name}_mg"] = sum(vw[n][0] for n in PASSED_COMPONENTS) - sum(vb[n][0] for n in PASSED_COMPONENTS)
+        out[f"{name}_eg"] = sum(vw[n][1] for n in PASSED_COMPONENTS) - sum(vb[n][1] for n in PASSED_COMPONENTS)
+        out[f"n_{name}"] = ts.popcount(gw[name]) + ts.popcount(gb[name])
+    return out
+
+
+GROUP_COLUMNS = [f"{name}_{part}" for name in GROUPS for part in ("mg", "eg")] + [f"n_{name}" for name in GROUPS]
+
+
 def rarog_terms_for(fen: str) -> dict[str, int]:
     """Rarog's counts White minus Black, and the donor's passed() family
     (summed, in its internal units) over Rarog's passed set."""
@@ -360,7 +433,7 @@ def header() -> str:
     cells = ["idx", "label", "rarog", "passed_mg", "passed_eg", "pawns_mg", "pawns_eg"]
     for name in COLUMNS:
         cells += [f"{name}_mg", f"{name}_eg"]
-    cells += RAROG_COLUMNS + ["pr_total_mg", "pr_total_eg"]
+    cells += RAROG_COLUMNS + ["pr_total_mg", "pr_total_eg"] + GROUP_COLUMNS
     cells.append("fen")
     return ";".join(cells)
 
@@ -375,6 +448,8 @@ def score_chunk(rows) -> list[str]:
             cells += [str(comps[name][0]), str(comps[name][1])]
         cells += [str(own[name]) for name in RAROG_COLUMNS]
         cells += [str(own["pr_total_mg"]), str(own["pr_total_eg"])]
+        groups = group_values_for(chess.Board(fen))
+        cells += [str(groups[name]) for name in GROUP_COLUMNS]
         cells.append(fen)
         out.append(";".join(cells))
     return out
@@ -685,6 +760,87 @@ def compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def verify_split(args: argparse.Namespace) -> int:
+    """Every row: the donor's passed() over its own set equals the family over
+    Rarog's set, less Rarog's rear doubled passers, plus the donor's lever,
+    lever-push and kept blocked passers, exactly, in mg and in eg."""
+    col, data, _ = ts.load_dump(args.dump)
+    report = {"rows": int(data.shape[0])}
+    bad = 0
+    for part in ("mg", "eg"):
+        donor = sum(data[:, col[f"{c}_{part}"]] for c in PASSED_COMPONENTS)
+        rebuilt = (data[:, col[f"pr_total_{part}"]] - data[:, col[f"g_rear_{part}"]]
+                   + data[:, col[f"g_lever_{part}"]] + data[:, col[f"g_leverpush_{part}"]]
+                   + data[:, col[f"g_blocked_kept_{part}"]])
+        mismatch = int((abs(donor - rebuilt) > 1e-9).sum())
+        report[f"mismatch_{part}"] = mismatch
+        bad += mismatch
+    report["rows_with_pawns_in_group"] = {name: int((data[:, col[f"n_{name}"]] > 0).sum())
+                                          for name in GROUPS}
+    report["pass"] = bad == 0
+    print(json.dumps(report, indent=2))
+    return 0 if report["pass"] else 1
+
+
+def split(args: argparse.Namespace) -> int:
+    """Each disagreeing group's passed() value beside Rarog's score and the
+    family over Rarog's set: what that group adds beyond Rarog's set."""
+    import numpy as np
+
+    col, data, fens = ts.load_dump(args.dump)
+    n = data.shape[0]
+    y = data[:, col["label"]]
+    rarog = np.clip(data[:, col["rarog"]] * 100.0, -dr.CLIP_CP, dr.CLIP_CP)
+    phase = np.array([dr.sf11_phase(f) for f in fens], dtype=float)
+    queens = np.array([dr.has_queen(f) for f in fens])
+    men = np.array([dr.men_count(f) for f in fens])
+
+    def taper(name):
+        return ((data[:, col[f"{name}_mg"]] * phase + data[:, col[f"{name}_eg"]] * (128.0 - phase))
+                / 128.0 / PAWN_EG * 100.0)
+
+    base = taper("pr_total")
+    rng = np.random.default_rng(20261012)
+    models: dict[str, np.ndarray] = {"rarog": rarog[:, None],
+                                     "rarog+rarog_set": np.column_stack([rarog, base])}
+    pairs = []
+    for name in GROUPS:
+        models[f"rarog+rarog_set+{name}"] = np.column_stack([rarog, base, taper(name)])
+        pairs.append(("rarog+rarog_set", f"rarog+rarog_set+{name}", f"{name} beyond Rarog's set"))
+    models["rarog+rarog_set+all_groups"] = np.column_stack([rarog, base] + [taper(g) for g in GROUPS])
+    pairs.append(("rarog+rarog_set", "rarog+rarog_set+all_groups", "all groups beyond Rarog's set"))
+    models["rarog+rarog_set+null"] = np.column_stack([rarog, base, rng.permutation(taper("g_lever"))])
+    pairs.append(("rarog+rarog_set", "rarog+rarog_set+null", "null: shuffled lever group"))
+
+    cohorts = {
+        "all": np.ones(n, dtype=bool),
+        "phase<32": phase < 32,
+        "no queens": ~queens,
+        "men>=7": men >= 7,
+    }
+    report = {"dump": os.path.abspath(args.dump), "dump_sha256": dr.sha256_file(args.dump),
+              "rows": int(n), "cohorts": {}}
+    for cname, mask in cohorts.items():
+        count = int(mask.sum())
+        errors = {name: (y[mask] - dr.held_out_predictions(x[mask], y[mask])) ** 2
+                  for name, x in models.items()}
+        ref = errors["rarog"]
+        paired = {}
+        for a, b, label in pairs:
+            diff = errors[a] - errors[b]
+            paired[label] = {"gain_pct": float(100.0 * diff.mean() / ref.mean()),
+                             "se_pct": float(100.0 * diff.std(ddof=1) / np.sqrt(count) / ref.mean())}
+        present = {name: int((data[mask, col[f"n_{name}"]] > 0).sum()) for name in GROUPS}
+        report["cohorts"][cname] = {"rows": count, "rows_with_group": present, "paired": paired}
+    with open(args.out, "w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2)
+    for cname, entry in report["cohorts"].items():
+        print(f"\ncohort {cname} (n={entry['rows']}); rows with each group: {entry['rows_with_group']}")
+        for label, row in entry["paired"].items():
+            print(f"  {label:<40} {row['gain_pct']:>+8.3f} {row['se_pct']:>7.3f}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -705,9 +861,15 @@ def main() -> int:
     cp = sub.add_parser("compare")
     cp.add_argument("--dump", required=True)
     cp.add_argument("--out", required=True)
+    vs = sub.add_parser("verify-split")
+    vs.add_argument("--dump", required=True)
+    sp = sub.add_parser("split")
+    sp.add_argument("--dump", required=True)
+    sp.add_argument("--out", required=True)
     args = parser.parse_args()
     return {"collect": collect, "verify": verify, "analyse": analyse,
-            "verify-rarog": verify_rarog, "compare": compare}[args.command](args)
+            "verify-rarog": verify_rarog, "compare": compare,
+            "verify-split": verify_split, "split": split}[args.command](args)
 
 
 if __name__ == "__main__":
