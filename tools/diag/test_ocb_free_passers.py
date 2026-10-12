@@ -44,5 +44,30 @@ class PasserKindTests(unittest.TestCase):
         self.assertEqual(kinds("7K/8/8/8/4p3/6B1/8/7k w - - 0 1")[1], (1, 0, 0))
 
 
+class TwoRegressorFit(unittest.TestCase):
+    def test_the_fit_recovers_a_planted_rule(self):
+        import numpy as np
+
+        planted = (3, 2, 5, 7)
+        cells = np.array([(p, c, f) for p in range(1, 6) for c in range(0, p + 1)
+                          for f in range(0, c + 1)], dtype=float)
+        target = np.clip(planted[0] + planted[1] * cells[:, 0] + planted[2] * cells[:, 1]
+                         + planted[3] * cells[:, 2], 0, oc.OCB_NORMAL)
+        s = np.arange(oc.OCB_NORMAL + 1, dtype=float)[None, :]
+        table = (s - target[:, None]) ** 2
+        grid = {"a": range(0, 10), "b": range(0, 5), "c": range(0, 8), "d": range(0, 10)}
+        self.assertEqual(fp.fit_two(cells, table, grid), planted)
+
+    def test_with_d_fixed_at_zero_it_is_the_count_form(self):
+        import numpy as np
+
+        cells = np.array([(p, c, 0) for p in range(1, 6) for c in range(0, p + 1)], dtype=float)
+        target = np.clip(1 + 2 * cells[:, 0] + 9 * cells[:, 1], 0, oc.OCB_NORMAL)
+        s = np.arange(oc.OCB_NORMAL + 1, dtype=float)[None, :]
+        table = (s - target[:, None]) ** 2
+        grid = {"a": range(0, 5), "b": range(0, 5), "c": range(0, 12), "d": [0]}
+        self.assertEqual(fp.fit_two(cells, table, grid), (1, 2, 9, 0))
+
+
 if __name__ == "__main__":
     unittest.main()

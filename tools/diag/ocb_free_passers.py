@@ -18,6 +18,10 @@ rule across the six-to-seven-men boundary would need.
               against the engine's own rule, by men region
   drawn       a fitted rule's static overclaim on draws and underclaim on wins
               on the Syzygy-labelled positions, against the engine's rule
+  two         fit `s = clamp(a + b*pawns + c*passers + d*free, 0, 48)`, both
+              counts in one rule at every men count (C.5.2.2), beside the
+              count form refitted the same way, read on a held-out dump
+              against the engine's rule and the count form, by men region
 
 Static loss ranks candidates and accepts nothing.
 """
@@ -158,6 +162,80 @@ def cmd_rule(args) -> int:
     return 0
 
 
+def cell_losses2(raw, label, pawns, count, free, k):
+    """Squared-error sum for every (pawns, passers, free passers) cell at every
+    s in 0..48, so any rule over these rows is a lookup and a sum."""
+    cells = sorted(set(zip(pawns.tolist(), count.tolist(), free.tolist())))
+    table = np.zeros((len(cells), oc.OCB_NORMAL + 1))
+    s = np.arange(oc.OCB_NORMAL + 1, dtype=float)[:, None]
+    for i, (p, c, f) in enumerate(cells):
+        mask = (pawns == p) & (count == c) & (free == f)
+        pred = oc.sigmoid(oc.scaled(raw[mask][None, :], s), k)
+        table[i] = ((label[mask][None, :] - pred) ** 2).sum(axis=1)
+    return np.array(cells, dtype=float), table
+
+
+def fit_two(cells, table, grid):
+    """Exhaustive `s = clamp(a + b*pawns + c*passers + d*free, 0, 48)` over the
+    grid; the first minimum in a, b, c, d order wins a tie."""
+    a = np.array(list(grid["a"]), dtype=float)[:, None]
+    rows = np.arange(len(cells))[None, :]
+    best = None
+    for b in grid["b"]:
+        for c in grid["c"]:
+            for d in grid["d"]:
+                base = b * cells[:, 0] + c * cells[:, 1] + d * cells[:, 2]
+                s = np.clip(a + base[None, :], 0, oc.OCB_NORMAL).astype(int)
+                loss = table[rows, s].sum(axis=1)
+                i = int(np.argmin(loss))
+                if best is None or loss[i] < best[0]:
+                    best = (float(loss[i]), (int(a[i, 0]), b, c, d))
+    return best[1]
+
+
+def cmd_two(args) -> int:
+    """The two-regressor rule (passers and free passers together, one rule at
+    every men count) against the engine's split and the count form."""
+    k = args.k
+    train, _, _ = load_pure(args.train)
+    held, held_scores, held_labels = load_pure(args.held_out)
+    global_err = (held_labels - oc.sigmoid(held_scores, k)) ** 2
+    head_err = (held["label"] - oc.sigmoid(oc.scaled(held["raw"], held["s0"]), k)) ** 2
+    regions = {"all": held["pawns"] >= 1, "men<=6": held["pawns"] <= 2, "men>=7": held["pawns"] >= 3}
+    cells, table = cell_losses2(train["raw"], train["label"], train["pawns"],
+                                train["count"], train["free"], k)
+    grid = {"a": range(0, oc.OCB_NORMAL + 1), "b": range(0, 13), "c": range(0, 25)}
+    count_params = fit_two(cells, table, {**grid, "d": [0]})
+    two_params = fit_two(cells, table, {**grid, "d": range(0, 25)})
+
+    def err_of(params):
+        a, b, c, d = params
+        s = np.clip(a + b * held["pawns"] + c * held["count"] + d * held["free"], 0, oc.OCB_NORMAL)
+        return (held["label"] - oc.sigmoid(oc.scaled(held["raw"], s), k)) ** 2
+
+    errs = {"count": err_of(count_params), "two": err_of(two_params)}
+    report = {"k": k, "train_rows": int(len(train["pawns"])), "held_out_rows": int(len(held["pawns"])),
+              "cells": int(len(cells)),
+              "params_a_b_c_d": {"count": list(count_params), "two": list(two_params)},
+              "vs_head": {}, "two_over_count": {}}
+    for form, err in errs.items():
+        report["vs_head"][form] = {}
+        for name, mask in regions.items():
+            gain, se = oc.paired(head_err[mask], err[mask])
+            report["vs_head"][form][name] = {"rows": int(mask.sum()), "gain_pct": round(gain, 3),
+                                             "se_pct": round(se, 3)}
+        report["vs_head"][form]["global_gain_pct"] = round(
+            100.0 * (head_err - err).sum() / global_err.sum(), 4)
+    for name, mask in regions.items():
+        gain, se = oc.paired(errs["count"][mask], errs["two"][mask])
+        report["two_over_count"][name] = {"gain_pct": round(gain, 3), "se_pct": round(se, 3)}
+    text = json.dumps(report, indent=2)
+    print(text)
+    if args.output:
+        args.output.write_text(text + "\n")
+    return 0
+
+
 def truth_rows(path: Path):
     """(family, fen, label for White, score, s0, pawns, (w kinds), (b kinds))."""
     for fen, label, score, _engine in oc.read_dump(path):
@@ -199,8 +277,12 @@ def cmd_drawn(args) -> int:
     for family, _fen, label, score, s0, pawns, w, b in truth_rows(args.dump):
         raw = score if s0 == oc.OCB_NORMAL else (
             round((score + 0.5 * math.copysign(1, score)) * oc.OCB_NORMAL / s0) if score else 0)
-        s1 = int(min(max(params[0] + params[1] * pawns + params[2] * q_of(args.form, w, b), 0),
-                     oc.OCB_NORMAL))
+        if args.form == "two":
+            linear = (params[0] + params[1] * pawns + params[2] * q_of("count", w, b)
+                      + params[3] * q_of("free", w, b))
+        else:
+            linear = params[0] + params[1] * pawns + params[2] * q_of(args.form, w, b)
+        s1 = int(min(max(linear, 0), oc.OCB_NORMAL))
         cand = int(math.trunc(raw * s1 / oc.OCB_NORMAL))
         fam = out.setdefault(family, {"draws": 0, "head_over": 0, "cand_over": 0,
                                       "wins": 0, "head_under": 0, "cand_under": 0})
@@ -234,12 +316,19 @@ def main() -> int:
     p.add_argument("--output", type=Path)
     p = sub.add_parser("drawn")
     p.add_argument("--dump", required=True, type=Path)
-    p.add_argument("--form", required=True, choices=FORMS)
-    p.add_argument("--candidate", required=True)
+    p.add_argument("--form", required=True, choices=FORMS + ("two",))
+    p.add_argument("--candidate", required=True,
+                   help="a,b,c for a one-regressor form; a,b,c,d for two (c passers, d free)")
     p.add_argument("--threshold", type=int, default=100)
     p.add_argument("--output", type=Path)
+    p = sub.add_parser("two")
+    p.add_argument("--train", required=True, type=Path)
+    p.add_argument("--held-out", required=True, type=Path)
+    p.add_argument("--k", required=True, type=float)
+    p.add_argument("--output", type=Path)
     args = ap.parse_args()
-    return {"separation": cmd_separation, "rule": cmd_rule, "drawn": cmd_drawn}[args.cmd](args)
+    return {"separation": cmd_separation, "rule": cmd_rule, "drawn": cmd_drawn,
+            "two": cmd_two}[args.cmd](args)
 
 
 if __name__ == "__main__":
