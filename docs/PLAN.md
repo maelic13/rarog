@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.6 | RESEARCH | R2 | Next: RAR-E48 registered 2026-10-12 (conversion against Stockfish, drawn overclaim, cost in the gate's games, RAR-E25's KBP-K breach retried) |
+| C.5.6 | RESEARCH | R2 | Next: RAR-E48 read (2026-10-12); the families are served generically; only the KBP-K floor decision remains, with the maintainer (re-baseline at 400 positions, or retire DTZ progress as a floor in pawn-move families) |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
 | C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
@@ -1311,6 +1311,18 @@ loss).
     - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
+      **Read 2026-10-12 (RAR-E48):** the seven families (KPP-K, KPPP-K,
+      KBP-K, KBPP-K, KBPP-KB, KQ-KRP, KQ-KRPP) convert level with Stockfish
+      or better at every budget; KBPP-KB and KQ-KRPP overclaim 70% and 56%
+      of their draws statically, but all seven cost at most 0.21 Elo in
+      RAR-E42's gate games: **served generically, no recogniser.** The
+      KBP-K breach is **not resolved** by the registered rule: at 400
+      positions its DTZ progress is level with the pre-C.3 head (0.402
+      against 0.410, −0.84 SE), but the floors still report it 2.2 SE under
+      a floor set at 100 positions (0.450). **The maintainer decides** the
+      floor: re-baseline it at 400 positions, or retire DTZ progress as a
+      floor in pawn-move families, where the truth tool already marks it as
+      no measure of technique. C.5.6 stays open on that item alone.
     - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
