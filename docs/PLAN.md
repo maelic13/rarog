@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.6 | RESEARCH | V | Next: the `10+0.1` read came in at −1.7 ± 12.3 Elo, so by RAR-E42's frozen use the unit is reopened; the maintainer decides between keeping it, a resolving read and a revert |
-| C.6.7 | RESEARCH | R2 | After C.6.6, before C.5.2.2 and C.8: the pawn and passer definition investigation; its finding goes to the maintainer before any change (2026-10-11) |
+| C.6.7 | RESEARCH | R2 | Next (C.6's unit kept, 2026-10-12): the pawn and passer definition investigation, before C.5.2.2 and C.8; its finding goes to the maintainer before any change (2026-10-11) |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1385,7 +1384,7 @@ loss).
       magnitude unmoved, tree +1.7%, NPS +0.07% (−0.31 to +0.46). Gate 1
       `[0,3]` (20,000-pair cap) is with the maintainer; arms built and the
       command dry-run clean.
-    - **C.6.6 Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** Steps
+    - **C.6.6 Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-12.** Steps
       3's result to 7, as C.4.4. **Gate 1, 2026-10-12:** H1 at +6.4 ± 3.6
       Elo, +10.7 ± 6.0 nElo (12,924 games, a first-crossing estimate), no
       fault, no screen flag: **accepted**; fingerprint 14,197,472 / EBF
@@ -1397,6 +1396,9 @@ loss).
       129 ms OS hold), below 0, so by the frozen use **the unit is
       reopened and the maintainer decides** (keep, resolve further, or
       revert). The interval contains both gate 1's +6.4 and zero.
+      **Maintainer decision 2026-10-12: kept as accepted**, the `10+0.1`
+      read recorded as inconclusive; the long-control question is retried
+      at C.11's checkpoint and E.1's `10+0.1` reads. C.6.6 closes.
     - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`.** Added
       2026-10-11 by maintainer request, after RAR-E42 found the donor's
       weak-unopposed term still carrying +0.055 points in the endgame band

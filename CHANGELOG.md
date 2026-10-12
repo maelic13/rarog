@@ -53,7 +53,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   the defending king truly cannot catch it (it was one move too
   generous). The evaluation was refitted around the change. Against the
   previous development version it measured **+6.4 ± 3.6 Elo at
-  `3+0.03`** (12,924 games). `bench` now reports 14,197,472 nodes.
+  `3+0.03`** (12,924 games) and −1.7 ± 12.3 at `10+0.1` (1,000 games, too
+  few to tell a gain from no change). `bench` now reports 14,197,472
+  nodes.
 
 ### Fixed
 
