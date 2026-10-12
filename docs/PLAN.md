@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
 | C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
@@ -1328,7 +1327,7 @@ loss).
       else changed); the floors read then passes without it. **C.5.6
       closes `NO_CHANGE`.** KRP-KB's DTZ progress remains reported at
       −2.6 SE without an owner (the same kind of 100-position floor).
-    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
+    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`, NO_CHANGE 2026-10-12.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
       where the evidence is clean (KNNK already measured clean). Option
@@ -1342,6 +1341,15 @@ loss).
       KBNK anchor stand until C.5's ranking says the family's 0.2% of
       games is worth 5 MB per process; if it is, this is the shape to
       build, behind the recogniser dispatcher.
+      **RAR-E51 (2026-10-12, zero games): closed `NO_CHANGE`.** KBP-KB
+      (either bishop colour), KBP-KN, KNN-K and KQ-KP convert level with
+      Stockfish at 60k to 600k nodes; drawn overclaim is moderate
+      (same-colour KBP-KB 27%, KBP-KN 30%, KNN-KP 44%). KNN-KP converts
+      15 of 44 wins against Stockfish's 29 at 200k, a missing plan rather
+      than missing depth, but it occurs in 5 of 12,954 gate games (at
+      most 0.03 Elo), so no recogniser is built; the five families cost
+      at most 0.08 Elo. Retry trigger for KNN-KP: a game sample worth
+      1 Elo by `ending_games.py`'s bound, or rated play without Syzygy.
     - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
       measurement checkpoint that closes C.5, not a cluster strength gate
       (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
