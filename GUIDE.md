@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.5.5** (`R2`): Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit.
+**Now: C.5.2.3** (`R2`): The two-regressor opposite-bishop rule decided by conversion in play, then gated as C.5.2.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -44,6 +44,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.5.2** Generic winnability and scaling: pawn count, opposite bishops, rule-50 scale, complexity — DONE 2026-10-10
         - [x] **C.5.2.1** One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — NO_CHANGE 2026-10-11
         - [x] **C.5.2.2** The opposite-bishop boundary hazard: the two-regressor read, and one rule replacing the split if it holds — NO_CHANGE 2026-10-12
+        - [ ] **C.5.2.3** The two-regressor opposite-bishop rule decided by conversion in play, then gated as C.5.2 — **RESEARCH / R2**
     - [x] **C.5.3** Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — NO_CHANGE 2026-10-11
     - [x] **C.5.4** Rook versus minor cluster: KRKN, KRKB, KRPKB — NO_CHANGE 2026-10-11
     - [ ] **C.5.5** Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — **RESEARCH / R2**
