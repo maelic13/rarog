@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.6 | RESEARCH | R2 | Next: RAR-E48 read (2026-10-12); the families are served generically; only the KBP-K floor decision remains, with the maintainer (re-baseline at 400 positions, or retire DTZ progress as a floor in pawn-move families) |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
 | C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
@@ -1308,7 +1307,7 @@ loss).
       0.75 Elo (KRP-KR 0.70, in 6.7% of games). No residual, no defect,
       under the 1 Elo line. Retry trigger: a game record showing a cost
       in these families, or C.5.8's conversion re-read.
-    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
+    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`, NO_CHANGE 2026-10-12.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
       **Read 2026-10-12 (RAR-E48):** the seven families (KPP-K, KPPP-K,
@@ -1323,6 +1322,12 @@ loss).
       floor: re-baseline it at 400 positions, or retire DTZ progress as a
       floor in pawn-move families, where the truth tool already marks it as
       no measure of technique. C.5.6 stays open on that item alone.
+      **Maintainer decision 2026-10-12: re-baselined at 400 positions**
+      (`58db24a`: KBP-K's DTZ-progress floor 0.450 at n 1,298 → 0.402 at
+      n 5,189, the 400-position cohort extending the floors' 100; nothing
+      else changed); the floors read then passes without it. **C.5.6
+      closes `NO_CHANGE`.** KRP-KB's DTZ progress remains reported at
+      −2.6 SE without an owner (the same kind of 100-position floor).
     - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
