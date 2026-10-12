@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.5 | RESEARCH | R2 | Next: RAR-E47 registered 2026-10-12 (overclaim, conversion against Stockfish, the KPK bitbase in play, the cost in RAR-E42's gate games); KRPPKRP excluded (2026-10-11) |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
@@ -1278,7 +1277,7 @@ loss).
       result, or drawn KR-KN and KR-KB endings lost at more than 5% over at
       least 100 gate entries; the shape would then be the defending king's
       distance from its minor.
-    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`.** Audit
+    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`, NO_CHANGE 2026-10-12.** Audit
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
@@ -1301,6 +1300,14 @@ loss).
       loss at seven men and C.5.8's game-level conversion re-read.
       Retry trigger: a candidate that acts specifically on KRPP-KRP, or a
       game record showing a conversion loss there.
+      **Closed `NO_CHANGE` 2026-10-12 (RAR-E47):** on the current head
+      the drawn overclaims are KRP-KR 12.4% (30.7% on the 2.4.0 engine),
+      KR-KP 4.0%, KP-K 0.81% and KP-KP 2.8%; conversion is level with
+      Stockfish at 200k in all four; the KPK bitbase holds (under its 1%
+      line); and in RAR-E42's gate games the four families cost at most
+      0.75 Elo (KRP-KR 0.70, in 6.7% of games). No residual, no defect,
+      under the 1 Elo line. Retry trigger: a game record showing a cost
+      in these families, or C.5.8's conversion re-read.
     - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
