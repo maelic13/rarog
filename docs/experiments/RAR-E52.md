@@ -18,4 +18,22 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Final read, frozen:** into `analysis/artifacts/c57knnkp/`: the candidate's `endgame_budget_bracket.py --families KNN-KP --positions 200 --budgets 60000,200000,600000` on the registered cohort (seed 6200600, RAR-E51's default; cohort hash asserted equal to RAR-E51's), paired against RAR-E51's head and Stockfish; `endgame_drawn.py --families KNN-KP --positions 1500` (overclaim, reported); the full `endgame_truth.py` 100-position read and `endgame_floors.py` (no breach beyond RAR-E50's state).
 - **Rule (frozen):** the candidate is **kept** when (a) it converts at least 5 more wins than the head at 200k and is not below the head at 60k or 600k, (b) `bench 13` reproduces 14,197,472, every test and veto passes and the floors read passes. Drawn overclaim is reported, not a criterion: it matters only for trades into the family, which RAR-E51 measured at 5 games in 12,954. Strength gate: none, by AGENTS' repair class 1 (the rated fingerprint reproduces; this is the activation and correctness read). Otherwise the engine commit is reverted and the result recorded.
 - **Correction before exposure (2026-10-12, before any build or number):** the registration first wrote the pawn term as `ADVANCE·(r − 1)`, which reaches 6·ADVANCE and contradicts the stated bound for `ADVANCE` 25; it is `ADVANCE·(r − 2)`, as above.
-- **Result:** pending.
+- **Result (run 2026-10-12, once, after the registration commits `4d01f16` and `74752c4`; `analysis/artifacts/c57knnkp/dev/`, every step exit 0; the four variants built from the working tree with only the two constants changed, each benching 14,197,472; one cohort, `ac545c2b…`, for all five arms):**
+  - *Development read*, KNN-KP at 60k nodes, seed 7100710, 46 clean wins (`select.json`):
+
+    | Arm | Converted | Insufficient material | Ply limit | Stalemate | Fifty-move | Win preservation | DTZ progress |
+    |---|---|---|---|---|---|---|---|
+    | head | **9** | 4 | 28 | 2 | 3 | 0.895 | 0.507 |
+    | CORNER 25, ADVANCE 10 | 4 | 23 | 16 | 3 | 0 | 0.868 | 0.531 |
+    | CORNER 25, ADVANCE 25 | 5 | 22 | 13 | 5 | 1 | 0.894 | 0.547 |
+    | CORNER 60, ADVANCE 10 | **8** | 22 | 15 | 1 | 0 | 0.907 | 0.646 |
+    | CORNER 60, ADVANCE 25 | 8 | 20 | 13 | 4 | 1 | 0.907 | 0.622 |
+
+  - The best variant converts 1 fewer than the head (8 against 9), so **the stop rule fires**: no final read, no candidate. The engine change was reverted; it is kept as `analysis/artifacts/c57knnkp/candidate.patch` (SHA-256 `bee6e432…`, 167 lines, against `74752c4`). A fault in the build script, found afterwards: its `sed` rewrote `src/eval/endgame/mod.rs` with LF endings. The content was otherwise unchanged, so the binaries are unaffected, and the revert restored the file.
+- **Disposition:** refuted in this form. The corner drive does what it says (DTZ progress 0.507 → 0.65 with the larger drive, the ply-limit failures 28 → 13 to 16), but in every variant the games that used to run out of plies now end in **insufficient material**, 4 → 20 to 23: the knights' side drives the king and loses the pawn, and with it the win. In this grid the pawn term never dominated the drive (`ADVANCE` at most equal to `CORNER`), so the search traded the blockade for king progress. The registered stop rule read the failure as "a plan, not a gradient"; the data narrow that: **the weighting is wrong in the direction the grid did not explore** (the pawn must be held before the king is driven), and whether a pawn-dominant weighting converts is untested. KNN-KP stays as RAR-E51 left it. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 4 above.
+  - Observed: (1) **miss** (best −1, not +5). (2) to (3) not read (stop rule). (4) bench unchanged in all four builds, hit; the vetoes were not run.
+  - Which assumption failed: I took the corner drive as the missing piece and the pawn term as a guard against the worst case; the engine already held the pawn better than it drove the king, and a stronger drive made it give the pawn up. The miss is in mechanism (which part of the plan was missing) and in the grid's span (no pawn-dominant point).
+- **Conditional lesson:** in a two-part plan, a term for the second part alone can undo the first; a grid has to span the ratio between the parts, not only the size of one.
+- **Retry trigger or `closed`:** closed in this form. Retry with a new registration whose grid makes the pawn term dominate (blockade first, then the drive), or with a Troitzky-line blockade term, and the same development cohort, stop rule and final read.
