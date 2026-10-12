@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.6 | RESEARCH | V | Next: gate 1 accepted (2026-10-12, +6.4 ± 3.6 Elo); margin block skipped; the `10+0.1` read is registered and with the maintainer |
+| C.6.6 | RESEARCH | V | Next: the `10+0.1` read came in at −1.7 ± 12.3 Elo, so by RAR-E42's frozen use the unit is reopened; the maintainer decides between keeping it, a resolving read and a revert |
 | C.6.7 | RESEARCH | R2 | After C.6.6, before C.5.2.2 and C.8: the pawn and passer definition investigation; its finding goes to the maintainer before any change (2026-10-11) |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
@@ -1392,7 +1392,11 @@ loss).
       2.557 on `c5`. Margin block skipped (maintainer decision
       2026-10-12): the unit keeps the head's margins until C.10. The
       `10+0.1` direction read (1,000 games) is registered in RAR-E42,
-      dry-run clean and with the maintainer.
+      dry-run clean and with the maintainer. **`10+0.1`, 2026-10-12:**
+      −1.7 ± 12.3 Elo (1,000 games; one time loss, the head's, after a
+      129 ms OS hold), below 0, so by the frozen use **the unit is
+      reopened and the maintainer decides** (keep, resolve further, or
+      revert). The interval contains both gate 1's +6.4 and zero.
     - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`.** Added
       2026-10-11 by maintainer request, after RAR-E42 found the donor's
       weak-unopposed term still carrying +0.055 points in the endgame band
