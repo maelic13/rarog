@@ -124,3 +124,16 @@ freely in mg and eg), in points of held-out loss:
 
 The order of work after the review: the passed-set split read if approved,
 then C.5.2.2, then C.8.
+
+## The passed-set split (RAR-E44, 2026-10-12, approved by the maintainer)
+
+Each group of disagreeing pawns, beyond the family over Rarog's set, in the
+endgame band (and without queens): the donor's lever-push passers +0.052 ±
+0.024 (+0.059), Rarog's rear doubled passers +0.046 ± 0.028 (+0.045), the
+donor's lever passers +0.035 ± 0.018 (+0.020), the blocked case nil, all
+together +0.143 ± 0.042. The groups rebuild the donor's family exactly on
+every row. **No group carries at the line**: the lead is three small
+disagreements of similar size. By the registered use the passed set closes
+`NO_CHANGE` and so does C.6.7. If C.8's first cycle finds the two sets
+together at the line, the change to build is the donor's whole set (rear
+doubled passers out, lever and lever-push passers in), not one group.

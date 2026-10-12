@@ -19,5 +19,24 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Cheapest prior falsifier:** the 4,000-row smoke (both checks exact).
 - **Registered order (frozen):** into `analysis/artifacts/c68/`: `pawn_subterms.py collect --scores <the file above> --out . --workers 14`, `verify`, `verify-split`, then one `split`. Nothing is added after the numbers are seen.
 - **Use, frozen:** the finding goes to the maintainer before anything is built (the C.6.7 rule). A group that carries is recommended as one definition change of Rarog's passed set (excluding the rear doubled passer, or admitting the donor's lever, lever-push or supported-push passers), fitted in C.8's refit and gated in C.8's cycle, with C.5.2's opposite-bishop cohort re-read beside it. With no group carrying, the passed set closes `NO_CHANGE` and C.6.7 closes `NO_CHANGE`; the retry trigger is C.8's first cycle re-reading RAR-E43's passed-set lead at the line.
-- **Result:** pending.
-- **Artifacts / commits:** `37f195c`; `analysis/artifacts/c68/` (ignored storage).
+- **Result (run 2026-10-12, once, after the registration commit `e7cb6d8`; `analysis/artifacts/c68/`, every step exit 0):**
+  - *Self-checks:* the donor's rows reproduce (0 mismatches); the identity holds on all 194,444 rows in mg and eg (0 mismatches). Rows holding each group: rear 6,153, lever 5,354, lever-push 7,656, blocked kept 3,004, blocked dropped 1,943. *Null:* −0.001 to +0.005 in every cohort. Not void.
+  - *Each group beyond the family over Rarog's set* (points ± one standard error; `split.log`, `split.json`):
+
+    | Group | Endgame band | No queens | All rows | Seven men or more |
+    |---|---:|---:|---:|---:|
+    | `g_leverpush` | +0.052 ± 0.024 | +0.059 ± 0.024 | +0.035 ± 0.010 | +0.037 ± 0.010 |
+    | `g_rear` | +0.046 ± 0.028 | +0.045 ± 0.027 | +0.024 ± 0.010 | +0.020 ± 0.010 |
+    | `g_lever` | +0.035 ± 0.018 | +0.020 ± 0.017 | +0.008 ± 0.005 | +0.004 ± 0.006 |
+    | `g_blocked_kept` | +0.012 ± 0.011 | −0.022 ± 0.011 | −0.003 ± 0.005 | +0.007 ± 0.005 |
+    | `g_blocked_dropped` | +0.000 ± 0.001 | +0.001 ± 0.003 | −0.002 ± 0.003 | +0.001 ± 0.002 |
+    | all groups together | +0.143 ± 0.042 | +0.103 ± 0.041 | +0.063 ± 0.016 | +0.067 ± 0.016 |
+
+- **Disposition:** observation; **no group carries** (the largest, the donor's lever-push passers, at 2.2 and 2.5 standard errors in the rule's cohorts). The groups together reproduce RAR-E43's lead (+0.143 against +0.141) but it is spread over three of them: the donor's lever-push passers, Rarog's rear doubled passers and the donor's lever passers; the blocked case and the donor's removal of it carry nothing. **By the frozen use the passed set closes `NO_CHANGE`, and C.6.7 closes `NO_CHANGE`.** Retry trigger: C.8's first cycle re-reads RAR-E43's passed-set lead (the two sets together) at the line; if it carries then, the change to build is the donor's set as a whole (rear doubled passers out, lever and lever-push passers in) rather than one group, since no group stands alone. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed: (1) hit. (2) every "carries" prediction missed (lever, lever-push, rear, blocked kept, blocked dropped); the two blocked groups, given low probabilities, read nil as their probabilities implied. (3) **miss** on the first clause (no group carries); hit on the second (+0.143, at least +0.10).
+  - Which assumption failed: I expected one mechanism (the lever passer about to break through) behind the lead; it is three small ones of similar size. The miss is in mechanism concentration.
+- **Conditional lesson:** a lead that only appears when two definitions are combined is likely the sum of several small disagreements; split it before planning a single change.
+- **Retry trigger or `closed`:** closed `NO_CHANGE`; retry as above.
+- **Artifacts / commits:** `37f195c`; `analysis/artifacts/c68/` (ignored storage): `pawn_subterms.csv`, `verify.json`, `verify-split.json`, `split.json`, `split.log`, `status.txt`, `source.txt`.

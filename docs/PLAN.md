@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.7 | RESEARCH | R2 | Next: the passed-set split read (RAR-E44, approved 2026-10-12) registered; its finding goes to the maintainer before anything is built |
-| C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
+| C.5.2.2 | RESEARCH | R2 | Next (C.6 closed 2026-10-12), before C.8: the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1297,7 +1296,7 @@ loss).
       the game-level conversion instrument on the head that closes C.5,
       re-runs the floors and the theory vetoes, and records KRPPKRP's
       seven-man exclusion (decided in C.5.5's text, 2026-10-11).
-- **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`.** Passed pawns with king
+- **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`, DONE 2026-10-12.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
   (doubled, isolated, backward, connected by rank and phalanx, weak lever).
@@ -1399,7 +1398,7 @@ loss).
       **Maintainer decision 2026-10-12: kept as accepted**, the `10+0.1`
       read recorded as inconclusive; the long-control question is retried
       at C.11's checkpoint and E.1's `10+0.1` reads. C.6.6 closes.
-    - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`.** Added
+    - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`, NO_CHANGE 2026-10-12.** Added
       2026-10-11 by maintainer request, after RAR-E42 found the donor's
       weak-unopposed term still carrying +0.055 points in the endgame band
       once Rarog's own version was fitted, and the pawns residual unmoved
@@ -1439,7 +1438,16 @@ loss).
       before deciding. **With the maintainer.** **Maintainer decision
       2026-10-12:** run the split read (RAR-E44, registered with
       `tools/diag/pawn_subterms.py` at `37f195c`); its finding again goes
-      to the maintainer before anything is built.
+      to the maintainer before anything is built. **Split read
+      2026-10-12 (RAR-E44):** the groups rebuild the donor's family
+      exactly; none carries (the donor's lever-push passers +0.052 ±
+      0.024, Rarog's rear doubled passers +0.046, the donor's lever
+      passers +0.035 in the endgame band; the blocked case nil; together
+      +0.143). By its frozen use **C.6.7 closes `NO_CHANGE`**; retry
+      at C.8's first cycle, where a lead at the line would build the
+      donor's whole passed set, not one group. C.6 closes with it: the
+      unit is accepted (RAR-E42), the structure definitions and the
+      passed set stay Rarog's.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
