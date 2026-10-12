@@ -236,6 +236,45 @@ def cmd_two(args) -> int:
     return 0
 
 
+def cmd_verify_two(args) -> int:
+    """Every row of a `--scale` dump written by an engine playing the
+    two-regressor rule: pure opposite-bishop rows with pawns take
+    `clamp(a + b*pawns + c*passers + d*free, 0, 48) / 48`, opposite-bishop
+    rows with other pieces the old `32 + 4*pawns + 4*passers`, every other
+    row 1 (specialised material of five men or fewer excepted)."""
+    a, b, c, d = (int(x) for x in args.candidate.split(","))
+    checked = mismatched = other = 0
+    other_max_men = 0
+    examples = []
+    for path in args.dumps:
+        for fen, _label, _score, engine in oc.read_dump(path):
+            checked += 1
+            cohort, pawns, pw, pb, s0 = oc.classify(fen)
+            if cohort == oc.PURE:
+                w, bl = passer_kinds(oc.parse_board(fen))
+                s = min(max(a + b * pawns + c * (w[0] + bl[0]) + d * (w[1] + bl[1]), 0), oc.OCB_NORMAL)
+                expected = s / oc.OCB_NORMAL
+            elif cohort == oc.PIECES:
+                expected = min(32 + 4 * pawns + 4 * (pw + pb), oc.OCB_NORMAL) / oc.OCB_NORMAL
+            elif s0 is not None:
+                expected = s0 / oc.OCB_NORMAL
+            else:
+                expected = 1.0
+            if abs(engine - expected) > 1e-12:
+                if cohort in (oc.PURE, oc.PIECES):
+                    mismatched += 1
+                    if len(examples) < 10:
+                        examples.append((fen, engine, expected))
+                else:
+                    other += 1
+                    other_max_men = max(other_max_men, oc.men(fen))
+    ok = mismatched == 0 and other_max_men <= 5 and checked > 0
+    print(json.dumps({"rows": checked, "ocb_mismatches": mismatched,
+                      "other_rows_with_another_factor": other, "their_max_men": other_max_men,
+                      "examples": examples, "pass": ok}, indent=2))
+    return 0 if ok else 1
+
+
 def truth_rows(path: Path):
     """(family, fen, label for White, score, s0, pawns, (w kinds), (b kinds))."""
     for fen, label, score, _engine in oc.read_dump(path):
@@ -326,9 +365,12 @@ def main() -> int:
     p.add_argument("--held-out", required=True, type=Path)
     p.add_argument("--k", required=True, type=float)
     p.add_argument("--output", type=Path)
+    p = sub.add_parser("verify-two")
+    p.add_argument("dumps", nargs="+", type=Path)
+    p.add_argument("--candidate", required=True, help="a,b,c,d of the rule the engine plays")
     args = ap.parse_args()
     return {"separation": cmd_separation, "rule": cmd_rule, "drawn": cmd_drawn,
-            "two": cmd_two}[args.cmd](args)
+            "two": cmd_two, "verify-two": cmd_verify_two}[args.cmd](args)
 
 
 if __name__ == "__main__":
