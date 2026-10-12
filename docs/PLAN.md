@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.7 | RESEARCH | R2 | Next (C.6's unit kept, 2026-10-12): the pawn and passer definition investigation, before C.5.2.2 and C.8; its finding goes to the maintainer before any change (2026-10-11) |
+| C.6.7 | RESEARCH | R2 | Next: the inventory is written (`analysis/c67_pawn_definitions_2026-10-12.md`) and RAR-E43 registered with the instrument `11a3589`; the read, then the finding for the maintainer before any change (2026-10-11) |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
