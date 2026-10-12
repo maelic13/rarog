@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.3 | RESEARCH | R2 | Next (maintainer decision 2026-10-12, before C.5.5): RAR-E46 registered; build the rule on `c5-ocb2`, then the conversion read |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1201,7 +1200,7 @@ loss).
           count rule under-claimed KBP-KB wins statically yet converted
           all 253), so a conversion-deciding registration is the
           maintainer's option if the boundary is to be revisited.
-        - **C.5.2.3 The two-regressor opposite-bishop rule decided by conversion in play, then gated as C.5.2 — `R2`, then `I2` and `V`.** Added
+        - **C.5.2.3 The two-regressor opposite-bishop rule decided by conversion in play, then gated as C.5.2 — `R2`, then `I2` and `V`, NO_CHANGE 2026-10-12.** Added
           2026-10-12 by maintainer decision, before C.5.5. RAR-E45's rule
           (`s = clamp(2·pawns + 8·passers + 8·free, 0, 48)` in pure
           opposite-bishop endings with pawns at every men count, the head's
@@ -1213,6 +1212,15 @@ loss).
           `c5` and takes C.5.2's gate (an opposite-bishop cohort SPRT
           `[0,10]` and a 2,000-game STC harm read), registered in RAR-E46
           before any game; if not, the step closes `NO_CHANGE`.
+          **Read 2026-10-12 (RAR-E46):** the candidate (bench 14,247,335 /
+          EBF 2.552) plays the offline rule exactly on 3,697,417 rows;
+          KBP-KB (253 → 253) and KBP-KBP (201 → 202) hold, but **KBPP-KB
+          falls 731 → 714 of 754 (−2.25 ± 0.85 points, −2.65 SE)**, lost to
+          trades into insufficient material and to the ply limit, as
+          RAR-E27. **Closed `NO_CHANGE`**; the throwaway branch is deleted.
+          The lesson: below the boundary a factor much under the head's
+          costs KBPP-KB conversion whatever its shape; retry with a KBPPKB
+          recogniser (C.5.6) or on a game record showing a boundary cost.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
