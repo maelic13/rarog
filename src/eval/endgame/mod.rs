@@ -4,7 +4,7 @@
 pub(crate) mod kpk;
 mod mop_up;
 
-use super::pawns::{FILE_BBS, KING_DISTANCE, PASSED_PAWN_MASKS, SQUARE_FILE, SQUARE_RANK};
+use super::pawns::{FILE_BBS, KING_DISTANCE, PASSED_PAWN_MASKS, SQUARE_FILE};
 use super::relative_rank;
 use crate::board::{Bitboard, Board, Color, Piece, Square};
 use crate::infra;
@@ -19,13 +19,10 @@ pub(super) const SCALE_NORMAL: i32 = 64;
 /// The `/48` basis of `opposite_bishop_scale`.
 pub(super) const OCB_SCALE_NORMAL: i32 = 48;
 
-/// Endgame scale-factor dispatch. KNN-KP takes an additive adjustment and no
-/// scale; specialised material patterns are checked next; everything else
-/// falls through to the opposite-coloured-bishop rule and the KNNK draw.
+/// Endgame scale-factor dispatch. Specialised material patterns are checked
+/// first; everything else falls through to the opposite-coloured-bishop rule
+/// and the KNNK draw.
 pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
-    if let Some(adjustment) = knnkp_adjustment(board) {
-        return score + adjustment;
-    }
     if let Some(sf) = specialized_endgame_scale(board) {
         return score * sf / SCALE_NORMAL;
     }
@@ -42,56 +39,6 @@ pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
     }
 
     score
-}
-
-/// KNN vs KP, from the knights' side. Two knights cannot mate a bare king, so
-/// the defender's pawn is what makes the win possible: it has to stay on the
-/// board and stay back, blockaded, while the knights and king drive the
-/// defending king into a corner. The generic evaluation says neither, and the
-/// engine let the pawn run. This adds a corner drive, king proximity and a
-/// penalty for the pawn's advance to the generic score; it never replaces it,
-/// because a replacement loses the knights' material value and the search then
-/// gives a knight away.
-const KNNKP_CORNER: i32 = 60;
-const KNNKP_KINGS: i32 = 10;
-const KNNKP_ADVANCE: i32 = 10;
-const _: () = assert!(
-    6 * KNNKP_CORNER + 6 * KNNKP_KINGS + 5 * KNNKP_ADVANCE < crate::tt::TB_WIN_SCORE / 4,
-    "the KNN-KP adjustment must stay far below the search's decisive band"
-);
-
-/// The KNN-KP adjustment, White's point of view, or `None` when the material
-/// is not exactly K+N+N against K+P.
-pub(super) fn knnkp_adjustment(board: &Board) -> Option<i32> {
-    if board.occupied_count() != 5 {
-        return None;
-    }
-    let strong = if has_exact_material(board, Color::White, 0, 2, 0, 0, 0)
-        && has_exact_material(board, Color::Black, 1, 0, 0, 0, 0)
-    {
-        Color::White
-    } else if has_exact_material(board, Color::Black, 0, 2, 0, 0, 0)
-        && has_exact_material(board, Color::White, 1, 0, 0, 0, 0)
-    {
-        Color::Black
-    } else {
-        return None;
-    };
-    let weak = !strong;
-    let pawn = board.pieces(weak, Piece::Pawn).lsb();
-    let weak_king = board.king_sq(weak);
-    let file = infra::to_i32(SQUARE_FILE[weak_king.index()]);
-    let rank = infra::to_i32(SQUARE_RANK[weak_king.index()]);
-    let corner_distance = file.min(7 - file) + rank.min(7 - rank);
-    let king_distance = i32::from(KING_DISTANCE[board.king_sq(strong).index()][weak_king.index()]);
-    let advance = i32::from(relative_rank(weak, pawn)) - 1;
-    let adjustment = KNNKP_CORNER * (6 - corner_distance) + KNNKP_KINGS * (7 - king_distance)
-        - KNNKP_ADVANCE * advance;
-    Some(if strong == Color::White {
-        adjustment
-    } else {
-        -adjustment
-    })
 }
 
 /// Specialised known-endgame scale factor (Phase 3.11), in `0..=SCALE_NORMAL`.
@@ -618,158 +565,6 @@ mod endgame_311c_tests {
 
     fn static_eval(fen: &str) -> i32 {
         Evaluator::default().evaluate(&board(fen))
-    }
-
-    #[test]
-    fn knnkp_fires_only_on_exact_material() {
-        assert!(knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1")).is_some());
-        assert!(knnkp_adjustment(&board("K7/8/n7/2n5/4k3/4P3/8/8 b - - 0 1")).is_some());
-        // An extra pawn on either side, a missing knight, no pawn at all.
-        assert!(knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/N3P3/8/8 w - - 0 1")).is_none());
-        assert!(knnkp_adjustment(&board("k7/4p1p1/4K3/8/2N5/N7/8/8 w - - 0 1")).is_none());
-        assert!(knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/8/8/8 w - - 0 1")).is_none());
-        assert!(knnkp_adjustment(&board("k7/8/4K3/8/2N5/N7/8/8 w - - 0 1")).is_none());
-    }
-
-    #[test]
-    fn knnkp_is_colour_symmetric() {
-        // The same position with colours swapped and the board mirrored.
-        let white = knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1"));
-        let black = knnkp_adjustment(&board("8/8/n7/2n5/8/4k3/4P3/K7 b - - 0 1"));
-        assert_eq!(white.map(|v| -v), black);
-        assert!(white.is_some_and(|v| v > 0));
-    }
-
-    #[test]
-    fn knnkp_drives_the_king_to_a_corner_and_holds_the_pawn_back() {
-        let cornered = knnkp_adjustment(&board("k7/8/4K3/4p3/2N5/N7/8/8 w - - 0 1")).unwrap();
-        let central = knnkp_adjustment(&board("8/8/4K3/4p3/2Nk4/N7/8/8 w - - 0 1")).unwrap();
-        assert!(cornered > central, "{cornered} <= {central}");
-        let held = knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1")).unwrap();
-        let run = knnkp_adjustment(&board("k7/8/4K3/8/2N5/N3p3/8/8 w - - 0 1")).unwrap();
-        assert!(held > run, "{held} <= {run}");
-    }
-
-    /// FEN of a piece list (`(square, piece char)`, a1 = 0) with the given
-    /// side to move.
-    fn fen_of(pieces: &[(usize, char)], white_to_move: bool) -> String {
-        let mut grid = [None; 64];
-        for &(sq, piece) in pieces {
-            grid[sq] = Some(piece);
-        }
-        let mut fen = String::new();
-        for rank in (0..8).rev() {
-            let mut empty = 0;
-            for file in 0..8 {
-                if let Some(piece) = grid[rank * 8 + file] {
-                    if empty > 0 {
-                        fen.push_str(&empty.to_string());
-                        empty = 0;
-                    }
-                    fen.push(piece);
-                } else {
-                    empty += 1;
-                }
-            }
-            if empty > 0 {
-                fen.push_str(&empty.to_string());
-            }
-            if rank > 0 {
-                fen.push('/');
-            }
-        }
-        fen.push_str(if white_to_move {
-            " w - - 0 1"
-        } else {
-            " b - - 0 1"
-        });
-        fen
-    }
-
-    /// The adjustment must never push KNN-KP below a position one capture
-    /// away (either knight gone, KN-KP; the pawn gone, KNN-K at 0) that the
-    /// generic evaluation keeps it above. A score that loses the knights'
-    /// material value makes the search give a knight away.
-    #[test]
-    fn knnkp_stays_above_its_one_capture_neighbours() {
-        let mut state: u64 = 0x5EED_2026_1012;
-        let mut next_square = || {
-            state = state
-                .wrapping_mul(6_364_136_223_846_793_005)
-                .wrapping_add(1_442_695_040_888_963_407);
-            usize::try_from((state >> 33) % 64).expect("below 64")
-        };
-        let mut evaluator = Evaluator::default();
-        let mut generated = 0;
-        let mut active = 0;
-        while generated < 2000 {
-            let squares = [
-                next_square(),
-                next_square(),
-                next_square(),
-                next_square(),
-                next_square(),
-            ];
-            let [wk, n1, n2, bk, bp] = squares;
-            let distinct = (0..5).all(|i| (i + 1..5).all(|j| squares[i] != squares[j]));
-            if !distinct || !(8..56).contains(&bp) || KING_DISTANCE[wk][bk] < 2 {
-                continue;
-            }
-            // A knight checking the side not to move is illegal. With only
-            // knights and kings there are no discovered checks, so removing a
-            // piece keeps a legal position legal, and mirroring keeps it too.
-            let original = [(wk, 'K'), (n1, 'N'), (n2, 'N'), (bk, 'k'), (bp, 'p')];
-            if Board::from_fen(&fen_of(&original, true)).is_err() {
-                continue;
-            }
-            generated += 1;
-            for mirrored in [false, true] {
-                // Mirroring swaps the colours and flips the ranks, so the
-                // knights' side is Black and Black is to move.
-                let place = |sq: usize, piece: char| {
-                    if mirrored {
-                        let swapped = if piece.is_ascii_uppercase() {
-                            piece.to_ascii_lowercase()
-                        } else {
-                            piece.to_ascii_uppercase()
-                        };
-                        (sq ^ 56, swapped)
-                    } else {
-                        (sq, piece)
-                    }
-                };
-                let full = [
-                    place(wk, 'K'),
-                    place(n1, 'N'),
-                    place(n2, 'N'),
-                    place(bk, 'k'),
-                    place(bp, 'p'),
-                ];
-                let mut score = |pieces: &[(usize, char)]| {
-                    evaluator.evaluate(&board(&fen_of(pieces, !mirrored)))
-                };
-                let fen = fen_of(&full, !mirrored);
-                let adjusted = score(&full);
-                let sign = if mirrored { -1 } else { 1 };
-                let adjustment = sign * knnkp_adjustment(&board(&fen)).expect("exact KNN-KP");
-                let generic = adjusted - adjustment;
-                let neighbours = [
-                    score(&[full[0], full[2], full[3], full[4]]),
-                    score(&[full[0], full[1], full[3], full[4]]),
-                    0,
-                ];
-                for neighbour in neighbours {
-                    if generic > neighbour {
-                        active += 1;
-                        assert!(
-                            adjusted > neighbour,
-                            "{fen}: generic {generic} > {neighbour}, adjusted {adjusted}"
-                        );
-                    }
-                }
-            }
-        }
-        assert!(active > 9000, "only {active} comparisons were active");
     }
 
     /// The chess rule, not a hardcoded constant: KQ-vs-KP is a fortress draw
