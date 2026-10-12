@@ -1355,8 +1355,12 @@ loss).
       development cohort the best of four variants converted 8 of 46
       wins against the head's 9, because the knights' side drove the
       king and lost the pawn (insufficient material 4 → 20 to 23).
-      Reverted. A retry registers a weighting where holding the pawn
-      dominates the drive, or a Troitzky-line blockade term.
+      Reverted. **RAR-E53** (pawn term dominant) failed the same way,
+      best 10 against 9, and found the cause: the replacement score
+      values the second knight at about 35 cp (the generic evaluation,
+      216), so the search gives a knight away. A retry adds the drive
+      and the pawn term to the generic evaluation, or anchors the score
+      above KN-KP, and checks every one-capture neighbour first.
     - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
       measurement checkpoint that closes C.5, not a cluster strength gate
       (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
