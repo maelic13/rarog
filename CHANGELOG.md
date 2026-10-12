@@ -43,8 +43,17 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   counted sliders lined up on the queen through pawns was removed, and the
   evaluation was refitted around the change. Against the previous
   development version it measured **+13.0 ± 5.3 Elo at `3+0.03`** (5,898
-  games) and **+12.9 ± 12.2 at `10+0.1`** (1,000 games). `bench` now
-  reports 12,567,796 nodes.
+  games) and **+12.9 ± 12.2 at `10+0.1`** (1,000 games). `bench` then
+  reported 12,567,796 nodes.
+- **Passed pawns and weak pawns are judged better in endgames.** The
+  kings are now measured against the square in front of a passed pawn,
+  with separate weights for the side escorting it and the side stopping
+  it; an isolated or backward pawn that no enemy pawn faces on its file is
+  penalised as weak; and a passed pawn counts as unstoppable only when
+  the defending king truly cannot catch it (it was one move too
+  generous). The evaluation was refitted around the change. Against the
+  previous development version it measured **+6.4 ± 3.6 Elo at
+  `3+0.03`** (12,924 games). `bench` now reports 14,197,472 nodes.
 
 ### Fixed
 
