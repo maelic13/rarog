@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.2 | RESEARCH | R2 | Next: RAR-E45 registered 2026-10-12 (fresh dumps by the current head, since C.6 changed passer scoring; a static wins-under-claim veto added), before C.8: the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1171,7 +1170,7 @@ loss).
           passers in one rule at every men count, which nests the count
           and cannot reintroduce a boundary (RAR-E33's addendum; the
           below-boundary column rests on 637 rows, about ±4 points).
-        - **C.5.2.2 The opposite-bishop boundary hazard: the two-regressor read, and one rule replacing the split if it holds — `R2`.** Added
+        - **C.5.2.2 The opposite-bishop boundary hazard: the two-regressor read, and one rule replacing the split if it holds — `R2`, NO_CHANGE 2026-10-12.** Added
           2026-10-11 by maintainer request, so GUIDE's hold has a step that
           discharges it. C.5.2's split scales pure endings of seven men or
           more hard and keeps the old rule at six or fewer; RAR-E29 measured
@@ -1190,6 +1189,17 @@ loss).
           C.5.2 was (RAR-E29's cohort SPRT design and an STC harm read);
           otherwise the hold closes on RAR-E29's measurement, with the retry
           trigger a game record showing a cost at the boundary.
+          **Read 2026-10-12 (RAR-E45, fresh dumps by the current head):**
+          `s = clamp(2·pawns + 8·passers + 8·free, 0, 48)` beats the
+          split above the boundary (+0.63 ± 0.38%) and below it (+59.8 ±
+          4.1%) and the count form below it (+4.0 ± 1.5), but the
+          registered static veto fired: Syzygy wins scored under +100 cp
+          rise from 7 to 60 of 253 in KBP-KB and from 40 to 62 of 203 in
+          KBP-KBP. **Closed `NO_CHANGE`**; the hold closes on RAR-E29's
+          measurement. The veto was stricter than its evidence (RAR-E27's
+          count rule under-claimed KBP-KB wins statically yet converted
+          all 253), so a conversion-deciding registration is the
+          maintainer's option if the boundary is to be revisited.
     - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
