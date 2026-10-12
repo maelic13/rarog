@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
+| C.5.6 | RESEARCH | R2 | Next: RAR-E48 registered 2026-10-12 (conversion against Stockfish, drawn overclaim, cost in the gate's games, RAR-E25's KBP-K breach retried) |
 | C.5.7 | RESEARCH | I1 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
 | C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
 | C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
