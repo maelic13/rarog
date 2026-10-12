@@ -1361,6 +1361,12 @@ loss).
       216), so the search gives a knight away. A retry adds the drive
       and the pawn term to the generic evaluation, or anchors the score
       above KN-KP, and checks every one-capture neighbour first.
+      **RAR-E54** did that (additive, neighbour-tested): 17 / 18 / 22 of
+      44 wins at 60k / 200k / 600k against the head's 13 / 15 / 14
+      (Stockfish 24 / 29 / 26), short of the registered +5 at 200k, so
+      it was reverted (`5e29043`, reverted in `f70d701`). Open for the
+      maintainer: keep `5e29043` as measured, or register a mechanism
+      for the insufficient-material losses that remain at 200k.
     - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
       measurement checkpoint that closes C.5, not a cluster strength gate
       (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
