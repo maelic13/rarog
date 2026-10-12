@@ -61,6 +61,14 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 - `bench` printed a speed equal to the node count for a position it solved
   in under a millisecond; it now reports the rate, as the `info` lines do.
+- **K+N+N against K+P is converted far more often without tablebases.**
+  The evaluation now values a knight blockading the pawn, on top of a
+  drive of the defending king to a corner, so the engine stops letting
+  the pawn run or giving up the blockade to help the drive. On a
+  400-position tablebase-verified set at 200,000 nodes per move it wins
+  39 of 77 won positions where it won 28 before (Stockfish 50). The
+  ending is rare (5 of 12,954 gate games), so no rating change is
+  expected; with tablebases loaded the engine probes it as before.
 
 ## [2.5.0] - 2026-10-05
 

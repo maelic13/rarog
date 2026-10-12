@@ -1327,7 +1327,7 @@ loss).
       else changed); the floors read then passes without it. **C.5.6
       closes `NO_CHANGE`.** KRP-KB's DTZ progress remains reported at
       −2.6 SE without an owner (the same kind of 100-position floor).
-    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`, NO_CHANGE 2026-10-12.** Sub-1%
+    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`, DONE 2026-10-12.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
       where the evidence is clean (KNNK already measured clean). Option
@@ -1367,6 +1367,20 @@ loss).
       it was reverted (`5e29043`, reverted in `f70d701`). Open for the
       maintainer: keep `5e29043` as measured, or register a mechanism
       for the insufficient-material losses that remain at 200k.
+      **RAR-E55 (2026-10-12, kept):** a move-logged replay of RAR-E54's
+      playouts showed the discards are about the blockade (14 of 25 had
+      a blockade move among the winning alternatives, 9 only such
+      moves), so a term valuing a knight on the pawn's front square
+      (240) was added to `5e29043`'s drive and selected on a fresh
+      107-win development cohort (57 against the head's 44 at 200k).
+      On the 400-position cohort with RAR-E51's seed (77 wins) it
+      converts 39 / 39 / 46 at 60k / 200k / 600k against the head's
+      22 / 28 / 30 (Stockfish 42 / 50 / 49), +11 at 200k against the
+      frozen +8; bench 14,197,472, tests, vetoes and floors pass; no
+      strength gate (repair class 1). Engine commit `ab2a6ab`; the step
+      closes DONE rather than `NO_CHANGE`. The residual is ply-limit
+      failures with the blockade held and the king not yet cornered;
+      the drawn overclaim rose to 54.7% (reported).
     - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
       measurement checkpoint that closes C.5, not a cluster strength gate
       (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
