@@ -1,0 +1,26 @@
+# RAR-E47 — C.5.5 rook-and-pawn and pawn endings: drawn overclaim, conversion against Stockfish, the KPK bitbase in play, and what they cost in games
+
+Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+- **Date / owner:** registered 2026-10-12, before any number was computed; agent-run (zero games).
+- **Baseline SHA / candidate SHA / dirty-diff hash:** the current head, engine `38cbb02` (**14,197,472 / EBF 2.557**), as the plain release build `analysis/artifacts/c523/rarog-head.exe` (RAR-E46's head arm). Comparisons: the drawn census v1 (`tools/diag/endgame_drawn_census_v1.json`, the 2.4.0-era engine) and Stockfish `bf2d8bf6…`'s 2026-09-05 truth reports (`tools/results/budget-transfer-20260905/reference/`). Games: RAR-E42's gate 1 PGN (`tools/results/rar-e42-gate1/games.pgn`, 12,954 games, the latest gate). Instruments: `endgame_drawn.py`, `endgame_budget_bracket.py`, `tools/diag/ending_games.py` (`519a566`).
+- **Research question:** PLAN C.5.5: audit the scalers for KRP-KR, KR-KP, KP-K and KP-KP and the KPK bitbase's integration; repair KRP-KR's overclaim (30.7% on the 2.4.0-era engine) if the evidence supports it; close KP-K and KP-KP if theirs (4.6%, 3.8%) select no mechanism. Since RAR-E36 and RAR-E38, a static overclaim is a question, not a defect, until play shows a cost.
+- **Hypothesis / proposed mechanism:** the refits since 2.4.0 lowered the overclaims without removing them, as in the rook-against-minor endings; the wins convert; and, as there, the overclaim costs little in games, because the search plays these endings well without tables.
+- **Competing hypotheses:** (1) *KRP-KR is different:* it is the most frequent of these endings in Rarog's games (4.0% of pool games at 2.4.0), and a drawn KRP-KR scored +80 cp invites the strong side to avoid the drawing simplifications, so it costs games. (2) *the KPK bitbase leaks:* a drawn KP-K should score about zero; a 4.6% overclaim says some drawn KP-K positions are not caught (a side-to-move or symmetry case, or a search score that bypasses the static verdict). (3) *KR-KP's partial scale* misjudges races and costs conversions.
+- **Interacting mechanisms / consumers:** `krpkr_scale`, `krkp_drawish_scale`, the KPK bitbase (`kpk_normalized`, `kpk::probe`), the mop-up, the passer terms (C.6's king proximity and square rule now act in these endings), the search's rule-50 damping; C.5.8's checkpoint.
+- **PRE-REGISTERED PREDICTION (freeze before exposure):**
+  1. *Overclaim* (drawn positions above +100 cp; census v1 → head): KRP-KR 30.7% → 15–30% (probability 0.6); KR-KP 26.4% → 10–26% (0.6); KP-K 4.6% → under 2% (0.5); KP-KP 3.8% → under 4% (0.7).
+  2. *Conversion* at 200k nodes against Stockfish: every family within 2 converted positions (0.75).
+  3. *Games* (RAR-E42's gate): KRP-KR in 3% to 8% of games (0.6), the most frequent of the four (0.8); expected value of fixing every affected game, all four families, under 1 Elo (0.7).
+  4. No family proceeds to a candidate (0.7).
+- **Falsification criteria:** void if a family's cohort hash differs from the census's or the reference's, or if the head arm does not bench 14,197,472.
+- **Cheapest prior falsifier:** the drawn read (seconds).
+- **Registered order (frozen):** into `analysis/artifacts/c55/`:
+  1. `python tools/diag/endgame_drawn.py --engine analysis/artifacts/c523/rarog-head.exe --syzygy D:/chess/tablebases/syzygy3456 --families KRP-KR,KR-KP,KP-K,KP-KP --positions 1500 --nodes 60000 --threshold 100 --workers 14 --output drawn-head.json`.
+  2. `python tools/diag/endgame_budget_bracket.py --engine analysis/artifacts/c523/rarog-head.exe --syzygy D:/chess/tablebases/syzygy3456 --families KRP-KR,KR-KP,KP-K,KP-KP --positions 100 --budgets 60000,200000,600000 --workers 14 --out-dir head`, paired with the reference's per-position records by RAR-E36's `compare.py` logic (cohort hashes asserted).
+  3. `python tools/diag/ending_games.py --pgn tools/results/rar-e42-gate1/games.pgn --syzygy D:/chess/tablebases/syzygy3456 --families KRP-KR,KR-KP,KP-K,KP-KP --output games.json`.
+  - Nothing is added after the numbers are seen; the drawn read's KP-K examples above +100 cp are listed as they come, for the bitbase item.
+- **Rule (frozen):** a family **proceeds to candidate design** only when both hold: (a) a residual (overclaim of 50% or more over at least 100 drawn positions, RAR-E36's line) or a conversion defect (3 or more positions fewer than Stockfish at 200k), and (b) its game-level expected value is 1 Elo or more (RAR-E38's line). The **KPK bitbase** has an integration defect if more than 1% of the drawn KP-K positions are scored above +100 cp; that is a correctness item, diagnosed and fixed on its own evidence whatever its Elo.
+- **Use, frozen:** a family that proceeds gets its own candidate registration (the drawn cohort deciding, conversion and transition vetoes, the gate form fixed before any game). A KPK integration defect gets a diagnosis and a repair under AGENTS' repair rules. Otherwise each family closes `NO_CHANGE`, and with all four C.5.5 closes `NO_CHANGE`; the retry trigger is a game record showing a cost in one of them, or C.5.8's game-level conversion re-read.
+- **Result:** pending.
+- **Artifacts / commits:** `519a566`; `analysis/artifacts/c55/` (ignored storage).
