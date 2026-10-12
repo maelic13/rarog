@@ -57,6 +57,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.6.4** Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — DONE 2026-10-11
     - [x] **C.6.5** Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — DONE 2026-10-11
     - [ ] **C.6.6** Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
+    - [ ] **C.6.7** Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — **RESEARCH / R2**
 - [ ] **C.7** Material, imbalance, phase and pieces cluster; refit; gate — **RESEARCH / I2**
 - [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **RESEARCH / V**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**

@@ -295,6 +295,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.6.6 | RESEARCH | V | Next: gate 1 (RAR-E42, `[0,3]`, cap 20,000 pairs) is with the maintainer; no screen flagged, so a pass accepts and PROCESS step 4's question follows |
+| C.6.7 | RESEARCH | R2 | After C.6.6, before C.5.2.2 and C.8: the pawn and passer definition investigation; its finding goes to the maintainer before any change (2026-10-11) |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1386,6 +1387,33 @@ loss).
       command dry-run clean.
     - **C.6.6 Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** Steps
       3's result to 7, as C.4.4.
+    - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`.** Added
+      2026-10-11 by maintainer request, after RAR-E42 found the donor's
+      weak-unopposed term still carrying +0.055 points in the endgame band
+      once Rarog's own version was fitted, and the pawns residual unmoved
+      (+0.121 → +0.120). **When:** after C.6.6 (on the head C.6's gate
+      leaves) and before C.5.2.2 and C.8, so any change rides C.8's refit.
+      **What:** zero games. (1) An inventory, from the two sources, of
+      every definition the two families use and how Rarog's differs: the
+      passed set (the donor's lever, lever-push and supported-push
+      conditions, its removal of blocked candidates without help), backward
+      (Rarog: no own pawn strictly behind on an adjacent file and the stop
+      square attacked by an enemy pawn; the donor: none behind or level, and
+      the stop square attacked or blocked), isolated, doubled and the
+      doubled-isolated case, support, phalanx and connected by rank,
+      opposed and unopposed, levers, blocked pawns, candidate passers, pawn
+      islands, and the order in which the donor's terms exclude each other.
+      (2) For each difference that could matter, a Rarog-shaped counterpart
+      added to `tools/diag/pawn_subterms.py` (as RAR-E31 did for threats),
+      verified against the engine's own trace, and a registered read of
+      whether the donor's form carries information beyond Rarog's in the
+      endgame band and without queens. (3) A written finding for the
+      maintainer: what differs, what each difference is worth at the
+      static layer, what it would cost to change (shared signals: the
+      passed set feeds C.5.2's opposite-bishop rule and the passer terms;
+      the pawn cache), and a recommendation. **No change is decided or
+      built before the maintainer has reviewed that finding** (maintainer
+      decision 2026-10-11).
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
