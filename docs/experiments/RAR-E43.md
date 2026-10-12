@@ -22,5 +22,28 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   3. One `compare`. Nothing is added after the numbers are seen.
 - **Rule:** a definition **carries** at 0.04 points and four standard errors (the line above); it is **weak** at 0.02 points and three standard errors in either cohort; otherwise **nil**. The donor's form *instead of* Rarog's is reported beside, to say which form alone predicts better.
 - **Use, frozen:** the finding in the research record ranks the definitions by what they carry, states for each what a change would touch (the shared signals) and cost, and recommends. **Nothing is decided or built before the maintainer has reviewed it** (maintainer decision 2026-10-11). A change the maintainer approves becomes its own step, fitted in C.8's refit or in a unit of its own.
-- **Result:** pending.
-- **Artifacts / commits:** `11a3589`; `analysis/artifacts/c67/` (ignored storage).
+- **Result (run 2026-10-12, once, after the registration commit `ce38a72`; `analysis/artifacts/c67/`, every step exit 0):**
+  - *Verify:* the donor's rows reproduce (passed 175,165 and pawns 188,844 rows matched, 0 mismatches). *Verify-rarog:* all 11 engine fields equal Rarog's offline counts on 189,284 readable rows (5,160 at full phase unreadable), 0 mismatches, none missing. *Null:* the shuffled donor backward beyond Rarog's reads −0.016 to +0.003 in every cohort, inside ±0.03. Not void.
+  - *The donor's form beyond Rarog's* (points of held-out loss, ± one standard error; `read.txt`, `compare.json`):
+
+    | Definition | Endgame band | No queens | All rows | Grade |
+    |---|---:|---:|---:|---|
+    | backward | −0.006 ± 0.011 | +0.002 ± 0.007 | +0.003 ± 0.004 | nil |
+    | weak unopposed | +0.032 ± 0.018 | +0.038 ± 0.018 | +0.012 ± 0.008 | nil |
+    | isolated | −0.004 ± 0.014 | +0.026 ± 0.014 | +0.001 ± 0.003 | nil |
+    | doubled | +0.008 ± 0.013 | +0.019 ± 0.018 | +0.003 ± 0.002 | nil |
+    | doubled and isolated | −0.011 ± 0.013 | +0.025 ± 0.013 | +0.002 ± 0.003 | nil |
+    | connected | −0.006 ± 0.004 | −0.005 ± 0.005 | +0.033 ± 0.012 | nil (in the rule's cohorts) |
+    | lever | −0.005 ± 0.005 | −0.006 ± 0.003 | +0.001 ± 0.001 | nil |
+    | blocked | −0.009 ± 0.005 | −0.023 ± 0.010 | −0.006 ± 0.005 | nil (it hurts) |
+    | **passed set** | **+0.141 ± 0.039** (3.6 SE) | **+0.121 ± 0.037** (3.3 SE) | +0.054 ± 0.013 (4.1 SE) | **weak** |
+
+  - *Beside it, deciding nothing:* the forms alone are small and close: in the endgame band Rarog's weak unopposed gains +0.059 ± 0.029 and the donor's +0.099 ± 0.028; without queens Rarog's isolated +0.070 ± 0.030 and the donor's +0.029. For the passed set neither engine's set alone beats the other (the donor's instead of Rarog's +0.004 ± 0.004), but the two together gain +0.132 in the endgame band: the information is in the pawns on which the sets disagree.
+- **Disposition:** observation. **No definition carries at the registered line**; the passed set is **weak** (3.6 and 3.3 standard errors against the four the line asks). H1 (the pawns residual sits in definitions) is refuted at this resolution; competing (1) and (2) hold: the donor's pawns residual is spread over many small differences, each worth about as much as re-pricing Rarog's own form. The passed set is the one lead, and this read cannot say which disagreeing pawns carry it (Rarog's rear doubled passers, or the donor's lever and supported-push candidates, or its removal of blocked candidates without help). The finding and recommendation for the maintainer are in `analysis/c67_pawn_definitions_2026-10-12.md`; nothing is built before the review. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 3 above.
+  - Observed: (1) hit. (2) every "carries" prediction missed (weak unopposed, backward, connected, doubled, the passed set); every "does not" hit (isolated, doubled-isolated, lever, blocked). (3) **miss**: none carries.
+  - Which assumption failed: I read the pawns family's residual as a few wrong definitions; it is broad and thin, and Rarog's own forms re-priced take about as much of it as the donor's. The miss is in mechanism; the passed-set lead was the least expected.
+- **Conditional lesson:** read a family's residual against Rarog's own forms freely priced before attributing it to definitions; a residual that re-pricing recovers is the refit's, not a definition's.
+- **Retry trigger or `closed`:** closed as a read; the passed-set lead is the maintainer's question (the finding).
+- **Artifacts / commits:** `11a3589`; `analysis/artifacts/c67/` (ignored storage): `pawn_subterms.csv`, the engine dumps, `verify.json`, `verify-rarog.json`, `compare.json`, `read.txt`, `status.txt`, `source.txt`.

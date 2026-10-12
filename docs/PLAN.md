@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.6.7 | RESEARCH | R2 | Next: the inventory is written (`analysis/c67_pawn_definitions_2026-10-12.md`) and RAR-E43 registered with the instrument `11a3589`; the read, then the finding for the maintainer before any change (2026-10-11) |
+| C.6.7 | RESEARCH | R2 | Next: RAR-E43 read (2026-10-12); the finding and recommendation (no structure-definition change; a zero-game split read of the passed-set disagreement) are with the maintainer, and nothing is built before the review |
 | C.5.2.2 | RESEARCH | R2 | After C.6, before C.8 (2026-10-11): the two-regressor read on RAR-E33's dumps; discharges GUIDE's opposite-bishop boundary hold |
 | C.5.5 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; KRPPKRP excluded (2026-10-11); builds wait for C.6 |
 | C.5.6 | RESEARCH | R2 | Measure-first, zero games, may run between the large items; builds wait for C.6 |
@@ -1425,7 +1425,18 @@ loss).
       passed set feeds C.5.2's opposite-bishop rule and the passer terms;
       the pawn cache), and a recommendation. **No change is decided or
       built before the maintainer has reviewed that finding** (maintainer
-      decision 2026-10-11).
+      decision 2026-10-11). **Read 2026-10-12 (RAR-E43; the inventory
+      and the finding in `analysis/c67_pawn_definitions_2026-10-12.md`):**
+      both instruments exact; no definition carries at 0.04 points and
+      four standard errors. Backward, isolated, doubled, connected, weak
+      unopposed, levers and blocked pawns each add 0.03 points or less where
+      pawns matter, about what re-pricing Rarog's own form adds: the
+      structure residual is the refit's. The passed set is weak: neither
+      engine's set alone predicts better, but together they add +0.141 ±
+      0.039 in the endgame band (3.6 standard errors), so the pawns the sets
+      disagree on carry something. Recommendation: no structure-definition
+      change; one zero-game split read of the passed-set disagreement
+      before deciding. **With the maintainer.**
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
