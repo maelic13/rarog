@@ -547,6 +547,8 @@ try {
                 }
             }
             if ($ValidateDatasetOnly) {
+                # Nothing was patched, so the cleanup has nothing to restore or rebuild.
+                $sourceRestored = $true
                 Write-Host ("CORPUS CONTRACT PASSED: $dataset " +
                             "(test marker absent: $(-not (Test-Path -LiteralPath $testMarker)))")
                 exit 0
