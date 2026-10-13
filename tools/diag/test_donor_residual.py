@@ -154,6 +154,59 @@ class PlantedSignal(unittest.TestCase):
         self.assertEqual(dr.FAMILIES["queens"], ["Queens"])
         self.assertNotIn("Queens", dr.FAMILIES["pieces"])
 
+    def test_each_row_is_one_trace_term_outside_the_families(self):
+        for name, terms in dr.ROWS.items():
+            self.assertEqual(len(terms), 1)
+            self.assertIn(terms[0], dr.SF11_TERMS)
+            self.assertNotIn(name, dr.FAMILIES)
+
+    def test_a_knights_row_signal_is_read_by_its_row_and_cohorts_split_by_men(self):
+        import argparse
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from pathlib import Path
+
+        fens = [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  # queens, phase 128
+            "r3k2r/1b6/8/8/8/8/1B6/R3K2R w - - 0 1",  # no queens, phase 32, 8 men
+            "4k3/pppp4/8/8/8/8/PPP5/4K3 w - - 0 1",  # no queens, phase 0, 9 men
+            "4k3/8/8/8/8/8/8/4K3 w - - 0 1",  # no queens, phase 0, 2 men
+        ]
+        rng = np.random.default_rng(17)
+        n = 16_000
+        rarog = rng.normal(0.0, 2.5, n)
+        knights = rng.normal(0.0, 0.8, n)
+        p = 1.0 / (1.0 + np.exp(-(rarog + knights) / 1.7))
+        y = (rng.random(n) < p).astype(float)
+        names = dr.header().split(";")
+        lines = [";".join(names)]
+        for i in range(n):
+            cells = {name: 0.0 for name in names}
+            noise = rng.normal(0.0, 0.8)
+            cells.update(idx=i, label=y[i], rarog=rarog[i], sf_control=rarog[i],
+                         sf11_total=rarog[i], knights_mg=knights[i], knights_eg=knights[i],
+                         bishops_mg=noise, bishops_eg=noise)
+            cells["fen"] = fens[i % len(fens)]
+            lines.append(";".join(str(cells[name]) for name in names))
+        with tempfile.TemporaryDirectory() as tmp:
+            scores = Path(tmp) / "scores.csv"
+            scores.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            out = Path(tmp) / "report.json"
+            args = argparse.Namespace(scores=str(scores), out=str(out), within=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                dr.analyse(args)
+            cohorts = json.loads(out.read_text())["cohorts"]
+        self.assertEqual(cohorts["phase<32 men>=7"]["rows"], n // 4)
+        self.assertEqual(cohorts["no queens men>=7"]["rows"], n // 2)
+        models = cohorts["all"]["models"]
+        gain = {name: models[name]["gain_vs_rarog_pct"] for name in models}
+        se = {name: models[name]["gain_se_pct"] for name in models}
+        self.assertGreater(gain["rarog+knights"], 10 * se["rarog+knights"])
+        self.assertLess(abs(gain["rarog+bishops"]), 4 * se["rarog+bishops"])
+        self.assertLess(abs(gain["rarog+rooks"]), 4 * se["rarog+rooks"] + 1e-12)
+
     def test_fractional_labels_fit(self):
         rng = np.random.default_rng(11)
         x = rng.normal(0.0, 1.0, (5_000, 1))
