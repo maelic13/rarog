@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7.3 | RESEARCH | R3 | RAR-E59 registered (2026-10-13): the slope under game-clustered errors, on rows the tablebases could not correct, over game length, and by dominant contributor; C.7 closes `NO_CHANGE` unless it survives all three and sits in one term |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1571,7 +1570,7 @@ loss).
       donor's whole passed set, not one group. C.6 closes with it: the
       unit is accepted (RAR-E42), the structure definitions and the
       passed set stay Rarog's.
-- **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
+- **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`, NO_CHANGE 2026-10-13.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
   outposts, minor behind pawn, rook on open and semi-open files, trapped
@@ -1635,7 +1634,7 @@ loss).
       middlegame large scores are mostly built by the activity terms, not
       by material. The slope is about 0.05% of the whole file's loss and
       nil over all rows. C.7 continues to C.7.3.
-    - **C.7.3 Research card: phase interpolation of large scores — `R3`.** Zero
+    - **C.7.3 Research card: phase interpolation of large scores — `R3`, NO_CHANGE 2026-10-13.** Zero
       games before its own registration. The card decides, with the
       maintainer, whether RAR-E58's phase slope is worth any candidate at
       its size, and what the candidate would be. Its first registered
@@ -1647,6 +1646,22 @@ loss).
       label noise from the games that produced the corpus. The card also
       weighs C.8's refit and C.10's tune as cheaper owners. With no
       candidate worth a game, C.7 closes `NO_CHANGE`.
+      **RAR-E59 (2026-10-13, zero games): C.7 closes `NO_CHANGE`.** Each
+      row's game was recovered from the source PGN with the extractor's own
+      split (the manifest's game counts reproduced exactly). On the full
+      score the slope falls under the line in three ways:
+      - with game-clustered errors: 3.26 SE (the error is 1.29 times the
+        naive one, about 3 rows a game);
+      - on rows the tablebases could not correct (men ≥ 7): 3.35 SE;
+      - over plies to the game's end: 2.94 SE.
+
+      No contributor group sits below the rest. King-danger-dominant large
+      scores convert 2.7 points worse (0.927 against 0.954, ± 0.9), short of
+      the 3-point line. The played score's slope survives clustering
+      (5.11 SE) and is carried mostly by remaining game length, a lazy-gate
+      and label matter. The imbalance, bishop, knight, rook and weak-queen
+      items are not supported (RAR-E57); the phase slope is calibration,
+      recorded for C.8 and C.10 with the king-danger lead.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
@@ -1664,6 +1679,13 @@ loss).
   fixed vector, 1.25% of the per-row gradient weight came back, most of it
   at clocks of 10 or more), so the next fit, C.6's or the first cycle's, is
   the first under it and its coefficient changes include this one.
+  **Carried from C.7 (RAR-E58, RAR-E59):** among decided scores Rarog's
+  large scores convert more often toward the endgame (a phase-dependent K,
+  calibration, not knowledge), most strongly on the lazy score and through
+  remaining game length. King-danger-dominant large scores convert 2.7
+  points worse than the rest (± 0.9, under the line). A cycle that changes
+  the fit's weighting of decided rows, or the danger map's scale, re-reads
+  both with RAR-E59's game-clustered errors.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
@@ -1692,7 +1714,10 @@ loss).
     score lacks information the full score has: the donor's Material row
     adds +0.32% to the played score's outcome prediction above 500 cp,
     and nothing to the full score's. `LazyMargin`'s range and fit are
-    read with that in mind.
+    read with that in mind. RAR-E59 adds that the played score's
+    phase miscalibration survives game-clustered errors (5.11 SE) where
+    the full score's does not (3.26), and that remaining game length
+    carries most of it.
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.

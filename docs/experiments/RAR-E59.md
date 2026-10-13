@@ -42,4 +42,49 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   5. **C.7 closes `NO_CHANGE` (0.85).**
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** read 1, the instrument's own error.
-- **Artifacts:** `analysis/artifacts/c73/` (ignored storage): `run_e59.sh`, `provenance.py`, `read_e59.py`, and the outputs they name. Tooling: `f3c6328`.
+- **Result (run 2026-10-13 14:46–14:48, once, after the registration commit `e5563a9`; `analysis/artifacts/c73/`, every step exit 0, read from `status.txt`; tree clean):**
+  - *Wire (0):*
+    - Provenance reproduces the manifest exactly: 612,747 games (551,551 / 30,449 / 30,747), 0 parse errors. All 194,444 rows match a game; 4 are ambiguous.
+    - 1,222 rows were relabelled by Syzygy, none at men ≥ 7.
+    - RAR-E58's `phase_slope|C` reproduces to the last digit (+1.3183 ± 0.2032 played, +0.9084 ± 0.2163 full).
+    - The group dump's score equals the full score on every row.
+  - *Reads 1 to 3* (|played| > 500: 55,544 rows from 18,602 games, about 3.0 rows a game; z by the game bootstrap, the linearised estimator within 0.01 of it everywhere):
+
+    | Read | Played score | Full score (decides) |
+    |---|---:|---:|
+    | 1 `phase_slope\|C`, naive SE | +1.318 ± 0.203 | +0.908 ± 0.216 |
+    | 1 the same, game-clustered | ± 0.258, **5.11 SE, line** | ± 0.279, **3.26 SE, under** |
+    | 1 folds by game (reported) | +1.314, 5.06 SE | +0.862, 3.08 SE |
+    | 2 men ≥ 7 (35,409 rows, 13,257 games) | +1.160, 4.46 SE, line | +0.845, **3.35 SE, under** |
+    | 2 without the donor's specialised endgames (reported) | +1.140, 4.63 SE | +0.750, 2.87 SE |
+    | 2 men ≥ 7 without them (reported) | +1.189, 4.62 SE | +0.867, 3.47 SE |
+    | 3 `r·z(plies left)\|C` | +1.556, **6.04 SE, line** | +0.826, 3.13 SE |
+    | 3 `phase_slope\|C + r·z` | +0.809, 3.46 SE | +0.701, **2.94 SE, under** |
+
+    The game-clustered standard error is 1.29 times the naive one on the full score (1.27 on the played score). Phase and `log1p(plies left)` correlate +0.288 among decided rows.
+  - *Read 4* (10,992 full scores above 500 cp at phase ≥ 32; agreement counts draws half; difference against the rest ± game-bootstrap SE):
+
+    | Dominant contributor | Rows | Agreement | Draws | Losses | Against the rest | Mean phase | Mean \|score\| |
+    |---|---:|---:|---:|---:|---:|---:|---:|
+    | material | 8,008 | 0.955 | 3.8% | 2.6% | +0.012 ± 0.005 | 63 | 1,042 |
+    | mobility | 0 | — | — | — | — | — | — |
+    | threats | 27 | 0.981 | 3.7% | 0.0% | +0.030 ± 0.019 | 102 | 597 |
+    | **king** | **1,106** | **0.927** | **6.8%** | **3.9%** | **−0.027 ± 0.009** | 82 | 667 |
+    | other | 1,851 | 0.952 | 4.8% | 2.4% | +0.000 ± 0.006 | 68 | 802 |
+
+    No group is below the rest by the rule. King is 2.7 points under it at 2.9 clustered SE, short of the 3-point clause. 983 rows have a frozen part without the king-danger flag.
+  - *Post hoc, deciding nothing* (`post_hoc_king.py`, run after the result to name the king group's make-up): all 1,106 king-dominant rows have the king-danger map's flag set, mean frozen part 313 cp. None of the 983 unflagged frozen rows is king-dominant. So the king group is the danger map, not the mop-up.
+- **Disposition:** by the frozen rule, **C.7 closes `NO_CHANGE`**. On the full score the slope falls under the line once standard errors count games (read 1, 3.26 SE), on rows the tablebases could not correct (read 2, 3.35 SE), and over game length (read 3, 2.94 SE). No contributor group is below the rest (read 4). Nothing reopens; nothing is built.
+  - H1 is not needed to explain the slope: it survives men ≥ 7 about as strongly as all rows, so Syzygy relabelling is not its source.
+  - H2 is supported on the played score: remaining game length carries more than phase (+1.556 against +0.809 once both are in).
+  - H3's best case is the king-danger map: its large scores convert 2.7 points worse than the rest's, with more draws and losses, which is close to but under the registered line.
+  - H4 stands by construction.
+  - The played score's slope survives clustering (5.11 SE) where the full score's does not: the lazy score is the more phase-miscalibrated of the two.
+  - Recorded for C.8 (K by phase; a refit that weights decided rows reads this slope) and for C.10 (`LazyMargin`, beside RAR-E58's note). The king-danger map's large-magnitude conversion goes with them as a measured lead, not a candidate. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 0 to 5 above.
+  - Observed: (0) all four hit. (1) clustered SE at least 1.5 times naive, **miss** (1.29); the full slope at the line under clustering did not happen (0.35), consistent. (2) at the line at men ≥ 7 did not happen (0.3), consistent. (3) the full slope falls over `C + r·z`, hit; `r·z` at the line over `C` on the full score, **miss** (3.13 SE; it is 6.04 on the played score); positive correlation, hit (+0.288). (4) king more than 3 points below, **miss** narrowly (2.7); some group below by the rule did not happen (0.45), consistent; material agrees most, **miss** (threats 0.981 on 27 rows; material 0.955 is the highest of the large groups). (5) hit.
+  - Which assumption failed: I took the design effect from the cap of 16 rows a game; in the decided cohort a game contributes about 3 rows, so clustering inflates the error by 1.29, not 1.5 or more. That was enough to move the full slope under the line, and the miss is in magnitude. I expected game length to act on the full score as strongly as on the played one. It acts mostly through the lazy score, which is itself a statement about the lazy gate.
+- **Conditional lesson:** a corpus with a per-game cap still clusters its rows; count rows per game inside the cohort that decides, not across the file, before trusting a per-row standard error.
+- **Retry trigger or `closed`:** closed; C.7 closes `NO_CHANGE`. Retry the king-danger magnitude lead if C.8's refit or C.10's tune leaves the map's large-score conversion at least 3 points under the rest at two clustered SE on a regenerated corpus, or if a game record shows losses from king-danger overestimates.
+- **Artifacts:** `f3c6328` (`rarog-texel --dump-groups` and its tests); `analysis/artifacts/c73/` (ignored storage): `run_e59.sh`, `run.log`, `status.txt`, `source.txt`, `tree-status.txt`, `provenance.py` → `provenance.csv` (`6b1ea515…`), `provenance.json` and `provenance.log`, `build-tuner.log`, `groups-full.csv` (`d006dacf…`), `dump-groups.log`, `read_e59.py` → `read.json` (`efeee33a…`) and `read.log` (`03c85809…`), `post_hoc_king.py` → `post_hoc_king.log` (`c7713aca…`).
