@@ -294,7 +294,9 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
+| C.8.1 | RESEARCH | V | Cycle 1 regeneration (2026-10-13): engine pinned, pilot and preflight done (595,240 games), full generation handed to the maintainer; then extraction, relabel, RAR-M68 |
+| C.8.2 | RESEARCH | V | Cycle 1 refit on `hce-v5-tb` with the initialization control; after C.8.1 |
+| C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -1685,7 +1687,30 @@ loss).
   remaining game length. King-danger-dominant large scores convert 2.7
   points worse than the rest (± 0.9, under the line). A cycle that changes
   the fit's weighting of decided rows, or the danger map's scale, re-reads
-  both with RAR-E59's game-clustered errors.
+  both with RAR-E59's game-clustered errors. **Opened 2026-10-13.** Cycle
+  1 follows C.2's frozen protocol (programme document, section 9) with the
+  accepted head (`52cc6de`) as the labeller. The corpus is `hce-v5`, with
+  `hce-v5-tb` its Syzygy relabelling and its own unread frozen test.
+    - **C.8.1 Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — `V`.** The
+      datagen engine `rarog-c8head-pext-pgo.exe` (`E73E3230…`, bench
+      14,197,472, engine source equal to `52cc6de`'s) is built and pinned.
+      `datagen.ps1` refuses a wrong SHA-256 and a wrong fingerprint
+      (checked). The 3,000-game pilot from start 1 ran at about 2,118 games
+      a minute (concurrency 30). `extract.py --preflight-games 3000
+      --target-train 3500000` recommends **595,240 games**; the same flags
+      on C.2's pilot reproduce its 612,747. The full command passed a dry
+      run; the generation is the maintainer's (about 4.7 hours).
+      Remaining once the PGN exists:
+      - `fit_complete.ps1` names `datagen-v2` at 595,240 starts as the
+        `hce-v5` contract, exercised on the corpus it admits;
+      - extraction to `hce-v5` and the relabel to `hce-v5-tb`, every split
+        hash and row count verified;
+      - RAR-M68.
+    - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** By
+      PROCESS's *Evaluation change under a fitted search*, as C.6.5;
+      registered before any fit is read.
+    - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** A
+      second cycle opens only if this one accepts.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
