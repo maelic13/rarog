@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.2 | RESEARCH | V | RAR-E60 (2026-10-13): candidate `bfd008a` (accepted start; the neutral start 13 SE worse), screens without a flag; NPS −0.48% (clear of the stop); gate 1 `[0,3]` handed to the maintainer (dry run passed) |
-| C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
+| C.8.3 | RESEARCH | V | Next (2026-10-13): gate 1 `[0,3]` for `bfd008a` against the head is with the maintainer (RAR-E60, dry run passed); read it, then the margin block when it fails or flags, gate 2, the `10+0.1` read |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1726,7 +1725,7 @@ loss).
         manifest's hash).
       - *RAR-M68:* 6.74% of clean wins not won (`hce-v4` 6.86%), so
         C.8.2's fit is not held.
-    - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** By
+    - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-13.** By
       PROCESS's *Evaluation change under a fitted search*, as C.6.5;
       registered before any fit is read.
       **Progress 2026-10-13 (RAR-E60):**

@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.8.2** (`V`): Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover.
+**Now: C.8.3** (`V`): Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -65,7 +65,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.7.3** Research card: phase interpolation of large scores — NO_CHANGE 2026-10-13
 - [ ] **C.8** Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — **V**
     - [x] **C.8.1** Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — DONE 2026-10-13
-    - [ ] **C.8.2** Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — **RESEARCH / V**
+    - [x] **C.8.2** Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — DONE 2026-10-13
     - [ ] **C.8.3** Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
     - [ ] **C.8.4** Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — **RESEARCH / I1**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
