@@ -1299,8 +1299,10 @@ loss).
       game record showing a conversion loss there. **The game-record
       trigger fired 2026-10-13 (RAR-E56, C.5.8):** 28 of RAR-E42's gate
       games lost a seven-man win from inside the family, at most 0.75 Elo.
-      The choice between the extension and keeping the exclusion is the
-      maintainer's.
+      **Maintainer decision 2026-10-13: the exclusion is kept.** Retry
+      trigger from then: a candidate acting specifically on KRPP-KRP, or
+      a game sample whose conversion losses inside the family reach
+      1 Elo by RAR-E56's bound (about 29 affected games per 10,000).
       **Closed `NO_CHANGE` 2026-10-12 (RAR-E47):** on the current head
       the drawn overclaims are KRP-KR 12.4% (30.7% on the 2.4.0 engine),
       KR-KP 4.0%, KP-K 0.81% and KP-KP 2.8%; conversion is level with
@@ -1415,8 +1417,8 @@ loss).
       entered in 10.2% of the gate's games, and 28 lost a seven-man win
       from inside it, at most 0.75 Elo, under the 1 Elo line, counted over
       both engines without tablebases and ignoring rule 50. The
-      recommendation is to keep the exclusion. The decision is the
-      maintainer's and is held in GUIDE.
+      exclusion is kept (maintainer decision 2026-10-13), with the retry
+      trigger recorded under C.5.5.
 - **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`, DONE 2026-10-12.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
