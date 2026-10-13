@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.1 | RESEARCH | V | Cycle 1 regeneration (2026-10-13): engine pinned, pilot and preflight done (595,240 games), full generation handed to the maintainer; then extraction, relabel, RAR-M68 |
-| C.8.2 | RESEARCH | V | Cycle 1 refit on `hce-v5-tb` with the initialization control; after C.8.1 |
+| C.8.2 | RESEARCH | V | Next (2026-10-13): `hce-v5-tb` is published and contract-checked, RAR-M68 does not hold the fit; register cycle 1's refit with its initialization control before any fit is read |
 | C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1692,7 +1691,7 @@ loss).
   1 follows C.2's frozen protocol (programme document, section 9) with the
   accepted head (`52cc6de`) as the labeller. The corpus is `hce-v5`, with
   `hce-v5-tb` its Syzygy relabelling and its own unread frozen test.
-    - **C.8.1 Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — `V`.** The
+    - **C.8.1 Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — `V`, DONE 2026-10-13.** The
       datagen engine `rarog-c8head-pext-pgo.exe` (`E73E3230…`, bench
       14,197,472, engine source equal to `52cc6de`'s) is built and pinned.
       `datagen.ps1` refuses a wrong SHA-256 and a wrong fingerprint
@@ -1707,6 +1706,26 @@ loss).
       - extraction to `hce-v5` and the relabel to `hce-v5-tb`, every split
         hash and row count verified;
       - RAR-M68.
+
+      **Done 2026-10-13:**
+      - *Generation:* the maintainer generated 595,240 games
+        (`selfplay-c8head-n8000-s1-g595240.pgn`, `7A0EA868…`, 3 h 2 min
+        at concurrency 30, about 3,270 games a minute). The engine was
+        verified in the run.
+      - *Contract:* `fit_complete.ps1` names the `hce-v5` contract
+        (`91ff6ab`) and gained `-ValidateDatasetOnly`, which runs a fit's
+        corpus checks and stops (`63fa024`, after the first form let the
+        cleanup rebuild the release binary). The checks pass on `hce-v4-tb`
+        unchanged, on `hce-v5` and on `hce-v5-tb`. A copy naming 595,241
+        starts refuses `hce-v5-tb` with the contract error.
+      - *Corpus:* extraction published `hce-v5` with every phase quota
+        filled (3,500,000 / 194,444 / 194,444 rows from 535,762 / 29,557 /
+        29,921 games, 6,661 skipped). The relabel to `hce-v5-tb` changed
+        0.65% of train rows with 0 probe failures (train `c5e9c4b7…`,
+        validation `3aad7a01…`, test `56d51eaa…`, each equal to its
+        manifest's hash).
+      - *RAR-M68:* 6.74% of clean wins not won (`hce-v4` 6.86%), so
+        C.8.2's fit is not held.
     - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** By
       PROCESS's *Evaluation change under a fitted search*, as C.6.5;
       registered before any fit is read.

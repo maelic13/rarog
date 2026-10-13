@@ -20,4 +20,15 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Falsification criteria:** none for an engine; the measurement is descriptive. Competing (2) is supported if the rate is above 9%.
 - **Registered rule and use (frozen):** one audit over the complete source PGN, run once after generation and before the corpus is fitted. A conditional rate above **10%** (labels clearly worse than `hce-v4`'s) holds C.8.2's fit until the maintainer decides, since a label contract worse than the accepted corpus's would confound the cycle's gate. Otherwise the result is recorded with the corpus.
 - **Full conditions / provenance:** `python tools/diag/datagen_label_audit.py --pgn tools/texel/data/selfplay-c8head-n8000-s1-g595240.pgn --syzygy D:/chess/tablebases/syzygy3456 --max-men 6 --workers 30 --output tools/results/label-audit-hce-v5/report.json`; first clean win per game, cursed wins excluded, as RAR-M22 and RAR-M67.
-- **Artifacts:** `tools/results/label-audit-hce-v5/` (ignored storage); the pilot and preflight in `analysis/artifacts/c81/`.
+- **Result (run 2026-10-13 19:18–19:21, once, after generation and before any fit; `tools/results/label-audit-hce-v5/report.json`, `34f590b4…`):**
+  - *Source:* 595,240 games (`selfplay-c8head-n8000-s1-g595240.pgn`, `7A0EA868…`, generated 2026-10-13 13:11 to 16:13 UTC at concurrency 30, engine verified in the run at `E73E3230…` and bench 14,197,472, clean tree): 223,533 wins for White, 181,662 for Black, 190,045 draws.
+  - *Audit:* **253,752 games reach a first clean win (42.63%; `hce-v4` 42.32%), and 17,101 of them are not won: 6.74% of clean wins** (`hce-v4` 6.86%), 2.87% of all games (`hce-v4` 2.90%).
+  - *Largest failing families by count:* KRPP-KR 2,031 of 16,093 (12.62%), KRP-KRP 1,150 of 7,270 (15.82%), KRNP-KR 564 (14.80%), KRP-KBP 553 (15.56%), KBP-KPP 550 (11.27%); KPP-KPP 496 of 9,174 (5.41%) is eighth.
+  - *The corpus agrees independently:* the Syzygy relabel of `hce-v5` changed 22,706 train labels (0.65% of rows; `hce-v4` 0.63%), 0 probe failures.
+- **Disposition:** observation. The accepted head converts its clean wins at 8,000 nodes as the B.9 head did (6.74% against 6.86% not won), so the label contract is unchanged in quality. By the frozen use (hold above 10%), **C.8.2's fit is not held**.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): the items above.
+  - Observed: games reaching a clean win 42.63%, inside 40–46% (hit). Not won 6.74%, inside the 4.5–9% band and below 6.86% (hit, probability 0.55). Failing families: KRPP-KR and KRP-KRP among the five largest, KPP-KPP not (it is eighth, behind three rook-and-minor and minor-and-pawn families): **partial miss**.
+  - Which assumption failed: none in the rate; the evaluation programme left conversion at this node budget where the search had put it, which is the hypothesis. The family ranking moved toward rook-and-minor endings, which the 2.4.0-era ranking did not weigh.
+- **Retry trigger or `closed`:** closed on its record.
+- **Artifacts:** `tools/results/label-audit-hce-v5/` (ignored storage); the pilot, preflight, publication, relabel and contract logs in `analysis/artifacts/c81/`.
