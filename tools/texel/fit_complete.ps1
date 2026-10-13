@@ -28,6 +28,9 @@ param(
     # The baseline's `bench 13` fingerprint, "N / EBF x.xxx", when the fit
     # starts from a branch rather than the head GUIDE.md declares.
     [string]$BaselineFingerprint = "",
+    # Publish the dataset if it is missing, run the corpus contract checks a
+    # fit runs first, and stop: no build, bench or fit.
+    [switch]$ValidateDatasetOnly,
     [switch]$Smoke
 )
 
@@ -58,6 +61,10 @@ if ($trackedStatus -and -not $Smoke) {
 }
 if ($trackedStatus -and $Smoke) {
     Write-Warning "SMOKE mode is running against tracked tooling changes; production mode refuses this"
+}
+
+if ($ValidateDatasetOnly -and ($Smoke -or $Resume)) {
+    throw "-ValidateDatasetOnly checks a real corpus; it excludes -Smoke and -Resume"
 }
 
 if ($DeferFrozenTest) {
@@ -440,7 +447,11 @@ try {
                 # hce-v4: the same book and profile from start 1, labelled by the
                 # Phase C frozen head; the count is the 3,000-game pilot's
                 # preflight (PLAN C.2).
-                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 612747 }
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 612747 },
+                # hce-v5: C.8's first cycle, the same book and profile from
+                # start 1, labelled by the accepted head (52cc6de); the count
+                # is its 3,000-game pilot's preflight (PLAN C.8.1).
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 595240 }
             )
             $corpusProfile = [string]$manifest.label_contract.adjudication.Name
             $corpusStarts = [int]$manifest.independent_starts
@@ -534,6 +545,11 @@ try {
                     throw ("frozen test was already consumed; see $testMarker " +
                            "(a registration that reads it after its games takes -DeferFrozenTest <experiment ID>)")
                 }
+            }
+            if ($ValidateDatasetOnly) {
+                Write-Host ("CORPUS CONTRACT PASSED: $dataset " +
+                            "(test marker absent: $(-not (Test-Path -LiteralPath $testMarker)))")
+                exit 0
             }
             $linearMax = 0
         }
