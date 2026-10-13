@@ -622,8 +622,11 @@ mod tests {
         let [white, _] = inputs(&board);
         let mut ev = Evaluator::default();
         let index = ev.king_danger_index(&white, false, false, 0, 0);
+        // The fitted danger weights move the fixture's index (3,381 at the
+        // 2.6.0-dev defaults, 3,149 after C.8's first refit); the property
+        // needs only an index past the cap.
         assert!(
-            index > 2 * KS_INDEX_CAP,
+            index > KS_INDEX_CAP,
             "the fixture must saturate the index: {index}"
         );
         let capped = ev.king_danger_penalty(index.min(KS_INDEX_CAP));
