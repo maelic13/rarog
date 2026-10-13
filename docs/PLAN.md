@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.8 | RESEARCH | V | Closes C.5: a measurement checkpoint, not a gate (2026-10-11) |
 | C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1031,7 +1030,7 @@ loss).
       above, so the acceptance stands. C.4 closes: threats accepted
       (RAR-E32), mobility `NO_CHANGE` (RAR-E31).
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
-  `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
+  `I2`/`V` sub-steps, DONE 2026-10-13.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
   coverage of a function list.
     - **C.5.1 Classification and deciding instrument per family — `R2`, DONE 2026-10-09.** Adopt the registered
@@ -1297,7 +1296,11 @@ loss).
       served by C.5.2's generic scale and read through held-out outcome
       loss at seven men and C.5.8's game-level conversion re-read.
       Retry trigger: a candidate that acts specifically on KRPP-KRP, or a
-      game record showing a conversion loss there.
+      game record showing a conversion loss there. **The game-record
+      trigger fired 2026-10-13 (RAR-E56, C.5.8):** 28 of RAR-E42's gate
+      games lost a seven-man win from inside the family, at most 0.75 Elo.
+      The choice between the extension and keeping the exclusion is the
+      maintainer's.
       **Closed `NO_CHANGE` 2026-10-12 (RAR-E47):** on the current head
       the drawn overclaims are KRP-KR 12.4% (30.7% on the 2.4.0 engine),
       KR-KP 4.0%, KP-K 0.81% and KP-KP 2.8%; conversion is level with
@@ -1381,7 +1384,7 @@ loss).
       closes DONE rather than `NO_CHANGE`. The residual is ply-limit
       failures with the blockade held and the king not yet cornered;
       the drawn overclaim rose to 54.7% (reported).
-    - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`.** A
+    - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`, DONE 2026-10-13.** A
       measurement checkpoint that closes C.5, not a cluster strength gate
       (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
       and C.5.2.1 and C.5.3 closed `NO_CHANGE`, so a cluster SPRT would gate
@@ -1397,6 +1400,23 @@ loss).
       (KRP-KB, KPP-K, KRP-KR, KNN-KP, KBP-K) the per-move standard
       error is too small by 1.3 to 1.7 times, so a DTZ-progress report
       there is read per game before it decides anything.
+      **RAR-E56 (2026-10-13, zero games): no regression; C.5.8 and C.5
+      close DONE** on `20bf409` (engine `ab2a6ab`, 14,197,472 / EBF 2.557,
+      byte-identical to RAR-E55's binary). Floors PASS, with KRP-KB's
+      known −2.7 SE the only report. The theory vetoes and the suite pass
+      in both profiles (395 / 396). The 15 families last bracketed on
+      `38cbb02` reproduce its per-position records exactly, and the 8 last
+      bracketed on the C.4.3 head stay within 2 of it and of Stockfish at
+      200k. In RAR-E42's gate games the 24 C.5 families affect 49 of
+      12,954 games (at most 1.31 Elo, KRP-KR 26 of them). The A.4 audit
+      reads 17.9 thrown away per 1,000 self-play games. **KRPP-KRP's
+      seven-man exclusion is recorded**; the family stays served by C.5.2's
+      generic scale. Its game-record trigger fired (C.5.5): the family is
+      entered in 10.2% of the gate's games, and 28 lost a seven-man win
+      from inside it, at most 0.75 Elo, under the 1 Elo line, counted over
+      both engines without tablebases and ignoring rule 50. The
+      recommendation is to keep the exclusion. The decision is the
+      maintainer's and is held in GUIDE.
 - **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`, DONE 2026-10-12.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
