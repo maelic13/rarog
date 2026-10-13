@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.2 | RESEARCH | V | RAR-E60 registered (2026-10-13): accepted-start and neutral-start fits on `hce-v5-tb`, the control on the frozen test with game-clustered errors, then the screens, tree and NPS reads and gate 1 `[0,3]` |
+| C.8.2 | RESEARCH | V | RAR-E60 (2026-10-13): candidate `bfd008a` (accepted start; the neutral start 13 SE worse), screens without a flag; waiting on the maintainer's NPS read on an idle host, then gate 1 `[0,3]` (dry run passed) |
 | C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1729,6 +1729,23 @@ loss).
     - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** By
       PROCESS's *Evaluation change under a fitted search*, as C.6.5;
       registered before any fit is read.
+      **Progress 2026-10-13 (RAR-E60):**
+      - *Control:* the neutral start fits the frozen test 2.38% worse than
+        the accepted start (−13.2 game-clustered SE), so arm A is the
+        candidate.
+      - *Candidate:* committed as `bfd008a`, bench 14,291,377 / EBF 2.538.
+        It lowers the frozen-test loss by +0.080% ± 0.036 against the
+        accepted vector.
+      - *A test precondition:* the king-danger cap test demanded twice the
+        cap from a weight-dependent fixture (3,149 after the refit). It was
+        fixed in its own commit (`f634ced`), and the fit resumed rather than
+        refitted.
+      - *Screens:* no flag. The donor screen moves every family 0.028 points
+        or less, magnitude shifts at most +2.8 cp up to 600, and the tree
+        grows +3.4% (geometric mean 1.004).
+      - *Open:* the pooled NPS read was twice disturbed by interactive use
+        of the host. It goes to the maintainer on an idle machine before
+        gate 1, whose dry run passed.
     - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** A
       second cycle opens only if this one accepts.
     - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
