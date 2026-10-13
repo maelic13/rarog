@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
+| C.7.1 | RESEARCH | V | RAR-E57 registered (2026-10-13): the residual step, each material, imbalance and piece row alone, above six men apart; C.7 closes `NO_CHANGE` if no row has signal |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1583,7 +1583,15 @@ loss).
   term, but the weak-queen row holds only 0.39 of it; the rest is in the
   knight, bishop and rook rows, about two standard errors in all. So C.7
   opens without a named weak-queen candidate, and its residual step reads
-  the piece rows one by one.
+  the piece rows one by one. **Opened 2026-10-13.**
+    - **C.7.1 Residual step: the donor's material, imbalance and piece rows one by one, and the phase taper, on the current head (RAR-E57) — `V`.** Zero
+      games: the head's played score substituted into the donor rows, and
+      each trace row read alone, along with Rarog's score rescaled by
+      phase. Above six men, the endgame band and queenless play are read
+      apart from the endings C.5 owns. A direction has signal at 0.10% or
+      more, at four standard errors, and above the cohort's re-pricing of
+      Rarog's own score. A direction with signal goes to a sub-term
+      attribution; with none, C.7 closes `NO_CHANGE`.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
