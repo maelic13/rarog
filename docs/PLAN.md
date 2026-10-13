@@ -297,6 +297,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | C.8.1 | RESEARCH | V | Cycle 1 regeneration (2026-10-13): engine pinned, pilot and preflight done (595,240 games), full generation handed to the maintainer; then extraction, relabel, RAR-M68 |
 | C.8.2 | RESEARCH | V | Cycle 1 refit on `hce-v5-tb` with the initialization control; after C.8.1 |
 | C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
+| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -1711,6 +1712,39 @@ loss).
       registered before any fit is read.
     - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** A
       second cycle opens only if this one accepts.
+    - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
+      matches, gauntlets and tunes run on Colosseum. `tools/datagen.ps1`
+      still drives fastchess (alpha 1.8.0) directly: `hce-v4` and `hce-v5`
+      were generated through it, with fastchess's raw per-game console output
+      and no filtered progress (maintainer direction 2026-10-13). This step
+      must land before the next regeneration, which is cycle 2's, or F.2's if
+      C.8 stops at cycle 1. It blocks nothing before that.
+      1. **Gap, proved first:** from Colosseum's code and documentation, what
+         it lacks for datagen. Both sides at fixed nodes (8,000), no
+         adjudication, the EPD book in seeded random order from a start
+         index without wrapping, one game per opening, a 200-move cap,
+         oversubscribed concurrency (30), a PGN and a run manifest. Any gap
+         goes to the maintainer as a verified request, never as an assumption.
+      2. **Port:** a Colosseum run file and a `colosseum.ps1` datagen mode,
+         or `datagen.ps1` calling Colosseum. It keeps every guard
+         (`-ExpectSha256`, `-ExpectFingerprint`, the book audit, never
+         overwriting a PGN) and the manifest fields `extract_parallel.py`
+         reads. Progress shows as a filtered status line, as Colosseum's
+         matches do: games done, rate, ETA, results, failures.
+      3. **Equivalence:** a 3,000-game Colosseum pilot on C.8.1's engine and
+         book against the fastchess pilot (`selfplay-c8head-n8000-s1-g3000.pgn`).
+         Every opening both play gives the same game move for move (fixed
+         nodes, one thread, Hash 16). The opening set matches, or the
+         difference in order rule is documented. The preflight recommends
+         the same game count.
+      4. **The other uses:** an inventory of every remaining fastchess and
+         weather-factory consumer (`sprt.ps1`, `spsa.ps1`, `gauntlet.ps1`,
+         `watch.ps1`, `pgn_result.ps1`, `setup_tools.ps1`,
+         `harness_common.ps1`, the texel tools' references). By a
+         maintainer decision recorded in AGENTS, which today keeps both as
+         the backup and second opinion, each is retired or kept as backup
+         only. PROCESS's *Harness* section and its cross-check triggers
+         change with that decision.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.

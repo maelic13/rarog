@@ -67,6 +67,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [ ] **C.8.1** Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — **RESEARCH / V**
     - [ ] **C.8.2** Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — **RESEARCH / V**
     - [ ] **C.8.3** Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
+    - [ ] **C.8.4** Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — **RESEARCH / I1**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
 - [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **RESEARCH / V**
 - [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
