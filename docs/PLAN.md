@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.2 | RESEARCH | V | RAR-E60 (2026-10-13): candidate `bfd008a` (accepted start; the neutral start 13 SE worse), screens without a flag; waiting on the maintainer's NPS read on an idle host, then gate 1 `[0,3]` (dry run passed) |
+| C.8.2 | RESEARCH | V | RAR-E60 (2026-10-13): candidate `bfd008a` (accepted start; the neutral start 13 SE worse), screens without a flag; NPS −0.48% (clear of the stop); gate 1 `[0,3]` handed to the maintainer (dry run passed) |
 | C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1743,9 +1743,10 @@ loss).
       - *Screens:* no flag. The donor screen moves every family 0.028 points
         or less, magnitude shifts at most +2.8 cp up to 600, and the tree
         grows +3.4% (geometric mean 1.004).
-      - *Open:* the pooled NPS read was twice disturbed by interactive use
-        of the host. It goes to the maintainer on an idle machine before
-        gate 1, whose dry run passed.
+      - *NPS:* the agent's pooled read was twice disturbed by interactive
+        use of the host. The maintainer's read on an idle machine gives
+        −0.48% (95% −0.93% to −0.04%), clear of the −1.5% stop, so gate 1
+        (dry run passed) is handed over.
     - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** A
       second cycle opens only if this one accepts.
     - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
