@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7.3 | RESEARCH | R3 | Next (RAR-E58, 2026-10-13): the phase slope among decided scores survives the lazy gate; the card decides whether it is worth any candidate at about 0.05% of the loss, or C.7 closes `NO_CHANGE` |
+| C.7.3 | RESEARCH | R3 | RAR-E59 registered (2026-10-13): the slope under game-clustered errors, on rows the tablebases could not correct, over game length, and by dominant contributor; C.7 closes `NO_CHANGE` unless it survives all three and sits in one term |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
