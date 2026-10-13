@@ -2480,7 +2480,7 @@ fn usage(exe: &str) {
     );
     eprintln!("  {exe} --report-endgames <dataset.csv> <complete-vector.txt> --fix-k K");
     eprintln!(
-        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor)"
+        "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale] [--weights <vector>]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor; --weights: evaluate with that complete vector)"
     );
     eprintln!(
         "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;tapered White-minus-Black coefficient per index of one weight field;phase)"
@@ -2500,9 +2500,15 @@ fn usage(exe: &str) {
 /// other side of the full-against-played comparison. With `scale`, a fourth
 /// field carries the engine's own multiplicative endgame factor for the row
 /// (`linear_delta_scale`), so an offline model of a scale rule can be checked
-/// against the engine row by row instead of being assumed to match it.
-fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool) {
+/// against the engine row by row instead of being assumed to match it. With
+/// `weights`, the evaluation uses that complete vector instead of the
+/// compiled defaults, so a fitted vector's per-row scores can be read before
+/// it is baked.
+fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool, weights: Option<&str>) {
     let mut ev = Evaluator::default();
+    if let Some(file) = weights {
+        ev.set_params(load_eval_file(file));
+    }
     if full {
         ev.set_lazy_margin(i32::MAX);
     }
@@ -2786,14 +2792,30 @@ fn main() {
             cmd_audit_coverage(&args[2]);
         }
         "--dump-scores" => {
-            let flags = args.get(4..).unwrap_or_default();
-            let known = |f: &String| f == "--full" || f == "--scale";
-            if args.len() < 4 || !flags.iter().all(known) {
+            let mut full = false;
+            let mut scale = false;
+            let mut weights = None;
+            let mut i = 4;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--full" => full = true,
+                    "--scale" => scale = true,
+                    "--weights" if i + 1 < args.len() => {
+                        weights = Some(args[i + 1].as_str());
+                        i += 1;
+                    }
+                    _ => {
+                        usage(&args[0]);
+                        exit(1);
+                    }
+                }
+                i += 1;
+            }
+            if args.len() < 4 {
                 usage(&args[0]);
                 exit(1);
             }
-            let has = |name: &str| flags.iter().any(|f| f == name);
-            cmd_dump_scores(&args[2], &args[3], has("--full"), has("--scale"));
+            cmd_dump_scores(&args[2], &args[3], full, scale, weights);
         }
         "--dump-feature" => {
             let flags = args.get(5..).unwrap_or_default();
@@ -3156,6 +3178,42 @@ mod tests {
                 trace.raw
             );
         }
+    }
+
+    /// `--dump-scores --weights` with the default vector writes exactly what
+    /// the compiled defaults write, and a changed vector changes the scores.
+    #[test]
+    fn dump_scores_reads_a_weight_vector() {
+        let dir = std::env::temp_dir().join(format!("rarog-dump-weights-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let path = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        let rows: Vec<String> = GROUP_FENS.iter().map(|f| format!("{f};0.5")).collect();
+        std::fs::write(path("rows.csv"), rows.join("\n") + "\n").expect("rows");
+        let defaults = EvalParams::default().to_flat();
+        write_eval_file(&path("defaults.txt"), &defaults);
+        let mut changed = defaults.clone();
+        let (pawn_mg, _) = field_offset("mg_val");
+        changed[pawn_mg] += 50.0;
+        write_eval_file(&path("changed.txt"), &changed);
+        cmd_dump_scores(&path("rows.csv"), &path("plain.csv"), false, false, None);
+        cmd_dump_scores(
+            &path("rows.csv"),
+            &path("same.csv"),
+            false,
+            false,
+            Some(&path("defaults.txt")),
+        );
+        cmd_dump_scores(
+            &path("rows.csv"),
+            &path("moved.csv"),
+            false,
+            false,
+            Some(&path("changed.txt")),
+        );
+        let read = |name: &str| std::fs::read_to_string(path(name)).expect("dump");
+        assert_eq!(read("plain.csv"), read("same.csv"));
+        assert_ne!(read("plain.csv"), read("moved.csv"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Where the king-danger map did not fire and the endgame factor is one,

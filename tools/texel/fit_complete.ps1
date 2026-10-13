@@ -31,6 +31,10 @@ param(
     # Publish the dataset if it is missing, run the corpus contract checks a
     # fit runs first, and stop: no build, bench or fit.
     [switch]$ValidateDatasetOnly,
+    # Start the first stage from this complete vector instead of the compiled
+    # defaults (an initialization control); the baseline, K and the bake
+    # still come from the defaults.
+    [string]$InitialVector = "",
     [switch]$Smoke
 )
 
@@ -65,6 +69,9 @@ if ($trackedStatus -and $Smoke) {
 
 if ($ValidateDatasetOnly -and ($Smoke -or $Resume)) {
     throw "-ValidateDatasetOnly checks a real corpus; it excludes -Smoke and -Resume"
+}
+if ($InitialVector -and $Resume) {
+    throw "-InitialVector applies to a new fit; a resumed run keeps its recorded start"
 }
 
 if ($DeferFrozenTest) {
@@ -560,6 +567,15 @@ try {
         if (-not (Test-Path -LiteralPath $fitManifestPath -PathType Leaf)) {
             throw "missing fitting manifest $fitManifestPath"
         }
+        $initialCopy = $null
+        if ($InitialVector) {
+            $initialSource = Resolve-RepoPath $InitialVector
+            if (-not (Test-Path -LiteralPath $initialSource -PathType Leaf)) {
+                throw "missing initial vector $initialSource"
+            }
+            $initialCopy = Join-Path $runDir "00-initial.txt"
+            Copy-Item -LiteralPath $initialSource -Destination $initialCopy
+        }
         $settings = [ordered]@{
             schema = "rarog-complete-hce-fit-v6"
             commit = $commit
@@ -586,6 +602,8 @@ try {
             label_contract = if ($Smoke) { "legacy smoke data" } else { [string]$manifest.label }
             fit_manifest = $fitManifestPath
             fit_manifest_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $fitManifestPath).Hash
+            initial_vector = if ($initialCopy) { $InitialVector } else { "source defaults" }
+            initial_vector_sha256 = if ($initialCopy) { (Get-FileHash -Algorithm SHA256 -LiteralPath $initialCopy).Hash } else { $null }
             schedule = @("nonlinear", "complete-linear", "nonlinear", "complete-linear-polish", "frozen-test-after-checks")
         }
         $settings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "settings.json") -Encoding utf8
@@ -617,13 +635,15 @@ try {
         $ks2 = Join-Path $runDir "03-kingsafety.txt"
         $final = Join-Path $runDir "04-final.txt"
 
-        [void](Invoke-Logged "fit-01-kingsafety" $tuner @(
+        $firstArgs = @(
             "--tune-kingsafety", $train, $validation, $ks1,
             "--manifest", $fitManifestPath,
             "--epochs", [string]$NonlinearEpochs,
             "--max-positions", [string]$NonlinearPositions,
             "--fix-k", $fixedK
-        ))
+        )
+        if ($initialCopy) { $firstArgs += @("--initial", $initialCopy) }
+        [void](Invoke-Logged "fit-01-kingsafety" $tuner $firstArgs)
 
         $linearArgs = @(
             "--tune", "complete", $train, $validation, $linear1,
