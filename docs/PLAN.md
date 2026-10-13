@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7.2 | RESEARCH | V | Next (RAR-E57, 2026-10-13): the Material row and the phase slope have signal only among decided scores (\|rarog\| > 500); attribute them, calibration against knowledge, before anything is built |
+| C.7.2 | RESEARCH | V | RAR-E58 registered (2026-10-13): re-pricing, the lazy gate, phase calibration or material knowledge, decided on a spline comparator with the played and full scores |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
