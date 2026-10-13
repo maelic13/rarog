@@ -36,4 +36,53 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   7. **C.7 closes `NO_CHANGE` by A or B (0.55).**
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** this read.
-- **Artifacts:** `analysis/artifacts/c72/` (ignored storage): `run_e58.sh`, `attrib.py`, and the outputs they name.
+- **Result (run 2026-10-13 14:24, once, after the registration commit `5b368af`; `analysis/artifacts/c72/`, every step exit 0, read from `status.txt`; tree clean; tuner identity asserted):**
+  - *Wire:* RAR-E57's two signals reproduce exactly (+1.3156 and +0.3331, difference 0). The material split sums back to the row (largest error 4.6e-13). Donor columns and labels are equal between the files. **The count fit's R² is 0.667 (mg) and 0.676 (eg)**, not the predicted 0.97 or more. Its fitted eg values exceed the mg values for every piece.
+  - *Lazy share:* 0.792 of the |played| > 500 rows (0.34 at phase ≥ 96, 0.60 at 32–95, 0.84 under 32); 0.027 at |played| ≤ 500.
+  - *Gains at |played| > 500* (55,544 rows; ± one standard error; "line" is 0.10% at 4 SE):
+
+    | Direction | Played score | Full score |
+    |---|---:|---:|
+    | `phase_slope\|C` | **+1.318 ± 0.203 (6.5 SE), line** | **+0.908 ± 0.216 (4.2 SE), line** |
+    | `material_row\|C` | **+0.322 ± 0.058 (5.5 SE), line** | −0.005 ± 0.044 |
+    | `material_count\|C` | +1.151 ± 0.149 (7.7 SE) | +0.063 ± 0.068 |
+    | `material_placement\|C` | +0.009 ± 0.011 | +0.158 ± 0.060 (2.6 SE) |
+    | `material_row\|C+slope` | +0.219 ± 0.084 (2.6 SE) | +0.047 ± 0.040 |
+    | `phase_slope\|C+material_row` | +1.216 ± 0.215 (5.6 SE) | +0.960 ± 0.214 (4.5 SE) |
+    | slope weight (standardised) | −1.108 | −1.263 |
+
+  - *Where the slope lives (reported):*
+    - On the 11,565 decided rows the gate does not touch, the played and full scores are the same, and the slope reads +0.809 ± 0.195 (4.2 SE). On the lazy rows it reads +1.022 ± 0.277 (played) and +1.182 ± 0.374 (full).
+    - Inside one phase band it is small: +0.179 ± 0.078 under 32 and +0.221 ± 0.128 at 32–95. The signal is between bands.
+    - Over all rows with the comparator it is nil: +0.027 ± 0.017 played, +0.008 ± 0.017 full.
+  - *Calibration among decided played scores* (how often the outcome agrees with the score's sign; draws count half):
+
+    | Score | Phase ≥ 96 | Phase 32–95 | Phase < 32 |
+    |---|---:|---:|---:|
+    | 500–800 cp | 0.907 (1,359 rows; 5.4% draws) | 0.940 (6,067; 5.6%) | 0.971 (22,225; 4.7%) |
+    | 800–1,200 cp | 0.963 (175) | 0.986 (2,019) | 0.996 (13,367) |
+    | over 1,200 cp | 1.000 (9) | 0.998 (591) | 1.000 (9,732) |
+
+    In the opening band, a +500 to +800 score loses about 6.6% of games outright. In the endgame band, about 0.6%.
+  - *Post hoc, deciding nothing* (`post_hoc_zero_rows.py`, run after the result to explain the count fit's miss):
+    - The donor prints every trace row zero for its specialised endgames. These are 11,291 rows (5.8%), and **10,250 of the 55,544 decided rows (18.5%)**. Their outcomes agree with Rarog's sign 0.998 of the time, against 0.973 for the other decided rows.
+    - Without them the count fit's R² is 0.986 and 0.993, and the fitted values match the donor's piece values in pawns (knight 3.78 mg, 4.14 eg).
+    - So on those rows the Material row reads zero, which flags "a specialised ending". The played-score Material signal may be partly that flag, and `material_count` and `material_placement` are not a clean values/placement split there.
+- **Disposition by the frozen rule:**
+  - **A:** both directions are at the line over the spline comparator.
+  - **B:** the **phase slope survives** on the full score. The **Material row falls under the line**, so it belongs to the lazy gate: the played score's lazy rows miss information the full score has. Post hoc, part of that is the donor's specialised-endgame flag. Neither is material knowledge Rarog lacks.
+  - **C:** does not apply (the Material row failed B; beyond the slope it is under the line anyway).
+  - By the frozen use, **C.7 continues to C.7.3, a research card on phase interpolation**, decided with the maintainer; nothing is built from this read. The Material-row finding is recorded for `LazyMargin` (PLAN C.10) and C.8. Imbalance and the piece rows stay closed (RAR-E57).
+  - What the slope says: Rarog's large scores are **over-confident toward the opening and under-confident toward the endgame** relative to each other, at about 0.05% of the whole file's loss and nil over all rows.
+  - The decided opening and middlegame rows are mostly not lazy (66% and 40% are scored with the activity terms), so the over-confident large scores there are largely positional scores, not material ones.
+  - Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 7 above.
+  - Observed: (1) reproduction hit; R² **miss** (0.667 and 0.676; the donor's specialised endgames print zero rows, found post hoc); eg above mg for every piece, hit. (2) **miss** (0.792). (3) both hit. (4) phase slope falls on the full score, **miss** (it stays at 4.2 SE); the Material row falls, hit. (5) not reached; the Material row beyond the slope is under the line, consistent with 0.7. (6) **miss in sign**: the weight is negative, so large endgame scores are the more decisive. (7) **miss**: C.7 continues.
+  - Which assumption failed:
+    - I expected decided endgames to hide fortresses and wrong-bishop draws and so to be over-confident. In this corpus the opposite holds: a large endgame score is close to certain, and a large opening or middlegame score loses one game in fifteen. The miss is in sign, from the wrong mechanism.
+    - I also took the lazy share to be near total among decided rows. A large score with pieces on is mostly built by the activity terms the gate protects, not by material.
+    - I did not check that every donor row carries a trace before defining a split on it.
+- **Conditional lesson:** before decomposing a donor row, count the rows on which the donor printed nothing; a flag hidden in zeros reads as signal.
+- **Retry trigger or `closed`:** closed as a read; C.7.3's card follows. Its first registered check is the slope without the donor's specialised-endgame rows and split by whether Rarog's large score is material or positional.
+- **Artifacts:** `analysis/artifacts/c72/` (ignored storage): `run_e58.sh`, `run.log`, `status.txt`, `source.txt`, `tree-status.txt`, `build-tuner.log`, `head_full.csv` (`0d4a4c94…`), `dump.log`, `substitute.log`, `scores-9587-full.csv` (`f6ae59d8…`), `attrib.py` → `attrib.json` (`e49c9664…`) and `attrib.log` (`304f344b…`), `post_hoc_zero_rows.py` → `post_hoc_zero_rows.log` (`49da2571…`).

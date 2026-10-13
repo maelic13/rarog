@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7.2 | RESEARCH | V | RAR-E58 registered (2026-10-13): re-pricing, the lazy gate, phase calibration or material knowledge, decided on a spline comparator with the played and full scores |
+| C.7.3 | RESEARCH | R3 | Next (RAR-E58, 2026-10-13): the phase slope among decided scores survives the lazy gate; the card decides whether it is worth any candidate at about 0.05% of the loss, or C.7 closes `NO_CHANGE` |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1606,7 +1606,7 @@ loss).
       selected on the score it rescales, so the signal may be calibration
       of decided scores; and the two signals may be one, since the donor's
       endgame piece values exceed its middlegame ones.
-    - **C.7.2 Attribution: the Material row and the phase slope among decided scores — `V`.** Zero
+    - **C.7.2 Attribution: the Material row and the phase slope among decided scores — `V`, DONE 2026-10-13.** Zero
       games, its own registration before any number. It decides what
       carries RAR-E57's two signals: the donor's Material row rebuilt from
       the FEN (material values and piece-square tables, each phase) and
@@ -1616,6 +1616,37 @@ loss).
       still move among decided scores is registered with it. With nothing
       beyond calibration, C.7 closes `NO_CHANGE` and the calibration goes
       to C.8's refit; with knowledge, a research card decides readiness.
+      RAR-E58's registration refined this before any number. The
+      Material row is split exactly into its count-linear part and the
+      remainder, rather than rebuilt from the donor's tables. The full
+      score (lazy gate out of reach, 423 cp) separates the gate from the
+      evaluation. A phase calibration surviving both goes to a research
+      card rather than closing.
+      **Read 2026-10-13 (RAR-E58):** over a hinge-spline re-pricing of
+      Rarog's score at |played| > 500, the **phase slope survives** on the
+      played score (+1.318 ± 0.203%) and on the full score (+0.908 ±
+      0.216%). The **Material row** survives on the played score only
+      (+0.322 ± 0.058% → −0.005), so it is the **lazy gate's** and not
+      material knowledge. Post hoc, 18.5% of those rows are the donor's
+      specialised endgames, whose all-zero trace flags near-certain wins.
+      The slope's sign: a large score converts more often toward the
+      endgame (+500 to +800 cp: 0.971 of points under phase 32, 0.907 at
+      96 or more, where about 6.6% of games are lost). Those opening and
+      middlegame large scores are mostly built by the activity terms, not
+      by material. The slope is about 0.05% of the whole file's loss and
+      nil over all rows. C.7 continues to C.7.3.
+    - **C.7.3 Research card: phase interpolation of large scores — `R3`.** Zero
+      games before its own registration. The card decides, with the
+      maintainer, whether RAR-E58's phase slope is worth any candidate at
+      its size, and what the candidate would be. Its first registered
+      checks: the slope without the donor's specialised-endgame rows, and
+      split by whether Rarog's large score is material or positional
+      (activity terms). Competing readings to separate: an evaluation
+      scale by phase (trading down when ahead); over-confident large
+      positional scores (king danger, threats) in the middlegame;
+      label noise from the games that produced the corpus. The card also
+      weighs C.8's refit and C.10's tune as cheaper owners. With no
+      candidate worth a game, C.7 closes `NO_CHANGE`.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
@@ -1657,6 +1688,11 @@ loss).
     `CoreLmpSquare`'s range floor (256) widened first; `QsCountLimit` and
     any other discrete threshold read as a switch by games before block 1,
     never pinned.
+  - **Carried from C.7.2 (RAR-E58):** among decided scores the lazy
+    score lacks information the full score has: the donor's Material row
+    adds +0.32% to the played score's outcome prediction above 500 cp,
+    and nothing to the full score's. `LazyMargin`'s range and fit are
+    read with that in mind.
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.
