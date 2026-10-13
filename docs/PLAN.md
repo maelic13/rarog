@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.2 | RESEARCH | V | Next (2026-10-13): `hce-v5-tb` is published and contract-checked, RAR-M68 does not hold the fit; register cycle 1's refit with its initialization control before any fit is read |
+| C.8.2 | RESEARCH | V | RAR-E60 registered (2026-10-13): accepted-start and neutral-start fits on `hce-v5-tb`, the control on the frozen test with game-clustered errors, then the screens, tree and NPS reads and gate 1 `[0,3]` |
 | C.8.3 | RESEARCH | V | Cycle 1 gate; after C.8.2 |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
