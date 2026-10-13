@@ -17,7 +17,9 @@ What PLAN must look like (the grammar this reads):
   The title is what the board shows; the class is the first backticked
   capability class in the field (`R3`, `R2`, `I2`, `I1`, `M`, `V`); a field
   containing DONE, CLOSED or NO_CHANGE (with an optional date) ticks the step;
-- a leaf with a row in the active workflow register shows `STATE / CLASS`.
+- a leaf with a row in the active workflow register shows `STATE / CLASS`;
+  the register's rows are in the order of work, and its first open row is
+  the board's Now (without one, the first open leaf in PLAN's order).
 
 The board sits in GUIDE.md between BEGIN and END below; everything outside
 them (checkpoint, holds, prompts) is hand-kept.
@@ -138,18 +140,34 @@ def parse_plan(plan_text):
     return phases
 
 
+def register_order(plan_text):
+    """The leaves of the active workflow register, in its row order."""
+    order = []
+    for line in plan_text.split("\n"):
+        m = REGISTER_ROW.match(line)
+        if m and m.group(2) not in ("Workflow state",) and m.group(1) not in order:
+            order.append(m.group(1))
+    return order
+
+
 def build_board(plan_text):
     """The board text that belongs between BEGIN and END ('\\n' newlines)."""
     phases = parse_plan(plan_text)
     items = [s for p in phases for s in p["steps"]]
-    now = None
+    # The register lists the open leaves in the order of work, which can
+    # differ from the numbering (C.6 before C.5.4's builds, 2026-10-11), so
+    # its first open row is Now; without one, the first open leaf in PLAN.
+    open_steps = {s["id"]: s for s in items if s["status"] is None}
+    now = next((open_steps[sid] for sid in register_order(plan_text)
+                if sid in open_steps), None)
     for k, s in enumerate(items):
+        if now is not None:
+            break
         depth = s["id"].count(".")
         has_children = (k + 1 < len(items)
                         and items[k + 1]["id"].startswith(s["id"] + "."))
         if s["status"] is None and not (depth == 1 and has_children):
             now = s
-            break
     out = []
     if now:
         out.append("**Now: %s** (`%s`): %s." % (now["id"], now["cls"], now["title"].rstrip(".")))
@@ -260,6 +278,19 @@ def self_test():
     if not board_problems(guide.replace("Child", "Kid"), plan):
         sys.stdout.write("FAIL: board self-test: an edited board reads current\n")
         return 1
+    reordered = plan.replace("| B.2 | RESEARCH | R3 | investigating |",
+                             "| B.3.1 | RESEARCH | V | first in the order of work |\n"
+                             "| B.2 | RESEARCH | R3 | investigating |")
+    first = build_board(reordered).split("\n", 1)[0]
+    if first != "**Now: B.3.1** (`V`): Child.":
+        sys.stdout.write("FAIL: board self-test: Now does not follow the register "
+                         "(got %r)\n" % first)
+        return 1
+    no_register = "\n".join(l for l in plan.split("\n") if not l.startswith("| B.2 "))
+    if build_board(no_register).split("\n", 1)[0] != want.split("\n", 1)[0]:
+        sys.stdout.write("FAIL: board self-test: without a register row Now is not "
+                         "the first open leaf\n")
+        return 1
     for bad, why in ((plan.replace(" — `V`.** Body.", ".** Body.", 1), "missing ' — '"),
                      (plan.replace("- **B.3 Parent", "- **C.3 Parent"), "wrong phase")):
         try:
@@ -268,7 +299,8 @@ def self_test():
             continue
         sys.stdout.write("FAIL: board self-test accepted a head with %s\n" % why)
         return 1
-    sys.stdout.write("board generator self-test: PASS (output, staleness, 2 malformed heads)\n")
+    sys.stdout.write("board generator self-test: PASS (output, staleness, register "
+                     "order, 2 malformed heads)\n")
     return 0
 
 

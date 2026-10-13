@@ -14,10 +14,13 @@ outcome labels at the static layer. It ranks candidates and accepts nothing.
 
 Inputs are `rarog-texel --dump-scores <csv> <out> --scale` files: one
 `fen;label;white-POV score;engine scale` row per position, the scale being
-`linear_delta_scale` (the endgame factor times the texel-only rule-50 factor
-`(199 - min(clock, 100)) / 199`). Because the engine's own factor is in the
-file, the offline model of the rule is checked against the engine on every
-row (`verify`) before any loss is computed from it.
+`linear_delta_scale`, the evaluator's own endgame factor. Dumps written by a
+tuner from before the rule-50 factor left `linear_delta_scale` (2026-10-11;
+RAR-E26 to RAR-E33's dumps) carry that factor too,
+`(199 - min(clock, 100)) / 199`; `verify --with-rule50` reads them. Because
+the engine's own factor is in the file, the offline model of the rule is
+checked against the engine on every row (`verify`) before any loss is
+computed from it.
 
   census    cohort sizes and pawn counts per file; reads no labels
   verify    the offline OCB rule reproduces the engine's factor on every row
@@ -148,15 +151,15 @@ def material_key(fen: str) -> str:
 
 def cmd_verify(args) -> int:
     """Every OCB row: the engine's factor equals the offline rule's. Every
-    other row: the engine's factor is the rule-50 factor alone, except
-    specialised material of five men or fewer."""
+    other row: the engine's factor is 1 (or the rule-50 factor alone, with
+    `--with-rule50`), except specialised material of five men or fewer."""
     checked = mismatched = special = 0
     special_max_men = 0
     worst = []
     for path in args.dumps:
         for fen, _label, _score, engine in read_dump(path):
             cohort, _p, _w, _b, ocb = classify(fen)
-            r50 = rule50_factor(fen)
+            r50 = rule50_factor(fen) if args.with_rule50 else 1.0
             checked += 1
             if ocb is not None:
                 expected = ocb / OCB_NORMAL * r50
@@ -415,6 +418,9 @@ def main() -> int:
     for name in ("census", "verify"):
         p = sub.add_parser(name)
         p.add_argument("dumps", nargs="+", type=Path)
+    p.add_argument("--with-rule50", action="store_true",
+                   help="the dumps come from a tuner whose factor still carried "
+                        "the rule-50 damping (written before 2026-10-11)")
     p = sub.add_parser("analyse")
     p.add_argument("--train", required=True, type=Path)
     p.add_argument("--held-out", required=True, type=Path)

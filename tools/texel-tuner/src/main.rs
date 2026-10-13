@@ -69,6 +69,8 @@ const PAWNSTRUCT: &[&str] = &[
     "pawn_lever_eg",
     "pawn_doubled_isolated_mg",
     "pawn_doubled_isolated_eg",
+    "pawn_weak_unopposed_mg",
+    "pawn_weak_unopposed_eg",
     // Same-rank phalanx.
     "pawn_phalanx_mg",
     "pawn_phalanx_eg",
@@ -88,7 +90,9 @@ const PASSERS: &[&str] = &[
     "passed_safepath_eg_per_rank",
     "passed_candidate_mg",
     "passed_candidate_eg",
-    "passer_proximity_base",
+    "passer_king_them_eg",
+    "passer_king_us_eg",
+    "passer_king_next_eg",
     // Passer detail.
     "blocked_passer_mg",
     "blocked_passer_eg",
@@ -144,7 +148,7 @@ const THREATS: &[&str] = &[
     "threat_slider_on_queen_eg",
 ];
 const HANGING: &[&str] = &["hanging_minor", "hanging_rook", "hanging_queen"];
-const MISC: &[&str] = &["passer_proximity_base", "space_weight", "tempo"];
+const MISC: &[&str] = &["space_weight", "tempo"];
 const IMBALANCE: &[&str] = &["imbalance_ours", "imbalance_theirs"];
 // Small positional terms.
 const SMALLPOS: &[&str] = &[
@@ -400,6 +404,8 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "pawn_lever_eg", 0.0, 100.0);
     clamp_field(w, "pawn_doubled_isolated_mg", 0.0, 200.0);
     clamp_field(w, "pawn_doubled_isolated_eg", 0.0, 200.0);
+    clamp_field(w, "pawn_weak_unopposed_mg", 0.0, 200.0);
+    clamp_field(w, "pawn_weak_unopposed_eg", 0.0, 200.0);
 
     // Passers: rank 0 and 7 stay 0, middle ranks non-decreasing bonuses.
     for f in ["passed_mg", "passed_eg"] {
@@ -419,7 +425,10 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "passed_safestop_eg_per_rank", 0.0, 100.0);
     clamp_field(w, "passed_candidate_mg", 0.0, 200.0);
     clamp_field(w, "passed_candidate_eg", 0.0, 200.0);
-    clamp_field(w, "passer_proximity_base", 0.0, 50.0);
+    // Per unit of capped distance times rank weight (up to 5 x 17).
+    clamp_field(w, "passer_king_them_eg", 0.0, 30.0);
+    clamp_field(w, "passer_king_us_eg", 0.0, 30.0);
+    clamp_field(w, "passer_king_next_eg", 0.0, 30.0);
     // Blocked-passer penalty magnitude, ideal-blockader bonus.
     clamp_field(w, "blocked_passer_mg", 0.0, 200.0);
     clamp_field(w, "blocked_passer_eg", 0.0, 200.0);
@@ -2474,6 +2483,9 @@ fn usage(exe: &str) {
         "  {exe} --dump-scores <dataset.csv> <out.csv>   [--full] [--scale]   (fen;label;white-POV score; --full: lazy gate out of reach; --scale: append the engine's endgame scale factor)"
     );
     eprintln!(
+        "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;tapered White-minus-Black coefficient per index of one weight field;phase)"
+    );
+    eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
     );
     print_groups();
@@ -2510,6 +2522,50 @@ fn cmd_dump_scores(path: &str, out: &str, full: bool, scale: bool) {
             row.push_str(&format!(";{}", linear_delta_scale(&board)));
         }
         lines_out.push(row);
+    }
+    std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
+        eprintln!("Cannot write {out}: {e}");
+        exit(1);
+    });
+    println!("{} rows written to {out}", lines_out.len());
+}
+
+/// Write every row's coefficient for one named weight field beside its FEN,
+/// then the row's phase: `fen;c0,c1,...;phase`. A coefficient is the tuner's
+/// tapered sensitivity `(count_mg·phase + count_eg·(24 − phase)) / 24` of the
+/// White-minus-Black trace counts, so for an eg-only field the count is
+/// `c · 24 / (24 − phase)` (and `c · 24 / phase` for an mg-only one). From the
+/// played evaluation or, with `full`, with the lazy gate out of reach. An
+/// offline model of a term can then be checked against the engine row by row
+/// instead of being assumed to match it.
+fn cmd_dump_feature(path: &str, out: &str, field: &str, full: bool) {
+    if !EVAL_PARAM_NAMES.iter().any(|&(name, _)| name == field) {
+        eprintln!("Unknown eval field '{field}'.");
+        exit(1);
+    }
+    let (off, len) = field_offset(field);
+    let mut ev = Evaluator::default();
+    if full {
+        ev.set_lazy_margin(i32::MAX);
+    }
+    let mut lines_out = Vec::new();
+    for line in read_lines(path) {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let fen = line.rfind(';').map_or(line, |sep| &line[..sep]);
+        let Ok(board) = Board::from_fen(fen) else {
+            continue;
+        };
+        let _ = ev.evaluate(&board);
+        let trace = ev.last_trace();
+        let coeffs = trace.flat_coeffs();
+        let values: Vec<String> = coeffs[off..off + len]
+            .iter()
+            .map(|c| format!("{c}"))
+            .collect();
+        lines_out.push(format!("{fen};{};{}", values.join(","), trace.phase));
     }
     std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
         eprintln!("Cannot write {out}: {e}");
@@ -2635,6 +2691,14 @@ fn main() {
             }
             let has = |name: &str| flags.iter().any(|f| f == name);
             cmd_dump_scores(&args[2], &args[3], has("--full"), has("--scale"));
+        }
+        "--dump-feature" => {
+            let flags = args.get(5..).unwrap_or_default();
+            if args.len() < 5 || !flags.iter().all(|f| f == "--full") {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_dump_feature(&args[2], &args[3], &args[4], !flags.is_empty());
         }
         "--tune" => {
             if args.len() < 5 {

@@ -157,24 +157,18 @@ macro_rules! define_eval_trace {
 
 #[cfg(feature = "texel")]
 eval_params!(define_eval_trace);
-/// The multiplicative factor `scale_drawish_endgames` + the rule-50 damping
-/// apply to the raw tapered score, as an `f64` (Phase 3.3, texel only). The
-/// tuner uses it to scale per-position weight *deltas* the same way the engine
-/// scales the eval, so a small weight change predicts the right score change.
-/// Mirrors `scale_drawish_endgames` and the `score -= score*rule50/199` line.
+/// The multiplicative factor `scale_endgame` applies to the raw tapered score,
+/// as an `f64` (texel only). The tuner scales each position's weight *deltas*
+/// by it, so a small weight change predicts the score change the evaluator
+/// would make. The evaluator applies no rule-50 damping (the search does,
+/// outside the evaluation), so neither does this factor: the fit's base score
+/// and its deltas must be on the same footing.
 #[cfg(feature = "texel")]
 pub fn linear_delta_scale(board: &Board) -> f64 {
-    // Specialised endgame scale factors (Phase 3.11) apply first, mirroring
-    // `scale_endgame`. A dead-draw pattern zeroes the delta scale.
+    // Specialised endgame scale factors apply first, as in `scale_endgame`.
+    // A dead-draw pattern zeroes the delta scale.
     if let Some(sf) = specialized_endgame_scale(board) {
-        return sf as f64 / SCALE_NORMAL as f64 * (199.0 - board.halfmove_clock().min(100) as f64)
-            / 199.0;
-    }
-
-    let mut scale = 1.0f64;
-
-    if let Some(ocb) = opposite_bishop_scale(board) {
-        scale *= ocb as f64 / OCB_SCALE_NORMAL as f64;
+        return sf as f64 / SCALE_NORMAL as f64;
     }
 
     if (has_only_king(board, Color::White) && has_only_knights(board, Color::Black, 2))
@@ -183,9 +177,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
         return 0.0;
     }
 
-    let rule50 = board.halfmove_clock().min(100) as f64;
-    scale *= (199.0 - rule50) / 199.0;
-    scale
+    opposite_bishop_scale(board).map_or(1.0, |ocb| ocb as f64 / OCB_SCALE_NORMAL as f64)
 }
 
 // Phase 3.3 reconstruction acceptance gate: for a large, diverse set of
@@ -309,6 +301,129 @@ mod texel_tests {
         // Minor-behind-pawn (3.12): white knight d3 shielded by the pawn on d4.
         let t = trace_of(&mut ev, "4k3/8/8/8/3P4/3N4/8/4K3 w - - 0 1");
         assert_ne!(t.mg.minor_behind_pawn_mg[0], 0, "minor_behind_pawn dead");
+    }
+
+    /// The fit's base score is the evaluator's, which ignores the halfmove
+    /// clock, so the factor on its weight deltas must ignore it too, while
+    /// keeping the endgame scale factors.
+    #[test]
+    fn delta_scale_follows_the_evaluator_not_the_clock() {
+        use super::linear_delta_scale;
+        // Opposite bishops with pawns (scaled), a plain position (unscaled)
+        // and a drawn KPK (zeroed), each at a fresh and a late clock.
+        const CASES: &[(&str, &str, Option<f64>)] = &[
+            (
+                "4k3/8/2b5/3p4/3P4/8/5B2/4K3 w - - 0 1",
+                "4k3/8/2b5/3p4/3P4/8/5B2/4K3 w - - 90 80",
+                None,
+            ),
+            (
+                "4k3/8/8/8/8/2N5/PPP5/4K3 w - - 0 1",
+                "4k3/8/8/8/8/2N5/PPP5/4K3 w - - 90 80",
+                Some(1.0),
+            ),
+            (
+                "k7/8/K7/P7/8/8/8/8 w - - 0 1",
+                "k7/8/K7/P7/8/8/8/8 w - - 90 80",
+                Some(0.0),
+            ),
+        ];
+        let mut ev = full_evaluator();
+        for &(fresh, late, expected) in CASES {
+            let fresh = Board::from_fen(fresh).expect("fresh FEN");
+            let late = Board::from_fen(late).expect("late FEN");
+            let factor = linear_delta_scale(&fresh);
+            assert_eq!(
+                factor,
+                linear_delta_scale(&late),
+                "clock moved the delta scale"
+            );
+            assert_eq!(
+                ev.evaluate(&fresh),
+                ev.evaluate(&late),
+                "clock moved the score"
+            );
+            match expected {
+                Some(value) => assert_eq!(factor, value),
+                None => assert!(factor > 0.0 && factor < 1.0, "OCB factor {factor}"),
+            }
+        }
+    }
+
+    /// Passer king proximity at the block square: counts are capped distance
+    /// times `5·rank − 13`, our king's next-square count skipped on the
+    /// seventh rank.
+    #[test]
+    fn passer_king_proximity_counts() {
+        let mut ev = full_evaluator();
+        // e5 (w = 7): black king two from e6 (14), ours five from e6 (35) and
+        // six, capped at five, from e7 (35).
+        let t = trace_of(&mut ev, "4k3/8/8/4P3/8/8/8/4K3 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 14);
+        assert_eq!(t.eg.passer_king_us_eg[0], -35);
+        assert_eq!(t.eg.passer_king_next_eg[0], -35);
+        // a7 (w = 17): the block square is the promotion square, no next.
+        let t = trace_of(&mut ev, "4k3/P7/8/8/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 4 * 17);
+        assert_eq!(t.eg.passer_king_us_eg[0], -5 * 17);
+        assert_eq!(t.eg.passer_king_next_eg[0], 0);
+        // A passer on its third rank takes no proximity term.
+        let t = trace_of(&mut ev, "4k3/8/8/8/8/4P3/8/4K3 w - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], 0);
+        assert_eq!(t.eg.passer_king_us_eg[0], 0);
+        // Colour symmetry.
+        let t = trace_of(&mut ev, "4k3/8/8/8/4p3/8/8/4K3 b - - 0 1");
+        assert_eq!(t.eg.passer_king_them_eg[0], -14);
+        assert_eq!(t.eg.passer_king_us_eg[0], 35);
+    }
+
+    /// Weak unopposed: an isolated or backward pawn with no enemy pawn ahead on
+    /// its file, counted once per pawn.
+    #[test]
+    fn weak_unopposed_pawns() {
+        let mut ev = full_evaluator();
+        let count = |ev: &mut Evaluator, fen: &str| {
+            let t = trace_of(ev, fen);
+            (
+                t.mg.pawn_weak_unopposed_mg[0],
+                t.eg.pawn_weak_unopposed_eg[0],
+            )
+        };
+        // An isolated unopposed pawn.
+        assert_eq!(count(&mut ev, "4k3/8/8/8/4P3/8/8/4K3 w - - 0 1"), (-1, -1));
+        // Both pawns isolated and opposed: nothing.
+        assert_eq!(count(&mut ev, "4k3/4p3/8/8/4P3/8/8/4K3 w - - 0 1"), (0, 0));
+        // e3 backward (d5 attacks e4, d4 is ahead of it) and unopposed; d4 and
+        // d5 face each other.
+        assert_eq!(
+            count(&mut ev, "4k3/8/8/3p4/3P4/4P3/8/4K3 w - - 0 1"),
+            (-1, -1)
+        );
+        // e3 both isolated and backward: counted once; Black's c6-d5 chain is
+        // neither.
+        assert_eq!(
+            count(&mut ev, "4k3/8/2p5/3p4/8/4P3/8/4K3 w - - 0 1"),
+            (-1, -1)
+        );
+    }
+
+    /// The unstoppable passer follows the rule of the square, counting the
+    /// king's capture of the new queen.
+    #[test]
+    fn unstoppable_passer_square_rule() {
+        let mut ev = full_evaluator();
+        // a5 against a king on e5: moving first, the king catches it (1...Kd6
+        // 2.a6 Kc7 3.a7 Kb7 4.a8=Q+ Kxa8); moving second, it does not.
+        let t = trace_of(&mut ev, "8/8/8/P3k3/8/8/8/K7 b - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
+        let t = trace_of(&mut ev, "8/8/8/P3k3/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 1);
+        // One square further, it queens whoever moves.
+        let t = trace_of(&mut ev, "8/8/8/P4k2/8/8/8/K7 b - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 1);
+        // With the pawn's side to move, a king three from a8 still catches it.
+        let t = trace_of(&mut ev, "8/8/8/P2k4/8/8/8/K7 w - - 0 1");
+        assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
     }
 
     /// Phase 7.4 HCE semantics — counterexample tests for the four fixes.

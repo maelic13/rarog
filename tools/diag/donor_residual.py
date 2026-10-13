@@ -64,11 +64,14 @@ SF11_TERMS = [
 ]
 
 # The families the screen reports. Material carries Stockfish's piece-square
-# tables as well (its trace prints the incremental psq score there).
+# tables as well (its trace prints the incremental psq score there). The
+# Queens row is the donor's weak-queen term (a queen whose slider blockers
+# allow a pin or a discovered attack) and is read as its own direction.
 FAMILIES = {
     "material": ["Material", "Imbalance"],
     "pawns": ["Pawns"],
-    "pieces": ["Knights", "Bishops", "Rooks", "Queens"],
+    "pieces": ["Knights", "Bishops", "Rooks"],
+    "queens": ["Queens"],
     "mobility": ["Mobility"],
     "king": ["King safety"],
     "threats": ["Threats"],
@@ -76,6 +79,22 @@ FAMILIES = {
     "space": ["Space"],
     "initiative": ["Initiative"],
 }
+
+# Reports up to RAR-E32 read the four piece rows as one "pieces" family. That
+# family is still reported as `pieces+queens`, and the all-families model keeps
+# it as one column, so the earlier numbers reproduce.
+JOINED = ("pieces", "queens")
+
+
+def joint_columns(family: dict) -> list:
+    """The all-families model's columns: one per family, the piece rows joined."""
+    columns = []
+    for name in FAMILIES:
+        if name == JOINED[0]:
+            columns.append(family[JOINED[0]] + family[JOINED[1]])
+        elif name != JOINED[1]:
+            columns.append(family[name])
+    return columns
 
 # Stockfish 11 phase constants (types.h): midgame piece values and the limits
 # between which the game phase is interpolated.
@@ -365,11 +384,14 @@ def analyse(args: argparse.Namespace) -> int:
         "stockfish": control[:, None],
         "rarog+stockfish": np.column_stack([rarog, control]),
         "rarog+phase_slope": np.column_stack([rarog, rarog * (phase / 128.0 - 0.5)]),
-        "rarog+all_families": np.column_stack([rarog] + [family[f] for f in FAMILIES]),
+        "rarog+all_families": np.column_stack([rarog] + joint_columns(family)),
         "rarog+shuffled_king": np.column_stack([rarog, rng.permutation(family["king"])]),
     }
     for name in FAMILIES:
         models[f"rarog+{name}"] = np.column_stack([rarog, family[name]])
+    models["rarog+pieces+queens"] = np.column_stack(
+        [rarog, family[JOINED[0]] + family[JOINED[1]]]
+    )
 
     cohorts = {
         "all": np.ones(n, dtype=bool),

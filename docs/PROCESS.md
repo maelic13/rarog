@@ -251,6 +251,19 @@ gap between the instruments (RAR-M61); on the B.2.4a arms both reached H1 under
 **A registered experiment names its runner and never changes it mid-way.**
 Moving an experiment in flight to the other harness voids it.
 
+**Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
+RAR-E32). A registration adopts the runner's fault policy by reference
+(Colosseum scores a time loss or crash as a game and fails the run above
+its ceiling of 0.5% of games) and never writes a stricter clause of its
+own: RAR-E29's "void on any forfeit" could not survive one OS hold in
+16,000 games and had to be waived after the result was known. A stopped
+SPRT is never extended, re-run or re-scored on a counterfactual, such as a
+time loss rescored as a draw: RAR-E29 and RAR-E32 each stopped within one
+forfeit of their bound, and both stand as played. The point estimate of an
+SPRT that stopped at its first crossing of a bound overstates the effect;
+it is recorded with the label "first-crossing estimate", never as the
+effect's size.
+
 Shared conditions on both paths: `3+0.03`, Hash 64, one thread, the UHO book
 in random order, no adjudication, a 20 ms margin, and fourteen concurrent
 games on pinned physical cores that never include CPU 0. A tune runs fifteen,

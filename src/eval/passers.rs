@@ -113,7 +113,10 @@ impl Evaluator {
             let rel = relative_rank(color, ps) as i32;
             let pawn_steps = (7 - rel) - if rel == 1 { 1 } else { 0 };
             let king_steps = KING_DISTANCE[enemy_king.index()][promo] as i32;
-            if king_steps > pawn_steps - if enemy_to_move { 0 } else { 1 } {
+            // The rule of the square, counting the king's capture of the new
+            // queen: moving first, the king catches the pawn from one square
+            // further than the pawn's steps; moving second, from its steps.
+            if king_steps > pawn_steps + if enemy_to_move { 1 } else { 0 } {
                 unstoppable += 1;
             }
         }
@@ -206,12 +209,22 @@ impl Evaluator {
         }
     }
 
+    /// Kings against a passer from its fourth rank on, measured at the square
+    /// in front of it: the enemy king's distance there is a bonus, our king's
+    /// distance there and to the square after it a penalty (our king escorts
+    /// the pawn; the enemy king stops it). Distances are capped at five and
+    /// weighted by how far the pawn has come, `5·rank − 13`. Each distance has
+    /// its own weight: our king's support predicts outcomes far better than the
+    /// enemy king's race, and one shared weight hides that. eg-only.
     pub(super) fn eval_passed_pawn_king_proximity(
         &self,
         board: &Board,
         passed: &[Bitboard; 2],
         eg: &mut i32,
     ) {
+        let proximity = |king: Square, sq: Square| -> i32 {
+            i32::from(KING_DISTANCE[king.index()][sq.index()]).min(5)
+        };
         for color in [Color::White, Color::Black] {
             let them = !color;
             let sign = color_sign(color);
@@ -220,23 +233,27 @@ impl Evaluator {
             let mut pawns = passed[color as usize];
             while pawns.any() {
                 let pawn = pawns.pop_lsb();
-                let rel_rank = relative_rank(color, pawn) as i32;
-                let own_dist = KING_DISTANCE[own_king.index()][pawn.index()] as i32;
-                let enemy_dist = KING_DISTANCE[enemy_king.index()][pawn.index()] as i32;
-                *eg += sign
-                    * (enemy_dist - own_dist)
-                    * (self.params.passer_proximity_base[0] + rel_rank);
-                // Only `passer_proximity_base` is a tunable weight here; the
-                // `+ rel_rank` term is a frozen constant (absorbed into `rest`).
-                tr_eg!(
-                    self,
-                    passer_proximity_base,
-                    0,
-                    sign * (enemy_dist - own_dist)
-                );
-                #[cfg(feature = "texel")]
+                let rel_rank = i32::from(relative_rank(color, pawn));
+                if rel_rank < 3 {
+                    continue;
+                }
+                let weight = 5 * rel_rank - 13;
+                // A passer below its last rank always has a square in front.
+                let Some(block) = forward_square(color, pawn) else {
+                    continue;
+                };
+                let them_count = proximity(enemy_king, block) * weight;
+                let us_count = proximity(own_king, block) * weight;
+                *eg += sign * them_count * self.params.passer_king_them_eg[0];
+                *eg -= sign * us_count * self.params.passer_king_us_eg[0];
+                tr_eg!(self, passer_king_them_eg, 0, sign * them_count);
+                tr_eg!(self, passer_king_us_eg, 0, -sign * us_count);
+                if rel_rank < 6
+                    && let Some(next) = forward_square(color, block)
                 {
-                    self.trace.borrow_mut().frozen_eg += sign * (enemy_dist - own_dist) * rel_rank;
+                    let next_count = proximity(own_king, next) * weight;
+                    *eg -= sign * next_count * self.params.passer_king_next_eg[0];
+                    tr_eg!(self, passer_king_next_eg, 0, -sign * next_count);
                 }
             }
         }

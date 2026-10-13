@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's C.3 evaluation inside Stockfish's search by **+129.4 ± 17.1 Elo at equal nodes** (150,000 a move; RAR-O06, 2026-10-09), the current meter, 52.4 ± 25.6 below Phase C's baseline: +181.7 ± 19.0 at equal nodes and +266.3 ± 19.9 at equal time (`3+0.03`) on the 2.4.0 evaluation, measured 2026-10-05 (equal time not re-read). RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O06; RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **12,567,796 / EBF 2.535**: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; on branch `c4` since `6c73d65`; before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; on branch `c4` since `78deb3d`, reaching `master` with the next delivery; before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **14,197,472 / EBF 2.557**: C.6's pawns-and-passers unit (passer king proximity at the block square, weak unopposed pawns, the square rule, the surface refitted), accepted 2026-10-12 by gate 1 (RAR-E42, `[0,3]` at `3+0.03`) H1 at +6.4 ± 3.6 Elo, +10.7 ± 6.0 nElo (12,924 games; a first-crossing estimate), no screen flag, NPS +0.07%; on branch `c5`, not yet on `master`; before it 12,567,796 / EBF 2.535: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -69,7 +69,7 @@ classical stage.
 | Programme | Measured deficit | Planned recovery | Basis |
 |---|---:|---:|---|
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
-| C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by measurement |
+| C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C |
 
@@ -289,22 +289,15 @@ One row per open leaf in the active phase. The checker requires the state
 and class here to match GUIDE's suffix. Phases A and B are closed; Phase C
 is the active phase since C.0 opened it (2026-10-05), and `check_guide.py`'s
 `ACTIVE_PREFIXES` names it. Later phases carry only a class until
-they open.
+they open. The rows are in the order of work, which may differ from the
+numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.5.2.1 | RESEARCH | R2 | After C.4 (maintainer decision 2026-10-10): one opposite-bishop rule across the boundary, the six-man wins kept by position knowledge |
-| C.5.3 | RESEARCH | I2 | After C.5.2 |
-| C.5.4 | RESEARCH | I2 | After C.5.2 |
-| C.5.5 | RESEARCH | R2 | After C.5.2 |
-| C.5.6 | RESEARCH | R2 | After C.5.2 |
-| C.5.7 | RESEARCH | I1 | After C.5.2 |
-| C.5.8 | RESEARCH | V | Closes C.5 |
-| C.6 | RESEARCH | I2 | Opens with its own residual step (RAR-E17: passed +0.06%, pawns +0.04%); owns the unstoppable-passer tempo defect |
-| C.7 | RESEARCH | I2 | Opens with its own residual step (RAR-E17: pieces and material nil) |
-| C.8 | RESEARCH | V | After the family clusters |
+| C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
+| C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
-| C.10 | RESEARCH | V | After C.9 or its skip |
+| C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
@@ -353,6 +346,26 @@ opens with its own residual step and closes `NO_CHANGE` if that step finds
 none. C.0's
 prior for the family clusters together is 30 to 90 Elo, below the budget
 row's 100 to 160; the row is corrected at C.11 by measurement, not here.
+**Order amended 2026-10-11 (maintainer decision; the register below
+carries it):** C.6 runs next, before any build in C.5.4 to C.5.7; then
+C.8's regeneration and refit and C.10's joint tune are the next two large
+items. C.5.4 to C.5.7 are measure-first and expected to close `NO_CHANGE`
+unless a candidate shows a game-level or transition effect; their zero-game
+reads may run between the large items. C.7 opens on RAR-E37's reading,
+without a named weak-queen candidate. Why: on the current head's screen
+(RAR-E32's candidate file read by RAR-E37's instrument) the donor's passed
+family is the largest regular residual, +0.091 ± 0.013% over all rows, and
+C.6 also owns the unstoppable-passer tempo defect. The largest direction
+of all, the magnitude recalibration (+0.621 ± 0.040% over all rows, +0.37
+at seven men or more, +13.2 at six or fewer), is a monotone rescaling of
+Rarog's own total: minimax ordering is invariant to it, so it acts only
+through cp-valued margins and other fixed-centipawn comparisons, which is
+C.10's job, and through the refit's scale (C.8). The six-men exact
+knowledge behind most of it is already handled in play: with the engine's
+tablebases off, the head converts KQ-K, KR-K, KBB-K and KQ-KR level with
+Stockfish at 200k and 600k nodes (RAR-E34, KBN-K 2 of 98 behind at 600k
+only), and where tables are set the search also probes WDL at interior
+nodes.
 
 **The search is frozen for the whole phase (B.9, 2026-10-03; amended
 2026-10-06).** Phase C changes no search code. It changes no search
@@ -995,10 +1008,19 @@ loss).
       unchanged. **Built and screened 2026-10-10 (RAR-E32):** the engine
       change `f962c0d` (tests, clippy and fmt clean; the restricted term
       now counts a square both sides attack twice), manifest v4 `49e2eea`,
-      the refit `6c73d65`. **Accepted 2026-10-11:** gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; two
+      the refit `6c73d65` (bench 12,567,796 / EBF 2.535; king threat
+      (14, 40), queen threat (20, 6) cp). The screens raised no stop and no
+      flag: threats +0.107 → +0.037% over all rows, both terms' removal
+      costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the
+      donor's pieces family rose +0.036, mostly in its knight, bishop and
+      rook rows rather than the weak-queen row (RAR-E37).
+      **Accepted 2026-10-11:** gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at
+      +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag. The
+      +13.0 is a first-crossing estimate, which overstates, and about +5 of it
+      is speed: the removed x-ray loop ran on every evaluation, and the +2.57%
+      NPS it gave back is worth about 5 Elo at PROCESS's 2 Elo per 1%. Two
       time losses, both the head's in games the candidate led by ten
-      pawns. Fingerprint 12,567,796 / EBF 2.535. fitted (`6c73d65`, bench 12,567,796 / EBF 2.535; king threat (14, 40), queen threat (20, 6) cp); screens with no stop and no flag: threats +0.107 → +0.037% over all rows, both terms' removal costs under 0.02, magnitude unmoved, tree +3.8%, NPS +2.57%; the donor's pieces family rose +0.036 (the removed x-ray term's information). Gate 1 is with the
-      maintainer.
+      pawns. Fingerprint 12,567,796 / EBF 2.535.
     - **C.4.4 Margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-11.** PROCESS's
       *Evaluation change under a fitted search*, steps 4 to 7, as C.3.5.
       **2026-10-11:** nothing flagged and gate 1 passed, so by step 4 the
@@ -1008,7 +1030,7 @@ loss).
       above, so the acceptance stands. C.4 closes: threats accepted
       (RAR-E32), mobility `NO_CHANGE` (RAR-E31).
 - **C.5 Endgame handling and winnability cluster — `R3` investigation with
-  `I2`/`V` sub-steps.** The rescoped endgame section. Its goal is measured
+  `I2`/`V` sub-steps, DONE 2026-10-13.** The rescoped endgame section. Its goal is measured
   conversion and correct draw recognition where games actually go, not
   coverage of a function list.
     - **C.5.1 Classification and deciding instrument per family — `R2`, DONE 2026-10-09.** Adopt the registered
@@ -1115,7 +1137,7 @@ loss).
       +8 pawns by both engines' scores. Fingerprint 13,562,404 / EBF
       2.546. The rest of C.5.2's list closes without support from C.5.1's
       cut; C.5.2.1 stays open after C.4.
-        - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`.** Added
+        - **C.5.2.1 One opposite-bishop rule across the six-to-seven-men boundary, the six-man wins kept by position knowledge — `R2`, NO_CHANGE 2026-10-11.** Added
           2026-10-10 by maintainer decision, after C.4. C.5.2's split scales
           pure endings of seven men or more hard and keeps the head's rule at
           six or fewer, so one pawn exchange across the boundary can double
@@ -1131,22 +1153,186 @@ loss).
           conversion and drawn instruments and on held-out outcome loss.
           C.5.2's gate games (the hazard read) are its first evidence; it
           coordinates with C.5.6 (KBPPKB) and C.5.7 (KBPKB).
-    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`.** Mate drives and
+          **Closed `NO_CHANGE` 2026-10-11 (RAR-E33):** free passed pawns
+          (no defending bishop or king on or guarding the path) separate
+          won from drawn about fourfold in KBP-KB (0.44 against 0.11 on
+          Syzygy truth), but one rule built on them is worse than the head
+          above the boundary (−3.5 ± 0.9% of held-out loss) and worse than
+          the plain count everywhere: static control misses tempo. The
+          split stays; C.5.2's gate measured its boundary incentive as
+          small. Retry trigger: a KBPPKB or KBPKB recogniser with
+          reachability (C.5.6, C.5.7), then one rule refitted above it.
+          The retry's content is the two-regressor form, passers and free
+          passers in one rule at every men count, which nests the count
+          and cannot reintroduce a boundary (RAR-E33's addendum; the
+          below-boundary column rests on 637 rows, about ±4 points).
+        - **C.5.2.2 The opposite-bishop boundary hazard: the two-regressor read, and one rule replacing the split if it holds — `R2`, NO_CHANGE 2026-10-12.** Added
+          2026-10-11 by maintainer request, so GUIDE's hold has a step that
+          discharges it. C.5.2's split scales pure endings of seven men or
+          more hard and keeps the old rule at six or fewer; RAR-E29 measured
+          the incentive across that boundary as small (280 against 260 first
+          crossings, not more drawn) and RAR-E33 closed the free-passer fix.
+          **When:** after C.6 and before C.8, so a rule that replaces the
+          split is fitted in C.8's refit rather than in a refit of its own.
+          **What:** zero games first, registered before any fit: the
+          two-regressor form `s = clamp(a + b·pawns + c·passers + d·free,
+          0, 48)`, one rule at every men count, fitted on RAR-E33's training
+          dump and read on its held-out rows against the head's split, above
+          and below the boundary, by `ocb_free_passers.py`'s method. If it
+          is no worse than the split above the boundary (within two standard
+          errors) and better below it (three standard errors), it is built
+          (`I2`), checked on RAR-E27's conversion instrument, and gated as
+          C.5.2 was (RAR-E29's cohort SPRT design and an STC harm read);
+          otherwise the hold closes on RAR-E29's measurement, with the retry
+          trigger a game record showing a cost at the boundary.
+          **Read 2026-10-12 (RAR-E45, fresh dumps by the current head):**
+          `s = clamp(2·pawns + 8·passers + 8·free, 0, 48)` beats the
+          split above the boundary (+0.63 ± 0.38%) and below it (+59.8 ±
+          4.1%) and the count form below it (+4.0 ± 1.5), but the
+          registered static veto fired: Syzygy wins scored under +100 cp
+          rise from 7 to 60 of 253 in KBP-KB and from 40 to 62 of 203 in
+          KBP-KBP. **Closed `NO_CHANGE`**; the hold closes on RAR-E29's
+          measurement. The veto was stricter than its evidence (RAR-E27's
+          count rule under-claimed KBP-KB wins statically yet converted
+          all 253), so a conversion-deciding registration is the
+          maintainer's option if the boundary is to be revisited.
+        - **C.5.2.3 The two-regressor opposite-bishop rule decided by conversion in play, then gated as C.5.2 — `R2`, then `I2` and `V`, NO_CHANGE 2026-10-12.** Added
+          2026-10-12 by maintainer decision, before C.5.5. RAR-E45's rule
+          (`s = clamp(2·pawns + 8·passers + 8·free, 0, 48)` in pure
+          opposite-bishop endings with pawns at every men count, the head's
+          rule kept with other pieces) is built on a throwaway branch and
+          read on RAR-E27's conversion instrument against the head (RAR-E46:
+          Syzygy-won KBP-KB, KBPP-KB and KBP-KBP at 60,000 nodes; the
+          deciding rule is conversion within two standard errors in every
+          family with at least 25 wins). If it holds, the change lands on
+          `c5` and takes C.5.2's gate (an opposite-bishop cohort SPRT
+          `[0,10]` and a 2,000-game STC harm read), registered in RAR-E46
+          before any game; if not, the step closes `NO_CHANGE`.
+          **Read 2026-10-12 (RAR-E46):** the candidate (bench 14,247,335 /
+          EBF 2.552) plays the offline rule exactly on 3,697,417 rows;
+          KBP-KB (253 → 253) and KBP-KBP (201 → 202) hold, but **KBPP-KB
+          falls 731 → 714 of 754 (−2.25 ± 0.85 points, −2.65 SE)**, lost to
+          trades into insufficient material and to the ply limit, as
+          RAR-E27. **Closed `NO_CHANGE`**; the throwaway branch is deleted.
+          The lesson: below the boundary a factor much under the head's
+          costs KBPP-KB conversion whatever its shape; retry with a KBPPKB
+          recogniser (C.5.6) or on a game record showing a boundary cost.
+    - **C.5.3 Conversion cluster: KXK, KBNK, KQKR; rule-50 damping interaction measured — `I2`, NO_CHANGE 2026-10-11.** Mate drives and
       verdict families with the largest occurrence (KXK 37.8% of the set) and
       the largest measured conversion deficit (KQKR 23/13/3 at 60k/200k/600k
       nodes). Rule-50 damping interaction measured here, sign not assumed.
       Deciding instrument: conversion at bracketed budgets plus theory vetoes.
-    - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`.** Three
+      **Closed `NO_CHANGE` 2026-10-11 (RAR-E34):** on the current head, at
+      60k/200k/600k nodes against Stockfish on the same 100 positions a
+      family, KQ-K, KR-K and KBB-K convert everything and KQ-KR is 1/0/0
+      behind (it was 23/13/3 on the 2.4.0 engine). The one residual is
+      KBN-K, 2 of 98 behind at 600k only: two starts 52 and 58 plies from
+      mate lost the race against the fifty-move rule, because the mop-up
+      drive does not speed up with nodes (median 57 plies at every budget,
+      Stockfish 59 → 47). At 0.3% of games that is below a unit's worth.
+      The search's rule-50 damping shows no systematic effect at this
+      resolution (recorded for C.10). Retry trigger: a KBN-K conversion
+      failure in game records, or C.5.7's KBNK distance-to-mate table.
+      **Transition read registered 2026-10-11 (RAR-E35, maintainer
+      request):** the minor-piece drive applies only with a bare defending
+      king and a winner without pawn, rook or queen, so the score can jump
+      by thousands of centipawns across KBNP-K → KBN-K; a static read and
+      playouts from the neighbouring families decide whether C.5.3 reopens.
+      **Read 2026-10-11: it does not bite.** Statically the score is higher
+      without the winner's own pawn in 80% of KBNP-K and 99% of KBBP-K
+      positions (medians +595 and +1,178 cp), but at 200k and 600k nodes
+      the head converts KBNP-K, KBBP-K, KBN-KP and KQ-KRP as well as
+      Stockfish or better, mates as fast, and gives up its pawn less often
+      in KBNP-K. C.5.3 stays closed; any change to the mop-up term re-reads
+      these families.
+    - **C.5.4 Rook versus minor cluster: KRKN, KRKB, KRPKB — `I2`, NO_CHANGE 2026-10-11.** Three
       families with 100% or 99.6% drawn-cohort overclaim at +300 and the same
       over-representation in Rarog's games; one scaling mechanism, one gate.
-    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`.** Audit
+      **Residual step 2026-10-11 (RAR-E36):** on the current head the drawn
+      cohort still overclaims (KR-KN 98.4% of 796 draws above +100 cp, mean
+      +208; KR-KB 94.6% of 1,002, +182; KRP-KB 97.4% of 38, +195; the
+      refits took about 125 cp off, not the verdict). The wins convert
+      like Stockfish's at 200k and 600k (KR-KN 45/45, KR-KB 28/28,
+      KRP-KB 94/96). On Syzygy truth the defending king's distance from
+      its own minor piece separates won from drawn most (KR-KN: 3% won
+      with the knight beside its king, 64% at four or more squares); the
+      king on the edge matters in KR-KN only and the bishop's corner
+      colour barely. The candidate is a separate registration.
+      **Read in games first (RAR-E38, 2026-10-11):** with `SyzygyPath` set
+      the search probes WDL at interior nodes of depth 1 or more up to seven
+      men, so a scale here acts only without tables, which is how every
+      gate plays. In RAR-E32's 5,930 gate games KR-KN or KR-KB occurs in
+      1.43% and KRP-KB in 0.78%; no trade into them changed its mover's
+      Syzygy result, every won entry converted (55 of 55), and 65 of 68
+      drawn entries ended drawn. The expected value is at most 0.18 Elo,
+      under the STC gate's 1 Elo line, so the recommendation is to close
+      C.5.4 `NO_CHANGE` and build nothing; **closed `NO_CHANGE` on the
+      maintainer's confirmation, 2026-10-11**, with KRP-KB's
+      win-preservation hold (38 of 38 won entries converted in the games,
+      and nothing touched KRP-KB). Retry
+      trigger: a trade into these endings that worsens its mover's Syzygy
+      result, or drawn KR-KN and KR-KB endings lost at more than 5% over at
+      least 100 gate entries; the shape would then be the defending king's
+      distance from its minor.
+    - **C.5.5 Rook and pawn cluster: KRPKR, KRKP, KPK, KPKP audit — `R2`, NO_CHANGE 2026-10-12.** Audit
       the existing scalers and the KPK bitbase integration; repair the 30.7%
       KRPKR overclaim if the drawn cohort supports it; close KPK/KPKP
       `NO_CHANGE` if their 4–5% overclaims do not select a mechanism.
-    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
+      **KRPPKRP, decided 2026-10-11: excluded from the family instruments**
+      (maintainer rule of that day: exclusion unless the extension costs
+      under half a day). The hold's resume condition fired on 2026-10-09
+      (`syzygy7` holds `KRPPvKRP`, 22 GB WDL and 8.8 GB DTZ on an NVMe
+      disk, and python-chess probes it), but it is the only seven-man table
+      here. Extending `endgame_truth.py` and the drawn and bracket tools
+      that share its generator costs about 5 to 6 hours: the six-man check
+      in `parse_family` and a second tablebase directory (about 1 hour with
+      tests); a game-sourced cohort, because random seven-man placements
+      are decided by loose pieces, not by the rook ending (RAR-E36's
+      lesson; about 2 hours with its provenance and digest); grading that
+      stops at a promotion into a table that is not here, and a new
+      Stockfish reference arm for the bracket, since the 2026-09-05
+      reference has no seven-man family (about 1 hour plus a short run);
+      a wire check and the record (about 1 to 1.5 hours). The family stays
+      served by C.5.2's generic scale and read through held-out outcome
+      loss at seven men and C.5.8's game-level conversion re-read.
+      Retry trigger: a candidate that acts specifically on KRPP-KRP, or a
+      game record showing a conversion loss there. **The game-record
+      trigger fired 2026-10-13 (RAR-E56, C.5.8):** 28 of RAR-E42's gate
+      games lost a seven-man win from inside the family, at most 0.75 Elo.
+      **Maintainer decision 2026-10-13: the exclusion is kept.** Retry
+      trigger from then: a candidate acting specifically on KRPP-KRP, or
+      a game sample whose conversion losses inside the family reach
+      1 Elo by RAR-E56's bound (about 29 affected games per 10,000).
+      **Closed `NO_CHANGE` 2026-10-12 (RAR-E47):** on the current head
+      the drawn overclaims are KRP-KR 12.4% (30.7% on the 2.4.0 engine),
+      KR-KP 4.0%, KP-K 0.81% and KP-KP 2.8%; conversion is level with
+      Stockfish at 200k in all four; the KPK bitbase holds (under its 1%
+      line); and in RAR-E42's gate games the four families cost at most
+      0.75 Elo (KRP-KR 0.70, in 6.7% of games). No residual, no defect,
+      under the 1 Elo line. Retry trigger: a game record showing a cost
+      in these families, or C.5.8's conversion re-read.
+    - **C.5.6 Measure-first families: KPsK, KBPsK, KBPPKB, KQKRPs — `R2`, NO_CHANGE 2026-10-12.** Owns RAR-E25's waived KBP-K breach (2026-10-08: DTZ progress 0.410 → 0.382 at 400 positions, −2.9 SE, conversion and win preservation unchanged); its read retries it.
       Measure coverage after C.5.2, decide whether any specific recogniser is
       still justified, otherwise close them as served generically.
-    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`.** Sub-1%
+      **Read 2026-10-12 (RAR-E48):** the seven families (KPP-K, KPPP-K,
+      KBP-K, KBPP-K, KBPP-KB, KQ-KRP, KQ-KRPP) convert level with Stockfish
+      or better at every budget; KBPP-KB and KQ-KRPP overclaim 70% and 56%
+      of their draws statically, but all seven cost at most 0.21 Elo in
+      RAR-E42's gate games: **served generically, no recogniser.** The
+      KBP-K breach is **not resolved** by the registered rule: at 400
+      positions its DTZ progress is level with the pre-C.3 head (0.402
+      against 0.410, −0.84 SE), but the floors still report it 2.2 SE under
+      a floor set at 100 positions (0.450). **The maintainer decides** the
+      floor: re-baseline it at 400 positions, or retire DTZ progress as a
+      floor in pawn-move families, where the truth tool already marks it as
+      no measure of technique. C.5.6 stays open on that item alone.
+      **Maintainer decision 2026-10-12: re-baselined at 400 positions**
+      (`58db24a`: KBP-K's DTZ-progress floor 0.450 at n 1,298 → 0.402 at
+      n 5,189, the 400-position cohort extending the floors' 100; nothing
+      else changed); the floors read then passes without it. **C.5.6
+      closes `NO_CHANGE`.** KRP-KB's DTZ progress remains reported at
+      −2.6 SE without an owner (the same kind of 100-position floor).
+    - **C.5.7 Theory sweep: KBPKB, KBPKN, KNNKP, KNNK, KQKP from one dispatcher — `I1`, DONE 2026-10-12.** Sub-1%
       families implemented or confirmed from one dispatcher with Syzygy tests
       and promotion-closure tests, no per-family research cards; `NO_CHANGE`
       where the evidence is clean (KNNK already measured clean). Option
@@ -1160,11 +1346,80 @@ loss).
       KBNK anchor stand until C.5's ranking says the family's 0.2% of
       games is worth 5 MB per process; if it is, this is the shape to
       build, behind the recogniser dispatcher.
-    - **C.5.8 Endgame gate: endgame-start cohort SPRT plus STC SPRT; floors; conversion; 7-man exclusion — `V`.** One endgame-start cohort SPRT
-      plus one STC SPRT for the whole C.5 cluster after its refit; floors and
-      theory vetoes re-run; conversion instrument re-measured; KRPPKRP's 7-man
-      hold recorded as an explicit exclusion unless independent truth appears.
-- **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`.** Passed pawns with king
+      **RAR-E51 (2026-10-12, zero games): closed `NO_CHANGE`.** KBP-KB
+      (either bishop colour), KBP-KN, KNN-K and KQ-KP convert level with
+      Stockfish at 60k to 600k nodes; drawn overclaim is moderate
+      (same-colour KBP-KB 27%, KBP-KN 30%, KNN-KP 44%). KNN-KP converts
+      15 of 44 wins against Stockfish's 29 at 200k, a missing plan rather
+      than missing depth, but it occurs in 5 of 12,954 gate games (at
+      most 0.03 Elo), so no recogniser is built; the five families cost
+      at most 0.08 Elo. Retry trigger for KNN-KP: a game sample worth
+      1 Elo by `ending_games.py`'s bound, or rated play without Syzygy.
+      **RAR-E52 (2026-10-12, maintainer decision to build it anyway):**
+      a corner drive with the pawn held back, refuted in that form: on a
+      development cohort the best of four variants converted 8 of 46
+      wins against the head's 9, because the knights' side drove the
+      king and lost the pawn (insufficient material 4 → 20 to 23).
+      Reverted. **RAR-E53** (pawn term dominant) failed the same way,
+      best 10 against 9, and found the cause: the replacement score
+      values the second knight at about 35 cp (the generic evaluation,
+      216), so the search gives a knight away. A retry adds the drive
+      and the pawn term to the generic evaluation, or anchors the score
+      above KN-KP, and checks every one-capture neighbour first.
+      **RAR-E54** did that (additive, neighbour-tested): 17 / 18 / 22 of
+      44 wins at 60k / 200k / 600k against the head's 13 / 15 / 14
+      (Stockfish 24 / 29 / 26), short of the registered +5 at 200k, so
+      it was reverted (`5e29043`, reverted in `f70d701`). Open for the
+      maintainer: keep `5e29043` as measured, or register a mechanism
+      for the insufficient-material losses that remain at 200k.
+      **RAR-E55 (2026-10-12, kept):** a move-logged replay of RAR-E54's
+      playouts showed the discards are about the blockade (14 of 25 had
+      a blockade move among the winning alternatives, 9 only such
+      moves), so a term valuing a knight on the pawn's front square
+      (240) was added to `5e29043`'s drive and selected on a fresh
+      107-win development cohort (57 against the head's 44 at 200k).
+      On the 400-position cohort with RAR-E51's seed (77 wins) it
+      converts 39 / 39 / 46 at 60k / 200k / 600k against the head's
+      22 / 28 / 30 (Stockfish 42 / 50 / 49), +11 at 200k against the
+      frozen +8; bench 14,197,472, tests, vetoes and floors pass; no
+      strength gate (repair class 1). Engine commit `ab2a6ab`; the step
+      closes DONE rather than `NO_CHANGE`. The residual is ply-limit
+      failures with the blockade held and the king not yet cornered;
+      the drawn overclaim rose to 54.7% (reported).
+    - **C.5.8 Endgame checkpoint: conversion re-read, floors, theory vetoes, the KRPPKRP exclusion — `V`, DONE 2026-10-13.** A
+      measurement checkpoint that closes C.5, not a cluster strength gate
+      (maintainer decision 2026-10-11). C.5.2 was gated on its own (RAR-E29)
+      and C.5.2.1 and C.5.3 closed `NO_CHANGE`, so a cluster SPRT would gate
+      nothing unless C.5.4 to C.5.7 land a change, and a change that lands
+      carries the gate its own registration names. The checkpoint re-reads
+      the game-level conversion instrument on the head that closes C.5,
+      re-runs the floors and the theory vetoes, and records KRPPKRP's
+      seven-man exclusion (decided in C.5.5's text, 2026-10-11). The
+      floors read still reports KRP-KB's DTZ progress (−2.7 SE); that
+      is known sample noise, not a defect (RAR-E49: no slowdown at 400
+      positions; RAR-E50: 1.98 SE per game, no family's sample
+      unrepresentative), and needs no action. In five pawn families
+      (KRP-KB, KPP-K, KRP-KR, KNN-KP, KBP-K) the per-move standard
+      error is too small by 1.3 to 1.7 times, so a DTZ-progress report
+      there is read per game before it decides anything.
+      **RAR-E56 (2026-10-13, zero games): no regression; C.5.8 and C.5
+      close DONE** on `20bf409` (engine `ab2a6ab`, 14,197,472 / EBF 2.557,
+      byte-identical to RAR-E55's binary). Floors PASS, with KRP-KB's
+      known −2.7 SE the only report. The theory vetoes and the suite pass
+      in both profiles (395 / 396). The 15 families last bracketed on
+      `38cbb02` reproduce its per-position records exactly, and the 8 last
+      bracketed on the C.4.3 head stay within 2 of it and of Stockfish at
+      200k. In RAR-E42's gate games the 24 C.5 families affect 49 of
+      12,954 games (at most 1.31 Elo, KRP-KR 26 of them). The A.4 audit
+      reads 17.9 thrown away per 1,000 self-play games. **KRPP-KRP's
+      seven-man exclusion is recorded**; the family stays served by C.5.2's
+      generic scale. Its game-record trigger fired (C.5.5): the family is
+      entered in 10.2% of the gate's games, and 28 lost a seven-man win
+      from inside it, at most 0.75 Elo, under the 1 Elo line, counted over
+      both engines without tablebases and ignoring rule 50. The
+      exclusion is kept (maintainer decision 2026-10-13), with the retry
+      trigger recorded under C.5.5.
+- **C.6 Pawns and passers cluster; refit; gate — `I2`, then `V`, DONE 2026-10-12.** Passed pawns with king
   proximity, blocker ownership and type, path safety and attack, unstoppable
   and unblocked conditions, rook behind; pawn structure conditionality
   (doubled, isolated, backward, connected by rank and phalanx, weak lever).
@@ -1173,7 +1428,149 @@ loss).
   confirmed in the source: the unstoppable-passer test in `src/eval/passers.rs`
   (`king_steps > pawn_steps − …`) is one tempo generous in both move
   orders; the repair is a definition change plus a refit, checked against
-  tablebase-labelled pawn endings.
+  tablebase-labelled pawn endings. **Opened 2026-10-11** (the order of
+  work): the research card is `analysis/c6_pawns_passers_2026-10-11.md`.
+  The unstoppable term also sits after the lazy gate, so in play it fires
+  only below 600 cp (found while building the instrument).
+    - **C.6.1 Residual step: the donor's passed and pawns families on the current head, by cohort (RAR-E39) — `V`, DONE 2026-10-11.** Zero
+      games: the current head's donor report (RAR-E37's, which reproduced
+      RAR-E32's), read in the seven cohorts not yet looked at; a family has
+      signal at 0.10% or more at four standard errors. A family with signal
+      goes to a sub-term attribution; one without closes `NO_CHANGE` inside
+      C.6. **Read 2026-10-11:** both have signal: passed +0.204 ± 0.031 in
+      the endgame band and +0.196 ± 0.035 without queens, pawns +0.121 ±
+      0.028 and +0.141 ± 0.031 there; both are nil above |score| 500 and
+      with queens on, so the residual is conditioning, not magnitude. Both
+      go to C.6.3.
+    - **C.6.2 The unstoppable-passer test against Syzygy and in the corpus (RAR-E40) — `V`, DONE 2026-10-11.** Zero
+      games: the engine's rule, verified row by row against its own trace,
+      against the square rule one tempo stricter, on Syzygy-labelled pawn
+      endings in both move orders and in `hce-v4-tb` validation with and
+      without the lazy gate. The square rule becomes C.6's first engine
+      change if its share of real wins is 5 points higher at three standard
+      errors. **Read 2026-10-11:** it is, 0.740 against 0.683 on 263,736
+      Syzygy-labelled rows, so the square rule joins C.6's unit as a
+      definition change, fitted in its refit and gated with it, never alone.
+      Its weight is small: in `hce-v4-tb` validation the positions where
+      the rules disagree were won 84% of the time anyway, and the lazy gate
+      hides 85% of the term's firings in play (recorded for C.8). The first
+      verify failed on the instrument's own parsing, fixed before the
+      re-verify passed with no mismatch.
+    - **C.6.3 Sub-term attribution: the donor's passed and pawns components rebuilt offline and verified exactly, read as directions — `V`, DONE 2026-10-11.** Zero
+      games, as RAR-E31 did for threats: an instrument rebuilds Stockfish
+      `9587eeeb`'s passed-pawn components (rank bonus, king proximity by
+      rank, path and block-square safety, the halving rules, the file
+      adjustment) and pawn-structure components (isolated, backward,
+      doubled, connected with phalanx and support, weak unopposed, weak
+      lever, blocked) from the FEN and must reproduce the printed `Passed`
+      and `Pawns` rows on every row before any loss is computed; then
+      leave-one-out of the components in the endgame band and without
+      queens, registered before any model is fitted. Its frozen use names
+      what a unit would build and what closes `NO_CHANGE`. **Registered
+      2026-10-11 (RAR-E41)** with `tools/diag/pawn_subterms.py`, exact on
+      a 4,000-row smoke: a component carries when its removal costs 0.04
+      points at four standard errors in the endgame band or without queens;
+      carriers Rarog lacks (block-square king proximity, the defended block,
+      the file adjustment, weak unopposed, weak lever, blocked pawns) become
+      the unit, carriers Rarog already has are left to the refit. **Read
+      2026-10-11:** exact on all 194,444 rows; three carriers: our king's
+      distance to the block square (+0.131 ± 0.017 in the endgame band),
+      weak unopposed pawns (+0.060 ± 0.013) and the free path (+0.083
+      without queens, pricing). **C.6 is `READY_FOR_IMPLEMENTATION`**: the
+      handoff is frozen in the research card (*Implementation handoff*).
+    - **C.6.4 Pawns-and-passers unit: block-square king proximity replacing Rarog's form, weak unopposed pawns, the square rule; trace slots, tuner lists, manifest v5 — `I2`, DONE 2026-10-11.** From
+      the card's handoff: semantics, seeds, what is removed
+      (`passer_proximity_base` and its frozen constant), the tests, the
+      per-node cost statement. Unfitted, it changes the bench; nothing is
+      measured for strength before C.6.5's registration. **Built
+      2026-10-11:** the engine change `bc69c46` as handed off (debug 390
+      and release 391 tests, texel 205 with the exact reconstruction and
+      three new tests, clippy at zero warnings, fmt clean; unfitted bench
+      **13,034,451 / EBF 2.541**), and the tooling `da9c8a4` (tuner groups
+      and clamps, manifest v5 differing from v4 by exactly the five new
+      slots and the removed one, coverage on all 1,263 slots; the new slots
+      are active on 30% to 50% of training rows). The branch now carries an
+      unaccepted engine: the development fingerprint stays 12,567,796 /
+      EBF 2.535 until C.6's gate accepts, and a rejected unit is reverted in
+      its own commits.
+    - **C.6.5 Refit on `hce-v4-tb`, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-11.** PROCESS's
+      *Evaluation change under a fitted search*, steps 1 to 3, registered
+      before the fit as RAR-E32 was. **RAR-E42 (2026-10-11):** the refit
+      `38cbb02` (both coordinate passes converged; our king's block
+      distance 3, the enemy king's 4, the next square 0 cp per count; weak
+      unopposed (10, 8); isolated to (0, 0)); **fitted bench 14,197,472 /
+      EBF 2.557**. Screens with no stop and no flag: the donor's passed
+      family in the endgame band +0.204 → −0.015 (absorbed), pawns +0.121
+      → +0.120 (not absorbed: weak unopposed still carries +0.055, probably
+      because Rarog's backward definition differs from the donor's),
+      magnitude unmoved, tree +1.7%, NPS +0.07% (−0.31 to +0.46). Gate 1
+      `[0,3]` (20,000-pair cap) is with the maintainer; arms built and the
+      command dry-run clean.
+    - **C.6.6 Gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-12.** Steps
+      3's result to 7, as C.4.4. **Gate 1, 2026-10-12:** H1 at +6.4 ± 3.6
+      Elo, +10.7 ± 6.0 nElo (12,924 games, a first-crossing estimate), no
+      fault, no screen flag: **accepted**; fingerprint 14,197,472 / EBF
+      2.557 on `c5`. Margin block skipped (maintainer decision
+      2026-10-12): the unit keeps the head's margins until C.10. The
+      `10+0.1` direction read (1,000 games) is registered in RAR-E42,
+      dry-run clean and with the maintainer. **`10+0.1`, 2026-10-12:**
+      −1.7 ± 12.3 Elo (1,000 games; one time loss, the head's, after a
+      129 ms OS hold), below 0, so by the frozen use **the unit is
+      reopened and the maintainer decides** (keep, resolve further, or
+      revert). The interval contains both gate 1's +6.4 and zero.
+      **Maintainer decision 2026-10-12: kept as accepted**, the `10+0.1`
+      read recorded as inconclusive; the long-control question is retried
+      at C.11's checkpoint and E.1's `10+0.1` reads. C.6.6 closes.
+    - **C.6.7 Investigation: where Rarog's pawn and passer definitions differ from the donor's, which differences carry outcome information, and what else should change — `R2`, NO_CHANGE 2026-10-12.** Added
+      2026-10-11 by maintainer request, after RAR-E42 found the donor's
+      weak-unopposed term still carrying +0.055 points in the endgame band
+      once Rarog's own version was fitted, and the pawns residual unmoved
+      (+0.121 → +0.120). **When:** after C.6.6 (on the head C.6's gate
+      leaves) and before C.5.2.2 and C.8, so any change rides C.8's refit.
+      **What:** zero games. (1) An inventory, from the two sources, of
+      every definition the two families use and how Rarog's differs: the
+      passed set (the donor's lever, lever-push and supported-push
+      conditions, its removal of blocked candidates without help), backward
+      (Rarog: no own pawn strictly behind on an adjacent file and the stop
+      square attacked by an enemy pawn; the donor: none behind or level, and
+      the stop square attacked or blocked), isolated, doubled and the
+      doubled-isolated case, support, phalanx and connected by rank,
+      opposed and unopposed, levers, blocked pawns, candidate passers, pawn
+      islands, and the order in which the donor's terms exclude each other.
+      (2) For each difference that could matter, a Rarog-shaped counterpart
+      added to `tools/diag/pawn_subterms.py` (as RAR-E31 did for threats),
+      verified against the engine's own trace, and a registered read of
+      whether the donor's form carries information beyond Rarog's in the
+      endgame band and without queens. (3) A written finding for the
+      maintainer: what differs, what each difference is worth at the
+      static layer, what it would cost to change (shared signals: the
+      passed set feeds C.5.2's opposite-bishop rule and the passer terms;
+      the pawn cache), and a recommendation. **No change is decided or
+      built before the maintainer has reviewed that finding** (maintainer
+      decision 2026-10-11). **Read 2026-10-12 (RAR-E43; the inventory
+      and the finding in `analysis/c67_pawn_definitions_2026-10-12.md`):**
+      both instruments exact; no definition carries at 0.04 points and
+      four standard errors. Backward, isolated, doubled, connected, weak
+      unopposed, levers and blocked pawns each add 0.03 points or less where
+      pawns matter, about what re-pricing Rarog's own form adds: the
+      structure residual is the refit's. The passed set is weak: neither
+      engine's set alone predicts better, but together they add +0.141 ±
+      0.039 in the endgame band (3.6 standard errors), so the pawns the sets
+      disagree on carry something. Recommendation: no structure-definition
+      change; one zero-game split read of the passed-set disagreement
+      before deciding. **With the maintainer.** **Maintainer decision
+      2026-10-12:** run the split read (RAR-E44, registered with
+      `tools/diag/pawn_subterms.py` at `37f195c`); its finding again goes
+      to the maintainer before anything is built. **Split read
+      2026-10-12 (RAR-E44):** the groups rebuild the donor's family
+      exactly; none carries (the donor's lever-push passers +0.052 ±
+      0.024, Rarog's rear doubled passers +0.046, the donor's lever
+      passers +0.035 in the endgame band; the blocked case nil; together
+      +0.143). By its frozen use **C.6.7 closes `NO_CHANGE`**; retry
+      at C.8's first cycle, where a lead at the line would build the
+      donor's whole passed set, not one group. C.6 closes with it: the
+      unit is accepted (RAR-E42), the structure definitions and the
+      passed set stay Rarog's.
 - **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
@@ -1181,7 +1578,12 @@ loss).
   rook, weak queen, king protector distances. Refit, gate. Opens with its
   own residual step (RAR-E17: pieces +0.00%, material and piece-square
   tables −0.02%, and +2.41% only at six men or fewer) and closes
-  `NO_CHANGE` if it finds none.
+  `NO_CHANGE` if it finds none. **RAR-E37 (2026-10-11):** the donor's
+  pieces family rose by +0.035 when C.4.3 removed Rarog's x-ray slider
+  term, but the weak-queen row holds only 0.39 of it; the rest is in the
+  knight, bishop and rook rows, about two standard errors in all. So C.7
+  opens without a named weak-queen candidate, and its residual step reads
+  the piece rows one by one.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
@@ -1193,7 +1595,12 @@ loss).
   regeneration plays from the latest accepted head, whose games label
   better as it strengthens, and brings its own unread frozen test. Whether
   a regeneration also happens between units, before C.8, is not yet
-  decided.
+  decided. **Tuner (2026-10-11):** the texel delta scale no longer carries
+  the rule-50 factor the evaluator dropped (`0fe4702`;
+  `analysis/texel_delta_scale_rule50_2026-10-11.md`: no loss changes at a
+  fixed vector, 1.25% of the per-row gradient weight came back, most of it
+  at clocks of 10 or more), so the next fit, C.6's or the first cycle's, is
+  the first under it and its coefficient changes include this one.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
@@ -1226,6 +1633,11 @@ loss).
   package recipe is on the tagged `hybrid` branch; the first re-read is
   C.3.6), conversion instrument,
   pooled NPS, pool gauntlet at 1T. **Freeze the classical evaluation.**
+  The meter re-read is registered as RAR-O07 (2026-10-11, RAR-O06's
+  conditions, not to be played before C.11): its prediction for C.4 and
+  C.5.2 is frozen, each later unit appends its expected movement before the
+  match, and the budget row is corrected by its reading, never by an
+  estimate.
 
 ## Phase D — Clock, threads, robustness
 
@@ -1337,6 +1749,31 @@ loss).
       of non-won moves at `3+0.03` and 1.8% at `10+0.1`; time past the
       optimum is 31.4% and 19.7% of all head time; and a started iteration
       always completes.
+
+      D.1.2 is carried out in three addenda (added 2026-10-11 by maintainer
+      request, so the two GUIDE holds it owns have steps that discharge
+      them), gated together by D.1.2.3's SPRT:
+        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.** First
+          in D.1, after Phase C; earlier if RAR-R13's trigger fires (a game
+          record shows a cost). Reproduce each with the timed probe
+          (`tm_rec_probe.py`) on the head D.1 starts from, fix it inside the
+          bound model (an end inside an iteration after a fail-high past the
+          soft target; a stop on a proved, stable mate), and show the probe
+          with no move at the hard maximum and `tm_games.py`'s won and mate
+          shares at ≥ 0.9 × the maximum below their Phase C values (above).
+        - **D.1.2.2 The forfeit margin against OS holds — `R2`.** The
+          three gate time losses since 2026-10-10 (RAR-E29 round 3068,
+          RAR-E32 rounds 1777 and 1855) each came on a short search whose
+          process the OS held for 88.0, 82.4 and 69.4 ms with deadlines of
+          89.2, 69.9 and 75.0 ms. Measure the hold distribution on this host
+          from the gates' own `failed-games` and per-move timing records,
+          then decide the engine's minimum move reserve at low clock (and
+          whether the harness's 20 ms margin should change, a maintainer
+          decision recorded in PROCESS) so that a hold of that size does not
+          forfeit; a deterministic test with an injected delay checks it.
+        - **D.1.2.3 The audit and the bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier; one SPRT `[0,3]` for D.1.2 — `R2`, then `V`.** The
+          rest of D.1.2 as written above, with D.1.2.1 and D.1.2.2 inside
+          the one gated change.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
