@@ -2486,6 +2486,9 @@ fn usage(exe: &str) {
         "  {exe} --dump-feature <dataset.csv> <out.csv> <field> [--full]   (fen;tapered White-minus-Black coefficient per index of one weight field;phase)"
     );
     eprintln!(
+        "  {exe} --dump-groups <dataset.csv> <out.csv> [--full]   (fen;label;score;scale;raw;frozen;material;mobility;threats;king;other;king_danger: the score split by contributor)"
+    );
+    eprintln!(
         "  --manifest FILE  fitting manifest; required by --tune complete, checked by --tune-kingsafety"
     );
     print_groups();
@@ -2572,6 +2575,106 @@ fn cmd_dump_feature(path: &str, out: &str, field: &str, full: bool) {
         exit(1);
     });
     println!("{} rows written to {out}", lines_out.len());
+}
+
+/// The engine's phase scale (`TOTAL_PHASE`, private to the engine); the
+/// `frozen_part_tapers_like_the_engine` test pins it to the evaluation.
+const PHASE_SCALE: f64 = 24.0;
+
+/// The flat indices behind each reported contribution group, disjoint and
+/// together covering every weight: material values, mobility, threats (with
+/// the hanging terms), the king's linear terms, and every other weight.
+fn contribution_groups() -> Vec<(&'static str, Vec<usize>)> {
+    let collect = |fields: &[&str]| {
+        let mut out = Vec::new();
+        for f in fields {
+            push_field(&mut out, f);
+        }
+        out
+    };
+    let mut material = Vec::new();
+    push_material(&mut material);
+    let mut threats = collect(THREATS);
+    threats.extend(collect(HANGING));
+    let mut groups = vec![
+        ("material", material),
+        ("mobility", collect(MOBILITY)),
+        ("threats", threats),
+        ("king", collect(KINGSAFETY)),
+    ];
+    let mut taken = vec![false; EvalParams::FLAT_SIZE];
+    for (_, indices) in &groups {
+        for &i in indices {
+            taken[i] = true;
+        }
+    }
+    groups.push((
+        "other",
+        (0..EvalParams::FLAT_SIZE).filter(|&i| !taken[i]).collect(),
+    ));
+    groups
+}
+
+/// Write every row's evaluation split by contributor: the White-POV score,
+/// the engine's multiplicative endgame factor, the linear traced score, the
+/// frozen (non-tunable) part tapered, each group's tapered linear contribution
+/// at the default weights, and whether the king-danger map fired. The frozen
+/// part holds the king-danger map's output and the mop-up, so
+/// `score / scale ≈ raw + frozen` on every row.
+fn cmd_dump_groups(path: &str, out: &str, full: bool) {
+    let groups = contribution_groups();
+    let weights = EvalParams::default().to_flat();
+    let mut ev = Evaluator::default();
+    if full {
+        ev.set_lazy_margin(i32::MAX);
+    }
+    let names: Vec<&str> = groups.iter().map(|(name, _)| *name).collect();
+    let mut lines_out = vec![format!(
+        "fen;label;score;scale;raw;frozen;{};king_danger",
+        names.join(";")
+    )];
+    for line in read_lines(path) {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(sep) = line.rfind(';') else { continue };
+        let Some(_) = parse_target(&line[sep + 1..]) else {
+            continue;
+        };
+        let Ok(board) = Board::from_fen(&line[..sep]) else {
+            continue;
+        };
+        let score = eval_white(&mut ev, &board);
+        let trace = ev.last_trace();
+        let coeffs = trace.flat_coeffs();
+        let parts: Vec<String> = groups
+            .iter()
+            .map(|(_, indices)| {
+                let sum: f64 = indices.iter().map(|&i| coeffs[i] * weights[i]).sum();
+                format!("{sum:.3}")
+            })
+            .collect();
+        let phase = trace.phase as f64;
+        let frozen = (trace.frozen_mg as f64 * phase
+            + trace.frozen_eg as f64 * (PHASE_SCALE - phase))
+            / PHASE_SCALE;
+        lines_out.push(format!(
+            "{};{};{};{};{};{frozen:.3};{};{}",
+            &line[..sep],
+            &line[sep + 1..],
+            score as i32,
+            linear_delta_scale(&board),
+            trace.raw,
+            parts.join(";"),
+            u8::from(trace.king_danger)
+        ));
+    }
+    std::fs::write(out, lines_out.join("\n") + "\n").unwrap_or_else(|e| {
+        eprintln!("Cannot write {out}: {e}");
+        exit(1);
+    });
+    println!("{} rows written to {out}", lines_out.len() - 1);
 }
 
 fn validate_test_contract(opts: &TuneOpts) {
@@ -2699,6 +2802,14 @@ fn main() {
                 exit(1);
             }
             cmd_dump_feature(&args[2], &args[3], &args[4], !flags.is_empty());
+        }
+        "--dump-groups" => {
+            let flags = args.get(4..).unwrap_or_default();
+            if args.len() < 4 || !flags.iter().all(|f| f == "--full") {
+                usage(&args[0]);
+                exit(1);
+            }
+            cmd_dump_groups(&args[2], &args[3], !flags.is_empty());
         }
         "--tune" => {
             if args.len() < 5 {
@@ -3009,5 +3120,75 @@ mod tests {
         indices.dedup();
         assert_eq!(indices.len(), 23);
         assert_eq!(coords.len(), 23);
+    }
+
+    const GROUP_FENS: &[&str] = &[
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP3PPP/R2QKB1R w KQ - 0 9",
+        "r1b1k3/pp6/8/3P4/8/8/PP6/R1B1K3 w - - 0 1",
+        "2r3k1/5ppp/8/1P6/8/8/5PPP/2R3K1 b - - 0 1",
+        "6k1/5ppp/8/8/8/8/1q3PPP/3R2K1 w - - 0 1",
+    ];
+
+    /// Every weight belongs to exactly one contribution group, and at the
+    /// default weights the groups sum to the traced linear score.
+    #[test]
+    fn contribution_groups_partition_the_weights_and_sum_to_the_linear_score() {
+        let groups = contribution_groups();
+        let mut all: Vec<usize> = groups.iter().flat_map(|(_, v)| v.iter().copied()).collect();
+        let total = all.len();
+        all.sort_unstable();
+        all.dedup();
+        assert_eq!(all.len(), total, "a weight sits in two groups");
+        assert_eq!(total, EvalParams::FLAT_SIZE, "a weight sits in no group");
+        let weights = EvalParams::default().to_flat();
+        let mut ev = Evaluator::default();
+        ev.set_lazy_margin(i32::MAX);
+        for fen in GROUP_FENS {
+            let board = Board::from_fen(fen).expect("test FEN parses");
+            let _ = ev.evaluate(&board);
+            let trace = ev.last_trace();
+            let coeffs = trace.flat_coeffs();
+            let sum: f64 = all.iter().map(|&i| coeffs[i] * weights[i]).sum();
+            assert!(
+                (sum - trace.raw as f64).abs() <= 1.0,
+                "{fen}: groups {sum} against raw {}",
+                trace.raw
+            );
+        }
+    }
+
+    /// Where the king-danger map did not fire and the endgame factor is one,
+    /// the score is the linear score plus the frozen part tapered by
+    /// `PHASE_SCALE`; at least one test position has a non-zero frozen part.
+    #[test]
+    fn frozen_part_tapers_like_the_engine() {
+        let mut ev = Evaluator::default();
+        ev.set_lazy_margin(i32::MAX);
+        let mut checked_nonzero = 0;
+        for fen in GROUP_FENS {
+            let board = Board::from_fen(fen).expect("test FEN parses");
+            let score = eval_white(&mut ev, &board);
+            let trace = ev.last_trace();
+            if trace.king_danger || linear_delta_scale(&board) != 1.0 {
+                continue;
+            }
+            let phase = trace.phase as f64;
+            let frozen = (trace.frozen_mg as f64 * phase
+                + trace.frozen_eg as f64 * (PHASE_SCALE - phase))
+                / PHASE_SCALE;
+            assert!(
+                (score - trace.raw as f64 - frozen).abs() <= 2.0,
+                "{fen}: score {score}, raw {}, frozen {frozen}",
+                trace.raw
+            );
+            if trace.frozen_mg != 0 || trace.frozen_eg != 0 {
+                checked_nonzero += 1;
+            }
+        }
+        assert!(
+            checked_nonzero > 0,
+            "no test position exercised the frozen part"
+        );
     }
 }
