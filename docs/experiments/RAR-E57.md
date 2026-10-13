@@ -35,4 +35,37 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   7. **No direction has signal in any deciding cohort, and C.7 closes `NO_CHANGE` (probability 0.6).** If one does, it is the Material row in phase < 32 with men ≥ 7 (0.5 of that).
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** this read.
-- **Artifacts:** `analysis/artifacts/c71/` (ignored storage): `run_e57.sh`, `dump_wire.py`, `repro.py`, `read.py`, and the outputs they name.
+- **Result (run 2026-10-13 13:55–13:56, once, after the registration commit `b6ee6d5`; `analysis/artifacts/c71/`, every step exit 0, read from `status.txt`; tree clean):**
+  - *Wire:* step 1 reproduces RAR-E42's report exactly (547 values, 0 differ). The head's dump differs from the C.6 candidate's on **exactly the 63 KNN-KP rows** and on no other row, with FENs and labels equal; that also shows the dump carries the engine's latest change. 194,444 rows substituted. Report wire: control against the donor's total 1.000, head against control 0.951.
+  - *Gains*, `read.txt` (± one standard error; deciding cohorts marked *; magnitude is `rarog+magnitude`, the comparator):
+
+    | Cohort (rows) | Material row | Imbalance | Knights | Bishops | Rooks | Queens | Phase slope | Magnitude |
+    |---|---:|---:|---:|---:|---:|---:|---:|---:|
+    | all * (194,444) | +0.087 ± 0.019 | −0.000 | −0.002 | +0.012 | +0.003 | +0.024 | +0.209 ± 0.031 | +0.579 |
+    | phase ≥ 96 * (42,953) | +0.010 | +0.008 | +0.003 | −0.012 | +0.003 | +0.028 | +0.019 | +0.047 |
+    | phase 32–95 * (50,906) | −0.004 | +0.011 | +0.037 ± 0.019 | +0.052 ± 0.026 | +0.010 | +0.030 | +0.023 | +0.097 |
+    | queens * (107,638) | +0.048 | −0.000 | +0.005 | +0.015 | +0.006 | +0.033 | +0.217 ± 0.034 | +0.304 |
+    | men ≥ 7 * (163,874) | +0.112 ± 0.027 | +0.001 | −0.006 | +0.014 | +0.003 | +0.026 | +0.265 ± 0.031 | +0.355 |
+    | \|rarog\| ≤ 500 * (138,900) | +0.012 | −0.005 | −0.019 | +0.008 | +0.006 | +0.024 | +0.043 | +0.109 |
+    | **\|rarog\| > 500** * (55,544) | **+0.333 ± 0.056** | −0.024 | +0.009 | +0.030 | +0.052 | +0.056 | **+1.316 ± 0.201** | +0.058 |
+    | phase < 32, men ≥ 7 * (70,060) | +0.360 ± 0.089 | −0.011 | −0.006 | +0.019 | −0.009 | −0.003 | +0.010 | +0.783 |
+    | no queens, men ≥ 7 * (65,751) | +0.310 ± 0.076 | +0.006 | +0.012 | +0.010 | −0.013 | −0.000 | +0.011 | +0.588 |
+    | phase < 32 (100,585) | +0.198 ± 0.046 | −0.007 | −0.006 | +0.015 | −0.014 | +0.000 | −0.012 | +1.573 |
+    | no queens (86,806) | +0.156 ± 0.040 | −0.002 | +0.003 | +0.009 | −0.000 | +0.000 | −0.014 | +1.060 |
+    | men ≤ 6 (30,570) | −0.029 ± 0.016 | +0.048 | +0.024 | −0.112 | −0.020 | +0.026 | +0.800 ± 0.128 | +13.045 |
+
+  - *By the frozen rule, two directions have signal, both only at |rarog| > 500:* the **Material row** (+0.333 ± 0.056, 5.9 SE) and the **phase slope** (+1.316 ± 0.201, 6.5 SE), each above that cohort's magnitude gain (+0.058). Elsewhere the Material row and the phase slope pass the first two clauses but not the third: the Material row at men ≥ 7, in the endgame band above six men and queenless above six men; the phase slope over all rows, with queens and at men ≥ 7. No other row reaches 0.10% anywhere: Imbalance, Knights, Bishops, Rooks and Queens stay below +0.06 in every cohort. The largest middlegame row is Bishops (+0.052 ± 0.026).
+  - *Size, computed from the report:* the |rarog| > 500 rows are mostly decided (Rarog's error there is 0.014 against 0.094 over all rows). In whole-file terms the phase slope's gain there is about **0.056%** of the loss and the Material row's about **0.014%**, smaller than any residual C.4 or C.6 acted on (threats +0.107, passed +0.204 in its band).
+- **Disposition:** observation. **By the frozen use, C.7 does not close `NO_CHANGE`: it stays open for the Material row and the phase slope**, and the next step is C.7.2, their attribution, under its own registration. Neither imbalance nor any piece row has signal. So the bishop pair, bishop-pawn colour, outposts, minor behind pawn, rook files, trapped rook, weak queen and king protector items on C.7's list are not supported at this layer and are not built. Three cautions go to C.7.2:
+  - The registered third clause is weakest in exactly this cohort: selecting on |rarog| leaves a monotone re-pricing of Rarog's score little room (+0.058). The signal may be calibration of decided scores rather than missing knowledge (competing 5 is not excluded there).
+  - The two signals may be one: the donor's endgame piece values exceed its middlegame ones, so its Material row grows as the phase falls, which is what a phase slope also expresses.
+  - The endgame band's material residual is **not** the endings of six men or fewer (Material row −0.029 there, +0.360 at phase < 32 with men ≥ 7). The hypothesis's second clause is refuted.
+
+  Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 7 above.
+  - Observed: (1) hit, both. (2) all rows +0.087, inside the band, hit. Phase < 32 with men ≥ 7 +0.360, **miss**, above the band. Signal in some deciding cohort (probability 0.3): it happened. (3) hit. (4) each under +0.05, hit; none has signal, hit; Rooks largest in the middlegame band, **miss** (Bishops +0.052, Knights +0.037, Rooks +0.010). (5) Queens hit; phase slope no signal, **miss**. (6) **miss**: the endgame band reads +0.198 against +0.360 above six men; the residual is above six men, not at or below. (7) **miss**: two directions have signal; neither is the Material row in the endgame band above six men, which failed only the magnitude clause.
+  - Which assumption failed: I took the endgame band's material residual for the small endings C.5 owns, and expected any signal to sit there. It sits above six men, and it reaches the rule only among decided scores, where the magnitude comparator I chose is weakest. The misses are in mechanism (where the residual lives) and in the instrument (a comparator that loses power in a cohort selected on the score it rescales).
+- **Conditional lesson:** a guard that compares against a re-pricing of the score is weakest in a cohort selected on that score; a registration that decides by such cohorts needs a comparator that can still move there.
+- **Retry trigger or `closed`:** closed as a read; C.7.2 follows under its own registration.
+- **Artifacts:** `684552a` (the instrument and its tests); `analysis/artifacts/c71/` (ignored storage): `run_e57.sh`, `run.log`, `status.txt`, `source.txt` (tuner `0f6a4c8b…`, validation `3588865c…`, donor rows `d8c2c5a9…`), `tree-status.txt`, `report-c65cand.json` (`24c1fda7…`), `analyse-c65cand.log`, `repro.py` → `repro.log`, `build-tuner.log`, `head_played.csv` (`70dfeffd…`), `dump.log`, `dump_wire.py` → `dump_wire.log`, `substitute.log`, `scores-9587-head.csv` (`c64d5de1…`), `report-head.json` (`7d97d31b…`), `analyse-head.log`, `read.py` → `read.txt` (`ae23551f…`).

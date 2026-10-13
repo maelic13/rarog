@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7.1 | RESEARCH | V | RAR-E57 registered (2026-10-13): the residual step, each material, imbalance and piece row alone, above six men apart; C.7 closes `NO_CHANGE` if no row has signal |
+| C.7.2 | RESEARCH | V | Next (RAR-E57, 2026-10-13): the Material row and the phase slope have signal only among decided scores (\|rarog\| > 500); attribute them, calibration against knowledge, before anything is built |
 | C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1584,7 +1584,7 @@ loss).
   knight, bishop and rook rows, about two standard errors in all. So C.7
   opens without a named weak-queen candidate, and its residual step reads
   the piece rows one by one. **Opened 2026-10-13.**
-    - **C.7.1 Residual step: the donor's material, imbalance and piece rows one by one, and the phase taper, on the current head (RAR-E57) — `V`.** Zero
+    - **C.7.1 Residual step: the donor's material, imbalance and piece rows one by one, and the phase taper, on the current head (RAR-E57) — `V`, DONE 2026-10-13.** Zero
       games: the head's played score substituted into the donor rows, and
       each trace row read alone, along with Rarog's score rescaled by
       phase. Above six men, the endgame band and queenless play are read
@@ -1592,6 +1592,30 @@ loss).
       more, at four standard errors, and above the cohort's re-pricing of
       Rarog's own score. A direction with signal goes to a sub-term
       attribution; with none, C.7 closes `NO_CHANGE`.
+      **Read 2026-10-13 (RAR-E57): two directions have signal, both only
+      where Rarog's score exceeds 500 cp:** the donor's Material row
+      (material and piece-square tables) at +0.333 ± 0.056% and the phase
+      slope at +1.316 ± 0.201%. These positions are mostly decided, so in
+      whole-file terms the two are about 0.014% and 0.056% of the loss.
+      Imbalance and the Knights, Bishops, Rooks and Queens rows stay below
+      +0.06% in every cohort, so the imbalance, bishop, knight, rook and
+      weak-queen items on C.7's list are not supported and are not built.
+      The endgame band's material residual lies above six men (+0.360,
+      under the magnitude comparator there), not in C.5's endings
+      (−0.029). Cautions: the magnitude comparator is weakest in a cohort
+      selected on the score it rescales, so the signal may be calibration
+      of decided scores; and the two signals may be one, since the donor's
+      endgame piece values exceed its middlegame ones.
+    - **C.7.2 Attribution: the Material row and the phase slope among decided scores — `V`.** Zero
+      games, its own registration before any number. It decides what
+      carries RAR-E57's two signals: the donor's Material row rebuilt from
+      the FEN (material values and piece-square tables, each phase) and
+      verified exactly against the printed row before any loss; whether it
+      adds anything once the phase slope is in the model; and which way
+      Rarog's large scores are mis-scaled by phase. A comparator that can
+      still move among decided scores is registered with it. With nothing
+      beyond calibration, C.7 closes `NO_CHANGE` and the calibration goes
+      to C.8's refit; with knowledge, a research card decides readiness.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
   accepts, stop at the first that does not. Initialization control (neutral
