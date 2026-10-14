@@ -162,3 +162,24 @@ independently (`analysis/artifacts/c84/v030/`):
   The adoption item above is therefore replaced by
   `analysis/artifacts/c84/v030/kept-engines.patch`, applied with the re-pin
   (PLAN C.8.4).
+
+## Adopted: `colosseum-cli 0.3.0`, 2026-10-14
+
+Release `cli-v0.3.0` points at `cb12cd3`, whose tree equals the verified
+`af712d9` (`76fa7d1…`). `setup_tools.ps1` verified the Windows asset
+(`948FA316…`, 2,871,740 bytes, the digest GitHub publishes) and its exe
+(`381EB7A5…`, a CI build, so its hash differs from the local
+`AC56265A…`). Re-pinned with the kept-engines patch in `c5f11b1`.
+Checked on the released exe (`analysis/artifacts/c84/release030/`):
+
+- The 3,000-game pilot through `datagen.ps1` (the engine verified by hash
+  and bench; the run resolved to `per-slot`) is identical to the fastchess
+  pilot in every game. The preflight equals the fastchess pilot's in every
+  count: 30 skipped, 39,744 raw and 39,739 unique positions, 595,240
+  recommended.
+- `harness_speed.ps1`: 18.1 / 18.0 / 17.9 s against fastchess's
+  24.8 / 24.9 / 24.9 s, with 71,523 plies in both.
+- `tools/diag/test_colosseum_guards.ps1`: 55 of 55, including two new
+  cases that refuse `per-game` in a gate and in a gauntlet.
+- `colosseum.ps1` dry runs of sprt, match, calibrate and gauntlet resolve to
+  policy. A 280-game `3+0.03` match has no faults and its recount agrees.

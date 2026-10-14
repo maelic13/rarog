@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14: `datagen.ps1 -Runner colosseum` (`8bd33d2`), pilot equivalent except 6 of 3,000 games a Colosseum repetition defect lengthens by one ply; held on the maintainer: `colosseum-cli 0.3.0` with the repetition fix and wall time no worse than fastchess's (maintainer decision 2026-10-14: Colosseum may not stay slower; request and benchmark `analysis/artifacts/c84/colosseum-cli-prompt.md`, `speed/harness_speed.ps1`), then the re-pin and the pilot re-run; and step 4's retire-or-keep decision; must land before cycle 2's regeneration |
+| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14 on `colosseum-cli 0.3.0` (pinned `c5f11b1`): `datagen.ps1 -Runner colosseum` matches fastchess in 3,000 of 3,000 pilot games and runs 28% faster; kept engine processes in every mode (maintainer decision 2026-10-14); held on the maintainer: step 4's retire-or-keep decision for each fastchess and weather-factory consumer; must land before cycle 2's regeneration |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1854,6 +1854,23 @@ loss).
         updates PROCESS and the run-file README. Under the 0.3.0 build,
         dry runs of sprt, match, calibrate and gauntlet pass the guard,
         and a gauntlet asking for `per-game` is refused.
+      - *Adopted 2026-10-14* (`c5f11b1`): `colosseum-cli 0.3.0`
+        (`cli-v0.3.0`, `cb12cd3`, the same tree as the verified
+        `af712d9`). Archive `948FA316…` and exe `381EB7A5…` are verified
+        by `setup_tools.ps1`, and the kept-engines patch is applied.
+        On the released exe:
+        - the pilot through `datagen.ps1` is identical to fastchess's in
+          3,000 of 3,000 games, and the preflight matches exactly (30
+          skipped, 39,744 raw and 39,739 unique positions, 595,240
+          recommended);
+        - the benchmark runs 18.1 / 18.0 / 17.9 s against fastchess's
+          24.8 / 24.9 / 24.9 s;
+        - `test_colosseum_guards.ps1` passes 55 of 55, with two new
+          per-slot cases;
+        - dry runs of sprt, match, calibrate and gauntlet pass, and a
+          280-game `3+0.03` match has no faults and its recount agrees.
+        Steps 1–3 are done. Step 4 (retire or keep each fastchess and
+        weather-factory consumer) waits on the maintainer.
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
