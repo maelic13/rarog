@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
+| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); step 1 done 2026-10-14: no functional gap (`tournament run`, one game per encounter), the frozen opening sequence recoverable from fastchess's `Round` tags, Colosseum about 36% slower at 8,000 nodes; next the port (step 2); must land before cycle 2's regeneration; fastchess's retirement is the maintainer's recorded decision |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1791,6 +1791,27 @@ loss).
          the backup and second opinion, each is retired or kept as backup
          only. PROCESS's *Harness* section and its cross-check triggers
          change with that decision.
+      **Step 1, 2026-10-14** (`analysis/c84_colosseum_datagen_gap_2026-10-14.md`):
+      - *No functional gap* in `colosseum-cli 0.2.0`. `tournament run`
+        with two copies of the engine, `--games-per-pair 1` and
+        `--cycles N` meets every item, checked by short runs. A fixed
+        `match` cannot: it always plays a colour-reversed pair per
+        opening, whose second game extraction discards.
+      - *Port items, Rarog side:* `extract.py` reads Colosseum's score
+        comments (`s=…`, `colosseum-move-comment/3`) beside fastchess's;
+        the start index is zero-based; the manifest and guards stay the
+        wrapper's.
+      - *Openings:* Colosseum's shuffle is not fastchess's, so seed
+        10403 gives another sequence. fastchess's `Round` tag is the
+        opening's offset in its order (0 mismatches over 612,747 rounds
+        across four corpora), so the port plays the frozen sequence
+        from an ordered EPD in sequential order. That also gives step
+        3 the same opening set.
+      - *Throughput:* on one 900-game workload Colosseum takes 34.1 s
+        against fastchess's 25.1 s (three alternated repeats each, equal
+        plies), about 4.6 h against 6.3 h at 595,240 games. It loses
+        nothing in the contract; a request to Colosseum is the
+        maintainer's choice.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
