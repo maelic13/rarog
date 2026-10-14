@@ -1836,6 +1836,15 @@ loss).
         within 2% of fastchess's, with the repetition fix. The request and
         the runnable benchmark are in `analysis/artifacts/c84/`
         (`colosseum-cli-prompt.md`, `speed/harness_speed.ps1`).
+      - *0.3.0 verified before release (2026-10-14,* branch
+        `rarog-cli-0.3.0` at `af712d9`*):* 410 tests pass. The pilot is
+        identical to fastchess's in 3,000 of 3,000 games. Wall time is
+        28% *below* fastchess's (median 18.0 s against 24.9 s). The gate
+        wrapper passes a dry run and a 280-game match. At the re-pin,
+        `gauntlet.toml` must ask for `engine-processes = "per-game"`,
+        which keeps the pool conditions as they were (0.3.0 keeps
+        tournament engines by default). The release asset is checked
+        again before the pin moves.
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console

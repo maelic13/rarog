@@ -122,3 +122,38 @@ middlegames; in the datagen pilot 6 of 3,000 do, all drawn either way
 (`start_threefold.py`). The request to the maintainer is to count the setup
 position. Once Colosseum is re-pinned with that fix, the pilot is re-run, and
 step 3's move-for-move criterion is expected to hold in full.
+
+## Colosseum 0.3.0 verified before release, 2026-10-14
+
+Branch `rarog-cli-0.3.0` of the Colosseum repository: six commits on
+`cli-v0.2.0`, HEAD `af712d9`, tree clean. Its exe (`colosseum-cli 0.3.0`,
+`AC56265A…`) is current with that source: cargo rebuilt nothing. Its own
+record, `docs/architecture/cli-0.3.0-record.md`, finds the main cost was
+`tournament` starting two fresh engine processes for every game. Step 1 above
+was wrong to assume the two harnesses both keep their engines. Checked here
+independently (`analysis/artifacts/c84/v030/`):
+
+- **Tests:** `cargo test -p colosseum-cli -p colosseum-engine -p colosseum-uci`
+  passes, 410 tests, 0 failed. These include the four threefold tests and the
+  two tournament engine-keeping tests.
+- **Equivalence:** the 3,000-game pilot, with exactly `datagen.ps1`'s
+  command, is identical to the fastchess pilot in 3,000 of 3,000 games
+  (238,348 plies, 0 move or result mismatches). The 6 start-position
+  threefolds now end at the third occurrence. The resolved-configuration
+  fields `datagen.ps1` checks are present.
+- **Speed** (`harness_speed.ps1`, identical games): 18.2 / 18.0 / 17.8 s
+  against fastchess's 24.9 / 24.8 / 24.9 s. The median is 28% below
+  fastchess's, against a target of at most 2% above. Plies are equal
+  (71,523).
+- **Gate wrapper:** `colosseum.ps1`, run on the 0.3.0 exe through a test pin,
+  passes an SPRT dry run (pin, policy) and a 280-game `3+0.03` match: no
+  faults, and the recount agrees.
+- **Adoption item:** a tournament now keeps its engines per slot by default,
+  and `tools/colosseum/gauntlet.toml` unsets the option. Under 0.3.0 a pool
+  gauntlet would therefore switch silently to kept engines, a condition
+  RAR-M64's pool ratings were not measured under. `colosseum.ps1` does not
+  check the field. At the re-pin, `gauntlet.toml` sets
+  `engine-processes = "per-game"` unless the maintainer decides otherwise.
+  0.3.0 accepts the option, and 0.2.0 did not.
+- The release asset will be a CI build with its own SHA-256. At adoption it
+  gets the `--version`, pilot and speed checks again before the pin moves.
