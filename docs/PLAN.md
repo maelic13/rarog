@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.5 | RESEARCH | V | Cycle 2 regeneration (`hce-v6`): the cycle-1 head labels on Colosseum; RAR-M69 registered before the pilot; the generation is the maintainer's |
+| C.8.5 | RESEARCH | V | Cycle 2 regeneration (`hce-v6`): pilot and preflight done 2026-10-14 (569,664 games), RAR-M69 registered; the generation is with the maintainer, then extraction, relabel and the audit |
 | C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; after C.8.5 |
 | C.8.7 | RESEARCH | V | Cycle 2 gate; before gate 1, the runner checks the 0.3.0 re-pin owes (backup-path cross-check, null pair) |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -1886,6 +1886,22 @@ loss).
       also as C.8.1: the same book, seed 10403 from start 1, 8,000 nodes
       and `datagen-v2`. It runs through `datagen.ps1 -Runner colosseum`.
       The generation is the maintainer's.
+      **Progress 2026-10-14:**
+      - *Pilot:* 3,000 games from start 1 in 79 s, engine verified in the
+        run, every termination normal
+        (`selfplay-c8cycle1-n8000-s1-g3000.pgn`).
+      - *Preflight:* `extract.py --preflight-games 3000 --target-train
+        3500000` recommends **569,664 games** (39,873 unique positions
+        from the pilot; cycle 1's 595,240). The full command passes
+        `-SetupOnly`, and the generation is with the maintainer.
+      - *An interruption contaminates a run:* the first pilot attempt was
+        stopped by killing its process. Its 30 in-flight games stayed in
+        the PGN as `abandoned`, each scored 0-1, and resuming did not
+        replay them. `datagen.ps1` refused the run on its zero-fault
+        guard, so no label was taken from it
+        (`analysis/artifacts/c85/interrupted-pilot.colosseum`). A
+        generation that is interrupted therefore needs a decision before
+        it is resumed.
     - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
       C.8.2, without the initialization control, which C.8 runs in the
       first cycle only.
