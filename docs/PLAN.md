@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14: `datagen.ps1 -Runner colosseum` (`8bd33d2`), pilot equivalent except 6 of 3,000 games a Colosseum repetition defect lengthens by one ply; held on the maintainer: the Colosseum fix and re-pin (then the pilot is re-run), and step 4's retire-or-keep decision; must land before cycle 2's regeneration |
+| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14: `datagen.ps1 -Runner colosseum` (`8bd33d2`), pilot equivalent except 6 of 3,000 games a Colosseum repetition defect lengthens by one ply; held on the maintainer: `colosseum-cli 0.3.0` with the repetition fix and wall time no worse than fastchess's (maintainer decision 2026-10-14: Colosseum may not stay slower; request and benchmark `analysis/artifacts/c84/colosseum-cli-prompt.md`, `speed/harness_speed.ps1`), then the re-pin and the pilot re-run; and step 4's retire-or-keep decision; must land before cycle 2's regeneration |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1829,6 +1829,13 @@ loss).
         plays one ply past FIDE's draw. 0 of RAR-E60's 8,232 gate games
         are affected. The fix is with the maintainer; after its
         re-pin the pilot is re-run.
+      - *Speed, maintainer decision 2026-10-14:* Colosseum may not stay
+        slower than fastchess. On identical games (the first 900 of the
+        ordered sequence, sequential, concurrency 30) it takes 33.6–34.3 s
+        against 24.8–24.9 s. `colosseum-cli 0.3.0` must bring its median
+        within 2% of fastchess's, with the repetition fix. The request and
+        the runnable benchmark are in `analysis/artifacts/c84/`
+        (`colosseum-cli-prompt.md`, `speed/harness_speed.ps1`).
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
