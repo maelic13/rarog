@@ -1840,11 +1840,20 @@ loss).
         `rarog-cli-0.3.0` at `af712d9`*):* 410 tests pass. The pilot is
         identical to fastchess's in 3,000 of 3,000 games. Wall time is
         28% *below* fastchess's (median 18.0 s against 24.9 s). The gate
-        wrapper passes a dry run and a 280-game match. At the re-pin,
-        `gauntlet.toml` must ask for `engine-processes = "per-game"`,
-        which keeps the pool conditions as they were (0.3.0 keeps
-        tournament engines by default). The release asset is checked
-        again before the pin moves.
+        wrapper passes a dry run and a 280-game match. The release asset
+        is checked again before the pin moves.
+      - *Kept engines, maintainer decision 2026-10-14:* every Colosseum run
+        keeps each slot's engine processes, gauntlets and datagen
+        included, unless kept engines cause a problem. This reverses the
+        recommendation above it to keep pool gauntlets on fresh processes.
+        The change needs 0.3.0, because 0.2.0's `tournament` rejects the
+        option, so it lands with the re-pin as the verified patch
+        `analysis/artifacts/c84/v030/kept-engines.patch`. That patch makes
+        `gauntlet.toml` inherit per-slot, has `datagen.ps1` request and
+        check it, adds a `colosseum.ps1` policy guard for every mode, and
+        updates PROCESS and the run-file README. Under the 0.3.0 build,
+        dry runs of sprt, match, calibrate and gauntlet pass the guard,
+        and a gauntlet asking for `per-game` is refused.
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console

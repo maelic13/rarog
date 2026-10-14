@@ -157,3 +157,8 @@ independently (`analysis/artifacts/c84/v030/`):
   0.3.0 accepts the option, and 0.2.0 did not.
 - The release asset will be a CI build with its own SHA-256. At adoption it
   gets the `--version`, pilot and speed checks again before the pin moves.
+- **Superseded the same day by a maintainer decision:** kept engines are the
+  standard in every mode, gauntlets included, unless they cause a problem.
+  The adoption item above is therefore replaced by
+  `analysis/artifacts/c84/v030/kept-engines.patch`, applied with the re-pin
+  (PLAN C.8.4).
