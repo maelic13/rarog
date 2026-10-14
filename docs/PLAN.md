@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; RAR-E61 registered 2026-10-14 (prediction +4 Elo, band [−3, +11]); next the fit, then the screens, the tree and NPS reads and the handover of gate 1 |
-| C.8.7 | RESEARCH | V | Cycle 2 gate; before gate 1, the runner checks the 0.3.0 re-pin owes (backup-path cross-check, null pair) |
+| C.8.7 | RESEARCH | V | Cycle 2 gate: RAR-M70's runner checks first (cross-check 2 × 2,000 games, null pair 30,000), then RAR-E61's gate 1 `[0,3]`; all three dry-run or wrapper-guarded and handed over 2026-10-14 |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1928,9 +1927,22 @@ loss).
         each equal to its manifest's hash).
       - *RAR-M69:* 6.66% of clean wins not won (`hce-v5` 6.74%), so
         C.8.6's fit is not held.
-    - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
+    - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-14.** As
       C.8.2, without the initialization control, which C.8 runs in the
       first cycle only.
+      **Done 2026-10-14 (RAR-E61):**
+      - *Fit:* the candidate's tests stopped the first run on a KNN-KP
+        order test. The refit had activated a comparison on a position
+        Syzygy calls a draw. The test's precondition was fixed in its own
+        commit (`fd6bb30`), and the fit resumed. Both coordinate passes
+        converged, and validation loss fell 0.10%.
+      - *Candidate:* `75c3db5`, bench 14,126,183 / EBF 2.557.
+      - *Screens:* no flag. Donor families move 0.039 points or less;
+        magnitude shifts at most 5.2 cp up to 600; the tree shrinks
+        3.2% (geometric mean 1.007).
+      - *NPS:* −0.92% (95% −1.26% to −0.57%), clear of the −1.5% stop.
+      - *Gate 1* (dry run passed) is handed over, to run after RAR-M70's
+        runner checks pass.
     - **C.8.7 Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** As
       C.8.3. Before gate 1 come the runner checks the Colosseum 0.3.0
       re-pin owes under PROCESS's *Harness* triggers: a backup-path

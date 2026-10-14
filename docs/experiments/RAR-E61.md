@@ -58,4 +58,28 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Most likely failure mode: competing hypothesis 1, gate 1 at the cap or at H0.
 - **Falsification criteria:** gate 1 and gate 2 both fail: the second refit is no better, and C.8 stops at cycle 2.
 - **Cheapest prior falsifier:** the static screens (no game).
-- **Result:** pending; the fit has not run.
+- **Fit (2026-10-14, agent-run; `tools/results/hce-fit-20261014_212116`, from `c0c4c45` clean):**
+  - The first run fitted and baked, then stopped on the candidate's debug tests. `knnkp_stays_above_its_one_capture_neighbours` failed on `8/5N2/2N4K/3k4/8/8/6p1/8 w` and its mirror. The refit lifted that position's generic score to 20, which activated a comparison against the pawn-gone draw (0), and the KNN-KP adjustment scores it 0.
+    - Syzygy calls the position a draw: WDL 0, only Ne7+ and Nb4+ hold, and every other move loses. The 0 is therefore correct.
+    - Under the candidate's weights these were the test's only failing comparisons.
+    - The test's precondition was fixed in its own commit, `fd6bb30`: it now excludes a pawn one push from a promotion square that no knight holds or covers. The test then passes under the head's weights (11,838 active comparisons) and the candidate's (11,914), against its floor of 9,000. Bench is unchanged at 14,291,377, and fmt, clippy and the debug and release tests pass.
+    - The fit then resumed from its recorded run (`resume-20261014_213007`) and completed.
+  - Both coordinate passes converged (15 and 14 epochs). K is 1.6166. The polish's best validation epoch was 39 of 60 (0.09265154), against 0.09274854 for the baseline vector, so validation loss fell by 0.10%.
+  - The frozen test is unread, deferred to this ID as registered.
+- **Candidate:** `75c3db5`, the fit's `candidate-eval.patch` (`5528C4D0…`, as `summary.json` records), an engine commit of `src/eval/params.rs` and `src/eval/material.rs` only.
+  - **Bench 14,126,183 / EBF 2.557**, equal to the fit's `bench-candidate`.
+  - fmt, clippy (all features and targets, 0 warnings) and the debug (395) and release (396) tests pass; the two counts differ as they did at `bfd008a`.
+- **Pre-game reads (2026-10-14, `analysis/artifacts/c86/run_screens.sh`, `screens-status.txt`):** every reproduction passed. The head side's played, full and substituted dumps equal RAR-E60's candidate dumps byte for byte, and both `tune,diag` builds reproduce their `bench 13`.
+  - *(a) Donor screen,* head → candidate over all rows, RAR-E60's family set: material +0.071 → +0.032 (−0.039), passed +0.002 → +0.038 (+0.037), space −0.004 → +0.024, initiative +0.011 → +0.027, king +0.076 → +0.062, mobility +0.037 → +0.027, threats +0.052 → +0.043, pieces and queens +0.033 → +0.023, pawns +0.024 → +0.018. The largest move is 0.039 points. The donor's whole score adds +1.979 → +1.916 (all families together +1.131 → +1.139).
+  - *(c) Magnitude:* **no flag.** The largest shift toward the sign at or below 600 cp is −5.2 cp (101–300), and the share above the gate moves +0.16 points (24.73% → 24.89%).
+  - *(d) Tree read:* **no flag.** Total depth-12 nodes 12,102,045 → 11,714,307 (−3.2%); per-position geometric mean 1.007 (median 1.049; 35 grew and 31 shrank by more than 5%). The endgame band grows +13.2% and the middlegame bands shrink.
+  - *(e) Pooled-PGO NPS* (`c86/nps/read.log`, against RAR-E60's four `bfd008a` builds): levels 2,449,533 (head) and 2,427,104 (candidate), **−0.92%, 95% interval −1.26% to −0.57%**, no disturbed cycle, idle host. The stop rule (below −1.5%) does not fire. At about 2 Elo per 1%, that is about −2 Elo inside the gate's result.
+- **Gate 1 command** (dry run passed 2026-10-14, `tools/results/colosseum_sprt_rar-e61-gate1_20261014_215250.dry-run.json`: idle host, the pinned runner `colosseum-cli 0.3.0`, both fingerprints, flavour and compiler equality, policy in every checked field), from PowerShell, **after RAR-M70's runner checks pass**: `./tools/colosseum.ps1 -Mode sprt -Bracket default -EngineA tools/test_engines/rarog-c8cycle2-pext-pgo.exe -EngineB tools/test_engines/rarog-c8cycle1-pext-pgo.exe -NameA c8cycle2 -NameB c8cycle1 -MaxPairs 20000 -Seed 4205 -ExpectBench 14126183,14291377 -Dir tools/results/rar-e61-gate1`.
+  - Candidate arm: `rarog-c8cycle2-pext-pgo.exe` (`A3A11321…`, built clean at `75c3db5`, bench 14,126,183). Head arm: `rarog-c8cycle1-pext-pgo.exe` (`76CD1F3C…`).
+- **PREDICTION CALIBRATION (the reads now, gate 1 after its games):**
+  - Original prediction (not rewritten): items 1 to 5 above.
+  - (1) Hit: both passes converged, and validation loss fell below the baseline's.
+  - (2) Hit.
+  - (3) **Miss in magnitude:** the largest family move is 0.039 points against the predicted 0.03. Material (−0.039) and passed (+0.037) move most, in opposite directions. The refit takes more of the donor's material information and gives up some of its passed-pawn share.
+  - (4) Magnitude and tree read hit. **NPS is a miss:** −0.92% against ±0.5%. The same arm pair at C.8.2 read −0.48%, and a smaller tree does not bring a faster rate.
+- **Result:** pending gate 1, after RAR-M70.
