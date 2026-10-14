@@ -1852,8 +1852,42 @@ loss).
      and by evaluation term. Board work, evaluation, move generation and
      picking, TT, the search loop. The 2.4.0 split (board 24%, evaluation
      29%, search 23%) is stale.
-     - Out: a ranked list of hot spots with the cheapest plausible saving
-       each, and the evaluation's share of search time, which C.11 states
+     - Beside the profile, a code review of the evaluation, then the rest,
+       for every kind of saving. The list is a starting point, not a limit
+       (maintainer direction 2026-10-13):
+       - *Duplicate work:* the same attack set, king zone, pin set,
+         mobility area, popcount or square scan computed by more than one
+         term or more than once per node.
+       - *Caching and reuse:*
+         - what the pawn and eval caches key and hold, and what else is a
+           pure function of a cacheable key (pawn structure, king shelter
+           by king square);
+         - per-node shared inputs computed once and passed down;
+         - incremental state kept in make/unmake instead of recomputed;
+         - work skipped before an early exit (the lazy gate's order of
+           terms).
+       - *Data structures and layout:* bitboards against arrays, table
+         size, element width and packing, structure-of-arrays against
+         array-of-structures, cache-line alignment, precomputed masks and
+         lookup tables against arithmetic, and the hot path's memory
+         traffic.
+       - *Code generation:* inlining, bounds checks the compiler cannot
+         remove, branchy forms with branch-free equivalents, loop and
+         iterator shapes, `Option` and `Result` in the per-node path,
+         copies of large values (AGENTS' `memcpy` rule), and
+         auto-vectorisable shapes.
+       - *Build:* the PGO workload's representativeness, codegen units,
+         LTO, target features, and anything only the `texel` or `diag`
+         features should pay for.
+     - Out: a ranked list of candidates before any implementation. Each
+       carries:
+       - where it is;
+       - the profile share it touches and the cheapest plausible saving;
+       - the reason it is behaviour-neutral, or why it is not and so is out
+         of scope;
+       - its risk.
+
+       Also out: the evaluation's share of search time, which C.11 states
        against B.9's 24%.
      - A long profiling campaign is the maintainer's (AGENTS, *Expensive
        jobs*).
