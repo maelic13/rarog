@@ -753,6 +753,20 @@ mod endgame_311c_tests {
             if !distinct || !(8..56).contains(&bp) || KING_DISTANCE[wk][bk] < 2 {
                 continue;
             }
+            // A pawn one push from a promotion square that no knight holds or
+            // covers cannot be kept by the knights, so the position is not one
+            // they can win and its order against "the pawn gone" means nothing.
+            if bp < 16 {
+                let promotion = bp - 8;
+                let covers = |knight: usize| {
+                    let files = (knight % 8).abs_diff(promotion % 8);
+                    let ranks = (knight / 8).abs_diff(promotion / 8);
+                    knight == promotion || (files, ranks) == (1, 2) || (files, ranks) == (2, 1)
+                };
+                if !covers(n1) && !covers(n2) {
+                    continue;
+                }
+            }
             // A knight checking the side not to move is illegal. With only
             // knights and kings there are no discovered checks, so removing a
             // piece keeps a legal position legal, and mirroring keeps it too.
