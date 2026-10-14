@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; `hce-v6-tb` published and contract-checked, RAR-M69 does not hold the fit; next its registration (RAR-E61) before the fit |
+| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; RAR-E61 registered 2026-10-14 (prediction +4 Elo, band [−3, +11]); next the fit, then the screens, the tree and NPS reads and the handover of gate 1 |
 | C.8.7 | RESEARCH | V | Cycle 2 gate; before gate 1, the runner checks the 0.3.0 re-pin owes (backup-path cross-check, null pair) |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
