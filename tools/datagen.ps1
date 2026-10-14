@@ -430,6 +430,7 @@ try {
             '--nodes', "$Nodes", '--option', "Hash=$Hash", '--option', 'Threads=1',
             '--book', $OpeningSequence, '--book-order', 'sequential', '--book-start', "$($Start - 1)",
             '--seed', "$Seed", '--max-moves', '200', '--concurrency', "$Concurrency",
+            '--engine-processes', 'per-slot',
             '--progress-every', '2000', '--progress-min-secs', '60',
             '--dir', $runDir
         )
@@ -539,7 +540,8 @@ try {
             @("adjudication.resign", "$($resolved.adjudication.resign)", ""),
             @("adjudication.max_moves", "$($resolved.adjudication.max_moves)", "200"),
             @("participants", "$(@($resolved.plan.participants).Count)", "2"),
-            @("games_per_pair", "$($resolved.plan.design.games_per_pair)", "1")
+            @("games_per_pair", "$($resolved.plan.design.games_per_pair)", "1"),
+            @("engine_processes", "$($resolved.engine_processes)", "per-slot")
         )
         foreach ($entry in @($resolved.plan.participants)) {
             $launch = $entry.participant.launch

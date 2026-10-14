@@ -268,7 +268,11 @@ Shared conditions on both paths: `3+0.03`, Hash 64, one thread, the UHO book
 in random order, no adjudication, a 20 ms margin, and fourteen concurrent
 games on pinned physical cores that never include CPU 0. A tune runs fifteen,
 because both perturbation arms share a slot. `tools/colosseum/README.md` says
-which run file is for what.
+which run file is for what. On Colosseum every run, gauntlets and datagen
+included, keeps each slot's engine processes from game to game (maintainer
+decision 2026-10-14, with Colosseum 0.3.0); fresh processes per game
+(`--engine-processes per-game`) return only for a measured problem with kept
+engines.
 
 ### Toolchain and harness notes
 

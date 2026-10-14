@@ -42,7 +42,8 @@ or CPU-topology change on this host — and `calibrate-null.toml` is what runs i
 
 Shared conditions: `3+0.03`, Hash 64, one thread, the UHO book in random order,
 no adjudication, a 20 ms time margin, `--placement auto` with one physical core
-of headroom, and engine processes kept per slot. Gates run 14 concurrent games;
+of headroom, and engine processes kept per slot in every mode, gauntlets and
+datagen included (`colosseum.ps1` refuses anything else). Gates run 14 concurrent games;
 a tune runs 15, because both perturbation arms share one slot.
 
 ## Running one
@@ -115,9 +116,10 @@ from its registration cannot be tuned by accident.
 `colosseum.pin.json` names the source revision and the SHA-256. Only the hash
 can be enforced — a stripped release executable does not carry its revision —
 so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
-mismatch rather than substituting a build. Since 2026-09-25 the pin is the
-published release `cli-v0.2.0` (`ca05dfa2`; `cli-v0.1.0` at `40a15b1b` from
-2026-09-22 until then): its `archive` entry carries the
+mismatch rather than substituting a build. Since 2026-10-14 the pin is the
+published release `cli-v0.3.0` (`cb12cd3`; before it `cli-v0.2.0` at
+`ca05dfa2` from 2026-09-25, and `cli-v0.1.0` at `40a15b1b` from 2026-09-22):
+its `archive` entry carries the
 asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
 later release is an edit to that one file.
@@ -134,6 +136,15 @@ adds `spsa history` (the centre vector per iteration, read-only, live), the
 yet), an option-drop warning kept in the run record, and resume reporting
 fixes; its `history` output on the finished B.2.7 run rounds to that run's
 `tuned-options.txt` on all 82 coordinates.
+
+0.3.0 counts the start position for threefold repetition, as the Laws of
+Chess do. It also keeps a tournament's engine processes per slot, as every
+other command does, and writes engine input from one thread per engine. Its
+re-pin was qualified as above (`test_colosseum_guards.ps1` 55/55 with the
+new per-slot cases, dry runs of every mode). Beyond that, a 3,000-game
+datagen pilot through `datagen.ps1` is identical to fastchess's in every
+game, and identical fixed-node self-play runs take 28% less wall time than
+under fastchess (`analysis/c84_colosseum_datagen_gap_2026-10-14.md`).
 
 ## The backup path
 

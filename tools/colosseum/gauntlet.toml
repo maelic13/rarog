@@ -8,14 +8,13 @@
 #     --engine <opponent.exe> --label "..." --rating <n> --fixed 2:<rating> \
 #     --games-per-pair 2 --cycles <n> --seed <n> --dir tools/results/<name>
 #
-# A tournament starts fresh engine processes for every game, as the desktop
-# application does, so the kept-engine default is dropped here. Foreign engines
-# that predate a 20 ms margin are charged the desktop's 2,000 ms instead
-# (--margin-ms), which is a condition of the comparison, not a harness setting.
+# Each slot keeps its engine processes from game to game, as every other run
+# does (inherited from common.toml). Foreign engines that predate a 20 ms
+# margin are charged the desktop's 2,000 ms instead (--margin-ms), which is a
+# condition of the comparison, not a harness setting.
 
 extend = "common.toml"
 command = ["tournament", "run"]
-unset = ["/options/engine-processes"]
 
 [options]
 concurrency = 14

@@ -590,6 +590,12 @@ if ("$($resolved.execution.placement_policy.mode)" -ne "auto") {
 if ([int]$resolved.execution.placement_policy.headroom_physical_cores -lt 1) {
     Add-Violation "placement leaves no physical core of headroom"
 }
+# Every run keeps each slot's engine processes between games. A command's
+# default has changed between runner versions, so the resolved value is read.
+$processes = $resolved.PSObject.Properties['engine_processes']
+if (-not $processes -or "$($processes.Value)" -ne 'per-slot') {
+    Add-Violation "engine processes are '$(if ($processes) { $processes.Value } else { 'unstated' })', expected per-slot"
+}
 if ([int]$resolved.master_seed -ne $Seed) {
     Add-Violation "resolved seed is $($resolved.master_seed), expected $Seed"
 }
