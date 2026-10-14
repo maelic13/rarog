@@ -87,4 +87,35 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
     - **Read by the maintainer, 2026-10-13 21:49–21:56** (`nps/read3/read.txt`, `raw.json` `3498ab16…`): no disturbed cycles. Levels 2,430,577 (head) and 2,418,864 (candidate), **−0.48%, 95% interval −0.93% to −0.04%**; the tool's verdict is "closed NO_CHANGE by step 1".
     - The stop rule does not fire, so gate 1 may start. At about 2 Elo per 1% at `3+0.03`, the slowdown is worth about −1 Elo inside the gate's result. It is a slightly larger tree (+3.4%) at nearly the same rate, not a cost in the evaluation's code.
 - **Gate 1 command** (dry run passed 2026-10-13, `tools/results/colosseum_sprt_rar-e60-gate1_20261013_214729.dry-run.json`: idle host at 4%, pinned runner `colosseum-cli 0.2.0`, both fingerprints, flavour and compiler equality, policy in every checked field), from PowerShell, after the NPS read clears its stop: `./tools/colosseum.ps1 -Mode sprt -Bracket default -EngineA tools/test_engines/rarog-c8cycle1-pext-pgo.exe -EngineB tools/test_engines/rarog-c8head-pext-pgo.exe -NameA c8cycle1 -NameB c8head -MaxPairs 20000 -Seed 4203 -ExpectBench 14291377,14197472 -Dir tools/results/rar-e60-gate1`. Candidate arm `rarog-c8cycle1-pext-pgo.exe` (`76CD1F3C…`, built at `bfd008a`, clean, bench 14,291,377); head arm C.8.1's `rarog-c8head-pext-pgo.exe` (`E73E3230…`).
+- **Gate 1 (played 2026-10-13 22:00–23:16 local, by the maintainer; `tools/results/rar-e60-gate1`, manifest `colosseum_sprt_rar-e60-gate1_20261013_220004.manifest.txt`):**
+  - *Conditions, checked from the manifest:* the registered arms (`76CD1F3C…` at `bfd008a`, bench 14,291,377; `E73E3230…` at `c72b41c`, bench 14,197,472; both clean), the pinned runner (`colosseum-cli 0.2.0`, `5A4ECEDB…` at `ca05dfa`), UHO seed 4203, no adjudication; host 5.0% busy with no waiver; repository at `4ae41f9`.
+  - **H1 accepted** at 3,601 pairs (7,202 games): **+11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo** (a first-crossing estimate, inflated by the early stop), W/D/L 1,920 / 3,589 / 1,693, pentanomial [99, 794, 1,614, 969, 125], LLR +2.95 against ±2.94.
+  - No faults (time 0–0, other 0–0, of 36 allowed). 15 post-terminal pairs are kept as evidence and excluded from the sample.
+- **Disposition:** **accepted.** Gate 1 passed and no screen flagged, so by the frozen use it accepts.
+  - The fingerprint **14,291,377 / EBF 2.538** becomes the development fingerprint on branch `c7`.
+  - PROCESS step 4's question goes to the maintainer: whether a free night makes the optional margin block worth running anyway, and how its margins are accepted if it runs.
+  - C.8.3 owes the `10+0.1` direction read (step 6), registered below.
+  - The frozen test was consumed by the initialization control, as registered.
+  - Cycle 2 of C.8 opens only after C.8.3 closes, and its regeneration waits on C.8.4 (datagen on Colosseum).
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 6 above.
+  - Observed:
+    - (1) Coordinate passes converged in both arms, hit; N's validation loss above A's, hit (0.09530 against 0.09315). N's linear and polish stages also ran to their budget.
+    - (2) A is the candidate, hit; A below D at two clustered SE, hit at the boundary (2.18).
+    - (3) hit.
+    - (4) hit (0.028 points the largest move).
+    - (5) magnitude, tree and NPS, all hit (no flag, +3.4%, −0.48%).
+    - (6) **miss in magnitude**: gate 1 crossed H1 at +11.0 ± 4.9 Elo against a prediction of +2 with an 80% band to +8, and the pass (probability 0.3) happened.
+  - Which assumption failed:
+    - I sized the gain from the frozen test's static improvement (+0.08% of loss) and from RAR-M68's unchanged label quality, so I expected little.
+    - Games say the refit's value lies where neither measure looks. The likeliest candidates are positions drawn from the current engine's own play, which a frozen test of the same distribution cannot show as a large loss drop, and coefficients the C units fitted one at a time on `hce-v4-tb` being set jointly here. The mechanism is unmeasured.
+    - Part of the size is the early stop: first-crossing estimates overstate.
+    - The miss is in magnitude and in the instrument I sized it with: static loss has no exchange rate to Elo, as AGENTS says, and I leaned on one anyway.
+- **Conditional lesson:** a refit on regenerated data is not sized by its static frozen-test gain; register a regeneration's prediction from earlier regenerations' game results (RAR-E12 +11.8, RAR-E24), not from loss.
+- **C.8.3 registration (2026-10-14, before any `10+0.1` game):**
+  - **The `10+0.1` direction read (PROCESS step 6):** 1,000 games, `match-fixed-ltc.toml`, the gate-1 arms, UHO seed 4204, no adjudication.
+    - Use, frozen: a point estimate below 0 Elo reopens the cycle (C.8 back to `RESEARCH`, and the maintainer decides). 0 or above leaves the acceptance standing, and with the margin-block question answered, C.8.3 closes. It accepts nothing on its own.
+  - **Prediction:** **+7 Elo**, 80% band [−5, +19]; probability of 0 or above 0.8. Basis: gate 1's +11.0 discounted for its early stop. The earlier corpus refit held its size at `10+0.1` (RAR-E24, +35.9 then +39.1).
+  - **Command,** from PowerShell: `./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/match-fixed-ltc.toml -EngineA tools/test_engines/rarog-c8cycle1-pext-pgo.exe -EngineB tools/test_engines/rarog-c8head-pext-pgo.exe -NameA c8cycle1 -NameB c8head -Games 1000 -BaseMs 10000 -IncrementMs 100 -Seed 4204 -ExpectBench 14291377,14197472 -Dir tools/results/rar-e60-ltc`.
+    - Its dry run on 2026-10-14 was refused by the harness's idle check, because a Basilisk tune was running (`analysis/artifacts/c82/dryrun-ltc.log`). The dry run is owed on an idle host before the read.
 - **Artifacts:** `analysis/artifacts/c82/` (ignored storage): `run_fits.sh`, `fits-status.txt`, `neutral.txt`, `defaults.txt`, `fitA.log`, `fitN.log`, `fitA2.log` (the refused fresh fit), `fitA-resume.log`, `compare.log`, `test-A.csv`, `test-N.csv`, `test-D.csv`, `provenance_split.py`, `provenance-test.csv`, `init_control.py`, `init_control.json`, `kfix-*.log`, `run_screens.sh`, `screens-status.txt`, the dumps and reports, `magnitude.txt`, `tree_d12.txt`, `run_nps.sh`, `nps/`, `nps-status.txt`, `build-gate-cand.log`, `dryrun-gate1.log`; the fits in `tools/results/hce-fit-20261013_210320/` (with `resume-20261013_211626/`) and `tools/results/hce-fit-20261013_210532/`.
