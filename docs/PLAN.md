@@ -71,7 +71,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
-| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C |
+| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
 band, and the B.9 head scores at least 50% against all four E.2 targets at 1T
@@ -296,6 +296,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 |---|---|---|---|
 | C.8.3 | RESEARCH | V | Gate 1 H1 (2026-10-13, +11.0 ± 4.9 Elo), accepted; margin block skipped (maintainer, 2026-10-14); owed: the `10+0.1` read (registered; dry run when the host is idle) |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
+| C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -1836,6 +1837,46 @@ loss).
   C.5.2 is frozen, each later unit appends its expected movement before the
   match, and the budget row is corrected by its reading, never by an
   estimate.
+- **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2`.** Added
+  2026-10-13 (maintainer request). B.7 was the search's speed pass (about
+  20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
+  evaluation: the king-danger index and shelter, threats, passer and pawn
+  terms, the endgame scale and recognisers. Its speed has only been
+  accounted, unit by unit, never optimised. The budget row "Speed inside B
+  and C" (10–30 Elo) has no other owner. It runs after C.8, whose cycles
+  change numbers and not code, so the rewrites survive later refits. It runs
+  before C.9 and C.10, whose tunes play at time controls and should see the
+  final speed.
+  1. **Profile (`R2`):** a fresh profile of the accepted head at `bench 13`
+     and in a short self-play sample (`tools/profile_etw.ps1`), by function
+     and by evaluation term. Board work, evaluation, move generation and
+     picking, TT, the search loop. The 2.4.0 split (board 24%, evaluation
+     29%, search 23%) is stale.
+     - Out: a ranked list of hot spots with the cheapest plausible saving
+       each, and the evaluation's share of search time, which C.11 states
+       against B.9's 24%.
+     - A long profiling campaign is the maintainer's (AGENTS, *Expensive
+       jobs*).
+  2. **Rewrites (`I2`):** the new evaluation code first (the shared
+     attack-map producer and what each term recomputes, the pawn and eval
+     caches, the lazy path's cost below the gate). Then re-check B.7's
+     search, move generation, make/unmake and the TT. Build settings too:
+     PGO workload, codegen units, LTO, target features.
+     - Each change is its own commit and is proven exact: fingerprint (14,291,377 / EBF 2.538 today),
+       debug and release suites, clippy, B.7.1's allocation guard, no
+       `memcpy` on the per-node path (AGENTS), and a pooled-PGO NPS read
+       (`nps_build_pool.ps1`, `nps_read.py`) on an idle host.
+     - Search-side changes are behaviour-neutral under the search freeze
+       and listed in D.3's change log with their fingerprints.
+     - No games: an exact fingerprint means unchanged behaviour, so the
+       speed converts to Elo at about 2 per 1% (RAR-S98).
+  3. **Stop:** when the next ranked candidate's measured gain sits inside
+     the instrument's resolution (about ±0.5%), or the list is exhausted.
+     The step's record gives the total pooled gain against the head it
+     started from.
+  - **Not in scope:** anything that changes a node count, a score or a move
+    (that is an engine change with its own gate), and NNUE inference
+    (F.5).
 
 ## Phase D — Clock, threads, robustness
 

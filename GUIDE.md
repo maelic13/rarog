@@ -71,6 +71,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
 - [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **RESEARCH / V**
 - [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
+- [ ] **C.12** Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — **RESEARCH / R2**
 
 ## Phase D — Clock, threads, robustness
 
