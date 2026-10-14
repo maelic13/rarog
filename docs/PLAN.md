@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.3 | RESEARCH | V | Gate 1 H1 (2026-10-13, +11.0 ± 4.9 Elo), accepted; owed: the maintainer's margin-block answer and the `10+0.1` read (registered; dry run when the host is idle) |
+| C.8.3 | RESEARCH | V | Gate 1 H1 (2026-10-13, +11.0 ± 4.9 Elo), accepted; margin block skipped (maintainer, 2026-10-14); owed: the `10+0.1` read (registered; dry run when the host is idle) |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1753,10 +1753,10 @@ loss).
         first-crossing estimate), no faults, no screen flag. The
         fingerprint 14,291,377 / EBF 2.538 becomes the development
         fingerprint on `c7`.
-      - *Owed:* the maintainer's answer on the optional margin block
-        (PROCESS step 4), and the `10+0.1` direction read (1,000 games,
-        registered 2026-10-14). That read's dry run waits for an idle host;
-        a Basilisk tune was running.
+      - *Owed:* the `10+0.1` direction read (1,000 games, registered
+        2026-10-14). Its dry run waits for an idle host; a Basilisk tune was
+        running. The optional margin block is skipped (maintainer decision
+        2026-10-14).
       - *Rule:* below 0 Elo the cycle reopens; 0 or above, C.8.3 closes.
     - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
       matches, gauntlets and tunes run on Colosseum. `tools/datagen.ps1`

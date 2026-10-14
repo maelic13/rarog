@@ -112,6 +112,7 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
     - Part of the size is the early stop: first-crossing estimates overstate.
     - The miss is in magnitude and in the instrument I sized it with: static loss has no exchange rate to Elo, as AGENTS says, and I leaned on one anyway.
 - **Conditional lesson:** a refit on regenerated data is not sized by its static frozen-test gain; register a regeneration's prediction from earlier regenerations' game results (RAR-E12 +11.8, RAR-E24), not from loss.
+- **Maintainer decision 2026-10-14: the optional margin block is skipped** (PROCESS step 4); the acceptance rests on gate 1 and the `10+0.1` read.
 - **C.8.3 registration (2026-10-14, before any `10+0.1` game):**
   - **The `10+0.1` direction read (PROCESS step 6):** 1,000 games, `match-fixed-ltc.toml`, the gate-1 arms, UHO seed 4204, no adjudication.
     - Use, frozen: a point estimate below 0 Elo reopens the cycle (C.8 back to `RESEARCH`, and the maintainer decides). 0 or above leaves the acceptance standing, and with the margin-block question answered, C.8.3 closes. It accepts nothing on its own.
