@@ -48,7 +48,11 @@ def load_datagen_provenance(paths: list[Path]) -> tuple[list[dict], dict]:
         except (OSError, json.JSONDecodeError) as error:
             raise SystemExit(f"invalid datagen manifest {manifest_path}: {error}") from error
         schema = manifest.get("schema")
-        if schema not in {"rarog-datagen-v1", "rarog-fastchess-datagen-v2"}:
+        if schema not in {
+            "rarog-datagen-v1",
+            "rarog-fastchess-datagen-v2",
+            "rarog-colosseum-datagen-v1",
+        }:
             raise SystemExit(f"unexpected datagen schema in {manifest_path}")
         if schema == "rarog-datagen-v1":
             output_path = manifest.get("output_pgn", "")

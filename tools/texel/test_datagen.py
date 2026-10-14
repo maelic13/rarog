@@ -13,6 +13,7 @@ import chess.pgn
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import extract
 import extract_parallel
+import opening_sequence
 import sample_fens
 
 
@@ -164,6 +165,95 @@ class SeedSamplerTests(unittest.TestCase):
         self.assertEqual(sample_fens.phase_bucket(chess.STARTING_FEN), 0)
         kings_and_pawn = "4k3/8/8/8/8/8/P7/4K3 w - -"
         self.assertEqual(sample_fens.phase_bucket(kings_and_pawn), 4)
+
+
+class CommentScoreTests(unittest.TestCase):
+    def test_both_runners_give_the_same_white_score(self):
+        cases = (
+            ("+1.75/6 0.010s", "s=175 d=6 t=10ms h=1ms n=7456", 175.0),
+            ("-0.40/9 0.004s", "s=-40 d=9 t=4ms n=6000", -40.0),
+            ("+M5/12 0.002s", "s=#5 d=12 t=2ms", extract.CP_CLAMP),
+            ("-M3/12 0.002s", "s=#-3 d=12 t=2ms", -extract.CP_CLAMP),
+            ("+31.00/4 0.001s", "s=3100 d=4", extract.CP_CLAMP),
+        )
+        for fastchess, colosseum, mover_cp in cases:
+            for white_to_move in (True, False):
+                expected = mover_cp if white_to_move else -mover_cp
+                with self.subTest(colosseum=colosseum, white_to_move=white_to_move):
+                    self.assertEqual(extract.comment_cp_white(fastchess, white_to_move), expected)
+                    self.assertEqual(extract.comment_cp_white(colosseum, white_to_move), expected)
+
+    def test_comments_without_a_score_give_none(self):
+        for comment in ("", "book", "{forfeit}", "d=6 t=10ms n=7456", "hs=12 d=3"):
+            with self.subTest(comment=comment):
+                self.assertIsNone(extract.comment_cp_white(comment, True))
+
+    def test_parallel_provenance_accepts_colosseum_schema(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.pgn"
+            path.write_text("test pgn\n", encoding="utf-8")
+            manifest = {
+                "schema": "rarog-colosseum-datagen-v1",
+                "output": {
+                    "path": str(path.resolve()),
+                    "bytes": path.stat().st_size,
+                    "sha256": extract.sha256_file(path),
+                },
+                "engine": {"sha256": "engine", "git_sha": "commit", "git_dirty": False},
+                "book": {"sha256": "book", "seed": 42, "start": 1, "end": 1},
+                "games": 1,
+                "nodes_per_move": 8000,
+                "adjudication": {"Name": "datagen-v2"},
+            }
+            path.with_suffix(".manifest.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+            records, contract = extract_parallel.load_datagen_provenance([path])
+            self.assertEqual(records[0]["book_end"], 1)
+            self.assertEqual(contract["book_seed"], 42)
+
+
+class OpeningSequenceTests(unittest.TestCase):
+    BOOK = {
+        "k7/8/8/8/8/8/8/K7 w - -": "k7/8/8/8/8/8/8/K7 w - -",
+        "k7/8/8/8/8/8/8/1K6 w - -": "k7/8/8/8/8/8/8/1K6 w - -",
+        "k7/8/8/8/8/8/8/2K5 b - -": "k7/8/8/8/8/8/8/2K5 b - -",
+    }
+
+    def test_sources_merge_by_offset_and_stop_at_the_first_gap(self):
+        keys = list(self.BOOK)
+        pilot = {1: keys[2]}
+        continuation = {2: keys[0], 3: keys[1], 5: keys[0]}
+        sequence = opening_sequence.build_sequence([pilot, continuation], self.BOOK)
+        self.assertEqual(sequence, [self.BOOK[keys[2]], self.BOOK[keys[0]], self.BOOK[keys[1]]])
+
+    def test_disagreeing_sources_are_refused(self):
+        keys = list(self.BOOK)
+        with self.assertRaises(SystemExit):
+            opening_sequence.build_sequence([{1: keys[0]}, {1: keys[1]}], self.BOOK)
+
+    def test_an_opening_outside_the_book_is_refused(self):
+        with self.assertRaises(SystemExit):
+            opening_sequence.build_sequence([{1: "8/8/8/8/8/8/8/k6K w - -"}], self.BOOK)
+
+    def test_a_pgn_fen_maps_to_its_book_line(self):
+        self.assertEqual(
+            opening_sequence.position_key("k7/8/8/8/8/8/8/K7 w - - 0 1"),
+            "k7/8/8/8/8/8/8/K7 w - -",
+        )
+
+    def test_rounds_read_from_tag_lines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.pgn"
+            path.write_text(
+                '[Round "2"]\n[FEN "k7/8/8/8/8/8/8/K7 w - - 0 1"]\n\n1. Kb1 *\n\n'
+                '[Round "1"]\n[FEN "k7/8/8/8/8/8/8/1K6 w - - 0 1"]\n\n1. Kc1 *\n',
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                opening_sequence.read_rounds(path),
+                {2: "k7/8/8/8/8/8/8/K7 w - -", 1: "k7/8/8/8/8/8/8/1K6 w - -"},
+            )
 
 
 if __name__ == "__main__":

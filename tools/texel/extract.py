@@ -68,6 +68,9 @@ PIECE_VAL = {
 
 # fastchess comment: "+0.25/12 0.013s" or mate "+M5/12 0.002s".
 COMMENT_CP = re.compile(r"^([+-]?)(M?)(\d+(?:\.\d+)?)/")
+# Colosseum comment (colosseum-move-comment/3): "s=25 d=12 t=13ms h=1ms n=7456",
+# centipawns or "s=#5" / "s=#-5" for a mate, from the mover's point of view.
+COMMENT_COLOSSEUM = re.compile(r"(?:^|\s)s=(#?)(-?\d+)(?:\s|$)")
 CP_CLAMP = 2000
 
 
@@ -131,11 +134,20 @@ def has_winning_capture(board: "chess.Board") -> bool:
 
 
 def comment_cp_white(comment: str, white_to_move: bool) -> float | None:
-    match = COMMENT_CP.match(comment.strip())
-    if not match:
-        return None
-    sign = -1.0 if match.group(1) == "-" else 1.0
-    cp = sign * (CP_CLAMP if match.group(2) else float(match.group(3)) * 100.0)
+    text = comment.strip()
+    match = COMMENT_CP.match(text)
+    if match:
+        sign = -1.0 if match.group(1) == "-" else 1.0
+        cp = sign * (CP_CLAMP if match.group(2) else float(match.group(3)) * 100.0)
+    else:
+        match = COMMENT_COLOSSEUM.search(text)
+        if not match:
+            return None
+        value = int(match.group(2))
+        if match.group(1):
+            cp = float(CP_CLAMP if value >= 0 else -CP_CLAMP)
+        else:
+            cp = float(value)
     cp = max(-CP_CLAMP, min(CP_CLAMP, cp))
     return cp if white_to_move else -cp
 
