@@ -294,7 +294,9 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14 on `colosseum-cli 0.3.0` (pinned `c5f11b1`): `datagen.ps1 -Runner colosseum` matches fastchess in 3,000 of 3,000 pilot games and runs 28% faster; kept engine processes in every mode (maintainer decision 2026-10-14); held on the maintainer: step 4's retire-or-keep decision for each fastchess and weather-factory consumer; must land before cycle 2's regeneration |
+| C.8.5 | RESEARCH | V | Cycle 2 regeneration (`hce-v6`): the cycle-1 head labels on Colosseum; RAR-M69 registered before the pilot; the generation is the maintainer's |
+| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; after C.8.5 |
+| C.8.7 | RESEARCH | V | Cycle 2 gate; before gate 1, the runner checks the 0.3.0 re-pin owes (backup-path cross-check, null pair) |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1758,7 +1760,7 @@ loss).
         21.5 nElo (1,000 games), no faults; predicted +7. By the frozen
         rule (below 0 reopens) the acceptance stands. Cycle 1 accepted, so
         cycle 2 opens; its regeneration waits on C.8.4.
-    - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
+    - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`, DONE 2026-10-14.** Gates,
       matches, gauntlets and tunes run on Colosseum. `tools/datagen.ps1`
       still drives fastchess (alpha 1.8.0) directly: `hce-v4` and `hce-v5`
       were generated through it, with fastchess's raw per-game console output
@@ -1869,8 +1871,30 @@ loss).
           per-slot cases;
         - dry runs of sprt, match, calibrate and gauntlet pass, and a
           280-game `3+0.03` match has no faults and its recount agrees.
-        Steps 1–3 are done. Step 4 (retire or keep each fastchess and
-        weather-factory consumer) waits on the maintainer.
+        Steps 1–3 are done.
+      - *Step 4, maintainer decision 2026-10-14:* every fastchess and
+        weather-factory consumer is kept as backup only, until the
+        maintainer retires them. This is recorded in AGENTS and PROCESS's
+        *Harness* section, whose cross-check triggers are unchanged. The
+        re-pin fires two of them, a runner change and a Colosseum version
+        change, so C.8.7 owes the cross-check and the null pair before its
+        gate 1.
+    - **C.8.5 Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — `V`.** As
+      C.8.1. The labeller is the accepted cycle-1 head,
+      `rarog-c8cycle1-pext-pgo.exe` (`76CD1F3C…`, bench 14,291,377, built
+      at `bfd008a`; the engine source is unchanged since). The rest is
+      also as C.8.1: the same book, seed 10403 from start 1, 8,000 nodes
+      and `datagen-v2`. It runs through `datagen.ps1 -Runner colosseum`.
+      The generation is the maintainer's.
+    - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
+      C.8.2, without the initialization control, which C.8 runs in the
+      first cycle only.
+    - **C.8.7 Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** As
+      C.8.3. Before gate 1 come the runner checks the Colosseum 0.3.0
+      re-pin owes under PROCESS's *Harness* triggers: a backup-path
+      cross-check (a fixed match on the same arms under both runners)
+      and the null pair (RAR-M03). A third cycle opens only if this one
+      accepts.
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console

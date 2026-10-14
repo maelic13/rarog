@@ -212,8 +212,9 @@ movetime or nodes only for deterministic diagnostics.
 
 ### Harness
 
-**Colosseum CLI is the main path** for gates, fixed matches, tunes, null pairs
-and gauntlets (PLAN B.2.6, maintainer decision 2026-09-21). `tools/colosseum.ps1`
+**Colosseum CLI is the main path** for gates, fixed matches, tunes, null pairs,
+gauntlets (PLAN B.2.6, maintainer decision 2026-09-21) and datagen (PLAN C.8.4,
+2026-10-14). `tools/colosseum.ps1`
 drives it from the committed run files in `tools/colosseum/`, which carry the
 conditions every Rarog measurement shares; the cap, the seed and the run
 directory stay on the command line, because they belong to the registration in
@@ -223,11 +224,12 @@ that is not the pinned one is refused, not substituted. The harness is
 qualified in its own repository (Colosseum PLAN Phase 10, with Rarog as the
 validation engine) and Rarog repeats none of that qualification.
 
-**fastchess and weather-factory stay installed, working and documented** as the
-backup and the second opinion, at least until release 2.5.0. `sprt.ps1`,
-`spsa.ps1`, their books, their patches and `setup_tools.ps1`'s staging of them
-are maintained, not deprecated; retirement is reviewed at that release and not
-before. Both paths call one implementation of every guard
+**fastchess and weather-factory stay installed, working and documented** as
+backup only, the second opinion (maintainer decisions 2026-10-04 and
+2026-10-14). `sprt.ps1`, `spsa.ps1`, `gauntlet.ps1`,
+`datagen.ps1 -Runner fastchess`, their books, their patches and
+`setup_tools.ps1`'s staging of them are maintained, not deprecated. They
+retire only on a maintainer decision recorded in AGENTS. Both paths call one implementation of every guard
 (`tools/harness_common.ps1`), so they cannot come to disagree about what a
 measurable binary is.
 
@@ -771,9 +773,9 @@ cargo xtask verify-isa --arch pext
 ```
 
 ```powershell
-# BACKUP PATH — fastchess and weather-factory, kept working until at least
-# 2.5.0. Use it for a cross-check on the triggers in "Harness", and say in the
-# registration which runner a result came from.
+# BACKUP PATH — fastchess and weather-factory, kept working as backup only until
+# a maintainer decision retires them. Use it for a cross-check on the triggers in
+# "Harness", and say in the registration which runner a result came from.
 # [3,10] is the fastchess wrapper's default and is WRONG for a small candidate:
 # wide bounds anchored high drive a true +4 to H0.
 ./tools/sprt.ps1 -EngineA <candidate.exe> -EngineB <baseline.exe> `

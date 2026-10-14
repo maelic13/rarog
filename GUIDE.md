@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.8.4** (`I1`): Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision.
+**Now: C.8.5** (`V`): Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69).
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -67,7 +67,10 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.8.1** Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — DONE 2026-10-13
     - [x] **C.8.2** Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — DONE 2026-10-13
     - [x] **C.8.3** Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — DONE 2026-10-14
-    - [ ] **C.8.4** Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — **RESEARCH / I1**
+    - [x] **C.8.4** Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — DONE 2026-10-14
+    - [ ] **C.8.5** Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — **RESEARCH / V**
+    - [ ] **C.8.6** Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — **RESEARCH / V**
+    - [ ] **C.8.7** Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — **RESEARCH / V**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
 - [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **RESEARCH / V**
 - [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
@@ -137,7 +140,7 @@ and is frozen at `ee02ed1` for Phase C.
 |---|---|---|
 | Tags `archive/pr2-version-2.5.0`, `archive/pr3-tag-driven-release`, `archive/pr4-release-checks`: the `dev` chains squash-merged as PRs #2–#4 | Confirmed by the citation sweep (2026-10-09): every commit they hold is under PRs #2–#6 (`refs/pull/<n>/head`) and `check_citations.py` passes without them, so they hold nothing the documents need; the maintainer deletes them (`git push origin --delete archive/pr2-version-2.5.0 archive/pr3-tag-driven-release archive/pr4-release-checks`, then `git tag -d` each) | C.11's ref review |
 | Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1`. Forfeit-margin evidence for D.1.2: the three time losses in gates since 2026-10-10 (RAR-E29 round 3068, RAR-E32 rounds 1777 and 1855; Colosseum's `failed-games` records) each came on a short search (2, 15 and 32 ms of engine time) whose process the OS then held for 88.0, 82.4 and 69.4 ms, so the move arrived at 94.3, 99.9 and 90.8 ms against deadlines of 89.2, 69.9 and 75.0 ms; all three in games already decided on the board. A margin under about 90 ms with that little clock left does not cover one such hold. A fourth came at `10+0.1` (RAR-E42's read, round 875: an 81 ms search, a 129.3 ms hold, the move at 194.8 ms against a 163.4 ms deadline), so the holds reach past 120 ms | Scheduled as PLAN **D.1.2.1** (the stalls) and **D.1.2.2** (the forfeit margin), first in D.1 after Phase C, gated with D.1.2.3; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2.1 and D.1.2.2 close (owners) |
-| C.8.4, datagen on Colosseum: steps 1–3 done 2026-10-14 on the pinned `colosseum-cli 0.3.0` (`c5f11b1`). The pilot is identical to fastchess's in 3,000 of 3,000 games and 28% faster, and kept engine processes are the standard in every mode (maintainer decision 2026-10-14) | The maintainer records step 4's retire-or-keep decision for each fastchess and weather-factory consumer in AGENTS; PROCESS's *Harness* section changes with it | Cycle 2's regeneration |
+| Colosseum 0.3.0 re-pin (2026-10-14, `c5f11b1`): PROCESS's *Harness* triggers (a runner change and a Colosseum version change) owe a backup-path cross-check, a fixed match on the same arms under both runners, and a null pair (`-Mode calibrate`, RAR-M03). Fixed-node datagen is already proven identical to fastchess's (C.8.4) | The maintainer runs both before the next timed gate; the agent prepares the commands at C.8.7 | C.8.7's gate 1 |
 
 Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows (the order can differ from the numbering). Held items stay unticked in place.
 
