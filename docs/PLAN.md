@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); step 1 done 2026-10-14: no functional gap (`tournament run`, one game per encounter), the frozen opening sequence recoverable from fastchess's `Round` tags, Colosseum about 36% slower at 8,000 nodes; next the port (step 2); must land before cycle 2's regeneration; fastchess's retirement is the maintainer's recorded decision |
+| C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); steps 1–3 done 2026-10-14: `datagen.ps1 -Runner colosseum` (`8bd33d2`), pilot equivalent except 6 of 3,000 games a Colosseum repetition defect lengthens by one ply; held on the maintainer: the Colosseum fix and re-pin (then the pilot is re-run), and step 4's retire-or-keep decision; must land before cycle 2's regeneration |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1812,6 +1812,35 @@ loss).
         plies), about 4.6 h against 6.3 h at 595,240 games. It loses
         nothing in the contract; a request to Colosseum is the
         maintainer's choice.
+      **Steps 2 and 3, 2026-10-14** (same analysis):
+      - *Port* (`8bd33d2`): `datagen.ps1 -Runner colosseum`, the
+        default, plays the ordered sequence
+        `phase_book_v1-s10403.order.epd` (612,747 starts, written by
+        `opening_sequence.py`) and keeps every guard. After the run it
+        checks the runner's records and one game per opening of the
+        segment before writing a `rarog-colosseum-datagen-v1` manifest.
+        `-Runner fastchess` is unchanged.
+      - *Equivalence:* the 3,000-game pilot has the fastchess pilot's
+        opening set, 2,994 games identical move for move, every result
+        equal and the same preflight count (595,240).
+      - *The 6 other games* are a Colosseum rules defect: the setup
+        position is never counted for threefold repetition
+        (`runner.rs` at `ca05dfa`), so a game whose start recurs
+        plays one ply past FIDE's draw. 0 of RAR-E60's 8,232 gate games
+        are affected. The fix is with the maintainer; after its
+        re-pin the pilot is re-run.
+      - *Step 4, inventory for the maintainer's decision:*
+        `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
+        `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
+        filter), `pgn_result.ps1` and `pgn_depth_at_nodes.py` (PGN
+        readers for fastchess output), `setup_tools.ps1` (stages both),
+        `harness_common.ps1`'s fastchess helpers,
+        `datagen.ps1 -Runner fastchess`, `spsa_config_to_colosseum.py`
+        and `colosseum_parity.py` (the cross-check), and the prose
+        mentions in `build_test.ps1`, `build_book.py`,
+        `sample_fens.py` and `colosseum/common.toml`. AGENTS and
+        PROCESS's *Harness* section keep both as backup and second
+        opinion until a recorded decision.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.

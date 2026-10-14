@@ -70,3 +70,55 @@ engine's whole-millisecond `info time`, so the wall time is the evidence and
 `h` only locates it: per-move latency at very short searches. At `hce-v5`'s
 595,240 games the difference is about 4.6 h against 6.3 h. Nothing in the
 contract is lost, so it does not block the port.
+
+## Port and equivalence (steps 2 and 3), 2026-10-14
+
+**Port** (`8bd33d2`). `datagen.ps1 -Runner colosseum` (now the default;
+`-Runner fastchess` is unchanged and prints the C.8.1 pilot's exact command)
+runs `tournament run` as above on `-OpeningSequence`, the book's lines in
+fastchess's seed order, read sequentially from `-Start − 1`.
+`tools/texel/opening_sequence.py` writes that sequence and a sidecar binding it
+to the book's SHA-256, the seed and its source PGNs. From the `b9head`,
+`e08head` and `c8head` corpora and both pilots it recovered **612,747** starts
+(`phase_book_v1-s10403.order.epd`, `F0CF3E07…`; all five sources agree; every
+start is a book line). Before the first game the wrapper refuses a sequence
+whose sidecar names another book or seed or another file, a segment past the
+recovered sequence, and the legacy adjudication profiles. After the run it
+reads the runner's records, not its console: completed, every game scored,
+zero engine faults (`Assert-ColosseumRunFaults`, made safe under strict mode
+in the same commit), the resolved openings range, order, wrap, node limit,
+adjudication, cap and engine. It then checks the PGN's starts against the
+sequence's lines from `-Start` to the end: one game per opening and none
+outside. A segment whose games finished before the wrapper did is verified
+without replaying, because Colosseum refuses to resume a completed run. The
+manifest (`rarog-colosseum-datagen-v1`) keeps the label contract
+`extract_parallel.py` checks and records the sequence and the runner.
+`extract.py` reads Colosseum's score comments. Checked by 25 unit tests, the
+fastchess command's identity, seven refused setups plus a tampered sequence,
+and the pilot below.
+
+**Equivalence pilot.** 3,000 games, C.8.1's engine (`E73E3230…`, bench
+14,197,472 verified in the run), `-Start 1`, concurrency 30, through the new
+path (`analysis/artifacts/c84/equiv/`), against the fastchess pilot
+`selfplay-c8head-n8000-s1-g3000.pgn`:
+
+- Opening set identical: 3,000 starts in both, none unshared.
+- 2,994 games identical move for move; 6 differ, all at the end; results equal
+  in all 3,000.
+- The preflight (`--preflight-games 3000 --target-train 3500000`) recommends
+  **595,240** games for both. Its counts differ only by those 6 games (24
+  skipped against 30, 6 more raw and unique positions).
+
+**The 6 games are a Colosseum rules defect.** In each, the start position
+occurs a third time at ply 8: fastchess ends the game there (FIDE 9.2, the
+initial position counts), and Colosseum plays one more ply and draws on the
+next repetition. At `ca05dfa`, `crates/colosseum-engine/src/runner.rs` enters a
+position in its repetition table after each book move (line 747) and each
+engine move (line 1025), never the setup position, so from an EPD start the
+start position's threefold needs a fourth occurrence. Every Colosseum game is
+affected in principle. In RAR-E60's gate-1 and `10+0.1` games (8,232) no start
+position recurs three times, because the UHO starts are unbalanced
+middlegames; in the datagen pilot 6 of 3,000 do, all drawn either way
+(`start_threefold.py`). The request to the maintainer is to count the setup
+position. Once Colosseum is re-pinned with that fix, the pilot is re-run, and
+step 3's move-for-move criterion is expected to hold in full.

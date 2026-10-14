@@ -252,6 +252,13 @@ zero yield, which is exactly what every non-opening start bucket does.
 pwsh -File tools\datagen.ps1 -Suffix <engine-suffix> -Rounds <N> -Start 1 -Nodes 8000 -Book tools\texel\data\phase_book_v1.epd -BookFormat epd -ExpectSha256 <sha256> -ExpectFingerprint <bench-13-nodes>
 ```
 
+- Colosseum plays the games (`-Runner colosseum`, the default), one per
+  opening, from `<book>-s<Seed>.order.epd`: the book in fastchess's seeded
+  order, written by `tools/texel/opening_sequence.py` from earlier fastchess
+  corpora, so every corpus keeps the same starts. A segment past the
+  recovered order is refused. `-Runner fastchess` is the backup and the
+  only runner for the legacy adjudication profiles. An interrupted
+  Colosseum run resumes when the same command is run again.
 - The engine is `tools/test_engines/rarog-<Suffix>-pext-pgo.exe` with a JSON
   manifest beside it. **Verify its bench fingerprint before generating** — the
   fit will be attributed to whatever binary actually played. `-ExpectSha256`
