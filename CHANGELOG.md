@@ -62,7 +62,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   last fitted on; the fit starts from the existing values, which a control
   fit from neutral values confirmed is the better start. Against the
   previous development version it measured **+11.0 ± 4.9 Elo at
-  `3+0.03`** (7,202 games). `bench` now reports 14,291,377 nodes.
+  `3+0.03`** (7,202 games) and **+17.0 ± 11.8 at `10+0.1`** (1,000
+  games). `bench` now reports 14,291,377 nodes.
 
 ### Fixed
 

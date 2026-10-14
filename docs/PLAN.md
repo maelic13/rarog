@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.3 | RESEARCH | V | Gate 1 H1 (2026-10-13, +11.0 ± 4.9 Elo), accepted; margin block skipped (maintainer, 2026-10-14); owed: the `10+0.1` read (registered; dry run when the host is idle) |
 | C.8.4 | RESEARCH | I1 | Datagen on Colosseum (maintainer direction 2026-10-13); must land before the next regeneration (cycle 2's, or F.2's); may run while the maintainer's long jobs run; fastchess's retirement is the maintainer's recorded decision |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1747,18 +1746,18 @@ loss).
         use of the host. The maintainer's read on an idle machine gives
         −0.48% (95% −0.93% to −0.04%), clear of the −1.5% stop, so gate 1
         (dry run passed) is handed over.
-    - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** A
+    - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-14.** A
       second cycle opens only if this one accepts.
       **Gate 1 (RAR-E60, 2026-10-13): H1, accepted.**
       - *Result:* +11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo (7,202 games; a
         first-crossing estimate), no faults, no screen flag. The
         fingerprint 14,291,377 / EBF 2.538 becomes the development
         fingerprint on `c7`.
-      - *Owed:* the `10+0.1` direction read (1,000 games, registered
-        2026-10-14). Its dry run waits for an idle host; a Basilisk tune was
-        running. The optional margin block is skipped (maintainer decision
-        2026-10-14).
-      - *Rule:* below 0 Elo the cycle reopens; 0 or above, C.8.3 closes.
+      - *Margin block:* skipped (maintainer decision 2026-10-14).
+      - *`10+0.1` read (RAR-E60, 2026-10-14):* +17.0 ± 11.8 Elo, +31.2 ±
+        21.5 nElo (1,000 games), no faults; predicted +7. By the frozen
+        rule (below 0 reopens) the acceptance stands. Cycle 1 accepted, so
+        cycle 2 opens; its regeneration waits on C.8.4.
     - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`.** Gates,
       matches, gauntlets and tunes run on Colosseum. `tools/datagen.ps1`
       still drives fastchess (alpha 1.8.0) directly: `hce-v4` and `hce-v5`
