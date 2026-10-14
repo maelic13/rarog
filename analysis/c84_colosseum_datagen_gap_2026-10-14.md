@@ -183,3 +183,14 @@ Checked on the released exe (`analysis/artifacts/c84/release030/`):
   cases that refuse `per-game` in a gate and in a gauntlet.
 - `colosseum.ps1` dry runs of sprt, match, calibrate and gauntlet resolve to
   policy. A 280-game `3+0.03` match has no faults and its recount agrees.
+
+## Correction: the speed at full scale, 2026-10-14
+
+The 28% figures above are 900-game runs. C.8.5's generation of 569,664
+games on Colosseum 0.3.0 ran at about 3,310 games a minute, against about
+3,270 for cycle 1's 595,240-game fastchess run under the same settings:
+level, about 1% apart. A short run is dominated by start-up and by the
+slots left idle while its last games finish, which is where Colosseum
+gained. A long run is bound by the engines filling every slot. The
+requirement, no slower than fastchess, holds at both scales. A claim of
+faster throughput holds only for short runs.

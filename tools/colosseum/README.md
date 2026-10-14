@@ -143,8 +143,10 @@ other command does, and writes engine input from one thread per engine. Its
 re-pin was qualified as above (`test_colosseum_guards.ps1` 55/55 with the
 new per-slot cases, dry runs of every mode). Beyond that, a 3,000-game
 datagen pilot through `datagen.ps1` is identical to fastchess's in every
-game, and identical fixed-node self-play runs take 28% less wall time than
-under fastchess (`analysis/c84_colosseum_datagen_gap_2026-10-14.md`).
+game. A 900-game fixed-node benchmark takes 28% less wall time than under
+fastchess, while a full 569,664-game generation runs level with it (about
+3,310 against 3,270 games a minute;
+`analysis/c84_colosseum_datagen_gap_2026-10-14.md`).
 
 ## The backup path
 

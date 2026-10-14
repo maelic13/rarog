@@ -25,4 +25,13 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - A conditional rate above **10%** holds C.8.6's fit until the maintainer decides: labels clearly worse than `hce-v5`'s would confound the cycle's gate.
   - Otherwise the result is recorded with the corpus.
 - **Full conditions / provenance:** `python tools/diag/datagen_label_audit.py --pgn tools/texel/data/selfplay-c8cycle1-n8000-s1-g<N>.pgn --syzygy D:/chess/tablebases/syzygy3456 --max-men 6 --workers 30 --output tools/results/label-audit-hce-v6/report.json`, where `<N>` is the game count the pilot's preflight recommends (`extract.py --preflight-games 3000 --target-train 3500000`). First clean win per game, cursed wins excluded, as RAR-M22, RAR-M67 and RAR-M68.
-- **Result:** pending; the generation has not run.
+- **Result (run 2026-10-14 21:00–21:01, once, after generation and before any fit; `tools/results/label-audit-hce-v6/report.json`, `17884046…`):**
+  - *Source:* 569,664 games (`selfplay-c8cycle1-n8000-s1-g569664.pgn`, `C8B78329…`). They were generated 2026-10-14 14:58–17:52 UTC on `colosseum-cli 0.3.0` at concurrency 30, with the engine verified in the run at `76CD1F3C…` and bench 14,291,377, from a clean tree. 569,663 games ended normally; one was drawn at the 200-move cap.
+  - *Audit:* **243,268 games reach a first clean win (42.70%; `hce-v5` 42.63%), and 16,199 of them are not won: 6.66% of clean wins** (`hce-v5` 6.74%). That is 2.84% of all games (`hce-v5` 2.87%).
+  - *Largest failing families by count:* KRPP-KR 1,891 of 15,231 (12.42%), KRP-KRP 1,111 of 6,923 (16.05%), KNP-KPP 550 (17.63%), KBP-KPP 517 (11.17%), KRNP-KR 497 (13.73%).
+  - *The corpus agrees independently:* the Syzygy relabel of `hce-v6` changed 22,510 train labels (0.64% of rows; `hce-v5` 0.65%), with 0 probe failures.
+- **Disposition:** observation. The cycle-1 head converts its clean wins at 8,000 nodes as the C.8.1 head did (6.66% against 6.74% not won), so the label contract is unchanged in quality. By the frozen use (hold only above 10%), **C.8.6's fit is not held**.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): the items above.
+  - Observed: games reaching a clean win 42.70%, inside 40% to 46%, a hit. Not won 6.66% against the predicted 6.6%, inside the band, and below 6.74%, so the 0.55 event happened. KRPP-KR and KRP-KRP are the two largest failing families, a hit.
+  - No miss. The refit left conversion where the evaluation programme had left it, as the hypothesis said; competing hypotheses 1 and 2 show no effect at this resolution.

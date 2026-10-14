@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.5 | RESEARCH | V | Cycle 2 regeneration (`hce-v6`): pilot and preflight done 2026-10-14 (569,664 games), RAR-M69 registered; the generation is with the maintainer, then extraction, relabel and the audit |
-| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; after C.8.5 |
+| C.8.6 | RESEARCH | V | Cycle 2 refit on `hce-v6-tb` from the accepted vector; `hce-v6-tb` published and contract-checked, RAR-M69 does not hold the fit; next its registration (RAR-E61) before the fit |
 | C.8.7 | RESEARCH | V | Cycle 2 gate; before gate 1, the runner checks the 0.3.0 re-pin owes (backup-path cross-check, null pair) |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -1840,8 +1839,12 @@ loss).
         (`colosseum-cli-prompt.md`, `speed/harness_speed.ps1`).
       - *0.3.0 verified before release (2026-10-14,* branch
         `rarog-cli-0.3.0` at `af712d9`*):* 410 tests pass. The pilot is
-        identical to fastchess's in 3,000 of 3,000 games. Wall time is
-        28% *below* fastchess's (median 18.0 s against 24.9 s). The gate
+        identical to fastchess's in 3,000 of 3,000 games. On the
+        900-game benchmark, wall time is 28% *below* fastchess's
+        (median 18.0 s against 24.9 s). Over a full generation the two
+        run level, as C.8.5 measured: start-up and the end of a run weigh
+        on a short benchmark, and a long one is bound by the engines. The
+        gate
         wrapper passes a dry run and a 280-game match. The release asset
         is checked again before the pin moves.
       - *Kept engines, maintainer decision 2026-10-14:* every Colosseum run
@@ -1879,7 +1882,7 @@ loss).
         re-pin fires two of them, a runner change and a Colosseum version
         change, so C.8.7 owes the cross-check and the null pair before its
         gate 1.
-    - **C.8.5 Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — `V`.** As
+    - **C.8.5 Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — `V`, DONE 2026-10-14.** As
       C.8.1. The labeller is the accepted cycle-1 head,
       `rarog-c8cycle1-pext-pgo.exe` (`76CD1F3C…`, bench 14,291,377, built
       at `bfd008a`; the engine source is unchanged since). The rest is
@@ -1902,6 +1905,29 @@ loss).
         (`analysis/artifacts/c85/interrupted-pilot.colosseum`). A
         generation that is interrupted therefore needs a decision before
         it is resumed.
+
+      **Done 2026-10-14:**
+      - *Generation:* the maintainer generated 569,664 games
+        (`selfplay-c8cycle1-n8000-s1-g569664.pgn`, `C8B78329…`) on
+        Colosseum in 2 h 52 min at concurrency 30, about 3,310 games a
+        minute (cycle 1's fastchess run: about 3,270). The engine was
+        verified in the run, and the wrapper's post-run checks passed.
+        One game was drawn at the 200-move cap, which Colosseum names
+        `adjudication`.
+      - *Contract:* `fit_complete.ps1` names the `hce-v6` contract
+        (`3d5a5a6`). The first publication attempt was refused because
+        that edit was not yet committed (the clean-tree guard). After
+        the commit, `hce-v6` and `hce-v6-tb` pass the corpus checks, and
+        a copy naming 569,665 starts refuses `hce-v6-tb` with the
+        contract error.
+      - *Corpus:* extraction published `hce-v6` with every phase quota
+        filled: 3,500,000 / 194,444 / 194,444 rows from 512,788 /
+        28,284 / 28,592 games, 6,371 games skipped. The relabel to
+        `hce-v6-tb` changed 0.64% of train rows with 0 probe failures
+        (train `9575a916…`, validation `7ada0924…`, test `fda14533…`,
+        each equal to its manifest's hash).
+      - *RAR-M69:* 6.66% of clean wins not won (`hce-v5` 6.74%), so
+        C.8.6's fit is not held.
     - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
       C.8.2, without the initialization control, which C.8 runs in the
       first cycle only.
