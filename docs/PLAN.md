@@ -294,7 +294,9 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.7 | RESEARCH | V | Gate 1 H1 (2026-10-15, +6.7 ± 3.7 Elo), accepted; `10+0.1` +3.1 ± 11.5 Elo, the acceptance stands; RAR-M70's cross-check agrees, the null pair waived; owed: the maintainer's margin-block answer |
+| C.8.8 | RESEARCH | V | Cycle 3 regeneration (`hce-v7`), the last cycle (maintainer decision 2026-10-15): the cycle-2 head labels on Colosseum; RAR-M71 registered before the pilot; the generation is the maintainer's |
+| C.8.9 | RESEARCH | V | Cycle 3 refit on `hce-v7-tb` from the accepted vector (RAR-E62); after C.8.8 |
+| C.8.10 | RESEARCH | V | Cycle 3 gate; C.8 closes after it whatever it measures |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1665,7 +1667,10 @@ loss).
       recorded for C.8 and C.10 with the king-danger lead.
 - **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
-  accepts, stop at the first that does not. Initialization control (neutral
+  accepts, stop at the first that does not. **Maintainer decision
+  2026-10-15:** cycle 3 is the last, whatever it measures; its expected
+  gain (about +3 to +4 Elo after +11.0 and +6.7) no longer justifies
+  another regeneration. Initialization control (neutral
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
@@ -1874,6 +1879,18 @@ loss).
         - dry runs of sprt, match, calibrate and gauntlet pass, and a
           280-game `3+0.03` match has no faults and its recount agrees.
         Steps 1–3 are done.
+      - *Step 4, inventory for the maintainer's decision:*
+        `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
+        `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
+        filter), `pgn_result.ps1` and `pgn_depth_at_nodes.py` (PGN
+        readers for fastchess output), `setup_tools.ps1` (stages both),
+        `harness_common.ps1`'s fastchess helpers,
+        `datagen.ps1 -Runner fastchess`, `spsa_config_to_colosseum.py`
+        and `colosseum_parity.py` (the cross-check), and the prose
+        mentions in `build_test.ps1`, `build_book.py`,
+        `sample_fens.py` and `colosseum/common.toml`. AGENTS and
+        PROCESS's *Harness* section keep both as backup and second
+        opinion until a recorded decision.
       - *Step 4, maintainer decision 2026-10-14:* every fastchess and
         weather-factory consumer is kept as backup only, until the
         maintainer retires them. This is recorded in AGENTS and PROCESS's
@@ -1943,7 +1960,7 @@ loss).
       - *NPS:* −0.92% (95% −1.26% to −0.57%), clear of the −1.5% stop.
       - *Gate 1* (dry run passed) is handed over, to run after RAR-M70's
         runner checks pass.
-    - **C.8.7 Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`.** As
+    - **C.8.7 Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-15.** As
       C.8.3. Before gate 1 come the runner checks the Colosseum 0.3.0
       re-pin owes under PROCESS's *Harness* triggers: a backup-path
       cross-check (a fixed match on the same arms under both runners)
@@ -1960,20 +1977,20 @@ loss).
       - *`10+0.1` read (RAR-E61, 2026-10-15):* +3.1 ± 11.5 Elo, +5.8 ±
         21.5 nElo (1,000 games), no faults; predicted +5. By the frozen
         rule (below 0 reopens) the acceptance stands.
-      - *Owed:* the maintainer's answer on the optional margin block;
-        then C.8.7 closes and cycle 3 opens.
-      - *Step 4, inventory for the maintainer's decision:*
-        `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
-        `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
-        filter), `pgn_result.ps1` and `pgn_depth_at_nodes.py` (PGN
-        readers for fastchess output), `setup_tools.ps1` (stages both),
-        `harness_common.ps1`'s fastchess helpers,
-        `datagen.ps1 -Runner fastchess`, `spsa_config_to_colosseum.py`
-        and `colosseum_parity.py` (the cross-check), and the prose
-        mentions in `build_test.ps1`, `build_book.py`,
-        `sample_fens.py` and `colosseum/common.toml`. AGENTS and
-        PROCESS's *Harness* section keep both as backup and second
-        opinion until a recorded decision.
+      - *Margin block:* skipped (maintainer decision 2026-10-15). C.8.7
+        closes with cycle 2 accepted, and cycle 3 opens.
+    - **C.8.8 Cycle 3 regeneration: the head's datagen engine, pilot and preflight, `hce-v7` generation, extraction, relabel to `hce-v7-tb`, label audit (RAR-M71) — `V`.** As
+      C.8.5. The labeller is the accepted cycle-2 head,
+      `rarog-c8cycle2-pext-pgo.exe` (`A3A11321…`, bench 14,126,183, built
+      at `75c3db5`). The book, seed 10403 from start 1, 8,000 nodes,
+      `datagen-v2` and `datagen.ps1 -Runner colosseum` are as before. The
+      generation is the maintainer's.
+    - **C.8.9 Cycle 3 refit on `hce-v7-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
+      C.8.6 (RAR-E62).
+    - **C.8.10 Cycle 3 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row; C.8 closes — `V`.** As
+      C.8.7, on the pinned runner already cross-checked (RAR-M70). C.8
+      closes after this cycle whatever it measures. If it is rejected,
+      it is reverted on `c7` in its own commits.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
