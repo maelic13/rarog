@@ -142,13 +142,51 @@ fn feature(king: usize, perspective: usize, piece: u8, square: usize) -> usize {
     bucket * 704 + offset + (square ^ flip)
 }
 
+// Vec keeps ownership; initialized padding permits a cache-line-aligned view
+// without an unsafe allocator or a per-evaluation copy.
+struct DenseWeights {
+    storage: Vec<i8>,
+    offset: usize,
+}
+
+impl DenseWeights {
+    fn from_fn(len: usize, mut value: impl FnMut(usize) -> i8) -> Self {
+        let mut storage = vec![0; len + 63];
+        let offset = storage.as_ptr().align_offset(64);
+        for (i, slot) in storage[offset..offset + len].iter_mut().enumerate() {
+            *slot = value(i);
+        }
+        Self { storage, offset }
+    }
+}
+
+impl std::ops::Deref for DenseWeights {
+    type Target = [i8];
+    fn deref(&self) -> &Self::Target {
+        let len = self.storage.len() - 63;
+        &self.storage[self.offset..self.offset + len]
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[repr(align(64))]
+struct AlignedSecond([[f32; 32]; 30]);
+
+#[cfg(target_arch = "x86_64")]
+impl std::ops::Deref for AlignedSecond {
+    type Target = [[f32; 32]; 30];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 struct Head {
     bias1: [i32; 16],
-    weights1: Vec<i8>,
+    weights1: DenseWeights,
     bias2: [f32; 32],
     weights2: [[f32; 30]; 32],
     #[cfg(target_arch = "x86_64")]
-    weights2_transposed: [[f32; 32]; 30],
+    weights2_transposed: AlignedSecond,
     bias_out: f32,
     weights_out: [f32; 32],
 }
@@ -191,7 +229,8 @@ impl Network {
         for _ in 0..8 {
             r.i32(); // Identical block tags are covered by the full model hash.
             let bias1 = std::array::from_fn(|_| r.i32());
-            let weights1: Vec<i8> = r.take(16 * LANES).iter().map(|&x| x as i8).collect();
+            let bytes = r.take(16 * LANES);
+            let weights1 = DenseWeights::from_fn(bytes.len(), |i| bytes[i] as i8);
             let bias2 = std::array::from_fn(|_| r.i32() as f32);
             let weights2 = std::array::from_fn(|_| {
                 let row = std::array::from_fn(|_| r.take(1)[0] as i8 as f32);
@@ -205,9 +244,9 @@ impl Network {
                 weights1,
                 bias2,
                 #[cfg(target_arch = "x86_64")]
-                weights2_transposed: std::array::from_fn(|i| {
+                weights2_transposed: AlignedSecond(std::array::from_fn(|i| {
                     std::array::from_fn(|j| weights2[j][i])
-                }),
+                })),
                 weights2,
                 bias_out,
                 weights_out,
@@ -354,5 +393,29 @@ impl<'a> Reader<'a> {
     }
     fn i32(&mut self) -> i32 {
         i32::from_le_bytes(self.take(4).try_into().unwrap())
+    }
+}
+
+#[cfg(test)]
+mod storage_tests {
+    use super::*;
+
+    #[test]
+    fn dense_storage_preserves_every_byte_and_cache_line_alignment() {
+        for len in [0, 1, 31, 32, 63, 64, 1536, 16 * LANES] {
+            let expected: Vec<i8> = (0..len).map(|i| (i * 137) as i8).collect();
+            let stored = DenseWeights::from_fn(len, |i| expected[i]);
+            assert_eq!(&*stored, &expected);
+            assert_eq!(stored.as_ptr() as usize % 64, 0);
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            let matrices: Vec<_> = (0..8).map(|_| AlignedSecond([[0.0; 32]; 30])).collect();
+            for matrix in &matrices {
+                for row in &matrix.0 {
+                    assert_eq!(row.as_ptr() as usize % 64, 0);
+                }
+            }
+        }
     }
 }

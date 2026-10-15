@@ -369,9 +369,11 @@ mod tests {
                     i32::MIN + 23
                 }
             }),
-            weights1,
+            weights1: crate::DenseWeights::from_fn(weights1.len(), |i| weights1[i]),
             bias2: std::array::from_fn(|i| i as f32 * 13.0 - 100.0),
-            weights2_transposed: std::array::from_fn(|i| std::array::from_fn(|j| weights2[j][i])),
+            weights2_transposed: crate::AlignedSecond(std::array::from_fn(|i| {
+                std::array::from_fn(|j| weights2[j][i])
+            })),
             weights2,
             bias_out: 0.0,
             weights_out: [1.0; 32],
