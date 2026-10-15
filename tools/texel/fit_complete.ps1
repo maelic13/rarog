@@ -201,19 +201,28 @@ function Resolve-RepoPath {
 }
 
 function Get-WdlCsvAudit {
-    param([Parameter(Mandatory)][string]$Path)
-    $counts = @{ "0" = 0L; "0.5" = 0L; "1" = 0L }
+    # With -AllowBlended a target may also be any number in [0, 1] (a blended
+    # training target); it is counted apart, and a pure split never takes it.
+    param([Parameter(Mandatory)][string]$Path, [switch]$AllowBlended)
+    $counts = @{ "0" = 0L; "0.5" = 0L; "1" = 0L; "blended" = 0L }
     $rows = 0L
+    $value = 0.0
     $reader = [IO.File]::OpenText($Path)
     try {
         while ($null -ne ($line = $reader.ReadLine())) {
             $sep = $line.LastIndexOf(';')
             if ($sep -lt 0) { throw "$Path row $($rows + 1) has no target separator" }
             $target = $line.Substring($sep + 1).Trim()
-            if (-not $counts.ContainsKey($target)) {
+            if ($target -ne "blended" -and $counts.ContainsKey($target)) {
+                $counts[$target]++
+            } elseif ($AllowBlended -and
+                      [double]::TryParse($target, [Globalization.NumberStyles]::Float,
+                          [Globalization.CultureInfo]::InvariantCulture, [ref]$value) -and
+                      $value -ge 0.0 -and $value -le 1.0) {
+                $counts["blended"]++
+            } else {
                 throw "$Path row $($rows + 1) has non-WDL target '$target'"
             }
-            $counts[$target]++
             $rows++
         }
     } finally {
@@ -540,12 +549,13 @@ try {
                 $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash
                 $expected = $manifest.output_sha256.$split
                 if ($actual -ne $expected) { throw "$split.csv hash mismatch" }
-                $wdl = Get-WdlCsvAudit $file
+                $wdl = Get-WdlCsvAudit $file -AllowBlended:($split -eq "train" -and $c136Blend)
                 if ($wdl.Rows -ne [int]$manifest.rows.$split) {
                     throw "$split.csv contains $($wdl.Rows) rows, expected $($manifest.rows.$split)"
                 }
-                Write-Host ("  {0}: {1:N0} pure-WDL rows (0={2:N0}, 0.5={3:N0}, 1={4:N0})" -f `
-                    $split, $wdl.Rows, $wdl.Counts["0"], $wdl.Counts["0.5"], $wdl.Counts["1"])
+                Write-Host ("  {0}: {1:N0} rows (0={2:N0}, 0.5={3:N0}, 1={4:N0}, blended={5:N0})" -f `
+                    $split, $wdl.Rows, $wdl.Counts["0"], $wdl.Counts["0.5"], $wdl.Counts["1"],
+                    $wdl.Counts["blended"])
             }
             Write-Host "Hash/row/WDL-verified frozen dataset $dataset"
             Write-Host "Opening provenance: $usedOpenings independent starts from a $bookOpenings-opening book"
