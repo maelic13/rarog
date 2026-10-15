@@ -22,7 +22,6 @@ mod params;
 mod passers;
 mod pawns;
 mod pieces;
-mod space;
 mod threats;
 mod trace;
 

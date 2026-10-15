@@ -69,8 +69,6 @@ macro_rules! eval_params {
             passed_freestop_mg_per_rank: 1 = [0];
             passed_freestop_eg_per_rank: 1 = [2];
             passed_safestop_eg_per_rank: 1 = [8];
-            passed_candidate_mg: 1 = [0];
-            passed_candidate_eg: 1 = [0];
             pawn_doubled_mg: 1 = [2];
             pawn_doubled_eg: 1 = [16];
             pawn_isolated_mg: 1 = [0];
@@ -91,10 +89,6 @@ macro_rules! eval_params {
             pawn_phalanx_eg: 8 = [0, 0, 4, 11, 41, 26, 1, 0];
             pawn_backward_mg: 1 = [0];
             pawn_backward_eg: 1 = [11];
-            // Pawn-structure / passer detail (Phase 3.8), Phase 4.4 fitted. pawn_lever
-            // stayed frozen at 0 (feature-support: too sparse to fit reliably).
-            pawn_lever_mg: 1 = [0];
-            pawn_lever_eg: 1 = [0];
             pawn_doubled_isolated_mg: 1 = [0];
             pawn_doubled_isolated_eg: 1 = [15];
             // An isolated or backward pawn with no enemy pawn ahead on its
@@ -213,7 +207,6 @@ macro_rules! eval_params {
             passer_king_them_eg: 1 = [4];
             passer_king_us_eg: 1 = [3];
             passer_king_next_eg: 1 = [1];
-            space_weight: 1 = [0];
             tempo: 1 = [33];
             // trapped_bishop frozen at hand value (feature-support: too sparse to fit).
             trapped_bishop_mg: 1 = [60];
@@ -233,14 +226,11 @@ macro_rules! eval_params {
             imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, -8, 45, 0, 0, 0, 0, 6, 48, -11, 0, 0, 0, -13, 64, 7, 9, 0, 0, 12, 125, 16, 37, 0, 0];
             // Small positional terms (Phase 3.10), all seeded 0 (bench unchanged),
             // tuned in Phase 4.4/4.5.
-            // Small positional terms (Phase 3.10), Phase 4.4 fitted. rook_trapped frozen
-            // (feature-support: too sparse).
+            // Small positional terms (Phase 3.10), Phase 4.4 fitted.
             bishop_pair_pawn_mg: 1 = [-1];
             bishop_pair_pawn_eg: 1 = [-4];
             bishop_outpost_mg: 1 = [37];
             bishop_outpost_eg: 1 = [1];
-            rook_trapped_mg: 1 = [0];
-            rook_trapped_eg: 1 = [0];
             rook_connected_mg: 1 = [9];
             rook_connected_eg: 1 = [47];
             bishop_long_diagonal_mg: 1 = [10];
@@ -259,8 +249,7 @@ macro_rules! eval_params {
             // on its home square, on a central file, with all castling rights for
             // that side gone.
             king_centrality_danger_mg: 1 = [65];
-            // Gauntlet-driven additions (Phase 3.12), Phase 4.4 fitted. king_protector /
-            // space_piece fitted to 0 (no marginal value atop the rest).
+            // Gauntlet-driven additions (Phase 3.12), Phase 4.4 fitted.
             unstoppable_passer_eg: 1 = [88];
             minor_behind_pawn_mg: 1 = [15];
             minor_behind_pawn_eg: 1 = [0];
@@ -270,12 +259,8 @@ macro_rules! eval_params {
             queen_infiltration_eg: 1 = [87];
             king_protector_mg: 1 = [6];
             king_protector_eg: 1 = [5];
-            space_piece_mg: 1 = [0];
             // Phase 6.2.1 refresh structure — all seeded 0 (inert, bench-identical);
             // activated by the 6.2.2 on-policy joint refit.
-            // SF-style space refinement: safe central squares BEHIND own pawns,
-            // weighted by piece count (rides next to space_piece_mg).
-            space_behind_piece_mg: 1 = [0];
             // Passed-pawn whole-path weighting: the entire path to promotion is empty
             // ("free path") / never attacked by the enemy ("safe path"), scaled by
             // relative rank like the existing free/safe-stop terms.

@@ -9,7 +9,7 @@ use super::pawns::{FILE_BBS, KING_DISTANCE, SQUARE_FILE};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, relative_rank};
 use crate::board::attacks::AttackTables;
-use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, Piece, Square};
+use crate::board::{ATTACKS, Bitboard, Board, Color, Piece};
 use crate::infra;
 
 // The two main diagonals (a1-h8, a8-h1) minus their corner squares (Phase
@@ -61,7 +61,6 @@ impl Evaluator {
             let them = !color;
             let own_pawns = pawns[color as usize];
             let their_pawns = pawns[them as usize];
-            let own_occ = color_occ[color as usize];
 
             if board.pieces(color, Piece::Bishop).more_than_one() {
                 *mg += sign * self.params.bishop_pair_mg[0];
@@ -140,17 +139,6 @@ impl Evaluator {
                 }
             }
 
-            let own_king_sq = board.king_sq(color);
-            let own_castling_all = match color {
-                Color::White => CastlingRights::WHITE_ALL,
-                Color::Black => CastlingRights::BLACK_ALL,
-            };
-            let own_lost_castling = !board.castling().has(own_castling_all);
-            let home_rank_corner = match color {
-                Color::White => [Square(0), Square(7)],
-                Color::Black => [Square(56), Square(63)],
-            };
-
             let mut rooks = board.pieces(color, Piece::Rook);
             while rooks.any() {
                 let sq = rooks.pop_lsb();
@@ -173,21 +161,6 @@ impl Evaluator {
                     *eg += sign * self.params.rook_7th_eg[0];
                     tr_mg!(self, rook_7th_mg, 0, sign);
                     tr_eg!(self, rook_7th_eg, 0, sign);
-                }
-
-                // Trapped rook (Phase 3.10): own rook stuck in its starting
-                // corner behind an uncastled king with very low mobility.
-                if own_lost_castling
-                    && own_king_sq == Square([4u8, 60u8][color as usize])
-                    && home_rank_corner.contains(&sq)
-                {
-                    let mobility = infra::to_i32((atk.rook(sq, occupied) & !own_occ).count());
-                    if mobility <= 3 {
-                        *mg -= sign * self.params.rook_trapped_mg[0];
-                        *eg -= sign * self.params.rook_trapped_eg[0];
-                        tr_mg!(self, rook_trapped_mg, 0, -sign);
-                        tr_eg!(self, rook_trapped_eg, 0, -sign);
-                    }
                 }
             }
 
@@ -327,7 +300,6 @@ impl Evaluator {
         }
 
         self.eval_passed_pawn_king_proximity(board, passed, eg);
-        self.eval_space(board, pawn_attacks, mg);
         if phase < TOTAL_PHASE / 2 {
             self.eval_trapped_bishops(board, atk, mg, eg);
         }

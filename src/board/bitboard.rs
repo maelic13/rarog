@@ -17,8 +17,6 @@ impl Bitboard {
     // Rank masks
     pub(crate) const RANK_2: Self = Self(0x0000_0000_0000_FF00);
     pub(crate) const RANK_3: Self = Self(0x0000_0000_00FF_0000);
-    pub(crate) const RANK_4: Self = Self(0x0000_0000_FF00_0000);
-    pub(crate) const RANK_5: Self = Self(0x0000_00FF_0000_0000);
     pub(crate) const RANK_6: Self = Self(0x0000_FF00_0000_0000);
     pub(crate) const RANK_7: Self = Self(0x00FF_0000_0000_0000);
 
