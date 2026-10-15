@@ -194,3 +194,14 @@ slots left idle while its last games finish, which is where Colosseum
 gained. A long run is bound by the engines filling every slot. The
 requirement, no slower than fastchess, holds at both scales. A claim of
 faster throughput holds only for short runs.
+
+## The opening sequence extended, 2026-10-15
+
+C.8.8's preflight asked for 631,315 games, past the 612,747 openings the
+fastchess corpora recovered. A fastchess run at 1 node a move from start
+610,001 supplied 30,000 more rounds of seed 10403's order. Its 2,747
+overlapping openings agree with the corpora, so `opening_sequence.py`
+accepted it as a source, and the sequence now holds 640,000 openings
+(`9479B9BF…`). The previous 612,747 lines are its exact prefix. The next
+extension, if a preflight ever needs one, is the same cheap run from a
+start inside the existing sequence.

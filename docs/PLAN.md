@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.8 | RESEARCH | V | Cycle 3 regeneration (`hce-v7`), the last cycle (maintainer decision 2026-10-15): the cycle-2 head labels on Colosseum; RAR-M71 registered before the pilot; the generation is the maintainer's |
+| C.8.8 | RESEARCH | V | Cycle 3 regeneration (`hce-v7`), the last cycle (maintainer decision 2026-10-15): pilot and preflight done (631,315 games), the opening sequence extended to 640,000, RAR-M71 registered; the generation is with the maintainer, then extraction, relabel and the audit |
 | C.8.9 | RESEARCH | V | Cycle 3 refit on `hce-v7-tb` from the accepted vector (RAR-E62); after C.8.8 |
 | C.8.10 | RESEARCH | V | Cycle 3 gate; C.8 closes after it whatever it measures |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -1985,6 +1985,26 @@ loss).
       at `75c3db5`). The book, seed 10403 from start 1, 8,000 nodes,
       `datagen-v2` and `datagen.ps1 -Runner colosseum` are as before. The
       generation is the maintainer's.
+      **Progress 2026-10-15:**
+      - *Pilot:* 3,000 games from start 1 in 76 s, engine verified in the
+        run, every termination normal
+        (`selfplay-c8cycle2-n8000-s1-g3000.pgn`).
+      - *Preflight:* `extract.py --preflight-games 3000 --target-train
+        3500000` recommends **631,315 games** (39,938 unique positions
+        from the pilot).
+      - *The opening sequence extended:* the recovered order covered
+        612,747 openings, fewer than the count. A fastchess run at 1 node
+        a move from start 610,001 (30,000 rounds,
+        `analysis/artifacts/c88/order-ext-s610001-g30000.pgn`) supplied
+        the next openings in seed 10403's order. Its 2,747 overlapping
+        openings agree with the earlier corpora, and
+        `opening_sequence.py` rewrote `phase_book_v1-s10403.order.epd`
+        to 640,000 openings (`9479B9BF…`). The old 612,747 lines are its
+        exact prefix, and the old file is kept in
+        `analysis/artifacts/c88/previous/`.
+      - *Contract:* `fit_complete.ps1` names the `hce-v7` contract,
+        `datagen-v2` at 631,315 starts (`6aa66c7`). The full command
+        passes `-SetupOnly`, and the generation is with the maintainer.
     - **C.8.9 Cycle 3 refit on `hce-v7-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
       C.8.6 (RAR-E62).
     - **C.8.10 Cycle 3 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row; C.8 closes — `V`.** As
