@@ -858,3 +858,15 @@ hardwired at the call sites; the root-gap observation stays in diagnostics but
 cannot enter root confidence, because null-window rival scores made it
 degenerate. Full detail and the retained-inert ownership table are in section 3
 of [docs/archive/PLAN-phase4-2026-09-09.md](archive/PLAN-phase4-2026-09-09.md).
+
+## 2026-10-15 — F.11 experimental Dragon NNUE integration
+
+Maintainer-requested import experiment on `dragon_nnue`, independent of the
+own-data release track. Engine `c8d1e8e` adds the UCI selector,
+external model/scale options, static `eval`, shared immutable scalar runtime and
+backend-sensitive eval/TT/correction invalidation. Tools `4f6e0a9` qualify
+the live diagnostic and one rough bench per mode. Both profiles and focused
+worker/cache/move/allocation tests pass; 5,540 native comparisons are exact;
+the UCI executable plays legal moves at 1T/2T. HCE fingerprint stays
+14,197,472 / EBF 2.557. RAR-P36 records 1,796,011 vs 208,408 NPS under the
+explicit shared-host waiver; no strength claim. F.12 is the runtime follow-up.

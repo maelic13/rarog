@@ -135,3 +135,7 @@ commit that adds it.
 | [`manta_tooling_audit_2026-08-25.md`](archive/manta_tooling_audit_2026-08-25.md) | Manta tooling and measurement audit | Archived | uncited |
 | [`basilisk_audit_2026-08-30.md`](archive/basilisk_audit_2026-08-30.md) | Basilisk method and results audit | Archived | RAR-E08, RAR-M18 |
 | [`answer_harness_calibration.md`](archive/answer_harness_calibration.md) | The answer harness cannot rank candidates. Calibrated, 2026-08-21. | Archived | uncited |
+
+- `artifacts/dragon-nnue-20261015/`: F.11 scalar integration, checks, both-original
+  static comparisons, UCI play smoke and one busy-host-waived bench pair; recipes,
+  interpretation and identities in `docs/experiments/RAR-P36.md`.

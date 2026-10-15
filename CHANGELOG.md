@@ -8,6 +8,14 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Added
+
+- An experimental `Evaluation` UCI selector for Classical (default) or Dragon
+  NNUE, with an external `Dragon Eval File` and `Dragon NNUE Scale` control.
+  The new `eval` diagnostic reports the selected static evaluator directly.
+  The scalar Dragon backend is intended for comparisons and has not been
+  accepted as a playing-strength improvement; see `docs/DRAGON_NNUE.md`.
+
 ### Changed
 
 - **The evaluation was refitted** on 612,747 new self-play games labelled by

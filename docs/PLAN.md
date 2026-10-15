@@ -2011,6 +2011,70 @@ datagen baseline and the fallback until F.9 replaces it in releases.
 - **F.10 CCRL top-100 gate — `V`.** Submit; the list decides. Shortfall
   measured against the pool and fed back into F.7/F.8.
 
+- **F.11 Experimental Dragon NNUE evaluation selector — `I2` — DONE 2026-10-15.**
+
+  Maintainer request 2026-10-15 on branch `dragon_nnue`, independent of F.0–F.10
+  and the active C.7 work. The imported network is an explicit comparison-only
+  exception to Phase F's own-data rule; it accepts no release or strength claim.
+  Primary kind: implementation and deterministic qualification, with one
+  informational speed comparison authorized instead of the pooled PGO method.
+
+  **Mechanism/evidence:** integrate the scalar Rust inference already qualified
+  against 5,440 native Dragon diagnostics. The purpose is a selectable evaluator
+  in Rarog's existing search; no hypothesis of improved Elo is accepted.
+
+  **Contract:** `Evaluation` combo Classical (default) / Dragon NNUE; external
+  `Dragon Eval File`; `Dragon NNUE Scale` 72 (10..500). Load/hash before search,
+  share immutable model references, no per-node heap/lock/Arc or FEN parsing.
+  Use side-to-move scores; the `eval` diagnostic reports both perspectives and
+  calls the same evaluator as search without search corrections. Clear cached
+  evals, TT and correction history on configuration changes, including workers.
+  Failed loading keeps the previous selection and reports the error. Texel
+  tracing continues to describe HCE and rejects Dragon selection.
+
+  **Interactions:** HCE terms, endgame scaling and tempo must be bypassed under
+  Dragon; host draw/rule-50, mate and search correction machinery remain host
+  behavior. Existing fitted search margins may suit either evaluator differently.
+  Static parity, nodes, NPS and ability to play are separate from playing strength.
+
+  **Falsifier/stop:** any exact static mismatch, stale TT/eval/correction after
+  switching, changed default HCE fingerprint, illegal bestmove, allocation in
+  inference or required build/test failure blocks completion. Accept no score
+  tolerance, borrowed search or retuning to rescue a mismatch. Synthetic oracle
+  positions rejected by Rarog's FEN validity rules may be excluded solely on
+  parser acceptance, counted explicitly before comparing scores.
+
+  **Qualification:** debug/release suites, fmt, all-feature/all-target clippy;
+  direct native `nnue` comparisons using White-perspective `eval` output across
+  scales/heads/perspectives; make/unmake/null/special moves; worker/cache switches;
+  bounded play smoke. One fresh release binary, same Hash64/1T, exactly one
+  `bench 13` per mode after idle-host check. Before the pair, the maintainer
+  explicitly waived the idle requirement on this shared host for this rough
+  estimate only; `--allow-busy` is recorded in the run manifest. Preserve all 40
+  records and fingerprint, time and NPS; no warm-up, no repeats, no PGO, no confidence interval or Elo claim.
+  Expected direction: the full-refresh scalar network will be substantially slower;
+  search trees may differ. Cap each bench at 15 minutes and retain partial output
+  on failure. The scalar refresh's 3 KiB bias copy is an explicit temporary
+  per-node copy exception; the authorized single bench supplies its informational
+  NPS cost, with robust optimization/qualification left for later.
+
+  **Result:** [RAR-P36](experiments/RAR-P36.md). Engine `c8d1e8e`;
+  tools `4f6e0a9`. All 2,738 fixture rows and 5,540 fresh static comparisons
+  match; default HCE fingerprint remains 14,197,472 / EBF 2.557. Final debug/
+  release suites, model/worker/cache/allocation checks, fmt/clippy and legal UCI
+  play pass. One rough bench per mode: Classical 1,796,011 NPS / 7,905 ms;
+  Dragon 208,408 NPS / 85,064 ms, with different trees and background loads.
+  This closes the requested implementation/diagnostic task, not a strength gate.
+
+- **F.12 Optimize the experimental Dragon NNUE runtime — `I2` — OPEN.**
+
+  Follow-up to F.11 when requested. Keep its scalar runtime and exact fixtures
+  as the reference. Design Rust-owned incremental state and/or vector kernels,
+  with move/unmove, king-transform, null, promotion, castling and EP falsifiers
+  before accepting speed. No retuning, changed arithmetic, model substitution
+  or borrowed search. Qualify runtime gains separately from playing strength;
+  F.0–F.10 retain the own-data architecture/training/release requirements.
+
 ## Phase G — Scaling, platforms and the top 50
 
 - **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and

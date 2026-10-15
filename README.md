@@ -1,5 +1,9 @@
 # Rarog
 
+The `dragon_nnue` branch also provides an experimental `Evaluation` UCI selector
+(`Classical` or `Dragon NNUE`), keeping Classical as default. See
+[setup, static validation and limitations](docs/DRAGON_NNUE.md).
+
 <p align="center">
   <img src="logo/rarog_detailed.png" alt="Rarog logo" width="260">
 </p>
