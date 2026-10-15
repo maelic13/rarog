@@ -5,11 +5,10 @@
 
 use super::TOTAL_PHASE;
 use super::attacks::KsMaps;
-use super::pawns::{FILE_BBS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
+use super::pawns::{FILE_BBS, KING_DISTANCE, SQUARE_FILE};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, relative_rank};
 use crate::board::attacks::AttackTables;
-use crate::board::movegen;
 use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, Piece, Square};
 use crate::infra;
 
@@ -121,19 +120,23 @@ impl Evaluator {
                 }
             }
 
-            // Connected rooks (Phase 3.10): both own rooks on the same rank
-            // or file with nothing between them.
+            // Connected rooks: every pair of own rooks on one rank or file
+            // with nothing between them, each pair counted once. Pairing by
+            // square order instead would pick a different pair in the mirror
+            // when a side has three rooks.
             let color_rooks = board.pieces(color, Piece::Rook);
             if color_rooks.more_than_one() {
-                let r1 = color_rooks.lsb();
-                let r2 = color_rooks.msb();
-                let aligned = SQUARE_FILE[r1.index()] == SQUARE_FILE[r2.index()]
-                    || SQUARE_RANK[r1.index()] == SQUARE_RANK[r2.index()];
-                if aligned && (movegen::between(r1, r2) & occupied).is_empty() {
-                    *mg += sign * self.params.rook_connected_mg[0];
-                    *eg += sign * self.params.rook_connected_eg[0];
-                    tr_mg!(self, rook_connected_mg, 0, sign);
-                    tr_eg!(self, rook_connected_eg, 0, sign);
+                let mut unpaired = color_rooks;
+                let mut connected = 0;
+                while unpaired.any() {
+                    let sq = unpaired.pop_lsb();
+                    connected += infra::to_i32((atk.rook(sq, occupied) & unpaired).count());
+                }
+                if connected != 0 {
+                    *mg += sign * connected * self.params.rook_connected_mg[0];
+                    *eg += sign * connected * self.params.rook_connected_eg[0];
+                    tr_mg!(self, rook_connected_mg, 0, sign * connected);
+                    tr_eg!(self, rook_connected_eg, 0, sign * connected);
                 }
             }
 
