@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
+| C.13.4 | RESEARCH | R2 | RAR-E65 registered (2026-10-15): the head's own 8,000-node search (fresh hash, not the PGN comments, which the pre-refit evaluation searched) against its static score on the held-out rows; material and dominant-term maps; three cross-fitted directions read at 0.10% and 4 game-clustered SE; the run is the maintainer's command |
 | C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates: material × men and mobility × men (RAR-E63), both surviving RAR-E64's calibration check (2026-10-15); each gets one definition card before anything is built; waits on C.13.4 |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
