@@ -64,8 +64,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   the better start. The first refit measured **+11.0 ± 4.9 Elo at
   `3+0.03`** (7,202 games) and **+17.0 ± 11.8 at `10+0.1`** (1,000 games)
   against the version before it; the second measured **+6.7 ± 3.7 Elo at
-  `3+0.03`** (12,362 games) against the first. `bench` now reports
-  14,126,183 nodes.
+  `3+0.03`** (12,362 games) and **+3.1 ± 11.5 at `10+0.1`** (1,000
+  games) against the first. `bench` now reports 14,126,183 nodes.
 
 ### Fixed
 

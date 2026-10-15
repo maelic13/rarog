@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.7 | RESEARCH | V | Gate 1 H1 (2026-10-15, +6.7 ± 3.7 Elo), accepted; RAR-M70's cross-check agrees, the null pair waived (maintainer, 2026-10-15); owed: the margin-block answer and the `10+0.1` read (registered; dry run when the host is idle) |
+| C.8.7 | RESEARCH | V | Gate 1 H1 (2026-10-15, +6.7 ± 3.7 Elo), accepted; `10+0.1` +3.1 ± 11.5 Elo, the acceptance stands; RAR-M70's cross-check agrees, the null pair waived; owed: the maintainer's margin-block answer |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1957,10 +1957,11 @@ loss).
         nElo (12,362 games; a first-crossing estimate), no faults, no
         screen flag. The fingerprint 14,126,183 / EBF 2.557 becomes the
         development fingerprint on `c7`.
-      - *Owed:* the maintainer's margin-block answer and the registered
-        `10+0.1` read. Its dry run waits for an idle host; a Basilisk
-        tune was running.
-      - *Rule:* below 0 Elo the cycle reopens; 0 or above, C.8.7 closes.
+      - *`10+0.1` read (RAR-E61, 2026-10-15):* +3.1 ± 11.5 Elo, +5.8 ±
+        21.5 nElo (1,000 games), no faults; predicted +5. By the frozen
+        rule (below 0 reopens) the acceptance stands.
+      - *Owed:* the maintainer's answer on the optional margin block;
+        then C.8.7 closes and cycle 3 opens.
       - *Step 4, inventory for the maintainer's decision:*
         `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
         `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
