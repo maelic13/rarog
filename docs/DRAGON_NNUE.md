@@ -102,6 +102,8 @@ the transposed float matrix now have 64-byte alignment, using initialized Vec
 padding and an aligned Rust type. Arithmetic and model bytes are unchanged.
 [RAR-P39](experiments/RAR-P39.md) records the modest vector component gains,
 two rejected candidates, rough search timing and portable limitation.
+[RAR-M72](experiments/RAR-M72.md) records one informational match at
+`3+0.03`: DragonNNUE in Rarog's search against the classical head.
 
 ## Network structure and score meaning
 

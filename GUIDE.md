@@ -139,8 +139,11 @@ activation give about 18% faster vector component inference with exact scores;
 read. F.14 retains 64-byte dense-row alignment after rejecting two other
 candidates: vector component gains are modest; exact parity and search trees
 hold. [RAR-P39](docs/experiments/RAR-P39.md) records the timing limitations.
-No strength or own-data NNUE release gate was accepted. The ordinary active
-phase remains C.
+[RAR-M72](docs/experiments/RAR-M72.md) measured DragonNNUE in Rarog's search
+against the classical head `931dcca` at `3+0.03`: +327.9 ± 14.4 Elo over
+2,000 games, informational; the order C, D, E, F is kept (maintainer
+decision 2026-10-15). No strength or own-data NNUE release gate was
+accepted. The ordinary active phase remains C.
 
 ## Holds and obligations
 
