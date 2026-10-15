@@ -65,8 +65,6 @@ const PAWNSTRUCT: &[&str] = &[
     "pawn_backward_mg",
     "pawn_backward_eg",
     // Pawn-structure detail.
-    "pawn_lever_mg",
-    "pawn_lever_eg",
     "pawn_doubled_isolated_mg",
     "pawn_doubled_isolated_eg",
     "pawn_weak_unopposed_mg",
@@ -88,8 +86,6 @@ const PASSERS: &[&str] = &[
     "passed_freepath_mg_per_rank",
     "passed_freepath_eg_per_rank",
     "passed_safepath_eg_per_rank",
-    "passed_candidate_mg",
-    "passed_candidate_eg",
     "passer_king_them_eg",
     "passer_king_us_eg",
     "passer_king_next_eg",
@@ -148,7 +144,7 @@ const THREATS: &[&str] = &[
     "threat_slider_on_queen_eg",
 ];
 const HANGING: &[&str] = &["hanging_minor", "hanging_rook", "hanging_queen"];
-const MISC: &[&str] = &["space_weight", "tempo"];
+const MISC: &[&str] = &["tempo"];
 const IMBALANCE: &[&str] = &["imbalance_ours", "imbalance_theirs"];
 // Small positional terms.
 const SMALLPOS: &[&str] = &[
@@ -156,8 +152,6 @@ const SMALLPOS: &[&str] = &[
     "bishop_pair_pawn_eg",
     "bishop_outpost_mg",
     "bishop_outpost_eg",
-    "rook_trapped_mg",
-    "rook_trapped_eg",
     "rook_connected_mg",
     "rook_connected_eg",
     "bishop_long_diagonal_mg",
@@ -180,9 +174,7 @@ const GAUNTLET: &[&str] = &[
     "queen_infiltration_eg",
     "king_protector_mg",
     "king_protector_eg",
-    "space_piece_mg",
     // Refresh structure.
-    "space_behind_piece_mg",
     "bishop_xray_pawns_mg",
     "bishop_xray_pawns_eg",
     "queen_battery_mg",
@@ -245,11 +237,11 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_field(&mut active, "unstoppable_passer_eg");
         }
         // The remaining positional scalars — pawn structure, passers,
-        // rook files/7th, minors (bishop pair, outposts), space/tempo, small
+        // rook files/7th, minors (bishop pair, outposts), tempo, small
         // positional terms, and the gauntlet additions. Excludes mobility /
         // threats / hanging (tuned in their own stages) and material/PST/imbalance (later
-        // stages). Freezes the three feature-support sparse pairs (pawn_lever,
-        // trapped_bishop, rook_trapped — too few observations to fit).
+        // stages). Freezes trapped_bishop (feature-support: too few
+        // observations to fit).
         "scalars44" => {
             push_all(&mut active, PAWNSTRUCT);
             push_all(&mut active, PASSERS);
@@ -259,14 +251,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, SMALLPOS);
             push_all(&mut active, GAUNTLET);
             let mut frozen = Vec::new();
-            for f in [
-                "pawn_lever_mg",
-                "pawn_lever_eg",
-                "trapped_bishop_mg",
-                "trapped_bishop_eg",
-                "rook_trapped_mg",
-                "rook_trapped_eg",
-            ] {
+            for f in ["trapped_bishop_mg", "trapped_bishop_eg"] {
                 push_field(&mut frozen, f);
             }
             active.retain(|i| !frozen.contains(i));
@@ -304,8 +289,8 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             eprintln!("Group 'complete' reads its active set from --manifest.");
             exit(1);
         }
-        // Global polish: everything linearly tunable, but the three
-        // feature-support sparse pairs stay frozen. The nonlinear king-danger
+        // Global polish: everything linearly tunable, but trapped_bishop
+        // (feature-support: too sparse) stays frozen. The nonlinear king-danger
         // inputs are not in any linear group (fit via --tune-kingsafety).
         "all47" => {
             push_material(&mut active);
@@ -315,14 +300,7 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
             push_all(&mut active, KINGSAFETY);
             push_all(&mut active, IMBALANCE);
             let mut frozen = Vec::new();
-            for f in [
-                "pawn_lever_mg",
-                "pawn_lever_eg",
-                "trapped_bishop_mg",
-                "trapped_bishop_eg",
-                "rook_trapped_mg",
-                "rook_trapped_eg",
-            ] {
+            for f in ["trapped_bishop_mg", "trapped_bishop_eg"] {
                 push_field(&mut frozen, f);
             }
             active.retain(|i| !frozen.contains(i));
@@ -399,9 +377,7 @@ fn clamp_weights(w: &mut [f64]) {
     // Phalanx bonus (same range as support).
     clamp_field(w, "pawn_phalanx_mg", 0.0, 200.0);
     clamp_field(w, "pawn_phalanx_eg", 0.0, 200.0);
-    // Lever bonus and doubled-isolated penalty magnitude.
-    clamp_field(w, "pawn_lever_mg", 0.0, 100.0);
-    clamp_field(w, "pawn_lever_eg", 0.0, 100.0);
+    // Doubled-isolated penalty magnitude.
     clamp_field(w, "pawn_doubled_isolated_mg", 0.0, 200.0);
     clamp_field(w, "pawn_doubled_isolated_eg", 0.0, 200.0);
     clamp_field(w, "pawn_weak_unopposed_mg", 0.0, 200.0);
@@ -423,8 +399,6 @@ fn clamp_weights(w: &mut [f64]) {
     clamp_field(w, "passed_freestop_mg_per_rank", 0.0, 100.0);
     clamp_field(w, "passed_freestop_eg_per_rank", 0.0, 100.0);
     clamp_field(w, "passed_safestop_eg_per_rank", 0.0, 100.0);
-    clamp_field(w, "passed_candidate_mg", 0.0, 200.0);
-    clamp_field(w, "passed_candidate_eg", 0.0, 200.0);
     // Per unit of capped distance times rank weight (up to 5 x 17).
     clamp_field(w, "passer_king_them_eg", 0.0, 30.0);
     clamp_field(w, "passer_king_us_eg", 0.0, 30.0);
@@ -493,7 +467,6 @@ fn clamp_weights(w: &mut [f64]) {
     w[hr] = w[hr].max(w[hm]);
     w[hq] = w[hq].max(w[hr]);
 
-    clamp_field(w, "space_weight", 0.0, 50.0);
     clamp_field(w, "tempo", 0.0, 50.0);
 
     // King safety: the shelter and storm tables are signed (a pawn can stand
@@ -525,8 +498,6 @@ fn clamp_weights(w: &mut [f64]) {
     for f in [
         "bishop_outpost_mg",
         "bishop_outpost_eg",
-        "rook_trapped_mg",
-        "rook_trapped_eg",
         "rook_connected_mg",
         "rook_connected_eg",
         "bishop_long_diagonal_mg",
@@ -559,7 +530,6 @@ fn clamp_weights(w: &mut [f64]) {
     // Per-distance-unit / per-product weights: summed over many units, so small.
     clamp_field(w, "king_protector_mg", 0.0, 30.0);
     clamp_field(w, "king_protector_eg", 0.0, 30.0);
-    clamp_field(w, "space_piece_mg", 0.0, 20.0);
 }
 
 // ---------------------------------------------------------------------------

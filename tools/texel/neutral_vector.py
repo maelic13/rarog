@@ -9,7 +9,7 @@ king-danger coordinates keep the accepted vector's values, so the control
 asks only whether the linear surface's start biases the fit.
 
   python tools/texel/neutral_vector.py --defaults <complete vector> \
-      --manifest tools/texel/hce_fit_manifest_v5.tsv --out <neutral vector>
+      --manifest tools/texel/hce_fit_manifest_v6.tsv --out <neutral vector>
 """
 from __future__ import annotations
 
