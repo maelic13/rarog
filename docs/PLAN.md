@@ -294,6 +294,13 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
+| C.13.1 | READY_FOR_IMPLEMENTATION | I1 | Audit fixes (maintainer decision 2026-10-15: C.13 runs before C.9, C.10 and C.12): connected rooks any pair; the symmetry sweep as a standing test |
+| C.13.2 | RESEARCH | R2 | The four definitions and the inert-term inventory, read before anything is built |
+| C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
+| C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
+| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate |
+| C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
+| C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1987,6 +1994,90 @@ loss).
         rule (below 0 reopens) the acceptance stands.
       - *Margin block:* skipped (maintainer decision 2026-10-15). C.8.7
         closes with cycle 2 accepted, and cycle 3 opens.
+- **C.13 HCE audit repairs, the fitting target and residual instruments — `R2`, then `I1` and `V`.** Added
+  2026-10-15 (maintainer request after the whole-HCE review,
+  `analysis/hce_audit_2026-10-15.md`). It runs **before C.9, C.10 and
+  C.12** (maintainer decision 2026-10-15): its repairs and a changed fitting
+  target move the surface the tunes would fit and the code the speed pass
+  would rewrite. The audit read every module under `src/eval/` and swept
+  the 194,444 held-out rows for colour symmetry: one bug (connected rooks
+  pair the lowest and highest rook squares, so three rooks score
+  asymmetrically; 4 rows, 31 cp), four definitions that miss their common
+  case (a passer with an own pawn ahead scores in full, 3.3 % of passers;
+  the trapped-rook condition fires 173 times against the donor shape's
+  8,603; rank-4 outposts, the most common at 26,472, are outside the
+  definition while ranks 7 and 8 are inside; initiative has no intercept
+  and no sign clamp, so its weight is inert at 1), and inert terms still
+  computed (space, rook_trapped, pawn_lever, passed_candidate,
+  pawn_isolated). The levers the review named and no other step holds are
+  the fitting target (pure outcome labels; RAR-E04's blended-label
+  rejection was read on a static loss that cannot judge a target change,
+  and its retry trigger, a representation change, fired with Phase C) and
+  two instruments: the residual's pairwise interactions and the static
+  evaluation's residual against the engine's own 8,000-node search. The
+  zero-game sub-steps run first, so whatever they admit joins one refit and
+  one gate. Evidence under `analysis/artifacts/c13audit/`.
+    - **C.13.1 Audit fixes — `I1`.** Connected rooks: any aligned pair
+      with nothing between, every pair counted once; the bench fingerprint
+      expected unchanged (verified, not assumed) and the colour-symmetry
+      sweep as the targeted check. The sweep becomes a standing test: a
+      versioned sample of about 2,000 held-out rows plus the four
+      three-rook rows and constructed promoted-material positions
+      (`tests/data/`), each evaluated against its mirror in
+      `tests/eval_invariants.rs`. Engine commit and test commit apart.
+    - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`.**
+      Registered before any number. For the passer-with-own-pawn-ahead,
+      trapped-rook, outpost-rank and initiative-with-intercept-and-clamp
+      definitions: each corrected feature read as a direction over
+      Rarog's score on the held-out rows with RAR-E57's instrument, frozen
+      predictions, and the decision which enter C.13.5's cluster (at the
+      line, or a correctness repair with a cheap test and no static claim).
+      The inert-term inventory from the texel trace, firing rate and mean
+      |contribution| per term over the corpus, written for C.12 (removing a
+      zero-weight term is behaviour-neutral; the fingerprint proves it) and
+      the fitting manifest. `NO_CHANGE` per definition is a result.
+    - **C.13.3 Residual interaction tree — `R2`.** Registered before any
+      number: a shallow boosted tree (depth 2 to 3) on the held-out residual
+      with Rarog's traced term values, phase and material as inputs, with
+      game-clustered standard errors and a permutation null; the pairwise
+      interactions that carry loss at the line (0.10 % at 4 SE) are named,
+      each with its mechanism and a frozen prediction, or the read closes
+      `NO_CHANGE`. An admitted interaction is a candidate for C.13.5's
+      cluster, never built here.
+    - **C.13.4 Self-search residual map — `R2`.** Registered before any
+      number: the 8,000-node search score of each datagen position (the
+      PGN comments `extract.py` already parses) against the static
+      evaluation of the same position (`rarog-texel --dump-scores`),
+      bucketed by material, phase and dominant term, with clustered
+      errors. Where the static evaluation systematically disagrees with
+      its own deeper search is where a term is missing or mis-shaped; the
+      offline form of the correction histories. Outcome: candidate terms
+      for C.13.5 or `NO_CHANGE`.
+    - **C.13.5 Repairs cluster: implement, refit, gate — `I1`, then `V`.**
+      The definitions and terms C.13.2 to C.13.4 admitted, as one
+      dependency-complete cluster: implementation with focused tests, one
+      joint refit on the current corpus by `fit_complete.ps1`, the
+      fingerprint record updated, and PROCESS's evaluation-change
+      procedure (static screens, tree read, gate 1 `[0,3]`, the margin
+      block when gate 1 fails or a screen flags, `10+0.1` read). Nothing
+      admitted: closes `NO_CHANGE` with the measurements recorded.
+    - **C.13.6 Blended fitting target — `V`.** Registered before the fit,
+      prediction frozen: the current source games re-extracted with
+      `extract.py --blend 0.5` (train split only; validation and test stay
+      pure WDL, so the static loss is reported, not a criterion), Syzygy
+      relabel as standard, one refit by `fit_complete.ps1`, gate 1 `[0,3]`
+      against the C.13.5 head. Kept only by games. If kept, the blend joins
+      C.2's label contract for C.9 and C.10; if not, the retry trigger is
+      a changed datagen budget or label source, recorded. RAR-E04 is
+      cited as the earlier read and why it does not bind.
+    - **C.13.7 Contempt and draw avoidance, research card — `R2`.** Whether
+      a list-Elo lever exists against the weaker pool engines: the
+      candidate forms (a draw score offset in the search, a sign-aware
+      endgame scale), their interaction with the evaluation's drawn-score
+      bands, the endgame scale and the search's draw detection, and the
+      falsifier; the measurement, if any, is E.2's pool gauntlet and is
+      registered there. Decided with the maintainer; `NO_CHANGE` is a
+      result.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.

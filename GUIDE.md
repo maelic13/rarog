@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.12** (`R2`): Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact.
+**Now: C.13.1** (`I1`): Audit fixes.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -71,6 +71,14 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.8.5** Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — DONE 2026-10-14
     - [x] **C.8.6** Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — DONE 2026-10-14
     - [x] **C.8.7** Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — DONE 2026-10-15
+- [ ] **C.13** HCE audit repairs, the fitting target and residual instruments — **R2**
+    - [ ] **C.13.1** Audit fixes — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **C.13.2** Definitions and inert terms, measured before anything is built — **RESEARCH / R2**
+    - [ ] **C.13.3** Residual interaction tree — **RESEARCH / R2**
+    - [ ] **C.13.4** Self-search residual map — **RESEARCH / R2**
+    - [ ] **C.13.5** Repairs cluster: implement, refit, gate — **RESEARCH / I1**
+    - [ ] **C.13.6** Blended fitting target — **RESEARCH / V**
+    - [ ] **C.13.7** Contempt and draw avoidance, research card — **RESEARCH / R2**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
 - [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **RESEARCH / V**
 - [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
