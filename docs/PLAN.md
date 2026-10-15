@@ -2103,6 +2103,21 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   exact native scores and both complete fingerprints unchanged. All checks
   pass; shared-host engine result is recorded separately in RAR-P38.
 
+- **F.14 Qualify further Dragon throughput and align dense rows — `I2` — DONE 2026-10-15.**
+
+  Requested bounded follow-up; [RAR-P39](experiments/RAR-P39.md) freezes saved
+  codegen costs, competing explanations, contracts, predictions and stop rules.
+  Screen vector integer reductions and float activation, optionally removing
+  generic row-lookup callbacks. Require exact scalar/native/kernel agreement,
+  all forty trees and both fingerprints; retain only measured improvement.
+  No change to model, scale, search or the separate own-data NNUE track.
+
+  **Result:** `d56f6d3` retains only safe 64-byte dense-row alignment.
+  SIMD reductions/activation and callback removal were measured unhelpful and
+  discarded. VNNI component +6%, AVX2 +3%; portable timing remains a limitation.
+  Fresh native/kernel parity, all forty trees and both fingerprints match;
+  full checks pass. Shared-host engine read is informational in RAR-P39.
+
 ## Phase G — Scaling, platforms and the top 50
 
 - **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and

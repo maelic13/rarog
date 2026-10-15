@@ -3,14 +3,14 @@
   "source_commit": "f61631e",
   "model_sha256": "c6e25a7fde5971dc47e78e19764c82b8d18a438bbd5ee4da065d061115064417",
   "sha256_source_sha256_lf": "b0fb8226658916a58c05dd6bee0f75b4605ffa6f8d55c38eccddb433bc9c4f13",
-  "scope": "Qualified scalar reconstruction retained as reference. Rarog owns lazy bitboard-delta accumulators, vectorizable portable inference, AVX2/AVX-VNNI kernels and exact-order float transposition; model bytes and score semantics unchanged.",
+  "scope": "Qualified scalar arithmetic retained as reference. Rarog owns lazy bitboard-delta accumulators, portable/AVX2/AVX-VNNI kernels, exact-order float transposition and safely owned dense-row alignment; serialized model bytes and score semantics unchanged.",
   "upstream_runtime_source_sha256_lf": "fa26f95faf4cb42dccef8bd7ef3c892bb1e4ccbac3b7e9061c319e22bc343909",
   "model_asset": "assets/nnue/dragon-network.nnue",
-  "runtime_source_sha256_lf": "4588ef612039665127239a0979da6b80aeba622beb9af09a4252f5f463f8739b",
+  "runtime_source_sha256_lf": "95f9487ff16b837123bd7dfbd7ce05103e1c56ee97d48589f569487ae4804b67",
   "optimized_sources_sha256_lf": {
-    "vendor/dragon-nnue/src/cached/x86.rs": "8063d38a712bf1b40ef778fa44db63e1a926a4cd7434780bc0c7e47700792b3f",
+    "vendor/dragon-nnue/src/cached/x86.rs": "f56aa38953058241c0753fae9a9cc01f9497b546eff3733028a09f8830796b0f",
     "vendor/dragon-nnue/src/cached.rs": "7707697bfe4a3ff7bb67b53b8fe6d97a087a73e2751715ffe73a2ade52cd118c",
-    "vendor/dragon-nnue/src/lib.rs": "4588ef612039665127239a0979da6b80aeba622beb9af09a4252f5f463f8739b",
+    "vendor/dragon-nnue/src/lib.rs": "95f9487ff16b837123bd7dfbd7ce05103e1c56ee97d48589f569487ae4804b67",
     "vendor/dragon-nnue/src/sha256.rs": "b0fb8226658916a58c05dd6bee0f75b4605ffa6f8d55c38eccddb433bc9c4f13"
   }
 }

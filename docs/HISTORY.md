@@ -897,3 +897,16 @@ fingerprint and full tests/checks pass. [RAR-P38](experiments/RAR-P38.md) owns
 predictions, raw paths, measurements and limitations; [usage](DRAGON_NNUE.md)
 explains the eight material-selected scalar heads and absence of WDL output.
 No model/search/scale retune or strength gate; C.7 remains ordinary next work.
+
+
+## 2026-10-15 — F.14, bounded further Dragon runtime screen
+
+Three candidates tested; retained only safe 64-byte dense-row alignment
+(`d56f6d3`). Explicit SIMD reductions/activation and row-lookup callback
+removal were exact but unhelpful and discarded. Matched vector component
+throughput +6% VNNI / +3% AVX2; portable result unresolved/lower. Rough engine
+ratio 1.018× parent on the shared host, no resolved small search
+gain. All native scores, supported forced kernels, forty trees and both
+fingerprints unchanged; full checks pass. [RAR-P39](experiments/RAR-P39.md)
+retains prospective predictions, failures, raw paths, final hashes and limits.
+Model, score scaling, search and UCI are unchanged; C.7 remains ordinary next.

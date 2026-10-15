@@ -97,7 +97,11 @@ copies its 3 KiB bias once; warm evaluations use deltas. The full scalar
 `Network::evaluate` path remains an independent correctness reference.
 The audit, rejected sparse-layout experiment and measurements are in
 [RAR-P37](experiments/RAR-P37.md); the further optimization and compact names
-are qualified in [RAR-P38](experiments/RAR-P38.md).
+are qualified in [RAR-P38](experiments/RAR-P38.md). Dense signed-byte rows and
+the transposed float matrix now have 64-byte alignment, using initialized Vec
+padding and an aligned Rust type. Arithmetic and model bytes are unchanged.
+[RAR-P39](experiments/RAR-P39.md) records the modest vector component gains,
+two rejected candidates, rough search timing and portable limitation.
 
 ## Network structure and score meaning
 
