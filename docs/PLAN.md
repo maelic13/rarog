@@ -2208,6 +2208,12 @@ loss).
       EBF 2.521 again), the blend does not join C.2's label contract,
       and C.13.6 closes `NO_CHANGE`. A target change is retried only with
       the margins refitted alongside it (C.10's joint tune).
+      **RAR-E68 registered (2026-10-15, diagnostic):** the blended refit
+      with its scores scaled ×1.0183 back to the head's magnitude, 4,000
+      games against the head. At ≥ −4 Elo the blend goes to C.10 as a
+      candidate target; at ≤ −9 it stays closed. **RAR-M72 registered**
+      (the maintainer's request): the C.13 head against the pre-C.13
+      head, 2,000 games, AGENTS' harm rule.
     - **C.13.7 Contempt and draw avoidance, research card — `R2`.** Whether
       a list-Elo lever exists against the weaker pool engines: the
       candidate forms (a draw score offset in the search, a sign-aware
