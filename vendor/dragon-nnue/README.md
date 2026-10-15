@@ -1,4 +1,4 @@
-# Scalar Dragon inference
+# Dragon inference runtime
 
 The runtime is the qualified Rust reconstruction snapshot recorded in
 PROVENANCE.json, copied with its original arithmetic and model identity checks.

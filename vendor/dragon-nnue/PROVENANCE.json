@@ -8,8 +8,8 @@
   "model_asset": "assets/nnue/dragon-network.nnue",
   "runtime_source_sha256_lf": "4588ef612039665127239a0979da6b80aeba622beb9af09a4252f5f463f8739b",
   "optimized_sources_sha256_lf": {
-    "vendor/dragon-nnue/src/cached/x86.rs": "d8843bfaaa2aba5eb86d6c66e8992ec3e8369551b7d73fb813c7f1148108d3ec",
-    "vendor/dragon-nnue/src/cached.rs": "83c5bf707c15dcfe3d59e7e32ba821a59192bf008bc739832fc23420d14d3443",
+    "vendor/dragon-nnue/src/cached/x86.rs": "8063d38a712bf1b40ef778fa44db63e1a926a4cd7434780bc0c7e47700792b3f",
+    "vendor/dragon-nnue/src/cached.rs": "7707697bfe4a3ff7bb67b53b8fe6d97a087a73e2751715ffe73a2ade52cd118c",
     "vendor/dragon-nnue/src/lib.rs": "4588ef612039665127239a0979da6b80aeba622beb9af09a4252f5f463f8739b",
     "vendor/dragon-nnue/src/sha256.rs": "b0fb8226658916a58c05dd6bee0f75b4605ffa6f8d55c38eccddb433bc9c4f13"
   }

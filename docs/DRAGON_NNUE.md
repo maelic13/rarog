@@ -16,16 +16,17 @@ Send these commands to the running engine:
 
 ```text
 uci
-setoption name Evaluation value Dragon NNUE
-setoption name Dragon NNUE Scale value 72
+setoption name Evaluation value DragonNNUE
+setoption name DragonNNUEScale value 72
 isready
 position startpos
 eval
 go depth 6
 ```
 
-`Evaluation` is a UCI combo with values `Classical` and `Dragon NNUE`.
-To switch back:
+`Evaluation` is a UCI combo with values `Classical` and `DragonNNUE`.
+Historical spaced names and `Dragon NNUE` remain accepted as unadvertised
+aliases for saved GUI profiles. To switch back:
 
 ```text
 setoption name Evaluation value Classical
@@ -33,19 +34,19 @@ isready
 ```
 
 The qualified model is committed under `assets/nnue/dragon-network.nnue` and
-embedded at build time. `Dragon Eval File` defaults to `<embedded>`, so selection
+embedded at build time. `DragonEvalFile` defaults to `<embedded>`, so selection
 works from any working directory without an external checkout or weights file.
-To use a separate copy, set `Dragon Eval File` to its absolute path. Set it back
+To use a separate copy, set `DragonEvalFile` to its absolute path. Set it back
 to `<embedded>` to use the bundled asset. The loader accepts only the qualified
 model SHA-256
 `c6e25a7fde5971dc47e78e19764c82b8d18a438bbd5ee4da065d061115064417`.
 Other weights, truncated files and modified bytes are rejected.
 
 Missing weights produce an explicit notice and keep the previous evaluator
-active. If a requested external file cannot load, supplying a valid `Dragon Eval File`
+active. If a requested external file cannot load, supplying a valid `DragonEvalFile`
 completes that pending request. Selecting Classical
 cancels the pending request. A bad replacement file leaves the resident model
-and its path unchanged. `Dragon NNUE Scale` accepts 10..500 and defaults to
+and its path unchanged. `DragonNNUEScale` accepts 10..500 and defaults to
 Dragon's 72. Texel tracing builds reject Dragon selection so their HCE traces
 remain meaningful.
 
@@ -76,22 +77,60 @@ without clearing the live shared TT.
 
 Implementation and exact model provenance are in `vendor/dragon-nnue/`.
 Evaluation borrows one immutable process-lifetime model across workers, with
-stack scratch and no per-node heap allocation, locks, Arc operations or FEN
-parsing. Each worker owns about 408 KiB of lazy accumulator entries, allocated
-when Dragon is configured. Entries are keyed by perspective and exact king
-square; bitboard differences update only removed/added features. They remain
+reusable worker-owned scratch and no per-node heap allocation, locks, Arc
+operations or FEN parsing. Each worker owns about 408 KiB of lazy accumulator entries, allocated
+when Dragon is configured, plus 2 KiB of reusable scratch. Material and pawn
+counts follow the same deltas, avoiding repeated population counts. Entries
+are keyed by perspective and exact king square; bitboard differences update only removed/added features. They remain
 correct across skipped evaluations, null moves, unmake and arbitrary position
-jumps, without NNUE hooks in Board or search. All eight auxiliary heads are
+jumps, without NNUE hooks in Board or search. All eight auxiliary sums are
 cached so material changes preserve scaling/head selection.
 
 Runtime dispatch selects dense AVX-VNNI, AVX2 or a portable vectorizable Rust
-kernel at cache construction. Fused common deltas avoid repeated accumulator
-loads. The float layer is transposed at load and vectorized across outputs,
+kernel at cache construction. Common deltas fuse accumulator updates with
+paired activation in one pass,
+avoiding another read and the general row-pointer table. Eight independent
+dense output chains expose instruction parallelism. The float layer is
+transposed at load and vectorized across outputs,
 preserving the reference's operation order and separate rounding. A cold entry
 copies its 3 KiB bias once; warm evaluations use deltas. The full scalar
 `Network::evaluate` path remains an independent correctness reference.
 The audit, rejected sparse-layout experiment and measurements are in
-[RAR-P37](experiments/RAR-P37.md).
+[RAR-P37](experiments/RAR-P37.md); the further optimization and compact names
+are qualified in [RAR-P38](experiments/RAR-P38.md).
+
+## Network structure and score meaning
+
+This extracted network returns **one signed scalar evaluation**, which the
+adapter places on Rarog's centipawn score interface. It has no WDL logits or
+win/draw/loss probability output. The recovered inference does not establish
+its training labels or a probability calibration. The eight material heads
+are alternative subnetworks: each position selects exactly one.
+
+| Stage | Shape and arithmetic |
+|---|---|
+| Shared feature transformer | 22,528 possible king-relative piece-square features; bias plus active rows gives 1,536 wrapping i16 lanes per perspective |
+| Paired activation | Clamp both 768-lane halves to 0..127, multiply corresponding lanes, shift right 7; produces 768 bytes per perspective |
+| Perspective concatenation | Side-to-move 768, then opponent 768: 1,536 unsigned-byte inputs |
+| Selected material head | 1,536 → 16 signed-byte dense dot products with i32 sums |
+| Activation and skip | First 15 values each produce a square and a clipped linear activation (30 floats); value 16 supplies a direct scalar skip |
+| Float layers | 30 → 32 with clipped activation, then 32 → 1 |
+| Final score | Add skip and selected auxiliary piece-square difference, divide and apply the recovered pawn-count/scale transform |
+
+The head index is `min(95, 3*N + 4*B + 8*R + 18*Q) / 12`, using both
+colors' piece counts and integer division. Pawns and kings do not select a
+head. Eight auxiliary i32 sums are accumulated alongside the transformer;
+only the selected head's difference contributes to the scalar. Neither this
+auxiliary path nor the skip is a second WDL output.
+
+Integration follows `Board bitboards → worker accumulator cache → scalar
+Evaluator result → Rarog search corrections and rule-50 handling`. The whole
+static evaluation cache can bypass inference on a hit. DragonNNUE replaces
+the HCE terms inside the evaluator; Rarog still owns legal moves, search,
+transposition tables, draws and time management. Castling rights, en passant
+and move clocks are not neural input features. The `eval` diagnostic measures
+the raw evaluator before search corrections, making it the proper native
+`nnue` parity comparison.
 
 ## Repeat the checks
 
@@ -157,5 +196,6 @@ For the optimized component benchmark, `cargo bench --bench dragon_nnue` runs
 three rotated rounds against the full scalar reference with exact checksums.
 For engine A/B/A comparisons use `tools/diag/dragon_nnue_opt.py`; the baseline
 build, arguments, workload, source/binary guards and measured results are in
-[RAR-P37](experiments/RAR-P37.md). The ordinary default-feature release build
+[RAR-P37](experiments/RAR-P37.md) and [RAR-P38](experiments/RAR-P38.md).
+The ordinary default-feature release build
 selects the supported CPU kernel automatically; no native build flag is needed.

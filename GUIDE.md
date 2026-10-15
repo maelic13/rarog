@@ -100,6 +100,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **F.10** CCRL top-100 gate — **V**
 - [x] **F.11** Experimental Dragon NNUE evaluation selector — DONE 2026-10-15
 - [x] **F.12** Optimize the experimental Dragon NNUE runtime — DONE 2026-10-15
+- [x] **F.13** Compact Dragon options and further exact inference optimization — DONE 2026-10-15
 
 ## Phase G — Scaling, platforms and the top 50
 
@@ -131,8 +132,11 @@ fingerprint is unchanged. [Usage](docs/DRAGON_NNUE.md) and [RAR-P36](docs/experi
 record the one-run speed read and the explicit busy-host waiver. The
 experimental track F.12 is also complete: the bundled model and exact
 incremental/CPU kernels are qualified in [RAR-P37](docs/experiments/RAR-P37.md).
-No strength or own-data NNUE release gate was accepted. The ordinary active
-phase remains C.
+F.13 is complete too: compact DragonNNUE names, reusable scratch and fused
+activation give about 18% faster vector component inference with exact scores;
+[RAR-P38](docs/experiments/RAR-P38.md) records the separate shared-host engine
+read. No strength or own-data NNUE release gate was accepted. The ordinary
+active phase remains C.
 
 ## Holds and obligations
 

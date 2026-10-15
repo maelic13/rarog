@@ -2086,6 +2086,23 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   informational A/B/A speed is 6.54× scalar under
   the shared-host waiver. HCE fingerprint is unchanged; no strength acceptance.
 
+- **F.13 Compact Dragon options and further exact inference optimization — `I2` — DONE 2026-10-15.**
+
+  Maintainer-requested interface correction and neutral runtime follow-up.
+  [RAR-P38](experiments/RAR-P38.md) freezes codegen evidence, ownership and
+  arithmetic contracts, competing explanations, falsifiers and bounded timing
+  before implementation. Reuse scratch, delta-maintain material metadata and
+  screen fused update/activation and wider dense chains. Require every forced
+  kernel/native score and both complete bench fingerprints unchanged. Keep
+  only measured improvements; shared-host timing remains informational.
+  Classical stays default; no strength gate or model retune is implied.
+
+  **Result:** compact options `fb18c11`, negotiated tools `47c8f26`, runtime
+  `a8d0892`: reusable scratch, cached material/pawn counts, fused
+  update/activation and eight dense chains. Vector component about 18% faster;
+  exact native scores and both complete fingerprints unchanged. All checks
+  pass; shared-host engine result is recorded separately in RAR-P38.
+
 ## Phase G — Scaling, platforms and the top 50
 
 - **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and

@@ -1,7 +1,7 @@
 # Rarog
 
 The `dragon_nnue` branch also provides an experimental `Evaluation` UCI selector
-(`Classical` or `Dragon NNUE`), keeping Classical as default. The qualified model
+(`Classical` or `DragonNNUE`), keeping Classical as default. The qualified model
 is bundled, with incremental inference and portable/AVX2/AVX-VNNI kernels. See
 [setup, static validation and limitations](docs/DRAGON_NNUE.md).
 

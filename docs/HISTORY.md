@@ -883,3 +883,17 @@ all forty Dragon trees identical and a rough 6.54× NPS
 gain under the shared-host waiver; HCE fingerprint remains 14,197,472. Tooling
 `6881550` preserves inputs, identities and every timing/score record. No
 push, strength claim, search retune or own-data release acceptance.
+
+
+## 2026-10-15 — F.13, compact Dragon interface and further exact runtime work
+
+UCI advertises `DragonNNUE`, `DragonEvalFile`, `DragonNNUEScale`, retaining old
+saved-profile aliases (`fb18c11`); tooling negotiates archived names (`47c8f26`).
+Runtime `a8d0892` reuses scratch, caches material/pawn metadata, fuses
+update/activation and widens dense instruction parallelism. Vector component
+is about 18% faster; engine A/B/A ratio 1.146× parent under the
+shared-host waiver. Exact native/forced-kernel scores, all forty trees, default
+fingerprint and full tests/checks pass. [RAR-P38](experiments/RAR-P38.md) owns
+predictions, raw paths, measurements and limitations; [usage](DRAGON_NNUE.md)
+explains the eight material-selected scalar heads and absence of WDL output.
+No model/search/scale retune or strength gate; C.7 remains ordinary next work.
