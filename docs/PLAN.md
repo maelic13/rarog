@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.5 | RESEARCH | R2 | Definition cards written (2026-10-15, `analysis/c135_cards_2026-10-15.md`; `R2` by maintainer decision, the build returns to `I1`): material × men and mobility × men, each with its form, interactions, invariants and falsifiers; next RAR-E66, the game-length and transient-material kill test, before either is ready |
+| C.13.5 | RESEARCH | R2 | Definition cards written (`analysis/c135_cards_2026-10-15.md`; `R2` by maintainer decision, the build returns to `I1`). RAR-E66 registered (2026-10-15): both pairs re-read with a game-length term in the base and on the search-settled rows; a pair surviving both is ready |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
