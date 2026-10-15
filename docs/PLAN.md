@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
+| C.13.6 | RESEARCH | V | RAR-E67 registered (2026-10-15): `hce-v6`'s games re-extracted with train targets half outcome, half the datagen search's score on the tuner's scale (K 1.6166), Syzygy relabel, one refit, screens, gate 1 `[0,3]` against the current head; the data and fit are the maintainer's command (about an hour) |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
