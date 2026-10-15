@@ -67,6 +67,76 @@ unsafe fn update_small<const R: usize, const A: usize>(
 }
 
 #[target_feature(enable = "avx2")]
+pub(super) unsafe fn update_activate(
+    acc: &mut [i16; LANES],
+    weights: &[i16],
+    removed: &[usize],
+    added: &[usize],
+    output: &mut [u8],
+) {
+    assert_eq!(output.len(), 768);
+    // SAFETY: Slice lengths select matching constant kernels. All rows are
+    // bounds checked by the specialization before vector pointer arithmetic.
+    unsafe {
+        match (removed.len(), added.len()) {
+            (1, 1) => fused::<1, 1>(acc, weights, removed, added, output),
+            (2, 1) => fused::<2, 1>(acc, weights, removed, added, output),
+            (1, 2) => fused::<1, 2>(acc, weights, removed, added, output),
+            (2, 2) => fused::<2, 2>(acc, weights, removed, added, output),
+            (3, 2) => fused::<3, 2>(acc, weights, removed, added, output),
+            (2, 3) => fused::<2, 3>(acc, weights, removed, added, output),
+            _ => {
+                update(acc, weights, removed, added);
+                activate(acc, output);
+            }
+        }
+    }
+}
+
+#[target_feature(enable = "avx2")]
+unsafe fn fused<const R: usize, const A: usize>(
+    acc: &mut [i16; LANES],
+    weights: &[i16],
+    removed: &[usize],
+    added: &[usize],
+    output: &mut [u8],
+) {
+    let minus: [&[i16]; R] =
+        std::array::from_fn(|i| &weights[removed[i] * LANES..(removed[i] + 1) * LANES]);
+    let plus: [&[i16]; A] =
+        std::array::from_fn(|i| &weights[added[i] * LANES..(added[i] + 1) * LANES]);
+    let zero = _mm256_setzero_si256();
+    let max = _mm256_set1_epi16(127);
+    // SAFETY: Both halves are 768 lanes, divisible by sixteen. The checked
+    // feature rows have LANES entries, and output has 768 bytes. Both sums are
+    // updated completely before their product, with the original i16 wrapping.
+    unsafe {
+        for i in (0..768).step_by(16) {
+            let mut lo = _mm256_loadu_si256(acc.as_ptr().add(i).cast());
+            let mut hi = _mm256_loadu_si256(acc.as_ptr().add(i + 768).cast());
+            for row in &minus {
+                lo = _mm256_sub_epi16(lo, _mm256_loadu_si256(row.as_ptr().add(i).cast()));
+                hi = _mm256_sub_epi16(hi, _mm256_loadu_si256(row.as_ptr().add(i + 768).cast()));
+            }
+            for row in &plus {
+                lo = _mm256_add_epi16(lo, _mm256_loadu_si256(row.as_ptr().add(i).cast()));
+                hi = _mm256_add_epi16(hi, _mm256_loadu_si256(row.as_ptr().add(i + 768).cast()));
+            }
+            _mm256_storeu_si256(acc.as_mut_ptr().add(i).cast(), lo);
+            _mm256_storeu_si256(acc.as_mut_ptr().add(i + 768).cast(), hi);
+            let a = _mm256_min_epi16(_mm256_max_epi16(lo, zero), max);
+            let b = _mm256_min_epi16(_mm256_max_epi16(hi, zero), max);
+            let product = _mm256_srli_epi16::<7>(_mm256_mullo_epi16(a, b));
+            let packed = _mm256_permute4x64_epi64::<0xd8>(_mm256_packus_epi16(product, zero));
+            _mm_storeu_si128(
+                output.as_mut_ptr().add(i).cast(),
+                _mm256_castsi256_si128(packed),
+            );
+        }
+    }
+}
+
+#[target_feature(enable = "avx2")]
 pub(super) unsafe fn activate(acc: &[i16; LANES], output: &mut [u8]) {
     assert_eq!(output.len(), 768);
     let zero = _mm256_setzero_si256();
@@ -99,8 +169,8 @@ macro_rules! first_layer {
             // SAFETY: All 16 rows contain LANES bytes; 32-byte blocks cover
             // each row and the input exactly. Kernel dispatch checked the ISA.
             unsafe {
-                for group in (0..16).step_by(4) {
-                    let mut sums = [_mm256_setzero_si256(); 4];
+                for group in (0..16).step_by(8) {
+                    let mut sums = [_mm256_setzero_si256(); 8];
                     for i in (0..LANES).step_by(32) {
                         let a = _mm256_loadu_si256(input.as_ptr().add(i).cast());
                         for (row, sum) in sums.iter_mut().enumerate() {
@@ -229,6 +299,58 @@ unsafe fn second_layer(head: &Head, activated: &[f32; 30], second: &mut [f32; 32
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fused_deltas_preserve_wrapping_sums_and_paired_activation() {
+        if !std::is_x86_feature_detected!("avx2") {
+            return;
+        }
+        let weights: Vec<i16> = (0..8 * LANES).map(|i| (i * 7919) as i16).collect();
+        for (removed, added) in [
+            (0, 0),
+            (0, 7),
+            (1, 1),
+            (2, 1),
+            (1, 2),
+            (2, 2),
+            (3, 2),
+            (2, 3),
+            (4, 4),
+        ] {
+            let minus: Vec<_> = (0..removed).collect();
+            let plus: Vec<_> = (0..added).map(|i| i + 1).collect();
+            let mut expected: [i16; LANES] = std::array::from_fn(|i| (i * 3257) as i16);
+            let mut actual = expected;
+            for &row in &minus {
+                for (sum, &weight) in expected
+                    .iter_mut()
+                    .zip(&weights[row * LANES..(row + 1) * LANES])
+                {
+                    *sum = sum.wrapping_sub(weight);
+                }
+            }
+            for &row in &plus {
+                for (sum, &weight) in expected
+                    .iter_mut()
+                    .zip(&weights[row * LANES..(row + 1) * LANES])
+                {
+                    *sum = sum.wrapping_add(weight);
+                }
+            }
+            let activated: [u8; 768] = std::array::from_fn(|i| {
+                ((i32::from(expected[i].clamp(0, 127))
+                    * i32::from(expected[i + 768].clamp(0, 127)))
+                    >> 7) as u8
+            });
+            let mut output = [255; 768];
+            // SAFETY: AVX2 is available and every feature row is in bounds.
+            unsafe {
+                update_activate(&mut actual, &weights, &minus, &plus, &mut output);
+            }
+            assert_eq!(actual, expected, "deltas {removed}/{added}");
+            assert_eq!(output, activated, "activation {removed}/{added}");
+        }
+    }
 
     #[test]
     fn vector_intermediates_preserve_integer_wrap_and_float_bits() {

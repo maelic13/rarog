@@ -43,6 +43,15 @@ struct Entry {
     pieces: [u64; 12],
     auxiliary: [i32; 8],
     valid: bool,
+    material: i32,
+    pawns: i32,
+}
+
+#[derive(Clone)]
+struct Scratch {
+    input: [u8; LANES],
+    removed: [usize; 32],
+    added: [usize; 32],
 }
 
 /// Owned by one evaluator/worker. Allocated at configuration, never at a node.
@@ -50,6 +59,7 @@ struct Entry {
 pub struct AccumulatorCache {
     entries: Vec<Entry>,
     kernel: Kernel,
+    scratch: Box<Scratch>,
 }
 
 impl Default for AccumulatorCache {
@@ -77,9 +87,16 @@ impl AccumulatorCache {
                     pieces: [0; 12],
                     auxiliary: [0; 8],
                     valid: false,
+                    material: 0,
+                    pawns: 0,
                 })
                 .collect(),
             kernel,
+            scratch: Box::new(Scratch {
+                input: [0; LANES],
+                removed: [0; 32],
+                added: [0; 32],
+            }),
         })
     }
 
@@ -107,18 +124,16 @@ impl AccumulatorCache {
         if !(10..=500).contains(&scale) {
             return Err(Error("NNUE_Scale must be in 10..=500".into()));
         }
-        if pieces[5].count_ones() != 1 || pieces[11].count_ones() != 1 {
+        if !pieces[5].is_power_of_two() || !pieces[11].is_power_of_two() {
             return Err(Error("position needs one king per color".into()));
         }
         let side = usize::from(black_to_move);
-        let pawns = (pieces[0].count_ones() + pieces[6].count_ones()) as i32;
-        let material: u32 = pieces
-            .iter()
-            .enumerate()
-            .map(|(i, p)| p.count_ones() * [0, 3, 4, 8, 18, 0][i % 6])
-            .sum();
-        let head = (material.min(95) / 12) as usize;
-        let mut input = [0_u8; LANES];
+        let (mut head, mut pawns) = (0, 0);
+        let Scratch {
+            input,
+            removed,
+            added,
+        } = &mut *self.scratch;
         let mut auxiliary = [0_i32; 2];
         for (half, aux) in auxiliary.iter_mut().enumerate() {
             let perspective = side ^ half;
@@ -129,11 +144,15 @@ impl AccumulatorCache {
                 entry.pieces.fill(0);
                 entry.auxiliary.fill(0);
                 entry.valid = true;
+                entry.material = 0;
+                entry.pawns = 0;
             }
-            let mut removed = [0; 32];
-            let mut added = [0; 32];
             let (mut nr, mut na) = (0, 0);
             for (kind, (&old, &new)) in entry.pieces.iter().zip(pieces).enumerate() {
+                if old == new {
+                    continue;
+                }
+                let (old_nr, old_na) = (nr, na);
                 let code = (kind % 6 + 1 + (kind / 6) * 8) as u8;
                 let mut gone = old & !new;
                 while gone != 0 {
@@ -147,6 +166,16 @@ impl AccumulatorCache {
                     na += 1;
                     arrived &= arrived - 1;
                 }
+                let change = (na - old_na) as i32 - (nr - old_nr) as i32;
+                entry.material += change * [0, 3, 4, 8, 18, 0, 0, 3, 4, 8, 18, 0][kind];
+                entry.pawns += change * i32::from(kind == 0 || kind == 6);
+            }
+            if half == 0 {
+                head = (entry.material.min(95) / 12) as usize;
+                pawns = entry.pawns;
+            } else {
+                debug_assert_eq!(head, (entry.material.min(95) / 12) as usize);
+                debug_assert_eq!(pawns, entry.pawns);
             }
             let removed = &removed[..nr];
             let added = &added[..na];
@@ -188,8 +217,13 @@ impl AccumulatorCache {
                 _ => {
                     // SAFETY: Construction checks AVX2 support for both vector kernels.
                     unsafe {
-                        x86::update(&mut entry.accumulator, &network.weights, removed, added);
-                        x86::activate(&entry.accumulator, &mut input[half * 768..(half + 1) * 768]);
+                        x86::update_activate(
+                            &mut entry.accumulator,
+                            &network.weights,
+                            removed,
+                            added,
+                            &mut input[half * 768..(half + 1) * 768],
+                        );
                     }
                 }
                 #[cfg(not(target_arch = "x86_64"))]
@@ -200,16 +234,16 @@ impl AccumulatorCache {
         }
         let selected = &network.heads[head];
         let score = match self.kernel {
-            Kernel::Portable => selected.forward_portable(&input),
+            Kernel::Portable => selected.forward_portable(input),
             #[cfg(target_arch = "x86_64")]
             Kernel::Avx2 => {
                 // SAFETY: AVX2 was checked at construction.
-                unsafe { x86::forward_avx2(selected, &input) }
+                unsafe { x86::forward_avx2(selected, input) }
             }
             #[cfg(target_arch = "x86_64")]
             Kernel::AvxVnni => {
                 // SAFETY: Both AVX2 and AVX-VNNI were checked at construction.
-                unsafe { x86::forward_vnni(selected, &input) }
+                unsafe { x86::forward_vnni(selected, input) }
             }
             #[cfg(not(target_arch = "x86_64"))]
             _ => unreachable!(),
