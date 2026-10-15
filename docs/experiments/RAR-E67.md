@@ -102,4 +102,41 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Gate arms:**
   - Candidate: `tools/test_engines/rarog-c136blend-pext-pgo.exe` (`776D9C7C…`, built clean at `9576881`, bench 11,837,089).
   - Head: `tools/test_engines/rarog-c13best-pext-pgo.exe` (`3C92DC47…`, built clean at `931dcca`, whose engine sources equal `43b34ec`'s, bench 10,521,141).
-- **Result:** gate 1 pending.
+- **Gate 1 (played 2026-10-15, 16:33–17:27 UTC, by the agent under the maintainer's exception; `tools/results/rar-e67-gate1`, manifest `colosseum_sprt_rar-e67-gate1_20261015_183353.manifest.txt`):**
+  - *Conditions, checked from the manifest:*
+    - the registered arms and fingerprints (`776D9C7C…` at `9576881`, 11,837,089; `3C92DC47…` at `931dcca`, 10,521,141);
+    - the pinned runner (`colosseum-cli 0.3.0`, `381EB7A5…` at `cb12cd3`), UHO seed 4207, no adjudication;
+    - the host 9.5% busy with no waiver, and the repository clean at `0e4e2a4`.
+    - A first launch was refused at 24% CPU, the agent's own just-finished work; the relaunch a minute later passed.
+  - **H0 accepted** at 2,525 pairs (5,050 games): **−13.0 ± 5.7 Elo, −21.7 ± 9.6 nElo**, W/D/L 1,193 / 2,472 / 1,385, pentanomial [79, 705, 1,132, 547, 62], LLR −2.95 against ±2.94.
+    - No faults (0 of 25 allowed). 16 post-terminal pairs are kept as evidence and excluded.
+    - `colosseum_recount.py` agrees exactly: −13.22 Elo, the same pentanomial.
+  - *Frozen test, read once as the registered diagnosis* (`c136/frozen-test.log`; it decides nothing):
+    - the refit is slightly **better** statically: 0.09222473 against 0.09226795, −0.05%;
+    - it regresses only in the middlegame, no-queens, pawn-ending and passer buckets, each by under 0.0002.
+- **Disposition:** **rejected.** By the frozen use the candidate is reverted in its own commit (`e2c23d1`). Its source equals `9576881^` in `src`, with bench 10,521,141 / EBF 2.521. The blend does not join C.2's label contract, and **C.13.6 closes `NO_CHANGE`**. The tree read's flag offered a margin block; at −13 Elo it is not run, and nothing in the frozen use asks for it.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 6 above.
+  - Observed:
+    - (1) hit, both wires.
+    - (2) both passes converged, hit. Pure-validation loss worse (0.6): **miss**, it improved 0.07% (frozen test −0.05%).
+    - (3) hit.
+    - (4) a band at or below 600 shrinking by more than 10 cp (0.5): **miss**, the largest was −9.6 at 301–600. Any flag (0.5): it happened (the tree read).
+    - (5) NPS within ±0.5% (0.75): **miss**, −1.10%.
+    - (6) gate 1 +3 Elo, 80% band [−5, +11]: **miss**, −13.0, below the band. The pass (probability 0.3) did not happen.
+  - Which assumption failed: that a better outcome fit from the search's verdict carries into play with the search frozen. The refit predicts outcomes slightly better on unseen rows, yet loses 13 Elo.
+    - The NPS cost explains about 2 of it.
+    - The rest points at competing hypothesis 2, the interaction with the frozen search. The blended target shrinks every magnitude band by 3 to 11 cp, and it reshapes the tree (per-position nodes +5.4%, median +11.7%). The search's cp margins were fitted to the head's magnitudes.
+    - Hypothesis 1, the cycle-1 search's own errors becoming the target, is not separated from 2 by this read.
+    - The miss is in mechanism and sign, not only magnitude.
+- **Conditional lesson:** a fitting-target change that improves static loss on pure outcomes can still lose heavily in play with the search frozen. Static loss, even on a frozen test, does not accept a target change (RAR-E04's caution, now measured: −0.05% static, −13 Elo). A future target change needs the search's margins refitted with it: C.10's joint tune, or a margin block registered before games.
+- **Retry trigger:** as registered, a changed datagen budget or label source. Also C.10's joint tune, which can refit the search's margins to a blended surface: a blend is retried only inside a registration that moves the margins with it.
+- **Artifacts:**
+  - `analysis/artifacts/c136/`:
+    - scripts: `run_c136_data_fit.sh`, `check_corpus.py`, `run_screens.sh`, `run_nps.sh`;
+    - the data-and-fit logs: `status.txt`, `run.log`, `extract.log`, `relabel.log`, the two `check-*.log`, `fit.log`;
+    - the screens: `screens-status.txt`, the dumps, the reports, `magnitude.txt`, `tree_d12.*`;
+    - the NPS read: `nps-status.txt`, `nps/`;
+    - the gate and after: `dryrun-gate1.log`, `gate1.log`, `recount.log`, `frozen-test.log`, `build-revert.log`, `bench-revert.log`.
+  - The fit: `tools/results/hce-fit-20261015_181145`. The gate: `tools/results/rar-e67-gate1`.
+  - The corpora: `tools/texel/data/hce-v6b` and `hce-v6b-tb` (ignored).

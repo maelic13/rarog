@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.6 | RESEARCH | V | RAR-E67 registered (2026-10-15): `hce-v6`'s games re-extracted with train targets half outcome, half the datagen search's score on the tuner's scale (K 1.6166), Syzygy relabel, one refit, screens, gate 1 `[0,3]` against the current head; the data and fit are the maintainer's command (about an hour) |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
@@ -2185,7 +2184,7 @@ loss).
       target, not to a term. **C.13.5 closes `NO_CHANGE`**, since C.13.2
       and C.13.4 admitted nothing. Nothing is built, and C.13.6's gate
       runs against the current head (10,521,141 / EBF 2.521).
-    - **C.13.6 Blended fitting target — `V`.** Registered before the fit,
+    - **C.13.6 Blended fitting target — `V`, NO_CHANGE 2026-10-15.** Registered before the fit,
       prediction frozen: the current source games re-extracted with
       `extract.py --blend 0.5` (train split only; validation and test stay
       pure WDL, so the static loss is reported, not a criterion), Syzygy
@@ -2194,6 +2193,21 @@ loss).
       C.2's label contract for C.9 and C.10; if not, the retry trigger is
       a changed datagen budget or label source, recorded. RAR-E04 is
       cited as the earlier read and why it does not bind.
+      **Read 2026-10-15** (RAR-E67, `analysis/artifacts/c136/`; run by
+      the agent under the maintainer's exception). `hce-v6`'s games were
+      re-extracted with train targets half outcome and half the datagen
+      search's score on the tuner's scale (K 1.6166), relabelled and
+      refitted. The refit predicts outcomes slightly *better*
+      (validation −0.07%, frozen test −0.05%), but **gate 1 accepted
+      H0 at −13.0 ± 5.7 Elo** (5,050 games).
+      - The blend shrinks every magnitude band by 3 to 11 cp, reshapes
+        the tree (per-position nodes +5.4%) and costs 1.1% NPS.
+      - The frozen search's margins, fitted to the head's magnitudes,
+        are the likeliest cause.
+      The candidate is reverted (`e2c23d1`, fingerprint 10,521,141 /
+      EBF 2.521 again), the blend does not join C.2's label contract,
+      and C.13.6 closes `NO_CHANGE`. A target change is retried only with
+      the margins refitted alongside it (C.10's joint tune).
     - **C.13.7 Contempt and draw avoidance, research card — `R2`.** Whether
       a list-Elo lever exists against the weaker pool engines: the
       candidate forms (a draw score offset in the search, a sign-aware
