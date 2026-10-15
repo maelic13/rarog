@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.2 | RESEARCH | R2 | RAR-E62 registered (2026-10-15): the four corrected definitions as directions over a spline of the played score with game-clustered errors, line 0.10% at 4 SE; none is a correctness repair; the inert-term inventory from the texel trace |
 | C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
 | C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate |
@@ -2073,7 +2072,7 @@ loss).
       revision only. Final state: fmt clean, clippy
       `--all-features --all-targets` at zero warnings, tests debug 396,
       release 397 and `--features texel` 402 passed, none failing.
-    - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`.**
+    - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`, NO_CHANGE 2026-10-15.**
       Registered before any number. For the passer-with-own-pawn-ahead,
       trapped-rook, outpost-rank and initiative-with-intercept-and-clamp
       definitions: each corrected feature read as a direction over
@@ -2085,6 +2084,25 @@ loss).
       zero-weight term is behaviour-neutral; the fingerprint proves it) and
       the fitting manifest, over the terms C.13.1 kept. `NO_CHANGE` per
       definition is a result.
+      **Read 2026-10-15** (RAR-E62, `analysis/artifacts/c132/`): every
+      wire held. The offline definitions equal the engine's trace on all
+      194,444 held-out rows of `hce-v6-tb`, the endgame sum at the
+      initiative term was rebuilt exactly, and every row's game was
+      found. **No definition reaches the line in any deciding cohort, so
+      all four close `NO_CHANGE` and none enters C.13.5.** Over all rows:
+      the passer with an own pawn ahead +0.001 ± 0.013%, the
+      donor-shaped trapped rook +0.002 ± 0.007, outpost ranks 4 to 6
+      +0.014 ± 0.017, and initiative with an intercept and the clamp
+      +0.069 ± 0.019 (3.7 SE, the closest). Initiative's reported-only
+      endgame band (+0.54 ± 0.09) exceeds both its parts (+0.090 above six
+      men), so the direction is partly separating the small endings the
+      tablebases decide; it is retried only on the trigger RAR-E62 names.
+      The inventory names no further whole term at exactly zero:
+      `pawn_isolated_*` stays by C.13.1's decision, and 13 zero halves of
+      live terms cost nothing to keep. Near-inert are `hanging_rook` and
+      `hanging_queen` (0.02 cp mean), `trapped_bishop_*` (0.04% of rows,
+      hand-frozen) and `bishop_outpost_eg`. C.12 gains no free removal;
+      the fitting manifest needs no change.
     - **C.13.3 Residual interaction tree — `R2`.** Registered before any
       number: a shallow boosted tree (depth 2 to 3) on the held-out residual
       with Rarog's traced term values, phase and material as inputs, with

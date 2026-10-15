@@ -47,4 +47,56 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   7. *Inventory:* `pawn_isolated_*` fires on at least 20% of rows with zero contribution (0.8); at least five other fields have a mean |contribution| under 0.5 cp on the played trace (0.6).
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** this read.
-- **Result:** pending.
+- **Result (run 2026-10-15, once, after the registration commit `4a9b085`; `analysis/artifacts/c132/`, every step exit 0, read from `status.txt`; the tree clean before the run and after the temporary test was removed):**
+  - *Wires, all held:*
+    - W1: the dump's played score equals `--dump-scores` on all 194,444 rows.
+    - W2: the provenance reproduces the manifest's 512,788 / 28,284 / 28,592 games exactly; every row found a game (5 ambiguous) among 27,721 games.
+    - W3: the offline passed, outpost and initiative counts equal the engine's full trace on every row.
+    - W4: the frozen parts equal the offline mop-up on every row where the map did not fire. Mop-up fired on 93,575 rows, 67,695 of them with the map. The 433 minor-piece mate rows were left at zero.
+    - W5: the label control gains 100%; the noise control's largest |z| in a deciding cohort is 3.34.
+    - The played path was lazy on 25.7% of rows. Game-clustered errors are 1.04 to 2.18 times the naive.
+  - *Gains*, `read.log` (percent of the spline comparator's held-out squared error ± one game-clustered SE; no deciding cohort reached the line):
+
+    | Cohort (rows) | passer_own_ahead | trapped_rook | outposts | initiative |
+    |---|---:|---:|---:|---:|
+    | all * (194,444) | +0.001 ± 0.013 | +0.002 ± 0.007 | +0.014 ± 0.017 | **+0.069 ± 0.019** (3.7 SE) |
+    | phase ≥ 96 * (43,145) | −0.037 ± 0.014 | −0.007 | +0.022 | +0.000 |
+    | phase 32–95 * (50,634) | +0.014 | +0.021 ± 0.029 | +0.007 | +0.004 |
+    | queens * (108,598) | −0.013 | −0.010 | +0.022 ± 0.021 | −0.001 |
+    | men ≥ 7 * (163,836) | +0.001 | −0.004 | +0.023 ± 0.017 | −0.002 |
+    | \|rarog\| ≤ 500 * (138,473) | +0.003 | +0.002 | +0.022 ± 0.017 | +0.069 ± 0.019 (3.7 SE) |
+    | \|rarog\| > 500 * (55,971) | +0.084 ± 0.085 | −0.055 | −0.024 | −0.008 |
+    | phase < 32, men ≥ 7 * (70,096) | +0.038 ± 0.068 | +0.012 | +0.018 | +0.090 ± 0.035 (2.6 SE) |
+    | no queens, men ≥ 7 * (64,846) | +0.027 | +0.020 | +0.037 ± 0.031 | +0.060 ± 0.027 (2.2 SE) |
+    | phase < 32 (100,665) | +0.024 | −0.043 | +0.015 | **+0.542 ± 0.092** (5.9 SE) |
+    | no queens (85,846) | +0.021 | +0.025 | −0.018 | +0.423 ± 0.087 (4.9 SE) |
+    | men ≤ 6 (30,608) | +0.098 ± 0.274 | 0 (never active) | +0.006 | +0.288 ± 0.155 (1.9 SE) |
+
+  - *By the frozen rule, no definition is at the line in any deciding cohort.* Initiative comes closest: over all rows it is +0.069 ± 0.019, 3.7 SE, under both clauses, and all of that sits at \|rarog\| ≤ 500. In the reported-only endgame band (phase < 32) it reads +0.542 ± 0.092 with an implied scale of about 2, so the data want twice the donor's per-pawn value there. That band's gain is larger than either of its parts (+0.090 above six men, +0.288 at six or fewer). So part of it is the direction separating the small endings, which the tablebases decide in play, from the rest, which one spline over the band cannot do. It is not evidence for the term above six men. The clamp adds little: the unclamped form reads +0.065 over all rows and +0.491 at phase < 32.
+  - The passer, trapped-rook and outpost directions stay at or under 0.04% wherever they are deciding. Their activations are 6,604, 6,019 and 22,282 rows.
+  - *Instrument note:* the logistic fit overflowed `exp` in the reported-only no-queens cohort (saturated predictions; that cohort decides nothing). No deciding cohort warned.
+  - *Inventory* (`read.json`, played trace; full trace beside it in the file):
+    - Fifteen fields have every weight zero. Two are `pawn_isolated_*`, which fire on 59% and 60% of rows, contribute nothing and are kept by C.13.1's decision. The other thirteen are zero halves or members of live terms, computed with their live half, so removing them saves nothing: `passed_supported_eg_base`, `passed_freestop_mg_per_rank`, `pawn_backward_mg`, `pawn_doubled_isolated_mg`, `blocked_passer_eg`, `rook_7th_mg`, `rook_behind_passer_mg`, `threat_weak_piece_eg`, `threat_restricted_eg`, `hanging_minor`, `bishop_long_diagonal_eg`, `minor_behind_pawn_eg` and `pawn_islands_eg`.
+    - Fifteen more carry no linear coefficient by construction: the king-danger coordinates and map scales, which reach the score through the frozen map, and the two shelter constants, which cancel between the kings.
+    - Near-inert with non-zero weights: `hanging_rook` and `hanging_queen` (weight 1, mean 0.02 cp), `trapped_bishop_*` (0.04% of rows, about 21 to 26 cp when firing, hand-frozen at 60/40) and `bishop_outpost_eg` (1). In all, 26 fields with non-zero weights average under 0.5 cp on the played trace.
+    - The largest after material, imbalance and the piece-square tables are `passed_eg` (26.4 cp), `passer_king_them_eg` and `passer_king_us_eg` (16.5, 15.5), tempo (14.8) and `shelter_strength` (14.1). The frozen part (map and mop-up) averages 39.4 cp.
+- **Disposition:** observation. **By the frozen use, all four definitions close `NO_CHANGE`** and none enters C.13.5's cluster: the passer with an own pawn ahead, the donor-shaped trapped rook, outpost ranks 4 to 6, and initiative with an intercept and the sign clamp. The inventory names no further whole term at exactly zero. C.12 has nothing more to remove for free; the near-inert terms are a fit question for C.13.5 or C.10, not a removal. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 7 above.
+  - Observed:
+    - (1) hit.
+    - (2) passer: +0.001, inside the band, hit; implied scale positive (+2.1 over all rows), hit, though at 0.1 SE it means nothing; never at the line, hit.
+    - (3) trapped rook: +0.002, hit; never at the line, hit.
+    - (4) outposts: +0.014 against +0.01, inside the band, hit; never at the line, hit.
+    - (5) initiative: +0.069 against +0.04, inside the band, hit; the largest of the four, hit; not at the line (probability 0.2 that it would be). Its strongest deciding cohort by gain was phase < 32 with men ≥ 7 (+0.090), as named, but its highest z was \|rarog\| ≤ 500.
+    - (6) hit.
+    - (7) both hit: `pawn_isolated_*` fire on 59% and 60% of rows at zero, and 26 non-zero fields sit under 0.5 cp.
+  - Which assumption failed: none in sign or decision. On magnitude, initiative was under-predicted by about 1.7 times over all rows, and its reported-only endgame value (+0.54) was not foreseen. That miss is in mechanism: a single spline across a band that mixes tablebase-decided small endings with larger ones leaves room for any phase-and-material-correlated direction.
+- **Conditional lesson:** a reported-only band that pools populations the comparator treats as one (here endings of six men or fewer with larger ones) can flatter a direction correlated with that split. Read such a band beside its parts before calling it a signal.
+- **Retry trigger or `closed`:** the four definitions are closed. Initiative is retried only if C.13.3's interaction tree or C.13.4's self-search residual names endgame complexity (pawn count or king-file distance against phase) as a split above six men, or if C.13.6 changes the fitting target, which changes what any static read measures.
+- **Artifacts:** `analysis/artifacts/c132/` (ignored storage):
+  - Scripts: `run_e62.sh`, `zz_c132_dump.rs`, `read_e62.py`, `check_prov.py`.
+  - Status and provenance: `status.txt`, `tree-status.txt`, `source.txt` (validation `7ada0924…`, manifest `3cf16236…`, PGN `c8b78329…`, tuner `a9949b87…`), `provenance.csv`, `provenance.json`, `check_prov.log`.
+  - Dumps: `head_played.csv`, `dump.csv`, `dump.log`, `inventory.tsv`.
+  - The read: `read.json`, `read.log`, `run.log`.
+  - Smoke files: `smoke-*`.
