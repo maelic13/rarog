@@ -312,7 +312,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   (`[-1.75, 0.25]`). A repair is gated by what it can change:
   1. One that reproduces the fingerprint in the rated configuration needs no
      strength gate; it gets an activation and correctness read where it is
-     active.
+     active. So does one that moves the fingerprint only through positions
+     a static differential confines to the repair's domain, with that
+     differential as its correctness read (maintainer decision 2026-10-15).
   2. One expected near zero, where a small loss is acceptable for
      correctness, takes a pre-registered 2,000-game fixed read with a harm
      rule; the registration states the threshold and its power. Scaled from
