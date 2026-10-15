@@ -65,4 +65,49 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   6. **No pair admitted, and C.13.3 closes `NO_CHANGE` (0.75).** If one is admitted, it is king × phase or passers × men (0.5 of that).
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** this read.
-- **Result:** pending.
+- **Result (run 2026-10-15 14:05–14:38, once, after the registration commit `c55f89e`; `analysis/artifacts/c133/`, every step exit 0, read from `status.txt`; the tree clean before and after; engine sources equal `1b56071`'s):**
+  - *Wires, all held:*
+    - W1: 0 score mismatches. W2: the families and the frozen part sum to the linear score on every row. W3: every row's game was found, 27,721 games.
+    - W4: king × phase first at +0.443% and 13.3 SE. King × tempo (+0.439), × men and × initiative followed as phase proxies, and no passers pair reached the rule.
+    - 25.7% of rows were lazy. The null threshold, the largest of twenty replicate maxima, is **+0.024%**; replicate maxima ran from +0.009 to +0.024, at most 3.9 SE.
+  - *Non-lazy rows (deciding, 144,537):*
+    - Stage 1, the additive model over C: +0.703 ± 0.067% (10.4 SE).
+    - Overall interaction: +0.200 ± 0.031% (6.5 SE).
+    - The top pairs:
+
+    | Pair | Gain ± game SE | Rule | With the phase slope in the base |
+    |---|---:|---|---:|
+    | **material × men** | **+0.151 ± 0.023 (6.6 SE)** | at the line | **+0.131 ± 0.021 (6.3 SE), admitted** |
+    | imbalance × men | +0.126 ± 0.032 (3.9 SE) | under 4 SE | — |
+    | imbalance × phase | +0.122 ± 0.029 (4.2 SE) | at the line | +0.103 ± 0.028 (3.8 SE), **not admitted** |
+    | **mobility × men** | **+0.103 ± 0.017 (6.2 SE)** | at the line | **+0.109 ± 0.017 (6.3 SE), admitted** |
+    | material × imbalance | +0.088 ± 0.020 | under 0.10% | — |
+    | imbalance × tempo | +0.086 ± 0.025 | under 0.10% | — |
+    | imbalance × mobility | +0.083 ± 0.020 | under 0.10% | — |
+    | initiative × phase | +0.057 ± 0.014 | under 0.10% | — |
+
+  - *All rows (reported only, no null; lazy rows carry partial families):* the top pairs are imbalance × men +0.254, mobility × men +0.224, material × men +0.212, imbalance × phase +0.169 and king × men +0.141. Every term family's strongest partner is men or phase.
+  - *By the frozen rule, two pairs are admitted: **material × men** and **mobility × men**.* Imbalance × phase was at the line but fell to 3.8 SE with the phase slope in the base, so it is C.7's calibration.
+  - *Direction, post hoc and descriptive* (`post_hoc_e63.py` → `post_hoc.log`; decides nothing). Cells are the mean oriented residual in outcome points: negative means the favoured side scores less than its score says.
+    - The men band dominates the raw residual, which stage 1 absorbs: 25–32 men −1.2 to −4.3, 13–18 men +1.0 to +2.5.
+    - *Material within bands:* at 25–32 men a large material edge (top quartile) is the worst overclaim (−4.27, 1,438 rows). At 12 men or fewer the third quartile overclaims (−1.94) while the top quartile underclaims (+1.86).
+    - *Mobility within bands:* more mobility is worth more than its price at 25–32 men (−3.39 → −1.59 from the lowest quartile to the highest), and less at 12 men or fewer (+0.30 → −0.92).
+    - Men correlates 0.905 with the engine's phase and 0.933 with the pawn count.
+  - *Instrument notes:* the null threshold (+0.024) sits far below the 0.10% clause, so at this sample size the gain clause binds and the null guards only the 4 SE clause. The game bootstrap measures the held-out sample's noise only, as registered.
+- **Disposition:** observation. **By the frozen use, C.13.3 is done with two candidates for C.13.5: material × men and mobility × men.** Nothing is built here. **I recommend against defining a term for either before one cheap registered check.** Both partners are men, which tracks the pawn count (0.933) and the phase (0.905). The frozen guard removed only RAR-E58's score × phase slope, so a score × men (or score × pawns) calibration of the C.7 kind is a credible competing explanation the read did not exclude: decisive outcomes depending on the pawns left, not knowledge in the material or mobility terms. The check re-reads the two pairs with `r·(men/32 − 0.5)` and `r·(pawns/16 − 0.5)` in the base. If both pairs fall under the line, they are calibration and leave C.13.5 for C.13.6's target and C.10. If either survives, its card defines the term: a men- or pawn-dependent material scale, or a mobility weight by men, fitted in C.13.5's refit. That is the cheapest refutation, and C.13.5's readiness waits on it. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 6 above.
+  - Observed:
+    - (1) hit.
+    - (2) +0.70 against +0.3, inside the band [0.05, 1.0], hit.
+    - (3) +0.200 against +0.05, at the band's upper edge (+0.20): **miss**, just outside it.
+    - (4) +0.024 against +0.05, inside the band, hit.
+    - (5) the top pair (material × men) includes men, hit.
+    - (6) **miss**: two pairs admitted, and neither is king × phase or passers × men.
+  - Which assumption failed: I took the tapered families to carry their phase dependence, so that phase and men would add little. The engine's phase counts pieces only, and men (with the pawns) carries a dependence the taper does not, shared by every family. The miss is in mechanism (where the dependence lives), with the magnitude of the interactions under-predicted.
+- **Conditional lesson:** a guard for a known confound must cover its proxies. The phase slope's guard should have included the men and pawn forms of the same calibration, since men was an input.
+- **Retry trigger or `closed`:** closed as a read. The two candidates wait on the calibration check above before any definition.
+- **Artifacts:** `analysis/artifacts/c133/` (ignored storage):
+  - Scripts: `run_e63.sh`, `zz_c133_dump.rs`, `read_e63.py`, `test_booster.py` (with `tb*.log`), `smoke_e2e.sh` and `fake_prov.py` (the smoke on training rows), `post_hoc_e63.py`.
+  - Status and inputs: `status.txt`, `tree-status.txt`, `source.txt` (validation `7ada0924…`; played scores and provenance from `c132/`).
+  - Outputs: `dump.csv`, `dump.log`, `read.json`, `read.log`, `run.log`, `post_hoc.log`.

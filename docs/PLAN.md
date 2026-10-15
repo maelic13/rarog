@@ -294,9 +294,8 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.3 | RESEARCH | R2 | RAR-E63 registered (2026-10-15): depth-2 boosted trees per pair of term families, phase, men and the endgame scale against single-input trees of the same capacity, on the non-lazy held-out rows; line 0.10% at 4 game-clustered SE and above a 20-replicate permutation null; a phase-slope guard |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
-| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate |
+| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates so far: material × men and mobility × men (RAR-E63), each waiting on a registered score × men and score × pawns calibration check before any definition |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -2103,7 +2102,7 @@ loss).
       `hanging_queen` (0.02 cp mean), `trapped_bishop_*` (0.04% of rows,
       hand-frozen) and `bishop_outpost_eg`. C.12 gains no free removal;
       the fitting manifest needs no change.
-    - **C.13.3 Residual interaction tree — `R2`.** Registered before any
+    - **C.13.3 Residual interaction tree — `R2`, DONE 2026-10-15.** Registered before any
       number: a shallow boosted tree (depth 2 to 3) on the held-out residual
       with Rarog's traced term values, phase and material as inputs, with
       game-clustered standard errors and a permutation null; the pairwise
@@ -2111,6 +2110,20 @@ loss).
       each with its mechanism and a frozen prediction, or the read closes
       `NO_CHANGE`. An admitted interaction is a candidate for C.13.5's
       cluster, never built here.
+      **Read 2026-10-15** (RAR-E63, `analysis/artifacts/c133/`): every
+      wire held, with the planted interaction found first at 13.3 SE.
+      On the non-lazy held-out rows two pairs pass the line, the
+      permutation null (+0.024%) and the phase-slope guard:
+      **material × men** (+0.151 ± 0.023%, +0.131 with the slope in the
+      base) and **mobility × men** (+0.103 ± 0.017%, +0.109). Both are
+      C.13.5 candidates. Imbalance × phase (+0.122) fails the guard,
+      so it is C.7's calibration. Men tracks the pawn count (0.933) and
+      the phase (0.905), so a score × men calibration is a competing
+      explanation the guard did not cover. Before either candidate is
+      defined, a cheap registered read re-tests both pairs with
+      `r·(men/32 − 0.5)` and `r·(pawns/16 − 0.5)` in the base. A pair
+      that falls under the line there is calibration (C.13.6's target and
+      C.10); a pair that survives gets its definition card in C.13.5.
     - **C.13.4 Self-search residual map — `R2`.** Registered before any
       number: the 8,000-node search score of each datagen position (the
       PGN comments `extract.py` already parses) against the static
