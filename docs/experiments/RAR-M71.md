@@ -25,4 +25,4 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - A conditional rate above **10%** holds C.8.9's fit until the maintainer decides.
   - Otherwise the result is recorded with the corpus.
 - **Full conditions / provenance:** `python tools/diag/datagen_label_audit.py --pgn tools/texel/data/selfplay-c8cycle2-n8000-s1-g<N>.pgn --syzygy D:/chess/tablebases/syzygy3456 --max-men 6 --workers 30 --output tools/results/label-audit-hce-v7/report.json`, where `<N>` is the game count the pilot's preflight recommends (`extract.py --preflight-games 3000 --target-train 3500000`). First clean win per game, cursed wins excluded.
-- **Result:** pending; the generation has not run.
+- **Result:** **withdrawn, unrun** (maintainer decision 2026-10-15). C.8 stopped after cycle 2, and the `hce-v7` generation never ran. Only the 3,000-game sizing pilot exists, and it was not read for this. The prediction stays as registered and uncalibrated.

@@ -294,9 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.8.8 | RESEARCH | V | Cycle 3 regeneration (`hce-v7`), the last cycle (maintainer decision 2026-10-15): pilot and preflight done (631,315 games), the opening sequence extended to 640,000, RAR-M71 registered; the generation is with the maintainer, then extraction, relabel and the audit |
-| C.8.9 | RESEARCH | V | Cycle 3 refit on `hce-v7-tb` from the accepted vector (RAR-E62); after C.8.8 |
-| C.8.10 | RESEARCH | V | Cycle 3 gate; C.8 closes after it whatever it measures |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1665,12 +1662,23 @@ loss).
       and label matter. The imbalance, bishop, knight, rook and weak-queen
       items are not supported (RAR-E57); the phase slope is calibration,
       recorded for C.8 and C.10 with the king-danger lead.
-- **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
+- **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`, DONE 2026-10-15.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
-  accepts, stop at the first that does not. **Maintainer decision
-  2026-10-15:** cycle 3 is the last, whatever it measures; its expected
-  gain (about +3 to +4 Elo after +11.0 and +6.7) no longer justifies
-  another regeneration. Initialization control (neutral
+  accepts, stop at the first that does not. **Stopped after cycle 2
+  (maintainer decision 2026-10-15).** Both cycles were accepted: cycle 1
+  at +11.0 Elo at gate 1 and +17.0 at `10+0.1`, cycle 2 at +6.7 and +3.1.
+  Cycle 3 was expected near +3 Elo, and it would bring nothing else:
+  - C.9 and C.10 tune in games, not on a new corpus.
+  - Phase F's data must come from the final classical head after C.10.
+  - Label quality was flat across three generations (6.86%, 6.74%,
+    6.66% of clean wins not won).
+  - The Colosseum datagen path is already proven.
+  So its regeneration, refit and gate were not worth the compute.
+  Cycle 3 was opened and withdrawn before its generation. Its pilot,
+  its preflight (631,315 games) and the opening sequence's extension to
+  640,000 openings are recorded here, and the extension serves Phase F.
+  The `hce-v7` contract was dropped (`c8a4ca7`), and RAR-M71 was
+  withdrawn unrun. Initialization control (neutral
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
@@ -1979,38 +1987,6 @@ loss).
         rule (below 0 reopens) the acceptance stands.
       - *Margin block:* skipped (maintainer decision 2026-10-15). C.8.7
         closes with cycle 2 accepted, and cycle 3 opens.
-    - **C.8.8 Cycle 3 regeneration: the head's datagen engine, pilot and preflight, `hce-v7` generation, extraction, relabel to `hce-v7-tb`, label audit (RAR-M71) — `V`.** As
-      C.8.5. The labeller is the accepted cycle-2 head,
-      `rarog-c8cycle2-pext-pgo.exe` (`A3A11321…`, bench 14,126,183, built
-      at `75c3db5`). The book, seed 10403 from start 1, 8,000 nodes,
-      `datagen-v2` and `datagen.ps1 -Runner colosseum` are as before. The
-      generation is the maintainer's.
-      **Progress 2026-10-15:**
-      - *Pilot:* 3,000 games from start 1 in 76 s, engine verified in the
-        run, every termination normal
-        (`selfplay-c8cycle2-n8000-s1-g3000.pgn`).
-      - *Preflight:* `extract.py --preflight-games 3000 --target-train
-        3500000` recommends **631,315 games** (39,938 unique positions
-        from the pilot).
-      - *The opening sequence extended:* the recovered order covered
-        612,747 openings, fewer than the count. A fastchess run at 1 node
-        a move from start 610,001 (30,000 rounds,
-        `analysis/artifacts/c88/order-ext-s610001-g30000.pgn`) supplied
-        the next openings in seed 10403's order. Its 2,747 overlapping
-        openings agree with the earlier corpora, and
-        `opening_sequence.py` rewrote `phase_book_v1-s10403.order.epd`
-        to 640,000 openings (`9479B9BF…`). The old 612,747 lines are its
-        exact prefix, and the old file is kept in
-        `analysis/artifacts/c88/previous/`.
-      - *Contract:* `fit_complete.ps1` names the `hce-v7` contract,
-        `datagen-v2` at 631,315 starts (`6aa66c7`). The full command
-        passes `-SetupOnly`, and the generation is with the maintainer.
-    - **C.8.9 Cycle 3 refit on `hce-v7-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`.** As
-      C.8.6 (RAR-E62).
-    - **C.8.10 Cycle 3 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row; C.8 closes — `V`.** As
-      C.8.7, on the pinned runner already cross-checked (RAR-M70). C.8
-      closes after this cycle whatever it measures. If it is rejected,
-      it is reverted on `c7` in its own commits.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
