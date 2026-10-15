@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.4 | RESEARCH | R2 | RAR-E65 registered (2026-10-15): the head's own 8,000-node search (fresh hash, not the PGN comments, which the pre-refit evaluation searched) against its static score on the held-out rows; material and dominant-term maps; three cross-fitted directions read at 0.10% and 4 game-clustered SE; the run is the maintainer's command |
-| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates: material × men and mobility × men (RAR-E63), both surviving RAR-E64's calibration check (2026-10-15); each gets one definition card before anything is built; waits on C.13.4 |
+| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates: material × men and mobility × men (RAR-E63), both surviving RAR-E64's calibration check; C.13.2 and C.13.4 admitted nothing (2026-10-15). Next: one definition card each, then the build |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -2130,7 +2129,7 @@ loss).
       men +0.102 ± 0.017% (6.0 SE, 0.002 points over the line). No slope
       moves either by more than 0.03, so they are not calibration and
       both go to C.13.5's definition cards.
-    - **C.13.4 Self-search residual map — `R2`.** Registered before any
+    - **C.13.4 Self-search residual map — `R2`, NO_CHANGE 2026-10-15.** Registered before any
       number: the 8,000-node search score of each datagen position (the
       PGN comments `extract.py` already parses) against the static
       evaluation of the same position (`rarog-texel --dump-scores`),
@@ -2139,6 +2138,17 @@ loss).
       its own deeper search is where a term is missing or mis-shaped; the
       offline form of the correction histories. Outcome: candidate terms
       for C.13.5 or `NO_CHANGE`.
+      **Read 2026-10-15** (RAR-E65, `analysis/artifacts/c134/`). The
+      current head re-searched every held-out row at 8,000 nodes with a
+      fresh hash; the PGN comments came from the pre-refit evaluation and
+      were not used. Every wire held, and the re-search was deterministic.
+      **No direction reaches the line, so C.13.4 closes `NO_CHANGE`.**
+      The material map reads +0.046 ± 0.012% (4.0 SE, under 0.10%), the
+      dominant map +0.017 and the family repricing +0.019. The material
+      map's large departures (100 to 160 cp on 9.6% of rows, mostly
+      endgame imbalances) do not carry to outcomes, so they are transient
+      material. The search score itself adds +10.4% (+19.7% in the
+      endgame band), recorded as context for C.13.6.
     - **C.13.5 Repairs cluster: implement, refit, gate — `I1`, then `V`.**
       The definitions and terms C.13.2 to C.13.4 admitted, as one
       dependency-complete cluster: implementation with focused tests, one

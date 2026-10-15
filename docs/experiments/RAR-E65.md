@@ -58,4 +58,46 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   7. The material map's largest buckets by |mean u| × rows are endgame (phase 0–7) imbalances (0.6).
   - Expected Elo: none. Static loss ranks questions and accepts nothing.
 - **Cheapest prior falsifier:** this read.
-- **Result:** pending.
+- **Result (run by the maintainer 2026-10-15, 15:03–15:08, once, after the registration commit `7a5ab60`; `analysis/artifacts/c134/`, every step exit 0, read from `status.txt`):**
+  - *Wires, all held:*
+    - The tree was clean, the engine sources unchanged and the binary hash matched.
+    - W1 to W4 held.
+    - W5: the 2,000 rows re-searched with 7 workers equal the full dump.
+    - Controls: label 100%, noise at most 0.34 SE.
+  - *Search:* 191,149 usable rows; 2,437 mates and 858 at |S| ≥ 2000 excluded. Median depth 6. S correlates 0.935 with E. The calibrated residual `u` has a standard deviation of 179 cp.
+  - *Directions in outcome loss* (± game-clustered SE; all rows decide):
+
+    | Cohort (rows) | D_mat | D_dom | D_fam | D_search (context) |
+    |---|---:|---:|---:|---:|
+    | **all** (194,444) | **+0.046 ± 0.012** (4.0 SE) | +0.017 ± 0.013 | +0.019 ± 0.018 | +10.39 ± 0.21 |
+    | non-lazy (144,537) | +0.066 ± 0.019 (3.5 SE) | +0.016 | +0.021 | +10.12 |
+    | phase 0–7 (77,777) | +0.112 ± 0.035 (3.3 SE) | +0.007 | −0.004 | +19.65 |
+    | phase 8–15 (52,030) | +0.018 | −0.012 | +0.003 | +11.95 |
+    | phase 16–24 (64,637) | +0.045 | +0.054 ± 0.035 | +0.021 | +7.15 |
+
+  - *By the frozen rule, no direction is at the line.* D_mat passes the 4 SE clause but not the 0.10% clause over all rows. Its reported-only endgame band (+0.112, 3.3 SE) passes neither.
+  - *Maps (descriptive):*
+    - Of 47 material buckets with at least 500 rows, 11 show the search departing from the static score by 50 cp or more on average; together they cover 9.6% of rows, and 12 of the 15 largest are in the endgame band.
+    - The search is far less impressed than the static score by a queen or a rook up (−152 and −114 cp, and −160 with a queen and a minor up), and more by a minor or a rook with pawns up (+109 to +164 cp).
+    - Yet the cross-fitted correction from these buckets predicts outcomes by only +0.046%. The search's large corrections there are mostly transient, the material of an exchange or promotion in progress that a quiet filter does not remove, and the game result does not follow them.
+    - The dominant-term map's largest departures are under 25 cp: piece-square-dominant middlegame rows −13, passer-dominant endgame rows +14, threats-dominant middlegame rows −12.
+  - *Context:* the 8,000-node search score adds +10.4% over the static score, and +19.7% in the endgame band. That is the size of what a search-informed fitting target could teach, C.13.6's question, not a term's.
+- **Disposition:** observation. **By the frozen use, C.13.4 closes `NO_CHANGE`:** neither map names a C.13.5 candidate, and the family repricing does not reach the line, so nothing goes to C.13.6 from this rule. The maps are recorded for C.12 and C.13.6, and D_search's size is recorded as context for C.13.6's blended target. RAR-E63's two candidates are unchanged. Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 7 above.
+  - Observed:
+    - (1) hit, both.
+    - (2) hit: +10.4.
+    - (3) D_fam +0.019 inside its band, not at the line, hit.
+    - (4) D_mat +0.046 inside its band, not at the line, hit.
+    - (5) D_dom +0.017 inside its band, hit.
+    - (6) hit: `NO_CHANGE`.
+    - (7) hit: 12 of the 15 largest material buckets are in the endgame band.
+  - Which assumption held: the disagreement is mostly tactical. One the prediction did not anticipate: the size of the search's departures in the imbalance buckets (100 to 160 cp), which do not carry through to outcomes.
+- **Conditional lesson:** a large, significant search-against-static departure in a bucket is not evidence of a missing term. Read it in outcome loss before naming a mechanism, since transient material is where search and static score differ most.
+- **Retry trigger or `closed`:** closed. A retry needs a static evaluation with a different quiet filter, or a fitting target that takes search scores (C.13.6), either of which changes what this read measures.
+- **Artifacts:** `analysis/artifacts/c134/` (ignored storage):
+  - Scripts: `run_e65.sh`, `search_dump.py`, `check_det.py`, `read_e65.py`.
+  - Binary: `rarog-head.exe` (`68f1e660…`), with `bench.log`.
+  - Status and outputs: `status.txt`, `tree-status.txt`, `source.txt`, `search.csv`, `search.log`, `det.log`, `read.json`, `read.log`.
+  - Smoke files: `smoke*`.
