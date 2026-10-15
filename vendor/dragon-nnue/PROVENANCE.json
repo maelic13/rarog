@@ -1,0 +1,8 @@
+{
+  "origin": "Dragon reconstruction repository, standalone N.1, 2026-10-15",
+  "source_commit": "f61631e",
+  "model_sha256": "c6e25a7fde5971dc47e78e19764c82b8d18a438bbd5ee4da065d061115064417",
+  "runtime_source_sha256_lf": "fa26f95faf4cb42dccef8bd7ef3c892bb1e4ccbac3b7e9061c319e22bc343909",
+  "sha256_source_sha256_lf": "b0fb8226658916a58c05dd6bee0f75b4605ffa6f8d55c38eccddb433bc9c4f13",
+  "scope": "Runtime copied without the upstream model-dependent unit test module. Exact diagnostic fixtures are tested by Rarog. No parent directory dependency; weights remain external."
+}

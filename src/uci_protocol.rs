@@ -87,6 +87,7 @@ impl UciProtocol {
             "go" => self.go(args),
             "stop" => self.stop(),
             "setoption" => self.set_option(args),
+            "eval" => self.evaluate(),
             "ucinewgame" => self.new_game(),
             "position" => self.position_with_command(args, command_line),
             "bench" => self.bench(args),
@@ -152,6 +153,16 @@ impl UciProtocol {
     fn stop(&mut self) {
         let epoch = self.control.request_stop();
         self.commands.push(EngineCommand::Stop { epoch });
+    }
+
+    fn evaluate(&self) {
+        // Keep stdin responsive to stop/quit during an infinite search.
+        if self.control.is_searching() {
+            crate::info_string!("Stop the search and send isready before eval");
+            return;
+        }
+        self.commands
+            .push(EngineCommand::Evaluate(self.search_options.clone()));
     }
 
     fn set_option(&mut self, args: &[String]) {
@@ -288,6 +299,7 @@ const fn help_text() -> &'static str {
         "                            identical on every platform, so it tells you a build\n",
         "                            is correct; the speed tells you how fast this machine\n",
         "                            is. Defaults to depth 13.\n",
+        "  eval                      Report the selected static evaluation without search.\n",
         "  wac [depth]               Run the WAC tactical suite and report how many it\n",
         "                            solved. A diagnostic, not a rating.\n",
         "  help                      This text.\n",
@@ -427,6 +439,43 @@ mod tests {
             options.board.piece_at(Square::E4),
             Some((Color::White, Piece::Pawn))
         );
+    }
+
+    #[test]
+    fn eval_queues_a_position_snapshot_without_search() {
+        let (mut protocol, commands) = protocol_fixture();
+        protocol.position_with_command(
+            &args(&["startpos", "moves", "e2e4"]),
+            "position startpos moves e2e4",
+        );
+        protocol.evaluate();
+        protocol.position_with_command(&args(&["startpos"]), "position startpos");
+        let EngineCommand::Evaluate(options) = commands.wait_pop() else {
+            panic!("eval must queue a static evaluation");
+        };
+        assert_eq!(options.board.side_to_move(), Color::Black);
+        assert_eq!(
+            options.board.piece_at(Square::E4),
+            Some((Color::White, Piece::Pawn))
+        );
+        assert!(!protocol.control.is_searching());
+    }
+
+    #[test]
+    fn eval_during_search_keeps_the_protocol_responsive() {
+        let (protocol, commands) = protocol_fixture();
+        protocol.control.start_replacing_search();
+        commands.push(EngineCommand::NewGame);
+        let (finished, answer) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            protocol.evaluate();
+            finished.send(()).unwrap();
+        });
+        answer
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("eval blocked stop/quit processing");
+        worker.join().unwrap();
+        assert!(matches!(commands.wait_pop(), EngineCommand::NewGame));
     }
 
     #[test]

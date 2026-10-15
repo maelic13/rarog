@@ -175,6 +175,8 @@ pub enum EngineCommand {
         options: SearchOptions,
         epoch: u64,
     },
+    /// Evaluate the snapshotted position without search.
+    Evaluate(SearchOptions),
     Configure(EngineOptions),
     ClearHash,
     NewGame,

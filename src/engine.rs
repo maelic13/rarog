@@ -67,6 +67,22 @@ impl Engine {
                 self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
             }
+            EngineCommand::Evaluate(options) => {
+                let score = self
+                    .searcher
+                    .static_evaluation(&options.board, &options.engine);
+                let white = if options.board.side_to_move() == crate::board::Color::Black {
+                    -score
+                } else {
+                    score
+                };
+                println!(
+                    "info string eval backend={} stm={score} white={white}",
+                    options.engine.evaluation.mode().diagnostic_name()
+                );
+                flush_stdout();
+                SearchExit::Stop
+            }
             EngineCommand::Configure(options) => {
                 self.searcher.configure(&options);
                 SearchExit::Stop

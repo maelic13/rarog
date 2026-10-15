@@ -1,0 +1,9 @@
+[package]
+name = "dragon-nnue"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+description = "Scalar inference for the frozen extracted Dragon network"
+
+[lib]
+path = "src/lib.rs"

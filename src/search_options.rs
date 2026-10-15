@@ -38,6 +38,7 @@ pub struct EngineOptions {
     /// Principal variations reported per depth; 1 is the ordinary search.
     pub multi_pv: usize,
     pub syzygy: SyzygyOptions,
+    pub evaluation: crate::eval::EvaluationOptions,
     pub search_params: SearchParams,
     /// The selectivity core's coordinates.
     pub core_params: CoreParams,
@@ -56,6 +57,7 @@ impl Default for EngineOptions {
             threads: 1,
             multi_pv: 1,
             syzygy: SyzygyOptions::default(),
+            evaluation: crate::eval::EvaluationOptions::default(),
             search_params: SearchParams::default(),
             core_params: CoreParams::default(),
             proof_params: ProofParams::default(),
@@ -203,6 +205,11 @@ impl SearchOptions {
             String::from("option name Move Overhead type spin default 10 min 0 max 5000"),
             format!("option name Threads type spin default 1 min 1 max {MAX_THREADS}"),
             format!("option name MultiPV type spin default 1 min 1 max {MAX_MULTI_PV}"),
+            String::from(
+                "option name Evaluation type combo default Classical var Classical var Dragon NNUE",
+            ),
+            String::from("option name Dragon Eval File type string default dragon-network.nnue"),
+            String::from("option name Dragon NNUE Scale type spin default 72 min 10 max 500"),
             String::from("option name SyzygyPath type string default <empty>"),
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
@@ -444,6 +451,46 @@ impl SearchOptions {
                     self.engine.multi_pv = lines.clamp(1, MAX_MULTI_PV);
                 } else {
                     crate::info_string!("Invalid MultiPV value.");
+                }
+                OptionUpdate::Engine
+            }
+            "evaluation" => {
+                match self.engine.evaluation.set_mode(&value_raw) {
+                    Ok(()) => crate::info_string!(
+                        "Evaluation set to {}",
+                        self.engine.evaluation.mode().name()
+                    ),
+                    Err(error) => crate::info_string!(
+                        "{error}; keeping {} evaluation",
+                        self.engine.evaluation.mode().name()
+                    ),
+                }
+                OptionUpdate::Engine
+            }
+            "dragon eval file" => {
+                let previous = self.engine.evaluation.mode();
+                if let Err(error) = self.engine.evaluation.set_file(&value_raw) {
+                    crate::info_string!("{error}; keeping the previous Dragon Eval File");
+                } else if self.engine.evaluation.mode() != previous {
+                    crate::info_string!(
+                        "Evaluation set to {}",
+                        self.engine.evaluation.mode().name()
+                    );
+                }
+                OptionUpdate::Engine
+            }
+            "dragon nnue scale" => {
+                match value.parse::<i32>() {
+                    Ok(scale) => {
+                        if let Err(error) = self.engine.evaluation.set_scale(scale) {
+                            crate::info_string!("{error}; keeping the previous scale");
+                        }
+                    }
+                    Err(_) => {
+                        crate::info_string!(
+                            "Invalid Dragon NNUE Scale; keeping the previous scale"
+                        );
+                    }
                 }
                 OptionUpdate::Engine
             }

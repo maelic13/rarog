@@ -1,0 +1,19 @@
+# name	scale	diagnostic_white	fen
+start-white-scale-100	100	73	rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+start-black-scale-100	100	-73	rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1
+kiwipete-scale-100	100	-439	r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
+kiwipete-black-scale-100	100	-544	r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1
+rook-endgame-scale-100	100	90	8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
+promotion-scale-100	100	873	8/P7/8/8/8/8/7p/4K2k w - - 0 1
+kings-only-scale-100	100	0	7k/8/8/8/8/8/8/K7 w - - 0 1
+castle-clear-scale-100	100	-4	r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1
+en-passant-scale-100	100	27	4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1
+start-white-scale-75	75	55	rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+start-black-scale-75	75	-55	rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1
+kiwipete-scale-75	75	-329	r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
+kiwipete-black-scale-75	75	-408	r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1
+rook-endgame-scale-75	75	67	8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
+promotion-scale-75	75	655	8/P7/8/8/8/8/7p/4K2k w - - 0 1
+kings-only-scale-75	75	0	7k/8/8/8/8/8/8/K7 w - - 0 1
+castle-clear-scale-75	75	-3	r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1
+en-passant-scale-75	75	20	4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1

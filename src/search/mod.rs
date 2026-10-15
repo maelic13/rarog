@@ -356,7 +356,23 @@ impl Searcher {
         self.td.sink.line(&format!("info string {message}"));
     }
 
+    fn apply_evaluation(&mut self, options: &crate::eval::EvaluationOptions, clear_tt: bool) {
+        if self.td.evaluator.configure_evaluation(options) {
+            self.td.corr.clear();
+            if clear_tt {
+                self.shared.tt.clear();
+            }
+        }
+    }
+
+    /// Static evaluator output, before search corrections, rule-50 damping or pruning.
+    pub fn static_evaluation(&mut self, board: &Board, options: &EngineOptions) -> i32 {
+        self.apply_evaluation(&options.evaluation, true);
+        self.td.evaluator.evaluate(board)
+    }
+
     pub fn configure(&mut self, options: &EngineOptions) {
+        self.apply_evaluation(&options.evaluation, true);
         if options.hash_mb != self.shared.hash_mb {
             if self.shared.tt.resize(options.hash_mb) {
                 self.shared.hash_mb = options.hash_mb;
@@ -681,6 +697,7 @@ impl Searcher {
         // Helpers receive the already-cleared shared TT, so they clear only
         // their private evaluator cache; clearing shared storage here would
         // race with helpers or main already searching.
+        self.apply_evaluation(&engine_options.evaluation, age_tt);
         let lazy_margin_changed = self
             .td
             .evaluator
@@ -2085,6 +2102,71 @@ mod tests {
             static_eval,
             is_pv: false,
         });
+    }
+
+    #[test]
+    #[cfg(not(feature = "texel"))]
+    #[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
+    fn dragon_mode_scale_and_helpers_invalidate_the_right_state() {
+        let board = Board::default();
+        let mut options = EngineOptions::default();
+        let file = std::env::var("RAROG_DRAGON_NNUE").unwrap();
+        options.evaluation.set_file(&file).unwrap();
+        options.evaluation.set_mode("Dragon NNUE").unwrap();
+        for shared in [false, true] {
+            let mut searcher = Searcher::default();
+            if shared {
+                searcher.shared.tt.make_shared(searcher.shared.hash_mb);
+            }
+            store_static_eval(&mut searcher, &board, 123);
+            searcher.train_correction(&board, 8, 100, 0);
+            assert!(!searcher.td.corr.untouched());
+            searcher.reset_search_state(
+                &SearchLimits::default(),
+                &options,
+                board.side_to_move(),
+                0,
+                true,
+            );
+            assert!(searcher.shared.tt.probe(board.hash()).is_none());
+            assert!(searcher.td.corr.untouched());
+            assert_eq!(searcher.raw_eval(&board), 52);
+            store_static_eval(&mut searcher, &board, 52);
+            searcher.train_correction(&board, 8, 100, 0);
+            let mut changed = options.clone();
+            changed.evaluation.set_scale(100).unwrap();
+            searcher.configure(&changed);
+            assert!(searcher.shared.tt.probe(board.hash()).is_none());
+            assert!(searcher.td.corr.untouched());
+            assert_eq!(searcher.raw_eval(&board), 73);
+            store_static_eval(&mut searcher, &board, 73);
+            changed.evaluation.set_mode("Classical").unwrap();
+            searcher.configure(&changed);
+            assert!(searcher.shared.tt.probe(board.hash()).is_none());
+            assert_eq!(
+                searcher.raw_eval(&board),
+                crate::eval::Evaluator::default().evaluate(&board)
+            );
+        }
+        let mut main = Searcher::default();
+        main.shared.tt.make_shared(main.shared.hash_mb);
+        store_static_eval(&mut main, &board, 52);
+        let mut helper = Searcher::default();
+        helper.shared.tt = main.shared.tt.clone();
+        helper.train_correction(&board, 8, 100, 0);
+        helper.reset_search_state(
+            &SearchLimits::default(),
+            &options,
+            board.side_to_move(),
+            0,
+            false,
+        );
+        assert!(
+            main.shared.tt.probe(board.hash()).is_some(),
+            "helper must not clear a live shared TT"
+        );
+        assert!(helper.td.corr.untouched());
+        assert_eq!(helper.raw_eval(&board), 52);
     }
 
     #[test]

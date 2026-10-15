@@ -12,6 +12,9 @@
 //! evaluator single-pass and allocation-free.
 
 mod attacks;
+mod backend;
+
+pub use backend::{EvaluationMode, EvaluationOptions};
 pub(crate) mod endgame;
 mod initiative;
 mod king;
@@ -101,6 +104,7 @@ struct EvalEntry {
 
 #[derive(Clone)]
 pub struct Evaluator {
+    evaluation: EvaluationOptions,
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
     params: EvalParams,
@@ -138,6 +142,7 @@ impl Default for Evaluator {
             params,
             tables,
             lazy_margin: LAZY_MARGIN,
+            evaluation: EvaluationOptions::default(),
             attacks: AttackMaps::new(),
             #[cfg(feature = "tune")]
             mask_source: &masks::FAMILY_MASKS,
@@ -186,6 +191,16 @@ impl Evaluator {
         } else {
             false
         }
+    }
+
+    /// Configure outside the node path; the owner must invalidate TT/corrections.
+    pub fn configure_evaluation(&mut self, options: &EvaluationOptions) -> bool {
+        if self.evaluation.same_configuration(options) {
+            return false;
+        }
+        self.evaluation = options.clone();
+        self.eval_table.fill(EvalEntry::default());
+        true
     }
 
     pub(crate) fn clear_pawn_table(&mut self) {
@@ -241,6 +256,17 @@ impl Evaluator {
         #[cfg(feature = "tune")]
         {
             self.masks = self.mask_source.fix();
+        }
+
+        if let Some(model) = self.evaluation.model() {
+            let value = backend::evaluate(model, board, self.evaluation.scale());
+            self.eval_table[eval_slot] = EvalEntry {
+                key: board.hash(),
+                halfmove_clock: board.halfmove_clock(),
+                value,
+                occupied: true,
+            };
+            return value;
         }
 
         let atk = &*ATTACKS;
