@@ -183,6 +183,19 @@ class CommentScoreTests(unittest.TestCase):
                     self.assertEqual(extract.comment_cp_white(fastchess, white_to_move), expected)
                     self.assertEqual(extract.comment_cp_white(colosseum, white_to_move), expected)
 
+    def test_blend_probability_scales(self):
+        import math
+        for cp in (-2000.0, -175.0, 0.0, 40.0, 2000.0):
+            with self.subTest(cp=cp):
+                self.assertEqual(extract.blend_probability(cp, None), extract.sigmoid_cp(cp))
+                self.assertAlmostEqual(extract.blend_probability(cp, math.log(10.0)),
+                                       extract.sigmoid_cp(cp), places=12)
+        # The tuner's K is flatter than the Elo scale: 200 cp is worth less.
+        self.assertAlmostEqual(extract.blend_probability(200.0, 1.6166),
+                               1.0 / (1.0 + math.exp(-1.6166 * 0.5)), places=12)
+        self.assertLess(extract.blend_probability(200.0, 1.6166), extract.sigmoid_cp(200.0))
+        self.assertEqual(extract.blend_probability(0.0, 1.6166), 0.5)
+
     def test_comments_without_a_score_give_none(self):
         for comment in ("", "book", "{forfeit}", "d=6 t=10ms n=7456", "hs=12 d=3"):
             with self.subTest(comment=comment):

@@ -412,9 +412,17 @@ try {
                 # draws. See tools/texel/relabel_tb.py.
                 "white-perspective self-play WDL, <=6-man Syzygy corrected"
             )
+            # Blended training targets, a NAMED list for the same reason: pure
+            # outcomes, or C.13.6's blend (RAR-E67), half outcome and half the
+            # datagen search's score through the tuner's own sigmoid at the K
+            # RAR-E61's fit pinned. Validation and test stay pure in every case.
+            $blendK = if ($null -eq $manifest.train_blend_k) { $null } else { [double]$manifest.train_blend_k }
+            $pureTarget = [double]$manifest.train_blend -eq 1.0
+            $c136Blend = [double]$manifest.train_blend -eq 0.5 -and $null -ne $blendK -and
+                [math]::Abs($blendK - 1.6166) -lt 1e-9
             if ($manifest.schema -ne "rarog-hce-wdl-v2" -or
                 $acceptedLabels -notcontains $manifest.label -or
-                [double]$manifest.train_blend -ne 1.0) {
+                -not ($pureTarget -or $c136Blend)) {
                 throw ("dataset label contract '$($manifest.label)' is not one this " +
                        "runner knows how to fit; accepted: $($acceptedLabels -join ' | ')")
             }

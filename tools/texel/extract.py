@@ -156,6 +156,16 @@ def sigmoid_cp(cp: float) -> float:
     return 1.0 / (1.0 + 10.0 ** (-cp / 400.0))
 
 
+def blend_probability(cp: float, k: float | None) -> float:
+    """The search score as an expected result. Without `k` it is the Elo
+    scale above; with `k` it is the tuner's own sigmoid, `1/(1+exp(-k*cp/400))`,
+    so a fit sees the search half of a blended target on the scale it fits
+    its own scores to (`--fix-k`)."""
+    if k is None:
+        return sigmoid_cp(cp)
+    return 1.0 / (1.0 + math.exp(-k * cp / 400.0))
+
+
 @dataclass
 class Reservoir:
     """Uniform fixed-size sample from a stream of unknown length."""
@@ -351,6 +361,9 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--no-quiet-filter", dest="quiet_filter", action="store_false")
     command.add_argument("--blend", default=1.0, type=float, metavar="LAMBDA",
                          help="training target = lambda*WDL + (1-lambda)*sigmoid(search cp)")
+    command.add_argument("--blend-k", default=None, type=float, metavar="K",
+                         help="map search cp with the tuner's sigmoid at this K "
+                              "instead of the Elo scale")
     return command
 
 
@@ -363,6 +376,8 @@ def validate_args(args, command: argparse.ArgumentParser) -> None:
         command.error("validation/test percentages must be non-negative and sum below 100")
     if not 0.0 <= args.blend <= 1.0:
         command.error("--blend must be in [0,1]")
+    if args.blend_k is not None and not args.blend_k > 0.0:
+        command.error("--blend-k must be positive")
     if args.skip_start < 0 or args.skip_end < 0:
         command.error("skip counts cannot be negative")
 
@@ -423,7 +438,8 @@ def main() -> int:
                         if cp is None:
                             missing_evals += 1
                         else:
-                            target = args.blend * result + (1.0 - args.blend) * sigmoid_cp(cp)
+                            target = (args.blend * result
+                                      + (1.0 - args.blend) * blend_probability(cp, args.blend_k))
                     reservoirs[split][bucket].offer((fen, target, cp))
         if args.preflight_games and independent >= args.preflight_games:
             break
@@ -504,6 +520,7 @@ def main() -> int:
                     "max_per_game": args.max_per_game},
         "label": "white-perspective self-play WDL",
         "train_blend": args.blend,
+        "train_blend_k": args.blend_k,
     }
     manifest_tmp = manifest_path.with_name(manifest_path.name + ".tmp")
     manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")

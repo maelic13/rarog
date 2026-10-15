@@ -179,7 +179,8 @@ def worker(task):
                 if cp is None:
                     stats["missing_evals"] += 1
                 else:
-                    target = opts["blend"] * result + (1.0 - opts["blend"]) * seq.sigmoid_cp(cp)
+                    target = (opts["blend"] * result
+                              + (1.0 - opts["blend"]) * seq.blend_probability(cp, opts["blend_k"]))
             labelled.append((fen, target, bucket, cp))
         output.append((opening, split, labelled))
     return output, dict(stats)
@@ -203,7 +204,8 @@ def main() -> int:
     quotas, reservoirs = seq.make_reservoirs(counts, args.phase_weights, args.seed)
     opts = {name: getattr(args, name) for name in (
         "validation_pct", "test_pct", "skip_start", "skip_end",
-        "max_per_phase_per_game", "max_per_game", "quiet_filter", "seed", "blend")}
+        "max_per_phase_per_game", "max_per_game", "quiet_filter", "seed", "blend",
+        "blend_k")}
     tasks = []
     for path in paths:
         size = path.stat().st_size
@@ -341,6 +343,7 @@ def main() -> int:
                     "max_per_game": args.max_per_game},
         "label": "white-perspective self-play WDL",
         "train_blend": args.blend,
+        "train_blend_k": args.blend_k,
         "parallel_ranges": len(tasks),
         "audit": {
             "game_results": {result: totals[f"result::{result}"] for result in seq.RESULT_MAP},
