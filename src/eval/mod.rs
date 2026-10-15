@@ -336,6 +336,10 @@ impl Evaluator {
             self.trace.borrow_mut().raw = lin;
         }
         score = scale_endgame(board, score);
+        // Experiment arm (RAR-E68): the blended refit's scores restored to the
+        // head's mean magnitude, so the frozen search's margins see the sizes
+        // they were fitted to. Reverted after the arm is built.
+        score = score * 10_183 / 10_000;
         // No rule-50 damping here: the transposition table stores this eval
         // keyed without the clock, so the search damps it with the current
         // clock instead.
