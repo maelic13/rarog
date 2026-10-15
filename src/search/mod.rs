@@ -2106,12 +2106,12 @@ mod tests {
 
     #[test]
     #[cfg(not(feature = "texel"))]
-    #[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
     fn dragon_mode_scale_and_helpers_invalidate_the_right_state() {
         let board = Board::default();
         let mut options = EngineOptions::default();
-        let file = std::env::var("RAROG_DRAGON_NNUE").unwrap();
-        options.evaluation.set_file(&file).unwrap();
+        if let Ok(file) = std::env::var("RAROG_DRAGON_NNUE") {
+            options.evaluation.set_file(&file).unwrap();
+        }
         options.evaluation.set_mode("Dragon NNUE").unwrap();
         for shared in [false, true] {
             let mut searcher = Searcher::default();

@@ -208,7 +208,7 @@ impl SearchOptions {
             String::from(
                 "option name Evaluation type combo default Classical var Classical var Dragon NNUE",
             ),
-            String::from("option name Dragon Eval File type string default dragon-network.nnue"),
+            String::from("option name Dragon Eval File type string default <embedded>"),
             String::from("option name Dragon NNUE Scale type spin default 72 min 10 max 500"),
             String::from("option name SyzygyPath type string default <empty>"),
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),

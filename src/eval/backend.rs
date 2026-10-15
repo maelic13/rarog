@@ -5,6 +5,8 @@ use dragon_nnue::{Network, Position};
 
 use crate::board::{Board, Color, Piece};
 
+const EMBEDDED_MODEL: &[u8] = include_bytes!("../../assets/nnue/dragon-network.nnue");
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EvaluationMode {
     #[default]
@@ -44,7 +46,7 @@ impl Default for EvaluationOptions {
         Self {
             mode: EvaluationMode::Classical,
             requested: EvaluationMode::Classical,
-            file: "dragon-network.nnue".into(),
+            file: "<embedded>".into(),
             scale: 72,
             model: None,
         }
@@ -123,9 +125,18 @@ impl EvaluationOptions {
 
 fn load_model(file: &str) -> Result<&'static Network, String> {
     static MODEL: OnceLock<Network> = OnceLock::new();
-    // A changed path is verified even if the identical model is already resident.
-    let network =
-        Network::load(file).map_err(|e| format!("Unable to load Dragon NNUE from {file}: {e}"))?;
+    if file == "<embedded>"
+        && let Some(model) = MODEL.get()
+    {
+        return Ok(model);
+    }
+    // A changed external path is verified even if the model is already resident.
+    let network = if file == "<embedded>" {
+        Network::from_bytes(EMBEDDED_MODEL)
+    } else {
+        Network::load(file)
+    }
+    .map_err(|e| format!("Unable to load Dragon NNUE from {file}: {e}"))?;
     let _ = MODEL.set(network);
     Ok(MODEL.get().expect("a verified model was installed"))
 }

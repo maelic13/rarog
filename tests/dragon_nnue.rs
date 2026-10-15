@@ -42,17 +42,16 @@ static ALLOCATOR: Allocator = Allocator;
 fn options() -> &'static EvaluationOptions {
     static OPTIONS: OnceLock<EvaluationOptions> = OnceLock::new();
     OPTIONS.get_or_init(|| {
-        let file = std::env::var("RAROG_DRAGON_NNUE")
-            .expect("set RAROG_DRAGON_NNUE to the qualified extracted weights");
         let mut options = EvaluationOptions::default();
-        options.set_file(&file).unwrap();
+        if let Ok(file) = std::env::var("RAROG_DRAGON_NNUE") {
+            options.set_file(&file).unwrap();
+        }
         options.set_mode("Dragon NNUE").unwrap();
         options
     })
 }
 
 #[test]
-#[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
 fn dragon_matches_native_fixtures() {
     let mut evaluation = Evaluator::default();
     let mut settings = options().clone();
@@ -102,7 +101,6 @@ fn dragon_matches_native_fixtures() {
 }
 
 #[test]
-#[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
 fn dragon_switches_caches_and_restores_moves_and_nulls() {
     let mut eval = Evaluator::default();
     let mut board = Board::default();
@@ -152,7 +150,6 @@ fn dragon_switches_caches_and_restores_moves_and_nulls() {
 }
 
 #[test]
-#[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
 fn dragon_adapter_evaluation_allocates_nothing() {
     let mut eval = Evaluator::default();
     eval.configure_evaluation(options());
@@ -166,7 +163,6 @@ fn dragon_adapter_evaluation_allocates_nothing() {
 }
 
 #[test]
-#[ignore = "requires the external model in RAROG_DRAGON_NNUE"]
 fn dragon_can_play_with_one_and_two_workers() {
     for threads in [1, 2] {
         let mut options = SearchOptions::default();
