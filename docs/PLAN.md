@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's C.3 evaluation inside Stockfish's search by **+129.4 ± 17.1 Elo at equal nodes** (150,000 a move; RAR-O06, 2026-10-09), the current meter, 52.4 ± 25.6 below Phase C's baseline: +181.7 ± 19.0 at equal nodes and +266.3 ± 19.9 at equal time (`3+0.03`) on the 2.4.0 evaluation, measured 2026-10-05 (equal time not re-read). RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O06; RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **14,126,183 / EBF 2.557**: C.8's refit cycle 2 (the unchanged surface refitted on `hce-v6-tb`), accepted 2026-10-15 by gate 1 (RAR-E61, `[0,3]` at `3+0.03`) H1 at +6.7 ± 3.7 Elo, +11.1 ± 6.1 nElo (12,362 games; a first-crossing estimate), no screen flag, NPS −0.92%; on branch `c7` (`75c3db5`), not yet on `master`; before it 14,291,377 / EBF 2.538: C.8's refit cycle 1 (the unchanged surface refitted on `hce-v5-tb`), accepted 2026-10-13 by gate 1 (RAR-E60, `[0,3]` at `3+0.03`) H1 at +11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo (7,202 games; a first-crossing estimate), no screen flag, NPS −0.48%; on branch `c7` (`bfd008a`), not yet on `master`; before it 14,197,472 / EBF 2.557: C.6's pawns-and-passers unit (passer king proximity at the block square, weak unopposed pawns, the square rule, the surface refitted), accepted 2026-10-12 by gate 1 (RAR-E42, `[0,3]` at `3+0.03`) H1 at +6.4 ± 3.6 Elo, +10.7 ± 6.0 nElo (12,924 games; a first-crossing estimate), no screen flag, NPS +0.07%; with C.5.7's bench-neutral KNN-KP terms (`ab2a6ab`), landed on `master` in `52cc6de` (PR #8, 2026-10-13); before it 12,567,796 / EBF 2.535: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **10,521,141 / EBF 2.521**: C.13.1's audit fixes (connected rooks score every aligned pair, a deliberate behaviour change reached only where a side has three rooks; the terms fitted to exactly zero removed, exact), 2026-10-15, on branch `c7` (`f5cad09`, `43b34ec`), not yet on `master`, no strength read yet (GUIDE's holds); before it 14,126,183 / EBF 2.557: C.8's refit cycle 2 (the unchanged surface refitted on `hce-v6-tb`), accepted 2026-10-15 by gate 1 (RAR-E61, `[0,3]` at `3+0.03`) H1 at +6.7 ± 3.7 Elo, +11.1 ± 6.1 nElo (12,362 games; a first-crossing estimate), no screen flag, NPS −0.92%; on branch `c7` (`75c3db5`), not yet on `master`; before it 14,291,377 / EBF 2.538: C.8's refit cycle 1 (the unchanged surface refitted on `hce-v5-tb`), accepted 2026-10-13 by gate 1 (RAR-E60, `[0,3]` at `3+0.03`) H1 at +11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo (7,202 games; a first-crossing estimate), no screen flag, NPS −0.48%; on branch `c7` (`bfd008a`), not yet on `master`; before it 14,197,472 / EBF 2.557: C.6's pawns-and-passers unit (passer king proximity at the block square, weak unopposed pawns, the square rule, the surface refitted), accepted 2026-10-12 by gate 1 (RAR-E42, `[0,3]` at `3+0.03`) H1 at +6.4 ± 3.6 Elo, +10.7 ± 6.0 nElo (12,924 games; a first-crossing estimate), no screen flag, NPS +0.07%; with C.5.7's bench-neutral KNN-KP terms (`ab2a6ab`), landed on `master` in `52cc6de` (PR #8, 2026-10-13); before it 12,567,796 / EBF 2.535: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.1 | READY_FOR_IMPLEMENTATION | I1 | Audit fixes (maintainer decision 2026-10-15: C.13 runs before C.9, C.10 and C.12): connected rooks any pair; the symmetry sweep as a standing test; the exactly-zero terms removed, fingerprint held |
 | C.13.2 | RESEARCH | R2 | The four definitions and the inert-term inventory, read before anything is built |
 | C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
@@ -2017,7 +2016,7 @@ loss).
   evaluation's residual against the engine's own 8,000-node search. The
   zero-game sub-steps run first, so whatever they admit joins one refit and
   one gate. Evidence under `analysis/artifacts/c13audit/`.
-    - **C.13.1 Audit fixes — `I1`.** Connected rooks: any aligned pair
+    - **C.13.1 Audit fixes — `I1`, DONE 2026-10-15.** Connected rooks: any aligned pair
       with nothing between, every pair counted once; the bench fingerprint
       expected unchanged (verified, not assumed) and the colour-symmetry
       sweep as the targeted check. The sweep becomes a standing test: a
@@ -2038,6 +2037,36 @@ loss).
       the removed names leave the manifest's counts. Any speed gained is
       C.12's profile to measure; none is claimed here. Engine commits and
       the test commit apart.
+      **Done 2026-10-15** (logs and recipes in the ignored
+      `analysis/artifacts/c131-impl/`). The connected-rooks repair
+      (`f5cad09`) **moved the bench**, from 14,126,183 to **10,521,141 /
+      EBF 2.521**, recorded as a deliberate behaviour change. No bench
+      root position has three rooks of one colour, but the search trees
+      do: with the old and new pairing compared at every evaluation of
+      the bench, all 191 mismatches have a side with three or more
+      rooks; position 1 keeps its exact node count, and position 2, the
+      first whose tree reaches such a node, is where the counts part
+      (bench keeps the TT and histories across positions). The repair
+      has no strength read: AGENTS' repair rule puts a fingerprint-moving
+      repair expected near zero in its second case, and the choice is the
+      maintainer's (GUIDE's holds). The standing sweep (`98093f3`):
+      `tests/data/eval-symmetry-v1.tsv`, 2,000 held-out rows (seed
+      20261015, written by `tools/diag/eval_symmetry_sample.py`), the
+      four audit rows and 12 constructed promoted-material positions,
+      swept at the default lazy margin and with the gate open, since a
+      lopsided promoted position otherwise never reaches the piece
+      terms; on the pre-repair engine it reports 12 asymmetric
+      evaluations, on the repair none. The removal (`43b34ec`, nine
+      slots, with `Bitboard::RANK_4` and `RANK_5`, which only space
+      read) reproduced 10,521,141 / EBF 2.521 exactly. The tuner and
+      manifest v6 (`1b56071`, feature support on `hce-v6-tb`) differ from
+      v5 by exactly the nine rows: 1,254 coefficients, free 1,133, fixed
+      98, excluded 23; v5 stays for the fits that cite it.
+      `tools/diag/pawn_subterms.py`, RAR-E41's instrument, still names
+      `pawn_lever_eg` and `passed_candidate_eg` and runs at its own
+      revision only. Final state: fmt clean, clippy
+      `--all-features --all-targets` at zero warnings, tests debug 396,
+      release 397 and `--features texel` 402 passed, none failing.
     - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`.**
       Registered before any number. For the passer-with-own-pawn-ahead,
       trapped-rook, outpost-rank and initiative-with-intercept-and-clamp
@@ -2196,7 +2225,7 @@ loss).
      caches, the lazy path's cost below the gate). Then re-check B.7's
      search, move generation, make/unmake and the TT. Build settings too:
      PGO workload, codegen units, LTO, target features.
-     - Each change is its own commit and is proven exact: fingerprint (14,126,183 / EBF 2.557 today),
+     - Each change is its own commit and is proven exact: fingerprint (10,521,141 / EBF 2.521 today),
        debug and release suites, clippy, B.7.1's allocation guard, no
        `memcpy` on the per-node path (AGENTS), and a pooled-PGO NPS read
        (`nps_build_pool.ps1`, `nps_read.py`) on an idle host.

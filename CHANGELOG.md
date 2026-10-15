@@ -65,7 +65,7 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `3+0.03`** (7,202 games) and **+17.0 ± 11.8 at `10+0.1`** (1,000 games)
   against the version before it; the second measured **+6.7 ± 3.7 Elo at
   `3+0.03`** (12,362 games) and **+3.1 ± 11.5 at `10+0.1`** (1,000
-  games) against the first. `bench` now reports 14,126,183 nodes.
+  games) against the first. `bench` then reported 14,126,183 nodes.
 
 ### Fixed
 
@@ -79,6 +79,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   39 of 77 won positions where it won 28 before (Stockfish 50). The
   ending is rare (5 of 12,954 gate games), so no rating change is
   expected; with tablebases loaded the engine probes it as before.
+- **Connected rooks are scored the same for either side when a side has
+  three rooks** (after a promotion). Every pair of rooks on one rank or
+  file with nothing between them now earns the bonus; before, only the
+  rooks on the lowest and highest squares were compared, so a position
+  and its mirror image could be scored differently. `bench` now
+  reports 10,521,141 nodes.
 
 ## [2.5.0] - 2026-10-05
 
