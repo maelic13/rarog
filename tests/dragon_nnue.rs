@@ -184,3 +184,171 @@ fn dragon_can_play_with_one_and_two_workers() {
         }
     }
 }
+
+fn pieces(board: &Board) -> [u64; 12] {
+    std::array::from_fn(|i| {
+        board
+            .pieces(
+                if i < 6 { Color::White } else { Color::Black },
+                [
+                    rarog::board::Piece::Pawn,
+                    rarog::board::Piece::Knight,
+                    rarog::board::Piece::Bishop,
+                    rarog::board::Piece::Rook,
+                    rarog::board::Piece::Queen,
+                    rarog::board::Piece::King,
+                ][i % 6],
+            )
+            .0
+    })
+}
+
+fn reference_model() -> &'static dragon_nnue::Network {
+    static MODEL: OnceLock<dragon_nnue::Network> = OnceLock::new();
+    MODEL.get_or_init(|| {
+        dragon_nnue::Network::load(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/nnue/dragon-network.nnue"
+        ))
+        .unwrap()
+    })
+}
+
+#[test]
+fn incremental_kernels_match_scalar_and_native_on_arbitrary_jumps() {
+    use dragon_nnue::{AccumulatorCache, Kernel, Position};
+    let model = reference_model();
+    for kernel in [Kernel::Portable, Kernel::Avx2, Kernel::AvxVnni] {
+        let Some(mut cache) = AccumulatorCache::with_kernel(kernel) else {
+            continue;
+        };
+        let mut rows = 0;
+        let corpus: Vec<_> = [
+            include_str!("fixtures/dragon-nnue-reference.tsv"),
+            include_str!("fixtures/dragon-nnue-expanded.tsv"),
+        ]
+        .into_iter()
+        .flat_map(str::lines)
+        .filter(|r| !r.starts_with('#'))
+        .collect();
+        for row in corpus.into_iter().rev() {
+            let f: Vec<_> = row.split('\t').collect();
+            let board = Board::from_fen(f[3]).unwrap();
+            let scale = f[1].parse().unwrap();
+            let expected = model
+                .evaluate_scaled(&Position::from_fen(f[3]).unwrap(), scale)
+                .unwrap();
+            let actual = cache
+                .evaluate_scaled(
+                    model,
+                    &pieces(&board),
+                    board.side_to_move() == Color::Black,
+                    scale,
+                )
+                .unwrap();
+            assert_eq!(actual, expected, "{kernel:?} {}", f[0]);
+            assert_eq!(
+                if board.side_to_move() == Color::Black {
+                    -actual
+                } else {
+                    actual
+                },
+                f[2].parse::<i32>().unwrap()
+            );
+            if rows % 97 == 0 {
+                cache.clear();
+            }
+            rows += 1;
+        }
+        assert_eq!(rows, 2738);
+    }
+}
+
+#[test]
+fn incremental_kernels_follow_legal_walks_unmake_null_and_special_moves() {
+    use dragon_nnue::{AccumulatorCache, Kernel, Position};
+    let model = reference_model();
+    let mut caches: Vec<_> = [Kernel::Portable, Kernel::Avx2, Kernel::AvxVnni]
+        .into_iter()
+        .filter_map(AccumulatorCache::with_kernel)
+        .collect();
+    let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
+    let mut check = |board: &Board| {
+        let p = Position::from_fen(&board.to_fen()).unwrap();
+        let expected = model.evaluate_scaled(&p, 72).unwrap();
+        for cache in &mut caches {
+            assert_eq!(
+                cache
+                    .evaluate_scaled(
+                        model,
+                        &pieces(board),
+                        board.side_to_move() == Color::Black,
+                        72
+                    )
+                    .unwrap(),
+                expected,
+                "{}",
+                cache.kernel().name()
+            );
+        }
+    };
+    for fen in [
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+        "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        "8/P7/7k/8/8/8/7p/4K3 w - - 0 1",
+    ] {
+        let mut board = Board::from_fen(fen).unwrap();
+        check(&board);
+        for mv in board.generate_legal_moves() {
+            board.make_move(mv);
+            check(&board);
+            board.unmake_move(mv);
+            check(&board);
+        }
+        let mut moves = Vec::new();
+        for _ in 0..160 {
+            let legal = board.generate_legal_moves();
+            if legal.is_empty() {
+                break;
+            }
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let index = usize::try_from(seed % u64::try_from(legal.len()).unwrap()).unwrap();
+            let mv = legal[index];
+            board.make_move(mv);
+            moves.push(mv);
+            check(&board);
+            if !board.is_in_check() {
+                board.make_null_move();
+                check(&board);
+                board.unmake_null_move();
+                check(&board);
+            }
+        }
+        while let Some(mv) = moves.pop() {
+            board.unmake_move(mv);
+            check(&board);
+        }
+    }
+}
+
+#[test]
+fn warm_incremental_evaluation_allocates_nothing() {
+    use dragon_nnue::AccumulatorCache;
+    let model = reference_model();
+    let mut cache = AccumulatorCache::new();
+    let mut board = Board::default();
+    let before = pieces(&board);
+    assert!(board.play_uci("e2e4"));
+    let after = pieces(&board);
+    ALLOCATIONS.with(|n| n.set(0));
+    COUNTING.with(|n| n.set(true));
+    for _ in 0..8 {
+        std::hint::black_box(cache.evaluate_scaled(model, &before, false, 72).unwrap());
+        std::hint::black_box(cache.evaluate_scaled(model, &after, true, 72).unwrap());
+    }
+    COUNTING.with(|n| n.set(false));
+    assert_eq!(ALLOCATIONS.with(Cell::get), 0);
+}

@@ -1,7 +1,10 @@
 //! Scalar inference recovered from the bundled Dragon executable.
 //! See docs/contracts/NNUE.md for original addresses and arithmetic contracts.
+//! The full scalar API remains the reference; cached.rs owns host optimizations.
 
+mod cached;
 mod sha256;
+pub use cached::{AccumulatorCache, Kernel};
 
 use std::{fmt, fs, path::Path};
 
@@ -144,6 +147,8 @@ struct Head {
     weights1: Vec<i8>,
     bias2: [f32; 32],
     weights2: [[f32; 30]; 32],
+    #[cfg(target_arch = "x86_64")]
+    weights2_transposed: [[f32; 32]; 30],
     bias_out: f32,
     weights_out: [f32; 32],
 }
@@ -186,7 +191,7 @@ impl Network {
         for _ in 0..8 {
             r.i32(); // Identical block tags are covered by the full model hash.
             let bias1 = std::array::from_fn(|_| r.i32());
-            let weights1 = r.take(16 * LANES).iter().map(|&x| x as i8).collect();
+            let weights1: Vec<i8> = r.take(16 * LANES).iter().map(|&x| x as i8).collect();
             let bias2 = std::array::from_fn(|_| r.i32() as f32);
             let weights2 = std::array::from_fn(|_| {
                 let row = std::array::from_fn(|_| r.take(1)[0] as i8 as f32);
@@ -199,6 +204,10 @@ impl Network {
                 bias1,
                 weights1,
                 bias2,
+                #[cfg(target_arch = "x86_64")]
+                weights2_transposed: std::array::from_fn(|i| {
+                    std::array::from_fn(|j| weights2[j][i])
+                }),
                 weights2,
                 bias_out,
                 weights_out,
@@ -275,6 +284,27 @@ impl Head {
             }
             *value = sum as f32;
         }
+        self.finish_scalar(&first)
+    }
+
+    fn forward_portable(&self, input: &[u8; LANES]) -> i32 {
+        let mut first = [0_f32; 16];
+        for (row, value) in first.iter_mut().enumerate() {
+            let weights = &self.weights1[row * LANES..(row + 1) * LANES];
+            // SCReLU is at most 126, so pair saturation is inactive. A flat
+            // wrapping dot lets LLVM vectorize without changing the reference.
+            let sum = input
+                .iter()
+                .zip(weights)
+                .fold(self.bias1[row], |sum, (&a, &w)| {
+                    sum.wrapping_add(i32::from(a) * i32::from(w))
+                });
+            *value = sum as f32;
+        }
+        self.finish_scalar(&first)
+    }
+
+    fn finish_scalar(&self, first: &[f32; 16]) -> i32 {
         let skip = (first[15] as i32).wrapping_mul(9600) / 8128;
         let mut activated = [0_f32; 30];
         for i in 0..15 {
@@ -295,6 +325,10 @@ impl Head {
             let dot = tail + reduced;
             *value = ((dot + self.bias2[row]).max(0.0) * (1.0 / 64.0)).min(127.0);
         }
+        self.output(skip, &second)
+    }
+
+    fn output(&self, skip: i32, second: &[f32; 32]) -> i32 {
         let mut lanes = [0_f32; 4];
         for (lane, value) in lanes.iter_mut().enumerate() {
             let p = |group: usize| self.weights_out[group * 4 + lane] * second[group * 4 + lane];

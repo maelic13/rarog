@@ -3,7 +3,13 @@ name = "dragon-nnue"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.98"
-description = "Scalar inference for the frozen extracted Dragon network"
+description = "Exact scalar and incremental inference for the frozen Dragon network"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"
 
 [lib]
 path = "src/lib.rs"

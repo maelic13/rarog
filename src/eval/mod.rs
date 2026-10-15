@@ -105,6 +105,7 @@ struct EvalEntry {
 #[derive(Clone)]
 pub struct Evaluator {
     evaluation: EvaluationOptions,
+    dragon_accumulators: Option<dragon_nnue::AccumulatorCache>,
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
     params: EvalParams,
@@ -143,6 +144,7 @@ impl Default for Evaluator {
             tables,
             lazy_margin: LAZY_MARGIN,
             evaluation: EvaluationOptions::default(),
+            dragon_accumulators: None,
             attacks: AttackMaps::new(),
             #[cfg(feature = "tune")]
             mask_source: &masks::FAMILY_MASKS,
@@ -199,6 +201,13 @@ impl Evaluator {
             return false;
         }
         self.evaluation = options.clone();
+        if options.mode() == EvaluationMode::DragonNnue {
+            self.dragon_accumulators
+                .get_or_insert_with(dragon_nnue::AccumulatorCache::new)
+                .clear();
+        } else if let Some(cache) = &mut self.dragon_accumulators {
+            cache.clear();
+        }
         self.eval_table.fill(EvalEntry::default());
         true
     }
@@ -259,7 +268,14 @@ impl Evaluator {
         }
 
         if let Some(model) = self.evaluation.model() {
-            let value = backend::evaluate(model, board, self.evaluation.scale());
+            let value = backend::evaluate(
+                model,
+                board,
+                self.evaluation.scale(),
+                self.dragon_accumulators
+                    .as_mut()
+                    .expect("Dragon was configured before inference"),
+            );
             self.eval_table[eval_slot] = EvalEntry {
                 key: board.hash(),
                 halfmove_clock: board.halfmove_clock(),

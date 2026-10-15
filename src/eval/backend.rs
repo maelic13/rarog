@@ -1,7 +1,7 @@
 //! Experimental imported-network adapter. Search still owns draws and corrections.
 use std::sync::OnceLock;
 
-use dragon_nnue::{Network, Position};
+use dragon_nnue::{AccumulatorCache, Network};
 
 use crate::board::{Board, Color, Piece};
 
@@ -141,22 +141,23 @@ fn load_model(file: &str) -> Result<&'static Network, String> {
     Ok(MODEL.get().expect("a verified model was installed"))
 }
 
-pub(super) fn evaluate(model: &Network, board: &Board, scale: i32) -> i32 {
-    let mut squares = [0_u8; 64];
-    for color in [Color::White, Color::Black] {
-        for piece in Piece::ALL {
-            let code = piece as u8 + 1 + if color == Color::Black { 8 } else { 0 };
-            let mut pieces = board.pieces(color, piece);
-            while pieces.any() {
-                squares[pieces.pop_lsb().index()] = code;
-            }
-        }
-    }
-    let position = Position::new(squares, board.side_to_move() == Color::Black)
-        .expect("a legal engine board has valid pieces and one king per color");
-    model
-        .evaluate_scaled(&position, scale)
-        .expect("the configured scale was validated")
+pub(super) fn evaluate(
+    model: &Network,
+    board: &Board,
+    scale: i32,
+    cache: &mut AccumulatorCache,
+) -> i32 {
+    let pieces = std::array::from_fn(|i| {
+        board
+            .pieces(
+                if i < 6 { Color::White } else { Color::Black },
+                Piece::ALL[i % 6],
+            )
+            .0
+    });
+    cache
+        .evaluate_scaled(model, &pieces, board.side_to_move() == Color::Black, scale)
+        .expect("the engine board and configured scale are valid")
 }
 
 #[cfg(test)]
