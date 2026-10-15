@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.5 | RESEARCH | R2 | Definition cards written (`analysis/c135_cards_2026-10-15.md`; `R2` by maintainer decision, the build returns to `I1`). RAR-E66 registered (2026-10-15): both pairs re-read with a game-length term in the base and on the search-settled rows; a pair surviving both is ready |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -2149,7 +2148,7 @@ loss).
       endgame imbalances) do not carry to outcomes, so they are transient
       material. The search score itself adds +10.4% (+19.7% in the
       endgame band), recorded as context for C.13.6.
-    - **C.13.5 Repairs cluster: implement, refit, gate — `R2` for the definition cards (escalated from `I1`, maintainer decision 2026-10-15), then `I1` and `V`.**
+    - **C.13.5 Repairs cluster: implement, refit, gate — `R2` for the definition cards (escalated from `I1`, maintainer decision 2026-10-15), then `I1` and `V`, NO_CHANGE 2026-10-15.**
       The definitions and terms C.13.2 to C.13.4 admitted, as one
       dependency-complete cluster: implementation with focused tests, one
       joint refit on the current corpus by `fit_complete.ps1`, the
@@ -2175,6 +2174,17 @@ loss).
       the line in either reading closes `NO_CHANGE`; a survivor becomes
       ready with the card's frozen handoff. The build, refit and gate
       return to `I1` and `V`.
+      **Read 2026-10-15** (RAR-E66, `analysis/artifacts/c135/`): neither
+      pair survives.
+      - With the game-length term in the base, material × men reads
+        +0.109% and mobility × men +0.093%, the latter under the line.
+      - On the 98,541 search-settled rows, material × men reads
+        +0.053 ± 0.025% (2.1 SE) and mobility × men −0.021%.
+      The pairs live where the search does not settle the static score:
+      transient material, which belongs to the quiet filter and C.13.6's
+      target, not to a term. **C.13.5 closes `NO_CHANGE`**, since C.13.2
+      and C.13.4 admitted nothing. Nothing is built, and C.13.6's gate
+      runs against the current head (10,521,141 / EBF 2.521).
     - **C.13.6 Blended fitting target — `V`.** Registered before the fit,
       prediction frozen: the current source games re-extracted with
       `extract.py --blend 0.5` (train split only; validation and test stay

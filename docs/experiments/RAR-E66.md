@@ -40,4 +40,32 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   5. **Neither survives, and C.13.5 closes `NO_CHANGE` (0.45).** Exactly one survives (0.35), both (0.2).
   - Expected Elo: none here.
 - **Cheapest prior falsifier:** this read.
-- **Result:** pending.
+- **Result (run 2026-10-15, once, after the registration commit `980cfed`; exit 0, 27 s; `analysis/artifacts/c135/check.json`, `check.log`):**
+  - *Wires held:* scores, family sums, games and search scores for every row. RAR-E65's residual reproduced. The base without the game-length term reproduced RAR-E64's deciding gains exactly.
+  - *Gains* (± game-clustered SE):
+
+    | Reading (rows) | material × men | mobility × men |
+    |---|---:|---:|
+    | wire: RAR-E64's deciding base (144,537) | +0.122 ± 0.021 (5.8 SE) | +0.102 ± 0.017 (6.0 SE) |
+    | **len**: plus `r·z(log1p plies to the end)` (144,537) | +0.109 ± 0.021 (5.3 SE) | **+0.093** ± 0.017 (5.4 SE), under 0.10% |
+    | **settled**: the search agrees within a pawn (98,541) | **+0.053** ± 0.025 (2.1 SE) | **−0.021** ± 0.017 (−1.2 SE) |
+
+  - *By the frozen rule, neither pair survives.* Material × men passes the game-length reading but falls under the line on the settled rows. Mobility × men falls under both.
+  - On the settled rows the loss is not only power: material × men's point estimate halves (+0.122 → +0.053), and mobility × men changes sign (+0.102 → −0.021), on two thirds of the rows.
+  - The pairs live where the search disagrees with the static score: RAR-E65's transient material, an exchange or promotion in progress in a row the quiet filter kept. Game length takes 0.01 to 0.014 points.
+- **Disposition:** observation.
+  - **By the frozen use, both pairs close `NO_CHANGE`, and with C.13.2 and C.13.4 having admitted nothing, C.13.5 closes `NO_CHANGE`.** Nothing is built, and the cards' handoff is void.
+  - The finding goes to C.13.6 and the extraction's quiet filter. A residual concentrated in rows the search does not settle is a data-selection and target question, not a term.
+  - Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 5 above.
+  - Observed:
+    - (1) hit.
+    - (2) hit: the game-length term took 0.014 and 0.010 points, both under 0.03; mobility's thin margin then put it under the line.
+    - (3) hit: material × men falls on the settled rows.
+    - (4) hit: mobility × men falls, and changes sign.
+    - (5) hit: neither survives (0.45).
+  - Which assumption held: transient material, the cheapest explanation the cards named. A miss in magnitude: mobility × men did not merely weaken on the settled rows, it reversed.
+- **Conditional lesson:** an interaction found in quiet-filtered static rows should be re-read on the rows the engine's own search settles before any term is designed. RAR-E65's search dump makes that a one-minute check for every later residual read.
+- **Retry trigger or `closed`:** closed. A retry needs a corpus whose quiet filter removes the rows the search does not settle, or a fitting target that takes search scores (C.13.6); either changes what RAR-E63 would read.
+- **Artifacts:** `analysis/artifacts/c135/` (ignored storage): `check_e66.py`, `check.json`, `check.log`.
