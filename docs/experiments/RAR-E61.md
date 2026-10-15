@@ -82,4 +82,20 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - (2) Hit.
   - (3) **Miss in magnitude:** the largest family move is 0.039 points against the predicted 0.03. Material (−0.039) and passed (+0.037) move most, in opposite directions. The refit takes more of the donor's material information and gives up some of its passed-pawn share.
   - (4) Magnitude and tree read hit. **NPS is a miss:** −0.92% against ±0.5%. The same arm pair at C.8.2 read −0.48%, and a smaller tree does not bring a faster rate.
-- **Result:** pending gate 1, after RAR-M70.
+- **Gate 1 (played 2026-10-14 22:01 to 2026-10-15 00:12 UTC, by the maintainer, after RAR-M70's cross-check; `tools/results/rar-e61-gate1`, manifest `colosseum_sprt_rar-e61-gate1_20261015_000150.manifest.txt`):**
+  - *Conditions, checked from the manifest:* the registered arms (`A3A11321…` at `75c3db5`, bench 14,126,183; `76CD1F3C…` at `bfd008a`, bench 14,291,377), the pinned runner (`colosseum-cli 0.3.0`, `381EB7A5…` at `cb12cd3`), UHO seed 4205, no adjudication. The host was 0.4% busy with no waiver, and the repository was clean at `5da823e`.
+  - **H1 accepted** at 6,181 pairs (12,362 games): **+6.7 ± 3.7 Elo, +11.1 ± 6.1 nElo** (a first-crossing estimate), W/D/L 3,285 / 6,030 / 3,047, pentanomial [175, 1,393, 2,826, 1,593, 194], LLR +2.96 against ±2.94.
+  - No faults (time 0–0, other 0–0, of 61 allowed), and the recount agrees. 13 post-terminal pairs are kept as evidence and excluded from the sample.
+- **Disposition:** **accepted.** Gate 1 passed and no screen flagged, so by the frozen use it accepts.
+  - The fingerprint **14,126,183 / EBF 2.557** becomes the development fingerprint on branch `c7`.
+  - PROCESS step 4's question goes to the maintainer: whether the optional margin block runs.
+  - C.8.7 owes the `10+0.1` direction read (step 6), registered below.
+  - The frozen test stays unread, since no gate failed.
+  - A third cycle of C.8 opens after C.8.7 closes.
+- **C.8.7 registration (2026-10-15, before any `10+0.1` game):**
+  - **The `10+0.1` direction read (PROCESS step 6):** 1,000 games, `match-fixed-ltc.toml`, the gate-1 arms, UHO seed 4206, no adjudication.
+    - Use, frozen: a point estimate below 0 Elo reopens the cycle (C.8 back to `RESEARCH`, and the maintainer decides). 0 or above leaves the acceptance standing, and once the margin-block question is answered, C.8.7 closes. The read accepts nothing on its own.
+  - **Prediction:** **+5 Elo**, 80% band [−6, +16]; probability of 0 or above 0.75. Basis: gate 1's +6.7, discounted for its early stop; cycle 1 held its size at `10+0.1` (+11.0 at gate 1, then +17.0).
+  - **Command,** from PowerShell: `./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/match-fixed-ltc.toml -EngineA tools/test_engines/rarog-c8cycle2-pext-pgo.exe -EngineB tools/test_engines/rarog-c8cycle1-pext-pgo.exe -NameA c8cycle2 -NameB c8cycle1 -Games 1000 -BaseMs 10000 -IncrementMs 100 -Seed 4206 -ExpectBench 14126183,14291377 -Dir tools/results/rar-e61-ltc`.
+    - Its dry run is owed on an idle host. A Basilisk tune held the host when this was registered.
+- **Gate-1 calibration (appended after exposure):** observed +6.7 Elo against the predicted +4 (80% band [−3, +11]): inside the band. The pass (probability 0.35) happened. The sign was right, and the magnitude is above the central value, partly from the early stop. The NPS cost (−0.92%, about −2 Elo) is inside the read. Competing hypothesis 1 (nothing to gain) is refuted at gate 1. Hypothesis 3 (overfitting to the labeller's own play) is not supported in games.

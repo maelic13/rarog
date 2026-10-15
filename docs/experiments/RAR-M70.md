@@ -19,4 +19,13 @@ Indexed under *2. Measurement, harness and tuning* in [`docs/EXPERIMENTS.md`](..
   - Cross-check: both runners read the arms near RAR-E60's gate, each about **+8 Elo** with a 95% half-width near ±13. RAR-E60's +11.0 is a first-crossing estimate and overstates. The runners agree by the rule (0.9).
   - Null pair: pass (0.9).
 - **Cost:** the two cross-check matches take about 20 minutes each, and the null pair about 5 to 5½ hours, at RAR-E60's gate rate of about 5,700 games an hour.
-- **Result:** pending.
+- **Cross-check (played 2026-10-14 by the maintainer; repository clean at `5da823e`):**
+  - *Colosseum* (21:19–21:40 UTC, `tools/results/rar-m70-xcheck-colosseum`, manifest `colosseum_match_rar-m70-xcheck-colosseum_20261014_231857.manifest.txt`; host 2.3% busy, no waiver): **+6.9 ± 9.4 Elo, +11.3 ± 15.2 nElo** over 2,000 games, pentanomial [28, 239, 437, 257, 39], no fault, and the recount agrees.
+  - *fastchess* (21:40–22:01 UTC, `tools/results/sprt_c8cycle1_vs_c8head_20261014_234013.*`, the same arm hashes, book and seed): **+6.78 ± 9.07 Elo, +11.38 ± 15.23 nElo** over 2,000 games, W/L/D 527 / 488 / 985, pentanomial [28, 225, 454, 266, 27], no time loss.
+  - *By the frozen rule:* the difference is 0.1 Elo against an allowed 1.96 × √(4.80² + 4.63²) = 13.1, so **the runners agree**.
+- **Null pair:** not run. **Maintainer decision 2026-10-15:** it is not necessary after this re-pin. The rule's null-pair condition is waived by that decision, not met.
+- **Disposition:** the cross-check passes and the null pair is waived, so gates proceed on 0.3.0 (RAR-E61's gate 1 ran after both reads).
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): the items above.
+  - Cross-check: both read +6.9 and +6.8 against the predicted +8. The runners agree, a hit (0.9). The intervals are narrower than the ±13 I assumed, ±9.4 and ±9.1: a miss in the instrument's spread, not in its centre. Both reads sit below RAR-E60's first-crossing +11.0 for the same arms, as that estimate's early stop led me to expect.
+  - Null pair: not run, so not calibrated.
