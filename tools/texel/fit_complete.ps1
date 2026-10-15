@@ -462,11 +462,7 @@ try {
                 # hce-v6: C.8's second cycle, the same book and profile from
                 # start 1, labelled by the cycle-1 head (bfd008a) on Colosseum;
                 # the count is its pilot's preflight (PLAN C.8.5).
-                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 569664 },
-                # hce-v7: C.8's third cycle, the same book and profile from
-                # start 1, labelled by the cycle-2 head (75c3db5) on Colosseum;
-                # the count is its pilot's preflight (PLAN C.8.8).
-                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 631315 }
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 569664 }
             )
             $corpusProfile = [string]$manifest.label_contract.adjudication.Name
             $corpusStarts = [int]$manifest.independent_starts
