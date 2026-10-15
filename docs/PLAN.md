@@ -295,7 +295,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
-| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates so far: material × men and mobility × men (RAR-E63), each waiting on a registered score × men and score × pawns calibration check before any definition |
+| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates so far: material × men and mobility × men (RAR-E63); RAR-E64 registered (2026-10-15): each re-read with score × phase, men and pawns slopes in the base, a survivor gets a definition card |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
