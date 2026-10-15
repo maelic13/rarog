@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.2 | RESEARCH | R2 | The four definitions and the inert-term inventory, read before anything is built |
+| C.13.2 | RESEARCH | R2 | RAR-E62 registered (2026-10-15): the four corrected definitions as directions over a spline of the played score with game-clustered errors, line 0.10% at 4 SE; none is a correctness repair; the inert-term inventory from the texel trace |
 | C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
 | C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate |
