@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
+| C.13.3 | RESEARCH | R2 | RAR-E63 registered (2026-10-15): depth-2 boosted trees per pair of term families, phase, men and the endgame scale against single-input trees of the same capacity, on the non-lazy held-out rows; line 0.10% at 4 game-clustered SE and above a 20-replicate permutation null; a phase-slope guard |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
 | C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
