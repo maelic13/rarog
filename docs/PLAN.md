@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates: material × men and mobility × men (RAR-E63), both surviving RAR-E64's calibration check; C.13.2 and C.13.4 admitted nothing (2026-10-15). Next: one definition card each, then the build |
+| C.13.5 | RESEARCH | R2 | Definition cards written (2026-10-15, `analysis/c135_cards_2026-10-15.md`; `R2` by maintainer decision, the build returns to `I1`): material × men and mobility × men, each with its form, interactions, invariants and falsifiers; next RAR-E66, the game-length and transient-material kill test, before either is ready |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -2149,7 +2149,7 @@ loss).
       endgame imbalances) do not carry to outcomes, so they are transient
       material. The search score itself adds +10.4% (+19.7% in the
       endgame band), recorded as context for C.13.6.
-    - **C.13.5 Repairs cluster: implement, refit, gate — `I1`, then `V`.**
+    - **C.13.5 Repairs cluster: implement, refit, gate — `R2` for the definition cards (escalated from `I1`, maintainer decision 2026-10-15), then `I1` and `V`.**
       The definitions and terms C.13.2 to C.13.4 admitted, as one
       dependency-complete cluster: implementation with focused tests, one
       joint refit on the current corpus by `fit_complete.ps1`, the
@@ -2157,6 +2157,24 @@ loss).
       procedure (static screens, tree read, gate 1 `[0,3]`, the margin
       block when gate 1 fails or a screen flags, `10+0.1` read). Nothing
       admitted: closes `NO_CHANGE` with the measurements recorded.
+      **Definition cards (2026-10-15, `R2`):**
+      `analysis/c135_cards_2026-10-15.md` holds the two cards.
+      - Material × men: a band-wise material-edge correction in
+        conventional pawns by men band. The bands come from the training
+        quartiles: ≤ 9, 10–16, 17–22, ≥ 23.
+      - Mobility × men: a band-wise slope on the total mobility count,
+        kept out of king danger's mobility input.
+      - Each has six weights, seeded 0 (fingerprint held), post-gate,
+        fitted in the cluster's refit.
+      Neither is `READY_FOR_IMPLEMENTATION`: the two explanations that
+      would make a term useless, game length (RAR-E59's mechanism) and
+      transient material (RAR-E65), are untested. **RAR-E66**, registered
+      before any number, re-reads both pairs at RAR-E64's deciding base,
+      once with `r · z(log1p plies to the end)` added and once on the
+      search-settled rows (|S − g(E)| ≤ 100 cp). A pair that falls under
+      the line in either reading closes `NO_CHANGE`; a survivor becomes
+      ready with the card's frozen handoff. The build, refit and gate
+      return to `I1` and `V`.
     - **C.13.6 Blended fitting target — `V`.** Registered before the fit,
       prediction frozen: the current source games re-extracted with
       `extract.py --blend 0.5` (train split only; validation and test stay

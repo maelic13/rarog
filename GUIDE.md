@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: C.13.5** (`I1`): Repairs cluster: implement, refit, gate.
+**Now: C.13.5** (`R2`): Repairs cluster: implement, refit, gate.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -76,7 +76,7 @@ and is frozen at `ee02ed1` for Phase C.
     - [x] **C.13.2** Definitions and inert terms, measured before anything is built — NO_CHANGE 2026-10-15
     - [x] **C.13.3** Residual interaction tree — DONE 2026-10-15
     - [x] **C.13.4** Self-search residual map — NO_CHANGE 2026-10-15
-    - [ ] **C.13.5** Repairs cluster: implement, refit, gate — **RESEARCH / I1**
+    - [ ] **C.13.5** Repairs cluster: implement, refit, gate — **RESEARCH / R2**
     - [ ] **C.13.6** Blended fitting target — **RESEARCH / V**
     - [ ] **C.13.7** Contempt and draw avoidance, research card — **RESEARCH / R2**
 - [ ] **C.9** HCE SPSA of nonlinear residue, or a written skip — **RESEARCH / V**
