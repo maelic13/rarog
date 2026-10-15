@@ -113,3 +113,7 @@ harness = false
 [[bench]]
 name = "board_v2"
 harness = false
+
+[[bench]]
+name = "dragon_nnue"
+harness = false
