@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-from dragon_nnue_probe import Session,digest,ready
+from dragon_nnue_probe import Session,digest,ready,dragon_uci_options
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
@@ -57,14 +57,14 @@ def main():
     out.mkdir(parents=True,exist_ok=False)
     results={'kind':'single informational bench per backend','depth':13,'threads':1,'hash_mb':64,'scale':72,'repeats':1,'engine_sha256':digest(args.engine),'model_sha256':digest(args.model),'arms':{},'busy_host_waiver':args.allow_busy}
     try:
-        for mode in ['Classical','Dragon NNUE']:
+        for mode in ['Classical','DragonNNUE']:
             idle=idle_host(args.allow_busy)
             session=Session(args.engine.resolve(),out)
             started=time.monotonic()
             try:
                 session.send('uci')
-                session.until('uciok')
-                for name,value in [('Hash',64),('Threads',1),('Ponder','false'),('Dragon Eval File',str(args.model.resolve())),('Evaluation',mode),('Dragon NNUE Scale',72)]:
+                names=dragon_uci_options(session.until('uciok'))
+                for name,value in [('Hash',64),('Threads',1),('Ponder','false'),(names['file'],str(args.model.resolve())),('Evaluation',names['value'] if mode=='DragonNNUE' else mode),(names['scale'],72)]:
                     session.send(f'setoption name {name} value {value}')
                 ready(session)
                 session.send('ucinewgame')
@@ -84,7 +84,7 @@ def main():
                 (out/(mode.replace(' ','-')+'-transcript.json')).write_text(json.dumps(session.events,indent=2)+'\n',encoding='utf-8')
         if digest(args.engine)!=results['engine_sha256']:raise AssertionError('measured binary changed')
         hce=results['arms']['Classical']
-        nnue=results['arms']['Dragon NNUE']
+        nnue=results['arms']['DragonNNUE']
         results.update(status='pass',nnue_to_hce_nps=nnue['nps']/hce['nps'],nnue_to_hce_time=nnue['ms']/hce['ms'])
     except Exception as exc:
         results.update(status='fail',error=repr(exc))

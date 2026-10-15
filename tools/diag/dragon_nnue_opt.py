@@ -10,7 +10,7 @@ import subprocess
 import time
 
 from dragon_nnue_bench import idle_host, parse_bench
-from dragon_nnue_probe import Session, digest, ready
+from dragon_nnue_probe import Session, digest, ready, dragon_uci_options
 
 
 def parse_micro(text):
@@ -51,9 +51,9 @@ def bench(engine, mode, out, allow_busy):
     session = Session(engine, out)
     try:
         session.send('uci')
-        session.until('uciok')
+        names=dragon_uci_options(session.until('uciok'))
         for name, value in [('Hash', 64), ('Threads', 1), ('Ponder', 'false'),
-                            ('Dragon Eval File', '<embedded>'), ('Evaluation', mode), ('Dragon NNUE Scale', 72)]:
+                            (names['file'], '<embedded>'), ('Evaluation', names['value'] if mode=='DragonNNUE' else mode), (names['scale'], 72)]:
             session.send(f'setoption name {name} value {value}')
         ready(session)
         session.send('ucinewgame')
@@ -104,9 +104,9 @@ def main():
         (out/'micro.log').write_text(text, encoding='utf-8')
         result['micro'] = parse_micro(text)
         print('Component medians ns/eval:',result['micro']['median_ns_per_eval'],flush=True)
-        for name, executable, mode in [('scalar-A1','baseline','Dragon NNUE'),
-                                       ('optimized-B','candidate','Dragon NNUE'),
-                                       ('scalar-A2','baseline','Dragon NNUE'),
+        for name, executable, mode in [('scalar-A1','baseline','DragonNNUE'),
+                                       ('optimized-B','candidate','DragonNNUE'),
+                                       ('scalar-A2','baseline','DragonNNUE'),
                                        ('classical','candidate','Classical')]:
             directory = out/name
             directory.mkdir()

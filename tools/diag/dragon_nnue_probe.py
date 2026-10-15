@@ -110,6 +110,26 @@ def fixtures():
     return sorted(cases,key=lambda c:c['scale'])
 
 
+def dragon_uci_options(handshake):
+    """Negotiate old/new spellings so archived baselines remain measurable."""
+    lines = handshake.splitlines() if isinstance(handshake, str) else handshake
+    combo = [line for line in lines if line.startswith('option name Evaluation type combo ')]
+    if len(combo) != 1:
+        raise AssertionError('expected one Evaluation combo')
+    values = combo[0].split(' var ')[1:]
+    choices = [name for name in ['DragonNNUE', 'Dragon NNUE'] if name in values]
+    if len(choices) != 1:
+        raise AssertionError('ambiguous or missing Dragon evaluator')
+    result = {'value': choices[0]}
+    for key, names, kind in [('file', ['DragonEvalFile', 'Dragon Eval File'], 'string'),
+                              ('scale', ['DragonNNUEScale', 'Dragon NNUE Scale'], 'spin')]:
+        choices = [name for name in names if any(line.startswith(f'option name {name} type {kind} ') for line in lines)]
+        if len(choices) != 1:
+            raise AssertionError('ambiguous or missing Dragon '+key)
+        result[key] = choices[0]
+    return result
+
+
 def ready(session):
     session.send('isready')
     return session.until('readyok')
@@ -145,17 +165,16 @@ def main():
         sessions['rarog']=host
         host.send('uci')
         handshake='\n'.join(host.until('uciok'))
-        for option in ['Evaluation','Dragon Eval File','Dragon NNUE Scale']:
-            assert f'option name {option} type ' in handshake
+        names=dragon_uci_options(handshake)
         for command in ['setoption name Hash value 64','setoption name Threads value 1','setoption name Ponder value false']:
             host.send(command)
         before=evaluate(host,'fen '+START)
         assert before['backend']=='Classical'
         # A GUI may send the mode before the file. Failed load stays Classical;
         # supplying the model must resolve the remembered selection.
-        host.send('setoption name Evaluation value Dragon NNUE')
+        host.send('setoption name Evaluation value '+names['value'])
         ready(host)
-        host.send('setoption name Dragon Eval File value '+str(paths['model']))
+        host.send('setoption name '+names['file']+' value '+str(paths['model']))
         ready(host)
         enabled=evaluate(host,'fen '+START)
         assert enabled=={'backend':'DragonNNUE','stm':52,'white':52}
@@ -173,7 +192,7 @@ def main():
             for case in cases:
                 if case['scale']!=scale:
                     scale=case['scale']
-                    host.send(f'setoption name Dragon NNUE Scale value {scale}')
+                    host.send(f"setoption name {names['scale']} value {scale}")
                     native.send(f'setoption name NNUE_Scale value {scale}')
                     ready(host)
                     ready(native)
