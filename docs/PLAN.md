@@ -295,7 +295,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
-| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates so far: material × men and mobility × men (RAR-E63); RAR-E64 registered (2026-10-15): each re-read with score × phase, men and pawns slopes in the base, a survivor gets a definition card |
+| C.13.5 | RESEARCH | I1 | The repairs cluster, only what C.13.2 to C.13.4 admit; one refit, one gate. Candidates: material × men and mobility × men (RAR-E63), both surviving RAR-E64's calibration check (2026-10-15); each gets one definition card before anything is built; waits on C.13.4 |
 | C.13.6 | RESEARCH | V | Blended fitting target, one lambda, kept only by games |
 | C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
@@ -2124,6 +2124,12 @@ loss).
       `r·(men/32 − 0.5)` and `r·(pawns/16 − 0.5)` in the base. A pair
       that falls under the line there is calibration (C.13.6's target and
       C.10); a pair that survives gets its definition card in C.13.5.
+      **Checked 2026-10-15** (RAR-E64, `analysis/artifacts/c134cal/`):
+      both survive with score × phase, men and pawns slopes all in the
+      base. Material × men reads +0.122 ± 0.021% (5.8 SE) and mobility ×
+      men +0.102 ± 0.017% (6.0 SE, 0.002 points over the line). No slope
+      moves either by more than 0.03, so they are not calibration and
+      both go to C.13.5's definition cards.
     - **C.13.4 Self-search residual map — `R2`.** Registered before any
       number: the 8,000-node search score of each datagen position (the
       PGN comments `extract.py` already parses) against the static

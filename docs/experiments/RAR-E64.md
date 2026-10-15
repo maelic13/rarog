@@ -43,4 +43,33 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   5. The `pawns` base removes more of either pair's gain than the `men` base (0.6).
   - Expected Elo: none.
 - **Cheapest prior falsifier:** this read.
-- **Result:** pending.
+- **Result (run 2026-10-15, once, after the registration commit `f182acc`; exit 0, 26 s; `analysis/artifacts/c134cal/check.json`, `check.log`):**
+  - *Wires held:* scores, family sums and games as in RAR-E63. With the `phase` base both pairs reproduce RAR-E63's guard gains exactly (+0.130708, +0.108938; difference 0).
+  - *Gains on the non-lazy rows* (144,537, ± game-clustered SE):
+
+    | Base | material × men | mobility × men |
+    |---|---:|---:|
+    | phase (RAR-E63's guard) | +0.131 ± 0.021 (6.3 SE) | +0.109 ± 0.017 (6.3 SE) |
+    | men | +0.139 ± 0.022 (6.4 SE) | +0.107 ± 0.017 (6.4 SE) |
+    | pawns | +0.151 ± 0.023 (6.6 SE) | +0.103 ± 0.017 (6.2 SE) |
+    | **phase + men + pawns** (deciding) | **+0.122 ± 0.021 (5.8 SE)** | **+0.102 ± 0.017 (6.0 SE)** |
+
+  - *By the frozen rule, both pairs survive*: each is above 0.10%, 4 SE and RAR-E63's null threshold (+0.024%) with every calibration in the base. No calibration slope moves either gain by more than 0.03 points. The score × pawns slope removes nothing from material × men (+0.151 against RAR-E63's +0.151) and 0.006 from mobility × men. H-cal is refuted for both; H-term stands.
+  - *Margin:* mobility × men clears the 0.10% clause by 0.002 points. The game bootstrap does not carry the boosters' fitting noise (RAR-E63's instrument note), so this pair's survival is the weaker of the two, while its 6.0 SE and the null threshold, a quarter of the gain, stand.
+- **Disposition:** observation. **By the frozen use, both pairs keep their C.13.5 candidacy, and each gets one definition card there:**
+  - material × men: a men- or pawn-dependent material scale, the value of a material edge by the men left beyond the piece-based phase taper;
+  - mobility × men: a mobility weight by men.
+  - The cards state the form, the interactions (the material and imbalance terms, the endgame scale and C.5.2's rule, the lazy gate's margin, mobility's own eg tables and the closedness term), the invariants and the falsifier before C.13.5 builds. Each is fitted in C.13.5's refit and gated with the cluster.
+  - Not Elo: static loss ranks questions and accepts nothing.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 5 above.
+  - Observed:
+    - (1) hit.
+    - (2) **miss**: material × men survives (+0.122), and the pawn slope absorbed nothing of it.
+    - (3) hit: mobility × men survives (+0.102).
+    - (4) hit: both survive.
+    - (5) **miss** for material (the men base removes more than the pawns base; the pawns base removes nothing) and hit for mobility (pawns 0.103 against men 0.107); as a statement about either pair, a miss.
+  - Which assumption failed: I read the descriptive table's men-band main effect as the pair's content. The pair is the within-band pattern (a large edge overclaims when crowded, underclaims when sparse), which no monotone score slope can express. The miss is in mechanism.
+- **Conditional lesson:** a residual table's dominant main effect says nothing about an interaction. Read the within-band contrast before predicting what a calibration will absorb.
+- **Retry trigger or `closed`:** closed. Both candidates go to C.13.5's definition cards.
+- **Artifacts:** `analysis/artifacts/c134cal/` (ignored storage): `check_e64.py`, `check.json`, `check.log`, and the smoke `smoke30k-check.*` (exit status only).
