@@ -71,4 +71,35 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   6. *Gate 1:* **+3 Elo**, 80% band [−5, +11]. Probability of passing 0.3.
   - Most likely failure mode: competing hypothesis 1 or 3, gate 1 at H0 or at the cap.
 - **Cheapest prior falsifier:** the static screens (no games); a void corpus wire stops everything.
-- **Result:** pending.
+- **Maintainer exception (2026-10-15):** the maintainer, away from the machine, asked the agent to run every command of this step itself, including the data, the fit, the NPS read and the games. The agent kept other load off the host while anything timed ran.
+- **Data and fit (2026-10-15, 18:04–18:17, `analysis/artifacts/c136/run_c136_data_fit.sh`, every step exit 0):**
+  - *Extraction:* 3,888,888 rows; no missing evals.
+    - The extraction wire held: rows and train FENs identical to `hce-v6`'s, validation and test byte-identical, 0.5 at 1.6166, and 3,358,184 train labels changed.
+  - *Relabel:* 499,316 of the 551,415 train rows of six men or fewer took their verdicts; validation and test changed as `hce-v6-tb`'s did.
+    - The relabel wire held: validation and test byte-identical to `hce-v6-tb`'s, and all 551,415 small train rows carry its labels.
+  - *Fit* (`tools/results/hce-fit-20261015_181145`):
+    - Both coordinate passes converged (13 and 11 epochs).
+    - K was pinned at **1.63724** from the current defaults; the blend's 1.6166 was RAR-E61's.
+    - Pure-validation loss: the baseline vector 0.09271240, the polish's best epoch (11 of 60) 0.09264703, so **−0.07%**.
+- **Candidate:** `9576881`, the fit's `candidate-eval.patch` (`22F13203…`), an engine commit of `params.rs` and `material.rs` only.
+  - **Bench 11,837,089 / EBF 2.525**, equal to the fit's `bench-candidate` and reproduced by a rebuild.
+  - fmt is clean. The fit driver's checks on the same patch passed: debug 417 and release 418 tests with none failing, and clippy at zero warnings.
+- **Pre-game reads (2026-10-15, `analysis/artifacts/c136/run_screens.sh`, `screens-status.txt`, every step exit 0):**
+  - *Reproduction:* the head side is a throwaway worktree at `2bf99c2`. Its played dump on `hce-v6-tb` validation equals RAR-E62's byte for byte, and both `tune,diag` builds reproduce their `bench 13` (10,521,141 and 11,837,089).
+  - *(a) Donor screen*, head → candidate over all rows:
+    - king +0.062 → +0.106, threats +0.043 → +0.083, passed +0.038 → +0.002, mobility +0.027 → +0.060, pieces and queens +0.023 → +0.052, space +0.024 → +0.006;
+    - every family moves 0.044 points or less;
+    - the donor's whole score +1.916 → +1.943, all families together +1.139 → +1.195, magnitude +0.515 → +0.436.
+  - *(c) Magnitude:* **no flag.**
+    - Every band shrinks toward zero: −2.8 cp at 0–100, −7.7 at 101–300, −9.6 at 301–600, −10.7 at 601–1200.
+    - Mean |score| 374.3 → 367.5. The share above the gate moves −0.28 points (24.89% → 24.62%).
+  - *(d) Tree read:* **flag.**
+    - Total depth-12 nodes 12,065,160 → 12,561,493 (+4.1%, inside ±5%).
+    - The per-position geometric mean is **1.054**, just outside 0.95–1.05 (median 1.117).
+    - Root scores differ by a median of 19 cp.
+  - *(e) Pooled-PGO NPS* (`c136/nps/read.log`, four `pext` PGO builds per arm, the head's from its worktree): **−1.10%, 95% interval −1.43% to −0.76%**. No disturbed cycle; the host was idle, with no engine, harness or build process. The stop rule (below −1.5%) does not fire. At about 2 Elo per 1%, that is roughly −2 Elo inside the gate's result.
+  - *Use:* the tree read's flag offers the margin block after gate 1, by the frozen rule, and rejects nothing. No stop fired, so gate 1 runs.
+- **Gate arms:**
+  - Candidate: `tools/test_engines/rarog-c136blend-pext-pgo.exe` (`776D9C7C…`, built clean at `9576881`, bench 11,837,089).
+  - Head: `tools/test_engines/rarog-c13best-pext-pgo.exe` (`3C92DC47…`, built clean at `931dcca`, whose engine sources equal `43b34ec`'s, bench 10,521,141).
+- **Result:** gate 1 pending.
