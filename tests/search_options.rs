@@ -402,3 +402,39 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
     );
     assert_eq!(options.engine.syzygy.path, r"C:\<empty>");
 }
+
+#[test]
+fn dragon_options_advertise_compact_names_and_parse_both_spellings() {
+    let advertised = SearchOptions::get_uci_options();
+    assert!(
+        advertised.contains(
+            &"option name Evaluation type combo default Classical var Classical var DragonNNUE"
+                .to_owned()
+        )
+    );
+    assert!(
+        advertised
+            .contains(&"option name DragonEvalFile type string default <embedded>".to_owned())
+    );
+    assert!(
+        advertised.contains(
+            &"option name DragonNNUEScale type spin default 72 min 10 max 500".to_owned()
+        )
+    );
+    assert!(
+        !advertised
+            .iter()
+            .any(|s| s.contains("Dragon NNUE") || s.contains("Dragon Eval File"))
+    );
+    let mut options = SearchOptions::default();
+    for name in ["DragonNNUEScale", "Dragon NNUE Scale"] {
+        options.set_option(&args(&["name", name, "value", "100"]));
+        assert_eq!(options.engine.evaluation.scale(), 100);
+        options.set_option(&args(&["name", name, "value", "72"]));
+        assert_eq!(options.engine.evaluation.scale(), 72);
+    }
+    for name in ["DragonEvalFile", "Dragon Eval File"] {
+        options.set_option(&args(&["name", name, "value", "<embedded>"]));
+        assert_eq!(options.engine.evaluation.file(), "<embedded>");
+    }
+}

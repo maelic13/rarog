@@ -206,10 +206,10 @@ impl SearchOptions {
             format!("option name Threads type spin default 1 min 1 max {MAX_THREADS}"),
             format!("option name MultiPV type spin default 1 min 1 max {MAX_MULTI_PV}"),
             String::from(
-                "option name Evaluation type combo default Classical var Classical var Dragon NNUE",
+                "option name Evaluation type combo default Classical var Classical var DragonNNUE",
             ),
-            String::from("option name Dragon Eval File type string default <embedded>"),
-            String::from("option name Dragon NNUE Scale type spin default 72 min 10 max 500"),
+            String::from("option name DragonEvalFile type string default <embedded>"),
+            String::from("option name DragonNNUEScale type spin default 72 min 10 max 500"),
             String::from("option name SyzygyPath type string default <empty>"),
             String::from("option name SyzygyProbeDepth type spin default 1 min 1 max 100"),
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
@@ -467,10 +467,10 @@ impl SearchOptions {
                 }
                 OptionUpdate::Engine
             }
-            "dragon eval file" => {
+            "dragonevalfile" | "dragon eval file" => {
                 let previous = self.engine.evaluation.mode();
                 if let Err(error) = self.engine.evaluation.set_file(&value_raw) {
-                    crate::info_string!("{error}; keeping the previous Dragon Eval File");
+                    crate::info_string!("{error}; keeping the previous DragonEvalFile");
                 } else if self.engine.evaluation.mode() != previous {
                     crate::info_string!(
                         "Evaluation set to {}",
@@ -479,7 +479,7 @@ impl SearchOptions {
                 }
                 OptionUpdate::Engine
             }
-            "dragon nnue scale" => {
+            "dragonnnuescale" | "dragon nnue scale" => {
                 match value.parse::<i32>() {
                     Ok(scale) => {
                         if let Err(error) = self.engine.evaluation.set_scale(scale) {
@@ -487,9 +487,7 @@ impl SearchOptions {
                         }
                     }
                     Err(_) => {
-                        crate::info_string!(
-                            "Invalid Dragon NNUE Scale; keeping the previous scale"
-                        );
+                        crate::info_string!("Invalid DragonNNUEScale; keeping the previous scale");
                     }
                 }
                 OptionUpdate::Engine

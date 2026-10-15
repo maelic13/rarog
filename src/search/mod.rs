@@ -2112,7 +2112,7 @@ mod tests {
         if let Ok(file) = std::env::var("RAROG_DRAGON_NNUE") {
             options.evaluation.set_file(&file).unwrap();
         }
-        options.evaluation.set_mode("Dragon NNUE").unwrap();
+        options.evaluation.set_mode("DragonNNUE").unwrap();
         for shared in [false, true] {
             let mut searcher = Searcher::default();
             if shared {

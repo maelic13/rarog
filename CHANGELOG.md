@@ -10,8 +10,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
-- An experimental `Evaluation` UCI selector for Classical (default) or Dragon
-  NNUE, with a `Dragon Eval File` override and `Dragon NNUE Scale` control.
+- An experimental `Evaluation` UCI selector for Classical (default) or
+  `DragonNNUE`, with a `DragonEvalFile` override and `DragonNNUEScale` control.
+  Historical spaced option spellings remain accepted for saved profiles.
   The new `eval` diagnostic reports the selected static evaluator directly.
   The qualified model is bundled in the executable. Incremental per-worker
   accumulators and runtime AVX2/AVX-VNNI kernels preserve exact reference scores.

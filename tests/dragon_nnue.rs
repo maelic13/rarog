@@ -46,7 +46,7 @@ fn options() -> &'static EvaluationOptions {
         if let Ok(file) = std::env::var("RAROG_DRAGON_NNUE") {
             options.set_file(&file).unwrap();
         }
-        options.set_mode("Dragon NNUE").unwrap();
+        options.set_mode("DragonNNUE").unwrap();
         options
     })
 }
@@ -109,7 +109,7 @@ fn dragon_switches_caches_and_restores_moves_and_nulls() {
     pending
         .set_file("missing-network-before-mode.nnue")
         .unwrap();
-    assert!(pending.set_mode("Dragon NNUE").is_err());
+    assert!(pending.set_mode("DragonNNUE").is_err());
     pending.set_file(options().file()).unwrap();
     assert_eq!(pending.mode(), rarog::eval::EvaluationMode::DragonNnue);
     let mut settings = options().clone();
@@ -142,7 +142,7 @@ fn dragon_switches_caches_and_restores_moves_and_nulls() {
     settings.set_mode("Classical").unwrap();
     assert!(eval.configure_evaluation(&settings));
     assert_eq!(eval.evaluate(&board), hce);
-    settings.set_mode("Dragon NNUE").unwrap();
+    settings.set_mode("DragonNNUE").unwrap();
     assert!(settings.set_file("missing-dragon-network.nnue").is_err());
     assert_eq!(settings.mode(), rarog::eval::EvaluationMode::DragonNnue);
     eval.configure_evaluation(&settings);

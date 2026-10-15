@@ -18,7 +18,7 @@ impl EvaluationMode {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Classical => "Classical",
-            Self::DragonNnue => "Dragon NNUE",
+            Self::DragonNnue => "DragonNNUE",
         }
     }
 
@@ -67,12 +67,12 @@ impl EvaluationOptions {
     pub fn set_mode(&mut self, value: &str) -> Result<(), String> {
         let mode = match value.to_ascii_lowercase().as_str() {
             "classical" => EvaluationMode::Classical,
-            "dragon nnue" => EvaluationMode::DragonNnue,
-            _ => return Err("Evaluation must be Classical or Dragon NNUE".into()),
+            "dragonnnue" | "dragon nnue" => EvaluationMode::DragonNnue,
+            _ => return Err("Evaluation must be Classical or DragonNNUE".into()),
         };
         if mode == EvaluationMode::DragonNnue {
             if cfg!(feature = "texel") {
-                return Err("Dragon NNUE is unavailable in HCE Texel tracing builds".into());
+                return Err("DragonNNUE is unavailable in HCE Texel tracing builds".into());
             }
             self.requested = mode;
             if self.model.is_none() {
@@ -101,7 +101,7 @@ impl EvaluationOptions {
 
     pub fn set_scale(&mut self, scale: i32) -> Result<(), String> {
         if !(10..=500).contains(&scale) {
-            return Err("Dragon NNUE Scale must be in 10..=500".into());
+            return Err("DragonNNUEScale must be in 10..=500".into());
         }
         self.scale = scale;
         Ok(())
@@ -136,7 +136,7 @@ fn load_model(file: &str) -> Result<&'static Network, String> {
     } else {
         Network::load(file)
     }
-    .map_err(|e| format!("Unable to load Dragon NNUE from {file}: {e}"))?;
+    .map_err(|e| format!("Unable to load DragonNNUE from {file}: {e}"))?;
     let _ = MODEL.set(network);
     Ok(MODEL.get().expect("a verified model was installed"))
 }
@@ -172,7 +172,7 @@ mod tests {
         assert!(options.set_scale(0).is_err());
         assert_eq!(options.scale(), 72);
         options.set_file("missing-dragon-network.nnue").unwrap();
-        assert!(options.set_mode("Dragon NNUE").is_err());
+        assert!(options.set_mode("DragonNNUE").is_err());
         assert_eq!(options.mode(), EvaluationMode::Classical);
     }
 }
