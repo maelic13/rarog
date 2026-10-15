@@ -12,11 +12,10 @@ cargo build --release --locked
 .\target\release\rarog.exe
 ```
 
-Send these commands to the running engine (use an absolute weights path in a GUI):
+Send these commands to the running engine:
 
 ```text
 uci
-setoption name Dragon Eval File value D:\code\dragon\assets\dragon-network.nnue
 setoption name Evaluation value Dragon NNUE
 setoption name Dragon NNUE Scale value 72
 isready
@@ -33,17 +32,18 @@ setoption name Evaluation value Classical
 isready
 ```
 
-The weights file remains external. Its default name is `dragon-network.nnue`,
-resolved against the process working directory. This machine's example above
-uses the existing extracted asset; neither the build nor the runtime requires a
-parent repository when the file is supplied elsewhere. The loader accepts only
-the qualified model SHA-256
+The qualified model is committed under `assets/nnue/dragon-network.nnue` and
+embedded at build time. `Dragon Eval File` defaults to `<embedded>`, so selection
+works from any working directory without an external checkout or weights file.
+To use a separate copy, set `Dragon Eval File` to its absolute path. Set it back
+to `<embedded>` to use the bundled asset. The loader accepts only the qualified
+model SHA-256
 `c6e25a7fde5971dc47e78e19764c82b8d18a438bbd5ee4da065d061115064417`.
 Other weights, truncated files and modified bytes are rejected.
 
 Missing weights produce an explicit notice and keep the previous evaluator
-active. If a GUI sends `Evaluation = Dragon NNUE` before its file, supplying a
-valid `Dragon Eval File` completes that pending request. Selecting Classical
+active. If a requested external file cannot load, supplying a valid `Dragon Eval File`
+completes that pending request. Selecting Classical
 cancels the pending request. A bad replacement file leaves the resident model
 and its path unchanged. `Dragon NNUE Scale` accepts 10..500 and defaults to
 Dragon's 72. Texel tracing builds reject Dragon selection so their HCE traces
@@ -77,27 +77,44 @@ without clearing the live shared TT.
 Implementation and exact model provenance are in `vendor/dragon-nnue/`.
 Evaluation borrows one immutable process-lifetime model across workers, with
 stack scratch and no per-node heap allocation, locks, Arc operations or FEN
-parsing. Each cache miss performs a full scalar refresh, including a 3 KiB bias
-copy. This temporary copy exception preserves the qualified reference; incremental
-accumulators and Rust/SIMD optimization are later work.
+parsing. Each worker owns about 408 KiB of lazy accumulator entries, allocated
+when Dragon is configured. Entries are keyed by perspective and exact king
+square; bitboard differences update only removed/added features. They remain
+correct across skipped evaluations, null moves, unmake and arbitrary position
+jumps, without NNUE hooks in Board or search. All eight auxiliary heads are
+cached so material changes preserve scaling/head selection.
+
+Runtime dispatch selects dense AVX-VNNI, AVX2 or a portable vectorizable Rust
+kernel at cache construction. Fused common deltas avoid repeated accumulator
+loads. The float layer is transposed at load and vectorized across outputs,
+preserving the reference's operation order and separate rounding. A cold entry
+copies its 3 KiB bias once; warm evaluations use deltas. The full scalar
+`Network::evaluate` path remains an independent correctness reference.
+The audit, rejected sparse-layout experiment and measurements are in
+[RAR-P37](experiments/RAR-P37.md).
 
 ## Repeat the checks
 
-The ordinary debug/release suites need no external model. Model-dependent tests
-are explicitly ignored in an unconfigured checkout; run them against the asset:
+The ordinary debug/release suites now include model conformance, worker and
+cache tests using the bundled asset. No model environment variable is needed:
 
 ```powershell
-$env:RAROG_DRAGON_NNUE = 'D:\code\dragon\assets\dragon-network.nnue'
-cargo test -p rarog --test dragon_nnue -- --ignored --nocapture --test-threads=1
-cargo test -p rarog --release --test dragon_nnue -- --ignored --nocapture --test-threads=1
-cargo test -p rarog --lib dragon_mode_scale_and_helpers -- --ignored --test-threads=1
-cargo test -p rarog --release --lib dragon_mode_scale_and_helpers -- --ignored --test-threads=1
+cargo test -p rarog --locked
+cargo test -p rarog --release --locked
+cargo test --manifest-path vendor/dragon-nnue/Cargo.toml
+cargo test --manifest-path vendor/dragon-nnue/Cargo.toml --release
+cargo fmt --manifest-path vendor/dragon-nnue/Cargo.toml --check
+cargo clippy --manifest-path vendor/dragon-nnue/Cargo.toml --all-targets -- -D warnings
 ```
 
 They check all 2,738 frozen native score rows, both perspectives, scale/mode
 switches, full-refresh/cache agreement, make/unmake/null and special moves,
 TT/correction invalidation and helper ownership, zero inference allocations,
-and short legal searches with one and two workers.
+and short legal searches with one and two workers. Every supported forced
+kernel also matches all fixtures and the scalar reference over legal walks,
+unmake and arbitrary jumps. Runtime-unit tests compare vector integer and
+float intermediates bit for bit. `RAROG_DRAGON_NNUE` remains an optional test
+override for the identical model at another path.
 
 For fresh original-process comparisons, use a new output directory:
 
@@ -106,7 +123,7 @@ python tools/diag/dragon_nnue_probe.py `
   --engine target/release/rarog.exe `
   --dragon-base D:/code/dragon/originals/base/dragon-3.3-64bit.exe `
   --dragon-avx2 D:/code/dragon/originals/avx2/dragon-3.3-64bit-avx2.exe `
-  --model D:/code/dragon/assets/dragon-network.nnue `
+  --model assets/nnue/dragon-network.nnue `
   --out analysis/artifacts/dragon-nnue-local/native
 ```
 
@@ -123,7 +140,7 @@ For the requested informational single-run speed comparison:
 ```powershell
 python tools/diag/dragon_nnue_bench.py `
   --engine target/release/rarog.exe `
-  --model D:/code/dragon/assets/dragon-network.nnue `
+  --model assets/nnue/dragon-network.nnue `
   --out analysis/artifacts/dragon-nnue-local/bench
 ```
 
@@ -134,3 +151,11 @@ busy host; `--allow-busy` records an explicit rough-measurement waiver. The
 warm-up, PGO pool, confidence interval or playing-strength estimate. The trees
 also differ between evaluators. Measurements and hashes belong to
 [RAR-P36](experiments/RAR-P36.md).
+
+
+For the optimized component benchmark, `cargo bench --bench dragon_nnue` runs
+three rotated rounds against the full scalar reference with exact checksums.
+For engine A/B/A comparisons use `tools/diag/dragon_nnue_opt.py`; the baseline
+build, arguments, workload, source/binary guards and measured results are in
+[RAR-P37](experiments/RAR-P37.md). The ordinary default-feature release build
+selects the supported CPU kernel automatically; no native build flag is needed.

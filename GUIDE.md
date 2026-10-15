@@ -99,7 +99,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **F.9** NNUE release: beat the classical release at STC, LTC and 4T; platform matrix — **M**
 - [ ] **F.10** CCRL top-100 gate — **V**
 - [x] **F.11** Experimental Dragon NNUE evaluation selector — DONE 2026-10-15
-- [ ] **F.12** Optimize the experimental Dragon NNUE runtime — **I2**
+- [x] **F.12** Optimize the experimental Dragon NNUE runtime — DONE 2026-10-15
 
 ## Phase G — Scaling, platforms and the top 50
 
@@ -128,9 +128,11 @@ and is frozen at `ee02ed1` for Phase C.
 The requested Dragon experiment F.11 is complete on `dragon_nnue`: Classical
 stays default; 5,540 static comparisons match both originals, and the default
 fingerprint is unchanged. [Usage](docs/DRAGON_NNUE.md) and [RAR-P36](docs/experiments/RAR-P36.md)
-record the one-run speed read and the explicit busy-host waiver. Next in this
-separate experimental track is F.12 (`I2`), runtime optimization; no strength
-or own-data NNUE release gate was accepted. The ordinary active phase remains C.
+record the one-run speed read and the explicit busy-host waiver. The
+experimental track F.12 is also complete: the bundled model and exact
+incremental/CPU kernels are qualified in [RAR-P37](docs/experiments/RAR-P37.md).
+No strength or own-data NNUE release gate was accepted. The ordinary active
+phase remains C.
 
 ## Holds and obligations
 

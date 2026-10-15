@@ -430,6 +430,7 @@ make any historical parameter group exempt from the current audit and gate.
 
 | ID | Experiment | Disposition |
 |---|---|---|
+| [RAR-P37](experiments/RAR-P37.md) | Exact incremental Dragon inference and CPU kernels | F.12 DONE; exact trees/static parity; rough 6.54× scalar NPS |
 | [RAR-P36](experiments/RAR-P36.md) | Experimental Dragon NNUE selector and single scalar speed read | F.11 DONE; 5,540 exact static matches; rough NPS 0.116× HCE, busy-host waiver |
 | [RAR-P35](experiments/RAR-P35.md) | B.9 pooled NPS, the search head against the 2.4.0 release — REGISTERED 2026-10-03, before any read; READ … | Read 2026-10-03 19:56–20:00 local |
 | [RAR-P34](experiments/RAR-P34.md) | B.8 cleanup, no-regression NPS read — REGISTERED 2026-10-03, before the pool is built; PASSED 2026-10-03 | Step 1, 2026-10-03 10:19–10:25 |

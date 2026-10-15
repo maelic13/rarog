@@ -2066,14 +2066,25 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   Dragon 208,408 NPS / 85,064 ms, with different trees and background loads.
   This closes the requested implementation/diagnostic task, not a strength gate.
 
-- **F.12 Optimize the experimental Dragon NNUE runtime — `I2` — OPEN.**
+- **F.12 Optimize the experimental Dragon NNUE runtime — `I2` — DONE 2026-10-15.**
 
-  Follow-up to F.11 when requested. Keep its scalar runtime and exact fixtures
+  Maintainer requested this follow-up on 2026-10-15. Audit/design, competing
+  explanations, prediction, stop rules and the bounded timing protocol are
+  registered in [RAR-P37](experiments/RAR-P37.md) before optimized timing.
+  Keep its scalar runtime and exact fixtures
   as the reference. Design Rust-owned incremental state and/or vector kernels,
   with move/unmove, king-transform, null, promotion, castling and EP falsifiers
   before accepting speed. No retuning, changed arithmetic, model substitution
   or borrowed search. Qualify runtime gains separately from playing strength;
   F.0–F.10 retain the own-data architecture/training/release requirements.
+
+  **Result:** [RAR-P37](experiments/RAR-P37.md), engine `75dde4f`. Embedded
+  model `0624717`; exact lazy accumulators, vectorizable portable dot,
+  AVX2/VNNI and transposed exact-order float kernels. Sparse packing was
+  measured slower and removed. All forced-kernel/native/move/cache/allocation/
+  worker tests and full checks pass. All forty Dragon trees remain identical;
+  informational A/B/A speed is 6.54× scalar under
+  the shared-host waiver. HCE fingerprint is unchanged; no strength acceptance.
 
 ## Phase G — Scaling, platforms and the top 50
 

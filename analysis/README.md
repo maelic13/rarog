@@ -139,3 +139,8 @@ commit that adds it.
 - `artifacts/dragon-nnue-20261015/`: F.11 scalar integration, checks, both-original
   static comparisons, UCI play smoke and one busy-host-waived bench pair; recipes,
   interpretation and identities in `docs/experiments/RAR-P36.md`.
+
+- `artifacts/dragon-nnue-opt-20261015/`: bundled scalar baseline, final exact
+  incremental/CPU kernels, forced/native/UCI checks, component codegen, rejected
+  sparse candidate and bounded A/B/A; recipes/results in RAR-P37, source/raw
+  hashes in its ignored manifest.

@@ -870,3 +870,16 @@ worker/cache/move/allocation tests pass; 5,540 native comparisons are exact;
 the UCI executable plays legal moves at 1T/2T. HCE fingerprint stays
 14,197,472 / EBF 2.557. RAR-P36 records 1,796,011 vs 208,408 NPS under the
 explicit shared-host waiver; no strength claim. F.12 is the runtime follow-up.
+
+## 2026-10-15 — F.12 exact optimized Dragon runtime and bundled model
+
+Packaged/embedded the exact model (`0624717`) and qualified owned lazy
+per-king/perspective bitboard deltas, a vectorizable portable first layer,
+dense AVX2/AVX-VNNI and exact-order transposed float kernels (`75dde4f`).
+The full scalar API remains independent. Sparse VNNI packing measured slower
+and was removed. Root/runtime debug/release, fmt/clippy, ten tooling checks,
+5,540 fresh native comparisons and 1T/2T legal UCI play pass. RAR-P37 records
+all forty Dragon trees identical and a rough 6.54× NPS
+gain under the shared-host waiver; HCE fingerprint remains 14,197,472. Tooling
+`6881550` preserves inputs, identities and every timing/score record. No
+push, strength claim, search retune or own-data release acceptance.
