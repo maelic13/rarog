@@ -408,7 +408,7 @@ fn dragon_options_advertise_compact_names_and_parse_both_spellings() {
     let advertised = SearchOptions::get_uci_options();
     assert!(
         advertised.contains(
-            &"option name Evaluation type combo default Classical var Classical var DragonNNUE"
+            &"option name Evaluation type combo default Classical var Classical var DragonNNUE var Fritz16HCE"
                 .to_owned()
         )
     );

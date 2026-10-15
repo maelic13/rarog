@@ -1,0 +1,12 @@
+[package]
+name = "fritz16-hce"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+description = "Address-linked reconstruction of the supplied Fritz 16 static evaluator"
+
+[lib]
+path = "src/lib.rs"
+
+[lints.rust]
+unsafe_code = "forbid"

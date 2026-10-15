@@ -106,6 +106,7 @@ struct EvalEntry {
 pub struct Evaluator {
     evaluation: EvaluationOptions,
     dragon_accumulators: Option<dragon_nnue::AccumulatorCache>,
+    fritz_evaluator: Option<fritz16_hce::Evaluator>,
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
     params: EvalParams,
@@ -145,6 +146,7 @@ impl Default for Evaluator {
             lazy_margin: LAZY_MARGIN,
             evaluation: EvaluationOptions::default(),
             dragon_accumulators: None,
+            fritz_evaluator: None,
             attacks: AttackMaps::new(),
             #[cfg(feature = "tune")]
             mask_source: &masks::FAMILY_MASKS,
@@ -201,6 +203,11 @@ impl Evaluator {
             return false;
         }
         self.evaluation = options.clone();
+        if options.mode() == EvaluationMode::Fritz16Hce {
+            self.fritz_evaluator
+                .get_or_insert_with(fritz16_hce::Evaluator::default)
+                .clear();
+        }
         if options.mode() == EvaluationMode::DragonNnue {
             self.dragon_accumulators
                 .get_or_insert_with(dragon_nnue::AccumulatorCache::new)
@@ -213,6 +220,9 @@ impl Evaluator {
     }
 
     pub(crate) fn clear_pawn_table(&mut self) {
+        if let Some(evaluator) = &mut self.fritz_evaluator {
+            evaluator.clear();
+        }
         self.pawn_table.fill(PawnEntry::default());
         self.eval_table.fill(EvalEntry::default());
     }
@@ -265,6 +275,22 @@ impl Evaluator {
         #[cfg(feature = "tune")]
         {
             self.masks = self.mask_source.fix();
+        }
+
+        if self.evaluation.mode() == EvaluationMode::Fritz16Hce {
+            let value = backend::evaluate_fritz(
+                self.fritz_evaluator
+                    .as_mut()
+                    .expect("Fritz16HCE was configured before inference"),
+                board,
+            );
+            self.eval_table[eval_slot] = EvalEntry {
+                key: board.hash(),
+                halfmove_clock: board.halfmove_clock(),
+                value,
+                occupied: true,
+            };
+            return value;
         }
 
         if let Some(model) = self.evaluation.model() {

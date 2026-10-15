@@ -206,7 +206,7 @@ impl SearchOptions {
             format!("option name Threads type spin default 1 min 1 max {MAX_THREADS}"),
             format!("option name MultiPV type spin default 1 min 1 max {MAX_MULTI_PV}"),
             String::from(
-                "option name Evaluation type combo default Classical var Classical var DragonNNUE",
+                "option name Evaluation type combo default Classical var Classical var DragonNNUE var Fritz16HCE",
             ),
             String::from("option name DragonEvalFile type string default <embedded>"),
             String::from("option name DragonNNUEScale type spin default 72 min 10 max 500"),

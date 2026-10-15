@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "purpose": "bounded original/reconstructed UCI scenarios; exact mode contracts are in docs/VALIDATION.md",
+  "cases": [
+    {
+      "name": "default-startpos",
+      "position": "startpos",
+      "command": "go depth 8",
+      "options": {
+        "Random": "0"
+      }
+    },
+    {
+      "name": "default-kiwipete",
+      "position": "fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+      "command": "go depth 8",
+      "options": {
+        "Random": "0"
+      }
+    },
+    {
+      "name": "default-rook-endgame",
+      "position": "fen 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+      "command": "go depth 8",
+      "options": {
+        "Random": "0"
+      }
+    },
+    {
+      "name": "default-promotion",
+      "position": "fen 8/P7/8/8/8/8/7p/4K2k w - - 0 1",
+      "command": "go depth 8",
+      "options": {
+        "Random": "0"
+      }
+    },
+    {
+      "name": "multipv-startpos",
+      "position": "startpos",
+      "command": "go depth 6",
+      "options": {
+        "Random": "0",
+        "MultiPV": "3"
+      }
+    },
+    {
+      "name": "hce-parameter-intervention",
+      "position": "startpos",
+      "command": "go depth 6",
+      "options": {
+        "Random": "0",
+        "White Pawn millipawns": "500"
+      }
+    }
+  ]
+}

@@ -102,6 +102,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [x] **F.12** Optimize the experimental Dragon NNUE runtime — DONE 2026-10-15
 - [x] **F.13** Compact Dragon options and further exact inference optimization — DONE 2026-10-15
 - [x] **F.14** Qualify further Dragon throughput and align dense rows — DONE 2026-10-15
+- [x] **F.15** Experimental reconstructed Fritz 16 HCE selector — DONE 2026-10-15
 
 ## Phase G — Scaling, platforms and the top 50
 
@@ -144,6 +145,12 @@ against the classical head `931dcca` at `3+0.03`: +327.9 ± 14.4 Elo over
 2,000 games, informational; the order C, D, E, F is kept (maintainer
 decision 2026-10-15). No strength or own-data NNUE release gate was
 accepted. The ordinary active phase remains C.
+
+The requested Fritz16HCE backend is implemented as F.15 on `dragon_nnue`.
+486 native static snapshots agree; all three UCI choices are available.
+Full debug/release, zero-allocation, worker and UCI checks pass; Classical
+keeps 14,197,472 / EBF 2.557. No commits or pushes are made.
+See [Fritz 16 HCE](docs/FRITZ16_HCE.md).
 
 ## Holds and obligations
 

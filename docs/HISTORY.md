@@ -1,5 +1,20 @@
 # Rarog history
 
+## 2026-10-15 — Experimental Fritz16HCE backend (F.15)
+
+Maintainer requested a faithful standalone Rust HCE reconstruction integrated
+on dragon_nnue, retaining Classical default and DragonNNUE. The full evaluator
+and pawn/cache callee are compiled safe Rust with exact original parameter
+bytes; 486 direct native static snapshots, independent position/root state,
+cache resets and a parameter negative control qualify the component. The
+adapter uses preallocated per-worker state and allocates nothing per node.
+Full debug/release, formatting, all-feature/all-target Clippy, mode switching,
+one/two-worker searches and public UCI pass. Classical remains 14,197,472 /
+EBF 2.557 over all forty positions. PLAN/GUIDE board synchronization passes;
+the broader guard has fourteen pre-existing missing historical artifact
+paths, verified against HEAD. See FRITZ16_HCE.md and ignored raw records under
+analysis/artifacts/fritz16-hce-20261015/. No strength acceptance, commit or push.
+
 ⚠ **THIS FILE IS HISTORY. It does not tell you what to do next.** Read
 `GUIDE.md` for the current step and `PLAN.md` for what it involves.
 

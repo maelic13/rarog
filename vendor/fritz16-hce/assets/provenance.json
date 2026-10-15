@@ -1,0 +1,31 @@
+{
+  "original_sha256": "264f2eede4c737f938c726e3c91e5ce07460e998110cf197abfc463dfa4622ae",
+  "regions": [
+    {
+      "file": "rdata.bin",
+      "va": "0x1400ed000",
+      "file_offset": 967680,
+      "size": 1749504,
+      "sha256": "f76909322f5ff012e5a2a53381fe114230612172bed3b4a7d930b6c3bfa4bb8e"
+    },
+    {
+      "file": "data.bin",
+      "va": "0x140299000",
+      "file_offset": 2717184,
+      "size": 417280,
+      "sha256": "f362cbe966b12dea959dcba6ea5331110bfb2ee156e3e763f1cc665133d8e93d"
+    }
+  ],
+  "functions": [
+    {
+      "va": "14009e270",
+      "instructions": 1258,
+      "blocks": 164
+    },
+    {
+      "va": "1400ca0f0",
+      "instructions": 1246,
+      "blocks": 209
+    }
+  ]
+}

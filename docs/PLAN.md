@@ -2118,6 +2118,45 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   Fresh native/kernel parity, all forty trees and both fingerprints match;
   full checks pass. Shared-host engine read is informational in RAR-P39.
 
+- **F.15 Experimental reconstructed Fritz 16 HCE selector — `I2` — DONE 2026-10-15.**
+
+  Maintainer request 2026-10-15: reconstruct the supplied Fritz 16 HCE in Rust
+  and integrate it on `dragon_nnue`, retaining Classical and DragonNNUE; no
+  commit or push. This is an explicit comparison backend, not a refit of the
+  native evaluation or an accepted strength change. The usual C/F release
+  programme and the Classical default remain in force.
+
+  **Evidence/readiness:** the saved assembly defines the complete full-eval
+  routine at 0x14009e270 and pawn/cache callee at 0x1400ca0f0. 486 direct
+  original-process static snapshots match the Rust translation; independent
+  board/PST/material/key state and default root adjustments agree. A mutated
+  material parameter is rejected. Native search scores are not labels.
+
+  **Contract/interactions:** `Evaluation` accepts Classical / DragonNNUE /
+  Fritz16HCE. Each worker owns its Fritz state and pawn cache, allocated before
+  inference; per-node code takes no locks and allocates nothing. The board
+  adapter passes twelve bitboards, side and castling, without FEN conversion.
+  Mode changes use existing eval/TT/correction invalidation. The imported full
+  evaluator bypasses native HCE terms; host terminal/draw/rule-50, corrections
+  and tablebase policy remain host behavior. Texel rejects imported modes.
+
+  **Falsifier/stop:** any native-score mismatch, changed default Classical
+  fingerprint, per-node allocation, stale selection/cache or illegal worker
+  result blocks qualification. Do not retune parameters or change neighboring
+  search mechanisms to rescue a failure. Deterministic parity does not imply
+  improved playing strength.
+
+  **Validation:** [usage and qualification](FRITZ16_HCE.md). Complete debug and
+  release suites, formatting, all-feature/all-target Clippy, native fixtures,
+  public UCI switching, cold/warm allocation and worker tests are required.
+  No Elo gate is requested for this optional comparison backend.
+
+  **Result:** all required engine checks pass. Classical reproduces all
+  forty positions at 14,197,472 nodes / EBF 2.557. No commits or pushes.
+  The generated board passes; the broad documentation guard reports
+  fourteen missing historical artifact paths, all present in unchanged
+  HEAD documents. Raw records and hashes: analysis/artifacts/fritz16-hce-20261015/.
+
 ## Phase G — Scaling, platforms and the top 50
 
 - **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and

@@ -24,7 +24,8 @@ eval
 go depth 6
 ```
 
-`Evaluation` is a UCI combo with values `Classical` and `DragonNNUE`.
+`Evaluation` is a UCI combo with values `Classical`, `DragonNNUE` and `Fritz16HCE`.
+See [Fritz 16 HCE](FRITZ16_HCE.md) for the reconstructed classical backend.
 Historical spaced names and `Dragon NNUE` remain accepted as unadvertised
 aliases for saved GUI profiles. To switch back:
 

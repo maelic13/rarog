@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "purpose": "Capability probes, not preset correctness labels",
+  "cases": [
+    {
+      "name": "eval",
+      "position": "startpos",
+      "command": "eval",
+      "completion": "readyok"
+    },
+    {
+      "name": "nneval",
+      "position": "startpos",
+      "command": "nneval",
+      "completion": "readyok"
+    },
+    {
+      "name": "perft-3",
+      "position": "startpos",
+      "command": "perft 3",
+      "completion": "readyok"
+    }
+  ]
+}

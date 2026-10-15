@@ -12,6 +12,7 @@ pub enum EvaluationMode {
     #[default]
     Classical,
     DragonNnue,
+    Fritz16Hce,
 }
 
 impl EvaluationMode {
@@ -19,6 +20,7 @@ impl EvaluationMode {
         match self {
             Self::Classical => "Classical",
             Self::DragonNnue => "DragonNNUE",
+            Self::Fritz16Hce => "Fritz16HCE",
         }
     }
 
@@ -26,6 +28,7 @@ impl EvaluationMode {
         match self {
             Self::Classical => "Classical",
             Self::DragonNnue => "DragonNNUE",
+            Self::Fritz16Hce => "Fritz16HCE",
         }
     }
 }
@@ -68,12 +71,16 @@ impl EvaluationOptions {
         let mode = match value.to_ascii_lowercase().as_str() {
             "classical" => EvaluationMode::Classical,
             "dragonnnue" | "dragon nnue" => EvaluationMode::DragonNnue,
-            _ => return Err("Evaluation must be Classical or DragonNNUE".into()),
+            "fritz16hce" | "fritz 16 hce" => EvaluationMode::Fritz16Hce,
+            _ => return Err("Evaluation must be Classical, DragonNNUE or Fritz16HCE".into()),
         };
+        if mode != EvaluationMode::Classical && cfg!(feature = "texel") {
+            return Err(format!(
+                "{} is unavailable in classical Texel tracing builds",
+                mode.name()
+            ));
+        }
         if mode == EvaluationMode::DragonNnue {
-            if cfg!(feature = "texel") {
-                return Err("DragonNNUE is unavailable in HCE Texel tracing builds".into());
-            }
             self.requested = mode;
             if self.model.is_none() {
                 self.model = Some(load_model(&self.file)?);
@@ -158,6 +165,23 @@ pub(super) fn evaluate(
     cache
         .evaluate_scaled(model, &pieces, board.side_to_move() == Color::Black, scale)
         .expect("the engine board and configured scale are valid")
+}
+
+/// The imported evaluator owns its packed-score and endgame arithmetic.
+pub(super) fn evaluate_fritz(evaluator: &mut fritz16_hce::Evaluator, board: &Board) -> i32 {
+    let position = fritz16_hce::Position {
+        pieces: std::array::from_fn(|i| {
+            board
+                .pieces(
+                    if i < 6 { Color::White } else { Color::Black },
+                    Piece::ALL[i % 6],
+                )
+                .0
+        }),
+        black_to_move: board.side_to_move() == Color::Black,
+        castling: board.castling().0,
+    };
+    evaluator.evaluate(&position)
 }
 
 #[cfg(test)]

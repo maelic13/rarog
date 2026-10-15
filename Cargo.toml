@@ -17,7 +17,7 @@ members = [".", "xtask"]
 # The tuner depends on rarog with `texel`, which bypasses the evaluation caches.
 # As a member it would unify that feature into every workspace-wide command;
 # outside the workspace it builds by manifest path into its own target dir.
-exclude = ["tools/texel-tuner", "vendor/dragon-nnue"]
+exclude = ["tools/texel-tuner", "vendor/dragon-nnue", "vendor/fritz16-hce"]
 default-members = ["."]
 resolver = "3"
 
@@ -91,6 +91,7 @@ cast_possible_wrap = "deny"
 
 [dependencies]
 dragon-nnue = { path = "vendor/dragon-nnue" }
+fritz16-hce = { path = "vendor/fritz16-hce" }
 
 [build-dependencies]
 # The floor tracks what has actually been verified against `vendor/fathom`,

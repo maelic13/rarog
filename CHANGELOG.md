@@ -10,6 +10,11 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
+- A reconstructed `Fritz16HCE` choice in the experimental `Evaluation` selector.
+  All three evaluators remain available; Classical stays default. The safe Rust
+  runtime embeds the original parameter tables and needs no Fritz executable.
+  See `docs/FRITZ16_HCE.md` for qualification and scope.
+
 - An experimental `Evaluation` UCI selector for Classical (default) or
   `DragonNNUE`, with a `DragonEvalFile` override and `DragonNNUEScale` control.
   Historical spaced option spellings remain accepted for saved profiles.
