@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.1 | READY_FOR_IMPLEMENTATION | I1 | Audit fixes (maintainer decision 2026-10-15: C.13 runs before C.9, C.10 and C.12): connected rooks any pair; the symmetry sweep as a standing test |
+| C.13.1 | READY_FOR_IMPLEMENTATION | I1 | Audit fixes (maintainer decision 2026-10-15: C.13 runs before C.9, C.10 and C.12): connected rooks any pair; the symmetry sweep as a standing test; the exactly-zero terms removed, fingerprint held |
 | C.13.2 | RESEARCH | R2 | The four definitions and the inert-term inventory, read before anything is built |
 | C.13.3 | RESEARCH | R2 | Residual interaction tree, zero games |
 | C.13.4 | RESEARCH | R2 | Self-search residual map, zero games |
@@ -2024,7 +2024,20 @@ loss).
       versioned sample of about 2,000 held-out rows plus the four
       three-rook rows and constructed promoted-material positions
       (`tests/data/`), each evaluated against its mirror in
-      `tests/eval_invariants.rs`. Engine commit and test commit apart.
+      `tests/eval_invariants.rs`. Then the terms fitted to exactly zero in
+      every half are removed with their code (maintainer decision
+      2026-10-15): `space_weight`, `space_piece_mg`,
+      `space_behind_piece_mg` (all of `eval_space`), `passed_candidate_mg`
+      and `_eg` (the candidate branch), `pawn_lever_mg` and `_eg`, and
+      `rook_trapped_mg` and `_eg` with the condition C.13.5 would replace
+      anyway. `pawn_isolated_*` stays (its flag feeds the weak-unopposed
+      term and the penalty costs nothing) and `hanging_*` stays (0, 1, 1
+      is not zero). A zero-weight term's removal is behaviour-neutral, so
+      the fingerprint must reproduce exactly; the parameter list, the
+      texel trace and the fitting manifest regenerate from one list, and
+      the removed names leave the manifest's counts. Any speed gained is
+      C.12's profile to measure; none is claimed here. Engine commits and
+      the test commit apart.
     - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`.**
       Registered before any number. For the passer-with-own-pawn-ahead,
       trapped-rook, outpost-rank and initiative-with-intercept-and-clamp
@@ -2035,7 +2048,8 @@ loss).
       The inert-term inventory from the texel trace, firing rate and mean
       |contribution| per term over the corpus, written for C.12 (removing a
       zero-weight term is behaviour-neutral; the fingerprint proves it) and
-      the fitting manifest. `NO_CHANGE` per definition is a result.
+      the fitting manifest, over the terms C.13.1 kept. `NO_CHANGE` per
+      definition is a result.
     - **C.13.3 Residual interaction tree — `R2`.** Registered before any
       number: a shallow boosted tree (depth 2 to 3) on the held-out residual
       with Rarog's traced term values, phase and material as inputs, with
