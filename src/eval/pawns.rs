@@ -208,6 +208,13 @@ impl Evaluator {
             passed[us as usize] = Bitboard::EMPTY;
             while tmp.any() {
                 let sq = tmp.pop_lsb();
+                // Each pawn's material and square, which `evaluate` leaves to
+                // this entry (see `PSQ_PIECES`).
+                #[cfg(not(feature = "texel"))]
+                {
+                    mg += sign * self.tables.mg[us as usize][Piece::Pawn as usize][sq.index()];
+                    eg += sign * self.tables.eg[us as usize][Piece::Pawn as usize][sq.index()];
+                }
                 let file = SQUARE_FILE[sq.index()];
                 let rel_rank = relative_rank(us, sq) as usize;
                 let adjacent = ADJACENT_FILES[file];

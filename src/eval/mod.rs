@@ -64,6 +64,20 @@ const TOTAL_PHASE: i32 = 24;
 /// the margin, describe a function the engine does not play.
 const LAZY_MARGIN: i32 = 423;
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
+/// The pieces whose material and squares `evaluate` sums itself. The pawns'
+/// depend on the pawns alone, so the pawn entry holds them with the
+/// structure, except under `texel`, which bypasses that cache and traces
+/// every piece here.
+#[cfg(not(feature = "texel"))]
+const PSQ_PIECES: [Piece; 5] = [
+    Piece::Knight,
+    Piece::Bishop,
+    Piece::Rook,
+    Piece::Queen,
+    Piece::King,
+];
+#[cfg(feature = "texel")]
+const PSQ_PIECES: [Piece; 6] = Piece::ALL;
 
 // Under `texel` the caches are written but never read (hits are bypassed so
 // every position re-emits its trace), so the fields look dead to that build.
@@ -261,7 +275,7 @@ impl Evaluator {
 
         for color in [Color::White, Color::Black] {
             let sign = color_sign(color);
-            for piece in Piece::ALL {
+            for piece in PSQ_PIECES {
                 let mut bb = board.pieces(color, piece);
                 let phase_weight = PHASE_W[piece as usize];
                 while bb.any() {
