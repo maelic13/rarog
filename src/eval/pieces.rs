@@ -5,9 +5,9 @@
 
 use super::TOTAL_PHASE;
 use super::attacks::KsMaps;
-use super::pawns::{FILE_BBS, KING_DISTANCE, SQUARE_FILE};
+use super::pawns::KING_DISTANCE;
 use super::trace::{tr_eg, tr_mg};
-use super::{Evaluator, color_sign, relative_rank};
+use super::{Evaluator, color_sign};
 use crate::board::attacks::AttackTables;
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece};
 use crate::infra;
@@ -28,6 +28,27 @@ const LONG_DIAGONALS: Bitboard = Bitboard(
         | (1u64 << 42)
         | (1u64 << 49),
 );
+
+/// The squares of relative rank 5 and above, by colour.
+const ENEMY_HALF: [Bitboard; 2] = [
+    Bitboard(0xFFFF_FFFF_0000_0000),
+    Bitboard(0x0000_0000_FFFF_FFFF),
+];
+
+/// The relative seventh rank, by colour.
+const SEVENTH_RANK: [Bitboard; 2] = [Bitboard::RANK_7, Bitboard::RANK_2];
+
+/// Every square on a file holding a square of `set`.
+fn file_fill(set: Bitboard) -> Bitboard {
+    let mut fill = set.0;
+    fill |= fill << 8;
+    fill |= fill << 16;
+    fill |= fill << 32;
+    fill |= fill >> 8;
+    fill |= fill >> 16;
+    fill |= fill >> 32;
+    Bitboard(fill)
+}
 
 impl Evaluator {
     /// The terms the lazy gate skips, apart from imbalance: the attack maps are
@@ -81,43 +102,45 @@ impl Evaluator {
             // Per-bishop terms (Phase 3.10): outpost (mirrors the knight
             // outpost logic below), long diagonal bearing on the enemy king,
             // and bad bishop (own pawns on the bishop's own square colour).
+            // Each per-piece test is a set membership, so each term is a
+            // count over the set: the same sums without a branch per piece.
+            //
+            // An outpost is in the enemy half, defended by an own pawn and
+            // attacked by no enemy pawn.
+            let outposts = ENEMY_HALF[color as usize]
+                & pawn_attacks[color as usize]
+                & !pawn_attacks[them as usize];
+            let bishops = board.pieces(color, Piece::Bishop);
+            let bishop_outposts = infra::to_i32((bishops & outposts).count());
+            *mg += sign * bishop_outposts * self.params.bishop_outpost_mg[0];
+            *eg += sign * bishop_outposts * self.params.bishop_outpost_eg[0];
+            tr_mg!(self, bishop_outpost_mg, 0, sign * bishop_outposts);
+            tr_eg!(self, bishop_outpost_eg, 0, sign * bishop_outposts);
+
             let enemy_king_sq = board.king_sq(them);
             let king_zone = atk.king(enemy_king_sq) | Bitboard::from(enemy_king_sq);
-            let mut bishops_iter = board.pieces(color, Piece::Bishop);
-            while bishops_iter.any() {
-                let sq = bishops_iter.pop_lsb();
-                if relative_rank(color, sq) >= 4
-                    && (atk.pawn(them, sq) & own_pawns).any()
-                    && (atk.pawn(color, sq) & their_pawns).is_empty()
-                {
-                    *mg += sign * self.params.bishop_outpost_mg[0];
-                    *eg += sign * self.params.bishop_outpost_eg[0];
-                    tr_mg!(self, bishop_outpost_mg, 0, sign);
-                    tr_eg!(self, bishop_outpost_eg, 0, sign);
-                }
-
-                if LONG_DIAGONALS.0 & (1u64 << sq.index()) != 0
-                    && (maps.attacks_from(color, sq) & king_zone).any()
-                {
+            let mut long_diagonal = bishops & LONG_DIAGONALS;
+            while long_diagonal.any() {
+                let sq = long_diagonal.pop_lsb();
+                if (maps.attacks_from(color, sq) & king_zone).any() {
                     *mg += sign * self.params.bishop_long_diagonal_mg[0];
                     *eg += sign * self.params.bishop_long_diagonal_eg[0];
                     tr_mg!(self, bishop_long_diagonal_mg, 0, sign);
                     tr_eg!(self, bishop_long_diagonal_eg, 0, sign);
                 }
-
-                let bishop_squares = if (Bitboard::from(sq) & Bitboard::LIGHT_SQUARES).any() {
-                    Bitboard::LIGHT_SQUARES
-                } else {
-                    Bitboard::DARK_SQUARES
-                };
-                let bad_count = infra::to_i32((own_pawns & bishop_squares).count());
-                if bad_count != 0 {
-                    *mg -= sign * bad_count * self.params.bad_bishop_mg[0];
-                    *eg -= sign * bad_count * self.params.bad_bishop_eg[0];
-                    tr_mg!(self, bad_bishop_mg, 0, -sign * bad_count);
-                    tr_eg!(self, bad_bishop_eg, 0, -sign * bad_count);
-                }
             }
+
+            // Each bishop counts the own pawns on its square colour.
+            let bad_count = infra::to_i32(
+                (bishops & Bitboard::LIGHT_SQUARES).count()
+                    * (own_pawns & Bitboard::LIGHT_SQUARES).count()
+                    + (bishops & Bitboard::DARK_SQUARES).count()
+                        * (own_pawns & Bitboard::DARK_SQUARES).count(),
+            );
+            *mg -= sign * bad_count * self.params.bad_bishop_mg[0];
+            *eg -= sign * bad_count * self.params.bad_bishop_eg[0];
+            tr_mg!(self, bad_bishop_mg, 0, -sign * bad_count);
+            tr_eg!(self, bad_bishop_eg, 0, -sign * bad_count);
 
             // Connected rooks: every pair of own rooks on one rank or file
             // with nothing between them, each pair counted once. Pairing by
@@ -139,44 +162,34 @@ impl Evaluator {
                 }
             }
 
-            let mut rooks = board.pieces(color, Piece::Rook);
-            while rooks.any() {
-                let sq = rooks.pop_lsb();
-                let file = SQUARE_FILE[sq.index()];
-                let own_file_empty = (own_pawns & FILE_BBS[file]).is_empty();
-                let their_file_empty = (their_pawns & FILE_BBS[file]).is_empty();
-                if own_file_empty && their_file_empty {
-                    *mg += sign * self.params.rook_open_mg[0];
-                    *eg += sign * self.params.rook_open_eg[0];
-                    tr_mg!(self, rook_open_mg, 0, sign);
-                    tr_eg!(self, rook_open_eg, 0, sign);
-                } else if own_file_empty {
-                    *mg += sign * self.params.rook_semiopen_mg[0];
-                    *eg += sign * self.params.rook_semiopen_eg[0];
-                    tr_mg!(self, rook_semiopen_mg, 0, sign);
-                    tr_eg!(self, rook_semiopen_eg, 0, sign);
-                }
-                if relative_rank(color, sq) == 6 {
-                    *mg += sign * self.params.rook_7th_mg[0];
-                    *eg += sign * self.params.rook_7th_eg[0];
-                    tr_mg!(self, rook_7th_mg, 0, sign);
-                    tr_eg!(self, rook_7th_eg, 0, sign);
-                }
-            }
+            // Rooks on files without own pawns: open without enemy pawns as
+            // well, semi-open with them; and rooks on the seventh rank.
+            let own_files = file_fill(own_pawns);
+            let their_files = file_fill(their_pawns);
+            let open = infra::to_i32((color_rooks & !own_files & !their_files).count());
+            let semiopen = infra::to_i32((color_rooks & !own_files & their_files).count());
+            let seventh = infra::to_i32((color_rooks & SEVENTH_RANK[color as usize]).count());
+            *mg += sign
+                * (open * self.params.rook_open_mg[0]
+                    + semiopen * self.params.rook_semiopen_mg[0]
+                    + seventh * self.params.rook_7th_mg[0]);
+            *eg += sign
+                * (open * self.params.rook_open_eg[0]
+                    + semiopen * self.params.rook_semiopen_eg[0]
+                    + seventh * self.params.rook_7th_eg[0]);
+            tr_mg!(self, rook_open_mg, 0, sign * open);
+            tr_eg!(self, rook_open_eg, 0, sign * open);
+            tr_mg!(self, rook_semiopen_mg, 0, sign * semiopen);
+            tr_eg!(self, rook_semiopen_eg, 0, sign * semiopen);
+            tr_mg!(self, rook_7th_mg, 0, sign * seventh);
+            tr_eg!(self, rook_7th_eg, 0, sign * seventh);
 
-            let mut knights = board.pieces(color, Piece::Knight);
-            while knights.any() {
-                let sq = knights.pop_lsb();
-                if relative_rank(color, sq) >= 4
-                    && (atk.pawn(them, sq) & own_pawns).any()
-                    && (atk.pawn(color, sq) & their_pawns).is_empty()
-                {
-                    *mg += sign * self.params.knight_outpost_mg[0];
-                    *eg += sign * self.params.knight_outpost_eg[0];
-                    tr_mg!(self, knight_outpost_mg, 0, sign);
-                    tr_eg!(self, knight_outpost_eg, 0, sign);
-                }
-            }
+            let knight_outposts =
+                infra::to_i32((board.pieces(color, Piece::Knight) & outposts).count());
+            *mg += sign * knight_outposts * self.params.knight_outpost_mg[0];
+            *eg += sign * knight_outposts * self.params.knight_outpost_eg[0];
+            tr_mg!(self, knight_outpost_mg, 0, sign * knight_outposts);
+            tr_eg!(self, knight_outpost_eg, 0, sign * knight_outposts);
 
             let mobility_area = maps.mobility_area[color as usize];
             // One-hot per-count tables (Phase 3.7). Index clamped to the table
@@ -260,16 +273,12 @@ impl Evaluator {
 
             // Queen infiltration: our queen safely deep in the enemy half
             // (relative rank >= 4) on a square no enemy pawn attacks.
-            let mut queens = board.pieces(color, Piece::Queen);
-            let mut infiltration = 0i32;
-            while queens.any() {
-                let qs = queens.pop_lsb();
-                if relative_rank(color, qs) >= 4
-                    && (pawn_attacks[them as usize] & Bitboard::from(qs)).is_empty()
-                {
-                    infiltration += 1;
-                }
-            }
+            let infiltration = infra::to_i32(
+                (board.pieces(color, Piece::Queen)
+                    & ENEMY_HALF[color as usize]
+                    & !pawn_attacks[them as usize])
+                    .count(),
+            );
             if infiltration != 0 {
                 *mg += sign * infiltration * self.params.queen_infiltration_mg[0];
                 *eg += sign * infiltration * self.params.queen_infiltration_eg[0];
