@@ -2297,6 +2297,9 @@ impl Searcher {
                 crate::diag_count!(q_check_moves_tried);
             }
             let mv = picked.mv;
+            // As in the main loop: the child's cluster as soon as the move is
+            // picked, from the hint.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             // Whether `mv` gives check, once a pruning test has asked: the make
             // then skips recomputing the checkers.
             let mut gives_check = None;
@@ -2368,8 +2371,6 @@ impl Searcher {
                     continue;
                 }
             }
-            // As in the main loop: the child's cluster early, from the hint.
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             let moving_piece = board.moving_piece(mv);
             self.push_move(board, ply, mv, moving_piece);
             #[cfg(feature = "diag")]
