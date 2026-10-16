@@ -119,10 +119,11 @@ pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
     let mut best = 0;
     let mut best_score = tail[0].score;
     for (offset, candidate) in tail.iter().enumerate().skip(1) {
-        if candidate.score > best_score {
-            best = offset;
-            best_score = candidate.score;
-        }
+        // A new maximum turns up at no predictable point in the scan, so a
+        // branch here mispredicts at every one; a conditional move does not.
+        let better = candidate.score > best_score;
+        best = std::hint::select_unpredictable(better, offset, best);
+        best_score = std::hint::select_unpredictable(better, candidate.score, best_score);
     }
     tail.swap(0, best);
     tail[0]
