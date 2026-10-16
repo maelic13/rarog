@@ -2296,8 +2296,10 @@ impl Searcher {
                 crate::diag_count!(q_check_moves_tried);
             }
             let mv = picked.mv;
+            // Whether `mv` gives check, once a pruning test has asked: the make
+            // then skips recomputing the checkers.
+            let mut gives_check = None;
             if !in_check {
-                let mut gives_check = None;
                 tactical_count += 1;
                 crate::diag_count!(q_capture_considered);
                 let futility_margin = self.cfg.quiet.qs_futility_margin;
@@ -2373,7 +2375,10 @@ impl Searcher {
             if !in_check {
                 crate::diag_count!(q_capture_searched);
             }
-            board.make_move(mv);
+            match gives_check {
+                Some(checks) => board.make_move_with_check(mv, checks),
+                None => board.make_move(mv),
+            }
             self.shared.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
