@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.7 | RESEARCH | R2 | Contempt and draw avoidance research card; any measurement is E.2's |
+| C.13.7 | RESEARCH | R2 | Card written (2026-10-16): the draw census bounds the lever at +1 to +4 Elo against the E.2 field; recommendation `NO_CHANGE`, awaiting the maintainer's decision |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -2228,6 +2228,16 @@ loss).
       falsifier; the measurement, if any, is E.2's pool gauntlet and is
       registered there. Decided with the maintainer; `NO_CHANGE` is a
       result.
+      **Card written 2026-10-16** (`analysis/c137_contempt_card_2026-10-16.md`).
+      The engine scores every draw 0. In the B.9 pool gauntlet's 1,600
+      games against the four targets, 369 were draws. A draw offset could
+      touch at most 194 of them (12.1% of games): repetition or fifty-move
+      draws Rarog reached while level or after thinking itself better. It
+      would cost in the 70 reached while worse, and it cannot touch the 93
+      dead-material draws. Estimated lever: +1 to +4 Elo against the E.2
+      field, about 0 on a rating list, and no playing strength.
+      **Recommendation: `NO_CHANGE`**, with the retry trigger an E.2 1T miss
+      against one engine by 5 Elo or less. The maintainer decides.
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
