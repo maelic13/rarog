@@ -1475,6 +1475,12 @@ impl Searcher {
             }
             legal_move_seen = true;
             move_count += 1;
+            // The child's cluster is asked for as soon as the move is picked,
+            // from a key that is exact for most moves, so the line arrives
+            // during the pruning tests, the check test and the make; the exact
+            // prefetch after the make covers the rest. A pruned move's line is
+            // fetched for nothing, which costs less than waiting for it.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut search_count = 0u32;
@@ -1677,11 +1683,6 @@ impl Searcher {
             // when it has one and kept its slot.
             let extension = if move_count == 1 { node_extension } else { 0 };
 
-            // The child's cluster is asked for before the make, from a key
-            // that is exact for most moves, so the line arrives during the
-            // check test and the make; the exact prefetch after the make
-            // covers the rest.
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
             {
