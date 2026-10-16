@@ -5,8 +5,9 @@
 use super::pawns::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, forward_square, relative_rank};
+use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
 use crate::board::movegen;
-use crate::board::{Bitboard, Board, Color, Piece, Square};
+use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
 /// `set` moved one rank toward `color`'s promotion rank.
@@ -36,6 +37,22 @@ fn forward_fill(color: Color, set: Bitboard) -> Bitboard {
     Bitboard(fill)
 }
 
+/// Every square `color`'s pieces attack under `occupied`.
+fn attacks_of(board: &Board, color: Color, occupied: Bitboard) -> Bitboard {
+    let atk = &*ATTACKS;
+    let queens = board.pieces(color, Piece::Queen);
+    let mut attacks = pawn_attacks_of(color, board.pieces(color, Piece::Pawn))
+        | knight_attacks_of(board.pieces(color, Piece::Knight))
+        | atk.king(board.king_sq(color));
+    for sq in board.pieces(color, Piece::Bishop) | queens {
+        attacks |= atk.bishop(sq, occupied);
+    }
+    for sq in board.pieces(color, Piece::Rook) | queens {
+        attacks |= atk.rook(sq, occupied);
+    }
+    attacks
+}
+
 impl Evaluator {
     /// Passed-pawn advance bonuses that depend on non-pawn occupancy: a clear
     /// stop square ("free stop") and an unattacked stop square ("safe stop").
@@ -54,6 +71,15 @@ impl Evaluator {
             let sign = color_sign(color);
             let them = !color;
             let mut pp = passed[color as usize];
+            // The squares the enemy attacks, built at the first question and
+            // shared by every stop and path square of this side's passers. A
+            // square is attacked exactly when it is in the union of the enemy
+            // pieces' attacks, by the symmetry of the attack tables.
+            let mut enemy_attacks = None;
+            let mut attacked = |squares: Bitboard| {
+                (*enemy_attacks.get_or_insert_with(|| attacks_of(board, them, occupied)) & squares)
+                    .any()
+            };
             while pp.any() {
                 let sq = pp.pop_lsb();
                 let rel_rank = relative_rank(color, sq) as i32;
@@ -64,7 +90,11 @@ impl Evaluator {
                     *eg += sign * rel_rank * self.params.passed_freestop_eg_per_rank[0];
                     tr_mg!(self, passed_freestop_mg_per_rank, 0, sign * rel_rank);
                     tr_eg!(self, passed_freestop_eg_per_rank, 0, sign * rel_rank);
-                    if !board.is_attacked_by_with_occ(stop, them, occupied) {
+                    debug_assert_eq!(
+                        attacked(Bitboard::from(stop)),
+                        board.is_attacked_by_with_occ(stop, them, occupied)
+                    );
+                    if !attacked(Bitboard::from(stop)) {
                         *eg += sign * rel_rank * self.params.passed_safestop_eg_per_rank[0];
                         tr_eg!(self, passed_safestop_eg_per_rank, 0, sign * rel_rank);
                     }
@@ -82,16 +112,7 @@ impl Evaluator {
                     *eg += sign * rel_rank * self.params.passed_freepath_eg_per_rank[0];
                     tr_mg!(self, passed_freepath_mg_per_rank, 0, sign * rel_rank);
                     tr_eg!(self, passed_freepath_eg_per_rank, 0, sign * rel_rank);
-                    let mut path_sqs = path;
-                    let mut safe = true;
-                    while path_sqs.any() {
-                        let psq = path_sqs.pop_lsb();
-                        if board.is_attacked_by_with_occ(psq, them, occupied) {
-                            safe = false;
-                            break;
-                        }
-                    }
-                    if safe {
+                    if !attacked(path) {
                         *eg += sign * rel_rank * self.params.passed_safepath_eg_per_rank[0];
                         tr_eg!(self, passed_safepath_eg_per_rank, 0, sign * rel_rank);
                     }
