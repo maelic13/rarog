@@ -132,22 +132,21 @@ impl Evaluator {
         };
         let cnt = [count(Color::White), count(Color::Black)];
 
+        // Branch-free: a piece type a side lacks multiplies its row by zero,
+        // and with compiled-in coefficients the loops unroll into a fixed sum.
         let mut imb = 0i32; // white − black
         for c in [Color::White, Color::Black] {
             let sign = color_sign(c);
             let us = cnt[c as usize];
             let them = cnt[!c as usize];
             for pt1 in 0..6 {
-                if us[pt1] == 0 {
-                    continue;
-                }
+                let mut row = 0;
                 for pt2 in 0..=pt1 {
                     let k = pt1 * 6 + pt2;
-                    imb += sign
-                        * us[pt1]
-                        * (self.params.imbalance_ours[k] * us[pt2]
-                            + self.params.imbalance_theirs[k] * them[pt2]);
+                    row += self.params.imbalance_ours[k] * us[pt2]
+                        + self.params.imbalance_theirs[k] * them[pt2];
                 }
+                imb += sign * us[pt1] * row;
             }
         }
         *mg += imb;
