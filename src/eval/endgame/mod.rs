@@ -23,6 +23,22 @@ pub(super) const OCB_SCALE_NORMAL: i32 = 48;
 /// scale; specialised material patterns are checked next; everything else
 /// falls through to the opposite-coloured-bishop rule and the KNNK draw.
 pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
+    // Every recogniser but two needs five men or fewer; the wrong-corner
+    // draw and the KNNK draw need a bare king. Past five men without one,
+    // only the opposite-bishop rule can apply, so the rest are not asked.
+    if board.occupied_count() > 5
+        && !has_only_king(board, Color::White)
+        && !has_only_king(board, Color::Black)
+    {
+        debug_assert!(
+            knnkp_adjustment(board).is_none() && specialized_endgame_scale(board).is_none(),
+            "a recogniser fires past five men without a bare king"
+        );
+        if let Some(scale) = opposite_bishop_scale(board) {
+            score = score * scale / OCB_SCALE_NORMAL;
+        }
+        return score;
+    }
     if let Some(adjustment) = knnkp_adjustment(board) {
         return score + adjustment;
     }
