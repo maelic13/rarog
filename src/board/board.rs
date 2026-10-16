@@ -104,6 +104,17 @@ const _: () = assert!(
     "UnmakeInfo grew past 24 bytes; a 128-ply stack no longer costs 3 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
 );
 
+/// By piece type, the masks of the derived keys a piece's key enters: the
+/// pawn key, the minor-piece key and its side's non-pawn key.
+const DERIVED_KEY_MASKS: [[u64; 3]; 6] = [
+    [u64::MAX, 0, 0],
+    [0, u64::MAX, u64::MAX],
+    [0, u64::MAX, u64::MAX],
+    [0, 0, u64::MAX],
+    [0, 0, u64::MAX],
+    [0, 0, 0],
+];
+
 const NO_PIECE: u8 = 255;
 // Padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
 // bounds check elides and no unsafe is needed. Entries 12–15 are unreachable
@@ -2001,6 +2012,17 @@ impl Board {
     // Internal helpers
     // -----------------------------------------------------------------------
 
+    /// Toggle `key` into the pawn, minor-piece and non-pawn keys a piece of
+    /// type `piece` belongs to. A mask per type, not a branch: the moving
+    /// piece's type is as unpredictable as the move.
+    #[inline(always)]
+    fn toggle_derived_keys(&mut self, color: Color, piece: Piece, key: u64) {
+        let [pawn, minor, non_pawn] = DERIVED_KEY_MASKS[piece as usize];
+        self.pawn_hash ^= key & pawn;
+        self.minor_hash ^= key & minor;
+        self.non_pawn_hash[color as usize] ^= key & non_pawn;
+    }
+
     #[inline(always)]
     fn add_piece(&mut self, color: Color, piece: Piece, sq: Square) {
         let bb = Bitboard::from(sq);
@@ -2009,15 +2031,7 @@ impl Board {
         self.occupancy[color as usize] |= bb;
         self.all_occ |= bb;
         let piece_key = ZOBRIST.piece(color, piece, sq);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= piece_key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= piece_key;
-                self.non_pawn_hash[color as usize] ^= piece_key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, piece_key);
     }
 
     /// Fused ordinary relocation of `piece` from `from` to `to`.
@@ -2036,15 +2050,7 @@ impl Board {
         self.occupancy[color as usize] ^= mask;
         self.all_occ ^= mask;
         let key = ZOBRIST.piece(color, piece, from) ^ ZOBRIST.piece(color, piece, to);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= key;
-                self.non_pawn_hash[color as usize] ^= key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, key);
     }
 
     #[inline(always)]
@@ -2055,15 +2061,7 @@ impl Board {
         self.occupancy[color as usize] ^= bb;
         self.all_occ ^= bb;
         let piece_key = ZOBRIST.piece(color, piece, sq);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= piece_key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= piece_key;
-                self.non_pawn_hash[color as usize] ^= piece_key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, piece_key);
     }
 
     #[inline(always)]
