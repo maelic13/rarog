@@ -118,7 +118,7 @@ impl Evaluator {
     /// `[0]=bishop pair, [1]=pawn, [2]=knight, [3]=bishop, [4]=rook, [5]=queen`;
     /// the coefficient matrices use the lower triangle (`pt2 <= pt1`). All
     /// coefficients are seeded 0, so this contributes nothing today.
-    pub(super) fn eval_imbalance(&self, board: &Board, mg: &mut i32, eg: &mut i32) {
+    pub(super) fn eval_imbalance(&mut self, board: &Board, mg: &mut i32, eg: &mut i32) {
         let count = |c: Color| -> [i32; 6] {
             let bishops = infra::to_i32(board.pieces(c, Piece::Bishop).count());
             [
@@ -132,23 +132,24 @@ impl Evaluator {
         };
         let cnt = [count(Color::White), count(Color::Black)];
 
-        // Branch-free: a piece type a side lacks multiplies its row by zero,
-        // and with compiled-in coefficients the loops unroll into a fixed sum.
-        let mut imb = 0i32; // white − black
-        for c in [Color::White, Color::Black] {
-            let sign = color_sign(c);
-            let us = cnt[c as usize];
-            let them = cnt[!c as usize];
-            for pt1 in 0..6 {
-                let mut row = 0;
-                for pt2 in 0..=pt1 {
-                    let k = pt1 * 6 + pt2;
-                    row += self.params.imbalance_ours[k] * us[pt2]
-                        + self.params.imbalance_theirs[k] * them[pt2];
+        // The imbalance is a function of the piece counts alone, and a search
+        // meets few distinct counts, so it is cached by them. The texel build
+        // traces it, so it computes every time.
+        #[cfg(not(feature = "texel"))]
+        let imb = {
+            let material = material_signature(&cnt);
+            let slot = imbalance_slot(material);
+            match self.imbalance_table[slot] {
+                Some(entry) if entry.material == material => entry.value,
+                _ => {
+                    let value = self.imbalance_of(&cnt);
+                    self.imbalance_table[slot] = Some(ImbalanceEntry { material, value });
+                    value
                 }
-                imb += sign * us[pt1] * row;
             }
-        }
+        };
+        #[cfg(feature = "texel")]
+        let imb = self.imbalance_of(&cnt);
         *mg += imb;
         *eg += imb;
 
@@ -173,4 +174,55 @@ impl Evaluator {
             }
         }
     }
+
+    /// The imbalance of the counts `cnt`, White's point of view.
+    #[inline(always)]
+    fn imbalance_of(&self, cnt: &[[i32; 6]; 2]) -> i32 {
+        // Branch-free: a piece type a side lacks multiplies its row by zero,
+        // and with compiled-in coefficients the loops unroll into a fixed sum.
+        let mut imb = 0i32; // white − black
+        for c in [Color::White, Color::Black] {
+            let sign = color_sign(c);
+            let us = cnt[c as usize];
+            let them = cnt[!c as usize];
+            for pt1 in 0..6 {
+                let mut row = 0;
+                for pt2 in 0..=pt1 {
+                    let k = pt1 * 6 + pt2;
+                    row += self.params.imbalance_ours[k] * us[pt2]
+                        + self.params.imbalance_theirs[k] * them[pt2];
+                }
+                imb += sign * us[pt1] * row;
+            }
+        }
+        imb
+    }
+}
+
+/// Slots in the imbalance cache.
+pub(super) const IMBALANCE_TABLE_SIZE: usize = 1024;
+
+/// One cached imbalance and the piece counts it is for. The texel build
+/// writes no entry, so there the fields look dead.
+#[cfg_attr(feature = "texel", allow(dead_code))]
+#[derive(Copy, Clone)]
+pub(super) struct ImbalanceEntry {
+    material: u64,
+    value: i32,
+}
+
+/// Both sides' pawn, knight, bishop, rook and queen counts, four bits each
+/// (no count exceeds ten), which determine the imbalance.
+#[cfg_attr(feature = "texel", allow(dead_code))]
+fn material_signature(cnt: &[[i32; 6]; 2]) -> u64 {
+    cnt.iter()
+        .flat_map(|side| side[1..].iter())
+        .fold(0u64, |signature, &n| {
+            (signature << 4) | u64::from(n.unsigned_abs())
+        })
+}
+
+#[cfg_attr(feature = "texel", allow(dead_code))]
+fn imbalance_slot(material: u64) -> usize {
+    infra::index(material.wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 54) & (IMBALANCE_TABLE_SIZE - 1)
 }

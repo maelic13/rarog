@@ -32,7 +32,7 @@ use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
 use crate::infra;
 use attacks::AttackMaps;
 use endgame::scale_endgame;
-use material::PHASE_W;
+use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
 #[cfg(not(any(feature = "tune", feature = "texel", test)))]
 use params::{CompiledParams, CompiledTables};
 #[cfg(any(feature = "tune", feature = "texel", test))]
@@ -119,6 +119,9 @@ struct EvalEntry {
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
+    /// Imbalances by piece counts; see `eval_imbalance`.
+    #[cfg_attr(feature = "texel", allow(dead_code))]
+    imbalance_table: Vec<Option<ImbalanceEntry>>,
     #[cfg(any(feature = "tune", feature = "texel", test))]
     params: EvalParams,
     #[cfg(not(any(feature = "tune", feature = "texel", test)))]
@@ -160,6 +163,7 @@ impl Default for Evaluator {
         Self {
             pawn_table: vec![PawnEntry::default(); PAWN_TABLE_SIZE],
             eval_table: vec![EvalEntry::default(); EVAL_TABLE_SIZE],
+            imbalance_table: vec![None; IMBALANCE_TABLE_SIZE],
             params,
             tables,
             lazy_margin: LAZY_MARGIN,
