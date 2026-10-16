@@ -20,4 +20,14 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   it must; no game was played, so nothing was read. The overnight script started it
   immediately, without waiting for the host to settle. The read stays registered as frozen
   and runs once on an idle host.
-- **Result:** pending.
+- **Result (played 2026-10-16, 08:33–08:54 local, by the maintainer's command; `tools/results/rar-m72`, manifest `colosseum_match_rar-m72_20261016_083320.manifest.txt`):**
+  - *Conditions, checked from the manifest:*
+    - the registered arms and fingerprints (`3C92DC47…` at `931dcca`, 10,521,141; `A3A11321…` at `75c3db5`, 14,126,183);
+    - the pinned runner (colosseum-cli 0.3.0), UHO seed 4209, no adjudication;
+    - the host 2.2% busy with no waiver, and the repository clean at `af76db6`.
+  - **+1.9 ± 8.5 Elo, +3.4 ± 15.2 nElo** over 2,000 games, for the C.13 head: W/D/L 501 / 1,009 / 490, pentanomial [24, 213, 511, 232, 20]. No faults, every termination normal. `colosseum_recount.py` agrees exactly.
+- **Disposition:** +3.4 nElo is above the −13 nElo line: **no harm flag.** C.13.1 is not re-examined, and C.13's work may reach `master`. As registered, this excludes harm beyond roughly −20 nElo and cannot see a small loss.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): +1 nElo, 80% band [−10, +12]; probability of a harm flag 0.05.
+  - Observed: +3.4 nElo, inside the band and 2.4 above its centre, well within one standard error. No miss: the expectation of no difference held, and the read had the power it was registered with.
+- **Artifacts:** `tools/results/rar-m72`, `analysis/artifacts/c136/recount-rar-m72.log`.

@@ -2219,6 +2219,9 @@ loss).
       The blend stays out, and C.10's registration decides whether to
       include it. RAR-M72 was not played overnight: the host was busy when
       it started. It runs once on an idle host.
+      **RAR-M72 read (2026-10-16): no harm.** The C.13 head reads
+      +1.9 ± 8.5 Elo, +3.4 ± 15.2 nElo against the pre-C.13 head (2,000
+      games), above the −13 nElo harm line. C.13.1 stands.
     - **C.13.7 Contempt and draw avoidance, research card — `R2`, NO_CHANGE 2026-10-16.** Whether
       a list-Elo lever exists against the weaker pool engines: the
       candidate forms (a draw score offset in the search, a sign-aware
@@ -2247,8 +2250,8 @@ loss).
       - C.13.6's search-informed target lost −13 Elo with the search
         frozen. RAR-E68's scaled read was inconclusive, and C.10's
         registration decides whether to include the blend.
-      - RAR-M72, the C.13 head against the pre-C.13 head, is owed as a
-        verification read (GUIDE's holds).
+      - RAR-M72, the C.13 head against the pre-C.13 head, found no harm
+        (+3.4 ± 15.2 nElo, 2,000 games, 2026-10-16).
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
