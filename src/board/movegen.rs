@@ -65,9 +65,14 @@ pub(super) fn generate_quiets(board: &Board) -> MoveList {
 
 /// [`generate_quiets`] into a caller-owned list, reusing a pinned set computed
 /// earlier at the same node (see [`gen_moves_pinned`]).
-pub(super) fn generate_quiets_pinned_into(board: &Board, pinned: Bitboard, moves: &mut MoveList) {
+pub(super) fn generate_quiets_pinned_into(
+    board: &Board,
+    pinned: Bitboard,
+    king_danger: Option<Bitboard>,
+    moves: &mut MoveList,
+) {
     moves.clear();
-    gen_moves_pinned::<false, true, _>(board, pinned, moves);
+    gen_moves_pinned::<false, true, _>(board, pinned, king_danger, moves);
     crate::diag_count!(board_gen_staged_quiet_calls);
     crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
 }
@@ -93,7 +98,7 @@ pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
 
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
-    gen_captures_with_pin(board, us, them, king_sq, pinned, moves);
+    gen_captures_with_pin(board, us, them, king_sq, pinned, None, moves);
     crate::diag_count!(board_gen_capture_calls);
     crate::diag_add!(board_gen_capture_moves, moves.len() as u64);
 }
@@ -117,14 +122,18 @@ pub(super) fn generate_captures(board: &mut Board) -> MoveList {
 /// it fired then paid for the pins anyway in `generate_quiets`. Computing pins
 /// unconditionally is therefore less work in the common case and lets every
 /// stage at this node share one pinned set.
-pub(super) fn generate_captures_pinned_into(board: &mut Board, moves: &mut MoveList) -> Bitboard {
+pub(super) fn generate_captures_pinned_into(
+    board: &mut Board,
+    king_danger: Option<Bitboard>,
+    moves: &mut MoveList,
+) -> Bitboard {
     moves.clear();
     let us = board.side_to_move();
     let them = !us;
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
 
-    gen_captures_with_pin(board, us, them, king_sq, pinned, moves);
+    gen_captures_with_pin(board, us, them, king_sq, pinned, king_danger, moves);
     crate::diag_count!(board_gen_staged_capture_calls);
     crate::diag_add!(board_gen_staged_capture_moves, moves.len() as u64);
     pinned
@@ -136,12 +145,21 @@ fn gen_captures_with_pin(
     them: Color,
     king_sq: Square,
     pinned: Bitboard,
+    king_danger: Option<Bitboard>,
     moves: &mut MoveList,
 ) {
     if pinned.is_empty() {
-        gen_unpinned_captures(board, us, them, king_sq, board.checkers(), moves);
+        gen_unpinned_captures(
+            board,
+            us,
+            them,
+            king_sq,
+            board.checkers(),
+            king_danger,
+            moves,
+        );
     } else {
-        gen_moves_pinned::<true, false, _>(board, pinned, moves);
+        gen_moves_pinned::<true, false, _>(board, pinned, king_danger, moves);
     }
 }
 
@@ -250,7 +268,7 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
     let us = board.side_to_move();
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, !us);
-    gen_moves_pinned::<CAPTURES, QUIETS, S>(board, pinned, moves);
+    gen_moves_pinned::<CAPTURES, QUIETS, S>(board, pinned, None, moves);
 }
 
 /// [`gen_moves`] for callers that already hold the pinned set for this
@@ -261,9 +279,15 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
 /// to `gen_moves`, which computed the very same thing again; and a staged node
 /// paid for it once more when quiets were finally generated. Pins are a pure
 /// function of the position, so one computation per node serves every stage.
+///
+/// `king_danger`, when the caller has it, is every square the side not to
+/// move attacks with our king lifted off the board ([`Board::threats`]): a
+/// king move is legal exactly when its destination is outside it, which
+/// answers each king move without a lookup of its own.
 fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
     board: &Board,
     pinned: Bitboard,
+    king_danger: Option<Bitboard>,
     moves: &mut S,
 ) {
     debug_assert_eq!(
@@ -298,7 +322,12 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let to = targets.pop_lsb();
         // Make sure the destination isn't attacked (use occ without the king)
         let occ_no_king = all_occ ^ Bitboard::from(king_sq);
-        if !board.is_attacked_with_occ(to, them, occ_no_king) {
+        let safe = match king_danger {
+            Some(danger) => !danger.contains(to),
+            None => !board.is_attacked_with_occ(to, them, occ_no_king),
+        };
+        debug_assert_eq!(safe, !board.is_attacked_with_occ(to, them, occ_no_king));
+        if safe {
             add_move::<CAPTURES, QUIETS, _>(king_sq, to, their_occ, moves);
         }
     }
@@ -401,6 +430,7 @@ fn gen_unpinned_captures(
     them: Color,
     king_sq: Square,
     checkers: Bitboard,
+    king_danger: Option<Bitboard>,
     moves: &mut MoveList,
 ) {
     let atk = &*ATTACKS;
@@ -411,7 +441,16 @@ fn gen_unpinned_captures(
     let mut targets = atk.king(king_sq) & their_occ;
     while targets.any() {
         let to = targets.pop_lsb();
-        if !board.is_attacked_with_occ(to, them, all_occ ^ king_bb) {
+        // See `gen_moves_pinned` for `king_danger`.
+        let safe = match king_danger {
+            Some(danger) => !danger.contains(to),
+            None => !board.is_attacked_with_occ(to, them, all_occ ^ king_bb),
+        };
+        debug_assert_eq!(
+            safe,
+            !board.is_attacked_with_occ(to, them, all_occ ^ king_bb)
+        );
+        if safe {
             moves.push_move(Move::new(king_sq, to, CAPTURE));
         }
     }

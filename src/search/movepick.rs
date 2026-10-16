@@ -272,7 +272,7 @@ impl MovePicker {
         } = self
         {
             let mut noisy = MoveList::new();
-            *pinned = board.generate_legal_captures_pinned_into(&mut noisy);
+            *pinned = board.generate_legal_captures_staged_into(threats, &mut noisy);
             for &mv in noisy.as_slice() {
                 if mv != *tt_move {
                     moves.push(mv, searcher.noisy_score(board, threats, mv), 0, 0);
@@ -376,7 +376,7 @@ impl MovePicker {
                     }
                     Stage::GenerateQuiets => {
                         let mut quiets = MoveList::new();
-                        board.generate_legal_quiets_pinned_into(*pinned, &mut quiets);
+                        board.generate_legal_quiets_staged_into(*pinned, threats, &mut quiets);
                         *survivors_left = searcher.append_quiet_moves(
                             board,
                             threats,

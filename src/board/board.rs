@@ -770,13 +770,34 @@ impl Board {
     /// Capture generation into a caller-owned list that also yields the pinned
     /// set, for a staged picker that will generate quiets at the same node.
     pub fn generate_legal_captures_pinned_into(&mut self, moves: &mut MoveList) -> Bitboard {
-        super::movegen::generate_captures_pinned_into(self, moves)
+        super::movegen::generate_captures_pinned_into(self, None, moves)
     }
 
     /// Quiet generation into a caller-owned list, reusing the pinned set from
     /// [`Board::generate_legal_captures_pinned_into`] at the same node.
     pub fn generate_legal_quiets_pinned_into(&self, pinned: Bitboard, moves: &mut MoveList) {
-        super::movegen::generate_quiets_pinned_into(self, pinned, moves);
+        super::movegen::generate_quiets_pinned_into(self, pinned, None, moves);
+    }
+
+    /// [`Board::generate_legal_captures_pinned_into`] for a caller that holds
+    /// this node's [`Board::threats`]: its `all` decides every king move.
+    pub(crate) fn generate_legal_captures_staged_into(
+        &mut self,
+        threats: &Threats,
+        moves: &mut MoveList,
+    ) -> Bitboard {
+        super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
+    }
+
+    /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
+    /// this node's [`Board::threats`]: its `all` decides every king move.
+    pub(crate) fn generate_legal_quiets_staged_into(
+        &self,
+        pinned: Bitboard,
+        threats: &Threats,
+        moves: &mut MoveList,
+    ) {
+        super::movegen::generate_quiets_pinned_into(self, pinned, Some(threats.all), moves);
     }
 
     pub fn perft(&mut self, depth: u32) -> u64 {
