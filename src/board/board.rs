@@ -459,12 +459,6 @@ impl Board {
         decode_piece(self.mailbox[sq.index()])
     }
 
-    /// Piece type only at a given square.
-    #[inline(always)]
-    pub(crate) fn piece_type_at(&self, sq: Square) -> Option<Piece> {
-        decode_piece_type(self.mailbox[sq.index()])
-    }
-
     /// King square for a given color.
     #[inline(always)]
     pub fn king_sq(&self, color: Color) -> Square {
@@ -2436,15 +2430,6 @@ fn decode_piece(encoded: u8) -> Option<(Color, Piece)> {
     };
     let piece = PIECE_FROM_ENCODED[encoded as usize];
     Some((color, piece))
-}
-
-#[inline(always)]
-fn decode_piece_type(encoded: u8) -> Option<Piece> {
-    if encoded < 12 {
-        Some(PIECE_FROM_ENCODED[encoded as usize])
-    } else {
-        None
-    }
 }
 
 // -----------------------------------------------------------------------
