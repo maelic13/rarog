@@ -2214,6 +2214,12 @@ loss).
       candidate target; at ≤ −9 it stays closed. **RAR-M72 registered**
       (the maintainer's request): the C.13 head against the pre-C.13
       head, 2,000 games, AGENTS' harm rule.
+      **RAR-E68 read (2026-10-15): inconclusive.** The scaled blend reads
+      −6.3 ± 6.6 Elo against the head (4,000 games), between the registered
+      −9 and −4. About half of RAR-E67's loss is recovered, within noise.
+      The blend stays out, and C.10's registration decides whether to
+      include it. RAR-M72 was not played overnight: the host was busy when
+      it started. It runs once on an idle host.
     - **C.13.7 Contempt and draw avoidance, research card — `R2`.** Whether
       a list-Elo lever exists against the weaker pool engines: the
       candidate forms (a draw score offset in the search, a sign-aware

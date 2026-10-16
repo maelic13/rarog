@@ -15,4 +15,9 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Harm rule (frozen):** a point estimate below **−13 nElo** flags harm. Before any other work, C.13.1's two engine commits are then re-examined: the differential, the removal's neutrality, and NPS.
   - Power, from AGENTS: the standard error is about 7.8 nElo, so a true −10 nElo is caught with probability 0.36, −20 with 0.82 and −25 with 0.94. Passing means no harm beyond roughly −20 nElo; it cannot see a small loss.
 - **PRE-REGISTERED PREDICTION (freeze before exposure):** **+1 nElo**, 80% band [−10, +12]; probability of a harm flag 0.05.
+- **Run attempt 2026-10-15 23:44 (overnight, after RAR-E68):** **not played.** The harness's
+  preflight measured the host at 24% CPU right after RAR-E68 finished and refused to start, as
+  it must; no game was played, so nothing was read. The overnight script started it
+  immediately, without waiting for the host to settle. The read stays registered as frozen
+  and runs once on an idle host.
 - **Result:** pending.

@@ -20,4 +20,19 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - **−8 Elo**, 80% band [−15, +1].
   - Probability of ≥ −4: 0.3. Probability of ≤ −9: 0.45.
   - Basis: a 2% size change is small for the cp margins, so most of the loss should remain.
-- **Result:** pending.
+- **Result (played 2026-10-15, 23:02–23:44 local, by the maintainer's overnight command; `tools/results/rar-e68`, manifest `colosseum_match_rar-e68_20261015_230231.manifest.txt`):**
+  - *Conditions, checked from the manifest:*
+    - the registered arms and fingerprints (`8D9880E0…` at `502a7df`, 12,820,980; `3C92DC47…` at `931dcca`, 10,521,141);
+    - the pinned runner, UHO seed 4208, no adjudication;
+    - the host 9.2% busy with no waiver, and the repository clean at `81d4cda`.
+  - **−6.3 ± 6.6 Elo, −10.3 ± 10.8 nElo** over 4,000 games: W/D/L 961 / 2,005 / 1,034, pentanomial [70, 528, 862, 485, 55]. No faults, every termination normal. `colosseum_recount.py` agrees exactly.
+- **Disposition:** by the frozen use the point estimate is between −9 and −4: **inconclusive.**
+  - Restoring the score size moved the blend from RAR-E67's −13.0 ± 5.7 to −6.3 ± 6.6. That is about half the loss, but the two intervals overlap; the difference is about 6.7 ± 8.7 Elo. So the read neither shows that size explains the loss nor rules it out.
+  - The blend stays out of the head. Whether C.10's joint tune includes it as a candidate target is decided in C.10's registration, at the maintainer's choice, as registered.
+  - Even scaled, the blend measured no gain over the head.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): −8 Elo, 80% band [−15, +1]; probability of ≥ −4 0.3, of ≤ −9 0.45.
+  - Observed: −6.3, inside the band, about 2 Elo above its centre. Neither decisive outcome happened (combined probability 0.75): the read landed in the inconclusive middle, which I gave 0.25.
+  - The assumption that a 2% size change is too small to matter is weakened but not refuted: some of the loss may be size, and the rest is not explained. The miss is in confidence; the instrument's power at 4,000 games was the limit.
+- **Retry trigger:** C.10's registration, if it includes the blend; otherwise as RAR-E67 (a changed datagen budget or label source).
+- **Artifacts:** `tools/results/rar-e68`, `analysis/artifacts/c136/rar-e68.log`, `recount-rar-e68.log`.
