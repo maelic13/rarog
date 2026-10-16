@@ -299,7 +299,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         // Make sure the destination isn't attacked (use occ without the king)
         let occ_no_king = all_occ ^ Bitboard::from(king_sq);
         if !board.is_attacked_with_occ(to, them, occ_no_king) {
-            add_move(king_sq, to, their_occ, moves);
+            add_move::<CAPTURES, QUIETS, _>(king_sq, to, their_occ, moves);
         }
     }
 
@@ -332,7 +332,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = targets;
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move(from, to, their_occ, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -345,7 +345,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move(from, to, their_occ, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -358,7 +358,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move(from, to, their_occ, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -371,7 +371,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move(from, to, their_occ, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -740,14 +740,23 @@ fn push_pawn_move_flags<S: MoveSink>(from: Square, to: Square, is_capture: bool,
     }
 }
 
-/// Add a single non-pawn move (capture or quiet).
+/// Add a single non-pawn move (capture or quiet). A pass generating one kind
+/// only has filtered its targets to that kind, so it knows the flag without
+/// testing each target.
 #[inline(always)]
-fn add_move<S: MoveSink>(from: Square, to: Square, their_occ: Bitboard, moves: &mut S) {
-    if (Bitboard::from(to) & their_occ).any() {
-        moves.push_move(Move::new(from, to, CAPTURE));
+fn add_move<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
+    from: Square,
+    to: Square,
+    their_occ: Bitboard,
+    moves: &mut S,
+) {
+    let capture = if CAPTURES && QUIETS {
+        (Bitboard::from(to) & their_occ).any()
     } else {
-        moves.push_move(Move::new(from, to, QUIET));
-    }
+        debug_assert_eq!(CAPTURES, (Bitboard::from(to) & their_occ).any());
+        CAPTURES
+    };
+    moves.push_move(Move::new(from, to, if capture { CAPTURE } else { QUIET }));
 }
 
 // -----------------------------------------------------------------------
