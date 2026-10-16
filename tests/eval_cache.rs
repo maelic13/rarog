@@ -1,4 +1,4 @@
-//! Phase 3.14 regression guard: the whole-eval cache must be a true
+//! Phase 3.14 regression guard: the evaluator's caches must be true
 //! memoisation — a cached evaluation must equal a cold recompute.
 //!
 //! The bug this protects against: a term whose value depends on state *not*
@@ -7,8 +7,8 @@
 //! cache keyed by pawns only). Such a term makes `evaluate()` impure, so a
 //! long-lived evaluator returns stale values for positions that collide on the
 //! key. Here we walk many positions through one long-lived evaluator (which
-//! exercises the pawn cache and the whole-eval cache) and assert every result
-//! matches a fresh evaluator's cold computation of the same position.
+//! exercises the pawn and imbalance caches) and assert every result matches
+//! a fresh evaluator's cold computation of the same position.
 
 use rarog::board::Board;
 use rarog::eval::Evaluator;
@@ -28,7 +28,7 @@ const SEEDS: [&str; 10] = [
 
 #[test]
 fn eval_cache_equals_cold_recompute() {
-    // One long-lived evaluator: its pawn cache and whole-eval cache accumulate
+    // One long-lived evaluator: its pawn and imbalance caches accumulate
     // entries as we walk, so later positions exercise cache hits.
     let mut cached_eval = Evaluator::default();
     let mut checked = 0usize;

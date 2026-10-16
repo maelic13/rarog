@@ -675,12 +675,11 @@ impl Searcher {
         game_ply: u32,
         age_tt: bool,
     ) {
-        // LazyMargin changes the raw evaluation function. The evaluator owns
-        // its whole-eval cache, while the main searcher owns TT lifecycle and
-        // must also discard stored raw evals and bounds from the old function.
-        // Helpers receive the already-cleared shared TT, so they clear only
-        // their private evaluator cache; clearing shared storage here would
-        // race with helpers or main already searching.
+        // LazyMargin changes the raw evaluation function. The main searcher
+        // owns TT lifecycle and must discard stored raw evals and bounds from
+        // the old function. Helpers receive the already-cleared shared TT;
+        // clearing shared storage here would race with helpers or main
+        // already searching.
         let lazy_margin_changed = self
             .td
             .evaluator

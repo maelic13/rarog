@@ -798,7 +798,6 @@ mod tests {
             &on_g1,
             &on_e1_castling,
         ] {
-            ev.eval_table.fill(super::super::EvalEntry::default());
             assert_eq!(ev.evaluate(board), fresh(board));
         }
         let shelter = |board: &Board| {

@@ -41,7 +41,7 @@ impl Evaluator {
     /// stop square ("free stop") and an unattacked stop square ("safe stop").
     /// These are deliberately kept out of `eval_pawns` — whose result is cached
     /// by a pawn-structure-only key — so the whole evaluation stays a pure
-    /// function of the position and the eval cache is exact (Phase 3.14).
+    /// function of the position (Phase 3.14).
     pub(super) fn eval_passed_pawn_advance(
         &self,
         board: &Board,
