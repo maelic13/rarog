@@ -79,7 +79,7 @@ const EG_KING_PST: [i32; 64] = [
 /// Flatten the six per-piece PST consts into one `[i32; 384]` array in
 /// `Piece::ALL` order (Pawn,Knight,Bishop,Rook,Queen,King), white POV — the
 /// uniform `[i32; N]` shape every `EvalParams` field uses (Phase 3.1).
-pub(super) fn build_default_pst(mg: bool) -> [i32; 384] {
+pub(super) const fn build_default_pst(mg: bool) -> [i32; 384] {
     let tables: [&[i32; 64]; 6] = if mg {
         [
             &MG_PAWN_PST,
@@ -100,8 +100,14 @@ pub(super) fn build_default_pst(mg: bool) -> [i32; 384] {
         ]
     };
     let mut out = [0i32; 384];
-    for (piece, table) in tables.iter().enumerate() {
-        out[piece * 64..piece * 64 + 64].copy_from_slice(table.as_slice());
+    let mut piece = 0;
+    while piece < 6 {
+        let mut sq = 0;
+        while sq < 64 {
+            out[piece * 64 + sq] = tables[piece][sq];
+            sq += 1;
+        }
+        piece += 1;
     }
     out
 }

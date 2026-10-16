@@ -15,11 +15,17 @@ macro_rules! define_eval_params {
             $( pub $field: [i32; $len], )*
         }
 
+        impl EvalParams {
+            /// The compiled-in weights, as a constant so a production build
+            /// can fold every weight into the code that reads it.
+            pub const DEFAULT: Self = Self {
+                $( $field: $default, )*
+            };
+        }
+
         impl Default for EvalParams {
             fn default() -> Self {
-                Self {
-                    $( $field: $default, )*
-                }
+                Self::DEFAULT
             }
         }
 
@@ -280,21 +286,22 @@ macro_rules! eval_params {
 pub(super) use eval_params;
 
 eval_params!(define_eval_params);
-/// Material + PST combined per (color, piece, square), rebuilt from
-/// `EvalParams` whenever params change (Phase 3.1 — these used to be
-/// `const`-baked `MG_TABLE`/`EG_TABLE`; now `params.mg_val`/`params.pst_mg`
-/// are tunable data, so the table must be a runtime-built `Evaluator` field).
+/// Material + PST combined per (color, piece, square), built from
+/// `EvalParams`: once at compile time from the compiled-in weights, and at
+/// run time in the `tune` and `texel` builds, whose weights change.
 #[derive(Clone)]
 pub(super) struct EvalTables {
     pub(super) mg: [[[i32; 64]; 6]; 2],
     pub(super) eg: [[[i32; 64]; 6]; 2],
 }
 
-pub(super) fn build_tables(params: &EvalParams) -> EvalTables {
+pub(super) const fn build_tables(params: &EvalParams) -> EvalTables {
     let mut mg = [[[0i32; 64]; 6]; 2];
     let mut eg = [[[0i32; 64]; 6]; 2];
-    for piece in 0..6 {
-        for sq in 0..64 {
+    let mut piece = 0;
+    while piece < 6 {
+        let mut sq = 0;
+        while sq < 64 {
             mg[Color::White as usize][piece][sq] =
                 params.mg_val[piece] + params.pst_mg[piece * 64 + sq];
             mg[Color::Black as usize][piece][sq] =
@@ -303,9 +310,52 @@ pub(super) fn build_tables(params: &EvalParams) -> EvalTables {
                 params.eg_val[piece] + params.pst_eg[piece * 64 + sq];
             eg[Color::Black as usize][piece][sq] =
                 params.eg_val[piece] + params.pst_eg[piece * 64 + (sq ^ 56)];
+            sq += 1;
         }
+        piece += 1;
     }
     EvalTables { mg, eg }
+}
+
+/// The weights a production build evaluates with: a zero-sized handle to
+/// the compiled-in constants. Reading a weight through it is a load from a
+/// constant the compiler sees, so it folds into the code; a weight read
+/// through `Evaluator` memory is a load at every use. The `tune` and `texel`
+/// builds keep a runtime `EvalParams`, because their weights change.
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+#[derive(Clone, Copy)]
+pub(super) struct CompiledParams;
+
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+static COMPILED_PARAMS: EvalParams = EvalParams::DEFAULT;
+
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+impl std::ops::Deref for CompiledParams {
+    type Target = EvalParams;
+
+    #[inline(always)]
+    fn deref(&self) -> &EvalParams {
+        &COMPILED_PARAMS
+    }
+}
+
+/// The material and piece-square tables of the compiled-in weights, built at
+/// compile time; see [`CompiledParams`].
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+#[derive(Clone, Copy)]
+pub(super) struct CompiledTables;
+
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+static COMPILED_TABLES: EvalTables = build_tables(&EvalParams::DEFAULT);
+
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+impl std::ops::Deref for CompiledTables {
+    type Target = EvalTables;
+
+    #[inline(always)]
+    fn deref(&self) -> &EvalTables {
+        &COMPILED_TABLES
+    }
 }
 
 /// Tune-time loader/dumper (Phase 3.2) — `--features tune` only, so release

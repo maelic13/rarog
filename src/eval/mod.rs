@@ -33,6 +33,9 @@ use crate::infra;
 use attacks::AttackMaps;
 use endgame::scale_endgame;
 use material::PHASE_W;
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+use params::{CompiledParams, CompiledTables};
+#[cfg(any(feature = "tune", feature = "texel", test))]
 use params::{EvalTables, build_tables};
 use pawns::RELATIVE_RANKS;
 use trace::{tr_eg, tr_mg};
@@ -102,8 +105,14 @@ struct EvalEntry {
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
     eval_table: Vec<EvalEntry>,
+    #[cfg(any(feature = "tune", feature = "texel", test))]
     params: EvalParams,
+    #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+    params: CompiledParams,
+    #[cfg(any(feature = "tune", feature = "texel", test))]
     tables: Box<EvalTables>,
+    #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+    tables: CompiledTables,
     /// Lazy-eval threshold. Seeded from `LAZY_MARGIN` and overridden by the
     /// `LazyMargin` UCI option (pushed in at every search start).
     lazy_margin: i32,
@@ -128,9 +137,12 @@ impl Default for Evaluator {
     fn default() -> Self {
         #[cfg(feature = "tune")]
         let params = EvalParams::load_from_env();
-        #[cfg(not(feature = "tune"))]
+        #[cfg(all(any(feature = "texel", test), not(feature = "tune")))]
         let params = EvalParams::default();
+        #[cfg(any(feature = "tune", feature = "texel", test))]
         let tables = Box::new(build_tables(&params));
+        #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+        let (params, tables) = (CompiledParams, CompiledTables);
         Self {
             pawn_table: vec![PawnEntry::default(); PAWN_TABLE_SIZE],
             eval_table: vec![EvalEntry::default(); EVAL_TABLE_SIZE],
