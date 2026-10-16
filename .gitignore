@@ -70,7 +70,8 @@ tools/profile/rarog.pdb
 tools/profile/*.etl
 tools/profile/profile_*.txt
 tools/profile/rarog.json
-tools/profile/butterfly.txt
+tools/profile/butterfly*.txt
+tools/profile/addr_*.txt
 
 # Local experiment evidence; tracked Markdown retains decisions and recipes
 /analysis/artifacts/
