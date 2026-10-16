@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.13.7 | RESEARCH | R2 | Card written (2026-10-16): the draw census bounds the lever at +1 to +4 Elo against the E.2 field; recommendation `NO_CHANGE`, awaiting the maintainer's decision |
 | C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
@@ -1988,7 +1987,7 @@ loss).
         rule (below 0 reopens) the acceptance stands.
       - *Margin block:* skipped (maintainer decision 2026-10-15). C.8.7
         closes with cycle 2 accepted, and cycle 3 opens.
-- **C.13 HCE audit repairs, the fitting target and residual instruments — `R2`, then `I1` and `V`.** Added
+- **C.13 HCE audit repairs, the fitting target and residual instruments — `R2`, then `I1` and `V`, DONE 2026-10-16.** Added
   2026-10-15 (maintainer request after the whole-HCE review,
   `analysis/hce_audit_2026-10-15.md`). It runs **before C.9, C.10 and
   C.12** (maintainer decision 2026-10-15): its repairs and a changed fitting
@@ -2220,7 +2219,7 @@ loss).
       The blend stays out, and C.10's registration decides whether to
       include it. RAR-M72 was not played overnight: the host was busy when
       it started. It runs once on an idle host.
-    - **C.13.7 Contempt and draw avoidance, research card — `R2`.** Whether
+    - **C.13.7 Contempt and draw avoidance, research card — `R2`, NO_CHANGE 2026-10-16.** Whether
       a list-Elo lever exists against the weaker pool engines: the
       candidate forms (a draw score offset in the search, a sign-aware
       endgame scale), their interaction with the evaluation's drawn-score
@@ -2238,6 +2237,18 @@ loss).
       field, about 0 on a rating list, and no playing strength.
       **Recommendation: `NO_CHANGE`**, with the retry trigger an E.2 1T miss
       against one engine by 5 Elo or less. The maintainer decides.
+      **Closed `NO_CHANGE` 2026-10-16** (maintainer decision, as
+      recommended). Retry trigger: E.2's 1T gate missed against one engine
+      by 5 Elo or less; then form 1 only, measured in E.2's gauntlet.
+      **C.13 closes DONE.**
+      - C.13.1 repaired connected rooks and removed the terms fitted to
+        zero.
+      - C.13.2 to C.13.5 found no missing term.
+      - C.13.6's search-informed target lost −13 Elo with the search
+        frozen. RAR-E68's scaled read was inconclusive, and C.10's
+        registration decides whether to include the blend.
+      - RAR-M72, the C.13 head against the pre-C.13 head, is owed as a
+        verification read (GUIDE's holds).
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
@@ -2655,6 +2666,10 @@ loss).
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
   of the four targets, by 26 to 75 Elo, so Phases B and C are judged against
   the 1T column.
+  **Contingency (C.13.7, 2026-10-16):** if the 1T gate is missed against one
+  engine by 5 Elo or less, C.13.7's contempt card (form 1, a search draw
+  offset) is the registered lever, measured in this gauntlet with and
+  without it (`analysis/c137_contempt_card_2026-10-16.md`).
 - **E.3 Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
