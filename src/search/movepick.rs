@@ -3,6 +3,7 @@
 use std::mem::MaybeUninit;
 use std::slice;
 
+use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
 use crate::board::{ATTACKS, Bitboard, Board, Color, Move, MoveList, Piece, Threats};
 use crate::eval::piece_value;
 
@@ -428,11 +429,6 @@ fn attacks_from(sources: Bitboard, attacks: impl Fn(crate::board::Square) -> Bit
     sources.fold(Bitboard::EMPTY, |all, sq| all | attacks(sq))
 }
 
-/// Squares attacked by pawns of `color` standing on `pawns`.
-fn pawn_attacks(pawns: Bitboard, color: Color) -> Bitboard {
-    attacks_from(pawns, |sq| ATTACKS.pawn(color, sq))
-}
-
 /// Node-invariant inputs of quiet scoring, resolved once per node.
 struct QuietContext {
     stm: Color,
@@ -469,24 +465,27 @@ impl Searcher {
             | by[Piece::Rook as usize]
             | by[Piece::Queen as usize]
             | by[Piece::King as usize];
+        let atk = &*ATTACKS;
         let their = |piece| board.pieces(them, piece);
         let knight_targets =
             (their(Piece::Bishop) & !all) | their(Piece::Rook) | their(Piece::Queen);
-        let pawn_offense = (pawn_attacks(board.color_occ(them), them) & !all)
+        // A pawn of ours attacks their piece from the squares one of their
+        // pawns there would attack; the same holds for knights.
+        let pawn_offense = (pawn_attacks_of(them, board.color_occ(them)) & !all)
             | (by[Piece::Pawn as usize] & LEVER_RANKS[stm as usize] & !non_pawn);
         let offense = [
             pawn_offense,
-            attacks_from(knight_targets, |sq| ATTACKS.knight(sq)) & !all,
-            attacks_from(their(Piece::Rook), |sq| ATTACKS.bishop(sq, occ)) & !all,
+            knight_attacks_of(knight_targets) & !all,
+            attacks_from(their(Piece::Rook), |sq| atk.bishop(sq, occ)) & !all,
             (Bitboard::FILE_A << u32::from(board.king_sq(them).0 % 8)) & !all,
-            (attacks_from(their(Piece::Bishop) & !all, |sq| ATTACKS.rook(sq, occ))
-                | attacks_from(their(Piece::Rook) & !all, |sq| ATTACKS.bishop(sq, occ)))
+            (attacks_from(their(Piece::Bishop) & !all, |sq| atk.rook(sq, occ))
+                | attacks_from(their(Piece::Rook) & !all, |sq| atk.bishop(sq, occ)))
                 & !all,
             Bitboard::EMPTY,
         ];
         let king = board.king_sq(stm);
         let wall_pawns = if HOME_RANKS[stm as usize].contains(king) {
-            ATTACKS.king(king) & (board.pieces(stm, Piece::Pawn) | board.pieces(them, Piece::Pawn))
+            atk.king(king) & (board.pieces(stm, Piece::Pawn) | board.pieces(them, Piece::Pawn))
         } else {
             Bitboard::EMPTY
         };

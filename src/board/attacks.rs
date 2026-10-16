@@ -231,10 +231,9 @@ impl AttackTables {
         for s in 0..64u8 {
             let sq = Square(s);
             let bb = Bitboard::from(sq);
-            // White pawns attack north-east and north-west
-            table[Color::White as usize][sq.index()] = bb.north_east() | bb.north_west();
-            // Black pawns attack south-east and south-west
-            table[Color::Black as usize][sq.index()] = bb.south_east() | bb.south_west();
+            for color in [Color::White, Color::Black] {
+                table[color as usize][sq.index()] = pawn_attacks_of(color, bb);
+            }
         }
         table
     }
@@ -243,11 +242,7 @@ impl AttackTables {
         let mut table = [Bitboard::EMPTY; 64];
         for s in 0..64u8 {
             let sq = Square(s);
-            let bb = Bitboard::from(sq);
-            // Two-square jumps: (±1, ±2) and (±2, ±1)
-            let h1 = bb.east() | bb.west();
-            let h2 = bb.east().east() | bb.west().west();
-            table[sq.index()] = h1.north().north() | h1.south().south() | h2.north() | h2.south();
+            table[sq.index()] = knight_attacks_of(Bitboard::from(sq));
         }
         table
     }
@@ -268,6 +263,30 @@ impl AttackTables {
         }
         table
     }
+}
+
+/// The squares attacked by pawns of `color` standing on `pawns`. The pawn
+/// table is built from these shifts square by square, and each shift
+/// distributes over a union, so this is the union of the table's entries for
+/// `pawns` without a lookup per pawn.
+#[inline(always)]
+pub(crate) fn pawn_attacks_of(color: Color, pawns: Bitboard) -> Bitboard {
+    match color {
+        // White pawns attack north-east and north-west, Black south-east and
+        // south-west.
+        Color::White => pawns.north_east() | pawns.north_west(),
+        Color::Black => pawns.south_east() | pawns.south_west(),
+    }
+}
+
+/// The squares attacked by knights standing on `knights`; see
+/// [`pawn_attacks_of`].
+#[inline(always)]
+pub(crate) fn knight_attacks_of(knights: Bitboard) -> Bitboard {
+    // Two-square jumps: (±1, ±2) and (±2, ±1)
+    let h1 = knights.east() | knights.west();
+    let h2 = knights.east().east() | knights.west().west();
+    h1.north().north() | h1.south().south() | h2.north() | h2.south()
 }
 
 // -----------------------------------------------------------------------

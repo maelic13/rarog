@@ -6,7 +6,7 @@
 use crate::infra;
 use std::fmt;
 
-use super::attacks::ATTACKS;
+use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
 use super::movegen::generate_legal_moves;
 use super::moves::{
@@ -843,12 +843,8 @@ impl Board {
         let atk = &*ATTACKS;
         let occ = self.all_occ ^ self.pieces(us, Piece::King);
         let mut by_piece = [Bitboard::EMPTY; 6];
-        for sq in self.pieces(them, Piece::Pawn) {
-            by_piece[Piece::Pawn as usize] |= atk.pawn(them, sq);
-        }
-        for sq in self.pieces(them, Piece::Knight) {
-            by_piece[Piece::Knight as usize] |= atk.knight(sq);
-        }
+        by_piece[Piece::Pawn as usize] = pawn_attacks_of(them, self.pieces(them, Piece::Pawn));
+        by_piece[Piece::Knight as usize] = knight_attacks_of(self.pieces(them, Piece::Knight));
         for sq in self.pieces(them, Piece::Bishop) {
             by_piece[Piece::Bishop as usize] |= atk.bishop(sq, occ);
         }
