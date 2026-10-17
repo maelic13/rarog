@@ -66,6 +66,14 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   against the version before it; the second measured **+6.7 ± 3.7 Elo at
   `3+0.03`** (12,362 games) and **+3.1 ± 11.5 at `10+0.1`** (1,000
   games) against the first. `bench` then reported 14,126,183 nodes.
+- **The engine searches about 22% more positions a second** while playing
+  exactly as before: it visits the same positions in the same order, so
+  `bench` still reports 10,521,141 nodes, but evaluation, move ordering and
+  move generation do less work per position, and the attack tables are
+  built into the executable instead of at startup (which makes it about
+  0.85 MB larger). Against the previous development version it measured
+  **+42.3 ± 9.5 Elo at `3+0.03`** (1,750 games), searching 23.6% more
+  positions a second inside the games.
 
 ### Fixed
 

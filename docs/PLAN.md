@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.12 | GAME_GATE | V | Speed pass (maintainer request 2026-10-13), run overnight 2026-10-16/17: 21 exact engine commits, +22.47% pooled-PGO NPS over the C.13 head's engine at the same fingerprint, stop rule fired (`analysis/c12_speed_pass_2026-10-17.md`); the speed gate RAR-S99 is registered (the maintainer's run), and its H1 closes the step |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2297,7 +2296,7 @@ loss).
   C.5.2 is frozen, each later unit appends its expected movement before the
   match, and the budget row is corrected by its reading, never by an
   estimate.
-- **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2`.** Added
+- **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2` and `V`, DONE 2026-10-17.** Added
   2026-10-13 (maintainer request). B.7 was the search's speed pass (about
   20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
   evaluation: the king-danger index and shelter, threats, passer and pawn
@@ -2382,9 +2381,10 @@ loss).
     in D.3's change log. Stop: the last six candidates read inside the
     instrument's resolution or below zero. Two exact cleanups followed
     (`91d0b0f`, `e55dc9e`: the narrowings' doc comments and the PEXT path's
-    clippy findings). Left: RAR-S99, the speed gate the maintainer asked for
-    on 2026-10-16, registered 2026-10-17 on `a829601`'s binary; its H1
-    closes the step, whose own contract needs no games.
+    clippy findings). RAR-S99, the speed gate the maintainer asked for on
+    2026-10-16, accepted H1 on 2026-10-17 at 875 pairs: **+42.3 ± 9.5 Elo**
+    at `3+0.03` for `a829601`'s binary over the C.13 head's, with +23.6%
+    nodes a second and +0.60 plies inside the games. The step is done.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
