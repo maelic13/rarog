@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.12 | RESEARCH | R2 | Speed pass (maintainer request 2026-10-13): after C.8's cycles, before C.9 and C.10; profile first, then behaviour-neutral rewrites of the evaluation first, each exact with a pooled NPS read; no games |
+| C.12 | LOCAL_QUALIFIED | I2 | Speed pass (maintainer request 2026-10-13), run overnight 2026-10-16/17: 21 exact engine commits, +22.47% pooled-PGO NPS over the C.13 head's engine at the same fingerprint, stop rule fired (`analysis/c12_speed_pass_2026-10-17.md`); closes on the maintainer's word, after the final speed gate they asked for |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -412,7 +412,7 @@ is nodes rather than speed may be re-gated once at `10+0.1`, `[0,3]`,
 registered before the read and never a second time. The frozen head: engine source `ee02ed1` (no engine input changed
 through 2.5.0 and `d6998db`'s version bump; the behaviour-neutral source
 changes since are listed under D.3's change log with their exact
-fingerprints, latest `6433760`, then C.1's evaluation restructure
+fingerprints, latest C.12's speed pass (2026-10-17, on `c7`), then C.1's evaluation restructure
 (`801f1b4`, exact, recorded under C.1), and a registration names the
 revision it builds from); the measured binary
 `tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
@@ -2368,6 +2368,21 @@ loss).
      the instrument's resolution (about ±0.5%), or the list is exhausted.
      The step's record gives the total pooled gain against the head it
      started from.
+  - **Record, 2026-10-17 (one night, on the maintainer's delegation):** the
+    profile (step 1, `tools/profile_etw.ps1` as extended in `55f0e11`) and
+    the rewrites (step 2) ran together; `analysis/c12_speed_pass_2026-10-17.md`
+    holds the profile, each change with its screen, the recorded reads and
+    every candidate measured and dropped. 21 engine commits on `c7` are
+    kept, `1781b34` to `b52520d`, each exact at 10,521,141 / EBF 2.521; a
+    further one, `c8934ec`, read +0.02% and `1108805` reverts it. The debug
+    and release suites (the allocation guard included), clippy and fmt pass
+    on the head. **+22.47% pooled-PGO NPS** (95% +21.60% .. +23.34%) for the head
+    against the engine the night started from (`f86a657`, the C.13 head's
+    engine), four builds an arm on a quiet host. The search-side commits are
+    in D.3's change log. Stop: the last six candidates read inside the
+    instrument's resolution or below zero. Left: closing the step, and the
+    final speed gate the maintainer asked for on 2026-10-16 to price the
+    speed in Elo; the step's own contract needs no games.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
@@ -2591,6 +2606,18 @@ loss).
     fails on the old code with one allocation). `bench 13` exact on default
     and pext; pooled-PGO no-regression read passed at −0.24% (−0.55% to
     +0.07%, six cycles; `analysis/artifacts/rule50-alloc/`).
+  - C.12's speed pass (2026-10-17, on `c7`; `analysis/c12_speed_pass_2026-10-17.md`),
+    the search, ordering, generation and board side, each `bench 13` exact
+    at 10,521,141 / EBF 2.521: the per-node search parameter sets read as
+    compile-time constants outside `tune` builds (`d61d4f6`; `d2ab515` keeps
+    the root, clock and quiescence set runtime); pawn and knight attack sets
+    from shifts (`58547cd`); quiescence's known check status passed to the
+    make (`60f8b96`); the derived keys toggled by mask (`acd767e`); a
+    one-kind generation pass's move flag known statically (`09bb98c`); the
+    best-move selection by conditional moves (`081041c`); the child's TT
+    cluster prefetched when the move is picked (`1aaa39e`, `65f490e`);
+    staged king moves decided from the node's threat set (`9f388c5`); the
+    attack tables built at compile time (`b52520d`).
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
