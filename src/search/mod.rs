@@ -200,7 +200,9 @@ impl RootMove {
 /// Configuration fixed for one `go`: the parameters, the reduction table built
 /// from them, the resolved limits and the instant the clock started.
 struct SearchConfig {
-    params: Param<SearchParams>,
+    /// Root, clock and quiescence settings, which integration tests set to
+    /// exercise switches production leaves off, so they stay runtime values.
+    params: SearchParams,
     core: Param<CoreParams>,
     proof: Param<ProofParams>,
     quiet: Param<QuietParams>,
@@ -211,7 +213,7 @@ struct SearchConfig {
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
-            params: Param::<SearchParams>::default(),
+            params: SearchParams::default(),
             core: Param::<CoreParams>::default(),
             proof: Param::<ProofParams>::default(),
             quiet: Param::<QuietParams>::default(),
@@ -706,22 +708,23 @@ impl Searcher {
         self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
+        self.cfg.params = engine_options.search_params.clone();
         #[cfg(any(feature = "tune", test))]
         {
-            self.cfg.params = engine_options.search_params.clone();
             self.cfg.core = engine_options.core_params.clone();
             self.cfg.proof = engine_options.proof_params.clone();
             self.cfg.quiet = engine_options.quiet_params.clone();
         }
         // Without `tune` no option reaches these sets, so the compiled-in
-        // handles are what the options hold.
+        // handles are what the options hold. A caller outside the crate that
+        // sets one (an integration test) needs a `tune` build.
         #[cfg(not(any(feature = "tune", test)))]
         debug_assert!(
-            engine_options.search_params == SearchParams::DEFAULT
-                && engine_options.core_params == CoreParams::DEFAULT
+            engine_options.core_params == CoreParams::DEFAULT
                 && engine_options.proof_params == ProofParams::DEFAULT
                 && engine_options.quiet_params == QuietParams::DEFAULT,
-            "a search parameter differs from its compiled-in value in a build that cannot set it"
+            "a core, proof or quiet search parameter was set in a build that reads the \
+             compiled-in values; set it in a `tune` build"
         );
         self.td.nmp_min_ply = 0;
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);

@@ -113,9 +113,10 @@ pub trait CompiledDefault: 'static {
 
 /// A zero-sized handle to a parameter set's compiled-in values. A production
 /// build cannot change a search parameter (only `tune` builds expose them as
-/// UCI options), so the search reads them through this handle: every read is
-/// a load from a constant the compiler sees, and folds into the code, where a
-/// read through the searcher's memory is a load at every use.
+/// UCI options), so the search reads its per-node sets (core, proof, quiet)
+/// through this handle: every read is a load from a constant the compiler
+/// sees, and folds into the code, where a read through the searcher's memory
+/// is a load at every use.
 pub struct Compiled<T>(std::marker::PhantomData<T>);
 
 impl<T> Default for Compiled<T> {
