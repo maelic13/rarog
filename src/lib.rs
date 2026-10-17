@@ -40,6 +40,7 @@ pub mod engine;
 pub mod engine_command;
 pub mod eval;
 pub mod infra;
+pub mod large_pages;
 pub mod search;
 pub mod search_options;
 pub mod syzygy;

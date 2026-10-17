@@ -9,6 +9,11 @@ use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
 use rarog::uci_protocol::{CommandOutcome, UciProtocol};
 
+// The big tables in large pages where Windows grants them; see `large_pages`.
+#[cfg(windows)]
+#[global_allocator]
+static ALLOCATOR: rarog::large_pages::PageAllocator = rarog::large_pages::PageAllocator;
+
 // No startup CPU guard. A runtime check for a feature the build STATICALLY
 // requires is `true` by construction: `std::is_x86_feature_detected!` expands
 // to `cfg!(target_feature = "…") || runtime_detect(…)`, so in the PEXT tier
