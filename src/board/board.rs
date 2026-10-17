@@ -1528,6 +1528,28 @@ impl Board {
         self.see_ge_impl(mv, threshold, true, PRODUCTION_SEE_VALUES)
     }
 
+    /// Whether no enemy piece can capture on the destination of the quiet
+    /// move `mv`, so its exchange is empty and [`Board::see_ge_quiet_aware`]
+    /// passes any threshold at or below zero. `threats` is this position's
+    /// [`Board::threats`]: the destination is outside the enemy's attacks
+    /// with our king lifted, and no enemy slider stands on the line through
+    /// the move, the one line the vacated origin can open.
+    #[inline(always)]
+    pub(crate) fn quiet_lands_unattacked(&self, mv: Move, threats: &Threats) -> bool {
+        let (from, to) = (mv.from_sq(), mv.to_sq());
+        if threats.all.contains(to) {
+            return false;
+        }
+        let them = !self.side_to_move;
+        let queens = self.pieces(them, Piece::Queen);
+        let sliders = if from.rank() == to.rank() || from.file() == to.file() {
+            self.pieces(them, Piece::Rook) | queens
+        } else {
+            self.pieces(them, Piece::Bishop) | queens
+        };
+        (super::movegen::line(from, to) & sliders).is_empty()
+    }
+
     pub fn see_ge_quiet_aware_with_values(
         &self,
         mv: Move,

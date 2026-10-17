@@ -953,6 +953,13 @@ fn ray_through(a: Square, b: Square) -> Bitboard {
     LINE[a.index()][b.index()]
 }
 
+/// The whole rank, file or diagonal through `a` and `b`, or `EMPTY` when
+/// they are not aligned.
+#[inline(always)]
+pub(crate) fn line(a: Square, b: Square) -> Bitboard {
+    ray_through(a, b)
+}
+
 /// Returns true if `from`, `to`, and `king` are all on the same rank/file/diagonal.
 #[inline]
 pub(super) fn on_same_ray(from: Square, to: Square, king: Square) -> bool {
