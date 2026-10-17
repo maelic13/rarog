@@ -57,36 +57,87 @@ pub(super) fn apply_bonus(entry: &mut i16, bonus: i32, max: i32) {
     *entry = crate::infra::saturating_i16(current + bonus - bonus.abs() * current / max);
 }
 
-/// Heap-allocate a zeroed table without building it on the stack first.
-fn zeroed<const N: usize>() -> Box<[i16; N]> {
-    vec![0i16; N]
-        .into_boxed_slice()
-        .try_into()
-        .unwrap_or_else(|_| unreachable!("length is N by construction"))
+/// Entries in one cache line.
+const LINE_ENTRIES: usize = 32;
+
+/// One cache line of entries. The piece-to tables are allocated as lines, so
+/// a `[to]` row of 64 entries (128 B) spans exactly two lines wherever the
+/// allocator puts the table; as a plain heap block the quiet table landed at
+/// a 16-byte offset and every row spanned three.
+#[repr(C, align(64))]
+#[derive(Clone, Copy)]
+struct Line([i16; LINE_ENTRIES]);
+
+/// A table of `LINES` cache lines, indexed flat.
+struct LineTable<const LINES: usize> {
+    lines: Box<[Line; LINES]>,
 }
 
-/// `[side to move][from threatened][to threatened][from][to]`.
-type QuietTable = [[[[[i16; 64]; 64]; 2]; 2]; 2];
+impl<const LINES: usize> LineTable<LINES> {
+    /// Heap-allocate a zeroed table without building it on the stack first.
+    fn zeroed() -> Self {
+        Self {
+            lines: vec![Line([0; LINE_ENTRIES]); LINES]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!("length is LINES by construction")),
+        }
+    }
+
+    fn fill(&mut self, value: i16) {
+        for line in self.lines.iter_mut() {
+            line.0 = [value; LINE_ENTRIES];
+        }
+    }
+
+    #[inline(always)]
+    fn get(&self, index: usize) -> i16 {
+        self.lines[index / LINE_ENTRIES].0[index % LINE_ENTRIES]
+    }
+
+    #[inline(always)]
+    fn get_mut(&mut self, index: usize) -> &mut i16 {
+        &mut self.lines[index / LINE_ENTRIES].0[index % LINE_ENTRIES]
+    }
+}
+
+/// `[side to move][from threatened][to threatened][from][to]`, flat.
+const QUIET_SIZE: usize = 2 * 2 * 2 * 64 * 64;
+const PAWN_SIZE: usize = PAWN_HISTORY_SIZE * PIECE_TO_SIZE;
+const _: () = assert!(QUIET_SIZE % LINE_ENTRIES == 0);
+const _: () = assert!(PAWN_SIZE % LINE_ENTRIES == 0);
+const _: () = assert!(CONT_SIZE % LINE_ENTRIES == 0);
+
+#[inline(always)]
+fn quiet_index(threats: Bitboard, stm: Color, mv: Move) -> usize {
+    let (from, to) = (mv.from_sq(), mv.to_sq());
+    (((stm as usize * 2 + usize::from(threats.contains(from))) * 2
+        + usize::from(threats.contains(to)))
+        * 64
+        + from.index())
+        * 64
+        + to.index()
+}
 
 /// One thread's move-ordering tables. None of them age between searches.
 pub(super) struct HistoryTables {
-    quiet: Box<QuietTable>,
+    quiet: LineTable<{ QUIET_SIZE / LINE_ENTRIES }>,
     /// `[coloured piece and destination][captured type][destination threatened]`.
     noisy: Box<[[[i16; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]>,
     /// `[pawn-key slot][coloured piece and destination]`, flat.
-    pawn: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
+    pawn: LineTable<{ PAWN_SIZE / LINE_ENTRIES }>,
     /// `[context][coloured piece and destination]`, flat; a context is a row
     /// base from [`cont_context`].
-    cont: Box<[i16; CONT_SIZE]>,
+    cont: LineTable<{ CONT_SIZE / LINE_ENTRIES }>,
 }
 
 impl Default for HistoryTables {
     fn default() -> Self {
         Self {
-            quiet: Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]),
+            quiet: LineTable::zeroed(),
             noisy: Box::new([[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]),
-            pawn: zeroed(),
-            cont: zeroed(),
+            pawn: LineTable::zeroed(),
+            cont: LineTable::zeroed(),
         }
     }
 }
@@ -94,7 +145,7 @@ impl Default for HistoryTables {
 impl HistoryTables {
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
-        *self.quiet = [[[[[0; 64]; 64]; 2]; 2]; 2];
+        self.quiet.fill(0);
         *self.noisy = [[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE];
         self.pawn.fill(0);
         self.cont.fill(0);
@@ -102,19 +153,13 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn quiet(&self, threats: Bitboard, stm: Color, mv: Move) -> i32 {
-        let (from, to) = (mv.from_sq(), mv.to_sq());
-        i32::from(
-            self.quiet[stm as usize][usize::from(threats.contains(from))]
-                [usize::from(threats.contains(to))][from.index()][to.index()],
-        )
+        i32::from(self.quiet.get(quiet_index(threats, stm, mv)))
     }
 
     #[inline(always)]
     pub(super) fn update_quiet(&mut self, threats: Bitboard, stm: Color, mv: Move, bonus: i32) {
-        let (from, to) = (mv.from_sq(), mv.to_sq());
         apply_bonus(
-            &mut self.quiet[stm as usize][usize::from(threats.contains(from))]
-                [usize::from(threats.contains(to))][from.index()][to.index()],
+            self.quiet.get_mut(quiet_index(threats, stm, mv)),
             bonus,
             QUIET_MAX,
         );
@@ -161,7 +206,7 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn pawn(&self, pawn_row: usize, color: Color, piece: Piece, to: Square) -> i32 {
-        i32::from(self.pawn[pawn_row + piece_to(color, piece, to)])
+        i32::from(self.pawn.get(pawn_row + piece_to(color, piece, to)))
     }
 
     #[inline(always)]
@@ -174,7 +219,7 @@ impl HistoryTables {
         bonus: i32,
     ) {
         apply_bonus(
-            &mut self.pawn[pawn_row + piece_to(color, piece, to)],
+            self.pawn.get_mut(pawn_row + piece_to(color, piece, to)),
             bonus,
             PAWN_MAX,
         );
@@ -182,7 +227,7 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn cont(&self, context: usize, color: Color, piece: Piece, to: Square) -> i32 {
-        i32::from(self.cont[context + piece_to(color, piece, to)])
+        i32::from(self.cont.get(context + piece_to(color, piece, to)))
     }
 
     #[inline(always)]
@@ -195,7 +240,7 @@ impl HistoryTables {
         bonus: i32,
     ) {
         apply_bonus(
-            &mut self.cont[context + piece_to(color, piece, to)],
+            self.cont.get_mut(context + piece_to(color, piece, to)),
             bonus,
             CONT_MAX,
         );
