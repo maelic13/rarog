@@ -2393,8 +2393,9 @@ loss).
     `90700b2` reverts them, so the engine source is `60fedc5`'s; six more
     candidates were measured and dropped. Large pages for the big tables
     read **+2.48%** (+2.13% .. +2.84%) on the C.12 head, exact, but add six
-    `unsafe` sites against the frozen floor: `db58a00` on branch
-    `large-pages` waits for the maintainer's decision. Every read puts the
+    `unsafe` sites against the frozen floor: `db58a00` stays unmerged on
+    branch `large-pages` until the unsafe floor is reviewed (maintainer
+    decision 2026-10-17; G.1 owns large pages). Every read puts the
     remaining cost in memory latency rather than instruction count.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference

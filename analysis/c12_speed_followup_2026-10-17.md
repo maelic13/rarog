@@ -20,6 +20,8 @@ EBF 2.521** on each build.
   the allocator, four builds, against eight of `60fedc5`). Exact. It needs six
   new `unsafe` sites against the frozen floor, so it waits on the maintainer:
   commit `db58a00` on branch `large-pages`, on top of `90700b2`.
+  **Decision (maintainer, 2026-10-17):** left unmerged on its branch until the
+  unsafe floor is reviewed; GUIDE's holds carry it, and G.1 owns large pages.
 
 ## Profile
 
