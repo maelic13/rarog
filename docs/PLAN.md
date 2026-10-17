@@ -2397,6 +2397,26 @@ loss).
     branch `large-pages` until the unsafe floor is reviewed (maintainer
     decision 2026-10-17; G.1 owns large pages). Every read puts the
     remaining cost in memory latency rather than instruction count.
+  - **Third pass, 2026-10-17/18 (evening session, maintainer request; an
+    independent review of both passes and fresh research):**
+    `analysis/c12_speed_review_2026-10-18.md`. Seven exact candidates, each
+    its own commit on `c7` read with eight PGO builds an arm: two small gains
+    below the bar (the threat set computed only where a node reads it,
+    `6c89771`, +0.19%; the check masks shared between the move loop and
+    quiet scoring, `630e2b5`, +0.17%), two null or losing prefetches, a
+    losing build flag, and two losing rewrites (a branch-free probe −2.0%,
+    history tables as aligned lines −2.9%). The two gains together read
+    **+0.41%** (+0.28% .. +0.54%) against the C.12 head, real by the
+    interval and under the protocol's +0.5% bar, so both were reverted by
+    the rule declared before the reads; `git cherry-pick 6c89771 630e2b5`
+    re-applies them. The engine source stays `60fedc5`'s; nothing enters
+    D.3's change log. The day's quiet-SEE skip alone reads −0.58% and its
+    capture-SEE extension about −1.7%, both losses. The follow-up's reading
+    of the remaining cost as memory latency is superseded: the fresh profile
+    puts the memory-stall lines at 14-17% of samples, the rest is compute
+    spread over many small terms, and under 4 KB pages every added software
+    prefetch pays the page walk it triggers, so the prefetch leads are closed
+    until large pages land.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
