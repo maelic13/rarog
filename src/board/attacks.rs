@@ -5,7 +5,6 @@
 /// PEXT table layout. The compiler builds every table, so a lookup reads a
 /// fixed address, with no check that the tables exist and no table pointer to
 /// load first.
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
 use crate::infra;
 
 use super::bitboard::Bitboard;
@@ -112,7 +111,7 @@ impl AttackTables {
             // KEEP-UNSAFE: safe indexing measured −0.5% NPS here (pext) and
             // −1.5% on the magic path — the index is occupancy-derived, so the
             // bounds check cannot elide, in the hottest load in the engine.
-            return unsafe { *self.bishop_table.get_unchecked(idx) };
+            unsafe { *self.bishop_table.get_unchecked(idx) }
         }
 
         #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
@@ -134,9 +133,10 @@ impl AttackTables {
         #[cfg(all(rarog_pext, target_arch = "x86_64"))]
         {
             let idx = e.offset + pext_index(occ.0, e.mask);
-            // SAFETY / KEEP-UNSAFE: see `bishop()` — same construction and the
-            // same measurement.
-            return unsafe { *self.rook_table.get_unchecked(idx) };
+            // SAFETY: as in `bishop()`, `pext_index` yields < 2^popcount(e.mask)
+            // and `build` fills exactly that many entries from `e.offset`.
+            // KEEP-UNSAFE: see `bishop()`; the same measurement.
+            unsafe { *self.rook_table.get_unchecked(idx) }
         }
 
         #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
@@ -461,7 +461,10 @@ const fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
 #[cfg(all(rarog_pext, target_arch = "x86_64"))]
 #[inline(always)]
 fn pext_index(occ: u64, mask: u64) -> usize {
-    unsafe { std::arch::x86_64::_pext_u64(occ, mask) as usize }
+    // SAFETY: `_pext_u64` needs BMI2. This path is compiled only under
+    // `--cfg rarog_pext`, which `xtask --arch pext` sets together with
+    // `-C target-feature=+bmi2`, so its binaries target BMI2 CPUs only.
+    infra::index(unsafe { std::arch::x86_64::_pext_u64(occ, mask) })
 }
 
 // Magics found once by a seeded search and baked in. The compiler builds the
