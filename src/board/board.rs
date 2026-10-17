@@ -8,7 +8,7 @@ use std::fmt;
 
 use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
-use super::movegen::generate_legal_moves;
+use super::movegen::{MoveSink, generate_legal_moves};
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -789,15 +789,16 @@ impl Board {
         super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
     }
 
-    /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
-    /// this node's [`Board::threats`]: its `all` decides every king move.
-    pub(crate) fn generate_legal_quiets_staged_into(
+    /// [`Board::generate_legal_quiets_pinned_into`] into any sink, for a
+    /// caller that holds this node's [`Board::threats`]: its `all` decides
+    /// every king move.
+    pub(crate) fn generate_legal_quiets_staged_with<S: MoveSink>(
         &self,
         pinned: Bitboard,
         threats: &Threats,
-        moves: &mut MoveList,
+        sink: &mut S,
     ) {
-        super::movegen::generate_quiets_pinned_into(self, pinned, Some(threats.all), moves);
+        super::movegen::generate_quiets_pinned_with(self, pinned, Some(threats.all), sink);
     }
 
     pub fn perft(&mut self, depth: u32) -> u64 {
