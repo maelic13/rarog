@@ -168,7 +168,7 @@ fn gen_captures_with_pin(
 /// promotion-captures are pawn attacks, so both are covered). Skipping
 /// generation on `false` is therefore behavior-preserving.
 fn has_pseudo_capture(board: &Board, us: Color, them: Color) -> bool {
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let their_occ = board.color_occ(them) & !board.pieces(them, Piece::King);
 
     if (atk.king(board.king_sq(us)) & their_occ).any() {
@@ -302,7 +302,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
     );
     let us = board.side_to_move();
     let them = !us;
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
 
     let our_occ = board.color_occ(us);
     let their_occ = board.color_occ(them);
@@ -433,7 +433,7 @@ fn gen_unpinned_captures(
     king_danger: Option<Bitboard>,
     moves: &mut MoveList,
 ) {
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let their_occ = board.color_occ(them) & !board.pieces(them, Piece::King);
     let all_occ = board.occupied();
     let king_bb = Bitboard::from(king_sq);
@@ -537,7 +537,7 @@ fn ep_capture_is_legal(
     ep_sq: Square,
     ep_cap_sq: Square,
 ) -> bool {
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let king_sq = board.king_sq(us);
     let occ_after =
         board.occupied() ^ Bitboard::from(from) ^ Bitboard::from(ep_sq) ^ Bitboard::from(ep_cap_sq);
@@ -564,7 +564,7 @@ fn gen_pawn_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
     check_mask: Bitboard,
     moves: &mut S,
 ) {
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let pawns = board.pieces(us, Piece::Pawn);
     let free_pawns = pawns & !pinned;
     let pinned_pawns = pawns & pinned;
@@ -867,7 +867,7 @@ fn gen_castling<S: MoveSink>(
 fn compute_pinned(board: &Board, king_sq: Square, us: Color, them: Color) -> Bitboard {
     crate::diag_count!(board_compute_pinned_calls);
     let our_occ = board.color_occ(us);
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let mut pinned = Bitboard::EMPTY;
 
     // X-ray diagonal: see through our own pieces to find diagonal pinners
@@ -1047,7 +1047,7 @@ const fn init_line() -> [[Bitboard; 64]; 64] {
 
 impl Board {
     fn is_attacked_with_occ(&self, sq: Square, attacker: Color, occ: Bitboard) -> bool {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
             return true;
         }

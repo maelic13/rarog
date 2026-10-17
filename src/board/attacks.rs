@@ -2,30 +2,37 @@
 ///
 /// Non-sliding pieces (pawn, knight, king) are stored as simple lookup arrays.
 /// Sliding pieces (bishop, rook, queen) use either magic bitboards or a
-/// compile-time PEXT table layout, initialized at startup via `LazyLock`.
+/// PEXT table layout. The compiler builds every table, so a lookup reads a
+/// fixed address, with no check that the tables exist and no table pointer to
+/// load first.
+#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
 use crate::infra;
-use std::sync::LazyLock;
 
 use super::bitboard::Bitboard;
 use super::piece::Color;
 use super::square::Square;
 
+/// Slider table entries: one per relevant blocker subset of every square, the
+/// same count in the PEXT and magic layouts.
+const BISHOP_TABLE_SIZE: usize = 5_248;
+const ROOK_TABLE_SIZE: usize = 102_400;
+
 // -----------------------------------------------------------------------
 // Public attack accessors
 // -----------------------------------------------------------------------
 
-/// All attack tables, initialized once.
+/// All attack tables.
 pub struct AttackTables {
     pub(crate) pawn_attacks: [[Bitboard; 64]; 2],
     knight_attacks: [Bitboard; 64],
     pub(crate) king_attacks: [Bitboard; 64],
     bishop: [SliderEntry; 64],
     rook: [SliderEntry; 64],
-    bishop_table: Vec<Bitboard>,
-    rook_table: Vec<Bitboard>,
+    bishop_table: [Bitboard; BISHOP_TABLE_SIZE],
+    rook_table: [Bitboard; ROOK_TABLE_SIZE],
 }
 
-pub static ATTACKS: LazyLock<AttackTables> = LazyLock::new(AttackTables::init);
+pub static ATTACKS: AttackTables = AttackTables::build();
 
 #[derive(Copy, Clone)]
 struct SliderEntry {
@@ -100,7 +107,7 @@ impl AttackTables {
         {
             let idx = e.offset + pext_index(occ.0, e.mask);
             // SAFETY: `pext_index` yields < 2^popcount(e.mask) by construction
-            // and init fills exactly that many entries from `e.offset`, so
+            // and `build` fills exactly that many entries from `e.offset`, so
             // `idx` is always in bounds.
             // KEEP-UNSAFE: safe indexing measured −0.5% NPS here (pext) and
             // −1.5% on the magic path — the index is occupancy-derived, so the
@@ -112,7 +119,7 @@ impl AttackTables {
         {
             let idx = e.offset + infra::index(((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift);
             // SAFETY: `idx` is in bounds — the magic index is masked to the
-            // per-square table width by `e.shift`, and init fills exactly
+            // per-square table width by `e.shift`, and `build` fills exactly
             // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
             // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
             // (the index is occupancy-derived, so the check cannot elide).
@@ -136,7 +143,7 @@ impl AttackTables {
         {
             let idx = e.offset + infra::index(((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift);
             // SAFETY: `idx` is in bounds — the magic index is masked to the
-            // per-square table width by `e.shift`, and init fills exactly
+            // per-square table width by `e.shift`, and `build` fills exactly
             // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
             // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
             // (the index is occupancy-derived, so the check cannot elide).
@@ -150,118 +157,38 @@ impl AttackTables {
     }
 
     // -----------------------------------------------------------------------
-    // Initialization
+    // Construction
     // -----------------------------------------------------------------------
 
-    fn init() -> Self {
-        let pawn_attacks = Self::init_pawn_attacks();
-        let knight_attacks = Self::init_knight_attacks();
-        let king_attacks = Self::init_king_attacks();
-
-        // Bishop slider tables
-        let mut bishop_entries: [SliderEntry; 64] = std::array::from_fn(|_| SliderEntry::empty());
-        let mut bishop_table: Vec<Bitboard> = Vec::new();
-        #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-        let mut rng = Rng::new(0x1234_5678_9ABC_DEF0);
-        for sq in 0..64 {
-            let sq = Square(infra::to_u8(sq));
-            let mask = bishop_mask(sq);
-            let n = mask.count_ones();
-            #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-            let shift = 64 - n;
-            let size = 1usize << n;
-            let offset = bishop_table.len();
-            bishop_table.resize(offset + size, Bitboard::EMPTY);
-            #[cfg(all(rarog_pext, target_arch = "x86_64"))]
-            {
-                init_pext_table(mask, false, sq, &mut bishop_table[offset..]);
-                bishop_entries[sq.index()] = SliderEntry::new(mask, offset);
-            }
-            #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-            {
-                let magic = find_magic(
-                    mask,
-                    shift,
-                    false,
-                    sq,
-                    &mut rng,
-                    &mut bishop_table[offset..],
-                );
-                bishop_entries[sq.index()] = SliderEntry::new(mask, magic, shift, offset);
-            }
+    /// Every table, evaluated by the compiler for [`ATTACKS`].
+    const fn build() -> Self {
+        let mut tables = Self {
+            pawn_attacks: [[Bitboard::EMPTY; 64]; 2],
+            knight_attacks: [Bitboard::EMPTY; 64],
+            king_attacks: [Bitboard::EMPTY; 64],
+            bishop: [SliderEntry::empty(); 64],
+            rook: [SliderEntry::empty(); 64],
+            bishop_table: [Bitboard::EMPTY; BISHOP_TABLE_SIZE],
+            rook_table: [Bitboard::EMPTY; ROOK_TABLE_SIZE],
+        };
+        let mut bishop_offset = 0;
+        let mut rook_offset = 0;
+        let mut sq = Square(0);
+        while sq.0 < 64 {
+            let index = sq.0 as usize;
+            let bb = Bitboard(1 << index);
+            tables.pawn_attacks[Color::White as usize][index] = pawn_attacks_of(Color::White, bb);
+            tables.pawn_attacks[Color::Black as usize][index] = pawn_attacks_of(Color::Black, bb);
+            tables.knight_attacks[index] = knight_attacks_of(bb);
+            tables.king_attacks[index] = king_attacks_of(bb);
+            tables.bishop[index] = fill_slider(&mut tables.bishop_table, bishop_offset, sq, false);
+            bishop_offset += 1 << bishop_mask(sq).count_ones();
+            tables.rook[index] = fill_slider(&mut tables.rook_table, rook_offset, sq, true);
+            rook_offset += 1 << rook_mask(sq).count_ones();
+            sq.0 += 1;
         }
-
-        // Rook slider tables
-        let mut rook_entries: [SliderEntry; 64] = std::array::from_fn(|_| SliderEntry::empty());
-        let mut rook_table: Vec<Bitboard> = Vec::new();
-        for sq in 0..64 {
-            let sq = Square(infra::to_u8(sq));
-            let mask = rook_mask(sq);
-            let n = mask.count_ones();
-            #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-            let shift = 64 - n;
-            let size = 1usize << n;
-            let offset = rook_table.len();
-            rook_table.resize(offset + size, Bitboard::EMPTY);
-            #[cfg(all(rarog_pext, target_arch = "x86_64"))]
-            {
-                init_pext_table(mask, true, sq, &mut rook_table[offset..]);
-                rook_entries[sq.index()] = SliderEntry::new(mask, offset);
-            }
-            #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-            {
-                let magic = find_magic(mask, shift, true, sq, &mut rng, &mut rook_table[offset..]);
-                rook_entries[sq.index()] = SliderEntry::new(mask, magic, shift, offset);
-            }
-        }
-
-        Self {
-            pawn_attacks,
-            knight_attacks,
-            king_attacks,
-            bishop: bishop_entries,
-            rook: rook_entries,
-            bishop_table,
-            rook_table,
-        }
-    }
-
-    fn init_pawn_attacks() -> [[Bitboard; 64]; 2] {
-        let mut table = [[Bitboard::EMPTY; 64]; 2];
-        for s in 0..64u8 {
-            let sq = Square(s);
-            let bb = Bitboard::from(sq);
-            for color in [Color::White, Color::Black] {
-                table[color as usize][sq.index()] = pawn_attacks_of(color, bb);
-            }
-        }
-        table
-    }
-
-    fn init_knight_attacks() -> [Bitboard; 64] {
-        let mut table = [Bitboard::EMPTY; 64];
-        for s in 0..64u8 {
-            let sq = Square(s);
-            table[sq.index()] = knight_attacks_of(Bitboard::from(sq));
-        }
-        table
-    }
-
-    fn init_king_attacks() -> [Bitboard; 64] {
-        let mut table = [Bitboard::EMPTY; 64];
-        for s in 0..64u8 {
-            let sq = Square(s);
-            let bb = Bitboard::from(sq);
-            table[sq.index()] = bb.north()
-                | bb.south()
-                | bb.east()
-                | bb.west()
-                | bb.north_east()
-                | bb.north_west()
-                | bb.south_east()
-                | bb.south_west();
-        }
-        table
+        assert!(bishop_offset == BISHOP_TABLE_SIZE && rook_offset == ROOK_TABLE_SIZE);
+        tables
     }
 }
 
@@ -270,112 +197,204 @@ impl AttackTables {
 /// distributes over a union, so this is the union of the table's entries for
 /// `pawns` without a lookup per pawn.
 #[inline(always)]
-pub(crate) fn pawn_attacks_of(color: Color, pawns: Bitboard) -> Bitboard {
+pub(crate) const fn pawn_attacks_of(color: Color, pawns: Bitboard) -> Bitboard {
     match color {
         // White pawns attack north-east and north-west, Black south-east and
         // south-west.
-        Color::White => pawns.north_east() | pawns.north_west(),
-        Color::Black => pawns.south_east() | pawns.south_west(),
+        Color::White => Bitboard(pawns.north_east().0 | pawns.north_west().0),
+        Color::Black => Bitboard(pawns.south_east().0 | pawns.south_west().0),
     }
 }
 
 /// The squares attacked by knights standing on `knights`; see
 /// [`pawn_attacks_of`].
 #[inline(always)]
-pub(crate) fn knight_attacks_of(knights: Bitboard) -> Bitboard {
+pub(crate) const fn knight_attacks_of(knights: Bitboard) -> Bitboard {
     // Two-square jumps: (±1, ±2) and (±2, ±1)
-    let h1 = knights.east() | knights.west();
-    let h2 = knights.east().east() | knights.west().west();
-    h1.north().north() | h1.south().south() | h2.north() | h2.south()
+    let h1 = Bitboard(knights.east().0 | knights.west().0);
+    let h2 = Bitboard(knights.east().east().0 | knights.west().west().0);
+    Bitboard(h1.north().north().0 | h1.south().south().0 | h2.north().0 | h2.south().0)
+}
+
+/// The squares a king on `king` attacks.
+const fn king_attacks_of(king: Bitboard) -> Bitboard {
+    Bitboard(
+        king.north().0
+            | king.south().0
+            | king.east().0
+            | king.west().0
+            | king.north_east().0
+            | king.north_west().0
+            | king.south_east().0
+            | king.south_west().0,
+    )
+}
+
+/// Fill one square's run of a slider table, starting at `offset`, and return
+/// the square's entry. Under PEXT a blocker subset's slot is its rank among
+/// the mask's subsets, which is the order the carry-rippler visits them in;
+/// under magics it is the top bits of the magic product, and a baked magic
+/// that sends two different attack sets to one slot stops the build.
+const fn fill_slider(
+    table: &mut [Bitboard],
+    offset: usize,
+    sq: Square,
+    is_rook: bool,
+) -> SliderEntry {
+    let mask = if is_rook {
+        rook_mask(sq)
+    } else {
+        bishop_mask(sq)
+    };
+    #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
+    let magic = if is_rook {
+        ROOK_MAGICS[sq.0 as usize]
+    } else {
+        BISHOP_MAGICS[sq.0 as usize]
+    };
+    #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
+    let shift = 64 - mask.count_ones();
+    let mut occ = 0u64;
+    let mut rank = 0;
+    loop {
+        let attacks = if is_rook {
+            rook_attacks_slow(sq, occ)
+        } else {
+            bishop_attacks_slow(sq, occ)
+        };
+        #[cfg(all(rarog_pext, target_arch = "x86_64"))]
+        let slot = offset + rank;
+        #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
+        let slot = offset + infra::index(occ.wrapping_mul(magic) >> shift);
+        assert!(
+            table[slot].is_empty() || table[slot].0 == attacks,
+            "a baked magic sends two attack sets to one slot"
+        );
+        table[slot] = Bitboard(attacks);
+        rank += 1;
+        occ = occ.wrapping_sub(mask) & mask;
+        if occ == 0 {
+            break;
+        }
+    }
+    assert!(rank == 1 << mask.count_ones());
+    #[cfg(all(rarog_pext, target_arch = "x86_64"))]
+    {
+        SliderEntry::new(mask, offset)
+    }
+    #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
+    {
+        SliderEntry::new(mask, magic, shift, offset)
+    }
 }
 
 // -----------------------------------------------------------------------
-// Slow (reference) attack generators — used only during magic init
+// Slow (reference) attack generators — used only to build the tables
 // -----------------------------------------------------------------------
 
 /// Rook relevant occupancy mask (excludes edges).
-fn rook_mask(sq: Square) -> u64 {
+const fn rook_mask(sq: Square) -> u64 {
     let r = sq.0 / 8;
     let f = sq.0 % 8;
     let mut mask = 0u64;
-    for i in (r + 1)..7 {
+    let mut i = r + 1;
+    while i < 7 {
         mask |= 1u64 << (i * 8 + f);
+        i += 1;
     }
-    for i in 1..r {
+    let mut i = 1;
+    while i < r {
         mask |= 1u64 << (i * 8 + f);
+        i += 1;
     }
-    for i in (f + 1)..7 {
+    let mut i = f + 1;
+    while i < 7 {
         mask |= 1u64 << (r * 8 + i);
+        i += 1;
     }
-    for i in 1..f {
+    let mut i = 1;
+    while i < f {
         mask |= 1u64 << (r * 8 + i);
+        i += 1;
     }
     mask
 }
 
 /// Bishop relevant occupancy mask (excludes edges).
-fn bishop_mask(sq: Square) -> u64 {
-    let r = sq.0 / 8;
-    let f = sq.0 % 8;
+const fn bishop_mask(sq: Square) -> u64 {
+    let r = (sq.0 / 8) as i32;
+    let f = (sq.0 % 8) as i32;
     let mut mask = 0u64;
-    for i in 1..8i32 {
-        let nr = r as i32 + i;
-        let nf = f as i32 + i;
+    let mut i = 1;
+    while i < 8 {
+        let (nr, nf) = (r + i, f + i);
         if nr >= 7 || nf >= 7 {
             break;
         }
         mask |= 1u64 << (nr * 8 + nf);
+        i += 1;
     }
-    for i in 1..8i32 {
-        let nr = r as i32 + i;
-        let nf = f as i32 - i;
+    let mut i = 1;
+    while i < 8 {
+        let (nr, nf) = (r + i, f - i);
         if nr >= 7 || nf <= 0 {
             break;
         }
         mask |= 1u64 << (nr * 8 + nf);
+        i += 1;
     }
-    for i in 1..8i32 {
-        let nr = r as i32 - i;
-        let nf = f as i32 + i;
+    let mut i = 1;
+    while i < 8 {
+        let (nr, nf) = (r - i, f + i);
         if nr <= 0 || nf >= 7 {
             break;
         }
         mask |= 1u64 << (nr * 8 + nf);
+        i += 1;
     }
-    for i in 1..8i32 {
-        let nr = r as i32 - i;
-        let nf = f as i32 - i;
+    let mut i = 1;
+    while i < 8 {
+        let (nr, nf) = (r - i, f - i);
         if nr <= 0 || nf <= 0 {
             break;
         }
         mask |= 1u64 << (nr * 8 + nf);
+        i += 1;
     }
     mask
 }
 
-fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
+const fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
     let r = sq.0 / 8;
     let f = sq.0 % 8;
     let mut att = 0u64;
-    for i in (r + 1)..8 {
+    let mut i = r + 1;
+    while i < 8 {
+        att |= 1u64 << (i * 8 + f);
+        if (occ >> (i * 8 + f)) & 1 != 0 {
+            break;
+        }
+        i += 1;
+    }
+    let mut i = r;
+    while i > 0 {
+        i -= 1;
         att |= 1u64 << (i * 8 + f);
         if (occ >> (i * 8 + f)) & 1 != 0 {
             break;
         }
     }
-    for i in (0..r).rev() {
-        att |= 1u64 << (i * 8 + f);
-        if (occ >> (i * 8 + f)) & 1 != 0 {
-            break;
-        }
-    }
-    for i in (f + 1)..8 {
+    let mut i = f + 1;
+    while i < 8 {
         att |= 1u64 << (r * 8 + i);
         if (occ >> (r * 8 + i)) & 1 != 0 {
             break;
         }
+        i += 1;
     }
-    for i in (0..f).rev() {
+    let mut i = f;
+    while i > 0 {
+        i -= 1;
         att |= 1u64 << (r * 8 + i);
         if (occ >> (r * 8 + i)) & 1 != 0 {
             break;
@@ -384,11 +403,12 @@ fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
     att
 }
 
-fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
-    let r = sq.0 as i32 / 8;
-    let f = sq.0 as i32 % 8;
+const fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
+    let r = (sq.0 / 8) as i32;
+    let f = (sq.0 % 8) as i32;
     let mut att = 0u64;
-    for i in 1..8 {
+    let mut i = 1;
+    while i < 8 {
         let (nr, nf) = (r + i, f + i);
         if nr >= 8 || nf >= 8 {
             break;
@@ -397,8 +417,10 @@ fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
         if (occ >> (nr * 8 + nf)) & 1 != 0 {
             break;
         }
+        i += 1;
     }
-    for i in 1..8 {
+    let mut i = 1;
+    while i < 8 {
         let (nr, nf) = (r + i, f - i);
         if nr >= 8 || nf < 0 {
             break;
@@ -407,8 +429,10 @@ fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
         if (occ >> (nr * 8 + nf)) & 1 != 0 {
             break;
         }
+        i += 1;
     }
-    for i in 1..8 {
+    let mut i = 1;
+    while i < 8 {
         let (nr, nf) = (r - i, f + i);
         if nr < 0 || nf >= 8 {
             break;
@@ -417,8 +441,10 @@ fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
         if (occ >> (nr * 8 + nf)) & 1 != 0 {
             break;
         }
+        i += 1;
     }
-    for i in 1..8 {
+    let mut i = 1;
+    while i < 8 {
         let (nr, nf) = (r - i, f - i);
         if nr < 0 || nf < 0 {
             break;
@@ -427,28 +453,9 @@ fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
         if (occ >> (nr * 8 + nf)) & 1 != 0 {
             break;
         }
+        i += 1;
     }
     att
-}
-
-#[cfg(all(rarog_pext, target_arch = "x86_64"))]
-fn init_pext_table(mask: u64, is_rook: bool, sq: Square, table: &mut [Bitboard]) {
-    let size = 1usize << mask.count_ones();
-    debug_assert_eq!(table.len(), size);
-
-    let mut occ = 0u64;
-    loop {
-        let idx = pext_index(occ, mask);
-        table[idx] = Bitboard(if is_rook {
-            rook_attacks_slow(sq, occ)
-        } else {
-            bishop_attacks_slow(sq, occ)
-        });
-        occ = occ.wrapping_sub(mask) & mask;
-        if occ == 0 {
-            break;
-        }
-    }
 }
 
 #[cfg(all(rarog_pext, target_arch = "x86_64"))]
@@ -457,127 +464,9 @@ fn pext_index(occ: u64, mask: u64) -> usize {
     unsafe { std::arch::x86_64::_pext_u64(occ, mask) as usize }
 }
 
-// -----------------------------------------------------------------------
-// Magic finding
-// -----------------------------------------------------------------------
-
-/// Find a magic number for `sq` with the given `mask` / `shift`.
-/// Fills `table[0..size]` with the correct attack bitboards on success.
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-fn find_magic(
-    mask: u64,
-    shift: u32,
-    is_rook: bool,
-    sq: Square,
-    rng: &mut Rng,
-    table: &mut [Bitboard],
-) -> u64 {
-    let n = mask.count_ones() as usize;
-    let size = 1usize << n;
-    debug_assert_eq!(table.len(), size);
-
-    // Enumerate all subsets of `mask` via carry-rippler and precompute attacks.
-    let mut occs = vec![0u64; size];
-    let mut atts = vec![0u64; size];
-    let mut occ = 0u64;
-    let mut i = 0;
-    loop {
-        occs[i] = occ;
-        atts[i] = if is_rook {
-            rook_attacks_slow(sq, occ)
-        } else {
-            bishop_attacks_slow(sq, occ)
-        };
-        i += 1;
-        occ = occ.wrapping_sub(mask) & mask;
-        if occ == 0 {
-            break;
-        }
-    }
-
-    // Try the baked magic for this square first. It is exactly what
-    // this search produces — the RNG is seeded to a constant and is
-    // deterministic — so the fast path is the overwhelming case and the search
-    // below is a fallback that never runs in a stock build. Keeping the
-    // fallback (rather than trusting the constant) means a wrong or stale
-    // baked value costs startup time, never correctness.
-    let baked = if is_rook {
-        ROOK_MAGICS[sq.index()]
-    } else {
-        BISHOP_MAGICS[sq.index()]
-    };
-    if try_magic(baked, shift, &occs, &atts, table) {
-        return baked;
-    }
-
-    // Try random sparse candidates until we find a valid magic.
-    loop {
-        let magic = rng.sparse();
-        // Quick reject: upper byte of (mask * magic) should have enough bits set.
-        if (mask.wrapping_mul(magic) >> 56).count_ones() < 6 {
-            continue;
-        }
-        if try_magic(magic, shift, &occs, &atts, table) {
-            return magic;
-        }
-    }
-}
-
-/// Fill `table` using `magic`, reporting whether the mapping is collision-free.
-/// A `false` return leaves the table dirty; the caller retries or overwrites.
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-fn try_magic(magic: u64, shift: u32, occs: &[u64], atts: &[u64], table: &mut [Bitboard]) -> bool {
-    for t in table.iter_mut() {
-        *t = Bitboard::EMPTY;
-    }
-    for j in 0..occs.len() {
-        let idx = crate::infra::index((occs[j].wrapping_mul(magic)) >> shift);
-        if table[idx].is_empty() {
-            table[idx] = Bitboard(atts[j]);
-        } else if table[idx].0 != atts[j] {
-            return false;
-        }
-    }
-    true
-}
-
-// -----------------------------------------------------------------------
-// splitmix64 PRNG (sparse variant) — same as basilisk
-// -----------------------------------------------------------------------
-
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-struct Rng(u64);
-
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-impl Rng {
-    fn new(seed: u64) -> Self {
-        Self(seed)
-    }
-
-    #[inline]
-    fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    /// Sparse 64-bit value (AND of three randoms — biased toward few set bits,
-    /// which gives good magic candidates).
-    #[inline]
-    fn sparse(&mut self) -> u64 {
-        self.next() & self.next() & self.next()
-    }
-}
-
-// Magics baked at build time. The runtime search that produced them
-// is deterministic (fixed RNG seed), so these ARE what `find_magic` computes --
-// baking them removes the ~170 ms magic search from startup on the generic /
-// AVX2 build without changing a single table entry. `find_magic` verifies each
-// baked value before use and falls back to searching if one ever fails, so a
-// stale constant can only cost startup time, never correctness.
-// `baked_magics_cover_every_square` asserts the fallback stays unused.
+// Magics found once by a seeded search and baked in. The compiler builds the
+// tables from them and stops the build if one ever sends two different attack
+// sets to one slot, so a wrong constant cannot reach a binary.
 #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
 const BISHOP_MAGICS: [u64; 64] = [
     0x00500202205C0100,
@@ -713,28 +602,3 @@ const ROOK_MAGICS: [u64; 64] = [
     0x2108009058020104,
     0x0001010406482282,
 ];
-
-#[cfg(test)]
-#[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-mod magic_tests {
-    use super::*;
-
-    /// Every square must be served by its BAKED magic, i.e. the
-    /// `find_magic` fallback never ran. If this fails the engine is still
-    /// correct (the fallback searched a fresh magic) but startup silently
-    /// regressed by ~170 ms, which is exactly what baking was meant to remove.
-    #[test]
-    fn baked_magics_cover_every_square() {
-        let attacks = &*ATTACKS;
-        for sq in 0..64 {
-            assert_eq!(
-                attacks.bishop[sq].magic, BISHOP_MAGICS[sq],
-                "bishop magic for square {sq} fell back to a runtime search"
-            );
-            assert_eq!(
-                attacks.rook[sq].magic, ROOK_MAGICS[sq],
-                "rook magic for square {sq} fell back to a runtime search"
-            );
-        }
-    }
-}

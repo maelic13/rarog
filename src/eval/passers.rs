@@ -39,7 +39,7 @@ fn forward_fill(color: Color, set: Bitboard) -> Bitboard {
 
 /// Every square `color`'s pieces attack under `occupied`.
 fn attacks_of(board: &Board, color: Color, occupied: Bitboard) -> Bitboard {
-    let atk = &*ATTACKS;
+    let atk = &ATTACKS;
     let queens = board.pieces(color, Piece::Queen);
     let mut attacks = pawn_attacks_of(color, board.pieces(color, Piece::Pawn))
         | knight_attacks_of(board.pieces(color, Piece::Knight))

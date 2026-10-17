@@ -10,7 +10,7 @@ use rarog::board::{ATTACKS, Bitboard, Square};
 
 #[test]
 fn every_slider_occupancy_matches_coordinate_rays() {
-    let attacks = &*ATTACKS;
+    let attacks = &ATTACKS;
     let backend = if cfg!(all(rarog_pext, target_arch = "x86_64")) {
         "pext"
     } else {

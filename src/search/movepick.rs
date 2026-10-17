@@ -466,7 +466,7 @@ impl Searcher {
             | by[Piece::Rook as usize]
             | by[Piece::Queen as usize]
             | by[Piece::King as usize];
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let their = |piece| board.pieces(them, piece);
         let knight_targets =
             (their(Piece::Bishop) & !all) | their(Piece::Rook) | their(Piece::Queen);

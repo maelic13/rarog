@@ -20,11 +20,11 @@ macro_rules! info_string {
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
 
-/// Build every process-wide lookup table. A table built on first use is built
-/// inside the first search that needs it and charged to that search's clock,
-/// so the engine builds them all before it reads a command.
+/// Build every process-wide lookup table the compiler does not build. A table
+/// built on first use is built inside the first search that needs it and
+/// charged to that search's clock, so the engine builds them all before it
+/// reads a command.
 pub fn initialize_tables() {
-    std::sync::LazyLock::force(&board::ATTACKS);
     eval::endgame::kpk::initialize();
 }
 

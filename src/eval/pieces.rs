@@ -333,11 +333,7 @@ impl Evaluator {
         mg: &mut i32,
         eg: &mut i32,
     ) {
-        // Resolve the LazyLock once for the whole feature group. Each slider
-        // accessor is hot and inlined; spelling `ATTACKS.*` inside the loops
-        // otherwise asks the compiler to rediscover that initialization state
-        // repeatedly.
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let them = !color;
         let pawns_only = pawns[0] | pawns[1];
         let enemy_pawns = pawns[them as usize];

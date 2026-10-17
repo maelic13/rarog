@@ -16,7 +16,7 @@
 /// `u64 → usize` for hash/key indexing. Lossless: the crate compiles only on
 /// 64-bit targets, so `usize` is exactly `u64`-wide.
 #[inline(always)]
-pub fn index(x: u64) -> usize {
+pub const fn index(x: u64) -> usize {
     x as usize
 }
 

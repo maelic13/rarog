@@ -245,7 +245,7 @@ impl Evaluator {
             self.masks = self.mask_source.fix();
         }
 
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let mut mg = 0;
         let mut eg = 0;
         let mut phase = 0;

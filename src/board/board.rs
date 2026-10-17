@@ -583,7 +583,7 @@ impl Board {
         }
 
         let promotion = mv.promotion();
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let to_bb = Bitboard::from(to);
         let canonical = match piece {
             Piece::Pawn => {
@@ -827,7 +827,7 @@ impl Board {
         let us = self.side_to_move;
         let them = !us;
         let ksq = self.king_sq(them);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let occ = self.all_occ;
         let bishop_from_k = atk.bishop(ksq, occ);
         let rook_from_k = atk.rook(ksq, occ);
@@ -872,7 +872,7 @@ impl Board {
     pub fn threats(&self) -> Threats {
         let us = self.side_to_move;
         let them = !us;
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let occ = self.all_occ ^ self.pieces(us, Piece::King);
         let mut by_piece = [Bitboard::EMPTY; 6];
         by_piece[Piece::Pawn as usize] = pawn_attacks_of(them, self.pieces(them, Piece::Pawn));
@@ -970,7 +970,7 @@ impl Board {
         let to_bb = Bitboard::from(to);
         let their_king = self.king_sq(them);
         let their_king_bb = Bitboard::from(their_king);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
 
         let moving_piece = if mv.is_promo() {
             mv.promo_piece()
@@ -1114,7 +1114,7 @@ impl Board {
         occ: Bitboard,
         captured: Option<(Square, Piece)>,
     ) -> bool {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let captured_bb = captured.map_or(Bitboard::EMPTY, |(captured_sq, _)| {
             Bitboard::from(captured_sq)
         });
@@ -1357,7 +1357,7 @@ impl Board {
 
     #[inline(always)]
     pub fn attackers_to_color(&self, sq: Square, occ: Bitboard, color: Color) -> Bitboard {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let diagonal = self.pieces(color, Piece::Bishop) | self.pieces(color, Piece::Queen);
         let orthogonal = self.pieces(color, Piece::Rook) | self.pieces(color, Piece::Queen);
 
@@ -1378,7 +1378,7 @@ impl Board {
     /// slider lookups whenever a pawn, knight or king already answers it.
     #[inline(always)]
     pub(crate) fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         if (atk.pawn(!color, sq) & self.pieces(color, Piece::Pawn) & occ).any() {
             return true;
         }
@@ -1619,7 +1619,7 @@ impl Board {
     #[inline(always)]
     pub(crate) fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
         let occ = self.all_occ;
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
 
         // Pawn attacks
         if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
@@ -1664,7 +1664,7 @@ impl Board {
     /// Bitboard of all pieces that attack the given square (any color).
     #[inline(always)]
     pub fn attackers_to(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         atk.pawn(Color::Black, sq) & self.pieces(Color::White, Piece::Pawn)
             | atk.pawn(Color::White, sq) & self.pieces(Color::Black, Piece::Pawn)
             | atk.knight(sq)
@@ -2115,7 +2115,7 @@ impl Board {
         crate::diag_count!(board_calculate_checkers_calls);
         let attacker = !self.side_to_move;
         let king_sq = self.king_sq(self.side_to_move);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let diagonal = self.pieces(attacker, Piece::Bishop) | self.pieces(attacker, Piece::Queen);
         let orthogonal = self.pieces(attacker, Piece::Rook) | self.pieces(attacker, Piece::Queen);
 
@@ -2214,7 +2214,7 @@ impl Board {
         let Some(cap_sq) = ep_capture_square(capturer, ep_sq) else {
             return Ok(false);
         };
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let mut attackers = atk.pawn(!capturer, ep_sq) & self.pieces(capturer, Piece::Pawn);
         while attackers.any() {
             let from = attackers.pop_lsb();
@@ -2236,7 +2236,7 @@ impl Board {
         let king_sq = self.king_sq(capturer);
         let occ_after =
             (self.all_occ ^ Bitboard::from(from) ^ Bitboard::from(cap_sq)) | Bitboard::from(ep_sq);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let exposed_rook = (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen))
             & atk.rook(king_sq, occ_after);
         let exposed_diag = (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen))
