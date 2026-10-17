@@ -79,6 +79,7 @@ commit that adds it.
 | [`endgame_occurrence_tournament_2026-09-05.md`](endgame_occurrence_tournament_2026-09-05.md) | Endgame occurrence over 36,400 rated games | Deliverable | PLAN section 1, C.5 |
 | [`c03_lazy_research_2026-10-06.md`](c03_lazy_research_2026-10-06.md) | C.0.3 — the lazy path: why the full evaluation loses in play, and what Phase C does about it | Deliverable | C.0.3, C.2, RAR-E19, RAR-E20 |
 | [`c12_speed_pass_2026-10-17.md`](c12_speed_pass_2026-10-17.md) | C.12 speed pass — the overnight record: profile, changes, reads and dropped candidates | Deliverable | C.12 |
+| [`c12_speed_followup_2026-10-17.md`](c12_speed_followup_2026-10-17.md) | C.12 follow-up — the day record: fresh profile, every candidate and read, the large-page decision | Record | C.12 |
 | [`eval_programme_2026-10-05.md`](eval_programme_2026-10-05.md) | Evaluation programme investigation — PLAN C.0 | Deliverable | C.0, C.1–C.3, C.5, RAR-E17, RAR-E18, RAR-O05 |
 | [`feature_inventory_2026-09-09.md`](feature_inventory_2026-09-09.md) | Feature, option and parameter inventory — PLAN A.2.3 | Deliverable | A.2.3 |
 | [`gyatso_read_2026-09-26.md`](gyatso_read_2026-09-26.md) | A reading of GyatsoChess: two post-cluster candidates (TT-hit history bonus, draw-score randomisation) | Deliverable | B.5.1 |

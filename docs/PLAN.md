@@ -2385,6 +2385,17 @@ loss).
     2026-10-16, accepted H1 on 2026-10-17 at 875 pairs: **+42.3 ± 9.5 Elo**
     at `3+0.03` for `a829601`'s binary over the C.13 head's, with +23.6%
     nodes a second and +0.60 plies inside the games. The step is done.
+  - **Follow-up, 2026-10-17 (day session, maintainer request):** a fresh
+    ETW profile and a research pass over the evaluation, search and board
+    for further exact speed-ups (`analysis/c12_speed_followup_2026-10-17.md`).
+    Three exact engine commits (`45d4c30`, `4806fad`, `6285e3d`) read flat
+    together, +0.15% (−0.35% .. +0.65%) with eight PGO builds an arm, and
+    `90700b2` reverts them, so the engine source is `60fedc5`'s; six more
+    candidates were measured and dropped. Large pages for the big tables
+    read **+2.48%** (+2.13% .. +2.84%) on the C.12 head, exact, but add six
+    `unsafe` sites against the frozen floor: `db58a00` on branch
+    `large-pages` waits for the maintainer's decision. Every read puts the
+    remaining cost in memory latency rather than instruction count.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
