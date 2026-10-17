@@ -1472,13 +1472,6 @@ impl Searcher {
         } else {
             MovePicker::staged(tt_move, ply)
         };
-        // The TT move is searched first, so its child's cluster is wanted
-        // soonest, and the pick-time prefetch leaves that probe the shortest
-        // lead of any move: pick, make, probe. Asking for the line before the
-        // noisy fill adds the fill's time to the lead.
-        if !tt_move.is_null() && tt_move != excluded {
-            self.shared.tt.prefetch(board.key_after_hint(tt_move));
-        }
         move_picker.fill_noisy(self, board, &threats);
         let mut best_move = Move::NULL;
         let mut best_score = -INF_SCORE;
@@ -1508,11 +1501,8 @@ impl Searcher {
             // from a key that is exact for most moves, so the line arrives
             // during the pruning tests, the check test and the make; the exact
             // prefetch after the make covers the rest. A pruned move's line is
-            // fetched for nothing, which costs less than waiting for it. The
-            // TT move's line was asked for before the noisy fill.
-            if mv != tt_move {
-                self.shared.tt.prefetch(board.key_after_hint(mv));
-            }
+            // fetched for nothing, which costs less than waiting for it.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut search_count = 0u32;
@@ -2285,12 +2275,6 @@ impl Searcher {
             }
         }
 
-        // As in the main search: the TT move is picked first, so its child's
-        // line is asked for before the generation and scoring that precede
-        // the pick.
-        if !tt_move.is_null() {
-            self.shared.tt.prefetch(board.key_after_hint(tt_move));
-        }
         let mut moves = MoveList::new();
         if in_check {
             board.generate_legal_movelist_into(&mut moves);
@@ -2340,10 +2324,8 @@ impl Searcher {
             }
             let mv = picked.mv;
             // As in the main loop: the child's cluster as soon as the move is
-            // picked, from the hint; the TT move's was asked for above.
-            if mv != tt_move {
-                self.shared.tt.prefetch(board.key_after_hint(mv));
-            }
+            // picked, from the hint.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             // Whether `mv` gives check, once a pruning test has asked: the make
             // then skips recomputing the checkers.
             let mut gives_check = None;
