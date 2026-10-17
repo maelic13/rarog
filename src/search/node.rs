@@ -1423,10 +1423,6 @@ impl Searcher {
             self.td.extended_nodes += 1;
         }
 
-        // Per-node check masks, built at most once and shared by every move's
-        // check test, the make-move hint and quiet scoring; unmaking restores
-        // the board each iteration, so they stay valid for the whole loop.
-        let mut node_ci: Option<CheckInfo> = None;
         let mut move_picker = if NODE::ROOT {
             let mut legal_moves = MoveList::new();
             board.generate_legal_movelist_into(&mut legal_moves);
@@ -1455,15 +1451,7 @@ impl Searcher {
             };
 
             let mut scored = ScoredMoveList::new();
-            self.score_moves(
-                board,
-                &threats,
-                legal_moves,
-                tt_move,
-                ply,
-                &mut scored,
-                &mut node_ci,
-            );
+            self.score_moves(board, &threats, legal_moves, tt_move, ply, &mut scored);
             // Order the root list from the pool's view: a move another thread
             // already proved at a deeper depth goes first. The rotation below
             // diversifies on top of it.
@@ -1493,13 +1481,16 @@ impl Searcher {
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
         let mut legal_move_seen = false;
+        // Per-node check masks, built at most once and shared by every move's
+        // check test and the make-move hint; unmaking restores the board each
+        // iteration, so they stay valid for the whole loop.
+        let mut node_ci: Option<CheckInfo> = None;
         let mut quiet_moves = SearchedMoves::new();
         let mut noisy_moves = SearchedMoves::new();
         // Set by late-move or quiet-futility pruning: the picker hands over no
         // more quiets.
         let mut skip_quiets = false;
-        while let Some(picked) = move_picker.next(self, board, &threats, skip_quiets, &mut node_ci)
-        {
+        while let Some(picked) = move_picker.next(self, board, &threats, skip_quiets) {
             let mv = picked.mv;
             if mv == excluded {
                 continue;
@@ -2297,27 +2288,19 @@ impl Searcher {
 
         let mut best_move = Move::NULL;
         let mut scored = ScoredMoveList::new();
-        // Per-node check masks, built lazily as in the main search; a
-        // capture-only qnode that never tests for check never builds them.
-        let mut node_ci: Option<CheckInfo> = None;
         // Only the scoring reads the threat set; a node with nothing to score
         // (19% of capture generations find none) skips it.
         if !moves.is_empty() {
             let threats = board.threats();
             if in_check {
-                self.score_moves(
-                    board,
-                    &threats,
-                    moves.as_slice(),
-                    tt_move,
-                    ply,
-                    &mut scored,
-                    &mut node_ci,
-                );
+                self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
             } else {
                 self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
             }
         }
+        // Per-node check masks, built lazily as in the main search; a
+        // capture-only qnode that never tests for check never builds them.
+        let mut node_ci: Option<CheckInfo> = None;
         let mut tactical_count = 0usize;
         // A capture on the square the previous move landed on is a recapture;
         // a null move lands nowhere.

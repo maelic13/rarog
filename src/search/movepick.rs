@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::slice;
 
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
-use crate::board::{ATTACKS, Bitboard, Board, CheckInfo, Color, Move, MoveList, Piece, Threats};
+use crate::board::{ATTACKS, Bitboard, Board, Color, Move, MoveList, Piece, Threats};
 use crate::eval::piece_value;
 
 use super::Searcher;
@@ -291,16 +291,13 @@ impl MovePicker {
     }
 
     /// Yield the next move. With `skip_quiets` set no further quiet is
-    /// emitted; the picker goes straight to the bad noisy moves. `node_ci`
-    /// is the node's check masks, shared with the move loop: quiet scoring
-    /// reads them, and whichever of the two needs them first computes them.
+    /// emitted; the picker goes straight to the bad noisy moves.
     pub(super) fn next(
         &mut self,
         searcher: &Searcher,
         board: &mut Board,
         threats: &Threats,
         skip_quiets: bool,
-        node_ci: &mut Option<CheckInfo>,
     ) -> Option<ScoredMove> {
         match self {
             Self::Full {
@@ -387,7 +384,6 @@ impl MovePicker {
                             *tt_move,
                             *ply,
                             moves,
-                            node_ci,
                         );
                         *stage = Stage::Quiets;
                     }
@@ -448,13 +444,7 @@ struct QuietContext {
 }
 
 impl Searcher {
-    fn quiet_context(
-        &self,
-        board: &Board,
-        threats: &Threats,
-        ply: usize,
-        node_ci: &mut Option<CheckInfo>,
-    ) -> QuietContext {
+    fn quiet_context(&self, board: &Board, threats: &Threats, ply: usize) -> QuietContext {
         let stm = board.side_to_move();
         let them = !stm;
         let by = &threats.by_piece;
@@ -500,19 +490,7 @@ impl Searcher {
         } else {
             Bitboard::EMPTY
         };
-        // The node's check masks, shared with the move loop's check tests:
-        // the first of the two to need them computes them.
-        let check_info = node_ci.get_or_insert_with(|| board.check_info());
-        #[cfg(debug_assertions)]
-        {
-            let fresh = board.check_info();
-            debug_assert!(
-                Piece::ALL.iter().all(|&piece| {
-                    check_info.direct_check_squares(piece) == fresh.direct_check_squares(piece)
-                }),
-                "the shared check masks are not this position's"
-            );
-        }
+        let check_info = board.check_info();
         let mut check_squares = [Bitboard::EMPTY; 6];
         for piece in Piece::ALL {
             check_squares[piece as usize] = check_info.direct_check_squares(piece);
@@ -543,12 +521,11 @@ impl Searcher {
         tt_move: Move,
         ply: usize,
         out: &mut ScoredMoveList,
-        node_ci: &mut Option<CheckInfo>,
     ) -> usize {
         if quiets.is_empty() {
             return 0;
         }
-        let ctx = self.quiet_context(board, threats, ply, node_ci);
+        let ctx = self.quiet_context(board, threats, ply);
         let hist = &self.td.hist;
         let mut survivors = 0;
         for &mv in quiets {
@@ -646,7 +623,6 @@ impl Searcher {
         tt_move: Move,
         ply: usize,
         scored: &mut ScoredMoveList,
-        node_ci: &mut Option<CheckInfo>,
     ) {
         let mut ctx = None;
         for &mv in moves {
@@ -661,8 +637,7 @@ impl Searcher {
                     scored.push(mv, -2_000_000 + noisy, -1, 0);
                 }
             } else {
-                let ctx =
-                    ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply, node_ci));
+                let ctx = ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply));
                 let (score, history) = self.quiet_score(board, threats, ctx, &self.td.hist, mv);
                 scored.push(mv, score, 0, history);
             }
@@ -784,7 +759,7 @@ mod tests {
         threats: &Threats,
     ) -> Vec<(Move, Stage)> {
         let mut out = Vec::new();
-        while let Some(picked) = picker.next(searcher, board, threats, false, &mut None) {
+        while let Some(picked) = picker.next(searcher, board, threats, false) {
             out.push((picked.mv, picker.stage()));
         }
         out
@@ -822,7 +797,7 @@ mod tests {
                 assert_eq!(got, legal, "staged picker, fen {fen}, tt {tt}");
 
                 let mut scored = ScoredMoveList::new();
-                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored, &mut None);
+                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored);
                 let mut full = MovePicker::full(scored, tt);
                 let mut got: Vec<Move> = drain(&mut full, &searcher, &mut board, &threats)
                     .into_iter()
@@ -901,7 +876,7 @@ mod tests {
         let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let mut emitted = Vec::new();
         let mut skip = false;
-        while let Some(picked) = picker.next(&searcher, &mut board, &threats, skip, &mut None) {
+        while let Some(picked) = picker.next(&searcher, &mut board, &threats, skip) {
             if picker.stage() == Stage::Quiets {
                 skip = true;
             }
@@ -914,14 +889,10 @@ mod tests {
                 .iter()
                 .any(|(mv, s)| *mv == losing && *s == Stage::BadNoisy)
         );
+        assert!(picker.next(&searcher, &mut board, &threats, true).is_none());
         assert!(
             picker
-                .next(&searcher, &mut board, &threats, true, &mut None)
-                .is_none()
-        );
-        assert!(
-            picker
-                .next(&searcher, &mut board, &threats, false, &mut None)
+                .next(&searcher, &mut board, &threats, false)
                 .is_none()
         );
     }
@@ -936,10 +907,10 @@ mod tests {
         let check_info = board.check_info();
         let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let first = picker
-            .next(&searcher, &mut board, &threats, false, &mut None)
+            .next(&searcher, &mut board, &threats, false)
             .expect("a quiet first");
         let mut after_skip = Vec::new();
-        while let Some(picked) = picker.next(&searcher, &mut board, &threats, true, &mut None) {
+        while let Some(picked) = picker.next(&searcher, &mut board, &threats, true) {
             after_skip.push(picked.mv);
         }
         let legal = board.generate_legal_moves();
@@ -969,15 +940,7 @@ mod tests {
         let threats = board.threats();
         let legal = board.generate_legal_moves();
         let mut scored = ScoredMoveList::new();
-        searcher.score_moves(
-            &board,
-            &threats,
-            &legal,
-            Move::NULL,
-            0,
-            &mut scored,
-            &mut None,
-        );
+        searcher.score_moves(&board, &threats, &legal, Move::NULL, 0, &mut scored);
         let score_of = |uci: &str, scored: &mut ScoredMoveList| {
             let mv = board.parse_move(uci).expect("legal");
             scored
