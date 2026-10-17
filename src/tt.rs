@@ -791,19 +791,34 @@ fn cluster_count<T>(mb: usize) -> usize {
 fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
     let entries = &table.clusters[crate::infra::index(key) & table.mask].entries;
-    let entry = entries[0];
-    if entry.key16 == key16 && entry.is_occupied() {
-        return Some(entry);
+    // Which slot holds the position, if any, is unpredictable, so the three
+    // slots are tested without a branch each and the earliest match wins, as
+    // a chain of early returns had it; the one branch left is hit or miss.
+    let holds = |entry: TtEntry| (entry.key16 == key16) & entry.is_occupied();
+    let slot = std::hint::select_unpredictable(holds(entries[2]), 2, LOCAL_CLUSTER_ENTRIES);
+    let slot = std::hint::select_unpredictable(holds(entries[1]), 1, slot);
+    let slot = std::hint::select_unpredictable(holds(entries[0]), 0, slot);
+    let found = entries.get(slot).copied();
+    #[cfg(debug_assertions)]
+    {
+        let bits = |entry: TtEntry| {
+            (
+                entry.key16,
+                entry.mv,
+                entry.score,
+                entry.static_eval,
+                entry.depth,
+                entry.flag_age,
+            )
+        };
+        let sequential = entries.iter().copied().find(|entry| holds(*entry));
+        debug_assert_eq!(
+            found.map(bits),
+            sequential.map(bits),
+            "the branch-free probe disagrees with the sequential one"
+        );
     }
-    let entry = entries[1];
-    if entry.key16 == key16 && entry.is_occupied() {
-        return Some(entry);
-    }
-    let entry = entries[2];
-    if entry.key16 == key16 && entry.is_occupied() {
-        return Some(entry);
-    }
-    None
+    found
 }
 
 #[inline(always)]
