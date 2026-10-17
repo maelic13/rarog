@@ -708,8 +708,6 @@ impl Searcher {
         self.td.stack[ply].static_eval = static_eval;
         self.td.stack[ply].tt_pv = tt_pv;
         self.td.stack[ply].tt_move = tt_move;
-        let threats = board.threats();
-        self.td.stack[ply].threats = threats.all;
         // The eval swing across the parent's quiet move trains that move's
         // history: a move after which the side to move stands worse than the
         // parent stood was a good one for the parent.
@@ -846,31 +844,55 @@ impl Searcher {
         // the position improves, widens with the correction's size (an eval
         // the tables keep moving is less trusted) and relaxes when no piece
         // of ours stands attacked. Returns a score pulled toward beta.
+        //
+        // The node's threat set is read here only by that relief, and the
+        // relief only lowers the margin. So the test runs in two steps: a
+        // node that clears the full margin cuts without the set, one short
+        // of the relieved margin cannot cut, and only a node between the two
+        // computes the set, which the move loop then reuses.
+        let mut threats = None;
         if !tt_pv && !in_check && excluded.is_null() {
             let core = &self.cfg.core;
-            let unthreatened = (threats.all & board.color_occ(board.side_to_move())).is_empty();
-            let margin = (core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
+            let base = core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
                 - core.rfp_improvement * improvement / 1024
                 + core.rfp_correction * corr_abs / 1024
-                - core.rfp_threat * i32::from(unthreatened)
-                + core.rfp_constant)
-                .max(2);
-            if eval_for_pruning >= beta + margin
-                && beta > -TB_WIN_SCORE
-                && eval_for_pruning < TB_WIN_SCORE
+                + core.rfp_constant;
+            let in_band = beta > -TB_WIN_SCORE && eval_for_pruning < TB_WIN_SCORE;
+            let cuts = in_band
+                && eval_for_pruning >= beta + (base - core.rfp_threat).max(2)
+                && (eval_for_pruning >= beta + base.max(2) || {
+                    let set = board.threats();
+                    let relief = (set.all & board.color_occ(board.side_to_move())).is_empty();
+                    threats = Some(set);
+                    relief
+                });
+            #[cfg(debug_assertions)]
             {
+                let set = threats.unwrap_or_else(|| board.threats());
+                let relief = (set.all & board.color_occ(board.side_to_move())).is_empty();
+                let margin = (base - core.rfp_threat * i32::from(relief)).max(2);
+                debug_assert_eq!(
+                    cuts,
+                    in_band && eval_for_pruning >= beta + margin,
+                    "the two-step reverse-futility test disagrees with the full one"
+                );
+            }
+            if cuts {
                 crate::diag_count!(rfp_cut);
                 let score = eval_for_pruning + (beta - eval_for_pruning) * core.rfp_lerp / 1024;
                 trace_decision!(
                     self,
                     ply,
                     "rfp depth {depth} estimated {eval_for_pruning} static {static_eval} \
-                     improvement {improvement} corr {corr_abs} unthreatened {unthreatened} \
-                     margin {margin} beta {beta} returns {score}"
+                     improvement {improvement} corr {corr_abs} relief_consulted {} \
+                     base {base} beta {beta} returns {score}",
+                    threats.is_some()
                 );
                 return score;
             }
         }
+        let threats = threats.unwrap_or_else(|| board.threats());
+        self.td.stack[ply].threats = threats.all;
 
         // Whether the table suggests the TT move may be singular: a deep
         // enough lower or exact bound with a score short of the decisive
@@ -2265,12 +2287,16 @@ impl Searcher {
         }
 
         let mut best_move = Move::NULL;
-        let threats = board.threats();
         let mut scored = ScoredMoveList::new();
-        if in_check {
-            self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
-        } else {
-            self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
+        // Only the scoring reads the threat set; a node with nothing to score
+        // (19% of capture generations find none) skips it.
+        if !moves.is_empty() {
+            let threats = board.threats();
+            if in_check {
+                self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
+            } else {
+                self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
+            }
         }
         // Per-node check masks, built lazily as in the main search; a
         // capture-only qnode that never tests for check never builds them.
