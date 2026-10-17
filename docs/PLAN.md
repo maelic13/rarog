@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.12 | LOCAL_QUALIFIED | I2 | Speed pass (maintainer request 2026-10-13), run overnight 2026-10-16/17: 21 exact engine commits, +22.47% pooled-PGO NPS over the C.13 head's engine at the same fingerprint, stop rule fired (`analysis/c12_speed_pass_2026-10-17.md`); closes on the maintainer's word, after the final speed gate they asked for |
+| C.12 | GAME_GATE | V | Speed pass (maintainer request 2026-10-13), run overnight 2026-10-16/17: 21 exact engine commits, +22.47% pooled-PGO NPS over the C.13 head's engine at the same fingerprint, stop rule fired (`analysis/c12_speed_pass_2026-10-17.md`); the speed gate RAR-S99 is registered (the maintainer's run), and its H1 closes the step |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2380,9 +2380,11 @@ loss).
     against the engine the night started from (`f86a657`, the C.13 head's
     engine), four builds an arm on a quiet host. The search-side commits are
     in D.3's change log. Stop: the last six candidates read inside the
-    instrument's resolution or below zero. Left: closing the step, and the
-    final speed gate the maintainer asked for on 2026-10-16 to price the
-    speed in Elo; the step's own contract needs no games.
+    instrument's resolution or below zero. Two exact cleanups followed
+    (`91d0b0f`, `e55dc9e`: the narrowings' doc comments and the PEXT path's
+    clippy findings). Left: RAR-S99, the speed gate the maintainer asked for
+    on 2026-10-16, registered 2026-10-17 on `a829601`'s binary; its H1
+    closes the step, whose own contract needs no games.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
