@@ -405,7 +405,7 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
             },
         ]
     };
-    let mut flags = match arch {
+    match arch {
         Arch::Base => cpu("x86-64"),
         Arch::Avx2 => cpu("x86-64-v3"),
         Arch::Pext => {
@@ -418,15 +418,7 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
             flags
         }
         Arch::Arm64 => cpu("generic"),
-    };
-    // LLVM's X86 cmov-conversion pass turns conditional moves back into
-    // branches where the profile calls them predictable; the best-move
-    // selection showed that wrong for a branch that is biased but mispredicts.
-    // Switched off for the whole crate, measured on the pooled-PGO read.
-    if arch != Arch::Arm64 {
-        flags.extend(["-C".into(), "llvm-args=-x86-cmov-converter=false".into()]);
     }
-    flags
 }
 
 // ─── The ISA contract, as something that EXECUTES ────────────────────────────
@@ -1709,20 +1701,11 @@ mod tests {
     /// built against, so a change here changes what users run.
     #[test]
     fn portable_baselines_are_pinned() {
-        const NO_CMOV_CONVERTER: &str = " -C llvm-args=-x86-cmov-converter=false";
-        assert_eq!(
-            flags(Arch::Base, false),
-            format!("-C target-cpu=x86-64{NO_CMOV_CONVERTER}")
-        );
-        assert_eq!(
-            flags(Arch::Avx2, false),
-            format!("-C target-cpu=x86-64-v3{NO_CMOV_CONVERTER}")
-        );
+        assert_eq!(flags(Arch::Base, false), "-C target-cpu=x86-64");
+        assert_eq!(flags(Arch::Avx2, false), "-C target-cpu=x86-64-v3");
         assert_eq!(
             flags(Arch::Pext, false),
-            format!(
-                "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2{NO_CMOV_CONVERTER}"
-            )
+            "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
         );
         assert_eq!(flags(Arch::Arm64, false), "-C target-cpu=generic");
     }
