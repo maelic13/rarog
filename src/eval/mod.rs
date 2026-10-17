@@ -80,20 +80,27 @@ const PSQ_PIECES: [Piece; 6] = Piece::ALL;
 
 // Under `texel` the caches are written but never read (hits are bypassed so
 // every position re-emits its trace), so the fields look dead to that build.
+//
+// One entry is one cache line, so a probe touches one line. The pawns'
+// attacks are two shifts of the pawn sets and are not kept.
 #[cfg_attr(feature = "texel", allow(dead_code))]
 #[derive(Copy, Clone, Default)]
+#[repr(align(64))]
 struct PawnEntry {
     key: u64,
     mg: i32,
     eg: i32,
     passed: [Bitboard; 2],
-    attacks: [Bitboard; 2],
     /// Each king's shelter and storm score over this entry's pawns, once
     /// computed. It also depends on the king square and castling rights, so
     /// it is kept with them and recomputed when either differs; a new entry
     /// starts with none.
     shelter: [Option<CachedShelter>; 2],
 }
+const _: () = assert!(
+    core::mem::size_of::<PawnEntry>() == 64,
+    "a pawn entry no longer fills exactly one cache line"
+);
 
 #[cfg_attr(feature = "texel", allow(dead_code))]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

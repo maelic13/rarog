@@ -3,7 +3,7 @@
 
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, PAWN_TABLE_SIZE, PawnEntry, color_sign, relative_rank};
-use crate::board::attacks::AttackTables;
+use crate::board::attacks::{AttackTables, pawn_attacks_of};
 use crate::board::{Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
@@ -176,6 +176,9 @@ impl Evaluator {
     ) -> (i32, i32) {
         let key = board.pawn_key();
         let slot = infra::index(key) & (PAWN_TABLE_SIZE - 1);
+        for color in [Color::White, Color::Black] {
+            attacks[color as usize] = pawn_attacks_of(color, board.pieces(color, Piece::Pawn));
+        }
         // Bypass the pawn cache under `texel`: a hit skips the trace counts.
         #[cfg(not(feature = "texel"))]
         {
@@ -184,7 +187,6 @@ impl Evaluator {
             let cached = &self.pawn_table[slot];
             if cached.key == key {
                 *passed = cached.passed;
-                *attacks = cached.attacks;
                 return (cached.mg, cached.eg);
             }
         }
@@ -198,11 +200,6 @@ impl Evaluator {
             let them = !us;
             let our_pawns = board.pieces(us, Piece::Pawn);
             let their_pawns = board.pieces(them, Piece::Pawn);
-            attacks[us as usize] = if us == Color::White {
-                our_pawns.north_east() | our_pawns.north_west()
-            } else {
-                our_pawns.south_east() | our_pawns.south_west()
-            };
 
             let mut tmp = our_pawns;
             passed[us as usize] = Bitboard::EMPTY;
@@ -345,7 +342,6 @@ impl Evaluator {
             mg,
             eg,
             passed: *passed,
-            attacks: *attacks,
             shelter: [None; 2],
         };
         (mg, eg)
