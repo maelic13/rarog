@@ -440,7 +440,7 @@ struct QuietContext {
     check_squares: [Bitboard; 6],
     wall_pawns: Bitboard,
     pawn_row: usize,
-    cont: [Option<usize>; 4],
+    cont: [Option<usize>; CONT_PLY_BACK.len()],
 }
 
 impl Searcher {
@@ -495,10 +495,7 @@ impl Searcher {
         for piece in Piece::ALL {
             check_squares[piece as usize] = check_info.direct_check_squares(piece);
         }
-        let mut cont = [None; 4];
-        for (slot, back) in CONT_PLY_BACK.into_iter().enumerate() {
-            cont[slot] = self.cont_context_back(ply, back);
-        }
+        let cont = self.cont_contexts(ply);
         QuietContext {
             stm,
             threatened,
