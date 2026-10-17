@@ -1961,10 +1961,6 @@ impl Searcher {
                 self.td.pv_len[ply] = child_len;
 
                 if score >= beta {
-                    // The node's own cluster was probed at entry and the
-                    // subtree has since evicted it; it is asked for before the
-                    // history and correction updates so the store finds it.
-                    self.shared.tt.prefetch(hash);
                     let score = tb_cap.map_or(score, |cap| score.min(cap));
                     let cut_bound = if score >= beta {
                         Bound::Lower
@@ -1994,6 +1990,24 @@ impl Searcher {
                         } else {
                             crate::diag_count!(cutoff_quiet);
                         }
+                        // A later MultiPV line's root result is not the
+                        // position's: it excludes the better moves.
+                        if !(NODE::ROOT && self.td.multipv_line > 0) {
+                            self.shared.tt.store(TtStore {
+                                key: hash,
+                                depth,
+                                score,
+                                bound: cut_bound,
+                                mv,
+                                ply,
+                                static_eval: raw_static_eval,
+                                is_pv: tt_pv,
+                            });
+                        }
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(main_store_lower);
+                        }
                     }
                     self.update_best_move_histories(
                         board,
@@ -2013,28 +2027,6 @@ impl Searcher {
                     // trains the correction; see the node's end.
                     if !in_check && !is_noisy(mv) && score > static_eval {
                         self.train_correction(board, depth, score - static_eval, ply);
-                    }
-                    // Stored after the updates, which read no table entry it
-                    // writes, so the prefetch above has their time as its lead.
-                    // A later MultiPV line's root result is not the position's:
-                    // it excludes the better moves.
-                    if excluded.is_null() {
-                        if !(NODE::ROOT && self.td.multipv_line > 0) {
-                            self.shared.tt.store(TtStore {
-                                key: hash,
-                                depth,
-                                score,
-                                bound: cut_bound,
-                                mv,
-                                ply,
-                                static_eval: raw_static_eval,
-                                is_pv: tt_pv,
-                            });
-                        }
-                        #[cfg(feature = "diag")]
-                        if diag_sample {
-                            crate::diag_count!(main_store_lower);
-                        }
                     }
                     return score;
                 }
@@ -2063,11 +2055,6 @@ impl Searcher {
             } else {
                 0
             };
-        }
-        // The node's own cluster, for the store at the end: asked for ahead
-        // of the correction and history updates, as on a cutoff.
-        if excluded.is_null() {
-            self.shared.tt.prefetch(hash);
         }
 
         // A tablebase win no move beat stands as what it is, a lower bound;
