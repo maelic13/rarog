@@ -1662,15 +1662,7 @@ impl Searcher {
                 {
                     crate::diag_count!(main_see_flip_eval_units);
                 }
-                // A quiet move no enemy piece can capture has an empty
-                // exchange, which passes: the threshold is at most zero.
-                let see_passes = if is_quiet && board.quiet_lands_unattacked(mv, &threats) {
-                    debug_assert!(threshold <= 0 && board.see_ge_quiet_aware(mv, threshold));
-                    true
-                } else {
-                    board.see_ge_quiet_aware(mv, threshold)
-                };
-                if !see_passes {
+                if !board.see_ge_quiet_aware(mv, threshold) {
                     if is_quiet {
                         crate::diag_count!(quiet_see_prune);
                     } else {

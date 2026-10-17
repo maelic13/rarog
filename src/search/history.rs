@@ -7,7 +7,6 @@ use crate::infra;
 
 use super::Searcher;
 use super::movepick::is_noisy;
-use super::params::CoreParams;
 
 /// `(colour, piece type, square)` slots: the second index of every
 /// piece-to table.
@@ -27,30 +26,6 @@ const PAWN_HISTORY_SIZE: usize = 512;
 /// Captured-type slots of the noisy table: the six piece types and "none",
 /// for a non-capturing promotion.
 const CAPTURED_SLOTS: usize = 7;
-/// How many moves of one class a node records as searched without raising
-/// alpha; the best-move update fades a malus over at most this many.
-const SEARCHED_MOVES: usize = 32;
-
-/// The fade of a quiet malus with the move's place in the search order, in
-/// 1024ths: `1024² / (d² / 1024)` for `d = 1024 + index_scale · index`.
-const fn malus_fade(index_scale: i32, index: i32) -> i32 {
-    let denominator = 1024 + index_scale * index;
-    1024 * 1024 / (denominator * denominator / 1024)
-}
-
-/// [`malus_fade`] at the compiled-in index scale for every recorded place, so
-/// the update reads a constant where it divided per move.
-const MALUS_FADES: [i32; SEARCHED_MOVES] = {
-    let mut fades = [0; SEARCHED_MOVES];
-    let mut slot = 0;
-    let mut index = 0;
-    while slot < SEARCHED_MOVES {
-        fades[slot] = malus_fade(CoreParams::DEFAULT.hist_malus_index_scale, index);
-        slot += 1;
-        index += 1;
-    }
-    fades
-};
 
 /// Index of a coloured piece standing on `sq`.
 #[inline(always)]
@@ -225,21 +200,6 @@ impl HistoryTables {
             CONT_MAX,
         );
     }
-
-    /// [`Self::update_cont`] in each context that exists, in order.
-    #[inline(always)]
-    fn update_conts(
-        &mut self,
-        contexts: &[Option<usize>; CONT_PLY_BACK.len()],
-        color: Color,
-        piece: Piece,
-        to: Square,
-        bonus: i32,
-    ) {
-        for &context in contexts.iter().flatten() {
-            self.update_cont(context, color, piece, to, bonus);
-        }
-    }
 }
 
 impl Searcher {
@@ -271,13 +231,6 @@ impl Searcher {
         history
     }
 
-    /// The continuation contexts a move made at `ply` follows, one for each
-    /// distance in [`CONT_PLY_BACK`].
-    #[inline(always)]
-    pub(super) fn cont_contexts(&self, ply: usize) -> [Option<usize>; CONT_PLY_BACK.len()] {
-        CONT_PLY_BACK.map(|back| self.cont_context_back(ply, back))
-    }
-
     /// Update the continuation histories of the move `piece` to `to`, made
     /// at `ply` by `color`, in every context it follows.
     pub(super) fn update_continuations(
@@ -288,10 +241,11 @@ impl Searcher {
         to: Square,
         bonus: i32,
     ) {
-        let contexts = self.cont_contexts(ply);
-        self.td
-            .hist
-            .update_conts(&contexts, color, piece, to, bonus);
+        for back in CONT_PLY_BACK {
+            if let Some(context) = self.cont_context_back(ply, back) {
+                self.td.hist.update_cont(context, color, piece, to, bonus);
+            }
+        }
     }
 
     /// The update when a node's best move raised alpha: a bonus to that move,
@@ -315,15 +269,6 @@ impl Searcher {
         let cont_bonus = (97 * depth).min(p.hist_cont_bonus_cap) - 74 - 48 * cut;
         let cont_malus = (414 * depth).min(949) - 49 - 17 * quiet_count;
         let index_scale = p.hist_malus_index_scale;
-        // A production build's scale is the compiled-in one, so this folds
-        // to the table.
-        let fade = |index: usize| {
-            if index_scale == CoreParams::DEFAULT.hist_malus_index_scale {
-                MALUS_FADES[index]
-            } else {
-                malus_fade(index_scale, infra::to_i32(index))
-            }
-        };
         let stm = board.side_to_move();
         let threats = u.threats;
         let pawn_row = HistoryTables::pawn_row(board.pawn_key());
@@ -344,19 +289,23 @@ impl Searcher {
             self.td
                 .hist
                 .update_pawn(pawn_row, stm, best_piece, best.to_sq(), quiet_bonus);
-            // The contexts depend on the search stack alone, which the
-            // updates below do not touch.
-            let contexts = self.cont_contexts(u.ply);
-            let hist = &mut self.td.hist;
-            hist.update_conts(&contexts, stm, best_piece, best.to_sq(), cont_bonus);
+            self.update_continuations(u.ply, stm, best_piece, best.to_sq(), cont_bonus);
             for (index, &mv) in u.quiets.iter().enumerate() {
-                let scale = fade(index);
+                let denominator = 1024 + index_scale * infra::to_i32(index);
+                let scale = 1024 * 1024 / (denominator * denominator / 1024);
                 let piece = board.moving_piece(mv);
-                let quiet = -quiet_malus * scale / 1024;
-                hist.update_quiet(threats, stm, mv, quiet);
-                hist.update_pawn(pawn_row, stm, piece, mv.to_sq(), quiet);
-                hist.update_conts(
-                    &contexts,
+                self.td
+                    .hist
+                    .update_quiet(threats, stm, mv, -quiet_malus * scale / 1024);
+                self.td.hist.update_pawn(
+                    pawn_row,
+                    stm,
+                    piece,
+                    mv.to_sq(),
+                    -quiet_malus * scale / 1024,
+                );
+                self.update_continuations(
+                    u.ply,
                     stm,
                     piece,
                     mv.to_sq(),
@@ -465,17 +414,16 @@ pub(super) struct BestMoveUpdate<'a> {
     pub(super) fail_high: bool,
 }
 
-/// Up to [`SEARCHED_MOVES`] moves of one class a node searched without
-/// raising alpha.
+/// Up to 32 moves of one class a node searched without raising alpha.
 pub(super) struct SearchedMoves {
-    moves: [Move; SEARCHED_MOVES],
+    moves: [Move; 32],
     len: usize,
 }
 
 impl SearchedMoves {
     pub(super) const fn new() -> Self {
         Self {
-            moves: [Move::NULL; SEARCHED_MOVES],
+            moves: [Move::NULL; 32],
             len: 0,
         }
     }
@@ -674,23 +622,6 @@ mod tests {
                 .quiet(parent_threats, Color::Black, parent_move),
             0
         );
-    }
-
-    /// The fade table is the formula at the compiled-in scale for every
-    /// place a node can record, and fades the malus as the formula does.
-    #[test]
-    fn the_malus_fade_table_is_the_formula() {
-        let scale = CoreParams::DEFAULT.hist_malus_index_scale;
-        for (index, &fade) in MALUS_FADES.iter().enumerate() {
-            assert_eq!(
-                fade,
-                malus_fade(scale, infra::to_i32(index)),
-                "place {index}"
-            );
-        }
-        assert_eq!(MALUS_FADES[0], 1024);
-        assert!(MALUS_FADES.windows(2).all(|w| w[0] >= w[1]));
-        assert_eq!(SearchedMoves::new().moves.len(), MALUS_FADES.len());
     }
 
     /// The largest context plus the largest piece-to slot is the last entry.

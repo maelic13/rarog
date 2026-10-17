@@ -77,18 +77,6 @@ pub(super) fn generate_quiets_pinned_into(
     crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
 }
 
-/// [`generate_quiets_pinned_into`] into any sink, in the same order: the
-/// staged picker scores each quiet as it is generated.
-pub(super) fn generate_quiets_pinned_with<S: MoveSink>(
-    board: &Board,
-    pinned: Bitboard,
-    king_danger: Option<Bitboard>,
-    sink: &mut S,
-) {
-    gen_moves_pinned::<false, true, _>(board, pinned, king_danger, sink);
-    crate::diag_count!(board_gen_staged_quiet_calls);
-}
-
 /// Generate only legal captures (for quiescence search).
 ///
 /// Captures-only terminal callers (qsearch, ProbCut) keep the
@@ -258,23 +246,20 @@ pub(crate) fn perft(board: &mut Board, depth: u32) -> u64 {
 // Core generation
 // -----------------------------------------------------------------------
 
-/// Where the generator puts each move it emits, with the type of the piece
-/// making it: every generation loop knows that type without reading the
-/// board. A move list keeps the move alone.
-pub(crate) trait MoveSink {
-    fn push_move(&mut self, mv: Move, piece: Piece);
+trait MoveSink {
+    fn push_move(&mut self, mv: Move);
 }
 
 impl MoveSink for Vec<Move> {
     #[inline(always)]
-    fn push_move(&mut self, mv: Move, _piece: Piece) {
+    fn push_move(&mut self, mv: Move) {
         self.push(mv);
     }
 }
 
 impl MoveSink for MoveList {
     #[inline(always)]
-    fn push_move(&mut self, mv: Move, _piece: Piece) {
+    fn push_move(&mut self, mv: Move) {
         self.push(mv);
     }
 }
@@ -343,7 +328,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         };
         debug_assert_eq!(safe, !board.is_attacked_with_occ(to, them, occ_no_king));
         if safe {
-            add_move::<CAPTURES, QUIETS, _>(king_sq, to, their_occ, Piece::King, moves);
+            add_move::<CAPTURES, QUIETS, _>(king_sq, to, their_occ, moves);
         }
     }
 
@@ -376,7 +361,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = targets;
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, Piece::Knight, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -389,7 +374,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, Piece::Bishop, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -402,7 +387,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, Piece::Rook, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -415,7 +400,7 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let mut targets = filter_pinned(from, targets, pinned, king_sq);
         while targets.any() {
             let to = targets.pop_lsb();
-            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, Piece::Queen, moves);
+            add_move::<CAPTURES, QUIETS, _>(from, to, their_occ, moves);
         }
     }
 
@@ -466,7 +451,7 @@ fn gen_unpinned_captures(
             !board.is_attacked_with_occ(to, them, all_occ ^ king_bb)
         );
         if safe {
-            moves.push_move(Move::new(king_sq, to, CAPTURE), Piece::King);
+            moves.push_move(Move::new(king_sq, to, CAPTURE));
         }
     }
 
@@ -497,7 +482,7 @@ fn gen_unpinned_captures(
                 checkers.is_empty() || (checkers & Bitboard::from(ep_cap_sq)).any();
 
             if captures_checker && ep_capture_is_legal(board, us, them, from, ep_sq, ep_cap_sq) {
-                moves.push_move(Move::new(from, ep_sq, EN_PASSANT), Piece::Pawn);
+                moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
             }
         }
     }
@@ -508,7 +493,7 @@ fn gen_unpinned_captures(
         let mut targets = atk.knight(from) & target_mask;
         while targets.any() {
             let to = targets.pop_lsb();
-            moves.push_move(Move::new(from, to, CAPTURE), Piece::Knight);
+            moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
 
@@ -518,7 +503,7 @@ fn gen_unpinned_captures(
         let mut targets = atk.bishop(from, all_occ) & target_mask;
         while targets.any() {
             let to = targets.pop_lsb();
-            moves.push_move(Move::new(from, to, CAPTURE), Piece::Bishop);
+            moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
 
@@ -528,7 +513,7 @@ fn gen_unpinned_captures(
         let mut targets = atk.rook(from, all_occ) & target_mask;
         while targets.any() {
             let to = targets.pop_lsb();
-            moves.push_move(Move::new(from, to, CAPTURE), Piece::Rook);
+            moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
 
@@ -538,7 +523,7 @@ fn gen_unpinned_captures(
         let mut targets = atk.queen(from, all_occ) & target_mask;
         while targets.any() {
             let to = targets.pop_lsb();
-            moves.push_move(Move::new(from, to, CAPTURE), Piece::Queen);
+            moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
 }
@@ -621,7 +606,7 @@ fn gen_pawn_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
                     if double_dest.any() {
                         let to = double_dest.lsb();
                         if on_same_ray(from, to, king_sq) {
-                            moves.push_move(Move::new(from, to, DOUBLE_PUSH), Piece::Pawn);
+                            moves.push_move(Move::new(from, to, DOUBLE_PUSH));
                         }
                     }
                 }
@@ -660,7 +645,7 @@ fn gen_pawn_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
                     continue;
                 }
                 if ep_capture_is_legal(board, us, them, from, ep_sq, ep_cap_sq) {
-                    moves.push_move(Move::new(from, ep_sq, EN_PASSANT), Piece::Pawn);
+                    moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
                 }
             }
         }
@@ -697,10 +682,11 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     let mut targets = single & check_mask;
     while targets.any() {
         let to = targets.pop_lsb();
-        moves.push_move(
-            Move::new(Square(infra::to_u8(to.0 as i16 - push_offset)), to, QUIET),
-            Piece::Pawn,
-        );
+        moves.push_move(Move::new(
+            Square(infra::to_u8(to.0 as i16 - push_offset)),
+            to,
+            QUIET,
+        ));
     }
 
     let double = match us {
@@ -711,14 +697,11 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     let mut targets = double;
     while targets.any() {
         let to = targets.pop_lsb();
-        moves.push_move(
-            Move::new(
-                Square(infra::to_u8(to.0 as i16 - double_offset)),
-                to,
-                DOUBLE_PUSH,
-            ),
-            Piece::Pawn,
-        );
+        moves.push_move(Move::new(
+            Square(infra::to_u8(to.0 as i16 - double_offset)),
+            to,
+            DOUBLE_PUSH,
+        ));
     }
 
     let promo = match us {
@@ -779,20 +762,20 @@ fn push_pawn_move_flags<S: MoveSink>(from: Square, to: Square, is_capture: bool,
     let is_promo = to.rank() == Rank::R8 || to.rank() == Rank::R1;
     if is_promo {
         if is_capture {
-            moves.push_move(Move::new(from, to, PROMO_CAPTURE_QUEEN), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_CAPTURE_ROOK), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_CAPTURE_BISHOP), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_CAPTURE_KNIGHT), Piece::Pawn);
+            moves.push_move(Move::new(from, to, PROMO_CAPTURE_QUEEN));
+            moves.push_move(Move::new(from, to, PROMO_CAPTURE_ROOK));
+            moves.push_move(Move::new(from, to, PROMO_CAPTURE_BISHOP));
+            moves.push_move(Move::new(from, to, PROMO_CAPTURE_KNIGHT));
         } else {
-            moves.push_move(Move::new(from, to, PROMO_QUEEN), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_ROOK), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_BISHOP), Piece::Pawn);
-            moves.push_move(Move::new(from, to, PROMO_KNIGHT), Piece::Pawn);
+            moves.push_move(Move::new(from, to, PROMO_QUEEN));
+            moves.push_move(Move::new(from, to, PROMO_ROOK));
+            moves.push_move(Move::new(from, to, PROMO_BISHOP));
+            moves.push_move(Move::new(from, to, PROMO_KNIGHT));
         }
     } else if is_capture {
-        moves.push_move(Move::new(from, to, CAPTURE), Piece::Pawn);
+        moves.push_move(Move::new(from, to, CAPTURE));
     } else {
-        moves.push_move(Move::new(from, to, QUIET), Piece::Pawn);
+        moves.push_move(Move::new(from, to, QUIET));
     }
 }
 
@@ -804,7 +787,6 @@ fn add_move<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
     from: Square,
     to: Square,
     their_occ: Bitboard,
-    piece: Piece,
     moves: &mut S,
 ) {
     let capture = if CAPTURES && QUIETS {
@@ -813,10 +795,7 @@ fn add_move<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         debug_assert_eq!(CAPTURES, (Bitboard::from(to) & their_occ).any());
         CAPTURES
     };
-    moves.push_move(
-        Move::new(from, to, if capture { CAPTURE } else { QUIET }),
-        piece,
-    );
+    moves.push_move(Move::new(from, to, if capture { CAPTURE } else { QUIET }));
 }
 
 // -----------------------------------------------------------------------
@@ -867,7 +846,7 @@ fn gen_castling<S: MoveSink>(
         && !board.is_attacked(ks_safe[0], them)
         && !board.is_attacked(ks_safe[1], them)
     {
-        moves.push_move(Move::new(king_sq, ks_safe[1], CASTLE_KINGSIDE), Piece::King);
+        moves.push_move(Move::new(king_sq, ks_safe[1], CASTLE_KINGSIDE));
     }
 
     if board.castling().has(qs_flag)
@@ -876,10 +855,7 @@ fn gen_castling<S: MoveSink>(
         && !board.is_attacked(qs_safe[0], them)
         && !board.is_attacked(qs_safe[1], them)
     {
-        moves.push_move(
-            Move::new(king_sq, qs_safe[0], CASTLE_QUEENSIDE),
-            Piece::King,
-        );
+        moves.push_move(Move::new(king_sq, qs_safe[0], CASTLE_QUEENSIDE));
     }
 }
 
@@ -951,13 +927,6 @@ pub fn between(a: Square, b: Square) -> Bitboard {
 /// Full ray through both `a` and `b` (including both endpoints).
 fn ray_through(a: Square, b: Square) -> Bitboard {
     LINE[a.index()][b.index()]
-}
-
-/// The whole rank, file or diagonal through `a` and `b`, or `EMPTY` when
-/// they are not aligned.
-#[inline(always)]
-pub(crate) fn line(a: Square, b: Square) -> Bitboard {
-    ray_through(a, b)
 }
 
 /// Returns true if `from`, `to`, and `king` are all on the same rank/file/diagonal.
@@ -1185,62 +1154,5 @@ mod pin_tests {
             checked >= 1000,
             "pin oracle walk unexpectedly thin: {checked}"
         );
-    }
-}
-
-#[cfg(test)]
-mod sink_tests {
-    use super::*;
-
-    /// Every move with the piece its push named.
-    struct Recorder(Vec<(Move, Piece)>);
-
-    impl MoveSink for Recorder {
-        fn push_move(&mut self, mv: Move, piece: Piece) {
-            self.0.push((mv, piece));
-        }
-    }
-
-    /// A sink is handed the moves a move list gets, in the same order, each
-    /// with the type of the piece on its origin square, for every pass.
-    #[test]
-    fn every_push_names_the_moving_piece_in_list_order() {
-        let profile = include_str!("../../tests/data/board-v2.tsv");
-        let mut rng = 0x2545_f491_4f6c_dd1du64;
-        let mut checked = 0;
-        for row in profile
-            .lines()
-            .filter(|row| !row.starts_with('#') && !row.is_empty())
-        {
-            let fields: Vec<_> = row.split('|').collect();
-            let mut board = Board::from_fen(fields[2]).unwrap();
-            for _ in 0..60 {
-                let us = board.side_to_move();
-                let pinned = compute_pinned(&board, board.king_sq(us), us, !us);
-                let danger = board.threats().all;
-                let mut list = MoveList::new();
-                generate_quiets_pinned_into(&board, pinned, Some(danger), &mut list);
-                let mut recorder = Recorder(Vec::new());
-                generate_quiets_pinned_with(&board, pinned, Some(danger), &mut recorder);
-                let moves: Vec<Move> = recorder.0.iter().map(|&(mv, _)| mv).collect();
-                assert_eq!(moves.as_slice(), list.as_slice(), "{}", board.to_fen());
-                let mut all = Recorder(Vec::new());
-                gen_moves::<true, true, _>(&board, &mut all);
-                for &(mv, piece) in recorder.0.iter().chain(&all.0) {
-                    assert_eq!(piece, board.moving_piece(mv), "{mv} in {}", board.to_fen());
-                    checked += 1;
-                }
-                let legal = board.generate_legal_movelist();
-                if legal.is_empty() {
-                    break;
-                }
-                rng ^= rng << 13;
-                rng ^= rng >> 7;
-                rng ^= rng << 17;
-                let index = usize::try_from(rng % u64::try_from(legal.len()).unwrap()).unwrap();
-                board.make_move(legal.as_slice()[index]);
-            }
-        }
-        assert!(checked >= 10_000, "sink walk unexpectedly thin: {checked}");
     }
 }

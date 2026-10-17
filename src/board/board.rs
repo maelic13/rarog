@@ -8,7 +8,7 @@ use std::fmt;
 
 use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
-use super::movegen::{MoveSink, generate_legal_moves};
+use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -789,16 +789,15 @@ impl Board {
         super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
     }
 
-    /// [`Board::generate_legal_quiets_pinned_into`] into any sink, for a
-    /// caller that holds this node's [`Board::threats`]: its `all` decides
-    /// every king move.
-    pub(crate) fn generate_legal_quiets_staged_with<S: MoveSink>(
+    /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
+    /// this node's [`Board::threats`]: its `all` decides every king move.
+    pub(crate) fn generate_legal_quiets_staged_into(
         &self,
         pinned: Bitboard,
         threats: &Threats,
-        sink: &mut S,
+        moves: &mut MoveList,
     ) {
-        super::movegen::generate_quiets_pinned_with(self, pinned, Some(threats.all), sink);
+        super::movegen::generate_quiets_pinned_into(self, pinned, Some(threats.all), moves);
     }
 
     pub fn perft(&mut self, depth: u32) -> u64 {
@@ -1526,28 +1525,6 @@ impl Board {
     pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
         crate::diag_count!(board_see_quiet_threshold_calls);
         self.see_ge_impl(mv, threshold, true, PRODUCTION_SEE_VALUES)
-    }
-
-    /// Whether no enemy piece can capture on the destination of the quiet
-    /// move `mv`, so its exchange is empty and [`Board::see_ge_quiet_aware`]
-    /// passes any threshold at or below zero. `threats` is this position's
-    /// [`Board::threats`]: the destination is outside the enemy's attacks
-    /// with our king lifted, and no enemy slider stands on the line through
-    /// the move, the one line the vacated origin can open.
-    #[inline(always)]
-    pub(crate) fn quiet_lands_unattacked(&self, mv: Move, threats: &Threats) -> bool {
-        let (from, to) = (mv.from_sq(), mv.to_sq());
-        if threats.all.contains(to) {
-            return false;
-        }
-        let them = !self.side_to_move;
-        let queens = self.pieces(them, Piece::Queen);
-        let sliders = if from.rank() == to.rank() || from.file() == to.file() {
-            self.pieces(them, Piece::Rook) | queens
-        } else {
-            self.pieces(them, Piece::Bishop) | queens
-        };
-        (super::movegen::line(from, to) & sliders).is_empty()
     }
 
     pub fn see_ge_quiet_aware_with_values(

@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::slice;
 
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
-use crate::board::{ATTACKS, Bitboard, Board, Color, Move, MoveList, MoveSink, Piece, Threats};
+use crate::board::{ATTACKS, Bitboard, Board, Color, Move, MoveList, Piece, Threats};
 use crate::eval::piece_value;
 
 use super::Searcher;
@@ -375,8 +375,16 @@ impl MovePicker {
                         *stage = Stage::GenerateQuiets;
                     }
                     Stage::GenerateQuiets => {
-                        *survivors_left = searcher
-                            .generate_scored_quiets(board, threats, *pinned, *tt_move, *ply, moves);
+                        let mut quiets = MoveList::new();
+                        board.generate_legal_quiets_staged_into(*pinned, threats, &mut quiets);
+                        *survivors_left = searcher.append_quiet_moves(
+                            board,
+                            threats,
+                            quiets.as_slice(),
+                            *tt_move,
+                            *ply,
+                            moves,
+                        );
                         *stage = Stage::Quiets;
                     }
                     Stage::Quiets => {
@@ -432,45 +440,7 @@ struct QuietContext {
     check_squares: [Bitboard; 6],
     wall_pawns: Bitboard,
     pawn_row: usize,
-    cont: [Option<usize>; CONT_PLY_BACK.len()],
-}
-
-/// The staged picker's quiet sink: scores each quiet as the generator emits
-/// it, with the moving piece the generator knows, and appends it to the
-/// picker's list in generation order, the order the selection's tie rule
-/// reads.
-struct QuietScorer<'a> {
-    searcher: &'a Searcher,
-    board: &'a Board,
-    threats: &'a Threats,
-    ctx: QuietContext,
-    tt_move: Move,
-    out: &'a mut ScoredMoveList,
-    /// Appended moves that survive a skip.
-    survivors: usize,
-}
-
-impl MoveSink for QuietScorer<'_> {
-    #[inline(always)]
-    fn push_move(&mut self, mv: Move, piece: Piece) {
-        debug_assert_eq!(piece, self.board.moving_piece(mv));
-        if mv == self.tt_move {
-            return;
-        }
-        let searcher = self.searcher;
-        if mv.is_promo() {
-            let score = QUIET_PROMOTION_OFFSET + searcher.noisy_score(self.board, self.threats, mv);
-            self.out.push_quiet(mv, score, 0, 0, true);
-            self.survivors += 1;
-            return;
-        }
-        let (score, pruning_history) =
-            searcher.quiet_score(self.threats, &self.ctx, &searcher.td.hist, mv, piece);
-        let direct_check = self.ctx.check_squares[piece as usize].contains(mv.to_sq());
-        self.out
-            .push_quiet(mv, score, 0, pruning_history, direct_check);
-        self.survivors += usize::from(direct_check);
-    }
+    cont: [Option<usize>; 4],
 }
 
 impl Searcher {
@@ -525,7 +495,10 @@ impl Searcher {
         for piece in Piece::ALL {
             check_squares[piece as usize] = check_info.direct_check_squares(piece);
         }
-        let cont = self.cont_contexts(ply);
+        let mut cont = [None; 4];
+        for (slot, back) in CONT_PLY_BACK.into_iter().enumerate() {
+            cont[slot] = self.cont_context_back(ply, back);
+        }
         QuietContext {
             stm,
             threatened,
@@ -537,41 +510,53 @@ impl Searcher {
         }
     }
 
-    /// Generate the node's quiet moves and append each, scored, to `out` in
-    /// generation order: histories, continuation terms, and the threat,
-    /// check, offense and king-wall terms of the moving piece. Returns how
-    /// many of them survive a skip.
-    fn generate_scored_quiets(
+    /// Score and append quiet moves: histories, continuation terms, and the
+    /// threat, check, offense and king-wall terms of the moving piece.
+    /// Returns how many of them survive a skip.
+    fn append_quiet_moves(
         &self,
         board: &Board,
         threats: &Threats,
-        pinned: Bitboard,
+        quiets: &[Move],
         tt_move: Move,
         ply: usize,
         out: &mut ScoredMoveList,
     ) -> usize {
-        let mut scorer = QuietScorer {
-            searcher: self,
-            board,
-            threats,
-            ctx: self.quiet_context(board, threats, ply),
-            tt_move,
-            out,
-            survivors: 0,
-        };
-        board.generate_legal_quiets_staged_with(pinned, threats, &mut scorer);
-        scorer.survivors
+        if quiets.is_empty() {
+            return 0;
+        }
+        let ctx = self.quiet_context(board, threats, ply);
+        let hist = &self.td.hist;
+        let mut survivors = 0;
+        for &mv in quiets {
+            if mv == tt_move {
+                continue;
+            }
+            if mv.is_promo() {
+                let score = QUIET_PROMOTION_OFFSET + self.noisy_score(board, threats, mv);
+                out.push_quiet(mv, score, 0, 0, true);
+                survivors += 1;
+                continue;
+            }
+            let (score, pruning_history) = self.quiet_score(board, threats, &ctx, hist, mv);
+            let direct_check =
+                ctx.check_squares[board.moving_piece(mv) as usize].contains(mv.to_sq());
+            out.push_quiet(mv, score, 0, pruning_history, direct_check);
+            survivors += usize::from(direct_check);
+        }
+        survivors
     }
 
-    /// Ordering score and pruning history of one quiet move by `piece`.
+    /// Ordering score and pruning history of one quiet move.
     fn quiet_score(
         &self,
+        board: &Board,
         threats: &Threats,
         ctx: &QuietContext,
         hist: &HistoryTables,
         mv: Move,
-        piece: Piece,
     ) -> (i32, i32) {
+        let piece = board.moving_piece(mv);
         let pt = piece as usize;
         let (from, to) = (mv.from_sq(), mv.to_sq());
         let quiet = hist.quiet(threats.all, ctx.stm, mv);
@@ -653,8 +638,7 @@ impl Searcher {
                 }
             } else {
                 let ctx = ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply));
-                let (score, history) =
-                    self.quiet_score(threats, ctx, &self.td.hist, mv, board.moving_piece(mv));
+                let (score, history) = self.quiet_score(board, threats, ctx, &self.td.hist, mv);
                 scored.push(mv, score, 0, history);
             }
         }
