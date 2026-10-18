@@ -47,3 +47,5 @@ pub mod syzygy;
 pub mod tt;
 pub mod uci_protocol;
 pub mod wac;
+#[cfg(windows)]
+pub mod win32;

@@ -8,23 +8,60 @@
 //! holds the "Lock pages in memory" right, and with ordinary pages otherwise;
 //! smaller allocations go to the system allocator. The tables, their contents
 //! and the search are unchanged.
+//!
+//! The trait's default `alloc_zeroed` and `realloc` are kept: a page
+//! allocation comes back zeroed from the system already, so the default's
+//! clearing is wasted work at start-up only, and overriding it would be one
+//! more `unsafe` site for no speed in play.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::fmt;
+use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
 /// Allocations of at least this many bytes are page allocations.
 pub const THRESHOLD: usize = 2 * 1024 * 1024;
 
-/// The large-page size once the first page allocation has asked: 0 before,
-/// 1 when the process may not use large pages.
-static LARGE_PAGE: AtomicUsize = AtomicUsize::new(0);
+/// What the process allocator has done with its page allocations so far.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LargePages {
+    /// No page allocation has been made, or the allocator is not installed.
+    NotUsed,
+    /// The process may not use large pages: ordinary pages back the tables.
+    Off,
+    /// Every page allocation so far is in large pages.
+    On,
+    /// The right is held, but some page allocation fell back to ordinary
+    /// pages because the system found no contiguous memory for it.
+    Partial,
+}
 
-/// Whether the big tables are in large pages; `None` before the first page
-/// allocation and wherever the allocator is not installed.
-pub fn large_pages_in_use() -> Option<bool> {
-    match LARGE_PAGE.load(Ordering::Relaxed) {
-        0 => None,
-        1 => Some(false),
-        _ => Some(true),
+impl fmt::Display for LargePages {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::NotUsed => "not used",
+            Self::Off => "off",
+            Self::On => "on",
+            Self::Partial => "partial",
+        })
+    }
+}
+
+const UNASKED: u8 = 0;
+const DENIED: u8 = 1;
+const GRANTED: u8 = 2;
+
+/// Whether the process may use large pages, decided at the first page
+/// allocation.
+static RIGHT: AtomicU8 = AtomicU8::new(UNASKED);
+/// Page allocations that asked for large pages and got ordinary ones.
+static FALLBACKS: AtomicUsize = AtomicUsize::new(0);
+
+/// How the big tables are backed so far.
+pub fn large_pages() -> LargePages {
+    match RIGHT.load(Ordering::Acquire) {
+        UNASKED => LargePages::NotUsed,
+        DENIED => LargePages::Off,
+        _ if FALLBACKS.load(Ordering::Relaxed) == 0 => LargePages::On,
+        _ => LargePages::Partial,
     }
 }
 
@@ -35,35 +72,15 @@ pub struct PageAllocator;
 #[cfg(windows)]
 mod win {
     use std::alloc::{GlobalAlloc, Layout, System};
-    use std::ffi::c_void;
-    use std::sync::atomic::Ordering;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use super::{LARGE_PAGE, PageAllocator, THRESHOLD};
-
-    type Handle = *mut c_void;
-
-    #[repr(C)]
-    struct Luid {
-        low: u32,
-        high: i32,
-    }
-
-    /// `TOKEN_PRIVILEGES` with its one `LUID_AND_ATTRIBUTES` inline.
-    #[repr(C)]
-    struct TokenPrivileges {
-        count: u32,
-        luid: Luid,
-        attributes: u32,
-    }
-
-    const TOKEN_ADJUST_PRIVILEGES: u32 = 0x0020;
-    const TOKEN_QUERY: u32 = 0x0008;
-    const SE_PRIVILEGE_ENABLED: u32 = 0x0002;
-    const MEM_COMMIT: u32 = 0x1000;
-    const MEM_RESERVE: u32 = 0x2000;
-    const MEM_RELEASE: u32 = 0x8000;
-    const MEM_LARGE_PAGES: u32 = 0x2000_0000;
-    const PAGE_READWRITE: u32 = 0x04;
+    use super::{DENIED, FALLBACKS, GRANTED, PageAllocator, RIGHT, THRESHOLD, UNASKED};
+    use crate::win32::{
+        AdjustTokenPrivileges, CloseHandle, GetCurrentProcess, GetLargePageMinimum, GetLastError,
+        Handle, LookupPrivilegeValueW, Luid, MEM_COMMIT, MEM_LARGE_PAGES, MEM_RELEASE, MEM_RESERVE,
+        OpenProcessToken, PAGE_READWRITE, SE_PRIVILEGE_ENABLED, TOKEN_ADJUST_PRIVILEGES,
+        TOKEN_QUERY, TokenPrivileges, VirtualAlloc, VirtualFree,
+    };
 
     /// "SeLockMemoryPrivilege", NUL-terminated UTF-16.
     const LOCK_MEMORY: [u16; 22] = {
@@ -77,78 +94,63 @@ mod win {
         wide
     };
 
-    #[link(name = "kernel32")]
-    unsafe extern "system" {
-        fn GetCurrentProcess() -> Handle;
-        fn CloseHandle(handle: Handle) -> i32;
-        fn GetLastError() -> u32;
-        fn GetLargePageMinimum() -> usize;
-        fn VirtualAlloc(address: *mut c_void, size: usize, kind: u32, protect: u32) -> *mut c_void;
-        fn VirtualFree(address: *mut c_void, size: usize, kind: u32) -> i32;
-    }
-
-    #[link(name = "advapi32")]
-    unsafe extern "system" {
-        fn OpenProcessToken(process: Handle, access: u32, token: *mut Handle) -> i32;
-        fn LookupPrivilegeValueW(system: *const u16, name: *const u16, luid: *mut Luid) -> i32;
-        fn AdjustTokenPrivileges(
-            token: Handle,
-            disable_all: i32,
-            new_state: *const TokenPrivileges,
-            length: u32,
-            previous: *mut TokenPrivileges,
-            return_length: *mut u32,
-        ) -> i32;
-    }
+    /// The large-page size, valid once `RIGHT` is `GRANTED`.
+    static PAGE: AtomicUsize = AtomicUsize::new(0);
 
     /// The large-page size when the process may use large pages. The first
-    /// call enables the right in the process token; a user without it gets
-    /// `None` from then on.
+    /// call enables the right in the process token and remembers the answer;
+    /// two first callers racing both ask, and agree.
     fn large_page_size() -> Option<usize> {
-        let mut page = LARGE_PAGE.load(Ordering::Relaxed);
-        if page == 0 {
-            // SAFETY: Win32 calls with pointers to locals that outlive them;
-            // the token handle is closed on the path that opened it.
-            page = unsafe {
-                let mut token: Handle = std::ptr::null_mut();
-                let mut granted = false;
-                if OpenProcessToken(
-                    GetCurrentProcess(),
-                    TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-                    &mut token,
-                ) != 0
-                {
-                    let mut luid = Luid { low: 0, high: 0 };
-                    if LookupPrivilegeValueW(std::ptr::null(), LOCK_MEMORY.as_ptr(), &mut luid) != 0
-                    {
-                        let privileges = TokenPrivileges {
-                            count: 1,
-                            luid,
-                            attributes: SE_PRIVILEGE_ENABLED,
-                        };
-                        // The call succeeds without the right, and then says
-                        // so in the last error.
-                        granted = AdjustTokenPrivileges(
-                            token,
-                            0,
-                            &privileges,
-                            0,
-                            std::ptr::null_mut(),
-                            std::ptr::null_mut(),
-                        ) != 0
-                            && GetLastError() == 0;
-                    }
-                    CloseHandle(token);
-                }
-                if granted {
-                    GetLargePageMinimum().max(1)
-                } else {
-                    1
-                }
-            };
-            LARGE_PAGE.store(page, Ordering::Relaxed);
+        match RIGHT.load(Ordering::Acquire) {
+            GRANTED => return Some(PAGE.load(Ordering::Relaxed)),
+            DENIED => return None,
+            _ => {}
         }
-        (page > 1).then_some(page)
+        // SAFETY: Win32 calls with pointers to locals that outlive them; the
+        // token handle is closed on the path that opened it; the privilege
+        // name is NUL-terminated.
+        let page = unsafe {
+            let mut token: Handle = std::ptr::null_mut();
+            let mut granted = false;
+            if OpenProcessToken(
+                GetCurrentProcess(),
+                TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+                &mut token,
+            ) != 0
+            {
+                let mut luid = Luid { low: 0, high: 0 };
+                if LookupPrivilegeValueW(std::ptr::null(), LOCK_MEMORY.as_ptr(), &mut luid) != 0 {
+                    let privileges = TokenPrivileges {
+                        count: 1,
+                        luid,
+                        attributes: SE_PRIVILEGE_ENABLED,
+                    };
+                    // The call succeeds without the right and then reports
+                    // ERROR_NOT_ALL_ASSIGNED in the last error; only
+                    // ERROR_SUCCESS means the right is enabled.
+                    granted = AdjustTokenPrivileges(
+                        token,
+                        0,
+                        &privileges,
+                        0,
+                        std::ptr::null_mut(),
+                        std::ptr::null_mut(),
+                    ) != 0
+                        && GetLastError() == 0;
+                }
+                CloseHandle(token);
+            }
+            // A system without large pages reports a minimum of zero.
+            if granted { GetLargePageMinimum() } else { 0 }
+        };
+        if page == 0 {
+            RIGHT.store(DENIED, Ordering::Release);
+            None
+        } else {
+            PAGE.store(page, Ordering::Relaxed);
+            RIGHT.store(GRANTED, Ordering::Release);
+            Some(page)
+        }
     }
 
     /// Whether `layout` is a page allocation. A region starts on a 64 KB
@@ -158,16 +160,22 @@ mod win {
         layout.size() >= THRESHOLD && layout.align() <= 65_536
     }
 
+    const _: () = assert!(UNASKED == 0, "a fresh static reads as unasked");
+
     // SAFETY: a page allocation is a fresh `VirtualAlloc` region, aligned to
     // at least 64 KB, and only a page allocation is released with
     // `VirtualFree`: both directions decide by the same layout test, and every
     // other layout goes to the system allocator unchanged. The trait's
-    // default `alloc_zeroed` and `realloc` are built from these two.
+    // default `alloc_zeroed` and `realloc` are built from these two, and a
+    // `realloc` across the threshold allocates by the new layout, copies and
+    // releases by the old one, so each side is routed by its own layout.
     unsafe impl GlobalAlloc for PageAllocator {
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
             // SAFETY: a small layout is forwarded unchanged; a page
             // allocation asks for a new region at no particular address, and
-            // each call returns null on failure.
+            // each call returns null on failure. The large-page size is a
+            // positive multiple of the ordinary page, so the rounded size is
+            // at least the layout's.
             unsafe {
                 if !is_page_allocation(layout) {
                     return System.alloc(layout);
@@ -183,6 +191,10 @@ mod win {
                     if !large.is_null() {
                         return large.cast();
                     }
+                    // No contiguous memory for large pages right now: the
+                    // table still works in ordinary pages, and `large_pages`
+                    // reports the mix.
+                    FALLBACKS.fetch_add(1, Ordering::Relaxed);
                 }
                 VirtualAlloc(
                     std::ptr::null_mut(),
@@ -196,7 +208,8 @@ mod win {
 
         unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
             // SAFETY: `ptr` came from `alloc` with this layout, so the same
-            // test names the allocator that made it.
+            // test names the allocator that made it; a page allocation's
+            // pointer is its region's base, which `MEM_RELEASE` requires.
             unsafe {
                 if is_page_allocation(layout) {
                     VirtualFree(ptr.cast(), 0, MEM_RELEASE);
