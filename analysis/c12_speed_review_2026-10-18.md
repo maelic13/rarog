@@ -260,6 +260,26 @@ The remaining 23 sites: FFI 10 (the eight Syzygy sites, the shared extern
 block, the privilege call), intrinsics 4, the measured hot path 7, and the
 allocator's `impl` plus its two blocks.
 
+**More speed on large pages.** Three candidates were built as pools on a side
+branch and read with both arms on large pages, eight builds an arm, on an idle
+host (the first attempt at two of them ran while the machine was in use and
+was set aside as disturbed):
+
+| Candidate | Base | Read | Verdict |
+|---|---|---|---|
+| T. The page-allocation threshold lowered from 2 MB to 512 KB, so the pawn history (786 KB) and the pawn cache (1.3 MB) join the large pages, at most 2 MB of locked memory each per search thread | the audited head | +0.58% (−0.11 .. +1.28) at 2 cycles; **+0.36% (+0.06 .. +0.66)** at 6 | under the bar; kept by the maintainer's rule for safe small gains (`47bc1ba`) |
+| B. The TT move's child cluster prefetched before the noisy fill (the pass's candidate B) | T | **−0.58% (−0.89 .. −0.28)** (a first read flagged disturbed) | loss on large pages too; dropped |
+| E. The node's own cluster prefetched before its closing updates, the cutoff store after them (the pass's candidate E) | T + B | +0.71% at 2 cycles; **+0.99% (+0.79 .. +1.19)** at 6, accepted | over B, so re-read alone |
+| E over T alone | T | +0.53% (+0.26 .. +0.80) at 2 cycles; **+0.32% (+0.11 .. +0.54)** at 6 | under the bar; kept by the same rule (`039ff22`) |
+| T + E over the audited head, the delivery's total on large pages | the audited head | +0.27% (−0.09 .. +0.62) at 2 cycles; **+0.28% (+0.02 .. +0.54)** at 6 | under the bar, positive by its interval |
+
+So on large pages the store-side prefetch, a loss under 4 KB pages (−0.26%),
+turns into a small gain, as the page-walk reasoning predicted, while the
+TT-move prefetch does not. The parts read about +0.3% each and +0.28% together,
+the difference being the pools' own offsets. The maintainer's rule for this
+delivery, safe exact changes kept below the protocol's bar, keeps T and E; the
+protocol's own verdict on each is NO_CHANGE and is recorded as such.
+
 ## Local artifacts
 
 `analysis/artifacts/c12c/` (ignored): `worklog.md` (the timestamped log, the

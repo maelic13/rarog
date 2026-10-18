@@ -2435,7 +2435,15 @@ loss).
     `partial`; `tests/large_pages.rs` exercises the allocator directly. The
     floor stays frozen at 23. CHANGELOG carries the user-facing entry; branch
     `large-pages` is superseded and goes once `db58a00`'s citations point at
-    the PR. G.1 keeps transparent huge pages on
+    the PR. On top, read with both arms on large pages (eight builds an arm,
+    idle host): the page-allocation threshold lowered to 512 KB so the pawn
+    history and pawn cache join the large pages (`47bc1ba`, +0.36%,
+    +0.06% .. +0.66%) and the node's own cluster prefetched before its
+    closing updates (`039ff22`, +0.32%, +0.11% .. +0.54% over the
+    threshold; a loss under 4 KB pages), both under the protocol's bar and
+    kept by the maintainer's rule for safe small gains; together +0.28%
+    (+0.02% .. +0.54%) over the audited head. The TT-move prefetch loses on
+    large pages too (−0.58%, −0.89% .. −0.28%) and stays out. G.1 keeps transparent huge pages on
     Linux and the thread-count memory accounting.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
