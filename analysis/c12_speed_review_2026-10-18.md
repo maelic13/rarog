@@ -280,6 +280,20 @@ the difference being the pools' own offsets. The maintainer's rule for this
 delivery, safe exact changes kept below the protocol's bar, keeps T and E; the
 protocol's own verdict on each is NO_CHANGE and is recorded as such.
 
+**In the games.** A 400-game fixed match at `3+0.03` (UHO, Hash 64, one
+thread, seed 20261018, 14 games at a time, `tools/results/c12-lp-ingame/`)
+of the delivered head (`tools/test_engines/rarog-c12lp-pext-pgo.exe`,
+`59cceee`, large pages on) against the C.12 gate binary
+(`rarog-c12speed-pext-pgo.exe`, `a829601`, no large pages): the head searched
+**+2.76% nodes a second** pooled over about 22,400 moves a side (median per
+game +2.14%) and +0.04 plies deeper, read by RAR-S99's script with the mover
+taken from the position (164 of the 400 games start with Black to move;
+`ingame_speed.txt` in the match directory). The speed reaches the games at
+about bench's rate. The match's own result, −8.7 ± 18.0 Elo (102-186-112),
+is a measurement with an interval, consistent with the +5 Elo the speed
+predicts and with zero; 400 games resolve nothing in Elo and were not meant
+to.
+
 ## Local artifacts
 
 `analysis/artifacts/c12c/` (ignored): `worklog.md` (the timestamped log, the

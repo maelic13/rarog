@@ -2443,7 +2443,11 @@ loss).
     threshold; a loss under 4 KB pages), both under the protocol's bar and
     kept by the maintainer's rule for safe small gains; together +0.28%
     (+0.02% .. +0.54%) over the audited head. The TT-move prefetch loses on
-    large pages too (−0.58%, −0.89% .. −0.28%) and stays out. G.1 keeps transparent huge pages on
+    large pages too (−0.58%, −0.89% .. −0.28%) and stays out. In games
+    (400 at `3+0.03`, `tools/results/c12-lp-ingame/`) the delivered head
+    searches **+2.76%** nodes a second over the C.12 gate binary, median per
+    game +2.14%, +0.04 plies; the match's −8.7 ± 18.0 Elo is a measurement
+    with an interval, consistent with the expected +5 and with zero. G.1 keeps transparent huge pages on
     Linux and the thread-count memory accounting.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
