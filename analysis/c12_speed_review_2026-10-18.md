@@ -226,6 +226,40 @@ same engine source on both arms, reads +0.16% (−0.06 .. +0.39) at two cycles
 and **+0.10% (−0.06 .. +0.26)** at six, closed NO_CHANGE as a self pair should:
 the session's null, and the yardstick for every number above.
 
+## Large pages delivered (2026-10-18)
+
+At the maintainer's request the `large-pages` branch (`db58a00`) was audited
+and brought onto `c7` (`ac7c13b`, then the audit commit `34eb4bc`). Findings:
+
+- The allocator is sound. `AdjustTokenPrivileges` reports a missing right
+  through the last error, and the code reads it; the request size is rounded
+  up to whole large pages; a region starts on a 64 KB boundary, which covers
+  every alignment the engine asks for; release passes the region's base with
+  `MEM_RELEASE`; the trait's default `realloc` allocates by the new layout and
+  releases by the old one, so a reallocation across the threshold is routed
+  correctly on both sides. A refused large-page request falls back to ordinary
+  pages, so a user without the right, or a system short of contiguous memory,
+  gets today's engine.
+- Three changes. Every Windows API the crate calls is declared once, in one
+  `unsafe extern` block (`src/win32.rs`), which also absorbs `main.rs`'s timer
+  declaration: large pages add four `unsafe` sites instead of six, and the
+  floor is 23 (it was 19). The privilege answer lives in one state atomic with
+  the page size stored before it under release/acquire ordering, and a system
+  that reports no large-page minimum counts as denied. A page allocation that
+  asked for large pages and was refused is counted, and `bench` prints
+  `partial` instead of `on` when that has happened.
+- Tests. `tests/large_pages.rs` drives the allocator directly: a region at the
+  threshold comes back zeroed, 64 KB aligned, writable to its last byte and is
+  released; a small layout is served; a reallocation across the threshold
+  keeps its bytes both ways. The tests pass with or without the right.
+- Kept as it was: the default `alloc_zeroed` (a page allocation is already
+  zero, so the default's clearing is start-up waste only, and overriding it
+  would be one more `unsafe` site for no speed in play).
+
+The remaining 23 sites: FFI 10 (the eight Syzygy sites, the shared extern
+block, the privilege call), intrinsics 4, the measured hot path 7, and the
+allocator's `impl` plus its two blocks.
+
 ## Local artifacts
 
 `analysis/artifacts/c12c/` (ignored): `worklog.md` (the timestamped log, the

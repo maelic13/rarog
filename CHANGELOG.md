@@ -10,6 +10,16 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Changed
 
+- **Large pages on Windows.** When the account running the engine holds the
+  *Lock pages in memory* right, the hash table and the search's other large
+  tables are allocated in 2 MB pages, which spares the processor a
+  page-table walk on most of their accesses: about **+2.5% nodes a second**
+  at the default settings on the development machine, and exact in every
+  other respect (`bench` reports the same node count). Without the right
+  the engine runs as before. `bench` prints `Large pages : on`, `off` (the
+  right is not held) or `partial` (some table fell back to ordinary pages
+  for lack of contiguous memory). The right is granted in the Local Security
+  Policy under User Rights Assignment and takes effect at the next logon.
 - **The evaluation was refitted** on 612,747 new self-play games labelled by
   the 2.5 search and corrected by endgame tablebases, fitting the evaluation
   the engine actually plays (including its fast path for lopsided

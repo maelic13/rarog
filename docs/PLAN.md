@@ -2420,6 +2420,23 @@ loss).
     spread over many small terms, and under 4 KB pages every added software
     prefetch pays the page walk it triggers, so the prefetch leads are closed
     until large pages land.
+  - **Large pages delivered, 2026-10-18 (maintainer decision):** `db58a00`
+    was audited and brought onto `c7` (`ac7c13b`, then `34eb4bc`). The audit
+    found the allocator sound (the privilege check reads the last error, as
+    `AdjustTokenPrivileges` requires; the size is rounded to whole large
+    pages; a region is 64 KB aligned; release uses the region's base; the
+    default `realloc` routes each side by its own layout) and changed three
+    things: every Windows API the crate calls is declared in one `unsafe
+    extern` block (`src/win32.rs`, which also absorbs `main.rs`'s timer
+    declaration), so large pages add four `unsafe` sites instead of six and
+    **the unsafe floor is 23** (FFI 8 + 1 block + 1 privilege call,
+    intrinsics 4, measured hot path 7, the allocator's impl and two blocks);
+    a page allocation refused large pages is counted and `bench` reports
+    `partial`; `tests/large_pages.rs` exercises the allocator directly. The
+    floor stays frozen at 23. CHANGELOG carries the user-facing entry; branch
+    `large-pages` is superseded and goes once `db58a00`'s citations point at
+    the PR. G.1 keeps transparent huge pages on
+    Linux and the thread-count memory accounting.
   - **Not in scope:** anything that changes a node count, a score or a move
     (that is an engine change with its own gate), and NNUE inference
     (F.5).
