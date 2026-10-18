@@ -29,7 +29,10 @@ null, a final read of the head against `base8` with the same engine source on
 both arms, is +0.10% (−0.06 .. +0.26) over six cycles: the two gains' own
 estimates (+0.19%, +0.17%) are the size of a self pair's offset, and only their
 sum, whose lower bound +0.28% clears the null's upper bound, stands apart from
-it.
+it. Measured afterwards at the maintainer's request with both arms on large
+pages, the same pair reads +0.08% (−0.11 .. +0.27): not shown there, and the two
+reads' intervals barely overlap, so the pair's true size is somewhere between a
+few tenths of a percent and nothing.
 
 ## Review of the two passes
 
@@ -144,6 +147,7 @@ reverts follow it.
 | F. The quiet, pawn and continuation history tables allocated as 64-byte lines and indexed through them (the 64 KB quiet table had landed at a 16-byte offset, every 128-byte row on three lines) | `47a06f9` | pool c | **−2.88% (−3.11 .. −2.64)**, 8v8 | loss; reverted (`f180e98`) |
 | Bundle: A + C, the head's engine at `630e2b5` | — | `base8` | +0.37% (+0.17 .. +0.57) at 2 cycles; **+0.41% (+0.28 .. +0.54)** at 6, 8v8 | NO_CHANGE by the protocol; both reverted by the pre-declared rule |
 | K. The day's capture-SEE pool `s2` | — | `base8` | **−1.54% (−2.30 .. −0.77)**, 4v8 | the day's loss confirmed |
+| A + C on large pages: both cherry-picked onto `db58a00` in a worktree, against `db58a00` itself (both arms with large pages on, eight clean builds each; the day's `base-lp` pool is labelled dirty and was not used) | — | large pages alone | **+0.08% (−0.11 .. +0.27)**, 8v8 | not shown on large pages |
 
 Each shortcut carries a debug assertion against the computation it skips, shown
 live on debug `bench 12` (7,417,463 nodes) by a mutant: A's two-step test against
