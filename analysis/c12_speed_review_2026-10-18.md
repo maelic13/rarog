@@ -32,7 +32,10 @@ sum, whose lower bound +0.28% clears the null's upper bound, stands apart from
 it. Measured afterwards at the maintainer's request with both arms on large
 pages, the same pair reads +0.08% (−0.11 .. +0.27): not shown there, and the two
 reads' intervals barely overlap, so the pair's true size is somewhere between a
-few tenths of a percent and nothing.
+few tenths of a percent and nothing. **Decision (maintainer, 2026-10-18):** the
+pair is kept as a safe exact change, re-applied on `c7` as `842b586` (A) and
+`c01db68` (C) with no gate; the closing suite was run again on that head
+(`analysis/artifacts/c12c/final-ac/`).
 
 ## Review of the two passes
 

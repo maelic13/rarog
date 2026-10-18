@@ -2409,8 +2409,11 @@ loss).
     **+0.41%** (+0.28% .. +0.54%) against the C.12 head, real by the
     interval and under the protocol's +0.5% bar, so both were reverted by
     the rule declared before the reads; `git cherry-pick 6c89771 630e2b5`
-    re-applies them. The engine source stays `60fedc5`'s; nothing enters
-    D.3's change log. The day's quiet-SEE skip alone reads −0.58% and its
+    re-applies them. **Decision (maintainer, 2026-10-18):** both kept as
+    safe exact changes, re-applied as `842b586` and `c01db68` (D.3's change
+    log), after a read with both arms on large pages gave +0.08%
+    (−0.11% .. +0.27%); no gate, since nothing in the search's behaviour
+    changed. The day's quiet-SEE skip alone reads −0.58% and its
     capture-SEE extension about −1.7%, both losses. The follow-up's reading
     of the remaining cost as memory latency is superseded: the fresh profile
     puts the memory-stall lines at 14-17% of samples, the rest is compute
@@ -2652,6 +2655,14 @@ loss).
     cluster prefetched when the move is picked (`1aaa39e`, `65f490e`);
     staged king moves decided from the node's threat set (`9f388c5`); the
     attack tables built at compile time (`b52520d`).
+  - C.12's third pass (2026-10-18, on `c7`; `analysis/c12_speed_review_2026-10-18.md`),
+    kept by maintainer decision below the protocol's bar, each `bench 13`
+    exact at 10,521,141 / EBF 2.521: the node's threat set computed only
+    where a node reads it, the reverse-futility test in two steps and
+    quiescence skipping it for an empty capture list (`842b586`); the node's
+    check masks shared between the move loop and quiet scoring (`c01db68`).
+    Together +0.41% (+0.28% .. +0.54%) pooled-PGO NPS with eight builds an
+    arm, +0.08% (−0.11% .. +0.27%) with large pages on both arms.
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
