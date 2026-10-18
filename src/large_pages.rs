@@ -17,8 +17,13 @@
 use std::fmt;
 use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
-/// Allocations of at least this many bytes are page allocations.
-pub const THRESHOLD: usize = 2 * 1024 * 1024;
+/// Allocations of at least this many bytes are page allocations: the
+/// transposition table, the correction and continuation tables, and with the
+/// threshold below one large page also the pawn history (786 KB) and the pawn
+/// cache (1.3 MB), two more tables a search reads at random. A page
+/// allocation is rounded up to whole large pages, so each of those two costs
+/// at most 2 MB of locked memory per search thread.
+pub const THRESHOLD: usize = 512 * 1024;
 
 /// What the process allocator has done with its page allocations so far.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
