@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.3 | READY_FOR_IMPLEMENTATION | I1 | Widen seven ranges, then the pilot with `QsCountLimit` 3 (RAR-S100) |
+| C.10.3 | IMPLEMENTED | I1 | Ranges widened (`b7bc142`); the relevance check is the maintainer's, then RAR-S101 and the pilot |
 | C.10.4 | RESEARCH | V | After the pilot's re-audit |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2379,6 +2379,31 @@ loss).
     +5 Elo, 80% band [−1, +15], H1 under `[0,3]` with probability 0.5
     (the review's section 2.4; the research card's own frozen +8 and
     [+2, +18] stand as written there).
+    **Progress 2026-10-19:**
+    - The seven ranges are widened in `b7bc142` (`src/search/params.rs`
+      only). Debug and release tests, `fmt` and `clippy` at zero warnings
+      all pass, and the release bench reads 10,521,141 / EBF 2.521.
+      `ProbCutSeeGapScale`'s consumer scales the gap by the percentage
+      with no cap at 100, so a value above 100 is a stricter filter.
+    - The steps follow the new ranges (`analysis/artifacts/c10/surface.tsv`):
+      `ProbCutSeeGapScale` 6 → 13, `LazyMargin` 113 → 119,
+      `CoreCorrUpdateMax` 504 → 248, `CoreFpLinear` 18 → 19,
+      `CoreSingularMargin` 12 → 6.
+    - The tune build is `tools/test_engines/rarog-c103-tune.exe`
+      (`784FB228…`, `b7bc142`, `pext-tune`, bench 10,521,141). Each
+      widened option advertises its new range, and an out-of-range value
+      clamps to the new bound (`analysis/artifacts/c10/c103_range_check.txt`).
+    - Narrowing two ranges put five historical groups' recorded ranges
+      outside the engine's; the coverage audit now checks a historical
+      group's ranges for internal validity only (`9efd901`), and a live
+      group outside the engine's range still fails it.
+    - The pilot's path is proven on the 98-coordinate candidate surface
+      (`config_c10pilot.json`, uncommitted until the registration): the
+      conversion at N = 128 with `--check`, a clean audit, and a
+      Colosseum dry run (98 coordinates, 3,840 games, `QsCountLimit` 3).
+    - The relevance check (`bench_steps.py` over the 98) is the
+      maintainer's command. RAR-S101 is registered after its flags are
+      decided.
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.

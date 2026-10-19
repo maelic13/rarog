@@ -83,7 +83,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [ ] **C.10** Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — **V**
     - [x] **C.10.1** Research card: firing rates and the cp scale against the B.9 head, the surface, the blend decision — DONE 2026-10-19
     - [x] **C.10.2** `QsCountLimit` read as a switch: 2 and 4 against 3 — NO_CHANGE 2026-10-19
-    - [ ] **C.10.3** Widened ranges, the sensitivity pilot and the re-audit — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **C.10.3** Widened ranges, the sensitivity pilot and the re-audit — **IMPLEMENTED / I1**
     - [ ] **C.10.4** The tune: rule-7c blocks — **RESEARCH / V**
     - [ ] **C.10.5** Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — **RESEARCH / V**
 - [ ] **C.11** Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — **RESEARCH / V**
