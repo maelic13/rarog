@@ -2404,7 +2404,13 @@ loss).
   The one pre-freeze read is RAR-E72, the king middlegame-band
   attribution (zero games; the review's section 3.3): conditioning opens
   a king-refinement research card before the freeze, magnitude closes
-  the lead.
+  the lead. **Maintainer decision 2026-10-19:** the Rust toolchain update
+  (from `rustc 1.98.1` to the current stable) runs after C.10.5's gate
+  and before C.11's checkpoint reads, as its own build change: the
+  fingerprint reproduced, debug and release tests, `clippy` at zero
+  warnings on the new compiler, and an interleaved pooled-PGO NPS read
+  against the old toolchain, so C.11 measures the toolchain that ships
+  and no gate mixes toolchains between its arms.
 - **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2` and `V`, DONE 2026-10-17.** Added
   2026-10-13 (maintainer request). B.7 was the search's speed pass (about
   20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
