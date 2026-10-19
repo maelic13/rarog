@@ -59,3 +59,8 @@ Regenerate from verified saved evidence using `python tools/lift_hce.py`, then
 building and using the library requires neither. Rarog's `dragon_nnue` branch
 vendors this library and selects it with `setoption name Evaluation value
 Fritz16HCE`; Classical remains default and DragonNNUE remains available.
+
+Exact control-flow and incremental-input speed optimizations are qualified
+in [HCE-002](docs/experiments/HCE-002.md), including native fixtures and
+all forty Rarog search trees for all three evaluators. Shared-host speed
+reads are informational; score/parameter contracts are unchanged.

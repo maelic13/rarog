@@ -73,3 +73,11 @@ search-dependent lazy paths. All instructions of the two full-evaluation
 functions are translated; no guessed heuristic or placeholder replaces them.
 Finite-corpus agreement does not establish exhaustive equivalence or strength.
 Rarog owns its own draws, rule-50 handling, search corrections and tablebases.
+
+Exact runtime optimization (HCE-002): the full evaluator uses validated
+structured loops and forward branch labels; every backedge must target
+an enclosing header and every loop entry its header. Crossing or
+nonheader-entry regions fail generation; the pawn dispatcher is retained.
+Position preparation caches prior bitboards and derived fields; all
+removals precede additions, and u64 sums wrap exactly. Arbitrary jumps,
+turns and reset transitions match the preserved test-only full rebuild.

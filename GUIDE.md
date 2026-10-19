@@ -103,6 +103,7 @@ and is frozen at `ee02ed1` for Phase C.
 - [x] **F.13** Compact Dragon options and further exact inference optimization — DONE 2026-10-15
 - [x] **F.14** Qualify further Dragon throughput and align dense rows — DONE 2026-10-15
 - [x] **F.15** Experimental reconstructed Fritz 16 HCE selector — DONE 2026-10-15
+- [x] **F.16** Optimize reconstructed Fritz HCE throughput — DONE 2026-10-19
 
 ## Phase G — Scaling, platforms and the top 50
 
@@ -150,7 +151,10 @@ The requested Fritz16HCE backend is implemented as F.15 on `dragon_nnue`.
 486 native static snapshots agree; all three UCI choices are available.
 Full debug/release, zero-allocation, worker and UCI checks pass; Classical
 keeps 14,197,472 / EBF 2.557. No commits or pushes are made.
-See [Fritz 16 HCE](docs/FRITZ16_HCE.md).
+See [Fritz 16 HCE](docs/FRITZ16_HCE.md). F.16 adds exact control-flow and
+incremental-input optimizations: component 1.93x, Fritz search
++11.7% informational; all three trees remain exact.
+[RAR-P40](docs/experiments/RAR-P40.md) records the shared-host limitation.
 
 ## Holds and obligations
 

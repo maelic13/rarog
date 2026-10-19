@@ -2157,6 +2157,22 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   fourteen missing historical artifact paths, all present in unchanged
   HEAD documents. Raw records and hashes: analysis/artifacts/fritz16-hce-20261015/.
 
+- **F.16 Optimize reconstructed Fritz HCE throughput — `I2` — DONE 2026-10-19.**
+
+  Requested bounded speed follow-up; [RAR-P40](experiments/RAR-P40.md)
+  mirrors the prospective HCE-002 contract. Remove dispatch overhead and
+  update changed position inputs without altering scores or parameters.
+  Require native snapshots, incremental/full rebuild differential, zero
+  allocations, full engine checks and exact forty-position trees for each
+  of the three backends. Shared-host timings are informational by explicit
+  maintainer authorization; no strength or pooled-PGO gate is claimed.
+  No commits or pushes.
+
+  **Result:** component 1.93x throughput; Fritz engine +11.7%
+  informational under the shared-host waiver. All three forty-position
+  trees match; native/incremental parity, allocation, full suites and
+  lints pass. Raw results and limitations are recorded in RAR-P40.
+
 ## Phase G — Scaling, platforms and the top 50
 
 - **G.1 High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — `R2`, then `I2`.** 8/16/32T scaling, TT and

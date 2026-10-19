@@ -52,6 +52,13 @@ Qualification:
   still reports fourteen missing historical artifact paths; all fourteen
   references predate these changes. No strength or performance gate is claimed.
 
+Exact throughput optimizations (2026-10-19, F.16): component 1.93x;
+Fritz search +11.7% in the informational shared-host read.
+Direct full-eval control flow and incremental position inputs retain
+all native fixtures and all forty search trees for every backend.
+See [RAR-P40](experiments/RAR-P40.md) and its artifact manifest for
+timings, exact checks, binary/source hashes and limitations.
+
 Remaining fidelity limits: this is the first address-linked Rust reconstruction;
 semantic naming of all parameter tables, nondefault original options and
 exhaustive boundary qualification remain open in the reconstruction project.
@@ -60,7 +67,7 @@ still owns terminal/draw handling, rule-50 policy, corrections, pruning and
 tablebases, so matching static scores does not reproduce Fritz's search or Elo.
 
 Ready-to-use Windows release executable: `target/release/rarog-fritz16-hce.exe`.
-SHA-256: `510de2da284ea29edafe1abb7b75935795f25e43e1dacd6c9d693cb07f585545`.
+SHA-256: `3c37e72b8f49944550f7a0be517ebee0ab9173f7264326cd08ef7a315d0c2c61`.
 
 Raw logs and their hashes are under `analysis/artifacts/fritz16-hce-20261015/`.
 Reproduce the engine checks with `cargo test`, `cargo test --release`,

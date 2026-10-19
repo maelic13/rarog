@@ -1,5 +1,14 @@
 # Rarog history
 
+## 2026-10-19 — Exact Fritz HCE throughput
+
+Qualified direct full-eval control flow and incremental input preparation.
+Component throughput 1.93x; Fritz search +11.7% informational under the explicit shared-host waiver.
+486 native fixtures, independent incremental/full rebuild, all three
+forty-position trees, allocation, full debug/release and lints pass.
+See HCE-002 in the reconstruction project and RAR-P40 / F.16 in Rarog.
+No commits or pushes; broader fidelity and release gates remain open.
+
 ## 2026-10-15 — Experimental Fritz16HCE backend (F.15)
 
 Maintainer requested a faithful standalone Rust HCE reconstruction integrated

@@ -431,6 +431,7 @@ make any historical parameter group exempt from the current audit and gate.
 
 | ID | Experiment | Disposition |
 |---|---|---|
+| [RAR-P40](experiments/RAR-P40.md) | Exact Fritz HCE throughput | F.16 DONE; component 1.93x; Fritz engine +11.7% informational; exact trees |
 | [RAR-P39](experiments/RAR-P39.md) | Further Dragon throughput screens and aligned dense rows | F.14 DONE; exact parity; VNNI component +6%, AVX2 +3%; rough engine 1.018×; portable limitation |
 | [RAR-P38](experiments/RAR-P38.md) | Compact Dragon options and less work per inference | F.13 DONE; exact parity, vector component ~18% faster; rough engine 1.146× parent |
 | [RAR-P37](experiments/RAR-P37.md) | Exact incremental Dragon inference and CPU kernels | F.12 DONE; exact trees/static parity; rough 6.54× scalar NPS |

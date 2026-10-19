@@ -195,12 +195,26 @@ impl Position {
 #[derive(Clone)]
 pub struct Evaluator {
     memory: Memory,
+    previous: [u64; 12],
+    castling: u8,
+    pst: u64,
+    key: u64,
+    signature: u64,
+    adjustment: i32,
 }
 
 impl Default for Evaluator {
     fn default() -> Self {
+        let memory = Memory::new();
+        let key = memory.read::<64>(BASE + 0x1ef090) ^ 0x27c06528b11258a8;
         Self {
-            memory: Memory::new(),
+            memory,
+            previous: [0; 12],
+            castling: 0,
+            pst: 0x80008000,
+            key,
+            signature: 0x0200000001000000,
+            adjustment: 0,
         }
     }
 }
@@ -230,6 +244,132 @@ impl Evaluator {
     }
 
     fn prepare(&mut self, position: &Position) {
+        let m = &mut self.memory;
+        // Clear removals before additions: captures and promotions can replace
+        // a different piece on the same square in either iteration order.
+        let mut removed = 0;
+        for (old, new) in self.previous.iter().zip(&position.pieces) {
+            removed |= old & !new;
+        }
+        while removed != 0 {
+            let sq = u64::from(removed.trailing_zeros());
+            removed &= removed - 1;
+            m.write::<64>(BASE + 0x3c0e00 + sq * 8, 0);
+        }
+        let weights = [
+            0x01000000000205b2u64,
+            0x00fffffffffe3342,
+            0x0100010008060002,
+            0x0100040007fa0006,
+            0,
+            0,
+            0x01001000300a00a2,
+            0x010040002ff601e6,
+            0x0100004070140001,
+            0x010000806fec0000,
+            0,
+            0,
+        ];
+        let mut occupied = [0; 2];
+        for (color, color_occupied) in occupied.iter_mut().enumerate() {
+            for kind in 0..6 {
+                let index = color * 6 + kind;
+                let bb = position.pieces[index];
+                *color_occupied |= bb;
+                let mut changed = bb ^ self.previous[index];
+                if changed == 0 {
+                    continue;
+                }
+                self.previous[index] = bb;
+                let internal = kind * 2 + color;
+                m.write::<64>(BASE + 0x3c1110 + internal as u64 * 8, bb);
+                let value = [30, 90, 90, 150, 300, 0][kind];
+                let adjustment = if color == 0 { -value } else { value };
+                while changed != 0 {
+                    let sq = u64::from(changed.trailing_zeros());
+                    let bit = 1u64 << sq;
+                    changed &= changed - 1;
+                    let added = bb & bit != 0;
+                    let mut signature = weights[internal];
+                    let pst = m.read::<64>(BASE + 0x4721b0 + (internal as u64 * 64 + sq) * 8);
+                    if added {
+                        let encoded = m.read::<64>(BASE + 0x2fec50 + (internal as u64 + 2) * 8);
+                        m.write::<64>(BASE + 0x3c0e00 + sq * 8, encoded);
+                    }
+                    if kind == 0 || kind == 5 {
+                        self.key ^= m.read::<64>(BASE + 0x1f1110 + (internal as u64 * 64 + sq) * 8);
+                    }
+                    if kind == 5 && added {
+                        m.write::<32>(BASE + 0x3c1170 + color as u64 * 4, sq);
+                    }
+                    if kind == 2 {
+                        let on_a1_color = bit & 0xaa55aa55aa55aa55 != 0;
+                        signature = signature.wrapping_add(if color == 0 {
+                            if on_a1_color {
+                                0x0101000810060012
+                            } else {
+                                0x0101000410060012
+                            }
+                        } else if on_a1_color {
+                            0x010400200ffa0036
+                        } else {
+                            0x010400100ffa0036
+                        });
+                        self.key ^= match (color, on_a1_color) {
+                            (0, true) => 0x1cdd2c1990d18b82,
+                            (0, false) => 0x5b5be68669f3efb1,
+                            (1, true) => 0x88971596b48623e9,
+                            (1, false) => 0x6ee19f4ae7391a20,
+                            _ => unreachable!(),
+                        };
+                    }
+                    if added {
+                        self.pst = self.pst.wrapping_add(pst);
+                        self.signature = self.signature.wrapping_add(signature);
+                        self.adjustment += adjustment;
+                    } else {
+                        self.pst = self.pst.wrapping_sub(pst);
+                        self.signature = self.signature.wrapping_sub(signature);
+                        self.adjustment -= adjustment;
+                    }
+                }
+            }
+        }
+        if self.castling != position.castling {
+            self.key ^= m.read::<64>(BASE + 0x1ef090 + u64::from(self.castling) * 8)
+                ^ m.read::<64>(BASE + 0x1ef090 + u64::from(position.castling) * 8);
+            for (bit, value) in [
+                (1, 0x640000i64),
+                (2, 0x140000),
+                (4, -0x640000),
+                (8, -0x140000),
+            ] {
+                if self.castling & bit != 0 {
+                    self.pst = self.pst.wrapping_sub(value as u64);
+                }
+                if position.castling & bit != 0 {
+                    self.pst = self.pst.wrapping_add(value as u64);
+                }
+            }
+            self.castling = position.castling;
+        }
+        m.write::<64>(BASE + 0x3c1100, occupied[0]);
+        m.write::<64>(BASE + 0x3c1108, occupied[1]);
+        m.write::<64>(BASE + 0x3c1178, occupied[0] | occupied[1]);
+        m.write::<32>(BASE + 0x3c1180, u64::from(position.castling));
+        m.write::<64>(BASE + 0x3c1198, self.pst);
+        m.write::<64>(BASE + 0x3c11b0, self.key);
+        m.write::<64>(BASE + 0x3c11b8, self.signature);
+        m.write::<32>(BASE + 0x3c11c0, self.adjustment as u64);
+        m.write::<32>(SCRATCH + 0x70, u64::from(position.black_to_move));
+        m.write::<32>(
+            SCRATCH + 0x74,
+            if position.black_to_move { u64::MAX } else { 1 },
+        );
+    }
+
+    #[cfg(test)]
+    fn prepare_full(&mut self, position: &Position) {
         let m = &mut self.memory;
         m.bytes[0x3c0e00..0x3c1000].fill(0);
         let mut occupied = [0; 2];
@@ -339,6 +479,48 @@ mod tests {
             .iter()
             .map(|s| u8::from_str_radix(std::str::from_utf8(s).unwrap(), 16).unwrap())
             .collect()
+    }
+
+    #[test]
+    fn incremental_preparation_matches_full_rebuild_across_jumps_and_resets() {
+        let positions: Vec<_> = include_str!("../tests/fixtures/hce-native.tsv")
+            .lines()
+            .chain(include_str!("../tests/fixtures/hce-native-expanded.tsv").lines())
+            .filter(|l| !l.starts_with('#'))
+            .map(|l| Position::from_fen(l.split('\t').next().unwrap()).unwrap())
+            .collect();
+        let mut incremental = Evaluator::default();
+        let mut full = Evaluator::default();
+        for index in (0..positions.len()).chain((0..positions.len()).rev()) {
+            for turn in [false, true] {
+                let mut position = positions[index];
+                position.black_to_move = turn;
+                if index % 17 == 0 {
+                    incremental.clear();
+                    full.clear();
+                }
+                incremental.prepare(&position);
+                full.prepare_full(&position);
+                assert_eq!(
+                    &incremental.memory.bytes[0x3c0e00..0x3c1000],
+                    &full.memory.bytes[0x3c0e00..0x3c1000]
+                );
+                assert_eq!(
+                    &incremental.memory.bytes[0x3c1100..0x3c11c4],
+                    &full.memory.bytes[0x3c1100..0x3c11c4]
+                );
+                let mut r = [0; 16];
+                r[1] = SCRATCH;
+                r[4] = STACK;
+                let expected =
+                    recovered::eval_14009e270(&mut full.memory, &mut r, &mut [0; 2]) as i32;
+                assert_eq!(
+                    incremental.evaluate_white(&position),
+                    expected,
+                    "index={index}, turn={turn}"
+                );
+            }
+        }
     }
 
     #[test]

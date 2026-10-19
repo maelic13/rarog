@@ -11,6805 +11,6933 @@ pub(super) fn eval_14009e270(
     let mut r = *registers;
     let mut x = *simd;
     let mut f = Flags::default();
-    let mut pc = 0x14009e270u64;
-    loop {
-        match pc {
-            0x14009e270 => {
-                // 14009e270  48895c2410  MOV qword ptr [RSP + 0x10],RBX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x10u64), r[3]);
-                }
-                // 14009e275  48896c2418  MOV qword ptr [RSP + 0x18],RBP
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x18u64), r[5]);
-                }
-                // 14009e27a  4889742420  MOV qword ptr [RSP + 0x20],RSI
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[6]);
-                }
-                // 14009e27f  57  PUSH RDI
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    m.write::<64>(r[4], r[7]);
-                }
-                // 14009e280  4154  PUSH R12
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    m.write::<64>(r[4], r[12]);
-                }
-                // 14009e282  4155  PUSH R13
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    m.write::<64>(r[4], r[13]);
-                }
-                // 14009e284  4156  PUSH R14
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    m.write::<64>(r[4], r[14]);
-                }
-                // 14009e286  4157  PUSH R15
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    m.write::<64>(r[4], r[15]);
-                }
-                // 14009e288  4881eca0000000  SUB RSP,0xa0
-                {
-                    let v = f.arithmetic(r[4], 0xa0u64, 64, true);
-                    r[4] = v;
-                }
-                // 14009e28f  488b051a2f3200  MOV RAX,qword ptr [0x1403c11b0]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c11b0u64));
-                }
-                // 14009e296  48c1e807  SHR RAX,0x7
-                {
-                    let v = r[0];
-                    let n = 7u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
+    'b_163: {
+        'b_161: {
+            'b_159: {
+                'b_157: {
+                    'b_156: {
+                        'b_142: {
+                            'b_127: {
+                                'b_125: {
+                                    'b_124: {
+                                        'b_115: {
+                                            'b_106: {
+                                                'b_103: {
+                                                    'b_100: {
+                                                        'b_88: {
+                                                            'b_78: {
+                                                                'b_77: {
+                                                                    'b_75: {
+                                                                        'b_71: {
+                                                                            'b_67: {
+                                                                                'b_60: {
+                                                                                    'b_53: {
+                                                                                        'b_34: {
+                                                                                            'b_15: {
+                                                                                                'b_11: {
+                                                                                                    'b_7: {
+                                                                                                        'b_3: {
+                                                                                                            // 14009e270  48895c2410  MOV qword ptr [RSP + 0x10],RBX
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x10u64), r[3]);
+                                                                                                            }
+                                                                                                            // 14009e275  48896c2418  MOV qword ptr [RSP + 0x18],RBP
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x18u64), r[5]);
+                                                                                                            }
+                                                                                                            // 14009e27a  4889742420  MOV qword ptr [RSP + 0x20],RSI
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[6]);
+                                                                                                            }
+                                                                                                            // 14009e27f  57  PUSH RDI
+                                                                                                            {
+                                                                                                                r[4] = r[4].wrapping_sub(8);
+                                                                                                                m.write::<64>(r[4], r[7]);
+                                                                                                            }
+                                                                                                            // 14009e280  4154  PUSH R12
+                                                                                                            {
+                                                                                                                r[4] = r[4].wrapping_sub(8);
+                                                                                                                m.write::<64>(r[4], r[12]);
+                                                                                                            }
+                                                                                                            // 14009e282  4155  PUSH R13
+                                                                                                            {
+                                                                                                                r[4] = r[4].wrapping_sub(8);
+                                                                                                                m.write::<64>(r[4], r[13]);
+                                                                                                            }
+                                                                                                            // 14009e284  4156  PUSH R14
+                                                                                                            {
+                                                                                                                r[4] = r[4].wrapping_sub(8);
+                                                                                                                m.write::<64>(r[4], r[14]);
+                                                                                                            }
+                                                                                                            // 14009e286  4157  PUSH R15
+                                                                                                            {
+                                                                                                                r[4] = r[4].wrapping_sub(8);
+                                                                                                                m.write::<64>(r[4], r[15]);
+                                                                                                            }
+                                                                                                            // 14009e288  4881eca0000000  SUB RSP,0xa0
+                                                                                                            {
+                                                                                                                let v = f.arithmetic(r[4], 0xa0u64, 64, true);
+                                                                                                                r[4] = v;
+                                                                                                            }
+                                                                                                            // 14009e28f  488b051a2f3200  MOV RAX,qword ptr [0x1403c11b0]
+                                                                                                            {
+                                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(0x1403c11b0u64));
+                                                                                                            }
+                                                                                                            // 14009e296  48c1e807  SHR RAX,0x7
+                                                                                                            {
+                                                                                                                let v = r[0];
+                                                                                                                let n = 7u32;
+                                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                            }
+                                                                                                            // 14009e29a  25fe3f0000  AND EAX,0x3ffe
+                                                                                                            {
+                                                                                                                let v = (r[0] & 0xffffffffu64 & 0x3ffeu64) & 0xffffffffu64;
+                                                                                                                f.logic(v, 32);
+                                                                                                                r[0] = (v) & 0xffff_ffff;
+                                                                                                            }
+                                                                                                            // 14009e29f  48894c2478  MOV qword ptr [RSP + 0x78],RCX
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64), r[1]);
+                                                                                                            }
+                                                                                                            // 14009e2a4  48c1e006  SHL RAX,0x6
+                                                                                                            {
+                                                                                                                let v = r[0];
+                                                                                                                let n = 6u32;
+                                                                                                                if n != 0 { let v = v.wrapping_shl(n); f.logic(v, 64); r[0] = v; }
+                                                                                                            }
+                                                                                                            // 14009e2a8  48030571722b00  ADD RAX,qword ptr [0x140355520]
+                                                                                                            {
+                                                                                                                let v = f.arithmetic(r[0], m.read::<64>(0u64.wrapping_add(0x140355520u64)), 64, false);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e2af  0f1800  NOP dword ptr [RAX]
+                                                                                                            // 14009e2b2  4c8b05672e3200  MOV R8,qword ptr [0x1403c1120]
+                                                                                                            {
+                                                                                                                r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
+                                                                                                            }
+                                                                                                            // 14009e2b9  48b97f7f7f7f7f7fffff  MOV RCX,-0x808080808081
+                                                                                                            {
+                                                                                                                r[1] = 0xffff7f7f7f7f7f7fu64;
+                                                                                                            }
+                                                                                                            // 14009e2c3  488b05462e3200  MOV RAX,qword ptr [0x1403c1110]
+                                                                                                            {
+                                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                                            }
+                                                                                                            // 14009e2ca  bb20000000  MOV EBX,0x20
+                                                                                                            {
+                                                                                                                r[3] = (0x20u64) & 0xffff_ffff;
+                                                                                                            }
+                                                                                                            // 14009e2cf  488b15522e3200  MOV RDX,qword ptr [0x1403c1128]
+                                                                                                            {
+                                                                                                                r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
+                                                                                                            }
+                                                                                                            // 14009e2d6  4c8bf8  MOV R15,RAX
+                                                                                                            {
+                                                                                                                r[15] = r[0];
+                                                                                                            }
+                                                                                                            // 14009e2d9  488b3d202e3200  MOV RDI,qword ptr [0x1403c1100]
+                                                                                                            {
+                                                                                                                r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
+                                                                                                            }
+                                                                                                            // 14009e2e0  4c23f9  AND R15,RCX
+                                                                                                            {
+                                                                                                                let v = r[15] & r[1];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[15] = v;
+                                                                                                            }
+                                                                                                            // 14009e2e3  49c1e702  SHL R15,0x2
+                                                                                                            {
+                                                                                                                let v = r[15];
+                                                                                                                let n = 2u32;
+                                                                                                                if n != 0 { let v = v.wrapping_shl(n); f.logic(v, 64); r[15] = v; }
+                                                                                                            }
+                                                                                                            // 14009e2e7  48b9fefefefefefefe00  MOV RCX,0xfefefefefefefe
+                                                                                                            {
+                                                                                                                r[1] = 0xfefefefefefefeu64;
+                                                                                                            }
+                                                                                                            // 14009e2f1  4823c1  AND RAX,RCX
+                                                                                                            {
+                                                                                                                let v = r[0] & r[1];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e2f4  895c2430  MOV dword ptr [RSP + 0x30],EBX
+                                                                                                            {
+                                                                                                                m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[3] & 0xffffffffu64);
+                                                                                                            }
+                                                                                                            // 14009e2f8  4c0bf8  OR R15,RAX
+                                                                                                            {
+                                                                                                                let v = r[15] | r[0];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[15] = v;
+                                                                                                            }
+                                                                                                            // 14009e2fb  895c2440  MOV dword ptr [RSP + 0x40],EBX
+                                                                                                            {
+                                                                                                                m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[3] & 0xffffffffu64);
+                                                                                                            }
+                                                                                                            // 14009e2ff  488b05122e3200  MOV RAX,qword ptr [0x1403c1118]
+                                                                                                            {
+                                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                                            }
+                                                                                                            // 14009e306  48b980bfbfbfbfbfbf3f  MOV RCX,0x3fbfbfbfbfbfbf80
+                                                                                                            {
+                                                                                                                r[1] = 0x3fbfbfbfbfbfbf80u64;
+                                                                                                            }
+                                                                                                            // 14009e310  4c8bf0  MOV R14,RAX
+                                                                                                            {
+                                                                                                                r[14] = r[0];
+                                                                                                            }
+                                                                                                            // 14009e313  49c1e707  SHL R15,0x7
+                                                                                                            {
+                                                                                                                let v = r[15];
+                                                                                                                let n = 7u32;
+                                                                                                                if n != 0 { let v = v.wrapping_shl(n); f.logic(v, 64); r[15] = v; }
+                                                                                                            }
+                                                                                                            // 14009e317  49c1ee02  SHR R14,0x2
+                                                                                                            {
+                                                                                                                let v = r[14];
+                                                                                                                let n = 2u32;
+                                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[14] = v; }
+                                                                                                            }
+                                                                                                            // 14009e31b  4d8bc8  MOV R9,R8
+                                                                                                            {
+                                                                                                                r[9] = r[8];
+                                                                                                            }
+                                                                                                            // 14009e31e  4c0b0d0b2e3200  OR R9,qword ptr [0x1403c1130]
+                                                                                                            {
+                                                                                                                let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[9] = v;
+                                                                                                            }
+                                                                                                            // 14009e325  4c23f1  AND R14,RCX
+                                                                                                            {
+                                                                                                                let v = r[14] & r[1];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[14] = v;
+                                                                                                            }
+                                                                                                            // 14009e328  4c0b0d112e3200  OR R9,qword ptr [0x1403c1140]
+                                                                                                            {
+                                                                                                                let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[9] = v;
+                                                                                                            }
+                                                                                                            // 14009e32f  48b9007f7f7f7f7f7f7f  MOV RCX,0x7f7f7f7f7f7f7f00
+                                                                                                            {
+                                                                                                                r[1] = 0x7f7f7f7f7f7f7f00u64;
+                                                                                                            }
+                                                                                                            // 14009e339  4c0b0d102e3200  OR R9,qword ptr [0x1403c1150]
+                                                                                                            {
+                                                                                                                let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[9] = v;
+                                                                                                            }
+                                                                                                            // 14009e340  4823c1  AND RAX,RCX
+                                                                                                            {
+                                                                                                                let v = r[0] & r[1];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e343  488b0dbe2d3200  MOV RCX,qword ptr [0x1403c1108]
+                                                                                                            {
+                                                                                                                r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
+                                                                                                            }
+                                                                                                            // 14009e34a  4c0bf0  OR R14,RAX
+                                                                                                            {
+                                                                                                                let v = r[14] | r[0];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[14] = v;
+                                                                                                            }
+                                                                                                            // 14009e34d  49c1ee07  SHR R14,0x7
+                                                                                                            {
+                                                                                                                let v = r[14];
+                                                                                                                let n = 7u32;
+                                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[14] = v; }
+                                                                                                            }
+                                                                                                            // 14009e351  490bcf  OR RCX,R15
+                                                                                                            {
+                                                                                                                let v = r[1] | r[15];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[1] = v;
+                                                                                                            }
+                                                                                                            // 14009e354  490bfe  OR RDI,R14
+                                                                                                            {
+                                                                                                                let v = r[7] | r[14];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[7] = v;
+                                                                                                            }
+                                                                                                            // 14009e357  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                                                            }
+                                                                                                            // 14009e35c  4d23ce  AND R9,R14
+                                                                                                            {
+                                                                                                                let v = r[9] & r[14];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[9] = v;
+                                                                                                            }
+                                                                                                            // 14009e35f  4c89742438  MOV qword ptr [RSP + 0x38],R14
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
+                                                                                                            }
+                                                                                                            // 14009e364  48f7d7  NOT RDI
+                                                                                                            {
+                                                                                                                let v = !(r[7]);
+                                                                                                                r[7] = v;
+                                                                                                            }
+                                                                                                            // 14009e367  4c894c2448  MOV qword ptr [RSP + 0x48],R9
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), r[9]);
+                                                                                                            }
+                                                                                                            // 14009e36c  4c8d0d8d1cf6ff  LEA R9,[0x140000000]
+                                                                                                            {
+                                                                                                                r[9] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                            }
+                                                                                                            // 14009e373  4c897c2470  MOV qword ptr [RSP + 0x70],R15
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64), r[15]);
+                                                                                                            }
+                                                                                                            // 14009e378  48f7d1  NOT RCX
+                                                                                                            {
+                                                                                                                let v = !(r[1]);
+                                                                                                                r[1] = v;
+                                                                                                            }
+                                                                                                            // 14009e37b  4c89742468  MOV qword ptr [RSP + 0x68],R14
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64), r[14]);
+                                                                                                            }
+                                                                                                            // 14009e380  480bfa  OR RDI,RDX
+                                                                                                            {
+                                                                                                                let v = r[7] | r[2];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[7] = v;
+                                                                                                            }
+                                                                                                            // 14009e383  490bc8  OR RCX,R8
+                                                                                                            {
+                                                                                                                let v = r[1] | r[8];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[1] = v;
+                                                                                                            }
+                                                                                                            // 14009e386  480b3dab2d3200  OR RDI,qword ptr [0x1403c1138]
+                                                                                                            {
+                                                                                                                let v = r[7] | m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[7] = v;
+                                                                                                            }
+                                                                                                            // 14009e38d  488bc2  MOV RAX,RDX
+                                                                                                            {
+                                                                                                                r[0] = r[2];
+                                                                                                            }
+                                                                                                            // 14009e390  480b05a12d3200  OR RAX,qword ptr [0x1403c1138]
+                                                                                                            {
+                                                                                                                let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e397  4d8be6  MOV R12,R14
+                                                                                                            {
+                                                                                                                r[12] = r[14];
+                                                                                                            }
+                                                                                                            // 14009e39a  480b05a72d3200  OR RAX,qword ptr [0x1403c1148]
+                                                                                                            {
+                                                                                                                let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e3a1  8beb  MOV EBP,EBX
+                                                                                                            {
+                                                                                                                r[5] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                            }
+                                                                                                            // 14009e3a3  480b05ae2d3200  OR RAX,qword ptr [0x1403c1158]
+                                                                                                            {
+                                                                                                                let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e3aa  480b0d7f2d3200  OR RCX,qword ptr [0x1403c1130]
+                                                                                                            {
+                                                                                                                let v = r[1] | m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[1] = v;
+                                                                                                            }
+                                                                                                            // 14009e3b1  4923c7  AND RAX,R15
+                                                                                                            {
+                                                                                                                let v = r[0] & r[15];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[0] = v;
+                                                                                                            }
+                                                                                                            // 14009e3b4  4889442458  MOV qword ptr [RSP + 0x58],RAX
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), r[0]);
+                                                                                                            }
+                                                                                                            // 14009e3b9  486305b02d3200  MOVSXD RAX,dword ptr [0x1403c1170]
+                                                                                                            {
+                                                                                                                r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) as i32 as i64) as u64;
+                                                                                                            }
+                                                                                                            // 14009e3c0  4889bc2490000000  MOV qword ptr [RSP + 0x90],RDI
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64), r[7]);
+                                                                                                            }
+                                                                                                            // 14009e3c8  48898c2480000000  MOV qword ptr [RSP + 0x80],RCX
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64), r[1]);
+                                                                                                            }
+                                                                                                            // 14009e3d0  498b84c1f0f40e00  MOV RAX,qword ptr [R9 + RAX*0x8 + 0xef4f0]
+                                                                                                            {
+                                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(r[9]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xef4f0u64));
+                                                                                                            }
+                                                                                                            // 14009e3d8  4889442450  MOV qword ptr [RSP + 0x50],RAX
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64), r[0]);
+                                                                                                            }
+                                                                                                            // 14009e3dd  486305902d3200  MOVSXD RAX,dword ptr [0x1403c1174]
+                                                                                                            {
+                                                                                                                r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1174u64))) as i32 as i64) as u64;
+                                                                                                            }
+                                                                                                            // 14009e3e4  498bb4c1f0f40e00  MOV RSI,qword ptr [R9 + RAX*0x8 + 0xef4f0]
+                                                                                                            {
+                                                                                                                r[6] = m.read::<64>(0u64.wrapping_add(r[9]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xef4f0u64));
+                                                                                                            }
+                                                                                                            // 14009e3ec  4889742460  MOV qword ptr [RSP + 0x60],RSI
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64), r[6]);
+                                                                                                            }
+                                                                                                            // 14009e3f1  4d85c0  TEST R8,R8
+                                                                                                            {
+                                                                                                                let v = r[8];
+                                                                                                                f.logic(v, 64);
+                                                                                                            }
+                                                                                                            // 14009e3f4  7420  JZ 0x14009e416
+                                                                                                            if f.z { break 'b_3; }
+                                                                                                            'loop_1: loop {
+                                                                                                                // 14009e3f6  490fbcc0  BSF RAX,R8
+                                                                                                                {
+                                                                                                                    let v = r[8];
+                                                                                                                    f.z = v == 0;
+                                                                                                                    if v != 0 { r[0] = u64::from(v.trailing_zeros()); }
+                                                                                                                }
+                                                                                                                // 14009e3fa  8905180f2600  MOV dword ptr [0x1402ff318],EAX
+                                                                                                                {
+                                                                                                                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                                                                }
+                                                                                                                // 14009e400  4d0bbcc1f0fa0e00  OR R15,qword ptr [R9 + RAX*0x8 + 0xefaf0]
+                                                                                                                {
+                                                                                                                    let v = r[15] | m.read::<64>(0u64.wrapping_add(r[9]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xefaf0u64));
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[15] = v;
+                                                                                                                }
+                                                                                                                // 14009e408  498d40ff  LEA RAX,[R8 + -0x1]
+                                                                                                                {
+                                                                                                                    r[0] = 0u64.wrapping_add(r[8]).wrapping_add(0xffffffffffffffffu64);
+                                                                                                                }
+                                                                                                                // 14009e40c  4c23c0  AND R8,RAX
+                                                                                                                {
+                                                                                                                    let v = r[8] & r[0];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[8] = v;
+                                                                                                                }
+                                                                                                                // 14009e40f  75e5  JNZ 0x14009e3f6
+                                                                                                                if !f.z { continue 'loop_1; }
+                                                                                                                break 'loop_1;
+                                                                                                            }
+                                                                                                            // 14009e411  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                                                            {
+                                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                                                            }
+                                                                                                        }
+                                                                                                        // 14009e416  4885d2  TEST RDX,RDX
+                                                                                                        {
+                                                                                                            let v = r[2];
+                                                                                                            f.logic(v, 64);
+                                                                                                        }
+                                                                                                        // 14009e419  7425  JZ 0x14009e440
+                                                                                                        if f.z { break 'b_7; }
+                                                                                                        // 14009e41b  0f1f440000  NOP dword ptr [RAX + RAX*0x1]
+                                                                                                        'loop_5: loop {
+                                                                                                            // 14009e420  480fbcc2  BSF RAX,RDX
+                                                                                                            {
+                                                                                                                let v = r[2];
+                                                                                                                f.z = v == 0;
+                                                                                                                if v != 0 { r[0] = u64::from(v.trailing_zeros()); }
+                                                                                                            }
+                                                                                                            // 14009e424  8905ee0e2600  MOV dword ptr [0x1402ff318],EAX
+                                                                                                            {
+                                                                                                                m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                                                            }
+                                                                                                            // 14009e42a  4d0bb4c1f0fa0e00  OR R14,qword ptr [R9 + RAX*0x8 + 0xefaf0]
+                                                                                                            {
+                                                                                                                let v = r[14] | m.read::<64>(0u64.wrapping_add(r[9]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xefaf0u64));
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[14] = v;
+                                                                                                            }
+                                                                                                            // 14009e432  488d42ff  LEA RAX,[RDX + -0x1]
+                                                                                                            {
+                                                                                                                r[0] = 0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffffu64);
+                                                                                                            }
+                                                                                                            // 14009e436  4823d0  AND RDX,RAX
+                                                                                                            {
+                                                                                                                let v = r[2] & r[0];
+                                                                                                                f.logic(v, 64);
+                                                                                                                r[2] = v;
+                                                                                                            }
+                                                                                                            // 14009e439  75e5  JNZ 0x14009e420
+                                                                                                            if !f.z { continue 'loop_5; }
+                                                                                                            break 'loop_5;
+                                                                                                        }
+                                                                                                        // 14009e43b  4c89742438  MOV qword ptr [RSP + 0x38],R14
+                                                                                                        {
+                                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
+                                                                                                        }
+                                                                                                    }
+                                                                                                    // 14009e440  e8abbc0200  CALL 0x1400ca0f0
+                                                                                                    {
+                                                                                                        r[4] = r[4].wrapping_sub(8);
+                                                                                                        r[0] = pawn_1400ca0f0(m, &mut r, &mut x);
+                                                                                                        r[4] = r[4].wrapping_add(8);
+                                                                                                    }
+                                                                                                    // 14009e445  4c8b15e42c3200  MOV R10,qword ptr [0x1403c1130]
+                                                                                                    {
+                                                                                                        r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
+                                                                                                    }
+                                                                                                    // 14009e44c  4c8be8  MOV R13,RAX
+                                                                                                    {
+                                                                                                        r[13] = r[0];
+                                                                                                    }
+                                                                                                    // 14009e44f  4889842488000000  MOV qword ptr [RSP + 0x88],RAX
+                                                                                                    {
+                                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64), r[0]);
+                                                                                                    }
+                                                                                                    // 14009e457  488b442478  MOV RAX,qword ptr [RSP + 0x78]
+                                                                                                    {
+                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
+                                                                                                    }
+                                                                                                    // 14009e45c  6950742c001600  IMUL EDX,dword ptr [RAX + 0x74],0x16002c
+                                                                                                    {
+                                                                                                        r[2] = ((m.read::<32>(0u64.wrapping_add(r[0]).wrapping_add(0x74u64))).wrapping_mul(0x16002cu64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e463  488b050e2d3200  MOV RAX,qword ptr [0x1403c1178]
+                                                                                                    {
+                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                                    }
+                                                                                                    // 14009e46a  41035530  ADD EDX,dword ptr [R13 + 0x30]
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x30u64)), 32, false);
+                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e46e  0315242d3200  ADD EDX,dword ptr [0x1403c1198]
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(0x1403c1198u64)), 32, false);
+                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e474  4d85d2  TEST R10,R10
+                                                                                                    {
+                                                                                                        let v = r[10];
+                                                                                                        f.logic(v, 64);
+                                                                                                    }
+                                                                                                    // 14009e477  0f84c2000000  JZ 0x14009e53f
+                                                                                                    if f.z { break 'b_11; }
+                                                                                                    // 14009e47d  4c8b1dcc2c3200  MOV R11,qword ptr [0x1403c1150]
+                                                                                                    {
+                                                                                                        r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
+                                                                                                    }
+                                                                                                    // 14009e484  488d2d751bf6ff  LEA RBP,[0x140000000]
+                                                                                                    {
+                                                                                                        r[5] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                    }
+                                                                                                    // 14009e48b  4c33d8  XOR R11,RAX
+                                                                                                    {
+                                                                                                        let v = r[11] ^ r[0];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[11] = v;
+                                                                                                    }
+                                                                                                    // 14009e48e  6690  NOP
+                                                                                                    'loop_9: loop {
+                                                                                                        // 14009e490  490fbcc2  BSF RAX,R10
+                                                                                                        {
+                                                                                                            let v = r[10];
+                                                                                                            f.z = v == 0;
+                                                                                                            if v != 0 { r[0] = u64::from(v.trailing_zeros()); }
+                                                                                                        }
+                                                                                                        // 14009e494  4c63c8  MOVSXD R9,EAX
+                                                                                                        {
+                                                                                                            r[9] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                                        }
+                                                                                                        // 14009e497  89057b0e2600  MOV dword ptr [0x1402ff318],EAX
+                                                                                                        {
+                                                                                                            m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                                                        }
+                                                                                                        // 14009e49d  4a8b84cdf0040f00  MOV RAX,qword ptr [RBP + R9*0x8 + 0xf04f0]
+                                                                                                        {
+                                                                                                            r[0] = m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0xf04f0u64));
+                                                                                                        }
+                                                                                                        // 14009e4a5  428b8c8d00090f00  MOV ECX,dword ptr [RBP + R9*0x4 + 0xf0900]
+                                                                                                        {
+                                                                                                            r[1] = (m.read::<32>(0u64.wrapping_add(r[5]).wrapping_add(r[9].wrapping_mul(0x4u64)).wrapping_add(0xf0900u64))) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e4ad  4e8b84cdf0e00e00  MOV R8,qword ptr [RBP + R9*0x8 + 0xee0f0]
+                                                                                                        {
+                                                                                                            r[8] = m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0xee0f0u64));
+                                                                                                        }
+                                                                                                        // 14009e4b5  4d23c3  AND R8,R11
+                                                                                                        {
+                                                                                                            let v = r[8] & r[11];
+                                                                                                            f.logic(v, 64);
+                                                                                                            r[8] = v;
+                                                                                                        }
+                                                                                                        // 14009e4b8  4e0faf84cdf0000f00  IMUL R8,qword ptr [RBP + R9*0x8 + 0xf00f0]
+                                                                                                        {
+                                                                                                            r[8] = (r[8]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0xf00f0u64)));
+                                                                                                        }
+                                                                                                        // 14009e4c1  49d3e8  SHR R8,CL
+                                                                                                        {
+                                                                                                            let v = r[8];
+                                                                                                            let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                            if n != 0 { let v = v >> n; f.logic(v, 64); r[8] = v; }
+                                                                                                        }
+                                                                                                        // 14009e4c4  4a8b0cc0  MOV RCX,qword ptr [RAX + R8*0x8]
+                                                                                                        {
+                                                                                                            r[1] = m.read::<64>(0u64.wrapping_add(r[0]).wrapping_add(r[8].wrapping_mul(0x8u64)));
+                                                                                                        }
+                                                                                                        // 14009e4c8  8d4311  LEA EAX,[RBX + 0x11]
+                                                                                                        {
+                                                                                                            r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x11u64)) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e4cb  4c0bf9  OR R15,RCX
+                                                                                                        {
+                                                                                                            let v = r[15] | r[1];
+                                                                                                            f.logic(v, 64);
+                                                                                                            r[15] = v;
+                                                                                                        }
+                                                                                                        // 14009e4ce  4885ce  TEST RSI,RCX
+                                                                                                        {
+                                                                                                            let v = r[6] & r[1];
+                                                                                                            f.logic(v, 64);
+                                                                                                        }
+                                                                                                        // 14009e4d1  0f44c3  CMOVZ EAX,EBX
+                                                                                                        {
+                                                                                                            if f.z { r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                        }
+                                                                                                        // 14009e4d4  4823cf  AND RCX,RDI
+                                                                                                        {
+                                                                                                            let v = r[1] & r[7];
+                                                                                                            f.logic(v, 64);
+                                                                                                            r[1] = v;
+                                                                                                        }
+                                                                                                        // 14009e4d7  8bd8  MOV EBX,EAX
+                                                                                                        {
+                                                                                                            r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e4d9  f3480fb8c1  POPCNT RAX,RCX
+                                                                                                        {
+                                                                                                            let v = r[1];
+                                                                                                            f.z = v == 0;
+                                                                                                            f.o = false;
+                                                                                                            f.s = false;
+                                                                                                            r[0] = u64::from(v.count_ones());
+                                                                                                        }
+                                                                                                        // 14009e4de  4469c01b001b00  IMUL R8D,EAX,0x1b001b
+                                                                                                        {
+                                                                                                            r[8] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001bu64)) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e4e5  4a8b84cde0641000  MOV RAX,qword ptr [RBP + R9*0x8 + 0x1064e0]
+                                                                                                        {
+                                                                                                            r[0] = m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0x1064e0u64));
+                                                                                                        }
+                                                                                                        // 14009e4ed  480fafc1  IMUL RAX,RCX
+                                                                                                        {
+                                                                                                            r[0] = (r[0]).wrapping_mul(r[1]);
+                                                                                                        }
+                                                                                                        // 14009e4f1  49c1e104  SHL R9,0x4
+                                                                                                        {
+                                                                                                            let v = r[9];
+                                                                                                            let n = 4u32;
+                                                                                                            if n != 0 { let v = v.wrapping_shl(n); f.logic(v, 64); r[9] = v; }
+                                                                                                        }
+                                                                                                        // 14009e4f5  48c1e83c  SHR RAX,0x3c
+                                                                                                        {
+                                                                                                            let v = r[0];
+                                                                                                            let n = 60u32;
+                                                                                                            if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                        }
+                                                                                                        // 14009e4f9  4903c1  ADD RAX,R9
+                                                                                                        {
+                                                                                                            let v = f.arithmetic(r[0], r[9], 64, false);
+                                                                                                            r[0] = v;
+                                                                                                        }
+                                                                                                        // 14009e4fc  44038485e0661000  ADD R8D,dword ptr [RBP + RAX*0x4 + 0x1066e0]
+                                                                                                        {
+                                                                                                            let v = f.arithmetic(r[8] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[5]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0x1066e0u64)), 32, false);
+                                                                                                            r[8] = (v) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e504  498bc2  MOV RAX,R10
+                                                                                                        {
+                                                                                                            r[0] = r[10];
+                                                                                                        }
+                                                                                                        // 14009e507  48f7d8  NEG RAX
+                                                                                                        {
+                                                                                                            let v = f.arithmetic(0u64, r[0], 64, true);
+                                                                                                            r[0] = v;
+                                                                                                        }
+                                                                                                        // 14009e50a  49234528  AND RAX,qword ptr [R13 + 0x28]
+                                                                                                        {
+                                                                                                            let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
+                                                                                                            f.logic(v, 64);
+                                                                                                            r[0] = v;
+                                                                                                        }
+                                                                                                        // 14009e50e  4985c2  TEST R10,RAX
+                                                                                                        {
+                                                                                                            let v = r[10] & r[0];
+                                                                                                            f.logic(v, 64);
+                                                                                                        }
+                                                                                                        // 14009e511  8d821e002d00  LEA EAX,[RDX + 0x2d001e]
+                                                                                                        {
+                                                                                                            r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0x2d001eu64)) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e517  0f45c2  CMOVNZ EAX,EDX
+                                                                                                        {
+                                                                                                            if !f.z { r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                        }
+                                                                                                        // 14009e51a  428d1400  LEA EDX,[RAX + R8*0x1]
+                                                                                                        {
+                                                                                                            r[2] = (0u64.wrapping_add(r[0]).wrapping_add(r[8].wrapping_mul(0x1u64))) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                        // 14009e51e  498d42ff  LEA RAX,[R10 + -0x1]
+                                                                                                        {
+                                                                                                            r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
+                                                                                                        }
+                                                                                                        // 14009e522  4c23d0  AND R10,RAX
+                                                                                                        {
+                                                                                                            let v = r[10] & r[0];
+                                                                                                            f.logic(v, 64);
+                                                                                                            r[10] = v;
+                                                                                                        }
+                                                                                                        // 14009e525  0f8565ffffff  JNZ 0x14009e490
+                                                                                                        if !f.z { continue 'loop_9; }
+                                                                                                        break 'loop_9;
+                                                                                                    }
+                                                                                                    // 14009e52b  8b6c2440  MOV EBP,dword ptr [RSP + 0x40]
+                                                                                                    {
+                                                                                                        r[5] = (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64))) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e52f  488b05422c3200  MOV RAX,qword ptr [0x1403c1178]
+                                                                                                    {
+                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                                    }
+                                                                                                    // 14009e536  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                                                    {
+                                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                                                    }
+                                                                                                    // 14009e53b  895c2430  MOV dword ptr [RSP + 0x30],EBX
+                                                                                                    {
+                                                                                                        m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[3] & 0xffffffffu64);
+                                                                                                    }
+                                                                                                }
+                                                                                                // 14009e53f  4c8b1df22b3200  MOV R11,qword ptr [0x1403c1138]
+                                                                                                {
+                                                                                                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
+                                                                                                }
+                                                                                                // 14009e546  488b350b2c3200  MOV RSI,qword ptr [0x1403c1158]
+                                                                                                {
+                                                                                                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
+                                                                                                }
+                                                                                                // 14009e54d  4d85db  TEST R11,R11
+                                                                                                {
+                                                                                                    let v = r[11];
+                                                                                                    f.logic(v, 64);
+                                                                                                }
+                                                                                                // 14009e550  0f84d5000000  JZ 0x14009e62b
+                                                                                                if f.z { break 'b_15; }
+                                                                                                // 14009e556  4c8b642450  MOV R12,qword ptr [RSP + 0x50]
+                                                                                                {
+                                                                                                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
+                                                                                                }
+                                                                                                // 14009e55b  4c8d3d9e1af6ff  LEA R15,[0x140000000]
+                                                                                                {
+                                                                                                    r[15] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                }
+                                                                                                // 14009e562  488b9c2480000000  MOV RBX,qword ptr [RSP + 0x80]
+                                                                                                {
+                                                                                                    r[3] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
+                                                                                                }
+                                                                                                // 14009e56a  488bfe  MOV RDI,RSI
+                                                                                                {
+                                                                                                    r[7] = r[6];
+                                                                                                }
+                                                                                                // 14009e56d  4833f8  XOR RDI,RAX
+                                                                                                {
+                                                                                                    let v = r[7] ^ r[0];
+                                                                                                    f.logic(v, 64);
+                                                                                                    r[7] = v;
+                                                                                                }
+                                                                                                'loop_13: loop {
+                                                                                                    // 14009e570  490fbcc3  BSF RAX,R11
+                                                                                                    {
+                                                                                                        let v = r[11];
+                                                                                                        f.z = v == 0;
+                                                                                                        if v != 0 { r[0] = u64::from(v.trailing_zeros()); }
+                                                                                                    }
+                                                                                                    // 14009e574  4c63d0  MOVSXD R10,EAX
+                                                                                                    {
+                                                                                                        r[10] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                                    }
+                                                                                                    // 14009e577  89059b0d2600  MOV dword ptr [0x1402ff318],EAX
+                                                                                                    {
+                                                                                                        m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                                                    }
+                                                                                                    // 14009e57d  4b8b84d7f0040f00  MOV RAX,qword ptr [R15 + R10*0x8 + 0xf04f0]
+                                                                                                    {
+                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[10].wrapping_mul(0x8u64)).wrapping_add(0xf04f0u64));
+                                                                                                    }
+                                                                                                    // 14009e585  438b8c9700090f00  MOV ECX,dword ptr [R15 + R10*0x4 + 0xf0900]
+                                                                                                    {
+                                                                                                        r[1] = (m.read::<32>(0u64.wrapping_add(r[15]).wrapping_add(r[10].wrapping_mul(0x4u64)).wrapping_add(0xf0900u64))) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e58d  4f8b84d7f0e00e00  MOV R8,qword ptr [R15 + R10*0x8 + 0xee0f0]
+                                                                                                    {
+                                                                                                        r[8] = m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[10].wrapping_mul(0x8u64)).wrapping_add(0xee0f0u64));
+                                                                                                    }
+                                                                                                    // 14009e595  4c23c7  AND R8,RDI
+                                                                                                    {
+                                                                                                        let v = r[8] & r[7];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[8] = v;
+                                                                                                    }
+                                                                                                    // 14009e598  4f0faf84d7f0000f00  IMUL R8,qword ptr [R15 + R10*0x8 + 0xf00f0]
+                                                                                                    {
+                                                                                                        r[8] = (r[8]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[10].wrapping_mul(0x8u64)).wrapping_add(0xf00f0u64)));
+                                                                                                    }
+                                                                                                    // 14009e5a1  49d3e8  SHR R8,CL
+                                                                                                    {
+                                                                                                        let v = r[8];
+                                                                                                        let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                        if n != 0 { let v = v >> n; f.logic(v, 64); r[8] = v; }
+                                                                                                    }
+                                                                                                    // 14009e5a4  4a8b0cc0  MOV RCX,qword ptr [RAX + R8*0x8]
+                                                                                                    {
+                                                                                                        r[1] = m.read::<64>(0u64.wrapping_add(r[0]).wrapping_add(r[8].wrapping_mul(0x8u64)));
+                                                                                                    }
+                                                                                                    // 14009e5a8  8d4511  LEA EAX,[RBP + 0x11]
+                                                                                                    {
+                                                                                                        r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x11u64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e5ab  4f8b84d7e0521000  MOV R8,qword ptr [R15 + R10*0x8 + 0x1052e0]
+                                                                                                    {
+                                                                                                        r[8] = m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[10].wrapping_mul(0x8u64)).wrapping_add(0x1052e0u64));
+                                                                                                    }
+                                                                                                    // 14009e5b3  4c0bf1  OR R14,RCX
+                                                                                                    {
+                                                                                                        let v = r[14] | r[1];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[14] = v;
+                                                                                                    }
+                                                                                                    // 14009e5b6  4985cc  TEST R12,RCX
+                                                                                                    {
+                                                                                                        let v = r[12] & r[1];
+                                                                                                        f.logic(v, 64);
+                                                                                                    }
+                                                                                                    // 14009e5b9  0f44c5  CMOVZ EAX,EBP
+                                                                                                    {
+                                                                                                        if f.z { r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                    }
+                                                                                                    // 14009e5bc  4823cb  AND RCX,RBX
+                                                                                                    {
+                                                                                                        let v = r[1] & r[3];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[1] = v;
+                                                                                                    }
+                                                                                                    // 14009e5bf  8be8  MOV EBP,EAX
+                                                                                                    {
+                                                                                                        r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e5c1  49c1e204  SHL R10,0x4
+                                                                                                    {
+                                                                                                        let v = r[10];
+                                                                                                        let n = 4u32;
+                                                                                                        if n != 0 { let v = v.wrapping_shl(n); f.logic(v, 64); r[10] = v; }
+                                                                                                    }
+                                                                                                    // 14009e5c5  4c0fafc1  IMUL R8,RCX
+                                                                                                    {
+                                                                                                        r[8] = (r[8]).wrapping_mul(r[1]);
+                                                                                                    }
+                                                                                                    // 14009e5c9  f3480fb8c1  POPCNT RAX,RCX
+                                                                                                    {
+                                                                                                        let v = r[1];
+                                                                                                        f.z = v == 0;
+                                                                                                        f.o = false;
+                                                                                                        f.s = false;
+                                                                                                        r[0] = u64::from(v.count_ones());
+                                                                                                    }
+                                                                                                    // 14009e5ce  4469c81b001b00  IMUL R9D,EAX,0x1b001b
+                                                                                                    {
+                                                                                                        r[9] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001bu64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e5d5  498bc3  MOV RAX,R11
+                                                                                                    {
+                                                                                                        r[0] = r[11];
+                                                                                                    }
+                                                                                                    // 14009e5d8  48f7d8  NEG RAX
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(0u64, r[0], 64, true);
+                                                                                                        r[0] = v;
+                                                                                                    }
+                                                                                                    // 14009e5db  49c1e83c  SHR R8,0x3c
+                                                                                                    {
+                                                                                                        let v = r[8];
+                                                                                                        let n = 60u32;
+                                                                                                        if n != 0 { let v = v >> n; f.logic(v, 64); r[8] = v; }
+                                                                                                    }
+                                                                                                    // 14009e5df  49234520  AND RAX,qword ptr [R13 + 0x20]
+                                                                                                    {
+                                                                                                        let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[0] = v;
+                                                                                                    }
+                                                                                                    // 14009e5e3  4d03c2  ADD R8,R10
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[8], r[10], 64, false);
+                                                                                                        r[8] = v;
+                                                                                                    }
+                                                                                                    // 14009e5e6  4985c3  TEST R11,RAX
+                                                                                                    {
+                                                                                                        let v = r[11] & r[0];
+                                                                                                        f.logic(v, 64);
+                                                                                                    }
+                                                                                                    // 14009e5e9  8d82e2ffd2ff  LEA EAX,[RDX + -0x2d001e]
+                                                                                                    {
+                                                                                                        r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffd2ffe2u64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e5ef  0f45c2  CMOVNZ EAX,EDX
+                                                                                                    {
+                                                                                                        if !f.z { r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                    }
+                                                                                                    // 14009e5f2  8bd0  MOV EDX,EAX
+                                                                                                    {
+                                                                                                        r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e5f4  498d43ff  LEA RAX,[R11 + -0x1]
+                                                                                                    {
+                                                                                                        r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
+                                                                                                    }
+                                                                                                    // 14009e5f8  432b9487e0541000  SUB EDX,dword ptr [R15 + R8*0x4 + 0x1054e0]
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[15]).wrapping_add(r[8].wrapping_mul(0x4u64)).wrapping_add(0x1054e0u64)), 32, true);
+                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e600  412bd1  SUB EDX,R9D
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, r[9] & 0xffffffffu64, 32, true);
+                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e603  4c23d8  AND R11,RAX
+                                                                                                    {
+                                                                                                        let v = r[11] & r[0];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[11] = v;
+                                                                                                    }
+                                                                                                    // 14009e606  0f8564ffffff  JNZ 0x14009e570
+                                                                                                    if !f.z { continue 'loop_13; }
+                                                                                                    break 'loop_13;
+                                                                                                }
+                                                                                                // 14009e60c  8b5c2430  MOV EBX,dword ptr [RSP + 0x30]
+                                                                                                {
+                                                                                                    r[3] = (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64))) & 0xffff_ffff;
+                                                                                                }
+                                                                                                // 14009e610  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
+                                                                                                {
+                                                                                                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
+                                                                                                }
+                                                                                                // 14009e615  488bbc2490000000  MOV RDI,qword ptr [RSP + 0x90]
+                                                                                                {
+                                                                                                    r[7] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
+                                                                                                }
+                                                                                                // 14009e61d  4c8b642468  MOV R12,qword ptr [RSP + 0x68]
+                                                                                                {
+                                                                                                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
+                                                                                                }
+                                                                                                // 14009e622  4c89742438  MOV qword ptr [RSP + 0x38],R14
+                                                                                                {
+                                                                                                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
+                                                                                                }
+                                                                                                // 14009e627  896c2440  MOV dword ptr [RSP + 0x40],EBP
+                                                                                                {
+                                                                                                    m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[5] & 0xffffffffu64);
+                                                                                                }
+                                                                                            }
+                                                                                            // 14009e62b  488b0d0e2b3200  MOV RCX,qword ptr [0x1403c1140]
+                                                                                            {
+                                                                                                r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
+                                                                                            }
+                                                                                            // 14009e632  488b050f2b3200  MOV RAX,qword ptr [0x1403c1148]
+                                                                                            {
+                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                                                                                            }
+                                                                                            // 14009e639  4c8bd9  MOV R11,RCX
+                                                                                            {
+                                                                                                r[11] = r[1];
+                                                                                            }
+                                                                                            // 14009e63c  4c8b150d2b3200  MOV R10,qword ptr [0x1403c1150]
+                                                                                            {
+                                                                                                r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
+                                                                                            }
+                                                                                            // 14009e643  480bc6  OR RAX,RSI
+                                                                                            {
+                                                                                                let v = r[0] | r[6];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e646  4923c7  AND RAX,R15
+                                                                                            {
+                                                                                                let v = r[0] & r[15];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e649  4809442458  OR qword ptr [RSP + 0x58],RAX
+                                                                                            {
+                                                                                                let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64)) | r[0];
+                                                                                                f.logic(v, 64);
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), v);
+                                                                                            }
+                                                                                            // 14009e64e  488bc1  MOV RAX,RCX
+                                                                                            {
+                                                                                                r[0] = r[1];
+                                                                                            }
+                                                                                            // 14009e651  490bc2  OR RAX,R10
+                                                                                            {
+                                                                                                let v = r[0] | r[10];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e654  4923c6  AND RAX,R14
+                                                                                            {
+                                                                                                let v = r[0] & r[14];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e657  4809442448  OR qword ptr [RSP + 0x48],RAX
+                                                                                            {
+                                                                                                let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64)) | r[0];
+                                                                                                f.logic(v, 64);
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), v);
+                                                                                            }
+                                                                                            // 14009e65c  4885c9  TEST RCX,RCX
+                                                                                            {
+                                                                                                let v = r[1];
+                                                                                                f.logic(v, 64);
+                                                                                            }
+                                                                                            // 14009e65f  0f8420020000  JZ 0x14009e885
+                                                                                            if f.z {
+                                                                                                break 'b_34;
+                                                                                            }
+                                                                                            // 14009e665  4c33150c2b3200  XOR R10,qword ptr [0x1403c1178]
+                                                                                            {
+                                                                                                let v = r[10] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                                f.logic(v, 64);
+                                                                                                r[10] = v;
+                                                                                            }
+                                                                                            // 14009e66c  498bcc  MOV RCX,R12
+                                                                                            {
+                                                                                                r[1] = r[12];
+                                                                                            }
+                                                                                            // 14009e66f  488b442470  MOV RAX,qword ptr [RSP + 0x70]
+                                                                                            {
+                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
+                                                                                            }
+                                                                                            // 14009e674  48f7d1  NOT RCX
+                                                                                            {
+                                                                                                let v = !(r[1]);
+                                                                                                r[1] = v;
+                                                                                            }
+                                                                                            // 14009e677  48230d922a3200  AND RCX,qword ptr [0x1403c1110]
+                                                                                            {
+                                                                                                let v = r[1] & m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                                f.logic(v, 64);
+                                                                                                r[1] = v;
+                                                                                            }
+                                                                                            // 14009e67e  48f7d0  NOT RAX
+                                                                                            {
+                                                                                                let v = !(r[0]);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e681  482305902a3200  AND RAX,qword ptr [0x1403c1118]
+                                                                                            {
+                                                                                                let v = r[0] & m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e688  4923c4  AND RAX,R12
+                                                                                            {
+                                                                                                let v = r[0] & r[12];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e68b  4c89542420  MOV qword ptr [RSP + 0x20],R10
+                                                                                            {
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[10]);
+                                                                                            }
+                                                                                            // 14009e690  480bc1  OR RAX,RCX
+                                                                                            {
+                                                                                                let v = r[0] | r[1];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e693  48894c2430  MOV qword ptr [RSP + 0x30],RCX
+                                                                                            {
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[1]);
+                                                                                            }
+                                                                                            // 14009e698  4889442428  MOV qword ptr [RSP + 0x28],RAX
+                                                                                            {
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[0]);
+                                                                                            }
+                                                                                            // 14009e69d  4c8d255c19f6ff  LEA R12,[0x140000000]
+                                                                                            {
+                                                                                                r[12] = 0u64.wrapping_add(0x140000000u64);
+                                                                                            }
+                                                                                            // 14009e6a4  4c8b742428  MOV R14,qword ptr [RSP + 0x28]
+                                                                                            {
+                                                                                                r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
+                                                                                            }
+                                                                                            // 14009e6a9  488bc6  MOV RAX,RSI
+                                                                                            {
+                                                                                                r[0] = r[6];
+                                                                                            }
+                                                                                            // 14009e6ac  480bc7  OR RAX,RDI
+                                                                                            {
+                                                                                                let v = r[0] | r[7];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009e6af  4889442440  MOV qword ptr [RSP + 0x40],RAX
+                                                                                            {
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[0]);
+                                                                                            }
+                                                                                            // 14009e6b4  0f1f4000  NOP dword ptr [RAX]
+                                                                                            // 14009e6b8  0f1f840000000000  NOP dword ptr [RAX + RAX*0x1]
+                                                                                            'loop_17: loop {
+                                                                                                'b_32: {
+                                                                                                    'b_29: {
+                                                                                                        'b_28: {
+                                                                                                            'b_27: {
+                                                                                                                'b_26: {
+                                                                                                                    'b_24: {
+                                                                                                                        'b_20: {
+                                                                                                                            // 14009e6c0  4d0fbccb  BSF R9,R11
+                                                                                                                            {
+                                                                                                                                let v = r[11];
+                                                                                                                                f.z = v == 0;
+                                                                                                                                if v != 0 { r[9] = u64::from(v.trailing_zeros()); }
+                                                                                                                            }
+                                                                                                                            // 14009e6c4  4963c1  MOVSXD RAX,R9D
+                                                                                                                            {
+                                                                                                                                r[0] = ((r[9] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                                                            }
+                                                                                                                            // 14009e6c7  44890d4a0c2600  MOV dword ptr [0x1402ff318],R9D
+                                                                                                                            {
+                                                                                                                                m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[9] & 0xffffffffu64);
+                                                                                                                            }
+                                                                                                                            // 14009e6ce  418b8c8400080f00  MOV ECX,dword ptr [R12 + RAX*0x4 + 0xf0800]
+                                                                                                                            {
+                                                                                                                                r[1] = (m.read::<32>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0800u64))) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                            // 14009e6d6  488d3cc500000000  LEA RDI,[RAX*0x8]
+                                                                                                                            {
+                                                                                                                                r[7] = 0u64.wrapping_add(r[0].wrapping_mul(0x8u64));
+                                                                                                                            }
+                                                                                                                            // 14009e6de  4e8b8427f0de0e00  MOV R8,qword ptr [RDI + R12*0x1 + 0xedef0]
+                                                                                                                            {
+                                                                                                                                r[8] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xedef0u64));
+                                                                                                                            }
+                                                                                                                            // 14009e6e6  4a8bb427f0fe0e00  MOV RSI,qword ptr [RDI + R12*0x1 + 0xefef0]
+                                                                                                                            {
+                                                                                                                                r[6] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xefef0u64));
+                                                                                                                            }
+                                                                                                                            // 14009e6ee  498bc0  MOV RAX,R8
+                                                                                                                            {
+                                                                                                                                r[0] = r[8];
+                                                                                                                            }
+                                                                                                                            // 14009e6f1  4e8ba427f0020f00  MOV R12,qword ptr [RDI + R12*0x1 + 0xf02f0]
+                                                                                                                            {
+                                                                                                                                r[12] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xf02f0u64));
+                                                                                                                            }
+                                                                                                                            // 14009e6f9  4923c2  AND RAX,R10
+                                                                                                                            {
+                                                                                                                                let v = r[0] & r[10];
+                                                                                                                                f.logic(v, 64);
+                                                                                                                                r[0] = v;
+                                                                                                                            }
+                                                                                                                            // 14009e6fc  480fafc6  IMUL RAX,RSI
+                                                                                                                            {
+                                                                                                                                r[0] = (r[0]).wrapping_mul(r[6]);
+                                                                                                                            }
+                                                                                                                            // 14009e700  48d3e8  SHR RAX,CL
+                                                                                                                            {
+                                                                                                                                let v = r[0];
+                                                                                                                                let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                                            }
+                                                                                                                            // 14009e703  4d8b14c4  MOV R10,qword ptr [R12 + RAX*0x8]
+                                                                                                                            {
+                                                                                                                                r[10] = m.read::<64>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x8u64)));
+                                                                                                                            }
+                                                                                                                            // 14009e707  8d4313  LEA EAX,[RBX + 0x13]
+                                                                                                                            {
+                                                                                                                                r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x13u64)) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                            // 14009e70a  4d0bfa  OR R15,R10
+                                                                                                                            {
+                                                                                                                                let v = r[15] | r[10];
+                                                                                                                                f.logic(v, 64);
+                                                                                                                                r[15] = v;
+                                                                                                                            }
+                                                                                                                            // 14009e70d  4c85542460  TEST qword ptr [RSP + 0x60],R10
+                                                                                                                            {
+                                                                                                                                let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64)) & r[10];
+                                                                                                                                f.logic(v, 64);
+                                                                                                                            }
+                                                                                                                            // 14009e712  0f44c3  CMOVZ EAX,EBX
+                                                                                                                            {
+                                                                                                                                if f.z { r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                            }
+                                                                                                                            // 14009e715  4c85542450  TEST qword ptr [RSP + 0x50],R10
+                                                                                                                            {
+                                                                                                                                let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64)) & r[10];
+                                                                                                                                f.logic(v, 64);
+                                                                                                                            }
+                                                                                                                            // 14009e71a  8bd8  MOV EBX,EAX
+                                                                                                                            {
+                                                                                                                                r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                            // 14009e71c  8d45fd  LEA EAX,[RBP + -0x3]
+                                                                                                                            {
+                                                                                                                                r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0xfffffffffffffffdu64)) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                            // 14009e71f  0f44c5  CMOVZ EAX,EBP
+                                                                                                                            {
+                                                                                                                                if f.z { r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                            }
+                                                                                                                            // 14009e722  4c8515172a3200  TEST qword ptr [0x1403c1140],R10
+                                                                                                                            {
+                                                                                                                                let v = m.read::<64>(0u64.wrapping_add(0x1403c1140u64)) & r[10];
+                                                                                                                                f.logic(v, 64);
+                                                                                                                            }
+                                                                                                                            // 14009e729  8be8  MOV EBP,EAX
+                                                                                                                            {
+                                                                                                                                r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                            // 14009e72b  7410  JZ 0x14009e73d
+                                                                                                                            if f.z { break 'b_20; }
+                                                                                                                            // 14009e72d  48833d232a320000  CMP qword ptr [0x1403c1158],0x0
+                                                                                                                            {
+                                                                                                                                f.arithmetic(m.read::<64>(0u64.wrapping_add(0x1403c1158u64)), 0x0u64, 64, true);
+                                                                                                                            }
+                                                                                                                            // 14009e735  7406  JZ 0x14009e73d
+                                                                                                                            if f.z { break 'b_20; }
+                                                                                                                            // 14009e737  81c22a001800  ADD EDX,0x18002a
+                                                                                                                            {
+                                                                                                                                let v = f.arithmetic(r[2] & 0xffffffffu64, 0x18002au64, 32, false);
+                                                                                                                                r[2] = (v) & 0xffff_ffff;
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                        // 14009e73d  498bc6  MOV RAX,R14
+                                                                                                                        {
+                                                                                                                            r[0] = r[14];
+                                                                                                                        }
+                                                                                                                        // 14009e740  4923c0  AND RAX,R8
+                                                                                                                        {
+                                                                                                                            let v = r[0] & r[8];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e743  480fafc6  IMUL RAX,RSI
+                                                                                                                        {
+                                                                                                                            r[0] = (r[0]).wrapping_mul(r[6]);
+                                                                                                                        }
+                                                                                                                        // 14009e747  48d3e8  SHR RAX,CL
+                                                                                                                        {
+                                                                                                                            let v = r[0];
+                                                                                                                            let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                                            if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                                        }
+                                                                                                                        // 14009e74a  f3490fb804c4  POPCNT RAX,qword ptr [R12 + RAX*0x8]
+                                                                                                                        {
+                                                                                                                            let v = m.read::<64>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x8u64)));
+                                                                                                                            f.z = v == 0;
+                                                                                                                            f.o = false;
+                                                                                                                            f.s = false;
+                                                                                                                            r[0] = u64::from(v.count_ones());
+                                                                                                                        }
+                                                                                                                        // 14009e750  4469c009000800  IMUL R8D,EAX,0x80009
+                                                                                                                        {
+                                                                                                                            r[8] = ((r[0] & 0xffffffffu64).wrapping_mul(0x80009u64)) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e757  4c8d25a218f6ff  LEA R12,[0x140000000]
+                                                                                                                        {
+                                                                                                                            r[12] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                                        }
+                                                                                                                        // 14009e75e  488b442440  MOV RAX,qword ptr [RSP + 0x40]
+                                                                                                                        {
+                                                                                                                            r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64));
+                                                                                                                        }
+                                                                                                                        // 14009e763  4923c2  AND RAX,R10
+                                                                                                                        {
+                                                                                                                            let v = r[0] & r[10];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e766  f3480fb8c0  POPCNT RAX,RAX
+                                                                                                                        {
+                                                                                                                            let v = r[0];
+                                                                                                                            f.z = v == 0;
+                                                                                                                            f.o = false;
+                                                                                                                            f.s = false;
+                                                                                                                            r[0] = u64::from(v.count_ones());
+                                                                                                                        }
+                                                                                                                        // 14009e76b  69c817001100  IMUL ECX,EAX,0x110017
+                                                                                                                        {
+                                                                                                                            r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x110017u64)) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e771  03d1  ADD EDX,ECX
+                                                                                                                        {
+                                                                                                                            let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+                                                                                                                            r[2] = (v) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e773  4a8b8c2780440f00  MOV RCX,qword ptr [RDI + R12*0x1 + 0xf4480]
+                                                                                                                        {
+                                                                                                                            r[1] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xf4480u64));
+                                                                                                                        }
+                                                                                                                        // 14009e77b  4103d0  ADD EDX,R8D
+                                                                                                                        {
+                                                                                                                            let v = f.arithmetic(r[2] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, false);
+                                                                                                                            r[2] = (v) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e77e  48854c2430  TEST qword ptr [RSP + 0x30],RCX
+                                                                                                                        {
+                                                                                                                            let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64)) & r[1];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e783  0f85c5000000  JNZ 0x14009e84e
+                                                                                                                        if !f.z { break 'b_32; }
+                                                                                                                        // 14009e789  488b3d98293200  MOV RDI,qword ptr [0x1403c1128]
+                                                                                                                        {
+                                                                                                                            r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
+                                                                                                                        }
+                                                                                                                        // 14009e790  4c8b15a1293200  MOV R10,qword ptr [0x1403c1138]
+                                                                                                                        {
+                                                                                                                            r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
+                                                                                                                        }
+                                                                                                                        // 14009e797  488bc7  MOV RAX,RDI
+                                                                                                                        {
+                                                                                                                            r[0] = r[7];
+                                                                                                                        }
+                                                                                                                        // 14009e79a  4c8b0577293200  MOV R8,qword ptr [0x1403c1118]
+                                                                                                                        {
+                                                                                                                            r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                                                        }
+                                                                                                                        // 14009e7a1  490bc2  OR RAX,R10
+                                                                                                                        {
+                                                                                                                            let v = r[0] | r[10];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e7a4  490bc0  OR RAX,R8
+                                                                                                                        {
+                                                                                                                            let v = r[0] | r[8];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e7a7  49234510  AND RAX,qword ptr [R13 + 0x10]
+                                                                                                                        {
+                                                                                                                            let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x10u64));
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e7ab  4885c1  TEST RCX,RAX
+                                                                                                                        {
+                                                                                                                            let v = r[1] & r[0];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e7ae  7562  JNZ 0x14009e812
+                                                                                                                        if !f.z { break 'b_29; }
+                                                                                                                        // 14009e7b0  4c85c1  TEST RCX,R8
+                                                                                                                        {
+                                                                                                                            let v = r[1] & r[8];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e7b3  741b  JZ 0x14009e7d0
+                                                                                                                        if f.z { break 'b_24; }
+                                                                                                                        // 14009e7b5  498b4528  MOV RAX,qword ptr [R13 + 0x28]
+                                                                                                                        {
+                                                                                                                            r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
+                                                                                                                        }
+                                                                                                                        // 14009e7b9  41ba46000a00  MOV R10D,0xa0046
+                                                                                                                        {
+                                                                                                                            r[10] = (0xa0046u64) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e7bf  4923c0  AND RAX,R8
+                                                                                                                        {
+                                                                                                                            let v = r[0] & r[8];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e7c2  4885c1  TEST RCX,RAX
+                                                                                                                        {
+                                                                                                                            let v = r[1] & r[0];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e7c5  b883002f00  MOV EAX,0x2f0083
+                                                                                                                        {
+                                                                                                                            r[0] = (0x2f0083u64) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e7ca  410f45c2  CMOVNZ EAX,R10D
+                                                                                                                        {
+                                                                                                                            if !f.z { r[0] = (r[10] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                        }
+                                                                                                                        // 14009e7ce  eb40  JMP 0x14009e810
+                                                                                                                        break 'b_28;
+                                                                                                                    }
+                                                                                                                    // 14009e7d0  4c8bc7  MOV R8,RDI
+                                                                                                                    {
+                                                                                                                        r[8] = r[7];
+                                                                                                                    }
+                                                                                                                    // 14009e7d3  4d0bc2  OR R8,R10
+                                                                                                                    {
+                                                                                                                        let v = r[8] | r[10];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[8] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e7d6  4c8b542468  MOV R10,qword ptr [RSP + 0x68]
+                                                                                                                    {
+                                                                                                                        r[10] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
+                                                                                                                    }
+                                                                                                                    // 14009e7db  498bc0  MOV RAX,R8
+                                                                                                                    {
+                                                                                                                        r[0] = r[8];
+                                                                                                                    }
+                                                                                                                    // 14009e7de  4823c1  AND RAX,RCX
+                                                                                                                    {
+                                                                                                                        let v = r[0] & r[1];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e7e1  4985c2  TEST R10,RAX
+                                                                                                                    {
+                                                                                                                        let v = r[10] & r[0];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e7e4  741e  JZ 0x14009e804
+                                                                                                                    if f.z { break 'b_26; }
+                                                                                                                    // 14009e7e6  498b4520  MOV RAX,qword ptr [R13 + 0x20]
+                                                                                                                    {
+                                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
+                                                                                                                    }
+                                                                                                                    // 14009e7ea  4923c0  AND RAX,R8
+                                                                                                                    {
+                                                                                                                        let v = r[0] & r[8];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e7ed  41b87700a300  MOV R8D,0xa30077
+                                                                                                                    {
+                                                                                                                        r[8] = (0xa30077u64) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e7f3  4823c1  AND RAX,RCX
+                                                                                                                    {
+                                                                                                                        let v = r[0] & r[1];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e7f6  4985c2  TEST R10,RAX
+                                                                                                                    {
+                                                                                                                        let v = r[10] & r[0];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e7f9  b852007100  MOV EAX,0x710052
+                                                                                                                    {
+                                                                                                                        r[0] = (0x710052u64) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e7fe  410f45c0  CMOVNZ EAX,R8D
+                                                                                                                    {
+                                                                                                                        if !f.z { r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                    }
+                                                                                                                    // 14009e802  eb05  JMP 0x14009e809
+                                                                                                                    break 'b_27;
+                                                                                                                }
+                                                                                                                // 14009e804  b88800b700  MOV EAX,0xb70088
+                                                                                                                {
+                                                                                                                    r[0] = (0xb70088u64) & 0xffff_ffff;
+                                                                                                                }
+                                                                                                            }
+                                                                                                            // 14009e809  4c8b0508293200  MOV R8,qword ptr [0x1403c1118]
+                                                                                                            {
+                                                                                                                r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                                            }
+                                                                                                        }
+                                                                                                        // 14009e810  03d0  ADD EDX,EAX
+                                                                                                        {
+                                                                                                            let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
+                                                                                                            r[2] = (v) & 0xffff_ffff;
+                                                                                                        }
+                                                                                                    }
+                                                                                                    // 14009e812  4c8b154f293200  MOV R10,qword ptr [0x1403c1168]
+                                                                                                    {
+                                                                                                        r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
+                                                                                                    }
+                                                                                                    // 14009e819  8d8200009600  LEA EAX,[RDX + 0x960000]
+                                                                                                    {
+                                                                                                        r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0x960000u64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e81f  4c85d1  TEST RCX,R10
+                                                                                                    {
+                                                                                                        let v = r[1] & r[10];
+                                                                                                        f.logic(v, 64);
+                                                                                                    }
+                                                                                                    // 14009e822  0f44c2  CMOVZ EAX,EDX
+                                                                                                    {
+                                                                                                        if f.z { r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                    }
+                                                                                                    // 14009e825  4183e138  AND R9D,0x38
+                                                                                                    {
+                                                                                                        let v = (r[9] & 0xffffffffu64 & 0x38u64) & 0xffffffffu64;
+                                                                                                        f.logic(v, 32);
+                                                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e829  8bd0  MOV EDX,EAX
+                                                                                                    {
+                                                                                                        r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e82b  8bc8  MOV ECX,EAX
+                                                                                                    {
+                                                                                                        r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                    // 14009e82d  4180f930  CMP R9B,0x30
+                                                                                                    {
+                                                                                                        f.arithmetic(r[9] & 0xffu64, 0x30u64, 8, true);
+                                                                                                    }
+                                                                                                    // 14009e831  751b  JNZ 0x14009e84e
+                                                                                                    if !f.z { break 'b_32; }
+                                                                                                    // 14009e833  498bc0  MOV RAX,R8
+                                                                                                    {
+                                                                                                        r[0] = r[8];
+                                                                                                    }
+                                                                                                    // 14009e836  49b8000000000000ffff  MOV R8,-0x1000000000000
+                                                                                                    {
+                                                                                                        r[8] = 0xffff000000000000u64;
+                                                                                                    }
+                                                                                                    // 14009e840  490bc2  OR RAX,R10
+                                                                                                    {
+                                                                                                        let v = r[0] | r[10];
+                                                                                                        f.logic(v, 64);
+                                                                                                        r[0] = v;
+                                                                                                    }
+                                                                                                    // 14009e843  4985c0  TEST R8,RAX
+                                                                                                    {
+                                                                                                        let v = r[8] & r[0];
+                                                                                                        f.logic(v, 64);
+                                                                                                    }
+                                                                                                    // 14009e846  7406  JZ 0x14009e84e
+                                                                                                    if f.z { break 'b_32; }
+                                                                                                    // 14009e848  8d91f7004d00  LEA EDX,[RCX + 0x4d00f7]
+                                                                                                    {
+                                                                                                        r[2] = (0u64.wrapping_add(r[1]).wrapping_add(0x4d00f7u64)) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                }
+                                                                                                // 14009e84e  4c8b542420  MOV R10,qword ptr [RSP + 0x20]
+                                                                                                {
+                                                                                                    r[10] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
+                                                                                                }
+                                                                                                // 14009e853  498d43ff  LEA RAX,[R11 + -0x1]
+                                                                                                {
+                                                                                                    r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
+                                                                                                }
+                                                                                                // 14009e857  4c23d8  AND R11,RAX
+                                                                                                {
+                                                                                                    let v = r[11] & r[0];
+                                                                                                    f.logic(v, 64);
+                                                                                                    r[11] = v;
+                                                                                                }
+                                                                                                // 14009e85a  0f8560feffff  JNZ 0x14009e6c0
+                                                                                                if !f.z { continue 'loop_17; }
+                                                                                                break 'loop_17;
+                                                                                            }
+                                                                                            // 14009e860  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
+                                                                                            {
+                                                                                                r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
+                                                                                            }
+                                                                                            // 14009e865  488b35ec283200  MOV RSI,qword ptr [0x1403c1158]
+                                                                                            {
+                                                                                                r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
+                                                                                            }
+                                                                                            // 14009e86c  4c8b642468  MOV R12,qword ptr [RSP + 0x68]
+                                                                                            {
+                                                                                                r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
+                                                                                            }
+                                                                                            // 14009e871  4c8b15d8283200  MOV R10,qword ptr [0x1403c1150]
+                                                                                            {
+                                                                                                r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
+                                                                                            }
+                                                                                            // 14009e878  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                                            {
+                                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                                            }
+                                                                                            // 14009e87d  895c2430  MOV dword ptr [RSP + 0x30],EBX
+                                                                                            {
+                                                                                                m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[3] & 0xffffffffu64);
+                                                                                            }
+                                                                                            // 14009e881  896c2440  MOV dword ptr [RSP + 0x40],EBP
+                                                                                            {
+                                                                                                m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[5] & 0xffffffffu64);
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009e885  4c8b1dbc283200  MOV R11,qword ptr [0x1403c1148]
+                                                                                        {
+                                                                                            r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                                                                                        }
+                                                                                        // 14009e88c  4d85db  TEST R11,R11
+                                                                                        {
+                                                                                            let v = r[11];
+                                                                                            f.logic(v, 64);
+                                                                                        }
+                                                                                        // 14009e88f  0f840b020000  JZ 0x14009eaa0
+                                                                                        if f.z {
+                                                                                            break 'b_53;
+                                                                                        }
+                                                                                        // 14009e895  488b4c2470  MOV RCX,qword ptr [RSP + 0x70]
+                                                                                        {
+                                                                                            r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
+                                                                                        }
+                                                                                        // 14009e89a  498bc4  MOV RAX,R12
+                                                                                        {
+                                                                                            r[0] = r[12];
+                                                                                        }
+                                                                                        // 14009e89d  48f7d0  NOT RAX
+                                                                                        {
+                                                                                            let v = !(r[0]);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8a0  4c8d255917f6ff  LEA R12,[0x140000000]
+                                                                                        {
+                                                                                            r[12] = 0u64.wrapping_add(0x140000000u64);
+                                                                                        }
+                                                                                        // 14009e8a7  48230562283200  AND RAX,qword ptr [0x1403c1110]
+                                                                                        {
+                                                                                            let v = r[0] & m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8ae  48f7d1  NOT RCX
+                                                                                        {
+                                                                                            let v = !(r[1]);
+                                                                                            r[1] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8b1  4823442470  AND RAX,qword ptr [RSP + 0x70]
+                                                                                        {
+                                                                                            let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8b6  4c8bce  MOV R9,RSI
+                                                                                        {
+                                                                                            r[9] = r[6];
+                                                                                        }
+                                                                                        // 14009e8b9  48230d58283200  AND RCX,qword ptr [0x1403c1118]
+                                                                                        {
+                                                                                            let v = r[1] & m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                            f.logic(v, 64);
+                                                                                            r[1] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8c0  4c330db1283200  XOR R9,qword ptr [0x1403c1178]
+                                                                                        {
+                                                                                            let v = r[9] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                            f.logic(v, 64);
+                                                                                            r[9] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8c7  480bc1  OR RAX,RCX
+                                                                                        {
+                                                                                            let v = r[0] | r[1];
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8ca  4889442420  MOV qword ptr [RSP + 0x20],RAX
+                                                                                        {
+                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
+                                                                                        }
+                                                                                        // 14009e8cf  498bc2  MOV RAX,R10
+                                                                                        {
+                                                                                            r[0] = r[10];
+                                                                                        }
+                                                                                        // 14009e8d2  480b842480000000  OR RAX,qword ptr [RSP + 0x80]
+                                                                                        {
+                                                                                            let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009e8da  4c8b7c2420  MOV R15,qword ptr [RSP + 0x20]
+                                                                                        {
+                                                                                            r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
+                                                                                        }
+                                                                                        // 14009e8df  4889442438  MOV qword ptr [RSP + 0x38],RAX
+                                                                                        {
+                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[0]);
+                                                                                        }
+                                                                                        // 14009e8e4  4c894c2430  MOV qword ptr [RSP + 0x30],R9
+                                                                                        {
+                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[9]);
+                                                                                        }
+                                                                                        // 14009e8e9  48894c2440  MOV qword ptr [RSP + 0x40],RCX
+                                                                                        {
+                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[1]);
+                                                                                        }
+                                                                                        // 14009e8ee  6690  NOP
+                                                                                        'loop_36: loop {
+                                                                                            'b_51: {
+                                                                                                'b_48: {
+                                                                                                    'b_47: {
+                                                                                                        'b_46: {
+                                                                                                            'b_45: {
+                                                                                                                'b_43: {
+                                                                                                                    'b_39: {
+                                                                                                                        // 14009e8f0  4d0fbcd3  BSF R10,R11
+                                                                                                                        {
+                                                                                                                            let v = r[11];
+                                                                                                                            f.z = v == 0;
+                                                                                                                            if v != 0 { r[10] = u64::from(v.trailing_zeros()); }
+                                                                                                                        }
+                                                                                                                        // 14009e8f4  4963c2  MOVSXD RAX,R10D
+                                                                                                                        {
+                                                                                                                            r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                                                        }
+                                                                                                                        // 14009e8f7  4489151a0a2600  MOV dword ptr [0x1402ff318],R10D
+                                                                                                                        {
+                                                                                                                            m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
+                                                                                                                        }
+                                                                                                                        // 14009e8fe  418b8c8400080f00  MOV ECX,dword ptr [R12 + RAX*0x4 + 0xf0800]
+                                                                                                                        {
+                                                                                                                            r[1] = (m.read::<32>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0800u64))) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e906  488d3cc500000000  LEA RDI,[RAX*0x8]
+                                                                                                                        {
+                                                                                                                            r[7] = 0u64.wrapping_add(r[0].wrapping_mul(0x8u64));
+                                                                                                                        }
+                                                                                                                        // 14009e90e  4e8b8427f0de0e00  MOV R8,qword ptr [RDI + R12*0x1 + 0xedef0]
+                                                                                                                        {
+                                                                                                                            r[8] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xedef0u64));
+                                                                                                                        }
+                                                                                                                        // 14009e916  4a8bb427f0fe0e00  MOV RSI,qword ptr [RDI + R12*0x1 + 0xefef0]
+                                                                                                                        {
+                                                                                                                            r[6] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xefef0u64));
+                                                                                                                        }
+                                                                                                                        // 14009e91e  498bc0  MOV RAX,R8
+                                                                                                                        {
+                                                                                                                            r[0] = r[8];
+                                                                                                                        }
+                                                                                                                        // 14009e921  4e8ba427f0020f00  MOV R12,qword ptr [RDI + R12*0x1 + 0xf02f0]
+                                                                                                                        {
+                                                                                                                            r[12] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xf02f0u64));
+                                                                                                                        }
+                                                                                                                        // 14009e929  4923c1  AND RAX,R9
+                                                                                                                        {
+                                                                                                                            let v = r[0] & r[9];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[0] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e92c  480fafc6  IMUL RAX,RSI
+                                                                                                                        {
+                                                                                                                            r[0] = (r[0]).wrapping_mul(r[6]);
+                                                                                                                        }
+                                                                                                                        // 14009e930  48d3e8  SHR RAX,CL
+                                                                                                                        {
+                                                                                                                            let v = r[0];
+                                                                                                                            let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                                            if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                                        }
+                                                                                                                        // 14009e933  4d8b0cc4  MOV R9,qword ptr [R12 + RAX*0x8]
+                                                                                                                        {
+                                                                                                                            r[9] = m.read::<64>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x8u64)));
+                                                                                                                        }
+                                                                                                                        // 14009e937  8d4513  LEA EAX,[RBP + 0x13]
+                                                                                                                        {
+                                                                                                                            r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x13u64)) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e93a  4d0bf1  OR R14,R9
+                                                                                                                        {
+                                                                                                                            let v = r[14] | r[9];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                            r[14] = v;
+                                                                                                                        }
+                                                                                                                        // 14009e93d  4c854c2450  TEST qword ptr [RSP + 0x50],R9
+                                                                                                                        {
+                                                                                                                            let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64)) & r[9];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e942  0f44c5  CMOVZ EAX,EBP
+                                                                                                                        {
+                                                                                                                            if f.z { r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                        }
+                                                                                                                        // 14009e945  4c854c2460  TEST qword ptr [RSP + 0x60],R9
+                                                                                                                        {
+                                                                                                                            let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64)) & r[9];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e94a  8be8  MOV EBP,EAX
+                                                                                                                        {
+                                                                                                                            r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e94c  8d43fd  LEA EAX,[RBX + -0x3]
+                                                                                                                        {
+                                                                                                                            r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0xfffffffffffffffdu64)) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e94f  0f44c3  CMOVZ EAX,EBX
+                                                                                                                        {
+                                                                                                                            if f.z { r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                        }
+                                                                                                                        // 14009e952  4c850def273200  TEST qword ptr [0x1403c1148],R9
+                                                                                                                        {
+                                                                                                                            let v = m.read::<64>(0u64.wrapping_add(0x1403c1148u64)) & r[9];
+                                                                                                                            f.logic(v, 64);
+                                                                                                                        }
+                                                                                                                        // 14009e959  8bd8  MOV EBX,EAX
+                                                                                                                        {
+                                                                                                                            r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                        // 14009e95b  7410  JZ 0x14009e96d
+                                                                                                                        if f.z { break 'b_39; }
+                                                                                                                        // 14009e95d  48833deb27320000  CMP qword ptr [0x1403c1150],0x0
+                                                                                                                        {
+                                                                                                                            f.arithmetic(m.read::<64>(0u64.wrapping_add(0x1403c1150u64)), 0x0u64, 64, true);
+                                                                                                                        }
+                                                                                                                        // 14009e965  7406  JZ 0x14009e96d
+                                                                                                                        if f.z { break 'b_39; }
+                                                                                                                        // 14009e967  81ea2a001800  SUB EDX,0x18002a
+                                                                                                                        {
+                                                                                                                            let v = f.arithmetic(r[2] & 0xffffffffu64, 0x18002au64, 32, true);
+                                                                                                                            r[2] = (v) & 0xffff_ffff;
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                    // 14009e96d  4c234c2438  AND R9,qword ptr [RSP + 0x38]
+                                                                                                                    {
+                                                                                                                        let v = r[9] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[9] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e972  498bc7  MOV RAX,R15
+                                                                                                                    {
+                                                                                                                        r[0] = r[15];
+                                                                                                                    }
+                                                                                                                    // 14009e975  4923c0  AND RAX,R8
+                                                                                                                    {
+                                                                                                                        let v = r[0] & r[8];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e978  480fafc6  IMUL RAX,RSI
+                                                                                                                    {
+                                                                                                                        r[0] = (r[0]).wrapping_mul(r[6]);
+                                                                                                                    }
+                                                                                                                    // 14009e97c  48d3e8  SHR RAX,CL
+                                                                                                                    {
+                                                                                                                        let v = r[0];
+                                                                                                                        let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                                        if n != 0 { let v = v >> n; f.logic(v, 64); r[0] = v; }
+                                                                                                                    }
+                                                                                                                    // 14009e97f  f3490fb804c4  POPCNT RAX,qword ptr [R12 + RAX*0x8]
+                                                                                                                    {
+                                                                                                                        let v = m.read::<64>(0u64.wrapping_add(r[12]).wrapping_add(r[0].wrapping_mul(0x8u64)));
+                                                                                                                        f.z = v == 0;
+                                                                                                                        f.o = false;
+                                                                                                                        f.s = false;
+                                                                                                                        r[0] = u64::from(v.count_ones());
+                                                                                                                    }
+                                                                                                                    // 14009e985  4469c0f7fff7ff  IMUL R8D,EAX,-0x80009
+                                                                                                                    {
+                                                                                                                        r[8] = ((r[0] & 0xffffffffu64).wrapping_mul(0xfffffffffff7fff7u64)) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e98c  4c8d256d16f6ff  LEA R12,[0x140000000]
+                                                                                                                    {
+                                                                                                                        r[12] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                                    }
+                                                                                                                    // 14009e993  f3490fb8c1  POPCNT RAX,R9
+                                                                                                                    {
+                                                                                                                        let v = r[9];
+                                                                                                                        f.z = v == 0;
+                                                                                                                        f.o = false;
+                                                                                                                        f.s = false;
+                                                                                                                        r[0] = u64::from(v.count_ones());
+                                                                                                                    }
+                                                                                                                    // 14009e998  69c817001100  IMUL ECX,EAX,0x110017
+                                                                                                                    {
+                                                                                                                        r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x110017u64)) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e99e  442bc1  SUB R8D,ECX
+                                                                                                                    {
+                                                                                                                        let v = f.arithmetic(r[8] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
+                                                                                                                        r[8] = (v) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e9a1  4a8b8c2780420f00  MOV RCX,qword ptr [RDI + R12*0x1 + 0xf4280]
+                                                                                                                    {
+                                                                                                                        r[1] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[12].wrapping_mul(0x1u64)).wrapping_add(0xf4280u64));
+                                                                                                                    }
+                                                                                                                    // 14009e9a9  4103d0  ADD EDX,R8D
+                                                                                                                    {
+                                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, false);
+                                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e9ac  48854c2440  TEST qword ptr [RSP + 0x40],RCX
+                                                                                                                    {
+                                                                                                                        let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64)) & r[1];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e9b1  0f85c5000000  JNZ 0x14009ea7c
+                                                                                                                    if !f.z { break 'b_51; }
+                                                                                                                    // 14009e9b7  4c8b2562273200  MOV R12,qword ptr [0x1403c1120]
+                                                                                                                    {
+                                                                                                                        r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
+                                                                                                                    }
+                                                                                                                    // 14009e9be  4c8b0d6b273200  MOV R9,qword ptr [0x1403c1130]
+                                                                                                                    {
+                                                                                                                        r[9] = m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
+                                                                                                                    }
+                                                                                                                    // 14009e9c5  498bc4  MOV RAX,R12
+                                                                                                                    {
+                                                                                                                        r[0] = r[12];
+                                                                                                                    }
+                                                                                                                    // 14009e9c8  4c8b0541273200  MOV R8,qword ptr [0x1403c1110]
+                                                                                                                    {
+                                                                                                                        r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                                                    }
+                                                                                                                    // 14009e9cf  490bc1  OR RAX,R9
+                                                                                                                    {
+                                                                                                                        let v = r[0] | r[9];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e9d2  490bc0  OR RAX,R8
+                                                                                                                    {
+                                                                                                                        let v = r[0] | r[8];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e9d5  49234508  AND RAX,qword ptr [R13 + 0x8]
+                                                                                                                    {
+                                                                                                                        let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x8u64));
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e9d9  4885c1  TEST RCX,RAX
+                                                                                                                    {
+                                                                                                                        let v = r[1] & r[0];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e9dc  7562  JNZ 0x14009ea40
+                                                                                                                    if !f.z { break 'b_48; }
+                                                                                                                    // 14009e9de  4c85c1  TEST RCX,R8
+                                                                                                                    {
+                                                                                                                        let v = r[1] & r[8];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e9e1  741b  JZ 0x14009e9fe
+                                                                                                                    if f.z { break 'b_43; }
+                                                                                                                    // 14009e9e3  498b4520  MOV RAX,qword ptr [R13 + 0x20]
+                                                                                                                    {
+                                                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
+                                                                                                                    }
+                                                                                                                    // 14009e9e7  41b946000a00  MOV R9D,0xa0046
+                                                                                                                    {
+                                                                                                                        r[9] = (0xa0046u64) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e9ed  4923c0  AND RAX,R8
+                                                                                                                    {
+                                                                                                                        let v = r[0] & r[8];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                        r[0] = v;
+                                                                                                                    }
+                                                                                                                    // 14009e9f0  4885c1  TEST RCX,RAX
+                                                                                                                    {
+                                                                                                                        let v = r[1] & r[0];
+                                                                                                                        f.logic(v, 64);
+                                                                                                                    }
+                                                                                                                    // 14009e9f3  b883002f00  MOV EAX,0x2f0083
+                                                                                                                    {
+                                                                                                                        r[0] = (0x2f0083u64) & 0xffff_ffff;
+                                                                                                                    }
+                                                                                                                    // 14009e9f8  410f45c1  CMOVNZ EAX,R9D
+                                                                                                                    {
+                                                                                                                        if !f.z { r[0] = (r[9] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                    }
+                                                                                                                    // 14009e9fc  eb40  JMP 0x14009ea3e
+                                                                                                                    break 'b_47;
+                                                                                                                }
+                                                                                                                // 14009e9fe  4d8bc4  MOV R8,R12
+                                                                                                                {
+                                                                                                                    r[8] = r[12];
+                                                                                                                }
+                                                                                                                // 14009ea01  4d0bc1  OR R8,R9
+                                                                                                                {
+                                                                                                                    let v = r[8] | r[9];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[8] = v;
+                                                                                                                }
+                                                                                                                // 14009ea04  4c8b4c2470  MOV R9,qword ptr [RSP + 0x70]
+                                                                                                                {
+                                                                                                                    r[9] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
+                                                                                                                }
+                                                                                                                // 14009ea09  498bc0  MOV RAX,R8
+                                                                                                                {
+                                                                                                                    r[0] = r[8];
+                                                                                                                }
+                                                                                                                // 14009ea0c  4823c1  AND RAX,RCX
+                                                                                                                {
+                                                                                                                    let v = r[0] & r[1];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[0] = v;
+                                                                                                                }
+                                                                                                                // 14009ea0f  4985c1  TEST R9,RAX
+                                                                                                                {
+                                                                                                                    let v = r[9] & r[0];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                }
+                                                                                                                // 14009ea12  741e  JZ 0x14009ea32
+                                                                                                                if f.z { break 'b_45; }
+                                                                                                                // 14009ea14  498b4528  MOV RAX,qword ptr [R13 + 0x28]
+                                                                                                                {
+                                                                                                                    r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
+                                                                                                                }
+                                                                                                                // 14009ea18  4923c0  AND RAX,R8
+                                                                                                                {
+                                                                                                                    let v = r[0] & r[8];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[0] = v;
+                                                                                                                }
+                                                                                                                // 14009ea1b  41b87700a300  MOV R8D,0xa30077
+                                                                                                                {
+                                                                                                                    r[8] = (0xa30077u64) & 0xffff_ffff;
+                                                                                                                }
+                                                                                                                // 14009ea21  4823c1  AND RAX,RCX
+                                                                                                                {
+                                                                                                                    let v = r[0] & r[1];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                    r[0] = v;
+                                                                                                                }
+                                                                                                                // 14009ea24  4985c1  TEST R9,RAX
+                                                                                                                {
+                                                                                                                    let v = r[9] & r[0];
+                                                                                                                    f.logic(v, 64);
+                                                                                                                }
+                                                                                                                // 14009ea27  b852007100  MOV EAX,0x710052
+                                                                                                                {
+                                                                                                                    r[0] = (0x710052u64) & 0xffff_ffff;
+                                                                                                                }
+                                                                                                                // 14009ea2c  410f45c0  CMOVNZ EAX,R8D
+                                                                                                                {
+                                                                                                                    if !f.z { r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                                }
+                                                                                                                // 14009ea30  eb05  JMP 0x14009ea37
+                                                                                                                break 'b_46;
+                                                                                                            }
+                                                                                                            // 14009ea32  b88800b700  MOV EAX,0xb70088
+                                                                                                            {
+                                                                                                                r[0] = (0xb70088u64) & 0xffff_ffff;
+                                                                                                            }
+                                                                                                        }
+                                                                                                        // 14009ea37  4c8b05d2263200  MOV R8,qword ptr [0x1403c1110]
+                                                                                                        {
+                                                                                                            r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                                        }
+                                                                                                    }
+                                                                                                    // 14009ea3e  2bd0  SUB EDX,EAX
+                                                                                                    {
+                                                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
+                                                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                                                    }
+                                                                                                }
+                                                                                                // 14009ea40  4c8b0d19273200  MOV R9,qword ptr [0x1403c1160]
+                                                                                                {
+                                                                                                    r[9] = m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
+                                                                                                }
+                                                                                                // 14009ea47  8d8200006aff  LEA EAX,[RDX + -0x960000]
+                                                                                                {
+                                                                                                    r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffff6a0000u64)) & 0xffff_ffff;
+                                                                                                }
+                                                                                                // 14009ea4d  4985c9  TEST R9,RCX
+                                                                                                {
+                                                                                                    let v = r[9] & r[1];
+                                                                                                    f.logic(v, 64);
+                                                                                                }
+                                                                                                // 14009ea50  4c8d25a915f6ff  LEA R12,[0x140000000]
+                                                                                                {
+                                                                                                    r[12] = 0u64.wrapping_add(0x140000000u64);
+                                                                                                }
+                                                                                                // 14009ea57  0f44c2  CMOVZ EAX,EDX
+                                                                                                {
+                                                                                                    if f.z { r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                                }
+                                                                                                // 14009ea5a  4180e238  AND R10B,0x38
+                                                                                                {
+                                                                                                    let v = (r[10] & 0xffu64 & 0x38u64) & 0xffu64;
+                                                                                                    f.logic(v, 8);
+                                                                                                    r[10] = (r[10] & !0xffu64) | ((v) & 0xffu64);
+                                                                                                }
+                                                                                                // 14009ea5e  8bd0  MOV EDX,EAX
+                                                                                                {
+                                                                                                    r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                }
+                                                                                                // 14009ea60  8bc8  MOV ECX,EAX
+                                                                                                {
+                                                                                                    r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                                }
+                                                                                                // 14009ea62  4180fa08  CMP R10B,0x8
+                                                                                                {
+                                                                                                    f.arithmetic(r[10] & 0xffu64, 0x8u64, 8, true);
+                                                                                                }
+                                                                                                // 14009ea66  7514  JNZ 0x14009ea7c
+                                                                                                if !f.z { break 'b_51; }
+                                                                                                // 14009ea68  498bc0  MOV RAX,R8
+                                                                                                {
+                                                                                                    r[0] = r[8];
+                                                                                                }
+                                                                                                // 14009ea6b  490bc1  OR RAX,R9
+                                                                                                {
+                                                                                                    let v = r[0] | r[9];
+                                                                                                    f.logic(v, 64);
+                                                                                                    r[0] = v;
+                                                                                                }
+                                                                                                // 14009ea6e  0fb7c0  MOVZX EAX,AX
+                                                                                                {
+                                                                                                    r[0] = (r[0] & 0xffffu64) & 0xffff_ffff;
+                                                                                                }
+                                                                                                // 14009ea71  4885c0  TEST RAX,RAX
+                                                                                                {
+                                                                                                    let v = r[0];
+                                                                                                    f.logic(v, 64);
+                                                                                                }
+                                                                                                // 14009ea74  7406  JZ 0x14009ea7c
+                                                                                                if f.z { break 'b_51; }
+                                                                                                // 14009ea76  8d9109ffb2ff  LEA EDX,[RCX + -0x4d00f7]
+                                                                                                {
+                                                                                                    r[2] = (0u64.wrapping_add(r[1]).wrapping_add(0xffffffffffb2ff09u64)) & 0xffff_ffff;
+                                                                                                }
+                                                                                            }
+                                                                                            // 14009ea7c  4c8b4c2430  MOV R9,qword ptr [RSP + 0x30]
+                                                                                            {
+                                                                                                r[9] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64));
+                                                                                            }
+                                                                                            // 14009ea81  498d43ff  LEA RAX,[R11 + -0x1]
+                                                                                            {
+                                                                                                r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
+                                                                                            }
+                                                                                            // 14009ea85  4c23d8  AND R11,RAX
+                                                                                            {
+                                                                                                let v = r[11] & r[0];
+                                                                                                f.logic(v, 64);
+                                                                                                r[11] = v;
+                                                                                            }
+                                                                                            // 14009ea88  0f8562feffff  JNZ 0x14009e8f0
+                                                                                            if !f.z
+                                                                                            {
+                                                                                                continue 'loop_36;
+                                                                                            }
+                                                                                            break 'loop_36;
+                                                                                        }
+                                                                                        // 14009ea8e  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
+                                                                                        {
+                                                                                            r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
+                                                                                        }
+                                                                                        // 14009ea93  4c89742438  MOV qword ptr [RSP + 0x38],R14
+                                                                                        {
+                                                                                            m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
+                                                                                        }
+                                                                                        // 14009ea98  896c2440  MOV dword ptr [RSP + 0x40],EBP
+                                                                                        {
+                                                                                            m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[5] & 0xffffffffu64);
+                                                                                        }
+                                                                                        // 14009ea9c  895c2430  MOV dword ptr [RSP + 0x30],EBX
+                                                                                        {
+                                                                                            m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[3] & 0xffffffffu64);
+                                                                                        }
+                                                                                    }
+                                                                                    // 14009eaa0  488b4c2458  MOV RCX,qword ptr [RSP + 0x58]
+                                                                                    {
+                                                                                        r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64));
+                                                                                    }
+                                                                                    // 14009eaa5  33ff  XOR EDI,EDI
+                                                                                    {
+                                                                                        let v =
+                                                                                            0u64;
+                                                                                        f.logic(
+                                                                                            v, 32,
+                                                                                        );
+                                                                                        r[7] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eaa7  488b35a2263200  MOV RSI,qword ptr [0x1403c1150]
+                                                                                    {
+                                                                                        r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
+                                                                                    }
+                                                                                    // 14009eaae  4c8b442448  MOV R8,qword ptr [RSP + 0x48]
+                                                                                    {
+                                                                                        r[8] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64));
+                                                                                    }
+                                                                                    // 14009eab3  488b059e263200  MOV RAX,qword ptr [0x1403c1158]
+                                                                                    {
+                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
+                                                                                    }
+                                                                                    // 14009eaba  4923c7  AND RAX,R15
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [0]
+                                                                                            & r[15];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                    // 14009eabd  480bc8  OR RCX,RAX
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [1]
+                                                                                            | r[0];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[1] = v;
+                                                                                    }
+                                                                                    // 14009eac0  488bc6  MOV RAX,RSI
+                                                                                    {
+                                                                                        r[0] = r[6];
+                                                                                    }
+                                                                                    // 14009eac3  f34c0fb8d1  POPCNT R10,RCX
+                                                                                    {
+                                                                                        let v =
+                                                                                            r[1];
+                                                                                        f.z =
+                                                                                            v == 0;
+                                                                                        f.o = false;
+                                                                                        f.s = false;
+                                                                                        r[10] = u64::from(v.count_ones());
+                                                                                    }
+                                                                                    // 14009eac8  4923c6  AND RAX,R14
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [0]
+                                                                                            & r[14];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                    // 14009eacb  48894c2458  MOV qword ptr [RSP + 0x58],RCX
+                                                                                    {
+                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), r[1]);
+                                                                                    }
+                                                                                    // 14009ead0  4c0bc0  OR R8,RAX
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [8]
+                                                                                            | r[0];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[8] = v;
+                                                                                    }
+                                                                                    // 14009ead3  8bcf  MOV ECX,EDI
+                                                                                    {
+                                                                                        r[1] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009ead5  f34d0fb8c8  POPCNT R9,R8
+                                                                                    {
+                                                                                        let v =
+                                                                                            r[8];
+                                                                                        f.z =
+                                                                                            v == 0;
+                                                                                        f.o = false;
+                                                                                        f.s = false;
+                                                                                        r[9] = u64::from(v.count_ones());
+                                                                                    }
+                                                                                    // 14009eada  4c89442448  MOV qword ptr [RSP + 0x48],R8
+                                                                                    {
+                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), r[8]);
+                                                                                    }
+                                                                                    // 14009eadf  458d42ff  LEA R8D,[R10 + -0x1]
+                                                                                    {
+                                                                                        r[8] = (0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64)) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eae3  418d41ff  LEA EAX,[R9 + -0x1]
+                                                                                    {
+                                                                                        r[0] = (0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64)) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eae7  85c0  TEST EAX,EAX
+                                                                                    {
+                                                                                        let v = (r[0] & 0xffffffffu64) & 0xffffffffu64;
+                                                                                        f.logic(
+                                                                                            v, 32,
+                                                                                        );
+                                                                                    }
+                                                                                    // 14009eae9  0f4fc8  CMOVG ECX,EAX
+                                                                                    {
+                                                                                        if !f.z && f
+                                                                                            .s
+                                                                                            == f.o
+                                                                                        {
+                                                                                            r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                        }
+                                                                                    }
+                                                                                    // 14009eaec  4585c0  TEST R8D,R8D
+                                                                                    {
+                                                                                        let v = (r[8] & 0xffffffffu64) & 0xffffffffu64;
+                                                                                        f.logic(
+                                                                                            v, 32,
+                                                                                        );
+                                                                                    }
+                                                                                    // 14009eaef  8bc7  MOV EAX,EDI
+                                                                                    {
+                                                                                        r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eaf1  410f4fc0  CMOVG EAX,R8D
+                                                                                    {
+                                                                                        if !f.z && f
+                                                                                            .s
+                                                                                            == f.o
+                                                                                        {
+                                                                                            r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                        }
+                                                                                    }
+                                                                                    // 14009eaf5  452bd1  SUB R10D,R9D
+                                                                                    {
+                                                                                        let v = f.arithmetic(r[10] & 0xffffffffu64, r[9] & 0xffffffffu64, 32, true);
+                                                                                        r[10] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eaf8  2bc1  SUB EAX,ECX
+                                                                                    {
+                                                                                        let v = f.arithmetic(r[0] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
+                                                                                        r[0] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eafa  4569da0e01b400  IMUL R11D,R10D,0xb4010e
+                                                                                    {
+                                                                                        r[11] = ((r[10] & 0xffffffffu64).wrapping_mul(0xb4010eu64)) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eb01  69c89402b801  IMUL ECX,EAX,0x1b80294
+                                                                                    {
+                                                                                        r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b80294u64)) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eb07  4403da  ADD R11D,EDX
+                                                                                    {
+                                                                                        let v = f.arithmetic(r[11] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
+                                                                                        r[11] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eb0a  4403d9  ADD R11D,ECX
+                                                                                    {
+                                                                                        let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+                                                                                        r[11] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009eb0d  498bcf  MOV RCX,R15
+                                                                                    {
+                                                                                        r[1] =
+                                                                                            r[15];
+                                                                                    }
+                                                                                    // 14009eb10  48894c2420  MOV qword ptr [RSP + 0x20],RCX
+                                                                                    {
+                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[1]);
+                                                                                    }
+                                                                                    // 14009eb15  4885f6  TEST RSI,RSI
+                                                                                    {
+                                                                                        let v =
+                                                                                            r[6];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                    }
+                                                                                    // 14009eb18  0f8443010000  JZ 0x14009ec61
+                                                                                    if f.z {
+                                                                                        break 'b_60;
+                                                                                    }
+                                                                                    // 14009eb1e  4c8b25e3253200  MOV R12,qword ptr [0x1403c1108]
+                                                                                    {
+                                                                                        r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
+                                                                                    }
+                                                                                    // 14009eb25  498bc6  MOV RAX,R14
+                                                                                    {
+                                                                                        r[0] =
+                                                                                            r[14];
+                                                                                    }
+                                                                                    // 14009eb28  488b3de9253200  MOV RDI,qword ptr [0x1403c1118]
+                                                                                    {
+                                                                                        r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                                                                                    }
+                                                                                    // 14009eb2f  48f7d0  NOT RAX
+                                                                                    {
+                                                                                        let v =
+                                                                                            !(r[0]);
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                    // 14009eb32  4c8b2d07263200  MOV R13,qword ptr [0x1403c1140]
+                                                                                    {
+                                                                                        r[13] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
+                                                                                    }
+                                                                                    // 14009eb39  4c33e7  XOR R12,RDI
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [12]
+                                                                                            ^ r[7];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[12] = v;
+                                                                                    }
+                                                                                    // 14009eb3c  4c332d35263200  XOR R13,qword ptr [0x1403c1178]
+                                                                                    {
+                                                                                        let v = r[13] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[13] = v;
+                                                                                    }
+                                                                                    // 14009eb43  4c0be0  OR R12,RAX
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [12]
+                                                                                            | r[0];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[12] = v;
+                                                                                    }
+                                                                                    // 14009eb46  488b05b3253200  MOV RAX,qword ptr [0x1403c1100]
+                                                                                    {
+                                                                                        r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
+                                                                                    }
+                                                                                    // 14009eb4d  480b442468  OR RAX,qword ptr [RSP + 0x68]
+                                                                                    {
+                                                                                        let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                    // 14009eb52  4c8b350f263200  MOV R14,qword ptr [0x1403c1168]
+                                                                                    {
+                                                                                        r[14] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
+                                                                                    }
+                                                                                    // 14009eb59  48f7d0  NOT RAX
+                                                                                    {
+                                                                                        let v =
+                                                                                            !(r[0]);
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                    // 14009eb5c  488b6c2460  MOV RBP,qword ptr [RSP + 0x60]
+                                                                                    {
+                                                                                        r[5] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
+                                                                                    }
+                                                                                    // 14009eb61  4c23e0  AND R12,RAX
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [12]
+                                                                                            & r[0];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[12] = v;
+                                                                                    }
+                                                                                    // 14009eb64  0f1f4000  NOP dword ptr [RAX]
+                                                                                    // 14009eb68  0f1f840000000000  NOP dword ptr [RAX + RAX*0x1]
+                                                                                    'loop_55: loop {
+                                                                                        'b_58: {
+                                                                                            // 14009eb70  4c0fbcd6  BSF R10,RSI
+                                                                                            {
+                                                                                                let v = r[6];
+                                                                                                f.z = v == 0;
+                                                                                                if v != 0 { r[10] = u64::from(v.trailing_zeros()); }
+                                                                                            }
+                                                                                            // 14009eb74  488d158514f6ff  LEA RDX,[0x140000000]
+                                                                                            {
+                                                                                                r[2] = 0u64.wrapping_add(0x140000000u64);
+                                                                                            }
+                                                                                            // 14009eb7b  4963c2  MOVSXD RAX,R10D
+                                                                                            {
+                                                                                                r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                            }
+                                                                                            // 14009eb7e  44891593072600  MOV dword ptr [0x1402ff318],R10D
+                                                                                            {
+                                                                                                m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
+                                                                                            }
+                                                                                            // 14009eb85  8b8c8200080f00  MOV ECX,dword ptr [RDX + RAX*0x4 + 0xf0800]
+                                                                                            {
+                                                                                                r[1] = (m.read::<32>(0u64.wrapping_add(r[2]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0800u64))) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009eb8c  4c8b8cc2f0de0e00  MOV R9,qword ptr [RDX + RAX*0x8 + 0xedef0]
+                                                                                            {
+                                                                                                r[9] = m.read::<64>(0u64.wrapping_add(r[2]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xedef0u64));
+                                                                                            }
+                                                                                            // 14009eb94  4c8b84c2f0020f00  MOV R8,qword ptr [RDX + RAX*0x8 + 0xf02f0]
+                                                                                            {
+                                                                                                r[8] = m.read::<64>(0u64.wrapping_add(r[2]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf02f0u64));
+                                                                                            }
+                                                                                            // 14009eb9c  4d23cd  AND R9,R13
+                                                                                            {
+                                                                                                let v = r[9] & r[13];
+                                                                                                f.logic(v, 64);
+                                                                                                r[9] = v;
+                                                                                            }
+                                                                                            // 14009eb9f  4c0faf8cc2f0fe0e00  IMUL R9,qword ptr [RDX + RAX*0x8 + 0xefef0]
+                                                                                            {
+                                                                                                r[9] = (r[9]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[2]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xefef0u64)));
+                                                                                            }
+                                                                                            // 14009eba8  488b94c2f0e00e00  MOV RDX,qword ptr [RDX + RAX*0x8 + 0xee0f0]
+                                                                                            {
+                                                                                                r[2] = m.read::<64>(0u64.wrapping_add(r[2]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xee0f0u64));
+                                                                                            }
+                                                                                            // 14009ebb0  482315c1253200  AND RDX,qword ptr [0x1403c1178]
+                                                                                            {
+                                                                                                let v = r[2] & m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                                f.logic(v, 64);
+                                                                                                r[2] = v;
+                                                                                            }
+                                                                                            // 14009ebb7  49d3e9  SHR R9,CL
+                                                                                            {
+                                                                                                let v = r[9];
+                                                                                                let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[9] = v; }
+                                                                                            }
+                                                                                            // 14009ebba  488d0d3f14f6ff  LEA RCX,[0x140000000]
+                                                                                            {
+                                                                                                r[1] = 0u64.wrapping_add(0x140000000u64);
+                                                                                            }
+                                                                                            // 14009ebc1  480faf94c1f0000f00  IMUL RDX,qword ptr [RCX + RAX*0x8 + 0xf00f0]
+                                                                                            {
+                                                                                                r[2] = (r[2]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf00f0u64)));
+                                                                                            }
+                                                                                            // 14009ebca  8b8c8100090f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0900]
+                                                                                            {
+                                                                                                r[1] = (m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0900u64))) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ebd1  48d3ea  SHR RDX,CL
+                                                                                            {
+                                                                                                let v = r[2];
+                                                                                                let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                                if n != 0 { let v = v >> n; f.logic(v, 64); r[2] = v; }
+                                                                                            }
+                                                                                            // 14009ebd4  488d0d2514f6ff  LEA RCX,[0x140000000]
+                                                                                            {
+                                                                                                r[1] = 0u64.wrapping_add(0x140000000u64);
+                                                                                            }
+                                                                                            // 14009ebdb  488b84c1f0040f00  MOV RAX,qword ptr [RCX + RAX*0x8 + 0xf04f0]
+                                                                                            {
+                                                                                                r[0] = m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf04f0u64));
+                                                                                            }
+                                                                                            // 14009ebe3  4b8b0cc8  MOV RCX,qword ptr [R8 + R9*0x8]
+                                                                                            {
+                                                                                                r[1] = m.read::<64>(0u64.wrapping_add(r[8]).wrapping_add(r[9].wrapping_mul(0x8u64)));
+                                                                                            }
+                                                                                            // 14009ebe7  480b0cd0  OR RCX,qword ptr [RAX + RDX*0x8]
+                                                                                            {
+                                                                                                let v = r[1] | m.read::<64>(0u64.wrapping_add(r[0]).wrapping_add(r[2].wrapping_mul(0x8u64)));
+                                                                                                f.logic(v, 64);
+                                                                                                r[1] = v;
+                                                                                            }
+                                                                                            // 14009ebeb  8d4311  LEA EAX,[RBX + 0x11]
+                                                                                            {
+                                                                                                r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x11u64)) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ebee  4c0bf9  OR R15,RCX
+                                                                                            {
+                                                                                                let v = r[15] | r[1];
+                                                                                                f.logic(v, 64);
+                                                                                                r[15] = v;
+                                                                                            }
+                                                                                            // 14009ebf1  4885cd  TEST RBP,RCX
+                                                                                            {
+                                                                                                let v = r[5] & r[1];
+                                                                                                f.logic(v, 64);
+                                                                                            }
+                                                                                            // 14009ebf4  0f44c3  CMOVZ EAX,EBX
+                                                                                            {
+                                                                                                if f.z { r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff; }
+                                                                                            }
+                                                                                            // 14009ebf7  4183e238  AND R10D,0x38
+                                                                                            {
+                                                                                                let v = (r[10] & 0xffffffffu64 & 0x38u64) & 0xffffffffu64;
+                                                                                                f.logic(v, 32);
+                                                                                                r[10] = (v) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ebfb  8bd8  MOV EBX,EAX
+                                                                                            {
+                                                                                                r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ebfd  498bc4  MOV RAX,R12
+                                                                                            {
+                                                                                                r[0] = r[12];
+                                                                                            }
+                                                                                            // 14009ec00  4823c1  AND RAX,RCX
+                                                                                            {
+                                                                                                let v = r[0] & r[1];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009ec03  f3480fb8c0  POPCNT RAX,RAX
+                                                                                            {
+                                                                                                let v = r[0];
+                                                                                                f.z = v == 0;
+                                                                                                f.o = false;
+                                                                                                f.s = false;
+                                                                                                r[0] = u64::from(v.count_ones());
+                                                                                            }
+                                                                                            // 14009ec08  69c81d001b00  IMUL ECX,EAX,0x1b001d
+                                                                                            {
+                                                                                                r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001du64)) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ec0e  4403d9  ADD R11D,ECX
+                                                                                            {
+                                                                                                let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+                                                                                                r[11] = (v) & 0xffff_ffff;
+                                                                                            }
+                                                                                            // 14009ec11  4180fa30  CMP R10B,0x30
+                                                                                            {
+                                                                                                f.arithmetic(r[10] & 0xffu64, 0x30u64, 8, true);
+                                                                                            }
+                                                                                            // 14009ec15  751c  JNZ 0x14009ec33
+                                                                                            if !f.z
+                                                                                            {
+                                                                                                break 'b_58;
+                                                                                            }
+                                                                                            // 14009ec17  488bc7  MOV RAX,RDI
+                                                                                            {
+                                                                                                r[0] = r[7];
+                                                                                            }
+                                                                                            // 14009ec1a  48b9000000000000ffff  MOV RCX,-0x1000000000000
+                                                                                            {
+                                                                                                r[1] = 0xffff000000000000u64;
+                                                                                            }
+                                                                                            // 14009ec24  490bc6  OR RAX,R14
+                                                                                            {
+                                                                                                let v = r[0] | r[14];
+                                                                                                f.logic(v, 64);
+                                                                                                r[0] = v;
+                                                                                            }
+                                                                                            // 14009ec27  4885c1  TEST RCX,RAX
+                                                                                            {
+                                                                                                let v = r[1] & r[0];
+                                                                                                f.logic(v, 64);
+                                                                                            }
+                                                                                            // 14009ec2a  7407  JZ 0x14009ec33
+                                                                                            if f.z {
+                                                                                                break 'b_58;
+                                                                                            }
+                                                                                            // 14009ec2c  4181c32c010000  ADD R11D,0x12c
+                                                                                            {
+                                                                                                let v = f.arithmetic(r[11] & 0xffffffffu64, 0x12cu64, 32, false);
+                                                                                                r[11] = (v) & 0xffff_ffff;
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009ec33  488d46ff  LEA RAX,[RSI + -0x1]
+                                                                                        {
+                                                                                            r[0] = 0u64.wrapping_add(r[6]).wrapping_add(0xffffffffffffffffu64);
+                                                                                        }
+                                                                                        // 14009ec37  4823f0  AND RSI,RAX
+                                                                                        {
+                                                                                            let v = r[6] & r[0];
+                                                                                            f.logic(v, 64);
+                                                                                            r[6] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ec3a  0f8530ffffff  JNZ 0x14009eb70
+                                                                                        if !f.z {
+                                                                                            continue 'loop_55;
+                                                                                        }
+                                                                                        break 'loop_55;
+                                                                                    }
+                                                                                    // 14009ec40  8b6c2440  MOV EBP,dword ptr [RSP + 0x40]
+                                                                                    {
+                                                                                        r[5] = (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64))) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009ec44  33ff  XOR EDI,EDI
+                                                                                    {
+                                                                                        let v =
+                                                                                            0u64;
+                                                                                        f.logic(
+                                                                                            v, 32,
+                                                                                        );
+                                                                                        r[7] = (v) & 0xffff_ffff;
+                                                                                    }
+                                                                                    // 14009ec46  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
+                                                                                    {
+                                                                                        r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
+                                                                                    }
+                                                                                    // 14009ec4b  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
+                                                                                    {
+                                                                                        r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
+                                                                                    }
+                                                                                    // 14009ec53  488b4c2420  MOV RCX,qword ptr [RSP + 0x20]
+                                                                                    {
+                                                                                        r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
+                                                                                    }
+                                                                                    // 14009ec58  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                                    {
+                                                                                        m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                                    }
+                                                                                    // 14009ec5d  895c2430  MOV dword ptr [RSP + 0x30],EBX
+                                                                                    {
+                                                                                        m.write::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[3] & 0xffffffffu64);
+                                                                                    }
+                                                                                }
+                                                                                // 14009ec61  488b35f0243200  MOV RSI,qword ptr [0x1403c1158]
+                                                                                {
+                                                                                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
+                                                                                }
+                                                                                // 14009ec68  4885f6  TEST RSI,RSI
+                                                                                {
+                                                                                    let v = r[6];
+                                                                                    f.logic(v, 64);
+                                                                                }
+                                                                                // 14009ec6b  0f842f010000  JZ 0x14009eda0
+                                                                                if f.z {
+                                                                                    break 'b_67;
+                                                                                }
+                                                                                // 14009ec71  488b05d0243200  MOV RAX,qword ptr [0x1403c1148]
+                                                                                {
+                                                                                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                                                                                }
+                                                                                // 14009ec78  48f7d1  NOT RCX
+                                                                                {
+                                                                                    let v = !(r[1]);
+                                                                                    r[1] = v;
+                                                                                }
+                                                                                // 14009ec7b  488b15f6243200  MOV RDX,qword ptr [0x1403c1178]
+                                                                                {
+                                                                                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                }
+                                                                                // 14009ec82  4c8b2577243200  MOV R12,qword ptr [0x1403c1100]
+                                                                                {
+                                                                                    r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
+                                                                                }
+                                                                                // 14009ec89  4833c2  XOR RAX,RDX
+                                                                                {
+                                                                                    let v =
+                                                                                        r[0] ^ r[2];
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ec8c  4c8b2d7d243200  MOV R13,qword ptr [0x1403c1110]
+                                                                                {
+                                                                                    r[13] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                                                                }
+                                                                                // 14009ec93  4c8b3dc6243200  MOV R15,qword ptr [0x1403c1160]
+                                                                                {
+                                                                                    r[15] = m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
+                                                                                }
+                                                                                // 14009ec9a  4d33e5  XOR R12,R13
+                                                                                {
+                                                                                    let v = r[12]
+                                                                                        ^ r[13];
+                                                                                    f.logic(v, 64);
+                                                                                    r[12] = v;
+                                                                                }
+                                                                                // 14009ec9d  488b5c2450  MOV RBX,qword ptr [RSP + 0x50]
+                                                                                {
+                                                                                    r[3] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
+                                                                                }
+                                                                                // 14009eca2  4c0be1  OR R12,RCX
+                                                                                {
+                                                                                    let v = r[12]
+                                                                                        | r[1];
+                                                                                    f.logic(v, 64);
+                                                                                    r[12] = v;
+                                                                                }
+                                                                                // 14009eca5  4889442420  MOV qword ptr [RSP + 0x20],RAX
+                                                                                {
+                                                                                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
+                                                                                }
+                                                                                // 14009ecaa  488b0557243200  MOV RAX,qword ptr [0x1403c1108]
+                                                                                {
+                                                                                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
+                                                                                }
+                                                                                // 14009ecb1  480b442470  OR RAX,qword ptr [RSP + 0x70]
+                                                                                {
+                                                                                    let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ecb6  488b7c2420  MOV RDI,qword ptr [RSP + 0x20]
+                                                                                {
+                                                                                    r[7] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
+                                                                                }
+                                                                                // 14009ecbb  48f7d0  NOT RAX
+                                                                                {
+                                                                                    let v = !(r[0]);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ecbe  4c23e0  AND R12,RAX
+                                                                                {
+                                                                                    let v = r[12]
+                                                                                        & r[0];
+                                                                                    f.logic(v, 64);
+                                                                                    r[12] = v;
+                                                                                }
+                                                                                'loop_62: loop {
+                                                                                    'b_65: {
+                                                                                        // 14009ecc1  4c0fbcd6  BSF R10,RSI
+                                                                                        {
+                                                                                            let v =
+                                                                                                r[6];
+                                                                                            f.z = v == 0;
+                                                                                            if v
+                                                                                                != 0
+                                                                                            {
+                                                                                                r[10] = u64::from(v.trailing_zeros());
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009ecc5  488d0d3413f6ff  LEA RCX,[0x140000000]
+                                                                                        {
+                                                                                            r[1] = 0u64.wrapping_add(0x140000000u64);
+                                                                                        }
+                                                                                        // 14009eccc  4963c2  MOVSXD RAX,R10D
+                                                                                        {
+                                                                                            r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                        }
+                                                                                        // 14009eccf  44891542062600  MOV dword ptr [0x1402ff318],R10D
+                                                                                        {
+                                                                                            m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
+                                                                                        }
+                                                                                        // 14009ecd6  4c8b8cc1f0e00e00  MOV R9,qword ptr [RCX + RAX*0x8 + 0xee0f0]
+                                                                                        {
+                                                                                            r[9] = m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xee0f0u64));
+                                                                                        }
+                                                                                        // 14009ecde  4c23ca  AND R9,RDX
+                                                                                        {
+                                                                                            let v = r[9] & r[2];
+                                                                                            f.logic(v, 64);
+                                                                                            r[9] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ece1  4c0faf8cc1f0000f00  IMUL R9,qword ptr [RCX + RAX*0x8 + 0xf00f0]
+                                                                                        {
+                                                                                            r[9] = (r[9]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf00f0u64)));
+                                                                                        }
+                                                                                        // 14009ecea  8b8c8100090f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0900]
+                                                                                        {
+                                                                                            r[1] = (m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0900u64))) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ecf1  49d3e9  SHR R9,CL
+                                                                                        {
+                                                                                            let v =
+                                                                                                r[9];
+                                                                                            let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                            if n
+                                                                                                != 0
+                                                                                            {
+                                                                                                let v = v >> n;
+                                                                                                f.logic(v, 64);
+                                                                                                r[9] = v;
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009ecf4  488d0d0513f6ff  LEA RCX,[0x140000000]
+                                                                                        {
+                                                                                            r[1] = 0u64.wrapping_add(0x140000000u64);
+                                                                                        }
+                                                                                        // 14009ecfb  488b94c1f0de0e00  MOV RDX,qword ptr [RCX + RAX*0x8 + 0xedef0]
+                                                                                        {
+                                                                                            r[2] = m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xedef0u64));
+                                                                                        }
+                                                                                        // 14009ed03  4c8b84c1f0040f00  MOV R8,qword ptr [RCX + RAX*0x8 + 0xf04f0]
+                                                                                        {
+                                                                                            r[8] = m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf04f0u64));
+                                                                                        }
+                                                                                        // 14009ed0b  4823d7  AND RDX,RDI
+                                                                                        {
+                                                                                            let v = r[2] & r[7];
+                                                                                            f.logic(v, 64);
+                                                                                            r[2] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ed0e  480faf94c1f0fe0e00  IMUL RDX,qword ptr [RCX + RAX*0x8 + 0xefef0]
+                                                                                        {
+                                                                                            r[2] = (r[2]).wrapping_mul(m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xefef0u64)));
+                                                                                        }
+                                                                                        // 14009ed17  8b8c8100080f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0800]
+                                                                                        {
+                                                                                            r[1] = (m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0xf0800u64))) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed1e  48d3ea  SHR RDX,CL
+                                                                                        {
+                                                                                            let v =
+                                                                                                r[2];
+                                                                                            let n = (r[1] & 0xffu64 & 63) as u32;
+                                                                                            if n
+                                                                                                != 0
+                                                                                            {
+                                                                                                let v = v >> n;
+                                                                                                f.logic(v, 64);
+                                                                                                r[2] = v;
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009ed21  488d0dd812f6ff  LEA RCX,[0x140000000]
+                                                                                        {
+                                                                                            r[1] = 0u64.wrapping_add(0x140000000u64);
+                                                                                        }
+                                                                                        // 14009ed28  488b84c1f0020f00  MOV RAX,qword ptr [RCX + RAX*0x8 + 0xf02f0]
+                                                                                        {
+                                                                                            r[0] = m.read::<64>(0u64.wrapping_add(r[1]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf02f0u64));
+                                                                                        }
+                                                                                        // 14009ed30  4b8b0cc8  MOV RCX,qword ptr [R8 + R9*0x8]
+                                                                                        {
+                                                                                            r[1] = m.read::<64>(0u64.wrapping_add(r[8]).wrapping_add(r[9].wrapping_mul(0x8u64)));
+                                                                                        }
+                                                                                        // 14009ed34  480b0cd0  OR RCX,qword ptr [RAX + RDX*0x8]
+                                                                                        {
+                                                                                            let v = r[1] | m.read::<64>(0u64.wrapping_add(r[0]).wrapping_add(r[2].wrapping_mul(0x8u64)));
+                                                                                            f.logic(v, 64);
+                                                                                            r[1] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ed38  8d4511  LEA EAX,[RBP + 0x11]
+                                                                                        {
+                                                                                            r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x11u64)) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed3b  4c0bf1  OR R14,RCX
+                                                                                        {
+                                                                                            let v = r[14] | r[1];
+                                                                                            f.logic(v, 64);
+                                                                                            r[14] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ed3e  4885cb  TEST RBX,RCX
+                                                                                        {
+                                                                                            let v = r[3] & r[1];
+                                                                                            f.logic(v, 64);
+                                                                                        }
+                                                                                        // 14009ed41  0f44c5  CMOVZ EAX,EBP
+                                                                                        {
+                                                                                            if f.z {
+                                                                                                r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                            }
+                                                                                        }
+                                                                                        // 14009ed44  4180e238  AND R10B,0x38
+                                                                                        {
+                                                                                            let v = (r[10] & 0xffu64 & 0x38u64) & 0xffu64;
+                                                                                            f.logic(v, 8);
+                                                                                            r[10] = (r[10] & !0xffu64) | ((v) & 0xffu64);
+                                                                                        }
+                                                                                        // 14009ed48  8be8  MOV EBP,EAX
+                                                                                        {
+                                                                                            r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed4a  498bc4  MOV RAX,R12
+                                                                                        {
+                                                                                            r[0] = r[12];
+                                                                                        }
+                                                                                        // 14009ed4d  4823c1  AND RAX,RCX
+                                                                                        {
+                                                                                            let v = r[0] & r[1];
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ed50  f3480fb8c0  POPCNT RAX,RAX
+                                                                                        {
+                                                                                            let v =
+                                                                                                r[0];
+                                                                                            f.z = v == 0;
+                                                                                            f.o = false;
+                                                                                            f.s = false;
+                                                                                            r[0] = u64::from(v.count_ones());
+                                                                                        }
+                                                                                        // 14009ed55  69c8e3ffe4ff  IMUL ECX,EAX,-0x1b001d
+                                                                                        {
+                                                                                            r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0xffffffffffe4ffe3u64)) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed5b  4403d9  ADD R11D,ECX
+                                                                                        {
+                                                                                            let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+                                                                                            r[11] = (v) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed5e  4180fa08  CMP R10B,0x8
+                                                                                        {
+                                                                                            f.arithmetic(r[10] & 0xffu64, 0x8u64, 8, true);
+                                                                                        }
+                                                                                        // 14009ed62  7515  JNZ 0x14009ed79
+                                                                                        if !f.z {
+                                                                                            break 'b_65;
+                                                                                        }
+                                                                                        // 14009ed64  498bc5  MOV RAX,R13
+                                                                                        {
+                                                                                            r[0] = r[13];
+                                                                                        }
+                                                                                        // 14009ed67  490bc7  OR RAX,R15
+                                                                                        {
+                                                                                            let v = r[0] | r[15];
+                                                                                            f.logic(v, 64);
+                                                                                            r[0] =
+                                                                                                v;
+                                                                                        }
+                                                                                        // 14009ed6a  0fb7c0  MOVZX EAX,AX
+                                                                                        {
+                                                                                            r[0] = (r[0] & 0xffffu64) & 0xffff_ffff;
+                                                                                        }
+                                                                                        // 14009ed6d  4885c0  TEST RAX,RAX
+                                                                                        {
+                                                                                            let v =
+                                                                                                r[0];
+                                                                                            f.logic(v, 64);
+                                                                                        }
+                                                                                        // 14009ed70  7407  JZ 0x14009ed79
+                                                                                        if f.z {
+                                                                                            break 'b_65;
+                                                                                        }
+                                                                                        // 14009ed72  4181eb2c010000  SUB R11D,0x12c
+                                                                                        {
+                                                                                            let v = f.arithmetic(r[11] & 0xffffffffu64, 0x12cu64, 32, true);
+                                                                                            r[11] = (v) & 0xffff_ffff;
+                                                                                        }
+                                                                                    }
+                                                                                    // 14009ed79  488b15f8233200  MOV RDX,qword ptr [0x1403c1178]
+                                                                                    {
+                                                                                        r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
+                                                                                    }
+                                                                                    // 14009ed80  488d46ff  LEA RAX,[RSI + -0x1]
+                                                                                    {
+                                                                                        r[0] = 0u64.wrapping_add(r[6]).wrapping_add(0xffffffffffffffffu64);
+                                                                                    }
+                                                                                    // 14009ed84  4823f0  AND RSI,RAX
+                                                                                    {
+                                                                                        let v = r
+                                                                                            [6]
+                                                                                            & r[0];
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[6] = v;
+                                                                                    }
+                                                                                    // 14009ed87  0f8534ffffff  JNZ 0x14009ecc1
+                                                                                    if !f.z {
+                                                                                        continue 'loop_62;
+                                                                                    }
+                                                                                    break 'loop_62;
+                                                                                }
+                                                                                // 14009ed8d  8b5c2430  MOV EBX,dword ptr [RSP + 0x30]
+                                                                                {
+                                                                                    r[3] = (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64))) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ed91  33ff  XOR EDI,EDI
+                                                                                {
+                                                                                    let v = 0u64;
+                                                                                    f.logic(v, 32);
+                                                                                    r[7] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ed93  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
+                                                                                {
+                                                                                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
+                                                                                }
+                                                                                // 14009ed98  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
+                                                                                {
+                                                                                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
+                                                                                }
+                                                                            }
+                                                                            // 14009eda0  4c0b742460  OR R14,qword ptr [RSP + 0x60]
+                                                                            {
+                                                                                let v = r[14] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
+                                                                                f.logic(v, 64);
+                                                                                r[14] = v;
+                                                                            }
+                                                                            // 14009eda5  4c0b7c2450  OR R15,qword ptr [RSP + 0x50]
+                                                                            {
+                                                                                let v = r[15] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
+                                                                                f.logic(v, 64);
+                                                                                r[15] = v;
+                                                                            }
+                                                                            // 14009edaa  498bc6  MOV RAX,R14
+                                                                            {
+                                                                                r[0] = r[14];
+                                                                            }
+                                                                            // 14009edad  4c8b156c233200  MOV R10,qword ptr [0x1403c1120]
+                                                                            {
+                                                                                r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
+                                                                            }
+                                                                            // 14009edb4  48f7d0  NOT RAX
+                                                                            {
+                                                                                let v = !(r[0]);
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009edb7  488b15b6233200  MOV RDX,qword ptr [0x1403c1174]
+                                                                            {
+                                                                                r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1174u64));
+                                                                            }
+                                                                            // 14009edbe  4c8be0  MOV R12,RAX
+                                                                            {
+                                                                                r[12] = r[0];
+                                                                            }
+                                                                            // 14009edc1  4c23a42490000000  AND R12,qword ptr [RSP + 0x90]
+                                                                            {
+                                                                                let v = r[12] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
+                                                                                f.logic(v, 64);
+                                                                                r[12] = v;
+                                                                            }
+                                                                            // 14009edc9  498bf7  MOV RSI,R15
+                                                                            {
+                                                                                r[6] = r[15];
+                                                                            }
+                                                                            // 14009edcc  48630d9d233200  MOVSXD RCX,dword ptr [0x1403c1170]
+                                                                            {
+                                                                                r[1] = ((m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) as i32 as i64) as u64;
+                                                                            }
+                                                                            // 14009edd3  48f7d6  NOT RSI
+                                                                            {
+                                                                                let v = !(r[6]);
+                                                                                r[6] = v;
+                                                                            }
+                                                                            // 14009edd6  4889442450  MOV qword ptr [RSP + 0x50],RAX
+                                                                            {
+                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64), r[0]);
+                                                                            }
+                                                                            // 14009eddb  488bc6  MOV RAX,RSI
+                                                                            {
+                                                                                r[0] = r[6];
+                                                                            }
+                                                                            // 14009edde  4823842480000000  AND RAX,qword ptr [RSP + 0x80]
+                                                                            {
+                                                                                let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
+                                                                                f.logic(v, 64);
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009ede6  4c897c2428  MOV qword ptr [RSP + 0x28],R15
+                                                                            {
+                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
+                                                                            }
+                                                                            // 14009edeb  4c89742438  MOV qword ptr [RSP + 0x38],R14
+                                                                            {
+                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
+                                                                            }
+                                                                            // 14009edf0  4889742460  MOV qword ptr [RSP + 0x60],RSI
+                                                                            {
+                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64), r[6]);
+                                                                            }
+                                                                            // 14009edf5  4889442420  MOV qword ptr [RSP + 0x20],RAX
+                                                                            {
+                                                                                m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
+                                                                            }
+                                                                            // 14009edfa  4d85d2  TEST R10,R10
+                                                                            {
+                                                                                let v = r[10];
+                                                                                f.logic(v, 64);
+                                                                            }
+                                                                            // 14009edfd  0f84d2000000  JZ 0x14009eed5
+                                                                            if f.z {
+                                                                                break 'b_71;
+                                                                            }
+                                                                            // 14009ee03  4c8bbc2490000000  MOV R15,qword ptr [RSP + 0x90]
+                                                                            {
+                                                                                r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
+                                                                            }
+                                                                            // 14009ee0b  488d3dee11f6ff  LEA RDI,[0x140000000]
+                                                                            {
+                                                                                r[7] = 0u64
+                                                                                    .wrapping_add(
+                                                                                    0x140000000u64,
+                                                                                );
+                                                                            }
+                                                                            // 14009ee12  4863c2  MOVSXD RAX,EDX
+                                                                            {
+                                                                                r[0] = ((r[2]
+                                                                                    & 0xffffffffu64)
+                                                                                    as i32
+                                                                                    as i64)
+                                                                                    as u64;
+                                                                            }
+                                                                            // 14009ee15  4c8db7b0d71000  LEA R14,[RDI + 0x10d7b0]
+                                                                            {
+                                                                                r[14] = 0u64
+                                                                                    .wrapping_add(
+                                                                                        r[7],
+                                                                                    )
+                                                                                    .wrapping_add(
+                                                                                        0x10d7b0u64,
+                                                                                    );
+                                                                            }
+                                                                            // 14009ee1c  48c1e006  SHL RAX,0x6
+                                                                            {
+                                                                                let v = r[0];
+                                                                                let n = 6u32;
+                                                                                if n != 0 {
+                                                                                    let v = v.wrapping_shl(n);
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009ee20  488db7b0c71000  LEA RSI,[RDI + 0x10c7b0]
+                                                                            {
+                                                                                r[6] = 0u64
+                                                                                    .wrapping_add(
+                                                                                        r[7],
+                                                                                    )
+                                                                                    .wrapping_add(
+                                                                                        0x10c7b0u64,
+                                                                                    );
+                                                                            }
+                                                                            // 14009ee27  4c03f0  ADD R14,RAX
+                                                                            {
+                                                                                let v = f
+                                                                                    .arithmetic(
+                                                                                        r[14],
+                                                                                        r[0], 64,
+                                                                                        false,
+                                                                                    );
+                                                                                r[14] = v;
+                                                                            }
+                                                                            // 14009ee2a  48c1e106  SHL RCX,0x6
+                                                                            {
+                                                                                let v = r[1];
+                                                                                let n = 6u32;
+                                                                                if n != 0 {
+                                                                                    let v = v.wrapping_shl(n);
+                                                                                    f.logic(v, 64);
+                                                                                    r[1] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009ee2e  4803f1  ADD RSI,RCX
+                                                                            {
+                                                                                let v = f
+                                                                                    .arithmetic(
+                                                                                        r[6], r[1],
+                                                                                        64, false,
+                                                                                    );
+                                                                                r[6] = v;
+                                                                            }
+                                                                            'loop_69: loop {
+                                                                                // 14009ee31  490fbcc2  BSF RAX,R10
+                                                                                {
+                                                                                    let v = r[10];
+                                                                                    f.z = v == 0;
+                                                                                    if v != 0 {
+                                                                                        r[0] = u64::from(v.trailing_zeros());
+                                                                                    }
+                                                                                }
+                                                                                // 14009ee35  418d8b2e004500  LEA ECX,[R11 + 0x45002e]
+                                                                                {
+                                                                                    r[1] = (0u64.wrapping_add(r[11]).wrapping_add(0x45002eu64)) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee3c  4c63c8  MOVSXD R9,EAX
+                                                                                {
+                                                                                    r[9] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                }
+                                                                                // 14009ee3f  8905d3042600  MOV dword ptr [0x1402ff318],EAX
+                                                                                {
+                                                                                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                                }
+                                                                                // 14009ee45  430fbe040e  MOVSX EAX,byte ptr [R14 + R9*0x1]
+                                                                                {
+                                                                                    r[0] = (((m.read::<8>(0u64.wrapping_add(r[14]).wrapping_add(r[9].wrapping_mul(0x1u64)))) as i8 as i64) as u64) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee4a  4e8b84cff0fa0e00  MOV R8,qword ptr [RDI + R9*0x8 + 0xefaf0]
+                                                                                {
+                                                                                    r[8] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0xefaf0u64));
+                                                                                }
+                                                                                // 14009ee52  03d8  ADD EBX,EAX
+                                                                                {
+                                                                                    let v = f.arithmetic(r[3] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
+                                                                                    r[3] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee54  420fbe040e  MOVSX EAX,byte ptr [RSI + R9*0x1]
+                                                                                {
+                                                                                    r[0] = (((m.read::<8>(0u64.wrapping_add(r[6]).wrapping_add(r[9].wrapping_mul(0x1u64)))) as i8 as i64) as u64) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee59  4a8b94cfe0a81000  MOV RDX,qword ptr [RDI + R9*0x8 + 0x10a8e0]
+                                                                                {
+                                                                                    r[2] = m.read::<64>(0u64.wrapping_add(r[7]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0x10a8e0u64));
+                                                                                }
+                                                                                // 14009ee61  2be8  SUB EBP,EAX
+                                                                                {
+                                                                                    let v = f.arithmetic(r[5] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
+                                                                                    r[5] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee63  49c1e104  SHL R9,0x4
+                                                                                {
+                                                                                    let v = r[9];
+                                                                                    let n = 4u32;
+                                                                                    if n != 0 {
+                                                                                        let v = v.wrapping_shl(n);
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[9] = v;
+                                                                                    }
+                                                                                }
+                                                                                // 14009ee67  498bc2  MOV RAX,R10
+                                                                                {
+                                                                                    r[0] = r[10];
+                                                                                }
+                                                                                // 14009ee6a  48f7d8  NEG RAX
+                                                                                {
+                                                                                    let v = f
+                                                                                        .arithmetic(
+                                                                                            0u64,
+                                                                                            r[0],
+                                                                                            64,
+                                                                                            true,
+                                                                                        );
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ee6d  49234528  AND RAX,qword ptr [R13 + 0x28]
+                                                                                {
+                                                                                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ee71  4985c2  TEST R10,RAX
+                                                                                {
+                                                                                    let v = r[10]
+                                                                                        & r[0];
+                                                                                    f.logic(v, 64);
+                                                                                }
+                                                                                // 14009ee74  498bc0  MOV RAX,R8
+                                                                                {
+                                                                                    r[0] = r[8];
+                                                                                }
+                                                                                // 14009ee77  410f45cb  CMOVNZ ECX,R11D
+                                                                                {
+                                                                                    if !f.z {
+                                                                                        r[1] = (r[11] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                    }
+                                                                                }
+                                                                                // 14009ee7b  4923c4  AND RAX,R12
+                                                                                {
+                                                                                    let v = r[0]
+                                                                                        & r[12];
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ee7e  480fafc2  IMUL RAX,RDX
+                                                                                {
+                                                                                    r[0] = (r[0]).wrapping_mul(r[2]);
+                                                                                }
+                                                                                // 14009ee82  4d23c7  AND R8,R15
+                                                                                {
+                                                                                    let v = r[8]
+                                                                                        & r[15];
+                                                                                    f.logic(v, 64);
+                                                                                    r[8] = v;
+                                                                                }
+                                                                                // 14009ee85  448bd9  MOV R11D,ECX
+                                                                                {
+                                                                                    r[11] = (r[1] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009ee88  4c0fafc2  IMUL R8,RDX
+                                                                                {
+                                                                                    r[8] = (r[8]).wrapping_mul(r[2]);
+                                                                                }
+                                                                                // 14009ee8c  48c1e83c  SHR RAX,0x3c
+                                                                                {
+                                                                                    let v = r[0];
+                                                                                    let n = 60u32;
+                                                                                    if n != 0 {
+                                                                                        let v =
+                                                                                            v >> n;
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[0] = v;
+                                                                                    }
+                                                                                }
+                                                                                // 14009ee90  4903c1  ADD RAX,R9
+                                                                                {
+                                                                                    let v = f
+                                                                                        .arithmetic(
+                                                                                            r[0],
+                                                                                            r[9],
+                                                                                            64,
+                                                                                            false,
+                                                                                        );
+                                                                                    r[0] = v;
+                                                                                }
+                                                                                // 14009ee93  49c1e83c  SHR R8,0x3c
+                                                                                {
+                                                                                    let v = r[8];
+                                                                                    let n = 60u32;
+                                                                                    if n != 0 {
+                                                                                        let v =
+                                                                                            v >> n;
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[8] = v;
+                                                                                    }
+                                                                                }
+                                                                                // 14009ee97  4d03c1  ADD R8,R9
+                                                                                {
+                                                                                    let v = f
+                                                                                        .arithmetic(
+                                                                                            r[8],
+                                                                                            r[9],
+                                                                                            64,
+                                                                                            false,
+                                                                                        );
+                                                                                    r[8] = v;
+                                                                                }
+                                                                                // 14009ee9a  44039c87e0aa1000  ADD R11D,dword ptr [RDI + RAX*0x4 + 0x10aae0]
+                                                                                {
+                                                                                    let v = f.arithmetic(r[11] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[7]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0x10aae0u64)), 32, false);
+                                                                                    r[11] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009eea2  498d42ff  LEA RAX,[R10 + -0x1]
+                                                                                {
+                                                                                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
+                                                                                }
+                                                                                // 14009eea6  46039c87e0981000  ADD R11D,dword ptr [RDI + R8*0x4 + 0x1098e0]
+                                                                                {
+                                                                                    let v = f.arithmetic(r[11] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[7]).wrapping_add(r[8].wrapping_mul(0x4u64)).wrapping_add(0x1098e0u64)), 32, false);
+                                                                                    r[11] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009eeae  4c23d0  AND R10,RAX
+                                                                                {
+                                                                                    let v = r[10]
+                                                                                        & r[0];
+                                                                                    f.logic(v, 64);
+                                                                                    r[10] = v;
+                                                                                }
+                                                                                // 14009eeb1  0f857affffff  JNZ 0x14009ee31
+                                                                                if !f.z {
+                                                                                    continue 'loop_69;
+                                                                                }
+                                                                                break 'loop_69;
+                                                                            }
+                                                                            // 14009eeb7  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
+                                                                            {
+                                                                                r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
+                                                                            }
+                                                                            // 14009eebc  33ff  XOR EDI,EDI
+                                                                            {
+                                                                                let v = 0u64;
+                                                                                f.logic(v, 32);
+                                                                                r[7] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009eebe  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
+                                                                            {
+                                                                                r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
+                                                                            }
+                                                                            // 14009eec3  488b742460  MOV RSI,qword ptr [RSP + 0x60]
+                                                                            {
+                                                                                r[6] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
+                                                                            }
+                                                                            // 14009eec8  8b0da2223200  MOV ECX,dword ptr [0x1403c1170]
+                                                                            {
+                                                                                r[1] = (m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009eece  488b159f223200  MOV RDX,qword ptr [0x1403c1174]
+                                                                            {
+                                                                                r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1174u64));
+                                                                            }
+                                                                        }
+                                                                        // 14009eed5  4c8b154c223200  MOV R10,qword ptr [0x1403c1128]
+                                                                        {
+                                                                            r[10] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1128u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                        // 14009eedc  4d85d2  TEST R10,R10
+                                                                        {
+                                                                            let v = r[10];
+                                                                            f.logic(v, 64);
+                                                                        }
+                                                                        // 14009eedf  0f84d2000000  JZ 0x14009efb7
+                                                                        if f.z {
+                                                                            break 'b_75;
+                                                                        }
+                                                                        // 14009eee5  4c8b642420  MOV R12,qword ptr [RSP + 0x20]
+                                                                        {
+                                                                            r[12] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x20u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                        // 14009eeea  4c8d3d0f11f6ff  LEA R15,[0x140000000]
+                                                                        {
+                                                                            r[15] = 0u64
+                                                                                .wrapping_add(
+                                                                                    0x140000000u64,
+                                                                                );
+                                                                        }
+                                                                        // 14009eef1  488bb42480000000  MOV RSI,qword ptr [RSP + 0x80]
+                                                                        {
+                                                                            r[6] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x80u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                        // 14009eef9  498dbfb0d71000  LEA RDI,[R15 + 0x10d7b0]
+                                                                        {
+                                                                            r[7] = 0u64
+                                                                                .wrapping_add(r[15])
+                                                                                .wrapping_add(
+                                                                                    0x10d7b0u64,
+                                                                                );
+                                                                        }
+                                                                        // 14009ef00  4863c1  MOVSXD RAX,ECX
+                                                                        {
+                                                                            r[0] = ((r[1]
+                                                                                & 0xffffffffu64)
+                                                                                as i32
+                                                                                as i64)
+                                                                                as u64;
+                                                                        }
+                                                                        // 14009ef03  4d8db7b0c71000  LEA R14,[R15 + 0x10c7b0]
+                                                                        {
+                                                                            r[14] = 0u64
+                                                                                .wrapping_add(r[15])
+                                                                                .wrapping_add(
+                                                                                    0x10c7b0u64,
+                                                                                );
+                                                                        }
+                                                                        // 14009ef0a  48c1e006  SHL RAX,0x6
+                                                                        {
+                                                                            let v = r[0];
+                                                                            let n = 6u32;
+                                                                            if n != 0 {
+                                                                                let v = v
+                                                                                    .wrapping_shl(
+                                                                                        n,
+                                                                                    );
+                                                                                f.logic(v, 64);
+                                                                                r[0] = v;
+                                                                            }
+                                                                        }
+                                                                        // 14009ef0e  4863ca  MOVSXD RCX,EDX
+                                                                        {
+                                                                            r[1] = ((r[2]
+                                                                                & 0xffffffffu64)
+                                                                                as i32
+                                                                                as i64)
+                                                                                as u64;
+                                                                        }
+                                                                        // 14009ef11  4803f8  ADD RDI,RAX
+                                                                        {
+                                                                            let v = f.arithmetic(
+                                                                                r[7], r[0], 64,
+                                                                                false,
+                                                                            );
+                                                                            r[7] = v;
+                                                                        }
+                                                                        // 14009ef14  48c1e106  SHL RCX,0x6
+                                                                        {
+                                                                            let v = r[1];
+                                                                            let n = 6u32;
+                                                                            if n != 0 {
+                                                                                let v = v
+                                                                                    .wrapping_shl(
+                                                                                        n,
+                                                                                    );
+                                                                                f.logic(v, 64);
+                                                                                r[1] = v;
+                                                                            }
+                                                                        }
+                                                                        // 14009ef18  4c03f1  ADD R14,RCX
+                                                                        {
+                                                                            let v = f.arithmetic(
+                                                                                r[14], r[1], 64,
+                                                                                false,
+                                                                            );
+                                                                            r[14] = v;
+                                                                        }
+                                                                        // 14009ef1b  0f1f440000  NOP dword ptr [RAX + RAX*0x1]
+                                                                        'loop_73: loop {
+                                                                            // 14009ef20  490fbcc2  BSF RAX,R10
+                                                                            {
+                                                                                let v = r[10];
+                                                                                f.z = v == 0;
+                                                                                if v != 0 {
+                                                                                    r[0] = u64::from(v.trailing_zeros());
+                                                                                }
+                                                                            }
+                                                                            // 14009ef24  418d8bd2ffbaff  LEA ECX,[R11 + -0x45002e]
+                                                                            {
+                                                                                r[1] = (0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffbaffd2u64)) & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef2b  4c63c8  MOVSXD R9,EAX
+                                                                            {
+                                                                                r[9] = ((r[0]
+                                                                                    & 0xffffffffu64)
+                                                                                    as i32
+                                                                                    as i64)
+                                                                                    as u64;
+                                                                            }
+                                                                            // 14009ef2e  8905e4032600  MOV dword ptr [0x1402ff318],EAX
+                                                                            {
+                                                                                m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
+                                                                            }
+                                                                            // 14009ef34  420fbe040f  MOVSX EAX,byte ptr [RDI + R9*0x1]
+                                                                            {
+                                                                                r[0] = (((m.read::<8>(0u64.wrapping_add(r[7]).wrapping_add(r[9].wrapping_mul(0x1u64)))) as i8 as i64) as u64) & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef39  4f8b84cff0fa0e00  MOV R8,qword ptr [R15 + R9*0x8 + 0xefaf0]
+                                                                            {
+                                                                                r[8] = m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0xefaf0u64));
+                                                                            }
+                                                                            // 14009ef41  03e8  ADD EBP,EAX
+                                                                            {
+                                                                                let v = f.arithmetic(r[5] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
+                                                                                r[5] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef43  430fbe040e  MOVSX EAX,byte ptr [R14 + R9*0x1]
+                                                                            {
+                                                                                r[0] = (((m.read::<8>(0u64.wrapping_add(r[14]).wrapping_add(r[9].wrapping_mul(0x1u64)))) as i8 as i64) as u64) & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef48  4b8b94cfe0861000  MOV RDX,qword ptr [R15 + R9*0x8 + 0x1086e0]
+                                                                            {
+                                                                                r[2] = m.read::<64>(0u64.wrapping_add(r[15]).wrapping_add(r[9].wrapping_mul(0x8u64)).wrapping_add(0x1086e0u64));
+                                                                            }
+                                                                            // 14009ef50  2bd8  SUB EBX,EAX
+                                                                            {
+                                                                                let v = f.arithmetic(r[3] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
+                                                                                r[3] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef52  49c1e104  SHL R9,0x4
+                                                                            {
+                                                                                let v = r[9];
+                                                                                let n = 4u32;
+                                                                                if n != 0 {
+                                                                                    let v = v.wrapping_shl(n);
+                                                                                    f.logic(v, 64);
+                                                                                    r[9] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009ef56  498bc2  MOV RAX,R10
+                                                                            {
+                                                                                r[0] = r[10];
+                                                                            }
+                                                                            // 14009ef59  48f7d8  NEG RAX
+                                                                            {
+                                                                                let v = f
+                                                                                    .arithmetic(
+                                                                                        0u64, r[0],
+                                                                                        64, true,
+                                                                                    );
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009ef5c  4923c2  AND RAX,R10
+                                                                            {
+                                                                                let v =
+                                                                                    r[0] & r[10];
+                                                                                f.logic(v, 64);
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009ef5f  49854520  TEST qword ptr [R13 + 0x20],RAX
+                                                                            {
+                                                                                let v = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64)) & r[0];
+                                                                                f.logic(v, 64);
+                                                                            }
+                                                                            // 14009ef63  498bc0  MOV RAX,R8
+                                                                            {
+                                                                                r[0] = r[8];
+                                                                            }
+                                                                            // 14009ef66  410f45cb  CMOVNZ ECX,R11D
+                                                                            {
+                                                                                if !f.z {
+                                                                                    r[1] = (r[11] & 0xffffffffu64) & 0xffff_ffff;
+                                                                                }
+                                                                            }
+                                                                            // 14009ef6a  4923c4  AND RAX,R12
+                                                                            {
+                                                                                let v =
+                                                                                    r[0] & r[12];
+                                                                                f.logic(v, 64);
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009ef6d  480fafc2  IMUL RAX,RDX
+                                                                            {
+                                                                                r[0] = (r[0])
+                                                                                    .wrapping_mul(
+                                                                                        r[2],
+                                                                                    );
+                                                                            }
+                                                                            // 14009ef71  4c23c6  AND R8,RSI
+                                                                            {
+                                                                                let v = r[8] & r[6];
+                                                                                f.logic(v, 64);
+                                                                                r[8] = v;
+                                                                            }
+                                                                            // 14009ef74  448bd9  MOV R11D,ECX
+                                                                            {
+                                                                                r[11] = (r[1]
+                                                                                    & 0xffffffffu64)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef77  4c0fafc2  IMUL R8,RDX
+                                                                            {
+                                                                                r[8] = (r[8])
+                                                                                    .wrapping_mul(
+                                                                                        r[2],
+                                                                                    );
+                                                                            }
+                                                                            // 14009ef7b  48c1e83c  SHR RAX,0x3c
+                                                                            {
+                                                                                let v = r[0];
+                                                                                let n = 60u32;
+                                                                                if n != 0 {
+                                                                                    let v = v >> n;
+                                                                                    f.logic(v, 64);
+                                                                                    r[0] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009ef7f  4903c1  ADD RAX,R9
+                                                                            {
+                                                                                let v = f
+                                                                                    .arithmetic(
+                                                                                        r[0], r[9],
+                                                                                        64, false,
+                                                                                    );
+                                                                                r[0] = v;
+                                                                            }
+                                                                            // 14009ef82  49c1e83c  SHR R8,0x3c
+                                                                            {
+                                                                                let v = r[8];
+                                                                                let n = 60u32;
+                                                                                if n != 0 {
+                                                                                    let v = v >> n;
+                                                                                    f.logic(v, 64);
+                                                                                    r[8] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009ef86  4d03c1  ADD R8,R9
+                                                                            {
+                                                                                let v = f
+                                                                                    .arithmetic(
+                                                                                        r[8], r[9],
+                                                                                        64, false,
+                                                                                    );
+                                                                                r[8] = v;
+                                                                            }
+                                                                            // 14009ef89  452b9c87e0881000  SUB R11D,dword ptr [R15 + RAX*0x4 + 0x1088e0]
+                                                                            {
+                                                                                let v = f.arithmetic(r[11] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[15]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0x1088e0u64)), 32, true);
+                                                                                r[11] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef91  498d42ff  LEA RAX,[R10 + -0x1]
+                                                                            {
+                                                                                r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
+                                                                            }
+                                                                            // 14009ef95  472b9c87e0761000  SUB R11D,dword ptr [R15 + R8*0x4 + 0x1076e0]
+                                                                            {
+                                                                                let v = f.arithmetic(r[11] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[15]).wrapping_add(r[8].wrapping_mul(0x4u64)).wrapping_add(0x1076e0u64)), 32, true);
+                                                                                r[11] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009ef9d  4c23d0  AND R10,RAX
+                                                                            {
+                                                                                let v =
+                                                                                    r[10] & r[0];
+                                                                                f.logic(v, 64);
+                                                                                r[10] = v;
+                                                                            }
+                                                                            // 14009efa0  0f857affffff  JNZ 0x14009ef20
+                                                                            if !f.z {
+                                                                                continue 'loop_73;
+                                                                            }
+                                                                            break 'loop_73;
+                                                                        }
+                                                                        // 14009efa6  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
+                                                                        {
+                                                                            r[14] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x38u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                        // 14009efab  33ff  XOR EDI,EDI
+                                                                        {
+                                                                            let v = 0u64;
+                                                                            f.logic(v, 32);
+                                                                            r[7] =
+                                                                                (v) & 0xffff_ffff;
+                                                                        }
+                                                                        // 14009efad  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
+                                                                        {
+                                                                            r[15] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x28u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                        // 14009efb2  488b742460  MOV RSI,qword ptr [RSP + 0x60]
+                                                                        {
+                                                                            r[6] = m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x60u64,
+                                                                                ),
+                                                                            );
+                                                                        }
+                                                                    }
+                                                                    // 14009efb7  488b542478  MOV RDX,qword ptr [RSP + 0x78]
+                                                                    {
+                                                                        r[2] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x78u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009efbc  4c8b253d213200  MOV R12,qword ptr [0x1403c1100]
+                                                                    {
+                                                                        r[12] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1100u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009efc3  4c8b442458  MOV R8,qword ptr [RSP + 0x58]
+                                                                    {
+                                                                        r[8] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x58u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009efc8  4d8bcc  MOV R9,R12
+                                                                    {
+                                                                        r[9] = r[12];
+                                                                    }
+                                                                    // 14009efcb  488b4c2448  MOV RCX,qword ptr [RSP + 0x48]
+                                                                    {
+                                                                        r[1] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x48u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009efd0  4c23ce  AND R9,RSI
+                                                                    {
+                                                                        let v = r[9] & r[6];
+                                                                        f.logic(v, 64);
+                                                                        r[9] = v;
+                                                                    }
+                                                                    // 14009efd3  488b052e213200  MOV RAX,qword ptr [0x1403c1108]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1108u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009efda  4d23ce  AND R9,R14
+                                                                    {
+                                                                        let v = r[9] & r[14];
+                                                                        f.logic(v, 64);
+                                                                        r[9] = v;
+                                                                    }
+                                                                    // 14009efdd  4c8bd0  MOV R10,RAX
+                                                                    {
+                                                                        r[10] = r[0];
+                                                                    }
+                                                                    // 14009efe0  4c893a  MOV qword ptr [RDX],R15
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[2]),
+                                                                            r[15],
+                                                                        );
+                                                                    }
+                                                                    // 14009efe3  4c23542450  AND R10,qword ptr [RSP + 0x50]
+                                                                    {
+                                                                        let v = r[10]
+                                                                            & m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x50u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[10] = v;
+                                                                    }
+                                                                    // 14009efe8  4d23d7  AND R10,R15
+                                                                    {
+                                                                        let v = r[10] & r[15];
+                                                                        f.logic(v, 64);
+                                                                        r[10] = v;
+                                                                    }
+                                                                    // 14009efeb  4c897208  MOV qword ptr [RDX + 0x8],R14
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[2])
+                                                                                .wrapping_add(
+                                                                                    0x8u64,
+                                                                                ),
+                                                                            r[14],
+                                                                        );
+                                                                    }
+                                                                    // 14009efef  4923c2  AND RAX,R10
+                                                                    {
+                                                                        let v = r[0] & r[10];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009eff2  490bc0  OR RAX,R8
+                                                                    {
+                                                                        let v = r[0] | r[8];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009eff5  49f7d0  NOT R8
+                                                                    {
+                                                                        let v = !(r[8]);
+                                                                        r[8] = v;
+                                                                    }
+                                                                    // 14009eff8  48894220  MOV qword ptr [RDX + 0x20],RAX
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[2])
+                                                                                .wrapping_add(
+                                                                                    0x20u64,
+                                                                                ),
+                                                                            r[0],
+                                                                        );
+                                                                    }
+                                                                    // 14009effc  498bc4  MOV RAX,R12
+                                                                    {
+                                                                        r[0] = r[12];
+                                                                    }
+                                                                    // 14009efff  4923c1  AND RAX,R9
+                                                                    {
+                                                                        let v = r[0] & r[9];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f002  4c89442458  MOV qword ptr [RSP + 0x58],R8
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x58u64,
+                                                                                ),
+                                                                            r[8],
+                                                                        );
+                                                                    }
+                                                                    // 14009f007  480bc1  OR RAX,RCX
+                                                                    {
+                                                                        let v = r[0] | r[1];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f00a  48f7d1  NOT RCX
+                                                                    {
+                                                                        let v = !(r[1]);
+                                                                        r[1] = v;
+                                                                    }
+                                                                    // 14009f00d  48894228  MOV qword ptr [RDX + 0x28],RAX
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[2])
+                                                                                .wrapping_add(
+                                                                                    0x28u64,
+                                                                                ),
+                                                                            r[0],
+                                                                        );
+                                                                    }
+                                                                    // 14009f011  488b0508213200  MOV RAX,qword ptr [0x1403c1120]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1120u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f018  480b0511213200  OR RAX,qword ptr [0x1403c1130]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            | m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1130u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f01f  480b051a213200  OR RAX,qword ptr [0x1403c1140]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            | m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1140u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f026  4823c1  AND RAX,RCX
+                                                                    {
+                                                                        let v = r[0] & r[1];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f029  488b1548213200  MOV RDX,qword ptr [0x1403c1178]
+                                                                    {
+                                                                        r[2] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1178u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f030  4823442470  AND RAX,qword ptr [RSP + 0x70]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            & m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x70u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f035  48f7d2  NOT RDX
+                                                                    {
+                                                                        let v = !(r[2]);
+                                                                        r[2] = v;
+                                                                    }
+                                                                    // 14009f038  48894c2448  MOV qword ptr [RSP + 0x48],RCX
+                                                                    {
+                                                                        m.write::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x48u64,
+                                                                                ),
+                                                                            r[1],
+                                                                        );
+                                                                    }
+                                                                    // 14009f03d  f3480fb8c8  POPCNT RCX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[1] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f042  488b05df203200  MOV RAX,qword ptr [0x1403c1128]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1128u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f049  480b05e8203200  OR RAX,qword ptr [0x1403c1138]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            | m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1138u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f050  480b05f1203200  OR RAX,qword ptr [0x1403c1148]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            | m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1148u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f057  4923c0  AND RAX,R8
+                                                                    {
+                                                                        let v = r[0] & r[8];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f05a  4823442468  AND RAX,qword ptr [RSP + 0x68]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            & m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x68u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f05f  f3480fb8c0  POPCNT RAX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[0] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f064  2bc8  SUB ECX,EAX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[1] & 0xffffffffu64,
+                                                                            r[0] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[1] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f066  488b442468  MOV RAX,qword ptr [RSP + 0x68]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x68u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f06b  48f7d0  NOT RAX
+                                                                    {
+                                                                        let v = !(r[0]);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f06e  4469c116001600  IMUL R8D,ECX,0x160016
+                                                                    {
+                                                                        r[8] = ((r[1]
+                                                                            & 0xffffffffu64)
+                                                                            .wrapping_mul(
+                                                                                0x160016u64,
+                                                                            ))
+                                                                            & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f075  4823058c203200  AND RAX,qword ptr [0x1403c1108]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            & m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1108u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f07c  4923c7  AND RAX,R15
+                                                                    {
+                                                                        let v = r[0] & r[15];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f07f  f3480fb8c8  POPCNT RCX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[1] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f084  488b442470  MOV RAX,qword ptr [RSP + 0x70]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x70u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f089  48f7d0  NOT RAX
+                                                                    {
+                                                                        let v = !(r[0]);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f08c  4923c4  AND RAX,R12
+                                                                    {
+                                                                        let v = r[0] & r[12];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f08f  4923c6  AND RAX,R14
+                                                                    {
+                                                                        let v = r[0] & r[14];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f092  f3480fb8c0  POPCNT RAX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[0] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f097  2bc8  SUB ECX,EAX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[1] & 0xffffffffu64,
+                                                                            r[0] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[1] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f099  69c13c001e00  IMUL EAX,ECX,0x1e003c
+                                                                    {
+                                                                        r[0] = ((r[1]
+                                                                            & 0xffffffffu64)
+                                                                            .wrapping_mul(
+                                                                                0x1e003cu64,
+                                                                            ))
+                                                                            & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f09f  4403c0  ADD R8D,EAX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[8] & 0xffffffffu64,
+                                                                            r[0] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[8] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f0a2  488b056f203200  MOV RAX,qword ptr [0x1403c1118]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1118u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0a9  48c1e808  SHR RAX,0x8
+                                                                    {
+                                                                        let v = r[0];
+                                                                        let n = 8u32;
+                                                                        if n != 0 {
+                                                                            let v = v >> n;
+                                                                            f.logic(v, 64);
+                                                                            r[0] = v;
+                                                                        }
+                                                                    }
+                                                                    // 14009f0ad  4823c2  AND RAX,RDX
+                                                                    {
+                                                                        let v = r[0] & r[2];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0b0  f3480fb8c8  POPCNT RCX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[1] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0b5  488b0554203200  MOV RAX,qword ptr [0x1403c1110]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1110u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0bc  48c1e008  SHL RAX,0x8
+                                                                    {
+                                                                        let v = r[0];
+                                                                        let n = 8u32;
+                                                                        if n != 0 {
+                                                                            let v =
+                                                                                v.wrapping_shl(n);
+                                                                            f.logic(v, 64);
+                                                                            r[0] = v;
+                                                                        }
+                                                                    }
+                                                                    // 14009f0c0  4823c2  AND RAX,RDX
+                                                                    {
+                                                                        let v = r[0] & r[2];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0c3  488b542458  MOV RDX,qword ptr [RSP + 0x58]
+                                                                    {
+                                                                        r[2] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x58u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0c8  f3480fb8c0  POPCNT RAX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[0] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0cd  2bc1  SUB EAX,ECX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[0] & 0xffffffffu64,
+                                                                            r[1] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[0] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f0cf  69c890002000  IMUL ECX,EAX,0x200090
+                                                                    {
+                                                                        r[1] = ((r[0]
+                                                                            & 0xffffffffu64)
+                                                                            .wrapping_mul(
+                                                                                0x200090u64,
+                                                                            ))
+                                                                            & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f0d5  488b052c203200  MOV RAX,qword ptr [0x1403c1108]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1108u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0dc  4823c2  AND RAX,RDX
+                                                                    {
+                                                                        let v = r[0] & r[2];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0df  4923d2  AND RDX,R10
+                                                                    {
+                                                                        let v = r[2] & r[10];
+                                                                        f.logic(v, 64);
+                                                                        r[2] = v;
+                                                                    }
+                                                                    // 14009f0e2  4923c6  AND RAX,R14
+                                                                    {
+                                                                        let v = r[0] & r[14];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0e5  4403c1  ADD R8D,ECX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[8] & 0xffffffffu64,
+                                                                            r[1] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[8] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f0e8  f3480fb8c8  POPCNT RCX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[1] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0ed  498bc4  MOV RAX,R12
+                                                                    {
+                                                                        r[0] = r[12];
+                                                                    }
+                                                                    // 14009f0f0  4823442448  AND RAX,qword ptr [RSP + 0x48]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            & m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[4],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x48u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0f5  4923c7  AND RAX,R15
+                                                                    {
+                                                                        let v = r[0] & r[15];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f0f8  f3480fb8c0  POPCNT RAX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[0] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f0fd  2bc1  SUB EAX,ECX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[0] & 0xffffffffu64,
+                                                                            r[1] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[0] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f0ff  69c80c000c00  IMUL ECX,EAX,0xc000c
+                                                                    {
+                                                                        r[1] = ((r[0]
+                                                                            & 0xffffffffu64)
+                                                                            .wrapping_mul(
+                                                                                0xc000cu64,
+                                                                            ))
+                                                                            & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f105  488b442448  MOV RAX,qword ptr [RSP + 0x48]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(r[4])
+                                                                                .wrapping_add(
+                                                                                    0x48u64,
+                                                                                ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f10a  4923c1  AND RAX,R9
+                                                                    {
+                                                                        let v = r[0] & r[9];
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f10d  4403c1  ADD R8D,ECX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[8] & 0xffffffffu64,
+                                                                            r[1] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[8] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f110  f3480fb8ca  POPCNT RCX,RDX
+                                                                    {
+                                                                        let v = r[2];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[1] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f115  f3480fb8c0  POPCNT RAX,RAX
+                                                                    {
+                                                                        let v = r[0];
+                                                                        f.z = v == 0;
+                                                                        f.o = false;
+                                                                        f.s = false;
+                                                                        r[0] = u64::from(
+                                                                            v.count_ones(),
+                                                                        );
+                                                                    }
+                                                                    // 14009f11a  2bc8  SUB ECX,EAX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[1] & 0xffffffffu64,
+                                                                            r[0] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[1] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f11c  488b052d203200  MOV RAX,qword ptr [0x1403c1150]
+                                                                    {
+                                                                        r[0] = m.read::<64>(
+                                                                            0u64.wrapping_add(
+                                                                                0x1403c1150u64,
+                                                                            ),
+                                                                        );
+                                                                    }
+                                                                    // 14009f123  4469c9b4007800  IMUL R9D,ECX,0x7800b4
+                                                                    {
+                                                                        r[9] = ((r[1]
+                                                                            & 0xffffffffu64)
+                                                                            .wrapping_mul(
+                                                                                0x7800b4u64,
+                                                                            ))
+                                                                            & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f12a  4503cb  ADD R9D,R11D
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[9] & 0xffffffffu64,
+                                                                            r[11] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f12d  4503c8  ADD R9D,R8D
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[9] & 0xffffffffu64,
+                                                                            r[8] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f130  480b0521203200  OR RAX,qword ptr [0x1403c1158]
+                                                                    {
+                                                                        let v = r[0]
+                                                                            | m.read::<64>(
+                                                                                0u64.wrapping_add(
+                                                                                    0x1403c1158u64,
+                                                                                ),
+                                                                            );
+                                                                        f.logic(v, 64);
+                                                                        r[0] = v;
+                                                                    }
+                                                                    // 14009f137  7428  JZ 0x14009f161
+                                                                    if f.z {
+                                                                        break 'b_77;
+                                                                    }
+                                                                    // 14009f139  4863cd  MOVSXD RCX,EBP
+                                                                    {
+                                                                        r[1] = ((r[5]
+                                                                            & 0xffffffffu64)
+                                                                            as i32
+                                                                            as i64)
+                                                                            as u64;
+                                                                    }
+                                                                    // 14009f13c  488d2dbd0ef6ff  LEA RBP,[0x140000000]
+                                                                    {
+                                                                        r[5] = 0u64.wrapping_add(
+                                                                            0x140000000u64,
+                                                                        );
+                                                                    }
+                                                                    // 14009f143  4863c3  MOVSXD RAX,EBX
+                                                                    {
+                                                                        r[0] = ((r[3]
+                                                                            & 0xffffffffu64)
+                                                                            as i32
+                                                                            as i64)
+                                                                            as u64;
+                                                                    }
+                                                                    // 14009f146  8b948510f11e00  MOV EDX,dword ptr [RBP + RAX*0x4 + 0x1ef110]
+                                                                    {
+                                                                        r[2] = (m.read::<32>(0u64.wrapping_add(r[5]).wrapping_add(r[0].wrapping_mul(0x4u64)).wrapping_add(0x1ef110u64))) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f14d  2b948d10f11e00  SUB EDX,dword ptr [RBP + RCX*0x4 + 0x1ef110]
+                                                                    {
+                                                                        let v = f.arithmetic(r[2] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[5]).wrapping_add(r[1].wrapping_mul(0x4u64)).wrapping_add(0x1ef110u64)), 32, true);
+                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f154  412b5534  SUB EDX,dword ptr [R13 + 0x34]
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[2] & 0xffffffffu64,
+                                                                            m.read::<32>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[13],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x34u64,
+                                                                                ),
+                                                                            ),
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f158  41035538  ADD EDX,dword ptr [R13 + 0x38]
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[2] & 0xffffffffu64,
+                                                                            m.read::<32>(
+                                                                                0u64.wrapping_add(
+                                                                                    r[13],
+                                                                                )
+                                                                                .wrapping_add(
+                                                                                    0x38u64,
+                                                                                ),
+                                                                            ),
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[2] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f15c  4403ca  ADD R9D,EDX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[9] & 0xffffffffu64,
+                                                                            r[2] & 0xffffffffu64,
+                                                                            32,
+                                                                            false,
+                                                                        );
+                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f15f  eb07  JMP 0x14009f168
+                                                                    break 'b_78;
+                                                                }
+                                                                // 14009f161  488d2d980ef6ff  LEA RBP,[0x140000000]
+                                                                {
+                                                                    r[5] = 0u64.wrapping_add(
+                                                                        0x140000000u64,
+                                                                    );
+                                                                }
+                                                            }
+                                                            // 14009f168  488b1da11f3200  MOV RBX,qword ptr [0x1403c1110]
+                                                            {
+                                                                r[3] = m.read::<64>(
+                                                                    0u64.wrapping_add(
+                                                                        0x1403c1110u64,
+                                                                    ),
+                                                                );
+                                                            }
+                                                            // 14009f16f  48b8000000ffffffff00  MOV RAX,0xffffffff000000
+                                                            {
+                                                                r[0] = 0xffffffff000000u64;
+                                                            }
+                                                            // 14009f179  4c8b1d881f3200  MOV R11,qword ptr [0x1403c1108]
+                                                            {
+                                                                r[11] = m.read::<64>(
+                                                                    0u64.wrapping_add(
+                                                                        0x1403c1108u64,
+                                                                    ),
+                                                                );
+                                                            }
+                                                            // 14009f180  4c8bd3  MOV R10,RBX
+                                                            {
+                                                                r[10] = r[3];
+                                                            }
+                                                            // 14009f183  4d235500  AND R10,qword ptr [R13]
+                                                            {
+                                                                let v = r[10]
+                                                                    & m.read::<64>(
+                                                                        0u64.wrapping_add(r[13]),
+                                                                    );
+                                                                f.logic(v, 64);
+                                                                r[10] = v;
+                                                            }
+                                                            // 14009f187  4c23d0  AND R10,RAX
+                                                            {
+                                                                let v = r[10] & r[0];
+                                                                f.logic(v, 64);
+                                                                r[10] = v;
+                                                            }
+                                                            // 14009f18a  0f848d000000  JZ 0x14009f21d
+                                                            if f.z {
+                                                                break 'b_88;
+                                                            }
+                                                            'loop_79: loop {
+                                                                'b_87: {
+                                                                    'b_85: {
+                                                                        'b_83: {
+                                                                            'b_81: {
+                                                                                // 14009f190  490fbcd2  BSF RDX,R10
+                                                                                {
+                                                                                    let v = r[10];
+                                                                                    f.z = v == 0;
+                                                                                    if v != 0 {
+                                                                                        r[2] = u64::from(v.trailing_zeros());
+                                                                                    }
+                                                                                }
+                                                                                // 14009f194  4863c2  MOVSXD RAX,EDX
+                                                                                {
+                                                                                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                }
+                                                                                // 14009f197  89157b012600  MOV dword ptr [0x1402ff318],EDX
+                                                                                {
+                                                                                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
+                                                                                }
+                                                                                // 14009f19d  4c8b84c580440f00  MOV R8,qword ptr [RBP + RAX*0x8 + 0xf4480]
+                                                                                {
+                                                                                    r[8] = m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf4480u64));
+                                                                                }
+                                                                                // 14009f1a5  4d85c4  TEST R12,R8
+                                                                                {
+                                                                                    let v = r[12]
+                                                                                        & r[8];
+                                                                                    f.logic(v, 64);
+                                                                                }
+                                                                                // 14009f1a8  7512  JNZ 0x14009f1bc
+                                                                                if !f.z {
+                                                                                    break 'b_81;
+                                                                                }
+                                                                                // 14009f1aa  8d42e8  LEA EAX,[RDX + -0x18]
+                                                                                {
+                                                                                    r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
+                                                                                }
+                                                                                // 14009f1ad  4863c8  MOVSXD RCX,EAX
+                                                                                {
+                                                                                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
+                                                                                }
+                                                                                // 14009f1b0  48c1e106  SHL RCX,0x6
+                                                                                {
+                                                                                    let v = r[1];
+                                                                                    let n = 6u32;
+                                                                                    if n != 0 {
+                                                                                        let v = v.wrapping_shl(n);
+                                                                                        f.logic(
+                                                                                            v, 64,
+                                                                                        );
+                                                                                        r[1] = v;
+                                                                                    }
+                                                                                }
+                                                                                // 14009f1b4  44038c29e84a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104ae8]
+                                                                                {
+                                                                                    let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[5].wrapping_mul(0x1u64)).wrapping_add(0x104ae8u64)), 32, false);
+                                                                                    r[9] = (v) & 0xffff_ffff;
+                                                                                }
+                                                                            }
+                                                                            // 14009f1bc  4d85c3  TEST R11,R8
+                                                                            {
+                                                                                let v =
+                                                                                    r[11] & r[8];
+                                                                                f.logic(v, 64);
+                                                                            }
+                                                                            // 14009f1bf  7512  JNZ 0x14009f1d3
+                                                                            if !f.z {
+                                                                                break 'b_83;
+                                                                            }
+                                                                            // 14009f1c1  8d42e8  LEA EAX,[RDX + -0x18]
+                                                                            {
+                                                                                r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009f1c4  4863c8  MOVSXD RCX,EAX
+                                                                            {
+                                                                                r[1] = ((r[0]
+                                                                                    & 0xffffffffu64)
+                                                                                    as i32
+                                                                                    as i64)
+                                                                                    as u64;
+                                                                            }
+                                                                            // 14009f1c7  48c1e106  SHL RCX,0x6
+                                                                            {
+                                                                                let v = r[1];
+                                                                                let n = 6u32;
+                                                                                if n != 0 {
+                                                                                    let v = v.wrapping_shl(n);
+                                                                                    f.logic(v, 64);
+                                                                                    r[1] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009f1cb  44038c29ec4a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104aec]
+                                                                            {
+                                                                                let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[5].wrapping_mul(0x1u64)).wrapping_add(0x104aecu64)), 32, false);
+                                                                                r[9] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                        }
+                                                                        // 14009f1d3  8d4208  LEA EAX,[RDX + 0x8]
+                                                                        {
+                                                                            r[0] = (0u64
+                                                                                .wrapping_add(r[2])
+                                                                                .wrapping_add(
+                                                                                    0x8u64,
+                                                                                ))
+                                                                                & 0xffff_ffff;
+                                                                        }
+                                                                        // 14009f1d6  4863c8  MOVSXD RCX,EAX
+                                                                        {
+                                                                            r[1] = ((r[0]
+                                                                                & 0xffffffffu64)
+                                                                                as i32
+                                                                                as i64)
+                                                                                as u64;
+                                                                        }
+                                                                        // 14009f1d9  4883bccd000e3c0000  CMP qword ptr [RBP + RCX*0x8 + 0x3c0e00],0x0
+                                                                        {
+                                                                            f.arithmetic(m.read::<64>(0u64.wrapping_add(r[5]).wrapping_add(r[1].wrapping_mul(0x8u64)).wrapping_add(0x3c0e00u64)), 0x0u64, 64, true);
+                                                                        }
+                                                                        // 14009f1e2  7512  JNZ 0x14009f1f6
+                                                                        if !f.z {
+                                                                            break 'b_85;
+                                                                        }
+                                                                        // 14009f1e4  8d42e8  LEA EAX,[RDX + -0x18]
+                                                                        {
+                                                                            r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
+                                                                        }
+                                                                        // 14009f1e7  4863c8  MOVSXD RCX,EAX
+                                                                        {
+                                                                            r[1] = ((r[0]
+                                                                                & 0xffffffffu64)
+                                                                                as i32
+                                                                                as i64)
+                                                                                as u64;
+                                                                        }
+                                                                        // 14009f1ea  48c1e106  SHL RCX,0x6
+                                                                        {
+                                                                            let v = r[1];
+                                                                            let n = 6u32;
+                                                                            if n != 0 {
+                                                                                let v = v
+                                                                                    .wrapping_shl(
+                                                                                        n,
+                                                                                    );
+                                                                                f.logic(v, 64);
+                                                                                r[1] = v;
+                                                                            }
+                                                                        }
+                                                                        // 14009f1ee  44038c29f04a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104af0]
+                                                                        {
+                                                                            let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[5].wrapping_mul(0x1u64)).wrapping_add(0x104af0u64)), 32, false);
+                                                                            r[9] =
+                                                                                (v) & 0xffff_ffff;
+                                                                        }
+                                                                    }
+                                                                    // 14009f1f6  4c23c6  AND R8,RSI
+                                                                    {
+                                                                        let v = r[8] & r[6];
+                                                                        f.logic(v, 64);
+                                                                        r[8] = v;
+                                                                    }
+                                                                    // 14009f1f9  4d85c6  TEST R14,R8
+                                                                    {
+                                                                        let v = r[14] & r[8];
+                                                                        f.logic(v, 64);
+                                                                    }
+                                                                    // 14009f1fc  7512  JNZ 0x14009f210
+                                                                    if !f.z {
+                                                                        break 'b_87;
+                                                                    }
+                                                                    // 14009f1fe  8d42e8  LEA EAX,[RDX + -0x18]
+                                                                    {
+                                                                        r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f201  4863c8  MOVSXD RCX,EAX
+                                                                    {
+                                                                        r[1] = ((r[0]
+                                                                            & 0xffffffffu64)
+                                                                            as i32
+                                                                            as i64)
+                                                                            as u64;
+                                                                    }
+                                                                    // 14009f204  48c1e106  SHL RCX,0x6
+                                                                    {
+                                                                        let v = r[1];
+                                                                        let n = 6u32;
+                                                                        if n != 0 {
+                                                                            let v =
+                                                                                v.wrapping_shl(n);
+                                                                            f.logic(v, 64);
+                                                                            r[1] = v;
+                                                                        }
+                                                                    }
+                                                                    // 14009f208  44038c29f44a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104af4]
+                                                                    {
+                                                                        let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[5].wrapping_mul(0x1u64)).wrapping_add(0x104af4u64)), 32, false);
+                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                }
+                                                                // 14009f210  498d42ff  LEA RAX,[R10 + -0x1]
+                                                                {
+                                                                    r[0] = 0u64
+                                                                        .wrapping_add(r[10])
+                                                                        .wrapping_add(
+                                                                            0xffffffffffffffffu64,
+                                                                        );
+                                                                }
+                                                                // 14009f214  4c23d0  AND R10,RAX
+                                                                {
+                                                                    let v = r[10] & r[0];
+                                                                    f.logic(v, 64);
+                                                                    r[10] = v;
+                                                                }
+                                                                // 14009f217  0f8573ffffff  JNZ 0x14009f190
+                                                                if !f.z {
+                                                                    continue 'loop_79;
+                                                                }
+                                                                break 'loop_79;
+                                                            }
+                                                        }
+                                                        // 14009f21d  488b2df41e3200  MOV RBP,qword ptr [0x1403c1118]
+                                                        {
+                                                            r[5] = m.read::<64>(
+                                                                0u64.wrapping_add(0x1403c1118u64),
+                                                            );
+                                                        }
+                                                        // 14009f224  4c8d35d50df6ff  LEA R14,[0x140000000]
+                                                        {
+                                                            r[14] =
+                                                                0u64.wrapping_add(0x140000000u64);
+                                                        }
+                                                        // 14009f22b  4c8bd5  MOV R10,RBP
+                                                        {
+                                                            r[10] = r[5];
+                                                        }
+                                                        // 14009f22e  48b800ffffffff000000  MOV RAX,0xffffffff00
+                                                        {
+                                                            r[0] = 0xffffffff00u64;
+                                                        }
+                                                        // 14009f238  4d235500  AND R10,qword ptr [R13]
+                                                        {
+                                                            let v = r[10]
+                                                                & m.read::<64>(
+                                                                    0u64.wrapping_add(r[13]),
+                                                                );
+                                                            f.logic(v, 64);
+                                                            r[10] = v;
+                                                        }
+                                                        // 14009f23c  4c23d0  AND R10,RAX
+                                                        {
+                                                            let v = r[10] & r[0];
+                                                            f.logic(v, 64);
+                                                            r[10] = v;
+                                                        }
+                                                        // 14009f23f  0f84af000000  JZ 0x14009f2f4
+                                                        if f.z {
+                                                            break 'b_100;
+                                                        }
+                                                        // 14009f245  488b5c2450  MOV RBX,qword ptr [RSP + 0x50]
+                                                        {
+                                                            r[3] = m.read::<64>(
+                                                                0u64.wrapping_add(r[4])
+                                                                    .wrapping_add(0x50u64),
+                                                            );
+                                                        }
+                                                        // 14009f24a  660f1f440000  NOP word ptr [RAX + RAX*0x1]
+                                                        'loop_90: loop {
+                                                            'b_98: {
+                                                                'b_96: {
+                                                                    'b_94: {
+                                                                        'b_92: {
+                                                                            // 14009f250  490fbcd2  BSF RDX,R10
+                                                                            {
+                                                                                let v = r[10];
+                                                                                f.z = v == 0;
+                                                                                if v != 0 {
+                                                                                    r[2] = u64::from(v.trailing_zeros());
+                                                                                }
+                                                                            }
+                                                                            // 14009f254  4863c2  MOVSXD RAX,EDX
+                                                                            {
+                                                                                r[0] = ((r[2]
+                                                                                    & 0xffffffffu64)
+                                                                                    as i32
+                                                                                    as i64)
+                                                                                    as u64;
+                                                                            }
+                                                                            // 14009f257  8915bb002600  MOV dword ptr [0x1402ff318],EDX
+                                                                            {
+                                                                                m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
+                                                                            }
+                                                                            // 14009f25d  4d8b84c680420f00  MOV R8,qword ptr [R14 + RAX*0x8 + 0xf4280]
+                                                                            {
+                                                                                r[8] = m.read::<64>(0u64.wrapping_add(r[14]).wrapping_add(r[0].wrapping_mul(0x8u64)).wrapping_add(0xf4280u64));
+                                                                            }
+                                                                            // 14009f265  4d85c3  TEST R11,R8
+                                                                            {
+                                                                                let v =
+                                                                                    r[11] & r[8];
+                                                                                f.logic(v, 64);
+                                                                            }
+                                                                            // 14009f268  7516  JNZ 0x14009f280
+                                                                            if !f.z {
+                                                                                break 'b_92;
+                                                                            }
+                                                                            // 14009f26a  b827000000  MOV EAX,0x27
+                                                                            {
+                                                                                r[0] = (0x27u64)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009f26f  2bc2  SUB EAX,EDX
+                                                                            {
+                                                                                let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
+                                                                                r[0] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                            // 14009f271  4863c8  MOVSXD RCX,EAX
+                                                                            {
+                                                                                r[1] = ((r[0]
+                                                                                    & 0xffffffffu64)
+                                                                                    as i32
+                                                                                    as i64)
+                                                                                    as u64;
+                                                                            }
+                                                                            // 14009f274  48c1e106  SHL RCX,0x6
+                                                                            {
+                                                                                let v = r[1];
+                                                                                let n = 6u32;
+                                                                                if n != 0 {
+                                                                                    let v = v.wrapping_shl(n);
+                                                                                    f.logic(v, 64);
+                                                                                    r[1] = v;
+                                                                                }
+                                                                            }
+                                                                            // 14009f278  462b8c31084b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b08]
+                                                                            {
+                                                                                let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[14].wrapping_mul(0x1u64)).wrapping_add(0x104b08u64)), 32, true);
+                                                                                r[9] = (v)
+                                                                                    & 0xffff_ffff;
+                                                                            }
+                                                                        }
+                                                                        // 14009f280  4d85c4  TEST R12,R8
+                                                                        {
+                                                                            let v = r[12] & r[8];
+                                                                            f.logic(v, 64);
+                                                                        }
+                                                                        // 14009f283  7516  JNZ 0x14009f29b
+                                                                        if !f.z {
+                                                                            break 'b_94;
+                                                                        }
+                                                                        // 14009f285  b827000000  MOV EAX,0x27
+                                                                        {
+                                                                            r[0] = (0x27u64)
+                                                                                & 0xffff_ffff;
+                                                                        }
+                                                                        // 14009f28a  2bc2  SUB EAX,EDX
+                                                                        {
+                                                                            let v = f.arithmetic(
+                                                                                r[0]
+                                                                                    & 0xffffffffu64,
+                                                                                r[2]
+                                                                                    & 0xffffffffu64,
+                                                                                32,
+                                                                                true,
+                                                                            );
+                                                                            r[0] =
+                                                                                (v) & 0xffff_ffff;
+                                                                        }
+                                                                        // 14009f28c  4863c8  MOVSXD RCX,EAX
+                                                                        {
+                                                                            r[1] = ((r[0]
+                                                                                & 0xffffffffu64)
+                                                                                as i32
+                                                                                as i64)
+                                                                                as u64;
+                                                                        }
+                                                                        // 14009f28f  48c1e106  SHL RCX,0x6
+                                                                        {
+                                                                            let v = r[1];
+                                                                            let n = 6u32;
+                                                                            if n != 0 {
+                                                                                let v = v
+                                                                                    .wrapping_shl(
+                                                                                        n,
+                                                                                    );
+                                                                                f.logic(v, 64);
+                                                                                r[1] = v;
+                                                                            }
+                                                                        }
+                                                                        // 14009f293  462b8c310c4b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b0c]
+                                                                        {
+                                                                            let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[14].wrapping_mul(0x1u64)).wrapping_add(0x104b0cu64)), 32, true);
+                                                                            r[9] =
+                                                                                (v) & 0xffff_ffff;
+                                                                        }
+                                                                    }
+                                                                    // 14009f29b  8d42f8  LEA EAX,[RDX + -0x8]
+                                                                    {
+                                                                        r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0xfffffffffffffff8u64)) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f29e  4863c8  MOVSXD RCX,EAX
+                                                                    {
+                                                                        r[1] = ((r[0]
+                                                                            & 0xffffffffu64)
+                                                                            as i32
+                                                                            as i64)
+                                                                            as u64;
+                                                                    }
+                                                                    // 14009f2a1  4983bcce000e3c0000  CMP qword ptr [R14 + RCX*0x8 + 0x3c0e00],0x0
+                                                                    {
+                                                                        f.arithmetic(m.read::<64>(0u64.wrapping_add(r[14]).wrapping_add(r[1].wrapping_mul(0x8u64)).wrapping_add(0x3c0e00u64)), 0x0u64, 64, true);
+                                                                    }
+                                                                    // 14009f2aa  7516  JNZ 0x14009f2c2
+                                                                    if !f.z {
+                                                                        break 'b_96;
+                                                                    }
+                                                                    // 14009f2ac  b827000000  MOV EAX,0x27
+                                                                    {
+                                                                        r[0] =
+                                                                            (0x27u64) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f2b1  2bc2  SUB EAX,EDX
+                                                                    {
+                                                                        let v = f.arithmetic(
+                                                                            r[0] & 0xffffffffu64,
+                                                                            r[2] & 0xffffffffu64,
+                                                                            32,
+                                                                            true,
+                                                                        );
+                                                                        r[0] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                    // 14009f2b3  4863c8  MOVSXD RCX,EAX
+                                                                    {
+                                                                        r[1] = ((r[0]
+                                                                            & 0xffffffffu64)
+                                                                            as i32
+                                                                            as i64)
+                                                                            as u64;
+                                                                    }
+                                                                    // 14009f2b6  48c1e106  SHL RCX,0x6
+                                                                    {
+                                                                        let v = r[1];
+                                                                        let n = 6u32;
+                                                                        if n != 0 {
+                                                                            let v =
+                                                                                v.wrapping_shl(n);
+                                                                            f.logic(v, 64);
+                                                                            r[1] = v;
+                                                                        }
+                                                                    }
+                                                                    // 14009f2ba  462b8c31104b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b10]
+                                                                    {
+                                                                        let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[14].wrapping_mul(0x1u64)).wrapping_add(0x104b10u64)), 32, true);
+                                                                        r[9] = (v) & 0xffff_ffff;
+                                                                    }
+                                                                }
+                                                                // 14009f2c2  4c23c3  AND R8,RBX
+                                                                {
+                                                                    let v = r[8] & r[3];
+                                                                    f.logic(v, 64);
+                                                                    r[8] = v;
+                                                                }
+                                                                // 14009f2c5  4d85c7  TEST R15,R8
+                                                                {
+                                                                    let v = r[15] & r[8];
+                                                                    f.logic(v, 64);
+                                                                }
+                                                                // 14009f2c8  7516  JNZ 0x14009f2e0
+                                                                if !f.z {
+                                                                    break 'b_98;
+                                                                }
+                                                                // 14009f2ca  b827000000  MOV EAX,0x27
+                                                                {
+                                                                    r[0] = (0x27u64) & 0xffff_ffff;
+                                                                }
+                                                                // 14009f2cf  2bc2  SUB EAX,EDX
+                                                                {
+                                                                    let v = f.arithmetic(
+                                                                        r[0] & 0xffffffffu64,
+                                                                        r[2] & 0xffffffffu64,
+                                                                        32,
+                                                                        true,
+                                                                    );
+                                                                    r[0] = (v) & 0xffff_ffff;
+                                                                }
+                                                                // 14009f2d1  4863c8  MOVSXD RCX,EAX
+                                                                {
+                                                                    r[1] = ((r[0] & 0xffffffffu64)
+                                                                        as i32
+                                                                        as i64)
+                                                                        as u64;
+                                                                }
+                                                                // 14009f2d4  48c1e106  SHL RCX,0x6
+                                                                {
+                                                                    let v = r[1];
+                                                                    let n = 6u32;
+                                                                    if n != 0 {
+                                                                        let v = v.wrapping_shl(n);
+                                                                        f.logic(v, 64);
+                                                                        r[1] = v;
+                                                                    }
+                                                                }
+                                                                // 14009f2d8  462b8c31144b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b14]
+                                                                {
+                                                                    let v = f.arithmetic(r[9] & 0xffffffffu64, m.read::<32>(0u64.wrapping_add(r[1]).wrapping_add(r[14].wrapping_mul(0x1u64)).wrapping_add(0x104b14u64)), 32, true);
+                                                                    r[9] = (v) & 0xffff_ffff;
+                                                                }
+                                                            }
+                                                            // 14009f2e0  498d42ff  LEA RAX,[R10 + -0x1]
+                                                            {
+                                                                r[0] = 0u64
+                                                                    .wrapping_add(r[10])
+                                                                    .wrapping_add(
+                                                                        0xffffffffffffffffu64,
+                                                                    );
+                                                            }
+                                                            // 14009f2e4  4c23d0  AND R10,RAX
+                                                            {
+                                                                let v = r[10] & r[0];
+                                                                f.logic(v, 64);
+                                                                r[10] = v;
+                                                            }
+                                                            // 14009f2e7  0f8563ffffff  JNZ 0x14009f250
+                                                            if !f.z {
+                                                                continue 'loop_90;
+                                                            }
+                                                            break 'loop_90;
+                                                        }
+                                                        // 14009f2ed  488b1d1c1e3200  MOV RBX,qword ptr [0x1403c1110]
+                                                        {
+                                                            r[3] = m.read::<64>(
+                                                                0u64.wrapping_add(0x1403c1110u64),
+                                                            );
+                                                        }
+                                                    }
+                                                    // 14009f2f4  486305751e3200  MOVSXD RAX,dword ptr [0x1403c1170]
+                                                    {
+                                                        r[0] = ((m.read::<32>(
+                                                            0u64.wrapping_add(0x1403c1170u64),
+                                                        ))
+                                                            as i32
+                                                            as i64)
+                                                            as u64;
+                                                    }
+                                                    // 14009f2fb  488b353e1e3200  MOV RSI,qword ptr [0x1403c1140]
+                                                    {
+                                                        r[6] = m.read::<64>(
+                                                            0u64.wrapping_add(0x1403c1140u64),
+                                                        );
+                                                    }
+                                                    // 14009f302  498b8cc6f0ec0e00  MOV RCX,qword ptr [R14 + RAX*0x8 + 0xeecf0]
+                                                    {
+                                                        r[1] = m.read::<64>(
+                                                            0u64.wrapping_add(r[14])
+                                                                .wrapping_add(
+                                                                    r[0].wrapping_mul(0x8u64),
+                                                                )
+                                                                .wrapping_add(0xeecf0u64),
+                                                        );
+                                                    }
+                                                    // 14009f30a  4823ce  AND RCX,RSI
+                                                    {
+                                                        let v = r[1] & r[6];
+                                                        f.logic(v, 64);
+                                                        r[1] = v;
+                                                    }
+                                                    // 14009f30d  742b  JZ 0x14009f33a
+                                                    if f.z {
+                                                        break 'b_103;
+                                                    }
+                                                    // 14009f30f  480fbcc1  BSF RAX,RCX
+                                                    {
+                                                        let v = r[1];
+                                                        f.z = v == 0;
+                                                        if v != 0 {
+                                                            r[0] = u64::from(v.trailing_zeros());
+                                                        }
+                                                    }
+                                                    // 14009f313  48b9ffffffffff000000  MOV RCX,0xffffffffff
+                                                    {
+                                                        r[1] = 0xffffffffffu64;
+                                                    }
+                                                    // 14009f31d  8905f5ff2500  MOV dword ptr [0x1402ff318],EAX
+                                                    {
+                                                        m.write::<32>(
+                                                            0u64.wrapping_add(0x1402ff318u64),
+                                                            r[0] & 0xffffffffu64,
+                                                        );
+                                                    }
+                                                    // 14009f323  498b84c680440f00  MOV RAX,qword ptr [R14 + RAX*0x8 + 0xf4480]
+                                                    {
+                                                        r[0] = m.read::<64>(
+                                                            0u64.wrapping_add(r[14])
+                                                                .wrapping_add(
+                                                                    r[0].wrapping_mul(0x8u64),
+                                                                )
+                                                                .wrapping_add(0xf4480u64),
+                                                        );
+                                                    }
+                                                    // 14009f32b  4823c3  AND RAX,RBX
+                                                    {
+                                                        let v = r[0] & r[3];
+                                                        f.logic(v, 64);
+                                                        r[0] = v;
+                                                    }
+                                                    // 14009f32e  4885c1  TEST RCX,RAX
+                                                    {
+                                                        let v = r[1] & r[0];
+                                                        f.logic(v, 64);
+                                                    }
+                                                    // 14009f331  7407  JZ 0x14009f33a
+                                                    if f.z {
+                                                        break 'b_103;
+                                                    }
+                                                    // 14009f333  4181e900005301  SUB R9D,0x1530000
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[9] & 0xffffffffu64,
+                                                            0x1530000u64,
+                                                            32,
+                                                            true,
+                                                        );
+                                                        r[9] = (v) & 0xffff_ffff;
+                                                    }
+                                                }
+                                                // 14009f33a  486305331e3200  MOVSXD RAX,dword ptr [0x1403c1174]
+                                                {
+                                                    r[0] = ((m.read::<32>(
+                                                        0u64.wrapping_add(0x1403c1174u64),
+                                                    ))
+                                                        as i32
+                                                        as i64)
+                                                        as u64;
+                                                }
+                                                // 14009f341  498b8cc6f0ec0e00  MOV RCX,qword ptr [R14 + RAX*0x8 + 0xeecf0]
+                                                {
+                                                    r[1] = m.read::<64>(
+                                                        0u64.wrapping_add(r[14])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xeecf0u64),
+                                                    );
+                                                }
+                                                // 14009f349  48230df81d3200  AND RCX,qword ptr [0x1403c1148]
+                                                {
+                                                    let v = r[1]
+                                                        & m.read::<64>(
+                                                            0u64.wrapping_add(0x1403c1148u64),
+                                                        );
+                                                    f.logic(v, 64);
+                                                    r[1] = v;
+                                                }
+                                                // 14009f350  7424  JZ 0x14009f376
+                                                if f.z {
+                                                    break 'b_106;
+                                                }
+                                                // 14009f352  480fbcc1  BSF RAX,RCX
+                                                {
+                                                    let v = r[1];
+                                                    f.z = v == 0;
+                                                    if v != 0 {
+                                                        r[0] = u64::from(v.trailing_zeros());
+                                                    }
+                                                }
+                                                // 14009f356  8905bcff2500  MOV dword ptr [0x1402ff318],EAX
+                                                {
+                                                    m.write::<32>(
+                                                        0u64.wrapping_add(0x1402ff318u64),
+                                                        r[0] & 0xffffffffu64,
+                                                    );
+                                                }
+                                                // 14009f35c  498b84c680420f00  MOV RAX,qword ptr [R14 + RAX*0x8 + 0xf4280]
+                                                {
+                                                    r[0] = m.read::<64>(
+                                                        0u64.wrapping_add(r[14])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4280u64),
+                                                    );
+                                                }
+                                                // 14009f364  4823c5  AND RAX,RBP
+                                                {
+                                                    let v = r[0] & r[5];
+                                                    f.logic(v, 64);
+                                                    r[0] = v;
+                                                }
+                                                // 14009f367  48a9000000ff  TEST RAX,-0x1000000
+                                                {
+                                                    let v = r[0] & 0xffffffffff000000u64;
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f36d  7407  JZ 0x14009f376
+                                                if f.z {
+                                                    break 'b_106;
+                                                }
+                                                // 14009f36f  4181c100005301  ADD R9D,0x1530000
+                                                {
+                                                    let v = f.arithmetic(
+                                                        r[9] & 0xffffffffu64,
+                                                        0x1530000u64,
+                                                        32,
+                                                        false,
+                                                    );
+                                                    r[9] = (v) & 0xffff_ffff;
+                                                }
+                                            }
+                                            // 14009f376  4c8b353b1e3200  MOV R14,qword ptr [0x1403c11b8]
+                                            {
+                                                r[14] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
+                                            }
+                                            // 14009f37d  48b800000000fcff0000  MOV RAX,0xfffc00000000
+                                            {
+                                                r[0] = 0xfffc00000000u64;
+                                            }
+                                            // 14009f387  4d8bfe  MOV R15,R14
+                                            {
+                                                r[15] = r[14];
+                                            }
+                                            // 14009f38a  4c23f8  AND R15,RAX
+                                            {
+                                                let v = r[15] & r[0];
+                                                f.logic(v, 64);
+                                                r[15] = v;
+                                            }
+                                            // 14009f38d  0f8571010000  JNZ 0x14009f504
+                                            if !f.z {
+                                                break 'b_125;
+                                            }
+                                            // 14009f393  488b35c61d3200  MOV RSI,qword ptr [0x1403c1160]
+                                            {
+                                                r[6] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
+                                            }
+                                            // 14009f39a  4c8bc3  MOV R8,RBX
+                                            {
+                                                r[8] = r[3];
+                                            }
+                                            // 14009f39d  448bd7  MOV R10D,EDI
+                                            {
+                                                r[10] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
+                                            }
+                                            // 14009f3a0  4d234500  AND R8,qword ptr [R13]
+                                            {
+                                                let v =
+                                                    r[8] & m.read::<64>(0u64.wrapping_add(r[13]));
+                                                f.logic(v, 64);
+                                                r[8] = v;
+                                            }
+                                            // 14009f3a4  0f8491000000  JZ 0x14009f43b
+                                            if f.z {
+                                                break 'b_115;
+                                            }
+                                            // 14009f3aa  4c8b1db71d3200  MOV R11,qword ptr [0x1403c1168]
+                                            {
+                                                r[11] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
+                                            }
+                                            // 14009f3b1  488d05c8360500  LEA RAX,[0x1400f2a80]
+                                            {
+                                                r[0] = 0u64.wrapping_add(0x1400f2a80u64);
+                                            }
+                                            // 14009f3b8  4c8b742478  MOV R14,qword ptr [RSP + 0x78]
+                                            {
+                                                r[14] = m.read::<64>(
+                                                    0u64.wrapping_add(r[4]).wrapping_add(0x78u64),
+                                                );
+                                            }
+                                            // 14009f3bd  488d1d3c0cf6ff  LEA RBX,[0x140000000]
+                                            {
+                                                r[3] = 0u64.wrapping_add(0x140000000u64);
+                                            }
+                                            // 14009f3c4  4889442420  MOV qword ptr [RSP + 0x20],RAX
+                                            {
+                                                m.write::<64>(
+                                                    0u64.wrapping_add(r[4]).wrapping_add(0x20u64),
+                                                    r[0],
+                                                );
+                                            }
+                                            // 14009f3c9  0f1f8000000000  NOP dword ptr [RAX]
+                                            'loop_109: loop {
+                                                'b_113: {
+                                                    'b_112: {
+                                                        // 14009f3d0  490fbcd0  BSF RDX,R8
+                                                        {
+                                                            let v = r[8];
+                                                            f.z = v == 0;
+                                                            if v != 0 {
+                                                                r[2] =
+                                                                    u64::from(v.trailing_zeros());
+                                                            }
+                                                        }
+                                                        // 14009f3d4  4863c2  MOVSXD RAX,EDX
+                                                        {
+                                                            r[0] = ((r[2] & 0xffffffffu64) as i32
+                                                                as i64)
+                                                                as u64;
+                                                        }
+                                                        // 14009f3d7  89153bff2500  MOV dword ptr [0x1402ff318],EDX
+                                                        {
+                                                            m.write::<32>(
+                                                                0u64.wrapping_add(0x1402ff318u64),
+                                                                r[2] & 0xffffffffu64,
+                                                            );
+                                                        }
+                                                        // 14009f3dd  4885b4c380240f00  TEST qword ptr [RBX + RAX*0x8 + 0xf2480],RSI
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[3])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    )
+                                                                    .wrapping_add(0xf2480u64),
+                                                            ) & r[6];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f3e5  7522  JNZ 0x14009f409
+                                                        if !f.z {
+                                                            break 'b_112;
+                                                        }
+                                                        // 14009f3e7  4c85a4c380440f00  TEST qword ptr [RBX + RAX*0x8 + 0xf4480],R12
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[3])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    )
+                                                                    .wrapping_add(0xf4480u64),
+                                                            ) & r[12];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f3ef  752c  JNZ 0x14009f41d
+                                                        if !f.z {
+                                                            break 'b_113;
+                                                        }
+                                                        // 14009f3f1  41837e7000  CMP dword ptr [R14 + 0x70],0x0
+                                                        {
+                                                            f.arithmetic(
+                                                                m.read::<32>(
+                                                                    0u64.wrapping_add(r[14])
+                                                                        .wrapping_add(0x70u64),
+                                                                ),
+                                                                0x0u64,
+                                                                32,
+                                                                true,
+                                                            );
+                                                        }
+                                                        // 14009f3f6  488d0d83380500  LEA RCX,[0x1400f2c80]
+                                                        {
+                                                            r[1] =
+                                                                0u64.wrapping_add(0x1400f2c80u64);
+                                                        }
+                                                        // 14009f3fd  480f454c2420  CMOVNZ RCX,qword ptr [RSP + 0x20]
+                                                        {
+                                                            if !f.z {
+                                                                r[1] = m.read::<64>(
+                                                                    0u64.wrapping_add(r[4])
+                                                                        .wrapping_add(0x20u64),
+                                                                );
+                                                            }
+                                                        }
+                                                        // 14009f403  4c851cc1  TEST qword ptr [RCX + RAX*0x8],R11
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[1])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    ),
+                                                            ) & r[11];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f407  7414  JZ 0x14009f41d
+                                                        if f.z {
+                                                            break 'b_113;
+                                                        }
+                                                    }
+                                                    // 14009f409  8bc2  MOV EAX,EDX
+                                                    {
+                                                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f40b  99  CDQ
+                                                    {
+                                                        r[2] = ((r[0] as i32) >> 31) as u32 as u64;
+                                                    }
+                                                    // 14009f40c  83e207  AND EDX,0x7
+                                                    {
+                                                        let v = (r[2] & 0xffffffffu64 & 0x7u64)
+                                                            & 0xffffffffu64;
+                                                        f.logic(v, 32);
+                                                        r[2] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f40f  03c2  ADD EAX,EDX
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[0] & 0xffffffffu64,
+                                                            r[2] & 0xffffffffu64,
+                                                            32,
+                                                            false,
+                                                        );
+                                                        r[0] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f411  c1f803  SAR EAX,0x3
+                                                    {
+                                                        let v = r[0] & 0xffffffffu64;
+                                                        let n = 3u32;
+                                                        if n != 0 {
+                                                            let v = (((v as i32) >> n) as u64)
+                                                                & 0xffffffffu64;
+                                                            f.logic(v, 32);
+                                                            r[0] = (v) & 0xffff_ffff;
+                                                        }
+                                                    }
+                                                    // 14009f414  412b4670  SUB EAX,dword ptr [R14 + 0x70]
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[0] & 0xffffffffu64,
+                                                            m.read::<32>(
+                                                                0u64.wrapping_add(r[14])
+                                                                    .wrapping_add(0x70u64),
+                                                            ),
+                                                            32,
+                                                            true,
+                                                        );
+                                                        r[0] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f418  3bf8  CMP EDI,EAX
+                                                    {
+                                                        f.arithmetic(
+                                                            r[7] & 0xffffffffu64,
+                                                            r[0] & 0xffffffffu64,
+                                                            32,
+                                                            true,
+                                                        );
+                                                    }
+                                                    // 14009f41a  0f4cf8  CMOVL EDI,EAX
+                                                    {
+                                                        if f.s != f.o {
+                                                            r[7] = (r[0] & 0xffffffffu64)
+                                                                & 0xffff_ffff;
+                                                        }
+                                                    }
+                                                }
+                                                // 14009f41d  498d40ff  LEA RAX,[R8 + -0x1]
+                                                {
+                                                    r[0] = 0u64
+                                                        .wrapping_add(r[8])
+                                                        .wrapping_add(0xffffffffffffffffu64);
+                                                }
+                                                // 14009f421  4c23c0  AND R8,RAX
+                                                {
+                                                    let v = r[8] & r[0];
+                                                    f.logic(v, 64);
+                                                    r[8] = v;
+                                                }
+                                                // 14009f424  75aa  JNZ 0x14009f3d0
+                                                if !f.z {
+                                                    continue 'loop_109;
+                                                }
+                                                break 'loop_109;
+                                            }
+                                            // 14009f426  4c8b1ddb1c3200  MOV R11,qword ptr [0x1403c1108]
+                                            {
+                                                r[11] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
+                                            }
+                                            // 14009f42d  488b1ddc1c3200  MOV RBX,qword ptr [0x1403c1110]
+                                            {
+                                                r[3] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
+                                            }
+                                            // 14009f434  4c8b357d1d3200  MOV R14,qword ptr [0x1403c11b8]
+                                            {
+                                                r[14] =
+                                                    m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
+                                            }
+                                        }
+                                        // 14009f43b  4c8bc5  MOV R8,RBP
+                                        {
+                                            r[8] = r[5];
+                                        }
+                                        // 14009f43e  4d234500  AND R8,qword ptr [R13]
+                                        {
+                                            let v = r[8] & m.read::<64>(0u64.wrapping_add(r[13]));
+                                            f.logic(v, 64);
+                                            r[8] = v;
+                                        }
+                                        // 14009f442  0f8494000000  JZ 0x14009f4dc
+                                        if f.z {
+                                            break 'b_124;
+                                        }
+                                        // 14009f448  488b0d191d3200  MOV RCX,qword ptr [0x1403c1168]
+                                        {
+                                            r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
+                                        }
+                                        // 14009f44f  488d052a320500  LEA RAX,[0x1400f2680]
+                                        {
+                                            r[0] = 0u64.wrapping_add(0x1400f2680u64);
+                                        }
+                                        // 14009f456  4c8b6c2478  MOV R13,qword ptr [RSP + 0x78]
+                                        {
+                                            r[13] = m.read::<64>(
+                                                0u64.wrapping_add(r[4]).wrapping_add(0x78u64),
+                                            );
+                                        }
+                                        // 14009f45b  4c8d259e0bf6ff  LEA R12,[0x140000000]
+                                        {
+                                            r[12] = 0u64.wrapping_add(0x140000000u64);
+                                        }
+                                        // 14009f462  4889442420  MOV qword ptr [RSP + 0x20],RAX
+                                        {
+                                            m.write::<64>(
+                                                0u64.wrapping_add(r[4]).wrapping_add(0x20u64),
+                                                r[0],
+                                            );
+                                        }
+                                        // 14009f467  660f1f840000000000  NOP word ptr [RAX + RAX*0x1]
+                                        'loop_117: loop {
+                                            'b_122: {
+                                                'b_121: {
+                                                    'b_120: {
+                                                        // 14009f470  490fbcd0  BSF RDX,R8
+                                                        {
+                                                            let v = r[8];
+                                                            f.z = v == 0;
+                                                            if v != 0 {
+                                                                r[2] =
+                                                                    u64::from(v.trailing_zeros());
+                                                            }
+                                                        }
+                                                        // 14009f474  4863c2  MOVSXD RAX,EDX
+                                                        {
+                                                            r[0] = ((r[2] & 0xffffffffu64) as i32
+                                                                as i64)
+                                                                as u64;
+                                                        }
+                                                        // 14009f477  89159bfe2500  MOV dword ptr [0x1402ff318],EDX
+                                                        {
+                                                            m.write::<32>(
+                                                                0u64.wrapping_add(0x1402ff318u64),
+                                                                r[2] & 0xffffffffu64,
+                                                            );
+                                                        }
+                                                        // 14009f47d  49858cc480220f00  TEST qword ptr [R12 + RAX*0x8 + 0xf2280],RCX
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[12])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    )
+                                                                    .wrapping_add(0xf2280u64),
+                                                            ) & r[1];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f485  7522  JNZ 0x14009f4a9
+                                                        if !f.z {
+                                                            break 'b_120;
+                                                        }
+                                                        // 14009f487  4d859cc480420f00  TEST qword ptr [R12 + RAX*0x8 + 0xf4280],R11
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[12])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    )
+                                                                    .wrapping_add(0xf4280u64),
+                                                            ) & r[11];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f48f  753a  JNZ 0x14009f4cb
+                                                        if !f.z {
+                                                            break 'b_122;
+                                                        }
+                                                        // 14009f491  41837d7000  CMP dword ptr [R13 + 0x70],0x0
+                                                        {
+                                                            f.arithmetic(
+                                                                m.read::<32>(
+                                                                    0u64.wrapping_add(r[13])
+                                                                        .wrapping_add(0x70u64),
+                                                                ),
+                                                                0x0u64,
+                                                                32,
+                                                                true,
+                                                            );
+                                                        }
+                                                        // 14009f496  488d0de3330500  LEA RCX,[0x1400f2880]
+                                                        {
+                                                            r[1] =
+                                                                0u64.wrapping_add(0x1400f2880u64);
+                                                        }
+                                                        // 14009f49d  480f454c2420  CMOVNZ RCX,qword ptr [RSP + 0x20]
+                                                        {
+                                                            if !f.z {
+                                                                r[1] = m.read::<64>(
+                                                                    0u64.wrapping_add(r[4])
+                                                                        .wrapping_add(0x20u64),
+                                                                );
+                                                            }
+                                                        }
+                                                        // 14009f4a3  488534c1  TEST qword ptr [RCX + RAX*0x8],RSI
+                                                        {
+                                                            let v = m.read::<64>(
+                                                                0u64.wrapping_add(r[1])
+                                                                    .wrapping_add(
+                                                                        r[0].wrapping_mul(0x8u64),
+                                                                    ),
+                                                            ) & r[6];
+                                                            f.logic(v, 64);
+                                                        }
+                                                        // 14009f4a7  741b  JZ 0x14009f4c4
+                                                        if f.z {
+                                                            break 'b_121;
+                                                        }
+                                                    }
+                                                    // 14009f4a9  418b4d70  MOV ECX,dword ptr [R13 + 0x70]
+                                                    {
+                                                        r[1] = (m.read::<32>(
+                                                            0u64.wrapping_add(r[13])
+                                                                .wrapping_add(0x70u64),
+                                                        )) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4ad  8bc2  MOV EAX,EDX
+                                                    {
+                                                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4af  99  CDQ
+                                                    {
+                                                        r[2] = ((r[0] as i32) >> 31) as u32 as u64;
+                                                    }
+                                                    // 14009f4b0  83e207  AND EDX,0x7
+                                                    {
+                                                        let v = (r[2] & 0xffffffffu64 & 0x7u64)
+                                                            & 0xffffffffu64;
+                                                        f.logic(v, 32);
+                                                        r[2] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4b3  03c2  ADD EAX,EDX
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[0] & 0xffffffffu64,
+                                                            r[2] & 0xffffffffu64,
+                                                            32,
+                                                            false,
+                                                        );
+                                                        r[0] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4b5  c1f803  SAR EAX,0x3
+                                                    {
+                                                        let v = r[0] & 0xffffffffu64;
+                                                        let n = 3u32;
+                                                        if n != 0 {
+                                                            let v = (((v as i32) >> n) as u64)
+                                                                & 0xffffffffu64;
+                                                            f.logic(v, 32);
+                                                            r[0] = (v) & 0xffff_ffff;
+                                                        }
+                                                    }
+                                                    // 14009f4b8  2bc8  SUB ECX,EAX
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[1] & 0xffffffffu64,
+                                                            r[0] & 0xffffffffu64,
+                                                            32,
+                                                            true,
+                                                        );
+                                                        r[1] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4ba  83c106  ADD ECX,0x6
+                                                    {
+                                                        let v = f.arithmetic(
+                                                            r[1] & 0xffffffffu64,
+                                                            0x6u64,
+                                                            32,
+                                                            false,
+                                                        );
+                                                        r[1] = (v) & 0xffff_ffff;
+                                                    }
+                                                    // 14009f4bd  443bd1  CMP R10D,ECX
+                                                    {
+                                                        f.arithmetic(
+                                                            r[10] & 0xffffffffu64,
+                                                            r[1] & 0xffffffffu64,
+                                                            32,
+                                                            true,
+                                                        );
+                                                    }
+                                                    // 14009f4c0  440f4cd1  CMOVL R10D,ECX
+                                                    {
+                                                        if f.s != f.o {
+                                                            r[10] = (r[1] & 0xffffffffu64)
+                                                                & 0xffff_ffff;
+                                                        }
+                                                    }
+                                                }
+                                                // 14009f4c4  488b0d9d1c3200  MOV RCX,qword ptr [0x1403c1168]
+                                                {
+                                                    r[1] = m.read::<64>(
+                                                        0u64.wrapping_add(0x1403c1168u64),
+                                                    );
+                                                }
+                                            }
+                                            // 14009f4cb  498d40ff  LEA RAX,[R8 + -0x1]
+                                            {
+                                                r[0] = 0u64
+                                                    .wrapping_add(r[8])
+                                                    .wrapping_add(0xffffffffffffffffu64);
+                                            }
+                                            // 14009f4cf  4c23c0  AND R8,RAX
+                                            {
+                                                let v = r[8] & r[0];
+                                                f.logic(v, 64);
+                                                r[8] = v;
+                                            }
+                                            // 14009f4d2  759c  JNZ 0x14009f470
+                                            if !f.z {
+                                                continue 'loop_117;
+                                            }
+                                            break 'loop_117;
+                                        }
+                                        // 14009f4d4  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
+                                        {
+                                            r[13] = m.read::<64>(
+                                                0u64.wrapping_add(r[4]).wrapping_add(0x88u64),
+                                            );
+                                        }
+                                    }
+                                    // 14009f4dc  488b355d1c3200  MOV RSI,qword ptr [0x1403c1140]
+                                    {
+                                        r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
+                                    }
+                                    // 14009f4e3  412bfa  SUB EDI,R10D
+                                    {
+                                        let v = f.arithmetic(
+                                            r[7] & 0xffffffffu64,
+                                            r[10] & 0xffffffffu64,
+                                            32,
+                                            true,
+                                        );
+                                        r[7] = (v) & 0xffff_ffff;
+                                    }
+                                    // 14009f4e6  f3480fb8c5  POPCNT RAX,RBP
+                                    {
+                                        let v = r[5];
+                                        f.z = v == 0;
+                                        f.o = false;
+                                        f.s = false;
+                                        r[0] = u64::from(v.count_ones());
+                                    }
+                                    // 14009f4eb  f3480fb8cb  POPCNT RCX,RBX
+                                    {
+                                        let v = r[3];
+                                        f.z = v == 0;
+                                        f.o = false;
+                                        f.s = false;
+                                        r[1] = u64::from(v.count_ones());
+                                    }
+                                    // 14009f4f0  2bc8  SUB ECX,EAX
+                                    {
+                                        let v = f.arithmetic(
+                                            r[1] & 0xffffffffu64,
+                                            r[0] & 0xffffffffu64,
+                                            32,
+                                            true,
+                                        );
+                                        r[1] = (v) & 0xffff_ffff;
+                                    }
+                                    // 14009f4f2  69c7f4010000  IMUL EAX,EDI,0x1f4
+                                    {
+                                        r[0] = ((r[7] & 0xffffffffu64).wrapping_mul(0x1f4u64))
+                                            & 0xffff_ffff;
+                                    }
+                                    // 14009f4f8  69d15a001400  IMUL EDX,ECX,0x14005a
+                                    {
+                                        r[2] = ((r[1] & 0xffffffffu64).wrapping_mul(0x14005au64))
+                                            & 0xffff_ffff;
+                                    }
+                                    // 14009f4fe  4403c8  ADD R9D,EAX
+                                    {
+                                        let v = f.arithmetic(
+                                            r[9] & 0xffffffffu64,
+                                            r[0] & 0xffffffffu64,
+                                            32,
+                                            false,
+                                        );
+                                        r[9] = (v) & 0xffff_ffff;
+                                    }
+                                    // 14009f501  4403ca  ADD R9D,EDX
+                                    {
+                                        let v = f.arithmetic(
+                                            r[9] & 0xffffffffu64,
+                                            r[2] & 0xffffffffu64,
+                                            32,
+                                            false,
+                                        );
+                                        r[9] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f504  498bc6  MOV RAX,R14
+                                {
+                                    r[0] = r[14];
+                                }
+                                // 14009f507  4c8d1df20af6ff  LEA R11,[0x140000000]
+                                {
+                                    r[11] = 0u64.wrapping_add(0x140000000u64);
+                                }
+                                // 14009f50e  25ffff0100  AND EAX,0x1ffff
+                                {
+                                    let v = (r[0] & 0xffffffffu64 & 0x1ffffu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[0] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f513  b900010000  MOV ECX,0x100
+                                {
+                                    r[1] = (0x100u64) & 0xffff_ffff;
+                                }
+                                // 14009f518  418bd6  MOV EDX,R14D
+                                {
+                                    r[2] = (r[14] & 0xffffffffu64) & 0xffff_ffff;
+                                }
+                                // 14009f51b  4d8bc6  MOV R8,R14
+                                {
+                                    r[8] = r[14];
+                                }
+                                // 14009f51e  c1fa07  SAR EDX,0x7
+                                {
+                                    let v = r[2] & 0xffffffffu64;
+                                    let n = 7u32;
+                                    if n != 0 {
+                                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[2] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f521  81e200fc0300  AND EDX,0x3fc00
+                                {
+                                    let v = (r[2] & 0xffffffffu64 & 0x3fc00u64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[2] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f527  49c1e819  SHR R8,0x19
+                                {
+                                    let v = r[8];
+                                    let n = 25u32;
+                                    if n != 0 {
+                                        let v = v >> n;
+                                        f.logic(v, 64);
+                                        r[8] = v;
+                                    }
+                                }
+                                // 14009f52b  450fbf944310292000  MOVSX R10D,word ptr [R11 + RAX*0x2 + 0x202910]
+                                {
+                                    r[10] = (((m.read::<16>(
+                                        0u64.wrapping_add(r[11])
+                                            .wrapping_add(r[0].wrapping_mul(0x2u64))
+                                            .wrapping_add(0x202910u64),
+                                    )) as i16 as i64)
+                                        as u64)
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f534  81c20000feff  ADD EDX,0xfffe0000
+                                {
+                                    let v = f.arithmetic(
+                                        r[2] & 0xffffffffu64,
+                                        0xfffe0000u64,
+                                        32,
+                                        false,
+                                    );
+                                    r[2] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f53a  4403157f1c3200  ADD R10D,dword ptr [0x1403c11c0]
+                                {
+                                    let v = f.arithmetic(
+                                        r[10] & 0xffffffffu64,
+                                        m.read::<32>(0u64.wrapping_add(0x1403c11c0u64)),
+                                        32,
+                                        false,
+                                    );
+                                    r[10] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f541  4181e0ff010000  AND R8D,0x1ff
+                                {
+                                    let v = (r[8] & 0xffffffffu64 & 0x1ffu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[8] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f548  412bc8  SUB ECX,R8D
+                                {
+                                    let v = f.arithmetic(
+                                        r[1] & 0xffffffffu64,
+                                        r[8] & 0xffffffffu64,
+                                        32,
+                                        true,
+                                    );
+                                    r[1] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f54b  410fb7c1  MOVZX EAX,R9W
+                                {
+                                    r[0] = (r[9] & 0xffffu64) & 0xffff_ffff;
+                                }
+                                // 14009f54f  2d00800000  SUB EAX,0x8000
+                                {
+                                    let v = f.arithmetic(r[0] & 0xffffffffu64, 0x8000u64, 32, true);
+                                    r[0] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f554  41c1e910  SHR R9D,0x10
+                                {
+                                    let v = r[9] & 0xffffffffu64;
+                                    let n = 16u32;
+                                    if n != 0 {
+                                        let v = (v >> n) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[9] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f558  0fafc1  IMUL EAX,ECX
+                                {
+                                    r[0] = ((r[0] & 0xffffffffu64)
+                                        .wrapping_mul(r[1] & 0xffffffffu64))
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f55b  4403d2  ADD R10D,EDX
+                                {
+                                    let v = f.arithmetic(
+                                        r[10] & 0xffffffffu64,
+                                        r[2] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[10] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f55e  4181e900800000  SUB R9D,0x8000
+                                {
+                                    let v = f.arithmetic(r[9] & 0xffffffffu64, 0x8000u64, 32, true);
+                                    r[9] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f565  450fafc8  IMUL R9D,R8D
+                                {
+                                    r[9] = ((r[9] & 0xffffffffu64)
+                                        .wrapping_mul(r[8] & 0xffffffffu64))
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f569  4103c1  ADD EAX,R9D
+                                {
+                                    let v = f.arithmetic(
+                                        r[0] & 0xffffffffu64,
+                                        r[9] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[0] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f56c  99  CDQ
+                                {
+                                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
+                                }
+                                // 14009f56d  0fb6ca  MOVZX ECX,DL
+                                {
+                                    r[1] = (r[2] & 0xffu64) & 0xffff_ffff;
+                                }
+                                // 14009f570  03c8  ADD ECX,EAX
+                                {
+                                    let v = f.arithmetic(
+                                        r[1] & 0xffffffffu64,
+                                        r[0] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[1] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f572  b867666666  MOV EAX,0x66666667
+                                {
+                                    r[0] = (0x66666667u64) & 0xffff_ffff;
+                                }
+                                // 14009f577  c1f908  SAR ECX,0x8
+                                {
+                                    let v = r[1] & 0xffffffffu64;
+                                    let n = 8u32;
+                                    if n != 0 {
+                                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[1] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f57a  4103ca  ADD ECX,R10D
+                                {
+                                    let v = f.arithmetic(
+                                        r[1] & 0xffffffffu64,
+                                        r[10] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[1] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f57d  f7e9  IMUL ECX
+                                {
+                                    let v = (r[0] as i32 as i128)
+                                        * ((r[1] & 0xffffffffu64) as i32 as i128);
+                                    r[0] = v as u64 & 0xffffffffu64;
+                                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
+                                }
+                                // 14009f57f  498bce  MOV RCX,R14
+                                {
+                                    r[1] = r[14];
+                                }
+                                // 14009f582  c1fa02  SAR EDX,0x2
+                                {
+                                    let v = r[2] & 0xffffffffu64;
+                                    let n = 2u32;
+                                    if n != 0 {
+                                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[2] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f585  8bc2  MOV EAX,EDX
+                                {
+                                    r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+                                }
+                                // 14009f587  48c1e922  SHR RCX,0x22
+                                {
+                                    let v = r[1];
+                                    let n = 34u32;
+                                    if n != 0 {
+                                        let v = v >> n;
+                                        f.logic(v, 64);
+                                        r[1] = v;
+                                    }
+                                }
+                                // 14009f58b  c1e81f  SHR EAX,0x1f
+                                {
+                                    let v = r[0] & 0xffffffffu64;
+                                    let n = 31u32;
+                                    if n != 0 {
+                                        let v = (v >> n) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[0] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f58e  81e1ff3f0000  AND ECX,0x3fff
+                                {
+                                    let v = (r[1] & 0xffffffffu64 & 0x3fffu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[1] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f594  03c2  ADD EAX,EDX
+                                {
+                                    let v = f.arithmetic(
+                                        r[0] & 0xffffffffu64,
+                                        r[2] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[0] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f596  420fb68c19c0c32300  MOVZX ECX,byte ptr [RCX + R11*0x1 + 0x23c3c0]
+                                {
+                                    r[1] = (m.read::<8>(
+                                        0u64.wrapping_add(r[1])
+                                            .wrapping_add(r[11].wrapping_mul(0x1u64))
+                                            .wrapping_add(0x23c3c0u64),
+                                    )) & 0xffff_ffff;
+                                }
+                                // 14009f59f  0fafc1  IMUL EAX,ECX
+                                {
+                                    r[0] = ((r[0] & 0xffffffffu64)
+                                        .wrapping_mul(r[1] & 0xffffffffu64))
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f5a2  99  CDQ
+                                {
+                                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
+                                }
+                                // 14009f5a3  83e27f  AND EDX,0x7f
+                                {
+                                    let v = (r[2] & 0xffffffffu64 & 0x7fu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[2] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f5a6  448d0402  LEA R8D,[RDX + RAX*0x1]
+                                {
+                                    r[8] = (0u64
+                                        .wrapping_add(r[2])
+                                        .wrapping_add(r[0].wrapping_mul(0x1u64)))
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f5aa  8b0538b83100  MOV EAX,dword ptr [0x1403bade8]
+                                {
+                                    r[0] = (m.read::<32>(0u64.wrapping_add(0x1403bade8u64)))
+                                        & 0xffff_ffff;
+                                }
+                                // 14009f5b0  41c1f807  SAR R8D,0x7
+                                {
+                                    let v = r[8] & 0xffffffffu64;
+                                    let n = 7u32;
+                                    if n != 0 {
+                                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                                        f.logic(v, 32);
+                                        r[8] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f5b4  85c0  TEST EAX,EAX
+                                {
+                                    let v = (r[0] & 0xffffffffu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                }
+                                // 14009f5b6  742e  JZ 0x14009f5e6
+                                if f.z {
+                                    break 'b_127;
+                                }
+                                // 14009f5b8  8bc8  MOV ECX,EAX
+                                {
+                                    r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
+                                }
+                                // 14009f5ba  4183c0fe  ADD R8D,-0x2
+                                {
+                                    let v = f.arithmetic(
+                                        r[8] & 0xffffffffu64,
+                                        0xfffffffffffffffeu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[8] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f5be  48330de31b3200  XOR RCX,qword ptr [0x1403c11a8]
+                                {
+                                    let v = r[1] ^ m.read::<64>(0u64.wrapping_add(0x1403c11a8u64));
+                                    f.logic(v, 64);
+                                    r[1] = v;
+                                }
+                                // 14009f5c5  48b8cdcccccccccccccc  MOV RAX,-0x3333333333333333
+                                {
+                                    r[0] = 0xcccccccccccccccdu64;
+                                }
+                                // 14009f5cf  81e1ff0f0000  AND ECX,0xfff
+                                {
+                                    let v = (r[1] & 0xffffffffu64 & 0xfffu64) & 0xffffffffu64;
+                                    f.logic(v, 32);
+                                    r[1] = (v) & 0xffff_ffff;
+                                }
+                                // 14009f5d5  48f7e1  MUL RCX
+                                {
+                                    let v = (r[0] as u128) * ((r[1]) as u128);
+                                    r[0] = v as u64;
+                                    r[2] = (v >> 64) as u64;
+                                }
+                                // 14009f5d8  48c1ea02  SHR RDX,0x2
+                                {
+                                    let v = r[2];
+                                    let n = 2u32;
+                                    if n != 0 {
+                                        let v = v >> n;
+                                        f.logic(v, 64);
+                                        r[2] = v;
+                                    }
+                                }
+                                // 14009f5dc  488d0492  LEA RAX,[RDX + RDX*0x4]
+                                {
+                                    r[0] = 0u64
+                                        .wrapping_add(r[2])
+                                        .wrapping_add(r[2].wrapping_mul(0x4u64));
+                                }
+                                // 14009f5e0  482bc8  SUB RCX,RAX
+                                {
+                                    let v = f.arithmetic(r[1], r[0], 64, true);
+                                    r[1] = v;
+                                }
+                                // 14009f5e3  4403c1  ADD R8D,ECX
+                                {
+                                    let v = f.arithmetic(
+                                        r[8] & 0xffffffffu64,
+                                        r[1] & 0xffffffffu64,
+                                        32,
+                                        false,
+                                    );
+                                    r[8] = (v) & 0xffff_ffff;
+                                }
+                            }
+                            // 14009f5e6  49bc0000000000500000  MOV R12,0x500000000000
+                            {
+                                r[12] = 0x500000000000u64;
+                            }
+                            // 14009f5f0  4d3bfc  CMP R15,R12
+                            {
+                                f.arithmetic(r[15], r[12], 64, true);
+                            }
+                            // 14009f5f3  0f85ef010000  JNZ 0x14009f7e8
+                            if !f.z {
+                                break 'b_157;
+                            }
+                            // 14009f5f9  4c8bcb  MOV R9,RBX
+                            {
+                                r[9] = r[3];
+                            }
+                            // 14009f5fc  48b8000000ffffffff00  MOV RAX,0xffffffff000000
+                            {
+                                r[0] = 0xffffffff000000u64;
+                            }
+                            // 14009f606  4d234d00  AND R9,qword ptr [R13]
+                            {
+                                let v = r[9] & m.read::<64>(0u64.wrapping_add(r[13]));
+                                f.logic(v, 64);
+                                r[9] = v;
+                            }
+                            // 14009f60a  bf34000000  MOV EDI,0x34
+                            {
+                                r[7] = (0x34u64) & 0xffff_ffff;
+                            }
+                            // 14009f60f  4c23c8  AND R9,RAX
+                            {
+                                let v = r[9] & r[0];
+                                f.logic(v, 64);
+                                r[9] = v;
+                            }
+                            // 14009f612  0f84df000000  JZ 0x14009f6f7
+                            if f.z {
+                                break 'b_142;
+                            }
+                            // 14009f618  4c8b35291b3200  MOV R14,qword ptr [0x1403c1148]
+                            {
+                                r[14] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                            }
+                            // 14009f61f  49bc0000000000ff0000  MOV R12,0xff0000000000
+                            {
+                                r[12] = 0xff0000000000u64;
+                            }
+                            // 14009f629  48bd000000000000ff00  MOV RBP,0xff000000000000
+                            {
+                                r[5] = 0xff000000000000u64;
+                            }
+                            // 14009f633  49bd00000000ff000000  MOV R13,0xff00000000
+                            {
+                                r[13] = 0xff00000000u64;
+                            }
+                            // 14009f63d  0f1f00  NOP dword ptr [RAX]
+                            'loop_130: loop {
+                                'b_140: {
+                                    'b_139: {
+                                        'b_138: {
+                                            'b_136: {
+                                                // 14009f640  490fbcc1  BSF RAX,R9
+                                                {
+                                                    let v = r[9];
+                                                    f.z = v == 0;
+                                                    if v != 0 {
+                                                        r[0] = u64::from(v.trailing_zeros());
+                                                    }
+                                                }
+                                                // 14009f644  8905cefc2500  MOV dword ptr [0x1402ff318],EAX
+                                                {
+                                                    m.write::<32>(
+                                                        0u64.wrapping_add(0x1402ff318u64),
+                                                        r[0] & 0xffffffffu64,
+                                                    );
+                                                }
+                                                // 14009f64a  4898  CDQE
+                                                {
+                                                    r[0] = r[0] as i32 as i64 as u64;
+                                                }
+                                                // 14009f64c  4985b4c380440f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4480],RSI
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4480u64),
+                                                    ) & r[6];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f654  7474  JZ 0x14009f6ca
+                                                if f.z {
+                                                    break 'b_140;
+                                                }
+                                                // 14009f656  4d85b4c380420f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4280],R14
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4280u64),
+                                                    ) & r[14];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f65e  746a  JZ 0x14009f6ca
+                                                if f.z {
+                                                    break 'b_140;
+                                                }
+                                                // 14009f660  49859cc380460f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4680],RBX
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4680u64),
+                                                    ) & r[3];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f668  7560  JNZ 0x14009f6ca
+                                                if !f.z {
+                                                    break 'b_140;
+                                                }
+                                                // 14009f66a  498b94c3f0de0e00  MOV RDX,qword ptr [R11 + RAX*0x8 + 0xedef0]
+                                                {
+                                                    r[2] = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xedef0u64),
+                                                    );
+                                                }
+                                                // 14009f672  482315ff1a3200  AND RDX,qword ptr [0x1403c1178]
+                                                {
+                                                    let v = r[2]
+                                                        & m.read::<64>(
+                                                            0u64.wrapping_add(0x1403c1178u64),
+                                                        );
+                                                    f.logic(v, 64);
+                                                    r[2] = v;
+                                                }
+                                                // 14009f679  490faf94c3f0fe0e00  IMUL RDX,qword ptr [R11 + RAX*0x8 + 0xefef0]
+                                                {
+                                                    r[2] = (r[2]).wrapping_mul(
+                                                        m.read::<64>(
+                                                            0u64.wrapping_add(r[11])
+                                                                .wrapping_add(
+                                                                    r[0].wrapping_mul(0x8u64),
+                                                                )
+                                                                .wrapping_add(0xefef0u64),
+                                                        ),
+                                                    );
+                                                }
+                                                // 14009f682  418b8c8300080f00  MOV ECX,dword ptr [R11 + RAX*0x4 + 0xf0800]
+                                                {
+                                                    r[1] = (m.read::<32>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x4u64))
+                                                            .wrapping_add(0xf0800u64),
+                                                    )) & 0xffff_ffff;
+                                                }
+                                                // 14009f68a  498b84c3f0020f00  MOV RAX,qword ptr [R11 + RAX*0x8 + 0xf02f0]
+                                                {
+                                                    r[0] = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf02f0u64),
+                                                    );
+                                                }
+                                                // 14009f692  48d3ea  SHR RDX,CL
+                                                {
+                                                    let v = r[2];
+                                                    let n = (r[1] & 0xffu64 & 63) as u32;
+                                                    if n != 0 {
+                                                        let v = v >> n;
+                                                        f.logic(v, 64);
+                                                        r[2] = v;
+                                                    }
+                                                }
+                                                // 14009f695  4c8534d0  TEST qword ptr [RAX + RDX*0x8],R14
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[0]).wrapping_add(
+                                                            r[2].wrapping_mul(0x8u64),
+                                                        ),
+                                                    ) & r[14];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f699  742f  JZ 0x14009f6ca
+                                                if f.z {
+                                                    break 'b_140;
+                                                }
+                                                // 14009f69b  498bc1  MOV RAX,R9
+                                                {
+                                                    r[0] = r[9];
+                                                }
+                                                // 14009f69e  48f7d8  NEG RAX
+                                                {
+                                                    let v = f.arithmetic(0u64, r[0], 64, true);
+                                                    r[0] = v;
+                                                }
+                                                // 14009f6a1  4923c1  AND RAX,R9
+                                                {
+                                                    let v = r[0] & r[9];
+                                                    f.logic(v, 64);
+                                                    r[0] = v;
+                                                }
+                                                // 14009f6a4  4885c5  TEST RBP,RAX
+                                                {
+                                                    let v = r[5] & r[0];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f6a7  7407  JZ 0x14009f6b0
+                                                if f.z {
+                                                    break 'b_136;
+                                                }
+                                                // 14009f6a9  b8a0000000  MOV EAX,0xa0
+                                                {
+                                                    r[0] = (0xa0u64) & 0xffff_ffff;
+                                                }
+                                                // 14009f6ae  eb17  JMP 0x14009f6c7
+                                                break 'b_139;
+                                            }
+                                            // 14009f6b0  4985c4  TEST R12,RAX
+                                            {
+                                                let v = r[12] & r[0];
+                                                f.logic(v, 64);
+                                            }
+                                            // 14009f6b3  7407  JZ 0x14009f6bc
+                                            if f.z {
+                                                break 'b_138;
+                                            }
+                                            // 14009f6b5  b864000000  MOV EAX,0x64
+                                            {
+                                                r[0] = (0x64u64) & 0xffff_ffff;
+                                            }
+                                            // 14009f6ba  eb0b  JMP 0x14009f6c7
+                                            break 'b_139;
+                                        }
+                                        // 14009f6bc  4985c5  TEST R13,RAX
+                                        {
+                                            let v = r[13] & r[0];
+                                            f.logic(v, 64);
+                                        }
+                                        // 14009f6bf  b816000000  MOV EAX,0x16
+                                        {
+                                            r[0] = (0x16u64) & 0xffff_ffff;
+                                        }
+                                        // 14009f6c4  0f45c7  CMOVNZ EAX,EDI
+                                        {
+                                            if !f.z {
+                                                r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
+                                            }
+                                        }
+                                    }
+                                    // 14009f6c7  442bc0  SUB R8D,EAX
+                                    {
+                                        let v = f.arithmetic(
+                                            r[8] & 0xffffffffu64,
+                                            r[0] & 0xffffffffu64,
+                                            32,
+                                            true,
+                                        );
+                                        r[8] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f6ca  498d41ff  LEA RAX,[R9 + -0x1]
+                                {
+                                    r[0] =
+                                        0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64);
+                                }
+                                // 14009f6ce  4c23c8  AND R9,RAX
+                                {
+                                    let v = r[9] & r[0];
+                                    f.logic(v, 64);
+                                    r[9] = v;
+                                }
+                                // 14009f6d1  0f8569ffffff  JNZ 0x14009f640
+                                if !f.z {
+                                    continue 'loop_130;
+                                }
+                                break 'loop_130;
+                            }
+                            // 14009f6d7  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
+                            {
+                                r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
+                            }
+                            // 14009f6df  49bc0000000000500000  MOV R12,0x500000000000
+                            {
+                                r[12] = 0x500000000000u64;
+                            }
+                            // 14009f6e9  488b2d281a3200  MOV RBP,qword ptr [0x1403c1118]
+                            {
+                                r[5] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
+                            }
+                            // 14009f6f0  4c8b35c11a3200  MOV R14,qword ptr [0x1403c11b8]
+                            {
+                                r[14] = m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
+                            }
+                        }
+                        // 14009f6f7  4c8bcd  MOV R9,RBP
+                        {
+                            r[9] = r[5];
+                        }
+                        // 14009f6fa  48b800ffffffff000000  MOV RAX,0xffffffff00
+                        {
+                            r[0] = 0xffffffff00u64;
+                        }
+                        // 14009f704  4d234d00  AND R9,qword ptr [R13]
+                        {
+                            let v = r[9] & m.read::<64>(0u64.wrapping_add(r[13]));
+                            f.logic(v, 64);
+                            r[9] = v;
+                        }
+                        // 14009f708  4c23c8  AND R9,RAX
+                        {
+                            let v = r[9] & r[0];
+                            f.logic(v, 64);
+                            r[9] = v;
+                        }
+                        // 14009f70b  0f84b7000000  JZ 0x14009f7c8
+                        if f.z {
+                            break 'b_156;
+                        }
+                        // 14009f711  488b0d301a3200  MOV RCX,qword ptr [0x1403c1148]
+                        {
+                            r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                        }
+                        // 14009f718  bb000000ff  MOV EBX,0xff000000
+                        {
+                            r[3] = (0xff000000u64) & 0xffff_ffff;
+                        }
+                        // 14009f71d  0f1f00  NOP dword ptr [RAX]
+                        'loop_144: loop {
+                            'b_155: {
+                                'b_154: {
+                                    'b_153: {
+                                        'b_152: {
+                                            'b_150: {
+                                                // 14009f720  490fbcc1  BSF RAX,R9
+                                                {
+                                                    let v = r[9];
+                                                    f.z = v == 0;
+                                                    if v != 0 {
+                                                        r[0] = u64::from(v.trailing_zeros());
+                                                    }
+                                                }
+                                                // 14009f724  8905eefb2500  MOV dword ptr [0x1402ff318],EAX
+                                                {
+                                                    m.write::<32>(
+                                                        0u64.wrapping_add(0x1402ff318u64),
+                                                        r[0] & 0xffffffffu64,
+                                                    );
+                                                }
+                                                // 14009f72a  4898  CDQE
+                                                {
+                                                    r[0] = r[0] as i32 as i64 as u64;
+                                                }
+                                                // 14009f72c  49858cc380420f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4280],RCX
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4280u64),
+                                                    ) & r[1];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f734  0f8481000000  JZ 0x14009f7bb
+                                                if f.z {
+                                                    break 'b_155;
+                                                }
+                                                // 14009f73a  4985b4c380440f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4480],RSI
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4480u64),
+                                                    ) & r[6];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f742  7477  JZ 0x14009f7bb
+                                                if f.z {
+                                                    break 'b_155;
+                                                }
+                                                // 14009f744  4985acc380480f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4880],RBP
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf4880u64),
+                                                    ) & r[5];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f74c  756d  JNZ 0x14009f7bb
+                                                if !f.z {
+                                                    break 'b_155;
+                                                }
+                                                // 14009f74e  498b94c3f0de0e00  MOV RDX,qword ptr [R11 + RAX*0x8 + 0xedef0]
+                                                {
+                                                    r[2] = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xedef0u64),
+                                                    );
+                                                }
+                                                // 14009f756  4823151b1a3200  AND RDX,qword ptr [0x1403c1178]
+                                                {
+                                                    let v = r[2]
+                                                        & m.read::<64>(
+                                                            0u64.wrapping_add(0x1403c1178u64),
+                                                        );
+                                                    f.logic(v, 64);
+                                                    r[2] = v;
+                                                }
+                                                // 14009f75d  490faf94c3f0fe0e00  IMUL RDX,qword ptr [R11 + RAX*0x8 + 0xefef0]
+                                                {
+                                                    r[2] = (r[2]).wrapping_mul(
+                                                        m.read::<64>(
+                                                            0u64.wrapping_add(r[11])
+                                                                .wrapping_add(
+                                                                    r[0].wrapping_mul(0x8u64),
+                                                                )
+                                                                .wrapping_add(0xefef0u64),
+                                                        ),
+                                                    );
+                                                }
+                                                // 14009f766  418b8c8300080f00  MOV ECX,dword ptr [R11 + RAX*0x4 + 0xf0800]
+                                                {
+                                                    r[1] = (m.read::<32>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x4u64))
+                                                            .wrapping_add(0xf0800u64),
+                                                    )) & 0xffff_ffff;
+                                                }
+                                                // 14009f76e  498b84c3f0020f00  MOV RAX,qword ptr [R11 + RAX*0x8 + 0xf02f0]
+                                                {
+                                                    r[0] = m.read::<64>(
+                                                        0u64.wrapping_add(r[11])
+                                                            .wrapping_add(r[0].wrapping_mul(0x8u64))
+                                                            .wrapping_add(0xf02f0u64),
+                                                    );
+                                                }
+                                                // 14009f776  48d3ea  SHR RDX,CL
+                                                {
+                                                    let v = r[2];
+                                                    let n = (r[1] & 0xffu64 & 63) as u32;
+                                                    if n != 0 {
+                                                        let v = v >> n;
+                                                        f.logic(v, 64);
+                                                        r[2] = v;
+                                                    }
+                                                }
+                                                // 14009f779  488534d0  TEST qword ptr [RAX + RDX*0x8],RSI
+                                                {
+                                                    let v = m.read::<64>(
+                                                        0u64.wrapping_add(r[0]).wrapping_add(
+                                                            r[2].wrapping_mul(0x8u64),
+                                                        ),
+                                                    ) & r[6];
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f77d  7435  JZ 0x14009f7b4
+                                                if f.z {
+                                                    break 'b_154;
+                                                }
+                                                // 14009f77f  498bc1  MOV RAX,R9
+                                                {
+                                                    r[0] = r[9];
+                                                }
+                                                // 14009f782  48f7d8  NEG RAX
+                                                {
+                                                    let v = f.arithmetic(0u64, r[0], 64, true);
+                                                    r[0] = v;
+                                                }
+                                                // 14009f785  4923c1  AND RAX,R9
+                                                {
+                                                    let v = r[0] & r[9];
+                                                    f.logic(v, 64);
+                                                    r[0] = v;
+                                                }
+                                                // 14009f788  48a900ff0000  TEST RAX,0xff00
+                                                {
+                                                    let v = r[0] & 0xff00u64;
+                                                    f.logic(v, 64);
+                                                }
+                                                // 14009f78e  7407  JZ 0x14009f797
+                                                if f.z {
+                                                    break 'b_150;
+                                                }
+                                                // 14009f790  b8a0000000  MOV EAX,0xa0
+                                                {
+                                                    r[0] = (0xa0u64) & 0xffff_ffff;
+                                                }
+                                                // 14009f795  eb1a  JMP 0x14009f7b1
+                                                break 'b_153;
+                                            }
+                                            // 14009f797  48a90000ff00  TEST RAX,0xff0000
+                                            {
+                                                let v = r[0] & 0xff0000u64;
+                                                f.logic(v, 64);
+                                            }
+                                            // 14009f79d  7407  JZ 0x14009f7a6
+                                            if f.z {
+                                                break 'b_152;
+                                            }
+                                            // 14009f79f  b864000000  MOV EAX,0x64
+                                            {
+                                                r[0] = (0x64u64) & 0xffff_ffff;
+                                            }
+                                            // 14009f7a4  eb0b  JMP 0x14009f7b1
+                                            break 'b_153;
+                                        }
+                                        // 14009f7a6  4885c3  TEST RBX,RAX
+                                        {
+                                            let v = r[3] & r[0];
+                                            f.logic(v, 64);
+                                        }
+                                        // 14009f7a9  b816000000  MOV EAX,0x16
+                                        {
+                                            r[0] = (0x16u64) & 0xffff_ffff;
+                                        }
+                                        // 14009f7ae  0f45c7  CMOVNZ EAX,EDI
+                                        {
+                                            if !f.z {
+                                                r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
+                                            }
+                                        }
+                                    }
+                                    // 14009f7b1  4403c0  ADD R8D,EAX
+                                    {
+                                        let v = f.arithmetic(
+                                            r[8] & 0xffffffffu64,
+                                            r[0] & 0xffffffffu64,
+                                            32,
+                                            false,
+                                        );
+                                        r[8] = (v) & 0xffff_ffff;
+                                    }
+                                }
+                                // 14009f7b4  488b0d8d193200  MOV RCX,qword ptr [0x1403c1148]
+                                {
+                                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
+                                }
+                            }
+                            // 14009f7bb  498d41ff  LEA RAX,[R9 + -0x1]
+                            {
+                                r[0] = 0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64);
+                            }
+                            // 14009f7bf  4c23c8  AND R9,RAX
+                            {
+                                let v = r[9] & r[0];
+                                f.logic(v, 64);
+                                r[9] = v;
+                            }
+                            // 14009f7c2  0f8558ffffff  JNZ 0x14009f720
+                            if !f.z {
+                                continue 'loop_144;
+                            }
+                            break 'loop_144;
+                        }
                     }
-                }
-                // 14009e29a  25fe3f0000  AND EAX,0x3ffe
-                {
-                    let v = (r[0] & 0xffffffffu64 & 0x3ffeu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009e29f  48894c2478  MOV qword ptr [RSP + 0x78],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64), r[1]);
-                }
-                // 14009e2a4  48c1e006  SHL RAX,0x6
-                {
-                    let v = r[0];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[0] = v;
+                    // 14009f7c8  440faf054cf32500  IMUL R8D,dword ptr [0x1402feb1c]
+                    {
+                        r[8] = ((r[8] & 0xffffffffu64)
+                            .wrapping_mul(m.read::<32>(0u64.wrapping_add(0x1402feb1cu64))))
+                            & 0xffff_ffff;
                     }
-                }
-                // 14009e2a8  48030571722b00  ADD RAX,qword ptr [0x140355520]
-                {
-                    let v = f.arithmetic(
-                        r[0],
-                        m.read::<64>(0u64.wrapping_add(0x140355520u64)),
-                        64,
-                        false,
-                    );
-                    r[0] = v;
-                }
-                // 14009e2af  0f1800  NOP dword ptr [RAX]
-                // 14009e2b2  4c8b05672e3200  MOV R8,qword ptr [0x1403c1120]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
-                }
-                // 14009e2b9  48b97f7f7f7f7f7fffff  MOV RCX,-0x808080808081
-                {
-                    r[1] = 0xffff7f7f7f7f7f7fu64;
-                }
-                // 14009e2c3  488b05462e3200  MOV RAX,qword ptr [0x1403c1110]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009e2ca  bb20000000  MOV EBX,0x20
-                {
-                    r[3] = (0x20u64) & 0xffff_ffff;
-                }
-                // 14009e2cf  488b15522e3200  MOV RDX,qword ptr [0x1403c1128]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
-                }
-                // 14009e2d6  4c8bf8  MOV R15,RAX
-                {
-                    r[15] = r[0];
-                }
-                // 14009e2d9  488b3d202e3200  MOV RDI,qword ptr [0x1403c1100]
-                {
-                    r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
-                }
-                // 14009e2e0  4c23f9  AND R15,RCX
-                {
-                    let v = r[15] & r[1];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009e2e3  49c1e702  SHL R15,0x2
-                {
-                    let v = r[15];
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[15] = v;
+                    // 14009f7d0  b81f85eb51  MOV EAX,0x51eb851f
+                    {
+                        r[0] = (0x51eb851fu64) & 0xffff_ffff;
                     }
-                }
-                // 14009e2e7  48b9fefefefefefefe00  MOV RCX,0xfefefefefefefe
-                {
-                    r[1] = 0xfefefefefefefeu64;
-                }
-                // 14009e2f1  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e2f4  895c2430  MOV dword ptr [RSP + 0x30],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x30u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                // 14009e2f8  4c0bf8  OR R15,RAX
-                {
-                    let v = r[15] | r[0];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009e2fb  895c2440  MOV dword ptr [RSP + 0x40],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x40u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                // 14009e2ff  488b05122e3200  MOV RAX,qword ptr [0x1403c1118]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009e306  48b980bfbfbfbfbfbf3f  MOV RCX,0x3fbfbfbfbfbfbf80
-                {
-                    r[1] = 0x3fbfbfbfbfbfbf80u64;
-                }
-                // 14009e310  4c8bf0  MOV R14,RAX
-                {
-                    r[14] = r[0];
-                }
-                // 14009e313  49c1e707  SHL R15,0x7
-                {
-                    let v = r[15];
-                    let n = 7u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[15] = v;
+                    // 14009f7d5  41f7e8  IMUL R8D
+                    {
+                        let v = (r[0] as i32 as i128) * ((r[8] & 0xffffffffu64) as i32 as i128);
+                        r[0] = v as u64 & 0xffffffffu64;
+                        r[2] = (v >> 32) as u64 & 0xffffffffu64;
                     }
-                }
-                // 14009e317  49c1ee02  SHR R14,0x2
-                {
-                    let v = r[14];
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[14] = v;
+                    // 14009f7d8  448bc2  MOV R8D,EDX
+                    {
+                        r[8] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
                     }
-                }
-                // 14009e31b  4d8bc8  MOV R9,R8
-                {
-                    r[9] = r[8];
-                }
-                // 14009e31e  4c0b0d0b2e3200  OR R9,qword ptr [0x1403c1130]
-                {
-                    let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e325  4c23f1  AND R14,RCX
-                {
-                    let v = r[14] & r[1];
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009e328  4c0b0d112e3200  OR R9,qword ptr [0x1403c1140]
-                {
-                    let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e32f  48b9007f7f7f7f7f7f7f  MOV RCX,0x7f7f7f7f7f7f7f00
-                {
-                    r[1] = 0x7f7f7f7f7f7f7f00u64;
-                }
-                // 14009e339  4c0b0d102e3200  OR R9,qword ptr [0x1403c1150]
-                {
-                    let v = r[9] | m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e340  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e343  488b0dbe2d3200  MOV RCX,qword ptr [0x1403c1108]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009e34a  4c0bf0  OR R14,RAX
-                {
-                    let v = r[14] | r[0];
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009e34d  49c1ee07  SHR R14,0x7
-                {
-                    let v = r[14];
-                    let n = 7u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[14] = v;
+                    // 14009f7db  41c1f805  SAR R8D,0x5
+                    {
+                        let v = r[8] & 0xffffffffu64;
+                        let n = 5u32;
+                        if n != 0 {
+                            let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                            f.logic(v, 32);
+                            r[8] = (v) & 0xffff_ffff;
+                        }
                     }
-                }
-                // 14009e351  490bcf  OR RCX,R15
-                {
-                    let v = r[1] | r[15];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e354  490bfe  OR RDI,R14
-                {
-                    let v = r[7] | r[14];
-                    f.logic(v, 64);
-                    r[7] = v;
-                }
-                // 14009e357  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                // 14009e35c  4d23ce  AND R9,R14
-                {
-                    let v = r[9] & r[14];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e35f  4c89742438  MOV qword ptr [RSP + 0x38],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
-                }
-                // 14009e364  48f7d7  NOT RDI
-                {
-                    let v = !(r[7]);
-                    r[7] = v;
-                }
-                // 14009e367  4c894c2448  MOV qword ptr [RSP + 0x48],R9
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), r[9]);
-                }
-                // 14009e36c  4c8d0d8d1cf6ff  LEA R9,[0x140000000]
-                {
-                    r[9] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e373  4c897c2470  MOV qword ptr [RSP + 0x70],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64), r[15]);
-                }
-                // 14009e378  48f7d1  NOT RCX
-                {
-                    let v = !(r[1]);
-                    r[1] = v;
-                }
-                // 14009e37b  4c89742468  MOV qword ptr [RSP + 0x68],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64), r[14]);
-                }
-                // 14009e380  480bfa  OR RDI,RDX
-                {
-                    let v = r[7] | r[2];
-                    f.logic(v, 64);
-                    r[7] = v;
-                }
-                // 14009e383  490bc8  OR RCX,R8
-                {
-                    let v = r[1] | r[8];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e386  480b3dab2d3200  OR RDI,qword ptr [0x1403c1138]
-                {
-                    let v = r[7] | m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
-                    f.logic(v, 64);
-                    r[7] = v;
-                }
-                // 14009e38d  488bc2  MOV RAX,RDX
-                {
-                    r[0] = r[2];
-                }
-                // 14009e390  480b05a12d3200  OR RAX,qword ptr [0x1403c1138]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e397  4d8be6  MOV R12,R14
-                {
-                    r[12] = r[14];
-                }
-                // 14009e39a  480b05a72d3200  OR RAX,qword ptr [0x1403c1148]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e3a1  8beb  MOV EBP,EBX
-                {
-                    r[5] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e3a3  480b05ae2d3200  OR RAX,qword ptr [0x1403c1158]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e3aa  480b0d7f2d3200  OR RCX,qword ptr [0x1403c1130]
-                {
-                    let v = r[1] | m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e3b1  4923c7  AND RAX,R15
-                {
-                    let v = r[0] & r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e3b4  4889442458  MOV qword ptr [RSP + 0x58],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), r[0]);
-                }
-                // 14009e3b9  486305b02d3200  MOVSXD RAX,dword ptr [0x1403c1170]
-                {
-                    r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) as i32 as i64) as u64;
-                }
-                // 14009e3c0  4889bc2490000000  MOV qword ptr [RSP + 0x90],RDI
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64), r[7]);
-                }
-                // 14009e3c8  48898c2480000000  MOV qword ptr [RSP + 0x80],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64), r[1]);
-                }
-                // 14009e3d0  498b84c1f0f40e00  MOV RAX,qword ptr [R9 + RAX*0x8 + 0xef4f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[9])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xef4f0u64),
-                    );
-                }
-                // 14009e3d8  4889442450  MOV qword ptr [RSP + 0x50],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64), r[0]);
-                }
-                // 14009e3dd  486305902d3200  MOVSXD RAX,dword ptr [0x1403c1174]
-                {
-                    r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1174u64))) as i32 as i64) as u64;
-                }
-                // 14009e3e4  498bb4c1f0f40e00  MOV RSI,qword ptr [R9 + RAX*0x8 + 0xef4f0]
-                {
-                    r[6] = m.read::<64>(
-                        0u64.wrapping_add(r[9])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xef4f0u64),
-                    );
-                }
-                // 14009e3ec  4889742460  MOV qword ptr [RSP + 0x60],RSI
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64), r[6]);
-                }
-                // 14009e3f1  4d85c0  TEST R8,R8
-                {
-                    let v = r[8];
-                    f.logic(v, 64);
-                }
-                // 14009e3f4  7420  JZ 0x14009e416
-                pc = if f.z { 0x14009e416 } else { 0x14009e3f6 };
-                continue;
-            }
-            0x14009e3f6 => {
-                // 14009e3f6  490fbcc0  BSF RAX,R8
-                {
-                    let v = r[8];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e3fa  8905180f2600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009e400  4d0bbcc1f0fa0e00  OR R15,qword ptr [R9 + RAX*0x8 + 0xefaf0]
-                {
-                    let v = r[15]
-                        | m.read::<64>(
-                            0u64.wrapping_add(r[9])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefaf0u64),
-                        );
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009e408  498d40ff  LEA RAX,[R8 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[8]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009e40c  4c23c0  AND R8,RAX
-                {
-                    let v = r[8] & r[0];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009e40f  75e5  JNZ 0x14009e3f6
-                pc = if !f.z { 0x14009e3f6 } else { 0x14009e411 };
-                continue;
-            }
-            0x14009e411 => {
-                // 14009e411  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                pc = 0x14009e416;
-            }
-            0x14009e416 => {
-                // 14009e416  4885d2  TEST RDX,RDX
-                {
-                    let v = r[2];
-                    f.logic(v, 64);
-                }
-                // 14009e419  7425  JZ 0x14009e440
-                pc = if f.z { 0x14009e440 } else { 0x14009e41b };
-                continue;
-            }
-            0x14009e41b => {
-                // 14009e41b  0f1f440000  NOP dword ptr [RAX + RAX*0x1]
-                pc = 0x14009e420;
-            }
-            0x14009e420 => {
-                // 14009e420  480fbcc2  BSF RAX,RDX
-                {
-                    let v = r[2];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e424  8905ee0e2600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009e42a  4d0bb4c1f0fa0e00  OR R14,qword ptr [R9 + RAX*0x8 + 0xefaf0]
-                {
-                    let v = r[14]
-                        | m.read::<64>(
-                            0u64.wrapping_add(r[9])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefaf0u64),
-                        );
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009e432  488d42ff  LEA RAX,[RDX + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009e436  4823d0  AND RDX,RAX
-                {
-                    let v = r[2] & r[0];
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009e439  75e5  JNZ 0x14009e420
-                pc = if !f.z { 0x14009e420 } else { 0x14009e43b };
-                continue;
-            }
-            0x14009e43b => {
-                // 14009e43b  4c89742438  MOV qword ptr [RSP + 0x38],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
-                }
-                pc = 0x14009e440;
-            }
-            0x14009e440 => {
-                // 14009e440  e8abbc0200  CALL 0x1400ca0f0
-                {
-                    r[4] = r[4].wrapping_sub(8);
-                    r[0] = pawn_1400ca0f0(m, &mut r, &mut x);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009e445  4c8b15e42c3200  MOV R10,qword ptr [0x1403c1130]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
-                }
-                // 14009e44c  4c8be8  MOV R13,RAX
-                {
-                    r[13] = r[0];
-                }
-                // 14009e44f  4889842488000000  MOV qword ptr [RSP + 0x88],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64), r[0]);
-                }
-                // 14009e457  488b442478  MOV RAX,qword ptr [RSP + 0x78]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
-                }
-                // 14009e45c  6950742c001600  IMUL EDX,dword ptr [RAX + 0x74],0x16002c
-                {
-                    r[2] = ((m.read::<32>(0u64.wrapping_add(r[0]).wrapping_add(0x74u64)))
-                        .wrapping_mul(0x16002cu64))
-                        & 0xffff_ffff;
-                }
-                // 14009e463  488b050e2d3200  MOV RAX,qword ptr [0x1403c1178]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                }
-                // 14009e46a  41035530  ADD EDX,dword ptr [R13 + 0x30]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x30u64)),
-                        32,
-                        false,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e46e  0315242d3200  ADD EDX,dword ptr [0x1403c1198]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(0x1403c1198u64)),
-                        32,
-                        false,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e474  4d85d2  TEST R10,R10
-                {
-                    let v = r[10];
-                    f.logic(v, 64);
-                }
-                // 14009e477  0f84c2000000  JZ 0x14009e53f
-                pc = if f.z { 0x14009e53f } else { 0x14009e47d };
-                continue;
-            }
-            0x14009e47d => {
-                // 14009e47d  4c8b1dcc2c3200  MOV R11,qword ptr [0x1403c1150]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                }
-                // 14009e484  488d2d751bf6ff  LEA RBP,[0x140000000]
-                {
-                    r[5] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e48b  4c33d8  XOR R11,RAX
-                {
-                    let v = r[11] ^ r[0];
-                    f.logic(v, 64);
-                    r[11] = v;
-                }
-                // 14009e48e  6690  NOP
-                pc = 0x14009e490;
-            }
-            0x14009e490 => {
-                // 14009e490  490fbcc2  BSF RAX,R10
-                {
-                    let v = r[10];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e494  4c63c8  MOVSXD R9,EAX
-                {
-                    r[9] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009e497  89057b0e2600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009e49d  4a8b84cdf0040f00  MOV RAX,qword ptr [RBP + R9*0x8 + 0xf04f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf04f0u64),
-                    );
-                }
-                // 14009e4a5  428b8c8d00090f00  MOV ECX,dword ptr [RBP + R9*0x4 + 0xf0900]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[9].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0900u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009e4ad  4e8b84cdf0e00e00  MOV R8,qword ptr [RBP + R9*0x8 + 0xee0f0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0xee0f0u64),
-                    );
-                }
-                // 14009e4b5  4d23c3  AND R8,R11
-                {
-                    let v = r[8] & r[11];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009e4b8  4e0faf84cdf0000f00  IMUL R8,qword ptr [RBP + R9*0x8 + 0xf00f0]
-                {
-                    r[8] = (r[8]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[5])
-                                .wrapping_add(r[9].wrapping_mul(0x8u64))
-                                .wrapping_add(0xf00f0u64),
-                        ),
-                    );
-                }
-                // 14009e4c1  49d3e8  SHR R8,CL
-                {
-                    let v = r[8];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009e4c4  4a8b0cc0  MOV RCX,qword ptr [RAX + R8*0x8]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[0])
-                            .wrapping_add(r[8].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009e4c8  8d4311  LEA EAX,[RBX + 0x11]
-                {
-                    r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x11u64)) & 0xffff_ffff;
-                }
-                // 14009e4cb  4c0bf9  OR R15,RCX
-                {
-                    let v = r[15] | r[1];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009e4ce  4885ce  TEST RSI,RCX
-                {
-                    let v = r[6] & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009e4d1  0f44c3  CMOVZ EAX,EBX
-                {
-                    if f.z {
-                        r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e4d4  4823cf  AND RCX,RDI
-                {
-                    let v = r[1] & r[7];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e4d7  8bd8  MOV EBX,EAX
-                {
-                    r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e4d9  f3480fb8c1  POPCNT RAX,RCX
-                {
-                    let v = r[1];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e4de  4469c01b001b00  IMUL R8D,EAX,0x1b001b
-                {
-                    r[8] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001bu64)) & 0xffff_ffff;
-                }
-                // 14009e4e5  4a8b84cde0641000  MOV RAX,qword ptr [RBP + R9*0x8 + 0x1064e0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0x1064e0u64),
-                    );
-                }
-                // 14009e4ed  480fafc1  IMUL RAX,RCX
-                {
-                    r[0] = (r[0]).wrapping_mul(r[1]);
-                }
-                // 14009e4f1  49c1e104  SHL R9,0x4
-                {
-                    let v = r[9];
-                    let n = 4u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[9] = v;
-                    }
-                }
-                // 14009e4f5  48c1e83c  SHR RAX,0x3c
-                {
-                    let v = r[0];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009e4f9  4903c1  ADD RAX,R9
-                {
-                    let v = f.arithmetic(r[0], r[9], 64, false);
-                    r[0] = v;
-                }
-                // 14009e4fc  44038485e0661000  ADD R8D,dword ptr [RBP + RAX*0x4 + 0x1066e0]
-                {
-                    let v = f.arithmetic(
-                        r[8] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[5])
-                                .wrapping_add(r[0].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1066e0u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009e504  498bc2  MOV RAX,R10
-                {
-                    r[0] = r[10];
-                }
-                // 14009e507  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009e50a  49234528  AND RAX,qword ptr [R13 + 0x28]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e50e  4985c2  TEST R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e511  8d821e002d00  LEA EAX,[RDX + 0x2d001e]
-                {
-                    r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0x2d001eu64)) & 0xffff_ffff;
-                }
-                // 14009e517  0f45c2  CMOVNZ EAX,EDX
-                {
-                    if !f.z {
-                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e51a  428d1400  LEA EDX,[RAX + R8*0x1]
-                {
-                    r[2] = (0u64
-                        .wrapping_add(r[0])
-                        .wrapping_add(r[8].wrapping_mul(0x1u64)))
-                        & 0xffff_ffff;
-                }
-                // 14009e51e  498d42ff  LEA RAX,[R10 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009e522  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009e525  0f8565ffffff  JNZ 0x14009e490
-                pc = if !f.z { 0x14009e490 } else { 0x14009e52b };
-                continue;
-            }
-            0x14009e52b => {
-                // 14009e52b  8b6c2440  MOV EBP,dword ptr [RSP + 0x40]
-                {
-                    r[5] =
-                        (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64))) & 0xffff_ffff;
-                }
-                // 14009e52f  488b05422c3200  MOV RAX,qword ptr [0x1403c1178]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                }
-                // 14009e536  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                // 14009e53b  895c2430  MOV dword ptr [RSP + 0x30],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x30u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                pc = 0x14009e53f;
-            }
-            0x14009e53f => {
-                // 14009e53f  4c8b1df22b3200  MOV R11,qword ptr [0x1403c1138]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
-                }
-                // 14009e546  488b350b2c3200  MOV RSI,qword ptr [0x1403c1158]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                }
-                // 14009e54d  4d85db  TEST R11,R11
-                {
-                    let v = r[11];
-                    f.logic(v, 64);
-                }
-                // 14009e550  0f84d5000000  JZ 0x14009e62b
-                pc = if f.z { 0x14009e62b } else { 0x14009e556 };
-                continue;
-            }
-            0x14009e556 => {
-                // 14009e556  4c8b642450  MOV R12,qword ptr [RSP + 0x50]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
-                }
-                // 14009e55b  4c8d3d9e1af6ff  LEA R15,[0x140000000]
-                {
-                    r[15] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e562  488b9c2480000000  MOV RBX,qword ptr [RSP + 0x80]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
-                }
-                // 14009e56a  488bfe  MOV RDI,RSI
-                {
-                    r[7] = r[6];
-                }
-                // 14009e56d  4833f8  XOR RDI,RAX
-                {
-                    let v = r[7] ^ r[0];
-                    f.logic(v, 64);
-                    r[7] = v;
-                }
-                pc = 0x14009e570;
-            }
-            0x14009e570 => {
-                // 14009e570  490fbcc3  BSF RAX,R11
-                {
-                    let v = r[11];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e574  4c63d0  MOVSXD R10,EAX
-                {
-                    r[10] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009e577  89059b0d2600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009e57d  4b8b84d7f0040f00  MOV RAX,qword ptr [R15 + R10*0x8 + 0xf04f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[10].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf04f0u64),
-                    );
-                }
-                // 14009e585  438b8c9700090f00  MOV ECX,dword ptr [R15 + R10*0x4 + 0xf0900]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[10].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0900u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009e58d  4f8b84d7f0e00e00  MOV R8,qword ptr [R15 + R10*0x8 + 0xee0f0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[10].wrapping_mul(0x8u64))
-                            .wrapping_add(0xee0f0u64),
-                    );
-                }
-                // 14009e595  4c23c7  AND R8,RDI
-                {
-                    let v = r[8] & r[7];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009e598  4f0faf84d7f0000f00  IMUL R8,qword ptr [R15 + R10*0x8 + 0xf00f0]
-                {
-                    r[8] = (r[8]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[15])
-                                .wrapping_add(r[10].wrapping_mul(0x8u64))
-                                .wrapping_add(0xf00f0u64),
-                        ),
-                    );
-                }
-                // 14009e5a1  49d3e8  SHR R8,CL
-                {
-                    let v = r[8];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009e5a4  4a8b0cc0  MOV RCX,qword ptr [RAX + R8*0x8]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[0])
-                            .wrapping_add(r[8].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009e5a8  8d4511  LEA EAX,[RBP + 0x11]
-                {
-                    r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x11u64)) & 0xffff_ffff;
-                }
-                // 14009e5ab  4f8b84d7e0521000  MOV R8,qword ptr [R15 + R10*0x8 + 0x1052e0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[10].wrapping_mul(0x8u64))
-                            .wrapping_add(0x1052e0u64),
-                    );
-                }
-                // 14009e5b3  4c0bf1  OR R14,RCX
-                {
-                    let v = r[14] | r[1];
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009e5b6  4985cc  TEST R12,RCX
-                {
-                    let v = r[12] & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009e5b9  0f44c5  CMOVZ EAX,EBP
-                {
-                    if f.z {
-                        r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e5bc  4823cb  AND RCX,RBX
-                {
-                    let v = r[1] & r[3];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e5bf  8be8  MOV EBP,EAX
-                {
-                    r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e5c1  49c1e204  SHL R10,0x4
-                {
-                    let v = r[10];
-                    let n = 4u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[10] = v;
-                    }
-                }
-                // 14009e5c5  4c0fafc1  IMUL R8,RCX
-                {
-                    r[8] = (r[8]).wrapping_mul(r[1]);
-                }
-                // 14009e5c9  f3480fb8c1  POPCNT RAX,RCX
-                {
-                    let v = r[1];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e5ce  4469c81b001b00  IMUL R9D,EAX,0x1b001b
-                {
-                    r[9] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001bu64)) & 0xffff_ffff;
-                }
-                // 14009e5d5  498bc3  MOV RAX,R11
-                {
-                    r[0] = r[11];
-                }
-                // 14009e5d8  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009e5db  49c1e83c  SHR R8,0x3c
-                {
-                    let v = r[8];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009e5df  49234520  AND RAX,qword ptr [R13 + 0x20]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e5e3  4d03c2  ADD R8,R10
-                {
-                    let v = f.arithmetic(r[8], r[10], 64, false);
-                    r[8] = v;
-                }
-                // 14009e5e6  4985c3  TEST R11,RAX
-                {
-                    let v = r[11] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e5e9  8d82e2ffd2ff  LEA EAX,[RDX + -0x2d001e]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffd2ffe2u64)) & 0xffff_ffff;
-                }
-                // 14009e5ef  0f45c2  CMOVNZ EAX,EDX
-                {
-                    if !f.z {
-                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e5f2  8bd0  MOV EDX,EAX
-                {
-                    r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e5f4  498d43ff  LEA RAX,[R11 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009e5f8  432b9487e0541000  SUB EDX,dword ptr [R15 + R8*0x4 + 0x1054e0]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[15])
-                                .wrapping_add(r[8].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1054e0u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e600  412bd1  SUB EDX,R9D
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[9] & 0xffffffffu64, 32, true);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e603  4c23d8  AND R11,RAX
-                {
-                    let v = r[11] & r[0];
-                    f.logic(v, 64);
-                    r[11] = v;
-                }
-                // 14009e606  0f8564ffffff  JNZ 0x14009e570
-                pc = if !f.z { 0x14009e570 } else { 0x14009e60c };
-                continue;
-            }
-            0x14009e60c => {
-                // 14009e60c  8b5c2430  MOV EBX,dword ptr [RSP + 0x30]
-                {
-                    r[3] =
-                        (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64))) & 0xffff_ffff;
-                }
-                // 14009e610  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009e615  488bbc2490000000  MOV RDI,qword ptr [RSP + 0x90]
-                {
-                    r[7] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
-                }
-                // 14009e61d  4c8b642468  MOV R12,qword ptr [RSP + 0x68]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                }
-                // 14009e622  4c89742438  MOV qword ptr [RSP + 0x38],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
-                }
-                // 14009e627  896c2440  MOV dword ptr [RSP + 0x40],EBP
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x40u64),
-                        r[5] & 0xffffffffu64,
-                    );
-                }
-                pc = 0x14009e62b;
-            }
-            0x14009e62b => {
-                // 14009e62b  488b0d0e2b3200  MOV RCX,qword ptr [0x1403c1140]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                }
-                // 14009e632  488b050f2b3200  MOV RAX,qword ptr [0x1403c1148]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                // 14009e639  4c8bd9  MOV R11,RCX
-                {
-                    r[11] = r[1];
-                }
-                // 14009e63c  4c8b150d2b3200  MOV R10,qword ptr [0x1403c1150]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                }
-                // 14009e643  480bc6  OR RAX,RSI
-                {
-                    let v = r[0] | r[6];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e646  4923c7  AND RAX,R15
-                {
-                    let v = r[0] & r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e649  4809442458  OR qword ptr [RSP + 0x58],RAX
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64)) | r[0];
-                    f.logic(v, 64);
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), v);
-                }
-                // 14009e64e  488bc1  MOV RAX,RCX
-                {
-                    r[0] = r[1];
-                }
-                // 14009e651  490bc2  OR RAX,R10
-                {
-                    let v = r[0] | r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e654  4923c6  AND RAX,R14
-                {
-                    let v = r[0] & r[14];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e657  4809442448  OR qword ptr [RSP + 0x48],RAX
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64)) | r[0];
-                    f.logic(v, 64);
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), v);
-                }
-                // 14009e65c  4885c9  TEST RCX,RCX
-                {
-                    let v = r[1];
-                    f.logic(v, 64);
-                }
-                // 14009e65f  0f8420020000  JZ 0x14009e885
-                pc = if f.z { 0x14009e885 } else { 0x14009e665 };
-                continue;
-            }
-            0x14009e665 => {
-                // 14009e665  4c33150c2b3200  XOR R10,qword ptr [0x1403c1178]
-                {
-                    let v = r[10] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009e66c  498bcc  MOV RCX,R12
-                {
-                    r[1] = r[12];
-                }
-                // 14009e66f  488b442470  MOV RAX,qword ptr [RSP + 0x70]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                }
-                // 14009e674  48f7d1  NOT RCX
-                {
-                    let v = !(r[1]);
-                    r[1] = v;
-                }
-                // 14009e677  48230d922a3200  AND RCX,qword ptr [0x1403c1110]
-                {
-                    let v = r[1] & m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e67e  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009e681  482305902a3200  AND RAX,qword ptr [0x1403c1118]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e688  4923c4  AND RAX,R12
-                {
-                    let v = r[0] & r[12];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e68b  4c89542420  MOV qword ptr [RSP + 0x20],R10
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[10]);
-                }
-                // 14009e690  480bc1  OR RAX,RCX
-                {
-                    let v = r[0] | r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e693  48894c2430  MOV qword ptr [RSP + 0x30],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[1]);
-                }
-                // 14009e698  4889442428  MOV qword ptr [RSP + 0x28],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[0]);
-                }
-                // 14009e69d  4c8d255c19f6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e6a4  4c8b742428  MOV R14,qword ptr [RSP + 0x28]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009e6a9  488bc6  MOV RAX,RSI
-                {
-                    r[0] = r[6];
-                }
-                // 14009e6ac  480bc7  OR RAX,RDI
-                {
-                    let v = r[0] | r[7];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e6af  4889442440  MOV qword ptr [RSP + 0x40],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[0]);
-                }
-                // 14009e6b4  0f1f4000  NOP dword ptr [RAX]
-                // 14009e6b8  0f1f840000000000  NOP dword ptr [RAX + RAX*0x1]
-                pc = 0x14009e6c0;
-            }
-            0x14009e6c0 => {
-                // 14009e6c0  4d0fbccb  BSF R9,R11
-                {
-                    let v = r[11];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[9] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e6c4  4963c1  MOVSXD RAX,R9D
-                {
-                    r[0] = ((r[9] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009e6c7  44890d4a0c2600  MOV dword ptr [0x1402ff318],R9D
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[9] & 0xffffffffu64);
-                }
-                // 14009e6ce  418b8c8400080f00  MOV ECX,dword ptr [R12 + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009e6d6  488d3cc500000000  LEA RDI,[RAX*0x8]
-                {
-                    r[7] = 0u64.wrapping_add(r[0].wrapping_mul(0x8u64));
-                }
-                // 14009e6de  4e8b8427f0de0e00  MOV R8,qword ptr [RDI + R12*0x1 + 0xedef0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009e6e6  4a8bb427f0fe0e00  MOV RSI,qword ptr [RDI + R12*0x1 + 0xefef0]
-                {
-                    r[6] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xefef0u64),
-                    );
-                }
-                // 14009e6ee  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009e6f1  4e8ba427f0020f00  MOV R12,qword ptr [RDI + R12*0x1 + 0xf02f0]
-                {
-                    r[12] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009e6f9  4923c2  AND RAX,R10
-                {
-                    let v = r[0] & r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e6fc  480fafc6  IMUL RAX,RSI
-                {
-                    r[0] = (r[0]).wrapping_mul(r[6]);
-                }
-                // 14009e700  48d3e8  SHR RAX,CL
-                {
-                    let v = r[0];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009e703  4d8b14c4  MOV R10,qword ptr [R12 + RAX*0x8]
-                {
-                    r[10] = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009e707  8d4313  LEA EAX,[RBX + 0x13]
-                {
-                    r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x13u64)) & 0xffff_ffff;
-                }
-                // 14009e70a  4d0bfa  OR R15,R10
-                {
-                    let v = r[15] | r[10];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009e70d  4c85542460  TEST qword ptr [RSP + 0x60],R10
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64)) & r[10];
-                    f.logic(v, 64);
-                }
-                // 14009e712  0f44c3  CMOVZ EAX,EBX
-                {
-                    if f.z {
-                        r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e715  4c85542450  TEST qword ptr [RSP + 0x50],R10
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64)) & r[10];
-                    f.logic(v, 64);
-                }
-                // 14009e71a  8bd8  MOV EBX,EAX
-                {
-                    r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e71c  8d45fd  LEA EAX,[RBP + -0x3]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[5]).wrapping_add(0xfffffffffffffffdu64)) & 0xffff_ffff;
-                }
-                // 14009e71f  0f44c5  CMOVZ EAX,EBP
-                {
-                    if f.z {
-                        r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e722  4c8515172a3200  TEST qword ptr [0x1403c1140],R10
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(0x1403c1140u64)) & r[10];
-                    f.logic(v, 64);
-                }
-                // 14009e729  8be8  MOV EBP,EAX
-                {
-                    r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e72b  7410  JZ 0x14009e73d
-                pc = if f.z { 0x14009e73d } else { 0x14009e72d };
-                continue;
-            }
-            0x14009e72d => {
-                // 14009e72d  48833d232a320000  CMP qword ptr [0x1403c1158],0x0
-                {
-                    f.arithmetic(
-                        m.read::<64>(0u64.wrapping_add(0x1403c1158u64)),
-                        0x0u64,
-                        64,
-                        true,
-                    );
-                }
-                // 14009e735  7406  JZ 0x14009e73d
-                pc = if f.z { 0x14009e73d } else { 0x14009e737 };
-                continue;
-            }
-            0x14009e737 => {
-                // 14009e737  81c22a001800  ADD EDX,0x18002a
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, 0x18002au64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009e73d;
-            }
-            0x14009e73d => {
-                // 14009e73d  498bc6  MOV RAX,R14
-                {
-                    r[0] = r[14];
-                }
-                // 14009e740  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e743  480fafc6  IMUL RAX,RSI
-                {
-                    r[0] = (r[0]).wrapping_mul(r[6]);
-                }
-                // 14009e747  48d3e8  SHR RAX,CL
-                {
-                    let v = r[0];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009e74a  f3490fb804c4  POPCNT RAX,qword ptr [R12 + RAX*0x8]
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    );
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e750  4469c009000800  IMUL R8D,EAX,0x80009
-                {
-                    r[8] = ((r[0] & 0xffffffffu64).wrapping_mul(0x80009u64)) & 0xffff_ffff;
-                }
-                // 14009e757  4c8d25a218f6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e75e  488b442440  MOV RAX,qword ptr [RSP + 0x40]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64));
-                }
-                // 14009e763  4923c2  AND RAX,R10
-                {
-                    let v = r[0] & r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e766  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e76b  69c817001100  IMUL ECX,EAX,0x110017
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x110017u64)) & 0xffff_ffff;
-                }
-                // 14009e771  03d1  ADD EDX,ECX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e773  4a8b8c2780440f00  MOV RCX,qword ptr [RDI + R12*0x1 + 0xf4480]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xf4480u64),
-                    );
-                }
-                // 14009e77b  4103d0  ADD EDX,R8D
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e77e  48854c2430  TEST qword ptr [RSP + 0x30],RCX
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64)) & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009e783  0f85c5000000  JNZ 0x14009e84e
-                pc = if !f.z { 0x14009e84e } else { 0x14009e789 };
-                continue;
-            }
-            0x14009e789 => {
-                // 14009e789  488b3d98293200  MOV RDI,qword ptr [0x1403c1128]
-                {
-                    r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
-                }
-                // 14009e790  4c8b15a1293200  MOV R10,qword ptr [0x1403c1138]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
-                }
-                // 14009e797  488bc7  MOV RAX,RDI
-                {
-                    r[0] = r[7];
-                }
-                // 14009e79a  4c8b0577293200  MOV R8,qword ptr [0x1403c1118]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009e7a1  490bc2  OR RAX,R10
-                {
-                    let v = r[0] | r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7a4  490bc0  OR RAX,R8
-                {
-                    let v = r[0] | r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7a7  49234510  AND RAX,qword ptr [R13 + 0x10]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x10u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7ab  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e7ae  7562  JNZ 0x14009e812
-                pc = if !f.z { 0x14009e812 } else { 0x14009e7b0 };
-                continue;
-            }
-            0x14009e7b0 => {
-                // 14009e7b0  4c85c1  TEST RCX,R8
-                {
-                    let v = r[1] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009e7b3  741b  JZ 0x14009e7d0
-                pc = if f.z { 0x14009e7d0 } else { 0x14009e7b5 };
-                continue;
-            }
-            0x14009e7b5 => {
-                // 14009e7b5  498b4528  MOV RAX,qword ptr [R13 + 0x28]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
-                }
-                // 14009e7b9  41ba46000a00  MOV R10D,0xa0046
-                {
-                    r[10] = (0xa0046u64) & 0xffff_ffff;
-                }
-                // 14009e7bf  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7c2  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e7c5  b883002f00  MOV EAX,0x2f0083
-                {
-                    r[0] = (0x2f0083u64) & 0xffff_ffff;
-                }
-                // 14009e7ca  410f45c2  CMOVNZ EAX,R10D
-                {
-                    if !f.z {
-                        r[0] = (r[10] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e7ce  eb40  JMP 0x14009e810
-                pc = 0x14009e810;
-                continue;
-            }
-            0x14009e7d0 => {
-                // 14009e7d0  4c8bc7  MOV R8,RDI
-                {
-                    r[8] = r[7];
-                }
-                // 14009e7d3  4d0bc2  OR R8,R10
-                {
-                    let v = r[8] | r[10];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009e7d6  4c8b542468  MOV R10,qword ptr [RSP + 0x68]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                }
-                // 14009e7db  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009e7de  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7e1  4985c2  TEST R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e7e4  741e  JZ 0x14009e804
-                pc = if f.z { 0x14009e804 } else { 0x14009e7e6 };
-                continue;
-            }
-            0x14009e7e6 => {
-                // 14009e7e6  498b4520  MOV RAX,qword ptr [R13 + 0x20]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
-                }
-                // 14009e7ea  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7ed  41b87700a300  MOV R8D,0xa30077
-                {
-                    r[8] = (0xa30077u64) & 0xffff_ffff;
-                }
-                // 14009e7f3  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e7f6  4985c2  TEST R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e7f9  b852007100  MOV EAX,0x710052
-                {
-                    r[0] = (0x710052u64) & 0xffff_ffff;
-                }
-                // 14009e7fe  410f45c0  CMOVNZ EAX,R8D
-                {
-                    if !f.z {
+                    // 14009f7df  418bc0  MOV EAX,R8D
+                    {
                         r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
                     }
-                }
-                // 14009e802  eb05  JMP 0x14009e809
-                pc = 0x14009e809;
-                continue;
-            }
-            0x14009e804 => {
-                // 14009e804  b88800b700  MOV EAX,0xb70088
-                {
-                    r[0] = (0xb70088u64) & 0xffff_ffff;
-                }
-                pc = 0x14009e809;
-            }
-            0x14009e809 => {
-                // 14009e809  4c8b0508293200  MOV R8,qword ptr [0x1403c1118]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                pc = 0x14009e810;
-            }
-            0x14009e810 => {
-                // 14009e810  03d0  ADD EDX,EAX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009e812;
-            }
-            0x14009e812 => {
-                // 14009e812  4c8b154f293200  MOV R10,qword ptr [0x1403c1168]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
-                }
-                // 14009e819  8d8200009600  LEA EAX,[RDX + 0x960000]
-                {
-                    r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0x960000u64)) & 0xffff_ffff;
-                }
-                // 14009e81f  4c85d1  TEST RCX,R10
-                {
-                    let v = r[1] & r[10];
-                    f.logic(v, 64);
-                }
-                // 14009e822  0f44c2  CMOVZ EAX,EDX
-                {
-                    if f.z {
-                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+                    // 14009f7e2  c1e81f  SHR EAX,0x1f
+                    {
+                        let v = r[0] & 0xffffffffu64;
+                        let n = 31u32;
+                        if n != 0 {
+                            let v = (v >> n) & 0xffffffffu64;
+                            f.logic(v, 32);
+                            r[0] = (v) & 0xffff_ffff;
+                        }
                     }
-                }
-                // 14009e825  4183e138  AND R9D,0x38
-                {
-                    let v = (r[9] & 0xffffffffu64 & 0x38u64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009e829  8bd0  MOV EDX,EAX
-                {
-                    r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e82b  8bc8  MOV ECX,EAX
-                {
-                    r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e82d  4180f930  CMP R9B,0x30
-                {
-                    f.arithmetic(r[9] & 0xffu64, 0x30u64, 8, true);
-                }
-                // 14009e831  751b  JNZ 0x14009e84e
-                pc = if !f.z { 0x14009e84e } else { 0x14009e833 };
-                continue;
-            }
-            0x14009e833 => {
-                // 14009e833  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009e836  49b8000000000000ffff  MOV R8,-0x1000000000000
-                {
-                    r[8] = 0xffff000000000000u64;
-                }
-                // 14009e840  490bc2  OR RAX,R10
-                {
-                    let v = r[0] | r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e843  4985c0  TEST R8,RAX
-                {
-                    let v = r[8] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e846  7406  JZ 0x14009e84e
-                pc = if f.z { 0x14009e84e } else { 0x14009e848 };
-                continue;
-            }
-            0x14009e848 => {
-                // 14009e848  8d91f7004d00  LEA EDX,[RCX + 0x4d00f7]
-                {
-                    r[2] = (0u64.wrapping_add(r[1]).wrapping_add(0x4d00f7u64)) & 0xffff_ffff;
-                }
-                pc = 0x14009e84e;
-            }
-            0x14009e84e => {
-                // 14009e84e  4c8b542420  MOV R10,qword ptr [RSP + 0x20]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                }
-                // 14009e853  498d43ff  LEA RAX,[R11 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009e857  4c23d8  AND R11,RAX
-                {
-                    let v = r[11] & r[0];
-                    f.logic(v, 64);
-                    r[11] = v;
-                }
-                // 14009e85a  0f8560feffff  JNZ 0x14009e6c0
-                pc = if !f.z { 0x14009e6c0 } else { 0x14009e860 };
-                continue;
-            }
-            0x14009e860 => {
-                // 14009e860  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
-                }
-                // 14009e865  488b35ec283200  MOV RSI,qword ptr [0x1403c1158]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                }
-                // 14009e86c  4c8b642468  MOV R12,qword ptr [RSP + 0x68]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                }
-                // 14009e871  4c8b15d8283200  MOV R10,qword ptr [0x1403c1150]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                }
-                // 14009e878  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                // 14009e87d  895c2430  MOV dword ptr [RSP + 0x30],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x30u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                // 14009e881  896c2440  MOV dword ptr [RSP + 0x40],EBP
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x40u64),
-                        r[5] & 0xffffffffu64,
-                    );
-                }
-                pc = 0x14009e885;
-            }
-            0x14009e885 => {
-                // 14009e885  4c8b1dbc283200  MOV R11,qword ptr [0x1403c1148]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                // 14009e88c  4d85db  TEST R11,R11
-                {
-                    let v = r[11];
-                    f.logic(v, 64);
-                }
-                // 14009e88f  0f840b020000  JZ 0x14009eaa0
-                pc = if f.z { 0x14009eaa0 } else { 0x14009e895 };
-                continue;
-            }
-            0x14009e895 => {
-                // 14009e895  488b4c2470  MOV RCX,qword ptr [RSP + 0x70]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                }
-                // 14009e89a  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009e89d  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009e8a0  4c8d255917f6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e8a7  48230562283200  AND RAX,qword ptr [0x1403c1110]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e8ae  48f7d1  NOT RCX
-                {
-                    let v = !(r[1]);
-                    r[1] = v;
-                }
-                // 14009e8b1  4823442470  AND RAX,qword ptr [RSP + 0x70]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e8b6  4c8bce  MOV R9,RSI
-                {
-                    r[9] = r[6];
-                }
-                // 14009e8b9  48230d58283200  AND RCX,qword ptr [0x1403c1118]
-                {
-                    let v = r[1] & m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009e8c0  4c330db1283200  XOR R9,qword ptr [0x1403c1178]
-                {
-                    let v = r[9] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e8c7  480bc1  OR RAX,RCX
-                {
-                    let v = r[0] | r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e8ca  4889442420  MOV qword ptr [RSP + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009e8cf  498bc2  MOV RAX,R10
-                {
-                    r[0] = r[10];
-                }
-                // 14009e8d2  480b842480000000  OR RAX,qword ptr [RSP + 0x80]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e8da  4c8b7c2420  MOV R15,qword ptr [RSP + 0x20]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                }
-                // 14009e8df  4889442438  MOV qword ptr [RSP + 0x38],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[0]);
-                }
-                // 14009e8e4  4c894c2430  MOV qword ptr [RSP + 0x30],R9
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64), r[9]);
-                }
-                // 14009e8e9  48894c2440  MOV qword ptr [RSP + 0x40],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64), r[1]);
-                }
-                // 14009e8ee  6690  NOP
-                pc = 0x14009e8f0;
-            }
-            0x14009e8f0 => {
-                // 14009e8f0  4d0fbcd3  BSF R10,R11
-                {
-                    let v = r[11];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[10] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009e8f4  4963c2  MOVSXD RAX,R10D
-                {
-                    r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009e8f7  4489151a0a2600  MOV dword ptr [0x1402ff318],R10D
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
-                }
-                // 14009e8fe  418b8c8400080f00  MOV ECX,dword ptr [R12 + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009e906  488d3cc500000000  LEA RDI,[RAX*0x8]
-                {
-                    r[7] = 0u64.wrapping_add(r[0].wrapping_mul(0x8u64));
-                }
-                // 14009e90e  4e8b8427f0de0e00  MOV R8,qword ptr [RDI + R12*0x1 + 0xedef0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009e916  4a8bb427f0fe0e00  MOV RSI,qword ptr [RDI + R12*0x1 + 0xefef0]
-                {
-                    r[6] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xefef0u64),
-                    );
-                }
-                // 14009e91e  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009e921  4e8ba427f0020f00  MOV R12,qword ptr [RDI + R12*0x1 + 0xf02f0]
-                {
-                    r[12] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009e929  4923c1  AND RAX,R9
-                {
-                    let v = r[0] & r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e92c  480fafc6  IMUL RAX,RSI
-                {
-                    r[0] = (r[0]).wrapping_mul(r[6]);
-                }
-                // 14009e930  48d3e8  SHR RAX,CL
-                {
-                    let v = r[0];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009e933  4d8b0cc4  MOV R9,qword ptr [R12 + RAX*0x8]
-                {
-                    r[9] = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009e937  8d4513  LEA EAX,[RBP + 0x13]
-                {
-                    r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x13u64)) & 0xffff_ffff;
-                }
-                // 14009e93a  4d0bf1  OR R14,R9
-                {
-                    let v = r[14] | r[9];
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009e93d  4c854c2450  TEST qword ptr [RSP + 0x50],R9
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64)) & r[9];
-                    f.logic(v, 64);
-                }
-                // 14009e942  0f44c5  CMOVZ EAX,EBP
-                {
-                    if f.z {
-                        r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e945  4c854c2460  TEST qword ptr [RSP + 0x60],R9
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64)) & r[9];
-                    f.logic(v, 64);
-                }
-                // 14009e94a  8be8  MOV EBP,EAX
-                {
-                    r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e94c  8d43fd  LEA EAX,[RBX + -0x3]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[3]).wrapping_add(0xfffffffffffffffdu64)) & 0xffff_ffff;
-                }
-                // 14009e94f  0f44c3  CMOVZ EAX,EBX
-                {
-                    if f.z {
-                        r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e952  4c850def273200  TEST qword ptr [0x1403c1148],R9
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(0x1403c1148u64)) & r[9];
-                    f.logic(v, 64);
-                }
-                // 14009e959  8bd8  MOV EBX,EAX
-                {
-                    r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009e95b  7410  JZ 0x14009e96d
-                pc = if f.z { 0x14009e96d } else { 0x14009e95d };
-                continue;
-            }
-            0x14009e95d => {
-                // 14009e95d  48833deb27320000  CMP qword ptr [0x1403c1150],0x0
-                {
-                    f.arithmetic(
-                        m.read::<64>(0u64.wrapping_add(0x1403c1150u64)),
-                        0x0u64,
-                        64,
-                        true,
-                    );
-                }
-                // 14009e965  7406  JZ 0x14009e96d
-                pc = if f.z { 0x14009e96d } else { 0x14009e967 };
-                continue;
-            }
-            0x14009e967 => {
-                // 14009e967  81ea2a001800  SUB EDX,0x18002a
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, 0x18002au64, 32, true);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009e96d;
-            }
-            0x14009e96d => {
-                // 14009e96d  4c234c2438  AND R9,qword ptr [RSP + 0x38]
-                {
-                    let v = r[9] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009e972  498bc7  MOV RAX,R15
-                {
-                    r[0] = r[15];
-                }
-                // 14009e975  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e978  480fafc6  IMUL RAX,RSI
-                {
-                    r[0] = (r[0]).wrapping_mul(r[6]);
-                }
-                // 14009e97c  48d3e8  SHR RAX,CL
-                {
-                    let v = r[0];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009e97f  f3490fb804c4  POPCNT RAX,qword ptr [R12 + RAX*0x8]
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    );
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e985  4469c0f7fff7ff  IMUL R8D,EAX,-0x80009
-                {
-                    r[8] =
-                        ((r[0] & 0xffffffffu64).wrapping_mul(0xfffffffffff7fff7u64)) & 0xffff_ffff;
-                }
-                // 14009e98c  4c8d256d16f6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009e993  f3490fb8c1  POPCNT RAX,R9
-                {
-                    let v = r[9];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009e998  69c817001100  IMUL ECX,EAX,0x110017
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x110017u64)) & 0xffff_ffff;
-                }
-                // 14009e99e  442bc1  SUB R8D,ECX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009e9a1  4a8b8c2780420f00  MOV RCX,qword ptr [RDI + R12*0x1 + 0xf4280]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[12].wrapping_mul(0x1u64))
-                            .wrapping_add(0xf4280u64),
-                    );
-                }
-                // 14009e9a9  4103d0  ADD EDX,R8D
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009e9ac  48854c2440  TEST qword ptr [RSP + 0x40],RCX
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64)) & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009e9b1  0f85c5000000  JNZ 0x14009ea7c
-                pc = if !f.z { 0x14009ea7c } else { 0x14009e9b7 };
-                continue;
-            }
-            0x14009e9b7 => {
-                // 14009e9b7  4c8b2562273200  MOV R12,qword ptr [0x1403c1120]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
-                }
-                // 14009e9be  4c8b0d6b273200  MOV R9,qword ptr [0x1403c1130]
-                {
-                    r[9] = m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
-                }
-                // 14009e9c5  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009e9c8  4c8b0541273200  MOV R8,qword ptr [0x1403c1110]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009e9cf  490bc1  OR RAX,R9
-                {
-                    let v = r[0] | r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e9d2  490bc0  OR RAX,R8
-                {
-                    let v = r[0] | r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e9d5  49234508  AND RAX,qword ptr [R13 + 0x8]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x8u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e9d9  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e9dc  7562  JNZ 0x14009ea40
-                pc = if !f.z { 0x14009ea40 } else { 0x14009e9de };
-                continue;
-            }
-            0x14009e9de => {
-                // 14009e9de  4c85c1  TEST RCX,R8
-                {
-                    let v = r[1] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009e9e1  741b  JZ 0x14009e9fe
-                pc = if f.z { 0x14009e9fe } else { 0x14009e9e3 };
-                continue;
-            }
-            0x14009e9e3 => {
-                // 14009e9e3  498b4520  MOV RAX,qword ptr [R13 + 0x20]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64));
-                }
-                // 14009e9e7  41b946000a00  MOV R9D,0xa0046
-                {
-                    r[9] = (0xa0046u64) & 0xffff_ffff;
-                }
-                // 14009e9ed  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009e9f0  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009e9f3  b883002f00  MOV EAX,0x2f0083
-                {
-                    r[0] = (0x2f0083u64) & 0xffff_ffff;
-                }
-                // 14009e9f8  410f45c1  CMOVNZ EAX,R9D
-                {
-                    if !f.z {
-                        r[0] = (r[9] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009e9fc  eb40  JMP 0x14009ea3e
-                pc = 0x14009ea3e;
-                continue;
-            }
-            0x14009e9fe => {
-                // 14009e9fe  4d8bc4  MOV R8,R12
-                {
-                    r[8] = r[12];
-                }
-                // 14009ea01  4d0bc1  OR R8,R9
-                {
-                    let v = r[8] | r[9];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009ea04  4c8b4c2470  MOV R9,qword ptr [RSP + 0x70]
-                {
-                    r[9] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                }
-                // 14009ea09  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009ea0c  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ea0f  4985c1  TEST R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ea12  741e  JZ 0x14009ea32
-                pc = if f.z { 0x14009ea32 } else { 0x14009ea14 };
-                continue;
-            }
-            0x14009ea14 => {
-                // 14009ea14  498b4528  MOV RAX,qword ptr [R13 + 0x28]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
-                }
-                // 14009ea18  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ea1b  41b87700a300  MOV R8D,0xa30077
-                {
-                    r[8] = (0xa30077u64) & 0xffff_ffff;
-                }
-                // 14009ea21  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ea24  4985c1  TEST R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ea27  b852007100  MOV EAX,0x710052
-                {
-                    r[0] = (0x710052u64) & 0xffff_ffff;
-                }
-                // 14009ea2c  410f45c0  CMOVNZ EAX,R8D
-                {
-                    if !f.z {
-                        r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ea30  eb05  JMP 0x14009ea37
-                pc = 0x14009ea37;
-                continue;
-            }
-            0x14009ea32 => {
-                // 14009ea32  b88800b700  MOV EAX,0xb70088
-                {
-                    r[0] = (0xb70088u64) & 0xffff_ffff;
-                }
-                pc = 0x14009ea37;
-            }
-            0x14009ea37 => {
-                // 14009ea37  4c8b05d2263200  MOV R8,qword ptr [0x1403c1110]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                pc = 0x14009ea3e;
-            }
-            0x14009ea3e => {
-                // 14009ea3e  2bd0  SUB EDX,EAX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009ea40;
-            }
-            0x14009ea40 => {
-                // 14009ea40  4c8b0d19273200  MOV R9,qword ptr [0x1403c1160]
-                {
-                    r[9] = m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
-                }
-                // 14009ea47  8d8200006aff  LEA EAX,[RDX + -0x960000]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffff6a0000u64)) & 0xffff_ffff;
-                }
-                // 14009ea4d  4985c9  TEST R9,RCX
-                {
-                    let v = r[9] & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009ea50  4c8d25a915f6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ea57  0f44c2  CMOVZ EAX,EDX
-                {
-                    if f.z {
-                        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ea5a  4180e238  AND R10B,0x38
-                {
-                    let v = (r[10] & 0xffu64 & 0x38u64) & 0xffu64;
-                    f.logic(v, 8);
-                    r[10] = (r[10] & !0xffu64) | ((v) & 0xffu64);
-                }
-                // 14009ea5e  8bd0  MOV EDX,EAX
-                {
-                    r[2] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ea60  8bc8  MOV ECX,EAX
-                {
-                    r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ea62  4180fa08  CMP R10B,0x8
-                {
-                    f.arithmetic(r[10] & 0xffu64, 0x8u64, 8, true);
-                }
-                // 14009ea66  7514  JNZ 0x14009ea7c
-                pc = if !f.z { 0x14009ea7c } else { 0x14009ea68 };
-                continue;
-            }
-            0x14009ea68 => {
-                // 14009ea68  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009ea6b  490bc1  OR RAX,R9
-                {
-                    let v = r[0] | r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ea6e  0fb7c0  MOVZX EAX,AX
-                {
-                    r[0] = (r[0] & 0xffffu64) & 0xffff_ffff;
-                }
-                // 14009ea71  4885c0  TEST RAX,RAX
-                {
-                    let v = r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ea74  7406  JZ 0x14009ea7c
-                pc = if f.z { 0x14009ea7c } else { 0x14009ea76 };
-                continue;
-            }
-            0x14009ea76 => {
-                // 14009ea76  8d9109ffb2ff  LEA EDX,[RCX + -0x4d00f7]
-                {
-                    r[2] =
-                        (0u64.wrapping_add(r[1]).wrapping_add(0xffffffffffb2ff09u64)) & 0xffff_ffff;
-                }
-                pc = 0x14009ea7c;
-            }
-            0x14009ea7c => {
-                // 14009ea7c  4c8b4c2430  MOV R9,qword ptr [RSP + 0x30]
-                {
-                    r[9] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64));
-                }
-                // 14009ea81  498d43ff  LEA RAX,[R11 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009ea85  4c23d8  AND R11,RAX
-                {
-                    let v = r[11] & r[0];
-                    f.logic(v, 64);
-                    r[11] = v;
-                }
-                // 14009ea88  0f8562feffff  JNZ 0x14009e8f0
-                pc = if !f.z { 0x14009e8f0 } else { 0x14009ea8e };
-                continue;
-            }
-            0x14009ea8e => {
-                // 14009ea8e  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009ea93  4c89742438  MOV qword ptr [RSP + 0x38],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
-                }
-                // 14009ea98  896c2440  MOV dword ptr [RSP + 0x40],EBP
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x40u64),
-                        r[5] & 0xffffffffu64,
-                    );
-                }
-                // 14009ea9c  895c2430  MOV dword ptr [RSP + 0x30],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x30u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                pc = 0x14009eaa0;
-            }
-            0x14009eaa0 => {
-                // 14009eaa0  488b4c2458  MOV RCX,qword ptr [RSP + 0x58]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64));
-                }
-                // 14009eaa5  33ff  XOR EDI,EDI
-                {
-                    let v = 0u64;
-                    f.logic(v, 32);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009eaa7  488b35a2263200  MOV RSI,qword ptr [0x1403c1150]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                }
-                // 14009eaae  4c8b442448  MOV R8,qword ptr [RSP + 0x48]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64));
-                }
-                // 14009eab3  488b059e263200  MOV RAX,qword ptr [0x1403c1158]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                }
-                // 14009eaba  4923c7  AND RAX,R15
-                {
-                    let v = r[0] & r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009eabd  480bc8  OR RCX,RAX
-                {
-                    let v = r[1] | r[0];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009eac0  488bc6  MOV RAX,RSI
-                {
-                    r[0] = r[6];
-                }
-                // 14009eac3  f34c0fb8d1  POPCNT R10,RCX
-                {
-                    let v = r[1];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[10] = u64::from(v.count_ones());
-                }
-                // 14009eac8  4923c6  AND RAX,R14
-                {
-                    let v = r[0] & r[14];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009eacb  48894c2458  MOV qword ptr [RSP + 0x58],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), r[1]);
-                }
-                // 14009ead0  4c0bc0  OR R8,RAX
-                {
-                    let v = r[8] | r[0];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009ead3  8bcf  MOV ECX,EDI
-                {
-                    r[1] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ead5  f34d0fb8c8  POPCNT R9,R8
-                {
-                    let v = r[8];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[9] = u64::from(v.count_ones());
-                }
-                // 14009eada  4c89442448  MOV qword ptr [RSP + 0x48],R8
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), r[8]);
-                }
-                // 14009eadf  458d42ff  LEA R8D,[R10 + -0x1]
-                {
-                    r[8] = (0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64))
-                        & 0xffff_ffff;
-                }
-                // 14009eae3  418d41ff  LEA EAX,[R9 + -0x1]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009eae7  85c0  TEST EAX,EAX
-                {
-                    let v = (r[0] & 0xffffffffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                }
-                // 14009eae9  0f4fc8  CMOVG ECX,EAX
-                {
-                    if !f.z && f.s == f.o {
-                        r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009eaec  4585c0  TEST R8D,R8D
-                {
-                    let v = (r[8] & 0xffffffffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                }
-                // 14009eaef  8bc7  MOV EAX,EDI
-                {
-                    r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009eaf1  410f4fc0  CMOVG EAX,R8D
-                {
-                    if !f.z && f.s == f.o {
-                        r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009eaf5  452bd1  SUB R10D,R9D
-                {
-                    let v = f.arithmetic(r[10] & 0xffffffffu64, r[9] & 0xffffffffu64, 32, true);
-                    r[10] = (v) & 0xffff_ffff;
-                }
-                // 14009eaf8  2bc1  SUB EAX,ECX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009eafa  4569da0e01b400  IMUL R11D,R10D,0xb4010e
-                {
-                    r[11] = ((r[10] & 0xffffffffu64).wrapping_mul(0xb4010eu64)) & 0xffff_ffff;
-                }
-                // 14009eb01  69c89402b801  IMUL ECX,EAX,0x1b80294
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b80294u64)) & 0xffff_ffff;
-                }
-                // 14009eb07  4403da  ADD R11D,EDX
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009eb0a  4403d9  ADD R11D,ECX
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009eb0d  498bcf  MOV RCX,R15
-                {
-                    r[1] = r[15];
-                }
-                // 14009eb10  48894c2420  MOV qword ptr [RSP + 0x20],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[1]);
-                }
-                // 14009eb15  4885f6  TEST RSI,RSI
-                {
-                    let v = r[6];
-                    f.logic(v, 64);
-                }
-                // 14009eb18  0f8443010000  JZ 0x14009ec61
-                pc = if f.z { 0x14009ec61 } else { 0x14009eb1e };
-                continue;
-            }
-            0x14009eb1e => {
-                // 14009eb1e  4c8b25e3253200  MOV R12,qword ptr [0x1403c1108]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009eb25  498bc6  MOV RAX,R14
-                {
-                    r[0] = r[14];
-                }
-                // 14009eb28  488b3de9253200  MOV RDI,qword ptr [0x1403c1118]
-                {
-                    r[7] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009eb2f  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009eb32  4c8b2d07263200  MOV R13,qword ptr [0x1403c1140]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                }
-                // 14009eb39  4c33e7  XOR R12,RDI
-                {
-                    let v = r[12] ^ r[7];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009eb3c  4c332d35263200  XOR R13,qword ptr [0x1403c1178]
-                {
-                    let v = r[13] ^ m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[13] = v;
-                }
-                // 14009eb43  4c0be0  OR R12,RAX
-                {
-                    let v = r[12] | r[0];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009eb46  488b05b3253200  MOV RAX,qword ptr [0x1403c1100]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
-                }
-                // 14009eb4d  480b442468  OR RAX,qword ptr [RSP + 0x68]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009eb52  4c8b350f263200  MOV R14,qword ptr [0x1403c1168]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
-                }
-                // 14009eb59  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009eb5c  488b6c2460  MOV RBP,qword ptr [RSP + 0x60]
-                {
-                    r[5] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
-                }
-                // 14009eb61  4c23e0  AND R12,RAX
-                {
-                    let v = r[12] & r[0];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009eb64  0f1f4000  NOP dword ptr [RAX]
-                // 14009eb68  0f1f840000000000  NOP dword ptr [RAX + RAX*0x1]
-                pc = 0x14009eb70;
-            }
-            0x14009eb70 => {
-                // 14009eb70  4c0fbcd6  BSF R10,RSI
-                {
-                    let v = r[6];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[10] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009eb74  488d158514f6ff  LEA RDX,[0x140000000]
-                {
-                    r[2] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009eb7b  4963c2  MOVSXD RAX,R10D
-                {
-                    r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009eb7e  44891593072600  MOV dword ptr [0x1402ff318],R10D
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
-                }
-                // 14009eb85  8b8c8200080f00  MOV ECX,dword ptr [RDX + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[2])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009eb8c  4c8b8cc2f0de0e00  MOV R9,qword ptr [RDX + RAX*0x8 + 0xedef0]
-                {
-                    r[9] = m.read::<64>(
-                        0u64.wrapping_add(r[2])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009eb94  4c8b84c2f0020f00  MOV R8,qword ptr [RDX + RAX*0x8 + 0xf02f0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[2])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009eb9c  4d23cd  AND R9,R13
-                {
-                    let v = r[9] & r[13];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009eb9f  4c0faf8cc2f0fe0e00  IMUL R9,qword ptr [RDX + RAX*0x8 + 0xefef0]
-                {
-                    r[9] = (r[9]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[2])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefef0u64),
-                        ),
-                    );
-                }
-                // 14009eba8  488b94c2f0e00e00  MOV RDX,qword ptr [RDX + RAX*0x8 + 0xee0f0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[2])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xee0f0u64),
-                    );
-                }
-                // 14009ebb0  482315c1253200  AND RDX,qword ptr [0x1403c1178]
-                {
-                    let v = r[2] & m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009ebb7  49d3e9  SHR R9,CL
-                {
-                    let v = r[9];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[9] = v;
-                    }
-                }
-                // 14009ebba  488d0d3f14f6ff  LEA RCX,[0x140000000]
-                {
-                    r[1] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ebc1  480faf94c1f0000f00  IMUL RDX,qword ptr [RCX + RAX*0x8 + 0xf00f0]
-                {
-                    r[2] = (r[2]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xf00f0u64),
-                        ),
-                    );
-                }
-                // 14009ebca  8b8c8100090f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0900]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0900u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009ebd1  48d3ea  SHR RDX,CL
-                {
-                    let v = r[2];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[2] = v;
-                    }
-                }
-                // 14009ebd4  488d0d2514f6ff  LEA RCX,[0x140000000]
-                {
-                    r[1] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ebdb  488b84c1f0040f00  MOV RAX,qword ptr [RCX + RAX*0x8 + 0xf04f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf04f0u64),
-                    );
-                }
-                // 14009ebe3  4b8b0cc8  MOV RCX,qword ptr [R8 + R9*0x8]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[8])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009ebe7  480b0cd0  OR RCX,qword ptr [RAX + RDX*0x8]
-                {
-                    let v = r[1]
-                        | m.read::<64>(
-                            0u64.wrapping_add(r[0])
-                                .wrapping_add(r[2].wrapping_mul(0x8u64)),
-                        );
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009ebeb  8d4311  LEA EAX,[RBX + 0x11]
-                {
-                    r[0] = (0u64.wrapping_add(r[3]).wrapping_add(0x11u64)) & 0xffff_ffff;
-                }
-                // 14009ebee  4c0bf9  OR R15,RCX
-                {
-                    let v = r[15] | r[1];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009ebf1  4885cd  TEST RBP,RCX
-                {
-                    let v = r[5] & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009ebf4  0f44c3  CMOVZ EAX,EBX
-                {
-                    if f.z {
-                        r[0] = (r[3] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ebf7  4183e238  AND R10D,0x38
-                {
-                    let v = (r[10] & 0xffffffffu64 & 0x38u64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[10] = (v) & 0xffff_ffff;
-                }
-                // 14009ebfb  8bd8  MOV EBX,EAX
-                {
-                    r[3] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ebfd  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009ec00  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ec03  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009ec08  69c81d001b00  IMUL ECX,EAX,0x1b001d
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x1b001du64)) & 0xffff_ffff;
-                }
-                // 14009ec0e  4403d9  ADD R11D,ECX
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009ec11  4180fa30  CMP R10B,0x30
-                {
-                    f.arithmetic(r[10] & 0xffu64, 0x30u64, 8, true);
-                }
-                // 14009ec15  751c  JNZ 0x14009ec33
-                pc = if !f.z { 0x14009ec33 } else { 0x14009ec17 };
-                continue;
-            }
-            0x14009ec17 => {
-                // 14009ec17  488bc7  MOV RAX,RDI
-                {
-                    r[0] = r[7];
-                }
-                // 14009ec1a  48b9000000000000ffff  MOV RCX,-0x1000000000000
-                {
-                    r[1] = 0xffff000000000000u64;
-                }
-                // 14009ec24  490bc6  OR RAX,R14
-                {
-                    let v = r[0] | r[14];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ec27  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ec2a  7407  JZ 0x14009ec33
-                pc = if f.z { 0x14009ec33 } else { 0x14009ec2c };
-                continue;
-            }
-            0x14009ec2c => {
-                // 14009ec2c  4181c32c010000  ADD R11D,0x12c
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, 0x12cu64, 32, false);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009ec33;
-            }
-            0x14009ec33 => {
-                // 14009ec33  488d46ff  LEA RAX,[RSI + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[6]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009ec37  4823f0  AND RSI,RAX
-                {
-                    let v = r[6] & r[0];
-                    f.logic(v, 64);
-                    r[6] = v;
-                }
-                // 14009ec3a  0f8530ffffff  JNZ 0x14009eb70
-                pc = if !f.z { 0x14009eb70 } else { 0x14009ec40 };
-                continue;
-            }
-            0x14009ec40 => {
-                // 14009ec40  8b6c2440  MOV EBP,dword ptr [RSP + 0x40]
-                {
-                    r[5] =
-                        (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x40u64))) & 0xffff_ffff;
-                }
-                // 14009ec44  33ff  XOR EDI,EDI
-                {
-                    let v = 0u64;
-                    f.logic(v, 32);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009ec46  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
-                }
-                // 14009ec4b  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
-                }
-                // 14009ec53  488b4c2420  MOV RCX,qword ptr [RSP + 0x20]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                }
-                // 14009ec58  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                // 14009ec5d  895c2430  MOV dword ptr [RSP + 0x30],EBX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[4]).wrapping_add(0x30u64),
-                        r[3] & 0xffffffffu64,
-                    );
-                }
-                pc = 0x14009ec61;
-            }
-            0x14009ec61 => {
-                // 14009ec61  488b35f0243200  MOV RSI,qword ptr [0x1403c1158]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                }
-                // 14009ec68  4885f6  TEST RSI,RSI
-                {
-                    let v = r[6];
-                    f.logic(v, 64);
-                }
-                // 14009ec6b  0f842f010000  JZ 0x14009eda0
-                pc = if f.z { 0x14009eda0 } else { 0x14009ec71 };
-                continue;
-            }
-            0x14009ec71 => {
-                // 14009ec71  488b05d0243200  MOV RAX,qword ptr [0x1403c1148]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                // 14009ec78  48f7d1  NOT RCX
-                {
-                    let v = !(r[1]);
-                    r[1] = v;
-                }
-                // 14009ec7b  488b15f6243200  MOV RDX,qword ptr [0x1403c1178]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                }
-                // 14009ec82  4c8b2577243200  MOV R12,qword ptr [0x1403c1100]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
-                }
-                // 14009ec89  4833c2  XOR RAX,RDX
-                {
-                    let v = r[0] ^ r[2];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ec8c  4c8b2d7d243200  MOV R13,qword ptr [0x1403c1110]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009ec93  4c8b3dc6243200  MOV R15,qword ptr [0x1403c1160]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
-                }
-                // 14009ec9a  4d33e5  XOR R12,R13
-                {
-                    let v = r[12] ^ r[13];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009ec9d  488b5c2450  MOV RBX,qword ptr [RSP + 0x50]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
-                }
-                // 14009eca2  4c0be1  OR R12,RCX
-                {
-                    let v = r[12] | r[1];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009eca5  4889442420  MOV qword ptr [RSP + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009ecaa  488b0557243200  MOV RAX,qword ptr [0x1403c1108]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009ecb1  480b442470  OR RAX,qword ptr [RSP + 0x70]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ecb6  488b7c2420  MOV RDI,qword ptr [RSP + 0x20]
-                {
-                    r[7] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                }
-                // 14009ecbb  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009ecbe  4c23e0  AND R12,RAX
-                {
-                    let v = r[12] & r[0];
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                pc = 0x14009ecc1;
-            }
-            0x14009ecc1 => {
-                // 14009ecc1  4c0fbcd6  BSF R10,RSI
-                {
-                    let v = r[6];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[10] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009ecc5  488d0d3413f6ff  LEA RCX,[0x140000000]
-                {
-                    r[1] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009eccc  4963c2  MOVSXD RAX,R10D
-                {
-                    r[0] = ((r[10] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009eccf  44891542062600  MOV dword ptr [0x1402ff318],R10D
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[10] & 0xffffffffu64);
-                }
-                // 14009ecd6  4c8b8cc1f0e00e00  MOV R9,qword ptr [RCX + RAX*0x8 + 0xee0f0]
-                {
-                    r[9] = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xee0f0u64),
-                    );
-                }
-                // 14009ecde  4c23ca  AND R9,RDX
-                {
-                    let v = r[9] & r[2];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009ece1  4c0faf8cc1f0000f00  IMUL R9,qword ptr [RCX + RAX*0x8 + 0xf00f0]
-                {
-                    r[9] = (r[9]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xf00f0u64),
-                        ),
-                    );
-                }
-                // 14009ecea  8b8c8100090f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0900]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0900u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009ecf1  49d3e9  SHR R9,CL
-                {
-                    let v = r[9];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[9] = v;
-                    }
-                }
-                // 14009ecf4  488d0d0513f6ff  LEA RCX,[0x140000000]
-                {
-                    r[1] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ecfb  488b94c1f0de0e00  MOV RDX,qword ptr [RCX + RAX*0x8 + 0xedef0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009ed03  4c8b84c1f0040f00  MOV R8,qword ptr [RCX + RAX*0x8 + 0xf04f0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf04f0u64),
-                    );
-                }
-                // 14009ed0b  4823d7  AND RDX,RDI
-                {
-                    let v = r[2] & r[7];
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009ed0e  480faf94c1f0fe0e00  IMUL RDX,qword ptr [RCX + RAX*0x8 + 0xefef0]
-                {
-                    r[2] = (r[2]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefef0u64),
-                        ),
-                    );
-                }
-                // 14009ed17  8b8c8100080f00  MOV ECX,dword ptr [RCX + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009ed1e  48d3ea  SHR RDX,CL
-                {
-                    let v = r[2];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[2] = v;
-                    }
-                }
-                // 14009ed21  488d0dd812f6ff  LEA RCX,[0x140000000]
-                {
-                    r[1] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ed28  488b84c1f0020f00  MOV RAX,qword ptr [RCX + RAX*0x8 + 0xf02f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009ed30  4b8b0cc8  MOV RCX,qword ptr [R8 + R9*0x8]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[8])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64)),
-                    );
-                }
-                // 14009ed34  480b0cd0  OR RCX,qword ptr [RAX + RDX*0x8]
-                {
-                    let v = r[1]
-                        | m.read::<64>(
-                            0u64.wrapping_add(r[0])
-                                .wrapping_add(r[2].wrapping_mul(0x8u64)),
-                        );
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009ed38  8d4511  LEA EAX,[RBP + 0x11]
-                {
-                    r[0] = (0u64.wrapping_add(r[5]).wrapping_add(0x11u64)) & 0xffff_ffff;
-                }
-                // 14009ed3b  4c0bf1  OR R14,RCX
-                {
-                    let v = r[14] | r[1];
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009ed3e  4885cb  TEST RBX,RCX
-                {
-                    let v = r[3] & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009ed41  0f44c5  CMOVZ EAX,EBP
-                {
-                    if f.z {
-                        r[0] = (r[5] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ed44  4180e238  AND R10B,0x38
-                {
-                    let v = (r[10] & 0xffu64 & 0x38u64) & 0xffu64;
-                    f.logic(v, 8);
-                    r[10] = (r[10] & !0xffu64) | ((v) & 0xffu64);
-                }
-                // 14009ed48  8be8  MOV EBP,EAX
-                {
-                    r[5] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ed4a  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009ed4d  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ed50  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009ed55  69c8e3ffe4ff  IMUL ECX,EAX,-0x1b001d
-                {
-                    r[1] =
-                        ((r[0] & 0xffffffffu64).wrapping_mul(0xffffffffffe4ffe3u64)) & 0xffff_ffff;
-                }
-                // 14009ed5b  4403d9  ADD R11D,ECX
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009ed5e  4180fa08  CMP R10B,0x8
-                {
-                    f.arithmetic(r[10] & 0xffu64, 0x8u64, 8, true);
-                }
-                // 14009ed62  7515  JNZ 0x14009ed79
-                pc = if !f.z { 0x14009ed79 } else { 0x14009ed64 };
-                continue;
-            }
-            0x14009ed64 => {
-                // 14009ed64  498bc5  MOV RAX,R13
-                {
-                    r[0] = r[13];
-                }
-                // 14009ed67  490bc7  OR RAX,R15
-                {
-                    let v = r[0] | r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ed6a  0fb7c0  MOVZX EAX,AX
-                {
-                    r[0] = (r[0] & 0xffffu64) & 0xffff_ffff;
-                }
-                // 14009ed6d  4885c0  TEST RAX,RAX
-                {
-                    let v = r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ed70  7407  JZ 0x14009ed79
-                pc = if f.z { 0x14009ed79 } else { 0x14009ed72 };
-                continue;
-            }
-            0x14009ed72 => {
-                // 14009ed72  4181eb2c010000  SUB R11D,0x12c
-                {
-                    let v = f.arithmetic(r[11] & 0xffffffffu64, 0x12cu64, 32, true);
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009ed79;
-            }
-            0x14009ed79 => {
-                // 14009ed79  488b15f8233200  MOV RDX,qword ptr [0x1403c1178]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                }
-                // 14009ed80  488d46ff  LEA RAX,[RSI + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[6]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009ed84  4823f0  AND RSI,RAX
-                {
-                    let v = r[6] & r[0];
-                    f.logic(v, 64);
-                    r[6] = v;
-                }
-                // 14009ed87  0f8534ffffff  JNZ 0x14009ecc1
-                pc = if !f.z { 0x14009ecc1 } else { 0x14009ed8d };
-                continue;
-            }
-            0x14009ed8d => {
-                // 14009ed8d  8b5c2430  MOV EBX,dword ptr [RSP + 0x30]
-                {
-                    r[3] =
-                        (m.read::<32>(0u64.wrapping_add(r[4]).wrapping_add(0x30u64))) & 0xffff_ffff;
-                }
-                // 14009ed91  33ff  XOR EDI,EDI
-                {
-                    let v = 0u64;
-                    f.logic(v, 32);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009ed93  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009ed98  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
-                }
-                pc = 0x14009eda0;
-            }
-            0x14009eda0 => {
-                // 14009eda0  4c0b742460  OR R14,qword ptr [RSP + 0x60]
-                {
-                    let v = r[14] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
-                    f.logic(v, 64);
-                    r[14] = v;
-                }
-                // 14009eda5  4c0b7c2450  OR R15,qword ptr [RSP + 0x50]
-                {
-                    let v = r[15] | m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009edaa  498bc6  MOV RAX,R14
-                {
-                    r[0] = r[14];
-                }
-                // 14009edad  4c8b156c233200  MOV R10,qword ptr [0x1403c1120]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
-                }
-                // 14009edb4  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009edb7  488b15b6233200  MOV RDX,qword ptr [0x1403c1174]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1174u64));
-                }
-                // 14009edbe  4c8be0  MOV R12,RAX
-                {
-                    r[12] = r[0];
-                }
-                // 14009edc1  4c23a42490000000  AND R12,qword ptr [RSP + 0x90]
-                {
-                    let v = r[12] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
-                    f.logic(v, 64);
-                    r[12] = v;
-                }
-                // 14009edc9  498bf7  MOV RSI,R15
-                {
-                    r[6] = r[15];
-                }
-                // 14009edcc  48630d9d233200  MOVSXD RCX,dword ptr [0x1403c1170]
-                {
-                    r[1] = ((m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) as i32 as i64) as u64;
-                }
-                // 14009edd3  48f7d6  NOT RSI
-                {
-                    let v = !(r[6]);
-                    r[6] = v;
-                }
-                // 14009edd6  4889442450  MOV qword ptr [RSP + 0x50],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64), r[0]);
-                }
-                // 14009eddb  488bc6  MOV RAX,RSI
-                {
-                    r[0] = r[6];
-                }
-                // 14009edde  4823842480000000  AND RAX,qword ptr [RSP + 0x80]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ede6  4c897c2428  MOV qword ptr [RSP + 0x28],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64), r[15]);
-                }
-                // 14009edeb  4c89742438  MOV qword ptr [RSP + 0x38],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64), r[14]);
-                }
-                // 14009edf0  4889742460  MOV qword ptr [RSP + 0x60],RSI
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64), r[6]);
-                }
-                // 14009edf5  4889442420  MOV qword ptr [RSP + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009edfa  4d85d2  TEST R10,R10
-                {
-                    let v = r[10];
-                    f.logic(v, 64);
-                }
-                // 14009edfd  0f84d2000000  JZ 0x14009eed5
-                pc = if f.z { 0x14009eed5 } else { 0x14009ee03 };
-                continue;
-            }
-            0x14009ee03 => {
-                // 14009ee03  4c8bbc2490000000  MOV R15,qword ptr [RSP + 0x90]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x90u64));
-                }
-                // 14009ee0b  488d3dee11f6ff  LEA RDI,[0x140000000]
-                {
-                    r[7] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009ee12  4863c2  MOVSXD RAX,EDX
-                {
-                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009ee15  4c8db7b0d71000  LEA R14,[RDI + 0x10d7b0]
-                {
-                    r[14] = 0u64.wrapping_add(r[7]).wrapping_add(0x10d7b0u64);
-                }
-                // 14009ee1c  48c1e006  SHL RAX,0x6
-                {
-                    let v = r[0];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009ee20  488db7b0c71000  LEA RSI,[RDI + 0x10c7b0]
-                {
-                    r[6] = 0u64.wrapping_add(r[7]).wrapping_add(0x10c7b0u64);
-                }
-                // 14009ee27  4c03f0  ADD R14,RAX
-                {
-                    let v = f.arithmetic(r[14], r[0], 64, false);
-                    r[14] = v;
-                }
-                // 14009ee2a  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009ee2e  4803f1  ADD RSI,RCX
-                {
-                    let v = f.arithmetic(r[6], r[1], 64, false);
-                    r[6] = v;
-                }
-                pc = 0x14009ee31;
-            }
-            0x14009ee31 => {
-                // 14009ee31  490fbcc2  BSF RAX,R10
-                {
-                    let v = r[10];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009ee35  418d8b2e004500  LEA ECX,[R11 + 0x45002e]
-                {
-                    r[1] = (0u64.wrapping_add(r[11]).wrapping_add(0x45002eu64)) & 0xffff_ffff;
-                }
-                // 14009ee3c  4c63c8  MOVSXD R9,EAX
-                {
-                    r[9] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009ee3f  8905d3042600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009ee45  430fbe040e  MOVSX EAX,byte ptr [R14 + R9*0x1]
-                {
-                    r[0] = (((m.read::<8>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[9].wrapping_mul(0x1u64)),
-                    )) as i8 as i64) as u64)
-                        & 0xffff_ffff;
-                }
-                // 14009ee4a  4e8b84cff0fa0e00  MOV R8,qword ptr [RDI + R9*0x8 + 0xefaf0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0xefaf0u64),
-                    );
-                }
-                // 14009ee52  03d8  ADD EBX,EAX
-                {
-                    let v = f.arithmetic(r[3] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[3] = (v) & 0xffff_ffff;
-                }
-                // 14009ee54  420fbe040e  MOVSX EAX,byte ptr [RSI + R9*0x1]
-                {
-                    r[0] = (((m.read::<8>(
-                        0u64.wrapping_add(r[6])
-                            .wrapping_add(r[9].wrapping_mul(0x1u64)),
-                    )) as i8 as i64) as u64)
-                        & 0xffff_ffff;
-                }
-                // 14009ee59  4a8b94cfe0a81000  MOV RDX,qword ptr [RDI + R9*0x8 + 0x10a8e0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0x10a8e0u64),
-                    );
-                }
-                // 14009ee61  2be8  SUB EBP,EAX
-                {
-                    let v = f.arithmetic(r[5] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[5] = (v) & 0xffff_ffff;
-                }
-                // 14009ee63  49c1e104  SHL R9,0x4
-                {
-                    let v = r[9];
-                    let n = 4u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[9] = v;
-                    }
-                }
-                // 14009ee67  498bc2  MOV RAX,R10
-                {
-                    r[0] = r[10];
-                }
-                // 14009ee6a  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009ee6d  49234528  AND RAX,qword ptr [R13 + 0x28]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x28u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ee71  4985c2  TEST R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ee74  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009ee77  410f45cb  CMOVNZ ECX,R11D
-                {
-                    if !f.z {
-                        r[1] = (r[11] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ee7b  4923c4  AND RAX,R12
-                {
-                    let v = r[0] & r[12];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ee7e  480fafc2  IMUL RAX,RDX
-                {
-                    r[0] = (r[0]).wrapping_mul(r[2]);
-                }
-                // 14009ee82  4d23c7  AND R8,R15
-                {
-                    let v = r[8] & r[15];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009ee85  448bd9  MOV R11D,ECX
-                {
-                    r[11] = (r[1] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ee88  4c0fafc2  IMUL R8,RDX
-                {
-                    r[8] = (r[8]).wrapping_mul(r[2]);
-                }
-                // 14009ee8c  48c1e83c  SHR RAX,0x3c
-                {
-                    let v = r[0];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009ee90  4903c1  ADD RAX,R9
-                {
-                    let v = f.arithmetic(r[0], r[9], 64, false);
-                    r[0] = v;
-                }
-                // 14009ee93  49c1e83c  SHR R8,0x3c
-                {
-                    let v = r[8];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009ee97  4d03c1  ADD R8,R9
-                {
-                    let v = f.arithmetic(r[8], r[9], 64, false);
-                    r[8] = v;
-                }
-                // 14009ee9a  44039c87e0aa1000  ADD R11D,dword ptr [RDI + RAX*0x4 + 0x10aae0]
-                {
-                    let v = f.arithmetic(
-                        r[11] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[7])
-                                .wrapping_add(r[0].wrapping_mul(0x4u64))
-                                .wrapping_add(0x10aae0u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009eea2  498d42ff  LEA RAX,[R10 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009eea6  46039c87e0981000  ADD R11D,dword ptr [RDI + R8*0x4 + 0x1098e0]
-                {
-                    let v = f.arithmetic(
-                        r[11] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[7])
-                                .wrapping_add(r[8].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1098e0u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009eeae  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009eeb1  0f857affffff  JNZ 0x14009ee31
-                pc = if !f.z { 0x14009ee31 } else { 0x14009eeb7 };
-                continue;
-            }
-            0x14009eeb7 => {
-                // 14009eeb7  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
-                }
-                // 14009eebc  33ff  XOR EDI,EDI
-                {
-                    let v = 0u64;
-                    f.logic(v, 32);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009eebe  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009eec3  488b742460  MOV RSI,qword ptr [RSP + 0x60]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
-                }
-                // 14009eec8  8b0da2223200  MOV ECX,dword ptr [0x1403c1170]
-                {
-                    r[1] = (m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) & 0xffff_ffff;
-                }
-                // 14009eece  488b159f223200  MOV RDX,qword ptr [0x1403c1174]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1174u64));
-                }
-                pc = 0x14009eed5;
-            }
-            0x14009eed5 => {
-                // 14009eed5  4c8b154c223200  MOV R10,qword ptr [0x1403c1128]
-                {
-                    r[10] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
-                }
-                // 14009eedc  4d85d2  TEST R10,R10
-                {
-                    let v = r[10];
-                    f.logic(v, 64);
-                }
-                // 14009eedf  0f84d2000000  JZ 0x14009efb7
-                pc = if f.z { 0x14009efb7 } else { 0x14009eee5 };
-                continue;
-            }
-            0x14009eee5 => {
-                // 14009eee5  4c8b642420  MOV R12,qword ptr [RSP + 0x20]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                }
-                // 14009eeea  4c8d3d0f11f6ff  LEA R15,[0x140000000]
-                {
-                    r[15] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009eef1  488bb42480000000  MOV RSI,qword ptr [RSP + 0x80]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x80u64));
-                }
-                // 14009eef9  498dbfb0d71000  LEA RDI,[R15 + 0x10d7b0]
-                {
-                    r[7] = 0u64.wrapping_add(r[15]).wrapping_add(0x10d7b0u64);
-                }
-                // 14009ef00  4863c1  MOVSXD RAX,ECX
-                {
-                    r[0] = ((r[1] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009ef03  4d8db7b0c71000  LEA R14,[R15 + 0x10c7b0]
-                {
-                    r[14] = 0u64.wrapping_add(r[15]).wrapping_add(0x10c7b0u64);
-                }
-                // 14009ef0a  48c1e006  SHL RAX,0x6
-                {
-                    let v = r[0];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009ef0e  4863ca  MOVSXD RCX,EDX
-                {
-                    r[1] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009ef11  4803f8  ADD RDI,RAX
-                {
-                    let v = f.arithmetic(r[7], r[0], 64, false);
-                    r[7] = v;
-                }
-                // 14009ef14  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009ef18  4c03f1  ADD R14,RCX
-                {
-                    let v = f.arithmetic(r[14], r[1], 64, false);
-                    r[14] = v;
-                }
-                // 14009ef1b  0f1f440000  NOP dword ptr [RAX + RAX*0x1]
-                pc = 0x14009ef20;
-            }
-            0x14009ef20 => {
-                // 14009ef20  490fbcc2  BSF RAX,R10
-                {
-                    let v = r[10];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009ef24  418d8bd2ffbaff  LEA ECX,[R11 + -0x45002e]
-                {
-                    r[1] = (0u64.wrapping_add(r[11]).wrapping_add(0xffffffffffbaffd2u64))
-                        & 0xffff_ffff;
-                }
-                // 14009ef2b  4c63c8  MOVSXD R9,EAX
-                {
-                    r[9] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009ef2e  8905e4032600  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009ef34  420fbe040f  MOVSX EAX,byte ptr [RDI + R9*0x1]
-                {
-                    r[0] = (((m.read::<8>(
-                        0u64.wrapping_add(r[7])
-                            .wrapping_add(r[9].wrapping_mul(0x1u64)),
-                    )) as i8 as i64) as u64)
-                        & 0xffff_ffff;
-                }
-                // 14009ef39  4f8b84cff0fa0e00  MOV R8,qword ptr [R15 + R9*0x8 + 0xefaf0]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0xefaf0u64),
-                    );
-                }
-                // 14009ef41  03e8  ADD EBP,EAX
-                {
-                    let v = f.arithmetic(r[5] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[5] = (v) & 0xffff_ffff;
-                }
-                // 14009ef43  430fbe040e  MOVSX EAX,byte ptr [R14 + R9*0x1]
-                {
-                    r[0] = (((m.read::<8>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[9].wrapping_mul(0x1u64)),
-                    )) as i8 as i64) as u64)
-                        & 0xffff_ffff;
-                }
-                // 14009ef48  4b8b94cfe0861000  MOV RDX,qword ptr [R15 + R9*0x8 + 0x1086e0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[15])
-                            .wrapping_add(r[9].wrapping_mul(0x8u64))
-                            .wrapping_add(0x1086e0u64),
-                    );
-                }
-                // 14009ef50  2bd8  SUB EBX,EAX
-                {
-                    let v = f.arithmetic(r[3] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[3] = (v) & 0xffff_ffff;
-                }
-                // 14009ef52  49c1e104  SHL R9,0x4
-                {
-                    let v = r[9];
-                    let n = 4u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[9] = v;
-                    }
-                }
-                // 14009ef56  498bc2  MOV RAX,R10
-                {
-                    r[0] = r[10];
-                }
-                // 14009ef59  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009ef5c  4923c2  AND RAX,R10
-                {
-                    let v = r[0] & r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ef5f  49854520  TEST qword ptr [R13 + 0x20],RAX
-                {
-                    let v = m.read::<64>(0u64.wrapping_add(r[13]).wrapping_add(0x20u64)) & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009ef63  498bc0  MOV RAX,R8
-                {
-                    r[0] = r[8];
-                }
-                // 14009ef66  410f45cb  CMOVNZ ECX,R11D
-                {
-                    if !f.z {
-                        r[1] = (r[11] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                // 14009ef6a  4923c4  AND RAX,R12
-                {
-                    let v = r[0] & r[12];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009ef6d  480fafc2  IMUL RAX,RDX
-                {
-                    r[0] = (r[0]).wrapping_mul(r[2]);
-                }
-                // 14009ef71  4c23c6  AND R8,RSI
-                {
-                    let v = r[8] & r[6];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009ef74  448bd9  MOV R11D,ECX
-                {
-                    r[11] = (r[1] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009ef77  4c0fafc2  IMUL R8,RDX
-                {
-                    r[8] = (r[8]).wrapping_mul(r[2]);
-                }
-                // 14009ef7b  48c1e83c  SHR RAX,0x3c
-                {
-                    let v = r[0];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009ef7f  4903c1  ADD RAX,R9
-                {
-                    let v = f.arithmetic(r[0], r[9], 64, false);
-                    r[0] = v;
-                }
-                // 14009ef82  49c1e83c  SHR R8,0x3c
-                {
-                    let v = r[8];
-                    let n = 60u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009ef86  4d03c1  ADD R8,R9
-                {
-                    let v = f.arithmetic(r[8], r[9], 64, false);
-                    r[8] = v;
-                }
-                // 14009ef89  452b9c87e0881000  SUB R11D,dword ptr [R15 + RAX*0x4 + 0x1088e0]
-                {
-                    let v = f.arithmetic(
-                        r[11] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[15])
-                                .wrapping_add(r[0].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1088e0u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009ef91  498d42ff  LEA RAX,[R10 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009ef95  472b9c87e0761000  SUB R11D,dword ptr [R15 + R8*0x4 + 0x1076e0]
-                {
-                    let v = f.arithmetic(
-                        r[11] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[15])
-                                .wrapping_add(r[8].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1076e0u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[11] = (v) & 0xffff_ffff;
-                }
-                // 14009ef9d  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009efa0  0f857affffff  JNZ 0x14009ef20
-                pc = if !f.z { 0x14009ef20 } else { 0x14009efa6 };
-                continue;
-            }
-            0x14009efa6 => {
-                // 14009efa6  4c8b742438  MOV R14,qword ptr [RSP + 0x38]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x38u64));
-                }
-                // 14009efab  33ff  XOR EDI,EDI
-                {
-                    let v = 0u64;
-                    f.logic(v, 32);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009efad  4c8b7c2428  MOV R15,qword ptr [RSP + 0x28]
-                {
-                    r[15] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x28u64));
-                }
-                // 14009efb2  488b742460  MOV RSI,qword ptr [RSP + 0x60]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x60u64));
-                }
-                pc = 0x14009efb7;
-            }
-            0x14009efb7 => {
-                // 14009efb7  488b542478  MOV RDX,qword ptr [RSP + 0x78]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
-                }
-                // 14009efbc  4c8b253d213200  MOV R12,qword ptr [0x1403c1100]
-                {
-                    r[12] = m.read::<64>(0u64.wrapping_add(0x1403c1100u64));
-                }
-                // 14009efc3  4c8b442458  MOV R8,qword ptr [RSP + 0x58]
-                {
-                    r[8] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64));
-                }
-                // 14009efc8  4d8bcc  MOV R9,R12
-                {
-                    r[9] = r[12];
-                }
-                // 14009efcb  488b4c2448  MOV RCX,qword ptr [RSP + 0x48]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64));
-                }
-                // 14009efd0  4c23ce  AND R9,RSI
-                {
-                    let v = r[9] & r[6];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009efd3  488b052e213200  MOV RAX,qword ptr [0x1403c1108]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009efda  4d23ce  AND R9,R14
-                {
-                    let v = r[9] & r[14];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009efdd  4c8bd0  MOV R10,RAX
-                {
-                    r[10] = r[0];
-                }
-                // 14009efe0  4c893a  MOV qword ptr [RDX],R15
-                {
-                    m.write::<64>(0u64.wrapping_add(r[2]), r[15]);
-                }
-                // 14009efe3  4c23542450  AND R10,qword ptr [RSP + 0x50]
-                {
-                    let v = r[10] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009efe8  4d23d7  AND R10,R15
-                {
-                    let v = r[10] & r[15];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009efeb  4c897208  MOV qword ptr [RDX + 0x8],R14
-                {
-                    m.write::<64>(0u64.wrapping_add(r[2]).wrapping_add(0x8u64), r[14]);
-                }
-                // 14009efef  4923c2  AND RAX,R10
-                {
-                    let v = r[0] & r[10];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009eff2  490bc0  OR RAX,R8
-                {
-                    let v = r[0] | r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009eff5  49f7d0  NOT R8
-                {
-                    let v = !(r[8]);
-                    r[8] = v;
-                }
-                // 14009eff8  48894220  MOV qword ptr [RDX + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[2]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009effc  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009efff  4923c1  AND RAX,R9
-                {
-                    let v = r[0] & r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f002  4c89442458  MOV qword ptr [RSP + 0x58],R8
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64), r[8]);
-                }
-                // 14009f007  480bc1  OR RAX,RCX
-                {
-                    let v = r[0] | r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f00a  48f7d1  NOT RCX
-                {
-                    let v = !(r[1]);
-                    r[1] = v;
-                }
-                // 14009f00d  48894228  MOV qword ptr [RDX + 0x28],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[2]).wrapping_add(0x28u64), r[0]);
-                }
-                // 14009f011  488b0508213200  MOV RAX,qword ptr [0x1403c1120]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1120u64));
-                }
-                // 14009f018  480b0511213200  OR RAX,qword ptr [0x1403c1130]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1130u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f01f  480b051a213200  OR RAX,qword ptr [0x1403c1140]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f026  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f029  488b1548213200  MOV RDX,qword ptr [0x1403c1178]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                }
-                // 14009f030  4823442470  AND RAX,qword ptr [RSP + 0x70]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f035  48f7d2  NOT RDX
-                {
-                    let v = !(r[2]);
-                    r[2] = v;
-                }
-                // 14009f038  48894c2448  MOV qword ptr [RSP + 0x48],RCX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64), r[1]);
-                }
-                // 14009f03d  f3480fb8c8  POPCNT RCX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f042  488b05df203200  MOV RAX,qword ptr [0x1403c1128]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1128u64));
-                }
-                // 14009f049  480b05e8203200  OR RAX,qword ptr [0x1403c1138]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1138u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f050  480b05f1203200  OR RAX,qword ptr [0x1403c1148]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f057  4923c0  AND RAX,R8
-                {
-                    let v = r[0] & r[8];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f05a  4823442468  AND RAX,qword ptr [RSP + 0x68]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f05f  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f064  2bc8  SUB ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f066  488b442468  MOV RAX,qword ptr [RSP + 0x68]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x68u64));
-                }
-                // 14009f06b  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009f06e  4469c116001600  IMUL R8D,ECX,0x160016
-                {
-                    r[8] = ((r[1] & 0xffffffffu64).wrapping_mul(0x160016u64)) & 0xffff_ffff;
-                }
-                // 14009f075  4823058c203200  AND RAX,qword ptr [0x1403c1108]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f07c  4923c7  AND RAX,R15
-                {
-                    let v = r[0] & r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f07f  f3480fb8c8  POPCNT RCX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f084  488b442470  MOV RAX,qword ptr [RSP + 0x70]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x70u64));
-                }
-                // 14009f089  48f7d0  NOT RAX
-                {
-                    let v = !(r[0]);
-                    r[0] = v;
-                }
-                // 14009f08c  4923c4  AND RAX,R12
-                {
-                    let v = r[0] & r[12];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f08f  4923c6  AND RAX,R14
-                {
-                    let v = r[0] & r[14];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f092  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f097  2bc8  SUB ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f099  69c13c001e00  IMUL EAX,ECX,0x1e003c
-                {
-                    r[0] = ((r[1] & 0xffffffffu64).wrapping_mul(0x1e003cu64)) & 0xffff_ffff;
-                }
-                // 14009f09f  4403c0  ADD R8D,EAX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f0a2  488b056f203200  MOV RAX,qword ptr [0x1403c1118]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009f0a9  48c1e808  SHR RAX,0x8
-                {
-                    let v = r[0];
-                    let n = 8u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009f0ad  4823c2  AND RAX,RDX
-                {
-                    let v = r[0] & r[2];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0b0  f3480fb8c8  POPCNT RCX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f0b5  488b0554203200  MOV RAX,qword ptr [0x1403c1110]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009f0bc  48c1e008  SHL RAX,0x8
-                {
-                    let v = r[0];
-                    let n = 8u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[0] = v;
-                    }
-                }
-                // 14009f0c0  4823c2  AND RAX,RDX
-                {
-                    let v = r[0] & r[2];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0c3  488b542458  MOV RDX,qword ptr [RSP + 0x58]
-                {
-                    r[2] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x58u64));
-                }
-                // 14009f0c8  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f0cd  2bc1  SUB EAX,ECX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f0cf  69c890002000  IMUL ECX,EAX,0x200090
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0x200090u64)) & 0xffff_ffff;
-                }
-                // 14009f0d5  488b052c203200  MOV RAX,qword ptr [0x1403c1108]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009f0dc  4823c2  AND RAX,RDX
-                {
-                    let v = r[0] & r[2];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0df  4923d2  AND RDX,R10
-                {
-                    let v = r[2] & r[10];
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009f0e2  4923c6  AND RAX,R14
-                {
-                    let v = r[0] & r[14];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0e5  4403c1  ADD R8D,ECX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f0e8  f3480fb8c8  POPCNT RCX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f0ed  498bc4  MOV RAX,R12
-                {
-                    r[0] = r[12];
-                }
-                // 14009f0f0  4823442448  AND RAX,qword ptr [RSP + 0x48]
-                {
-                    let v = r[0] & m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0f5  4923c7  AND RAX,R15
-                {
-                    let v = r[0] & r[15];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f0f8  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f0fd  2bc1  SUB EAX,ECX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f0ff  69c80c000c00  IMUL ECX,EAX,0xc000c
-                {
-                    r[1] = ((r[0] & 0xffffffffu64).wrapping_mul(0xc000cu64)) & 0xffff_ffff;
-                }
-                // 14009f105  488b442448  MOV RAX,qword ptr [RSP + 0x48]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x48u64));
-                }
-                // 14009f10a  4923c1  AND RAX,R9
-                {
-                    let v = r[0] & r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f10d  4403c1  ADD R8D,ECX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f110  f3480fb8ca  POPCNT RCX,RDX
-                {
-                    let v = r[2];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f115  f3480fb8c0  POPCNT RAX,RAX
-                {
-                    let v = r[0];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f11a  2bc8  SUB ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f11c  488b052d203200  MOV RAX,qword ptr [0x1403c1150]
-                {
-                    r[0] = m.read::<64>(0u64.wrapping_add(0x1403c1150u64));
-                }
-                // 14009f123  4469c9b4007800  IMUL R9D,ECX,0x7800b4
-                {
-                    r[9] = ((r[1] & 0xffffffffu64).wrapping_mul(0x7800b4u64)) & 0xffff_ffff;
-                }
-                // 14009f12a  4503cb  ADD R9D,R11D
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, r[11] & 0xffffffffu64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009f12d  4503c8  ADD R9D,R8D
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009f130  480b0521203200  OR RAX,qword ptr [0x1403c1158]
-                {
-                    let v = r[0] | m.read::<64>(0u64.wrapping_add(0x1403c1158u64));
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f137  7428  JZ 0x14009f161
-                pc = if f.z { 0x14009f161 } else { 0x14009f139 };
-                continue;
-            }
-            0x14009f139 => {
-                // 14009f139  4863cd  MOVSXD RCX,EBP
-                {
-                    r[1] = ((r[5] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f13c  488d2dbd0ef6ff  LEA RBP,[0x140000000]
-                {
-                    r[5] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009f143  4863c3  MOVSXD RAX,EBX
-                {
-                    r[0] = ((r[3] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f146  8b948510f11e00  MOV EDX,dword ptr [RBP + RAX*0x4 + 0x1ef110]
-                {
-                    r[2] = (m.read::<32>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0x1ef110u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009f14d  2b948d10f11e00  SUB EDX,dword ptr [RBP + RCX*0x4 + 0x1ef110]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[5])
-                                .wrapping_add(r[1].wrapping_mul(0x4u64))
-                                .wrapping_add(0x1ef110u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f154  412b5534  SUB EDX,dword ptr [R13 + 0x34]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x34u64)),
-                        32,
-                        true,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f158  41035538  ADD EDX,dword ptr [R13 + 0x38]
-                {
-                    let v = f.arithmetic(
-                        r[2] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x38u64)),
-                        32,
-                        false,
-                    );
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f15c  4403ca  ADD R9D,EDX
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009f15f  eb07  JMP 0x14009f168
-                pc = 0x14009f168;
-                continue;
-            }
-            0x14009f161 => {
-                // 14009f161  488d2d980ef6ff  LEA RBP,[0x140000000]
-                {
-                    r[5] = 0u64.wrapping_add(0x140000000u64);
-                }
-                pc = 0x14009f168;
-            }
-            0x14009f168 => {
-                // 14009f168  488b1da11f3200  MOV RBX,qword ptr [0x1403c1110]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009f16f  48b8000000ffffffff00  MOV RAX,0xffffffff000000
-                {
-                    r[0] = 0xffffffff000000u64;
-                }
-                // 14009f179  4c8b1d881f3200  MOV R11,qword ptr [0x1403c1108]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009f180  4c8bd3  MOV R10,RBX
-                {
-                    r[10] = r[3];
-                }
-                // 14009f183  4d235500  AND R10,qword ptr [R13]
-                {
-                    let v = r[10] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f187  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f18a  0f848d000000  JZ 0x14009f21d
-                pc = if f.z { 0x14009f21d } else { 0x14009f190 };
-                continue;
-            }
-            0x14009f190 => {
-                // 14009f190  490fbcd2  BSF RDX,R10
-                {
-                    let v = r[10];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[2] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f194  4863c2  MOVSXD RAX,EDX
-                {
-                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f197  89157b012600  MOV dword ptr [0x1402ff318],EDX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
-                }
-                // 14009f19d  4c8b84c580440f00  MOV R8,qword ptr [RBP + RAX*0x8 + 0xf4480]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[5])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4480u64),
-                    );
-                }
-                // 14009f1a5  4d85c4  TEST R12,R8
-                {
-                    let v = r[12] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f1a8  7512  JNZ 0x14009f1bc
-                pc = if !f.z { 0x14009f1bc } else { 0x14009f1aa };
-                continue;
-            }
-            0x14009f1aa => {
-                // 14009f1aa  8d42e8  LEA EAX,[RDX + -0x18]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
-                }
-                // 14009f1ad  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f1b0  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f1b4  44038c29e84a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104ae8]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[5].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104ae8u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f1bc;
-            }
-            0x14009f1bc => {
-                // 14009f1bc  4d85c3  TEST R11,R8
-                {
-                    let v = r[11] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f1bf  7512  JNZ 0x14009f1d3
-                pc = if !f.z { 0x14009f1d3 } else { 0x14009f1c1 };
-                continue;
-            }
-            0x14009f1c1 => {
-                // 14009f1c1  8d42e8  LEA EAX,[RDX + -0x18]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
-                }
-                // 14009f1c4  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f1c7  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f1cb  44038c29ec4a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104aec]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[5].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104aecu64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f1d3;
-            }
-            0x14009f1d3 => {
-                // 14009f1d3  8d4208  LEA EAX,[RDX + 0x8]
-                {
-                    r[0] = (0u64.wrapping_add(r[2]).wrapping_add(0x8u64)) & 0xffff_ffff;
-                }
-                // 14009f1d6  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f1d9  4883bccd000e3c0000  CMP qword ptr [RBP + RCX*0x8 + 0x3c0e00],0x0
-                {
-                    f.arithmetic(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[5])
-                                .wrapping_add(r[1].wrapping_mul(0x8u64))
-                                .wrapping_add(0x3c0e00u64),
-                        ),
-                        0x0u64,
-                        64,
-                        true,
-                    );
-                }
-                // 14009f1e2  7512  JNZ 0x14009f1f6
-                pc = if !f.z { 0x14009f1f6 } else { 0x14009f1e4 };
-                continue;
-            }
-            0x14009f1e4 => {
-                // 14009f1e4  8d42e8  LEA EAX,[RDX + -0x18]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
-                }
-                // 14009f1e7  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f1ea  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f1ee  44038c29f04a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104af0]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[5].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104af0u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f1f6;
-            }
-            0x14009f1f6 => {
-                // 14009f1f6  4c23c6  AND R8,RSI
-                {
-                    let v = r[8] & r[6];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f1f9  4d85c6  TEST R14,R8
-                {
-                    let v = r[14] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f1fc  7512  JNZ 0x14009f210
-                pc = if !f.z { 0x14009f210 } else { 0x14009f1fe };
-                continue;
-            }
-            0x14009f1fe => {
-                // 14009f1fe  8d42e8  LEA EAX,[RDX + -0x18]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xffffffffffffffe8u64)) & 0xffff_ffff;
-                }
-                // 14009f201  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f204  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f208  44038c29f44a1000  ADD R9D,dword ptr [RCX + RBP*0x1 + 0x104af4]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[5].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104af4u64),
-                        ),
-                        32,
-                        false,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f210;
-            }
-            0x14009f210 => {
-                // 14009f210  498d42ff  LEA RAX,[R10 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f214  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f217  0f8573ffffff  JNZ 0x14009f190
-                pc = if !f.z { 0x14009f190 } else { 0x14009f21d };
-                continue;
-            }
-            0x14009f21d => {
-                // 14009f21d  488b2df41e3200  MOV RBP,qword ptr [0x1403c1118]
-                {
-                    r[5] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009f224  4c8d35d50df6ff  LEA R14,[0x140000000]
-                {
-                    r[14] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009f22b  4c8bd5  MOV R10,RBP
-                {
-                    r[10] = r[5];
-                }
-                // 14009f22e  48b800ffffffff000000  MOV RAX,0xffffffff00
-                {
-                    r[0] = 0xffffffff00u64;
-                }
-                // 14009f238  4d235500  AND R10,qword ptr [R13]
-                {
-                    let v = r[10] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f23c  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f23f  0f84af000000  JZ 0x14009f2f4
-                pc = if f.z { 0x14009f2f4 } else { 0x14009f245 };
-                continue;
-            }
-            0x14009f245 => {
-                // 14009f245  488b5c2450  MOV RBX,qword ptr [RSP + 0x50]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x50u64));
-                }
-                // 14009f24a  660f1f440000  NOP word ptr [RAX + RAX*0x1]
-                pc = 0x14009f250;
-            }
-            0x14009f250 => {
-                // 14009f250  490fbcd2  BSF RDX,R10
-                {
-                    let v = r[10];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[2] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f254  4863c2  MOVSXD RAX,EDX
-                {
-                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f257  8915bb002600  MOV dword ptr [0x1402ff318],EDX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
-                }
-                // 14009f25d  4d8b84c680420f00  MOV R8,qword ptr [R14 + RAX*0x8 + 0xf4280]
-                {
-                    r[8] = m.read::<64>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4280u64),
-                    );
-                }
-                // 14009f265  4d85c3  TEST R11,R8
-                {
-                    let v = r[11] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f268  7516  JNZ 0x14009f280
-                pc = if !f.z { 0x14009f280 } else { 0x14009f26a };
-                continue;
-            }
-            0x14009f26a => {
-                // 14009f26a  b827000000  MOV EAX,0x27
-                {
-                    r[0] = (0x27u64) & 0xffff_ffff;
-                }
-                // 14009f26f  2bc2  SUB EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f271  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f274  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f278  462b8c31084b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b08]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[14].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104b08u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f280;
-            }
-            0x14009f280 => {
-                // 14009f280  4d85c4  TEST R12,R8
-                {
-                    let v = r[12] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f283  7516  JNZ 0x14009f29b
-                pc = if !f.z { 0x14009f29b } else { 0x14009f285 };
-                continue;
-            }
-            0x14009f285 => {
-                // 14009f285  b827000000  MOV EAX,0x27
-                {
-                    r[0] = (0x27u64) & 0xffff_ffff;
-                }
-                // 14009f28a  2bc2  SUB EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f28c  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f28f  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f293  462b8c310c4b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b0c]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[14].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104b0cu64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f29b;
-            }
-            0x14009f29b => {
-                // 14009f29b  8d42f8  LEA EAX,[RDX + -0x8]
-                {
-                    r[0] =
-                        (0u64.wrapping_add(r[2]).wrapping_add(0xfffffffffffffff8u64)) & 0xffff_ffff;
-                }
-                // 14009f29e  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f2a1  4983bcce000e3c0000  CMP qword ptr [R14 + RCX*0x8 + 0x3c0e00],0x0
-                {
-                    f.arithmetic(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[14])
-                                .wrapping_add(r[1].wrapping_mul(0x8u64))
-                                .wrapping_add(0x3c0e00u64),
-                        ),
-                        0x0u64,
-                        64,
-                        true,
-                    );
-                }
-                // 14009f2aa  7516  JNZ 0x14009f2c2
-                pc = if !f.z { 0x14009f2c2 } else { 0x14009f2ac };
-                continue;
-            }
-            0x14009f2ac => {
-                // 14009f2ac  b827000000  MOV EAX,0x27
-                {
-                    r[0] = (0x27u64) & 0xffff_ffff;
-                }
-                // 14009f2b1  2bc2  SUB EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f2b3  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f2b6  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f2ba  462b8c31104b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b10]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[14].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104b10u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f2c2;
-            }
-            0x14009f2c2 => {
-                // 14009f2c2  4c23c3  AND R8,RBX
-                {
-                    let v = r[8] & r[3];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f2c5  4d85c7  TEST R15,R8
-                {
-                    let v = r[15] & r[8];
-                    f.logic(v, 64);
-                }
-                // 14009f2c8  7516  JNZ 0x14009f2e0
-                pc = if !f.z { 0x14009f2e0 } else { 0x14009f2ca };
-                continue;
-            }
-            0x14009f2ca => {
-                // 14009f2ca  b827000000  MOV EAX,0x27
-                {
-                    r[0] = (0x27u64) & 0xffff_ffff;
-                }
-                // 14009f2cf  2bc2  SUB EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f2d1  4863c8  MOVSXD RCX,EAX
-                {
-                    r[1] = ((r[0] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f2d4  48c1e106  SHL RCX,0x6
-                {
-                    let v = r[1];
-                    let n = 6u32;
-                    if n != 0 {
-                        let v = v.wrapping_shl(n);
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f2d8  462b8c31144b1000  SUB R9D,dword ptr [RCX + R14*0x1 + 0x104b14]
-                {
-                    let v = f.arithmetic(
-                        r[9] & 0xffffffffu64,
-                        m.read::<32>(
-                            0u64.wrapping_add(r[1])
-                                .wrapping_add(r[14].wrapping_mul(0x1u64))
-                                .wrapping_add(0x104b14u64),
-                        ),
-                        32,
-                        true,
-                    );
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f2e0;
-            }
-            0x14009f2e0 => {
-                // 14009f2e0  498d42ff  LEA RAX,[R10 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[10]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f2e4  4c23d0  AND R10,RAX
-                {
-                    let v = r[10] & r[0];
-                    f.logic(v, 64);
-                    r[10] = v;
-                }
-                // 14009f2e7  0f8563ffffff  JNZ 0x14009f250
-                pc = if !f.z { 0x14009f250 } else { 0x14009f2ed };
-                continue;
-            }
-            0x14009f2ed => {
-                // 14009f2ed  488b1d1c1e3200  MOV RBX,qword ptr [0x1403c1110]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                pc = 0x14009f2f4;
-            }
-            0x14009f2f4 => {
-                // 14009f2f4  486305751e3200  MOVSXD RAX,dword ptr [0x1403c1170]
-                {
-                    r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1170u64))) as i32 as i64) as u64;
-                }
-                // 14009f2fb  488b353e1e3200  MOV RSI,qword ptr [0x1403c1140]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                }
-                // 14009f302  498b8cc6f0ec0e00  MOV RCX,qword ptr [R14 + RAX*0x8 + 0xeecf0]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xeecf0u64),
-                    );
-                }
-                // 14009f30a  4823ce  AND RCX,RSI
-                {
-                    let v = r[1] & r[6];
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009f30d  742b  JZ 0x14009f33a
-                pc = if f.z { 0x14009f33a } else { 0x14009f30f };
-                continue;
-            }
-            0x14009f30f => {
-                // 14009f30f  480fbcc1  BSF RAX,RCX
-                {
-                    let v = r[1];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f313  48b9ffffffffff000000  MOV RCX,0xffffffffff
-                {
-                    r[1] = 0xffffffffffu64;
-                }
-                // 14009f31d  8905f5ff2500  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009f323  498b84c680440f00  MOV RAX,qword ptr [R14 + RAX*0x8 + 0xf4480]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4480u64),
-                    );
-                }
-                // 14009f32b  4823c3  AND RAX,RBX
-                {
-                    let v = r[0] & r[3];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f32e  4885c1  TEST RCX,RAX
-                {
-                    let v = r[1] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009f331  7407  JZ 0x14009f33a
-                pc = if f.z { 0x14009f33a } else { 0x14009f333 };
-                continue;
-            }
-            0x14009f333 => {
-                // 14009f333  4181e900005301  SUB R9D,0x1530000
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, 0x1530000u64, 32, true);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f33a;
-            }
-            0x14009f33a => {
-                // 14009f33a  486305331e3200  MOVSXD RAX,dword ptr [0x1403c1174]
-                {
-                    r[0] = ((m.read::<32>(0u64.wrapping_add(0x1403c1174u64))) as i32 as i64) as u64;
-                }
-                // 14009f341  498b8cc6f0ec0e00  MOV RCX,qword ptr [R14 + RAX*0x8 + 0xeecf0]
-                {
-                    r[1] = m.read::<64>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xeecf0u64),
-                    );
-                }
-                // 14009f349  48230df81d3200  AND RCX,qword ptr [0x1403c1148]
-                {
-                    let v = r[1] & m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009f350  7424  JZ 0x14009f376
-                pc = if f.z { 0x14009f376 } else { 0x14009f352 };
-                continue;
-            }
-            0x14009f352 => {
-                // 14009f352  480fbcc1  BSF RAX,RCX
-                {
-                    let v = r[1];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f356  8905bcff2500  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009f35c  498b84c680420f00  MOV RAX,qword ptr [R14 + RAX*0x8 + 0xf4280]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[14])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4280u64),
-                    );
-                }
-                // 14009f364  4823c5  AND RAX,RBP
-                {
-                    let v = r[0] & r[5];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f367  48a9000000ff  TEST RAX,-0x1000000
-                {
-                    let v = r[0] & 0xffffffffff000000u64;
-                    f.logic(v, 64);
-                }
-                // 14009f36d  7407  JZ 0x14009f376
-                pc = if f.z { 0x14009f376 } else { 0x14009f36f };
-                continue;
-            }
-            0x14009f36f => {
-                // 14009f36f  4181c100005301  ADD R9D,0x1530000
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, 0x1530000u64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f376;
-            }
-            0x14009f376 => {
-                // 14009f376  4c8b353b1e3200  MOV R14,qword ptr [0x1403c11b8]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
-                }
-                // 14009f37d  48b800000000fcff0000  MOV RAX,0xfffc00000000
-                {
-                    r[0] = 0xfffc00000000u64;
-                }
-                // 14009f387  4d8bfe  MOV R15,R14
-                {
-                    r[15] = r[14];
-                }
-                // 14009f38a  4c23f8  AND R15,RAX
-                {
-                    let v = r[15] & r[0];
-                    f.logic(v, 64);
-                    r[15] = v;
-                }
-                // 14009f38d  0f8571010000  JNZ 0x14009f504
-                pc = if !f.z { 0x14009f504 } else { 0x14009f393 };
-                continue;
-            }
-            0x14009f393 => {
-                // 14009f393  488b35c61d3200  MOV RSI,qword ptr [0x1403c1160]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1160u64));
-                }
-                // 14009f39a  4c8bc3  MOV R8,RBX
-                {
-                    r[8] = r[3];
-                }
-                // 14009f39d  448bd7  MOV R10D,EDI
-                {
-                    r[10] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f3a0  4d234500  AND R8,qword ptr [R13]
-                {
-                    let v = r[8] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f3a4  0f8491000000  JZ 0x14009f43b
-                pc = if f.z { 0x14009f43b } else { 0x14009f3aa };
-                continue;
-            }
-            0x14009f3aa => {
-                // 14009f3aa  4c8b1db71d3200  MOV R11,qword ptr [0x1403c1168]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
-                }
-                // 14009f3b1  488d05c8360500  LEA RAX,[0x1400f2a80]
-                {
-                    r[0] = 0u64.wrapping_add(0x1400f2a80u64);
-                }
-                // 14009f3b8  4c8b742478  MOV R14,qword ptr [RSP + 0x78]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
-                }
-                // 14009f3bd  488d1d3c0cf6ff  LEA RBX,[0x140000000]
-                {
-                    r[3] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009f3c4  4889442420  MOV qword ptr [RSP + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009f3c9  0f1f8000000000  NOP dword ptr [RAX]
-                pc = 0x14009f3d0;
-            }
-            0x14009f3d0 => {
-                // 14009f3d0  490fbcd0  BSF RDX,R8
-                {
-                    let v = r[8];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[2] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f3d4  4863c2  MOVSXD RAX,EDX
-                {
-                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f3d7  89153bff2500  MOV dword ptr [0x1402ff318],EDX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
-                }
-                // 14009f3dd  4885b4c380240f00  TEST qword ptr [RBX + RAX*0x8 + 0xf2480],RSI
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[3])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf2480u64),
-                    ) & r[6];
-                    f.logic(v, 64);
-                }
-                // 14009f3e5  7522  JNZ 0x14009f409
-                pc = if !f.z { 0x14009f409 } else { 0x14009f3e7 };
-                continue;
-            }
-            0x14009f3e7 => {
-                // 14009f3e7  4c85a4c380440f00  TEST qword ptr [RBX + RAX*0x8 + 0xf4480],R12
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[3])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4480u64),
-                    ) & r[12];
-                    f.logic(v, 64);
-                }
-                // 14009f3ef  752c  JNZ 0x14009f41d
-                pc = if !f.z { 0x14009f41d } else { 0x14009f3f1 };
-                continue;
-            }
-            0x14009f3f1 => {
-                // 14009f3f1  41837e7000  CMP dword ptr [R14 + 0x70],0x0
-                {
-                    f.arithmetic(
-                        m.read::<32>(0u64.wrapping_add(r[14]).wrapping_add(0x70u64)),
-                        0x0u64,
-                        32,
-                        true,
-                    );
-                }
-                // 14009f3f6  488d0d83380500  LEA RCX,[0x1400f2c80]
-                {
-                    r[1] = 0u64.wrapping_add(0x1400f2c80u64);
-                }
-                // 14009f3fd  480f454c2420  CMOVNZ RCX,qword ptr [RSP + 0x20]
-                {
-                    if !f.z {
-                        r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                    }
-                }
-                // 14009f403  4c851cc1  TEST qword ptr [RCX + RAX*0x8],R11
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    ) & r[11];
-                    f.logic(v, 64);
-                }
-                // 14009f407  7414  JZ 0x14009f41d
-                pc = if f.z { 0x14009f41d } else { 0x14009f409 };
-                continue;
-            }
-            0x14009f409 => {
-                // 14009f409  8bc2  MOV EAX,EDX
-                {
-                    r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f40b  99  CDQ
-                {
-                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
-                }
-                // 14009f40c  83e207  AND EDX,0x7
-                {
-                    let v = (r[2] & 0xffffffffu64 & 0x7u64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f40f  03c2  ADD EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f411  c1f803  SAR EAX,0x3
-                {
-                    let v = r[0] & 0xffffffffu64;
-                    let n = 3u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[0] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f414  412b4670  SUB EAX,dword ptr [R14 + 0x70]
-                {
-                    let v = f.arithmetic(
-                        r[0] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(r[14]).wrapping_add(0x70u64)),
-                        32,
-                        true,
-                    );
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f418  3bf8  CMP EDI,EAX
-                {
-                    f.arithmetic(r[7] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                }
-                // 14009f41a  0f4cf8  CMOVL EDI,EAX
-                {
-                    if f.s != f.o {
-                        r[7] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                pc = 0x14009f41d;
-            }
-            0x14009f41d => {
-                // 14009f41d  498d40ff  LEA RAX,[R8 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[8]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f421  4c23c0  AND R8,RAX
-                {
-                    let v = r[8] & r[0];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f424  75aa  JNZ 0x14009f3d0
-                pc = if !f.z { 0x14009f3d0 } else { 0x14009f426 };
-                continue;
-            }
-            0x14009f426 => {
-                // 14009f426  4c8b1ddb1c3200  MOV R11,qword ptr [0x1403c1108]
-                {
-                    r[11] = m.read::<64>(0u64.wrapping_add(0x1403c1108u64));
-                }
-                // 14009f42d  488b1ddc1c3200  MOV RBX,qword ptr [0x1403c1110]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(0x1403c1110u64));
-                }
-                // 14009f434  4c8b357d1d3200  MOV R14,qword ptr [0x1403c11b8]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
-                }
-                pc = 0x14009f43b;
-            }
-            0x14009f43b => {
-                // 14009f43b  4c8bc5  MOV R8,RBP
-                {
-                    r[8] = r[5];
-                }
-                // 14009f43e  4d234500  AND R8,qword ptr [R13]
-                {
-                    let v = r[8] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f442  0f8494000000  JZ 0x14009f4dc
-                pc = if f.z { 0x14009f4dc } else { 0x14009f448 };
-                continue;
-            }
-            0x14009f448 => {
-                // 14009f448  488b0d191d3200  MOV RCX,qword ptr [0x1403c1168]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
-                }
-                // 14009f44f  488d052a320500  LEA RAX,[0x1400f2680]
-                {
-                    r[0] = 0u64.wrapping_add(0x1400f2680u64);
-                }
-                // 14009f456  4c8b6c2478  MOV R13,qword ptr [RSP + 0x78]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
-                }
-                // 14009f45b  4c8d259e0bf6ff  LEA R12,[0x140000000]
-                {
-                    r[12] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009f462  4889442420  MOV qword ptr [RSP + 0x20],RAX
-                {
-                    m.write::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64), r[0]);
-                }
-                // 14009f467  660f1f840000000000  NOP word ptr [RAX + RAX*0x1]
-                pc = 0x14009f470;
-            }
-            0x14009f470 => {
-                // 14009f470  490fbcd0  BSF RDX,R8
-                {
-                    let v = r[8];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[2] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f474  4863c2  MOVSXD RAX,EDX
-                {
-                    r[0] = ((r[2] & 0xffffffffu64) as i32 as i64) as u64;
-                }
-                // 14009f477  89159bfe2500  MOV dword ptr [0x1402ff318],EDX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[2] & 0xffffffffu64);
-                }
-                // 14009f47d  49858cc480220f00  TEST qword ptr [R12 + RAX*0x8 + 0xf2280],RCX
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf2280u64),
-                    ) & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009f485  7522  JNZ 0x14009f4a9
-                pc = if !f.z { 0x14009f4a9 } else { 0x14009f487 };
-                continue;
-            }
-            0x14009f487 => {
-                // 14009f487  4d859cc480420f00  TEST qword ptr [R12 + RAX*0x8 + 0xf4280],R11
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[12])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4280u64),
-                    ) & r[11];
-                    f.logic(v, 64);
-                }
-                // 14009f48f  753a  JNZ 0x14009f4cb
-                pc = if !f.z { 0x14009f4cb } else { 0x14009f491 };
-                continue;
-            }
-            0x14009f491 => {
-                // 14009f491  41837d7000  CMP dword ptr [R13 + 0x70],0x0
-                {
-                    f.arithmetic(
-                        m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x70u64)),
-                        0x0u64,
-                        32,
-                        true,
-                    );
-                }
-                // 14009f496  488d0de3330500  LEA RCX,[0x1400f2880]
-                {
-                    r[1] = 0u64.wrapping_add(0x1400f2880u64);
-                }
-                // 14009f49d  480f454c2420  CMOVNZ RCX,qword ptr [RSP + 0x20]
-                {
-                    if !f.z {
-                        r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x20u64));
-                    }
-                }
-                // 14009f4a3  488534c1  TEST qword ptr [RCX + RAX*0x8],RSI
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64)),
-                    ) & r[6];
-                    f.logic(v, 64);
-                }
-                // 14009f4a7  741b  JZ 0x14009f4c4
-                pc = if f.z { 0x14009f4c4 } else { 0x14009f4a9 };
-                continue;
-            }
-            0x14009f4a9 => {
-                // 14009f4a9  418b4d70  MOV ECX,dword ptr [R13 + 0x70]
-                {
-                    r[1] = (m.read::<32>(0u64.wrapping_add(r[13]).wrapping_add(0x70u64)))
-                        & 0xffff_ffff;
-                }
-                // 14009f4ad  8bc2  MOV EAX,EDX
-                {
-                    r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f4af  99  CDQ
-                {
-                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
-                }
-                // 14009f4b0  83e207  AND EDX,0x7
-                {
-                    let v = (r[2] & 0xffffffffu64 & 0x7u64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f4b3  03c2  ADD EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f4b5  c1f803  SAR EAX,0x3
-                {
-                    let v = r[0] & 0xffffffffu64;
-                    let n = 3u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[0] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f4b8  2bc8  SUB ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f4ba  83c106  ADD ECX,0x6
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, 0x6u64, 32, false);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f4bd  443bd1  CMP R10D,ECX
-                {
-                    f.arithmetic(r[10] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, true);
-                }
-                // 14009f4c0  440f4cd1  CMOVL R10D,ECX
-                {
-                    if f.s != f.o {
-                        r[10] = (r[1] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                pc = 0x14009f4c4;
-            }
-            0x14009f4c4 => {
-                // 14009f4c4  488b0d9d1c3200  MOV RCX,qword ptr [0x1403c1168]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1168u64));
-                }
-                pc = 0x14009f4cb;
-            }
-            0x14009f4cb => {
-                // 14009f4cb  498d40ff  LEA RAX,[R8 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[8]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f4cf  4c23c0  AND R8,RAX
-                {
-                    let v = r[8] & r[0];
-                    f.logic(v, 64);
-                    r[8] = v;
-                }
-                // 14009f4d2  759c  JNZ 0x14009f470
-                pc = if !f.z { 0x14009f470 } else { 0x14009f4d4 };
-                continue;
-            }
-            0x14009f4d4 => {
-                // 14009f4d4  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
-                }
-                pc = 0x14009f4dc;
-            }
-            0x14009f4dc => {
-                // 14009f4dc  488b355d1c3200  MOV RSI,qword ptr [0x1403c1140]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(0x1403c1140u64));
-                }
-                // 14009f4e3  412bfa  SUB EDI,R10D
-                {
-                    let v = f.arithmetic(r[7] & 0xffffffffu64, r[10] & 0xffffffffu64, 32, true);
-                    r[7] = (v) & 0xffff_ffff;
-                }
-                // 14009f4e6  f3480fb8c5  POPCNT RAX,RBP
-                {
-                    let v = r[5];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[0] = u64::from(v.count_ones());
-                }
-                // 14009f4eb  f3480fb8cb  POPCNT RCX,RBX
-                {
-                    let v = r[3];
-                    f.z = v == 0;
-                    f.o = false;
-                    f.s = false;
-                    r[1] = u64::from(v.count_ones());
-                }
-                // 14009f4f0  2bc8  SUB ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f4f2  69c7f4010000  IMUL EAX,EDI,0x1f4
-                {
-                    r[0] = ((r[7] & 0xffffffffu64).wrapping_mul(0x1f4u64)) & 0xffff_ffff;
-                }
-                // 14009f4f8  69d15a001400  IMUL EDX,ECX,0x14005a
-                {
-                    r[2] = ((r[1] & 0xffffffffu64).wrapping_mul(0x14005au64)) & 0xffff_ffff;
-                }
-                // 14009f4fe  4403c8  ADD R9D,EAX
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009f501  4403ca  ADD R9D,EDX
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f504;
-            }
-            0x14009f504 => {
-                // 14009f504  498bc6  MOV RAX,R14
-                {
-                    r[0] = r[14];
-                }
-                // 14009f507  4c8d1df20af6ff  LEA R11,[0x140000000]
-                {
-                    r[11] = 0u64.wrapping_add(0x140000000u64);
-                }
-                // 14009f50e  25ffff0100  AND EAX,0x1ffff
-                {
-                    let v = (r[0] & 0xffffffffu64 & 0x1ffffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f513  b900010000  MOV ECX,0x100
-                {
-                    r[1] = (0x100u64) & 0xffff_ffff;
-                }
-                // 14009f518  418bd6  MOV EDX,R14D
-                {
-                    r[2] = (r[14] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f51b  4d8bc6  MOV R8,R14
-                {
-                    r[8] = r[14];
-                }
-                // 14009f51e  c1fa07  SAR EDX,0x7
-                {
-                    let v = r[2] & 0xffffffffu64;
-                    let n = 7u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[2] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f521  81e200fc0300  AND EDX,0x3fc00
-                {
-                    let v = (r[2] & 0xffffffffu64 & 0x3fc00u64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f527  49c1e819  SHR R8,0x19
-                {
-                    let v = r[8];
-                    let n = 25u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[8] = v;
-                    }
-                }
-                // 14009f52b  450fbf944310292000  MOVSX R10D,word ptr [R11 + RAX*0x2 + 0x202910]
-                {
-                    r[10] = (((m.read::<16>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x2u64))
-                            .wrapping_add(0x202910u64),
-                    )) as i16 as i64) as u64)
-                        & 0xffff_ffff;
-                }
-                // 14009f534  81c20000feff  ADD EDX,0xfffe0000
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, 0xfffe0000u64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f53a  4403157f1c3200  ADD R10D,dword ptr [0x1403c11c0]
-                {
-                    let v = f.arithmetic(
-                        r[10] & 0xffffffffu64,
-                        m.read::<32>(0u64.wrapping_add(0x1403c11c0u64)),
-                        32,
-                        false,
-                    );
-                    r[10] = (v) & 0xffff_ffff;
-                }
-                // 14009f541  4181e0ff010000  AND R8D,0x1ff
-                {
-                    let v = (r[8] & 0xffffffffu64 & 0x1ffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f548  412bc8  SUB ECX,R8D
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[8] & 0xffffffffu64, 32, true);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f54b  410fb7c1  MOVZX EAX,R9W
-                {
-                    r[0] = (r[9] & 0xffffu64) & 0xffff_ffff;
-                }
-                // 14009f54f  2d00800000  SUB EAX,0x8000
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, 0x8000u64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f554  41c1e910  SHR R9D,0x10
-                {
-                    let v = r[9] & 0xffffffffu64;
-                    let n = 16u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[9] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f558  0fafc1  IMUL EAX,ECX
-                {
-                    r[0] =
-                        ((r[0] & 0xffffffffu64).wrapping_mul(r[1] & 0xffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009f55b  4403d2  ADD R10D,EDX
-                {
-                    let v = f.arithmetic(r[10] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[10] = (v) & 0xffff_ffff;
-                }
-                // 14009f55e  4181e900800000  SUB R9D,0x8000
-                {
-                    let v = f.arithmetic(r[9] & 0xffffffffu64, 0x8000u64, 32, true);
-                    r[9] = (v) & 0xffff_ffff;
-                }
-                // 14009f565  450fafc8  IMUL R9D,R8D
-                {
-                    r[9] =
-                        ((r[9] & 0xffffffffu64).wrapping_mul(r[8] & 0xffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009f569  4103c1  ADD EAX,R9D
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[9] & 0xffffffffu64, 32, false);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f56c  99  CDQ
-                {
-                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
-                }
-                // 14009f56d  0fb6ca  MOVZX ECX,DL
-                {
-                    r[1] = (r[2] & 0xffu64) & 0xffff_ffff;
-                }
-                // 14009f570  03c8  ADD ECX,EAX
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f572  b867666666  MOV EAX,0x66666667
-                {
-                    r[0] = (0x66666667u64) & 0xffff_ffff;
-                }
-                // 14009f577  c1f908  SAR ECX,0x8
-                {
-                    let v = r[1] & 0xffffffffu64;
-                    let n = 8u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[1] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f57a  4103ca  ADD ECX,R10D
-                {
-                    let v = f.arithmetic(r[1] & 0xffffffffu64, r[10] & 0xffffffffu64, 32, false);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f57d  f7e9  IMUL ECX
-                {
-                    let v = (r[0] as i32 as i128) * ((r[1] & 0xffffffffu64) as i32 as i128);
-                    r[0] = v as u64 & 0xffffffffu64;
-                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
-                }
-                // 14009f57f  498bce  MOV RCX,R14
-                {
-                    r[1] = r[14];
-                }
-                // 14009f582  c1fa02  SAR EDX,0x2
-                {
-                    let v = r[2] & 0xffffffffu64;
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[2] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f585  8bc2  MOV EAX,EDX
-                {
-                    r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f587  48c1e922  SHR RCX,0x22
-                {
-                    let v = r[1];
-                    let n = 34u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[1] = v;
-                    }
-                }
-                // 14009f58b  c1e81f  SHR EAX,0x1f
-                {
-                    let v = r[0] & 0xffffffffu64;
-                    let n = 31u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[0] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f58e  81e1ff3f0000  AND ECX,0x3fff
-                {
-                    let v = (r[1] & 0xffffffffu64 & 0x3fffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f594  03c2  ADD EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f596  420fb68c19c0c32300  MOVZX ECX,byte ptr [RCX + R11*0x1 + 0x23c3c0]
-                {
-                    r[1] = (m.read::<8>(
-                        0u64.wrapping_add(r[1])
-                            .wrapping_add(r[11].wrapping_mul(0x1u64))
-                            .wrapping_add(0x23c3c0u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009f59f  0fafc1  IMUL EAX,ECX
-                {
-                    r[0] =
-                        ((r[0] & 0xffffffffu64).wrapping_mul(r[1] & 0xffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009f5a2  99  CDQ
-                {
-                    r[2] = ((r[0] as i32) >> 31) as u32 as u64;
-                }
-                // 14009f5a3  83e27f  AND EDX,0x7f
-                {
-                    let v = (r[2] & 0xffffffffu64 & 0x7fu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f5a6  448d0402  LEA R8D,[RDX + RAX*0x1]
-                {
-                    r[8] = (0u64
-                        .wrapping_add(r[2])
-                        .wrapping_add(r[0].wrapping_mul(0x1u64)))
-                        & 0xffff_ffff;
-                }
-                // 14009f5aa  8b0538b83100  MOV EAX,dword ptr [0x1403bade8]
-                {
-                    r[0] = (m.read::<32>(0u64.wrapping_add(0x1403bade8u64))) & 0xffff_ffff;
-                }
-                // 14009f5b0  41c1f807  SAR R8D,0x7
-                {
-                    let v = r[8] & 0xffffffffu64;
-                    let n = 7u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
+                    // 14009f7e5  4403c0  ADD R8D,EAX
+                    {
+                        let v = f.arithmetic(r[8] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
                         r[8] = (v) & 0xffff_ffff;
                     }
                 }
-                // 14009f5b4  85c0  TEST EAX,EAX
-                {
-                    let v = (r[0] & 0xffffffffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                }
-                // 14009f5b6  742e  JZ 0x14009f5e6
-                pc = if f.z { 0x14009f5e6 } else { 0x14009f5b8 };
-                continue;
-            }
-            0x14009f5b8 => {
-                // 14009f5b8  8bc8  MOV ECX,EAX
-                {
-                    r[1] = (r[0] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f5ba  4183c0fe  ADD R8D,-0x2
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, 0xfffffffffffffffeu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f5be  48330de31b3200  XOR RCX,qword ptr [0x1403c11a8]
-                {
-                    let v = r[1] ^ m.read::<64>(0u64.wrapping_add(0x1403c11a8u64));
-                    f.logic(v, 64);
-                    r[1] = v;
-                }
-                // 14009f5c5  48b8cdcccccccccccccc  MOV RAX,-0x3333333333333333
-                {
-                    r[0] = 0xcccccccccccccccdu64;
-                }
-                // 14009f5cf  81e1ff0f0000  AND ECX,0xfff
-                {
-                    let v = (r[1] & 0xffffffffu64 & 0xfffu64) & 0xffffffffu64;
-                    f.logic(v, 32);
-                    r[1] = (v) & 0xffff_ffff;
-                }
-                // 14009f5d5  48f7e1  MUL RCX
-                {
-                    let v = (r[0] as u128) * ((r[1]) as u128);
-                    r[0] = v as u64;
-                    r[2] = (v >> 64) as u64;
-                }
-                // 14009f5d8  48c1ea02  SHR RDX,0x2
-                {
-                    let v = r[2];
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[2] = v;
-                    }
-                }
-                // 14009f5dc  488d0492  LEA RAX,[RDX + RDX*0x4]
-                {
-                    r[0] = 0u64
-                        .wrapping_add(r[2])
-                        .wrapping_add(r[2].wrapping_mul(0x4u64));
-                }
-                // 14009f5e0  482bc8  SUB RCX,RAX
-                {
-                    let v = f.arithmetic(r[1], r[0], 64, true);
-                    r[1] = v;
-                }
-                // 14009f5e3  4403c1  ADD R8D,ECX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f5e6;
-            }
-            0x14009f5e6 => {
-                // 14009f5e6  49bc0000000000500000  MOV R12,0x500000000000
-                {
-                    r[12] = 0x500000000000u64;
-                }
-                // 14009f5f0  4d3bfc  CMP R15,R12
-                {
-                    f.arithmetic(r[15], r[12], 64, true);
-                }
-                // 14009f5f3  0f85ef010000  JNZ 0x14009f7e8
-                pc = if !f.z { 0x14009f7e8 } else { 0x14009f5f9 };
-                continue;
-            }
-            0x14009f5f9 => {
-                // 14009f5f9  4c8bcb  MOV R9,RBX
-                {
-                    r[9] = r[3];
-                }
-                // 14009f5fc  48b8000000ffffffff00  MOV RAX,0xffffffff000000
-                {
-                    r[0] = 0xffffffff000000u64;
-                }
-                // 14009f606  4d234d00  AND R9,qword ptr [R13]
-                {
-                    let v = r[9] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f60a  bf34000000  MOV EDI,0x34
-                {
-                    r[7] = (0x34u64) & 0xffff_ffff;
-                }
-                // 14009f60f  4c23c8  AND R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f612  0f84df000000  JZ 0x14009f6f7
-                pc = if f.z { 0x14009f6f7 } else { 0x14009f618 };
-                continue;
-            }
-            0x14009f618 => {
-                // 14009f618  4c8b35291b3200  MOV R14,qword ptr [0x1403c1148]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                // 14009f61f  49bc0000000000ff0000  MOV R12,0xff0000000000
-                {
-                    r[12] = 0xff0000000000u64;
-                }
-                // 14009f629  48bd000000000000ff00  MOV RBP,0xff000000000000
-                {
-                    r[5] = 0xff000000000000u64;
-                }
-                // 14009f633  49bd00000000ff000000  MOV R13,0xff00000000
-                {
-                    r[13] = 0xff00000000u64;
-                }
-                // 14009f63d  0f1f00  NOP dword ptr [RAX]
-                pc = 0x14009f640;
-            }
-            0x14009f640 => {
-                // 14009f640  490fbcc1  BSF RAX,R9
-                {
-                    let v = r[9];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f644  8905cefc2500  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009f64a  4898  CDQE
-                {
-                    r[0] = r[0] as i32 as i64 as u64;
-                }
-                // 14009f64c  4985b4c380440f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4480],RSI
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4480u64),
-                    ) & r[6];
-                    f.logic(v, 64);
-                }
-                // 14009f654  7474  JZ 0x14009f6ca
-                pc = if f.z { 0x14009f6ca } else { 0x14009f656 };
-                continue;
-            }
-            0x14009f656 => {
-                // 14009f656  4d85b4c380420f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4280],R14
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4280u64),
-                    ) & r[14];
-                    f.logic(v, 64);
-                }
-                // 14009f65e  746a  JZ 0x14009f6ca
-                pc = if f.z { 0x14009f6ca } else { 0x14009f660 };
-                continue;
-            }
-            0x14009f660 => {
-                // 14009f660  49859cc380460f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4680],RBX
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4680u64),
-                    ) & r[3];
-                    f.logic(v, 64);
-                }
-                // 14009f668  7560  JNZ 0x14009f6ca
-                pc = if !f.z { 0x14009f6ca } else { 0x14009f66a };
-                continue;
-            }
-            0x14009f66a => {
-                // 14009f66a  498b94c3f0de0e00  MOV RDX,qword ptr [R11 + RAX*0x8 + 0xedef0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009f672  482315ff1a3200  AND RDX,qword ptr [0x1403c1178]
-                {
-                    let v = r[2] & m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009f679  490faf94c3f0fe0e00  IMUL RDX,qword ptr [R11 + RAX*0x8 + 0xefef0]
-                {
-                    r[2] = (r[2]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[11])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefef0u64),
-                        ),
-                    );
-                }
-                // 14009f682  418b8c8300080f00  MOV ECX,dword ptr [R11 + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009f68a  498b84c3f0020f00  MOV RAX,qword ptr [R11 + RAX*0x8 + 0xf02f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009f692  48d3ea  SHR RDX,CL
-                {
-                    let v = r[2];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[2] = v;
-                    }
-                }
-                // 14009f695  4c8534d0  TEST qword ptr [RAX + RDX*0x8],R14
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[0])
-                            .wrapping_add(r[2].wrapping_mul(0x8u64)),
-                    ) & r[14];
-                    f.logic(v, 64);
-                }
-                // 14009f699  742f  JZ 0x14009f6ca
-                pc = if f.z { 0x14009f6ca } else { 0x14009f69b };
-                continue;
-            }
-            0x14009f69b => {
-                // 14009f69b  498bc1  MOV RAX,R9
-                {
-                    r[0] = r[9];
-                }
-                // 14009f69e  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009f6a1  4923c1  AND RAX,R9
-                {
-                    let v = r[0] & r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f6a4  4885c5  TEST RBP,RAX
-                {
-                    let v = r[5] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009f6a7  7407  JZ 0x14009f6b0
-                pc = if f.z { 0x14009f6b0 } else { 0x14009f6a9 };
-                continue;
-            }
-            0x14009f6a9 => {
-                // 14009f6a9  b8a0000000  MOV EAX,0xa0
-                {
-                    r[0] = (0xa0u64) & 0xffff_ffff;
-                }
-                // 14009f6ae  eb17  JMP 0x14009f6c7
-                pc = 0x14009f6c7;
-                continue;
-            }
-            0x14009f6b0 => {
-                // 14009f6b0  4985c4  TEST R12,RAX
-                {
-                    let v = r[12] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009f6b3  7407  JZ 0x14009f6bc
-                pc = if f.z { 0x14009f6bc } else { 0x14009f6b5 };
-                continue;
-            }
-            0x14009f6b5 => {
-                // 14009f6b5  b864000000  MOV EAX,0x64
-                {
-                    r[0] = (0x64u64) & 0xffff_ffff;
-                }
-                // 14009f6ba  eb0b  JMP 0x14009f6c7
-                pc = 0x14009f6c7;
-                continue;
-            }
-            0x14009f6bc => {
-                // 14009f6bc  4985c5  TEST R13,RAX
-                {
-                    let v = r[13] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009f6bf  b816000000  MOV EAX,0x16
-                {
-                    r[0] = (0x16u64) & 0xffff_ffff;
-                }
-                // 14009f6c4  0f45c7  CMOVNZ EAX,EDI
-                {
-                    if !f.z {
-                        r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                pc = 0x14009f6c7;
-            }
-            0x14009f6c7 => {
-                // 14009f6c7  442bc0  SUB R8D,EAX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, true);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f6ca;
-            }
-            0x14009f6ca => {
-                // 14009f6ca  498d41ff  LEA RAX,[R9 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f6ce  4c23c8  AND R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f6d1  0f8569ffffff  JNZ 0x14009f640
-                pc = if !f.z { 0x14009f640 } else { 0x14009f6d7 };
-                continue;
-            }
-            0x14009f6d7 => {
-                // 14009f6d7  4c8bac2488000000  MOV R13,qword ptr [RSP + 0x88]
-                {
-                    r[13] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x88u64));
-                }
-                // 14009f6df  49bc0000000000500000  MOV R12,0x500000000000
-                {
-                    r[12] = 0x500000000000u64;
-                }
-                // 14009f6e9  488b2d281a3200  MOV RBP,qword ptr [0x1403c1118]
-                {
-                    r[5] = m.read::<64>(0u64.wrapping_add(0x1403c1118u64));
-                }
-                // 14009f6f0  4c8b35c11a3200  MOV R14,qword ptr [0x1403c11b8]
-                {
-                    r[14] = m.read::<64>(0u64.wrapping_add(0x1403c11b8u64));
-                }
-                pc = 0x14009f6f7;
-            }
-            0x14009f6f7 => {
-                // 14009f6f7  4c8bcd  MOV R9,RBP
-                {
-                    r[9] = r[5];
-                }
-                // 14009f6fa  48b800ffffffff000000  MOV RAX,0xffffffff00
-                {
-                    r[0] = 0xffffffff00u64;
-                }
-                // 14009f704  4d234d00  AND R9,qword ptr [R13]
-                {
-                    let v = r[9] & m.read::<64>(0u64.wrapping_add(r[13]));
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f708  4c23c8  AND R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f70b  0f84b7000000  JZ 0x14009f7c8
-                pc = if f.z { 0x14009f7c8 } else { 0x14009f711 };
-                continue;
-            }
-            0x14009f711 => {
-                // 14009f711  488b0d301a3200  MOV RCX,qword ptr [0x1403c1148]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                // 14009f718  bb000000ff  MOV EBX,0xff000000
-                {
-                    r[3] = (0xff000000u64) & 0xffff_ffff;
-                }
-                // 14009f71d  0f1f00  NOP dword ptr [RAX]
-                pc = 0x14009f720;
-            }
-            0x14009f720 => {
-                // 14009f720  490fbcc1  BSF RAX,R9
-                {
-                    let v = r[9];
-                    f.z = v == 0;
-                    if v != 0 {
-                        r[0] = u64::from(v.trailing_zeros());
-                    }
-                }
-                // 14009f724  8905eefb2500  MOV dword ptr [0x1402ff318],EAX
-                {
-                    m.write::<32>(0u64.wrapping_add(0x1402ff318u64), r[0] & 0xffffffffu64);
-                }
-                // 14009f72a  4898  CDQE
-                {
-                    r[0] = r[0] as i32 as i64 as u64;
-                }
-                // 14009f72c  49858cc380420f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4280],RCX
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4280u64),
-                    ) & r[1];
-                    f.logic(v, 64);
-                }
-                // 14009f734  0f8481000000  JZ 0x14009f7bb
-                pc = if f.z { 0x14009f7bb } else { 0x14009f73a };
-                continue;
-            }
-            0x14009f73a => {
-                // 14009f73a  4985b4c380440f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4480],RSI
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4480u64),
-                    ) & r[6];
-                    f.logic(v, 64);
-                }
-                // 14009f742  7477  JZ 0x14009f7bb
-                pc = if f.z { 0x14009f7bb } else { 0x14009f744 };
-                continue;
-            }
-            0x14009f744 => {
-                // 14009f744  4985acc380480f00  TEST qword ptr [R11 + RAX*0x8 + 0xf4880],RBP
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf4880u64),
-                    ) & r[5];
-                    f.logic(v, 64);
-                }
-                // 14009f74c  756d  JNZ 0x14009f7bb
-                pc = if !f.z { 0x14009f7bb } else { 0x14009f74e };
-                continue;
-            }
-            0x14009f74e => {
-                // 14009f74e  498b94c3f0de0e00  MOV RDX,qword ptr [R11 + RAX*0x8 + 0xedef0]
-                {
-                    r[2] = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xedef0u64),
-                    );
-                }
-                // 14009f756  4823151b1a3200  AND RDX,qword ptr [0x1403c1178]
-                {
-                    let v = r[2] & m.read::<64>(0u64.wrapping_add(0x1403c1178u64));
-                    f.logic(v, 64);
-                    r[2] = v;
-                }
-                // 14009f75d  490faf94c3f0fe0e00  IMUL RDX,qword ptr [R11 + RAX*0x8 + 0xefef0]
-                {
-                    r[2] = (r[2]).wrapping_mul(
-                        m.read::<64>(
-                            0u64.wrapping_add(r[11])
-                                .wrapping_add(r[0].wrapping_mul(0x8u64))
-                                .wrapping_add(0xefef0u64),
-                        ),
-                    );
-                }
-                // 14009f766  418b8c8300080f00  MOV ECX,dword ptr [R11 + RAX*0x4 + 0xf0800]
-                {
-                    r[1] = (m.read::<32>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x4u64))
-                            .wrapping_add(0xf0800u64),
-                    )) & 0xffff_ffff;
-                }
-                // 14009f76e  498b84c3f0020f00  MOV RAX,qword ptr [R11 + RAX*0x8 + 0xf02f0]
-                {
-                    r[0] = m.read::<64>(
-                        0u64.wrapping_add(r[11])
-                            .wrapping_add(r[0].wrapping_mul(0x8u64))
-                            .wrapping_add(0xf02f0u64),
-                    );
-                }
-                // 14009f776  48d3ea  SHR RDX,CL
-                {
-                    let v = r[2];
-                    let n = (r[1] & 0xffu64 & 63) as u32;
-                    if n != 0 {
-                        let v = v >> n;
-                        f.logic(v, 64);
-                        r[2] = v;
-                    }
-                }
-                // 14009f779  488534d0  TEST qword ptr [RAX + RDX*0x8],RSI
-                {
-                    let v = m.read::<64>(
-                        0u64.wrapping_add(r[0])
-                            .wrapping_add(r[2].wrapping_mul(0x8u64)),
-                    ) & r[6];
-                    f.logic(v, 64);
-                }
-                // 14009f77d  7435  JZ 0x14009f7b4
-                pc = if f.z { 0x14009f7b4 } else { 0x14009f77f };
-                continue;
-            }
-            0x14009f77f => {
-                // 14009f77f  498bc1  MOV RAX,R9
-                {
-                    r[0] = r[9];
-                }
-                // 14009f782  48f7d8  NEG RAX
-                {
-                    let v = f.arithmetic(0u64, r[0], 64, true);
-                    r[0] = v;
-                }
-                // 14009f785  4923c1  AND RAX,R9
-                {
-                    let v = r[0] & r[9];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f788  48a900ff0000  TEST RAX,0xff00
-                {
-                    let v = r[0] & 0xff00u64;
-                    f.logic(v, 64);
-                }
-                // 14009f78e  7407  JZ 0x14009f797
-                pc = if f.z { 0x14009f797 } else { 0x14009f790 };
-                continue;
-            }
-            0x14009f790 => {
-                // 14009f790  b8a0000000  MOV EAX,0xa0
-                {
-                    r[0] = (0xa0u64) & 0xffff_ffff;
-                }
-                // 14009f795  eb1a  JMP 0x14009f7b1
-                pc = 0x14009f7b1;
-                continue;
-            }
-            0x14009f797 => {
-                // 14009f797  48a90000ff00  TEST RAX,0xff0000
-                {
-                    let v = r[0] & 0xff0000u64;
-                    f.logic(v, 64);
-                }
-                // 14009f79d  7407  JZ 0x14009f7a6
-                pc = if f.z { 0x14009f7a6 } else { 0x14009f79f };
-                continue;
-            }
-            0x14009f79f => {
-                // 14009f79f  b864000000  MOV EAX,0x64
-                {
-                    r[0] = (0x64u64) & 0xffff_ffff;
-                }
-                // 14009f7a4  eb0b  JMP 0x14009f7b1
-                pc = 0x14009f7b1;
-                continue;
-            }
-            0x14009f7a6 => {
-                // 14009f7a6  4885c3  TEST RBX,RAX
-                {
-                    let v = r[3] & r[0];
-                    f.logic(v, 64);
-                }
-                // 14009f7a9  b816000000  MOV EAX,0x16
-                {
-                    r[0] = (0x16u64) & 0xffff_ffff;
-                }
-                // 14009f7ae  0f45c7  CMOVNZ EAX,EDI
-                {
-                    if !f.z {
-                        r[0] = (r[7] & 0xffffffffu64) & 0xffff_ffff;
-                    }
-                }
-                pc = 0x14009f7b1;
-            }
-            0x14009f7b1 => {
-                // 14009f7b1  4403c0  ADD R8D,EAX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f7b4;
-            }
-            0x14009f7b4 => {
-                // 14009f7b4  488b0d8d193200  MOV RCX,qword ptr [0x1403c1148]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(0x1403c1148u64));
-                }
-                pc = 0x14009f7bb;
-            }
-            0x14009f7bb => {
-                // 14009f7bb  498d41ff  LEA RAX,[R9 + -0x1]
-                {
-                    r[0] = 0u64.wrapping_add(r[9]).wrapping_add(0xffffffffffffffffu64);
-                }
-                // 14009f7bf  4c23c8  AND R9,RAX
-                {
-                    let v = r[9] & r[0];
-                    f.logic(v, 64);
-                    r[9] = v;
-                }
-                // 14009f7c2  0f8558ffffff  JNZ 0x14009f720
-                pc = if !f.z { 0x14009f720 } else { 0x14009f7c8 };
-                continue;
-            }
-            0x14009f7c8 => {
-                // 14009f7c8  440faf054cf32500  IMUL R8D,dword ptr [0x1402feb1c]
-                {
-                    r[8] = ((r[8] & 0xffffffffu64)
-                        .wrapping_mul(m.read::<32>(0u64.wrapping_add(0x1402feb1cu64))))
-                        & 0xffff_ffff;
-                }
-                // 14009f7d0  b81f85eb51  MOV EAX,0x51eb851f
-                {
-                    r[0] = (0x51eb851fu64) & 0xffff_ffff;
-                }
-                // 14009f7d5  41f7e8  IMUL R8D
-                {
-                    let v = (r[0] as i32 as i128) * ((r[8] & 0xffffffffu64) as i32 as i128);
-                    r[0] = v as u64 & 0xffffffffu64;
-                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
-                }
-                // 14009f7d8  448bc2  MOV R8D,EDX
-                {
-                    r[8] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f7db  41c1f805  SAR R8D,0x5
-                {
-                    let v = r[8] & 0xffffffffu64;
-                    let n = 5u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[8] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f7df  418bc0  MOV EAX,R8D
-                {
-                    r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f7e2  c1e81f  SHR EAX,0x1f
-                {
-                    let v = r[0] & 0xffffffffu64;
-                    let n = 31u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[0] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f7e5  4403c0  ADD R8D,EAX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f7e8;
-            }
-            0x14009f7e8 => {
                 // 14009f7e8  448b0d25f32500  MOV R9D,dword ptr [0x1402feb14]
                 {
                     r[9] = (m.read::<32>(0u64.wrapping_add(0x1402feb14u64))) & 0xffff_ffff;
@@ -6819,10 +6947,9 @@ pub(super) fn eval_14009e270(
                     f.arithmetic(r[15], r[12], 64, true);
                 }
                 // 14009f7f2  751c  JNZ 0x14009f810
-                pc = if !f.z { 0x14009f810 } else { 0x14009f7f4 };
-                continue;
-            }
-            0x14009f7f4 => {
+                if !f.z {
+                    break 'b_159;
+                }
                 // 14009f7f4  b899999999  MOV EAX,0x99999999
                 {
                     r[0] = (0x99999999u64) & 0xffff_ffff;
@@ -6873,286 +7000,274 @@ pub(super) fn eval_14009e270(
                     let v = f.arithmetic(r[8] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
                     r[8] = (v) & 0xffff_ffff;
                 }
-                pc = 0x14009f810;
             }
-            0x14009f810 => {
-                // 14009f810  48b9000000003c000000  MOV RCX,0x3c00000000
-                {
-                    r[1] = 0x3c00000000u64;
-                }
-                // 14009f81a  498bc6  MOV RAX,R14
-                {
-                    r[0] = r[14];
-                }
-                // 14009f81d  4823c1  AND RAX,RCX
-                {
-                    let v = r[0] & r[1];
-                    f.logic(v, 64);
-                    r[0] = v;
-                }
-                // 14009f820  48b90000000024000000  MOV RCX,0x2400000000
-                {
-                    r[1] = 0x2400000000u64;
-                }
-                // 14009f82a  483bc1  CMP RAX,RCX
-                {
-                    f.arithmetic(r[0], r[1], 64, true);
-                }
-                // 14009f82d  740f  JZ 0x14009f83e
-                pc = if f.z { 0x14009f83e } else { 0x14009f82f };
-                continue;
+            // 14009f810  48b9000000003c000000  MOV RCX,0x3c00000000
+            {
+                r[1] = 0x3c00000000u64;
             }
-            0x14009f82f => {
-                // 14009f82f  48b90000000018000000  MOV RCX,0x1800000000
-                {
-                    r[1] = 0x1800000000u64;
-                }
-                // 14009f839  483bc1  CMP RAX,RCX
-                {
-                    f.arithmetic(r[0], r[1], 64, true);
-                }
-                // 14009f83c  7547  JNZ 0x14009f885
-                pc = if !f.z { 0x14009f885 } else { 0x14009f83e };
-                continue;
+            // 14009f81a  498bc6  MOV RAX,R14
+            {
+                r[0] = r[14];
             }
-            0x14009f83e => {
-                // 14009f83e  b899999999  MOV EAX,0x99999999
-                {
-                    r[0] = (0x99999999u64) & 0xffff_ffff;
-                }
-                // 14009f843  f72defb53100  IMUL dword ptr [0x1403bae38]
-                {
-                    let v = (r[0] as i32 as i128)
-                        * ((m.read::<32>(0u64.wrapping_add(0x1403bae38u64))) as i32 as i128);
-                    r[0] = v as u64 & 0xffffffffu64;
-                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
-                }
-                // 14009f849  c1fa02  SAR EDX,0x2
-                {
-                    let v = r[2] & 0xffffffffu64;
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[2] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f84c  8bca  MOV ECX,EDX
-                {
-                    r[1] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f84e  c1e91f  SHR ECX,0x1f
-                {
-                    let v = r[1] & 0xffffffffu64;
-                    let n = 31u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[1] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f851  03d1  ADD EDX,ECX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f853  48b900000000c0ff0000  MOV RCX,0xffc000000000
-                {
-                    r[1] = 0xffc000000000u64;
-                }
-                // 14009f85d  410fafd1  IMUL EDX,R9D
-                {
-                    r[2] =
-                        ((r[2] & 0xffffffffu64).wrapping_mul(r[9] & 0xffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009f861  4403c2  ADD R8D,EDX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                // 14009f864  4c85f1  TEST RCX,R14
-                {
-                    let v = r[1] & r[14];
-                    f.logic(v, 64);
-                }
-                // 14009f867  751c  JNZ 0x14009f885
-                pc = if !f.z { 0x14009f885 } else { 0x14009f869 };
-                continue;
+            // 14009f81d  4823c1  AND RAX,RCX
+            {
+                let v = r[0] & r[1];
+                f.logic(v, 64);
+                r[0] = v;
             }
-            0x14009f869 => {
-                // 14009f869  b899999999  MOV EAX,0x99999999
-                {
-                    r[0] = (0x99999999u64) & 0xffff_ffff;
-                }
-                // 14009f86e  f72d88b53100  IMUL dword ptr [0x1403badfc]
-                {
-                    let v = (r[0] as i32 as i128)
-                        * ((m.read::<32>(0u64.wrapping_add(0x1403badfcu64))) as i32 as i128);
-                    r[0] = v as u64 & 0xffffffffu64;
-                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
-                }
-                // 14009f874  c1fa02  SAR EDX,0x2
-                {
-                    let v = r[2] & 0xffffffffu64;
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[2] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f877  8bca  MOV ECX,EDX
-                {
-                    r[1] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f879  c1e91f  SHR ECX,0x1f
-                {
-                    let v = r[1] & 0xffffffffu64;
-                    let n = 31u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[1] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f87c  03d1  ADD EDX,ECX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f87e  410fafd1  IMUL EDX,R9D
-                {
-                    r[2] =
-                        ((r[2] & 0xffffffffu64).wrapping_mul(r[9] & 0xffffffffu64)) & 0xffff_ffff;
-                }
-                // 14009f882  4403c2  ADD R8D,EDX
-                {
-                    let v = f.arithmetic(r[8] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
-                    r[8] = (v) & 0xffff_ffff;
-                }
-                pc = 0x14009f885;
+            // 14009f820  48b90000000024000000  MOV RCX,0x2400000000
+            {
+                r[1] = 0x2400000000u64;
             }
-            0x14009f885 => {
-                // 14009f885  488b4c2478  MOV RCX,qword ptr [RSP + 0x78]
-                {
-                    r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
-                }
-                // 14009f88a  4c8d9c24a0000000  LEA R11,[RSP + 0xa0]
-                {
-                    r[11] = 0u64.wrapping_add(r[4]).wrapping_add(0xa0u64);
-                }
-                // 14009f892  498b5b38  MOV RBX,qword ptr [R11 + 0x38]
-                {
-                    r[3] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x38u64));
-                }
-                // 14009f896  b867666666  MOV EAX,0x66666667
-                {
-                    r[0] = (0x66666667u64) & 0xffff_ffff;
-                }
-                // 14009f89b  498b6b40  MOV RBP,qword ptr [R11 + 0x40]
-                {
-                    r[5] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x40u64));
-                }
-                // 14009f89f  498b7348  MOV RSI,qword ptr [R11 + 0x48]
-                {
-                    r[6] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x48u64));
-                }
-                // 14009f8a3  41f7ea  IMUL R10D
-                {
-                    let v = (r[0] as i32 as i128) * ((r[10] & 0xffffffffu64) as i32 as i128);
-                    r[0] = v as u64 & 0xffffffffu64;
-                    r[2] = (v >> 32) as u64 & 0xffffffffu64;
-                }
-                // 14009f8a6  c6417c00  MOV byte ptr [RCX + 0x7c],0x0
-                {
-                    m.write::<8>(0u64.wrapping_add(r[1]).wrapping_add(0x7cu64), 0x0u64);
-                }
-                // 14009f8aa  c1fa02  SAR EDX,0x2
-                {
-                    let v = r[2] & 0xffffffffu64;
-                    let n = 2u32;
-                    if n != 0 {
-                        let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[2] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f8ad  8bc2  MOV EAX,EDX
-                {
-                    r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f8af  c1e81f  SHR EAX,0x1f
-                {
-                    let v = r[0] & 0xffffffffu64;
-                    let n = 31u32;
-                    if n != 0 {
-                        let v = (v >> n) & 0xffffffffu64;
-                        f.logic(v, 32);
-                        r[0] = (v) & 0xffff_ffff;
-                    }
-                }
-                // 14009f8b2  03d0  ADD EDX,EAX
-                {
-                    let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
-                    r[2] = (v) & 0xffff_ffff;
-                }
-                // 14009f8b4  418bc0  MOV EAX,R8D
-                {
-                    r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f8b7  2bc2  SUB EAX,EDX
-                {
-                    let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
-                    r[0] = (v) & 0xffff_ffff;
-                }
-                // 14009f8b9  89416c  MOV dword ptr [RCX + 0x6c],EAX
-                {
-                    m.write::<32>(
-                        0u64.wrapping_add(r[1]).wrapping_add(0x6cu64),
-                        r[0] & 0xffffffffu64,
-                    );
-                }
-                // 14009f8bc  418bc0  MOV EAX,R8D
-                {
-                    r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
-                }
-                // 14009f8bf  498be3  MOV RSP,R11
-                {
-                    r[4] = r[11];
-                }
-                // 14009f8c2  415f  POP R15
-                {
-                    r[15] = m.read::<64>(r[4]);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009f8c4  415e  POP R14
-                {
-                    r[14] = m.read::<64>(r[4]);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009f8c6  415d  POP R13
-                {
-                    r[13] = m.read::<64>(r[4]);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009f8c8  415c  POP R12
-                {
-                    r[12] = m.read::<64>(r[4]);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009f8ca  5f  POP RDI
-                {
-                    r[7] = m.read::<64>(r[4]);
-                    r[4] = r[4].wrapping_add(8);
-                }
-                // 14009f8cb  c3  RET
-                *registers = r;
-                *simd = x;
-                return r[0];
+            // 14009f82a  483bc1  CMP RAX,RCX
+            {
+                f.arithmetic(r[0], r[1], 64, true);
             }
-            _ => unreachable!("unregistered original basic block {pc:x}"),
+            // 14009f82d  740f  JZ 0x14009f83e
+            if f.z {
+                break 'b_161;
+            }
+            // 14009f82f  48b90000000018000000  MOV RCX,0x1800000000
+            {
+                r[1] = 0x1800000000u64;
+            }
+            // 14009f839  483bc1  CMP RAX,RCX
+            {
+                f.arithmetic(r[0], r[1], 64, true);
+            }
+            // 14009f83c  7547  JNZ 0x14009f885
+            if !f.z {
+                break 'b_163;
+            }
+        }
+        // 14009f83e  b899999999  MOV EAX,0x99999999
+        {
+            r[0] = (0x99999999u64) & 0xffff_ffff;
+        }
+        // 14009f843  f72defb53100  IMUL dword ptr [0x1403bae38]
+        {
+            let v = (r[0] as i32 as i128)
+                * ((m.read::<32>(0u64.wrapping_add(0x1403bae38u64))) as i32 as i128);
+            r[0] = v as u64 & 0xffffffffu64;
+            r[2] = (v >> 32) as u64 & 0xffffffffu64;
+        }
+        // 14009f849  c1fa02  SAR EDX,0x2
+        {
+            let v = r[2] & 0xffffffffu64;
+            let n = 2u32;
+            if n != 0 {
+                let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                f.logic(v, 32);
+                r[2] = (v) & 0xffff_ffff;
+            }
+        }
+        // 14009f84c  8bca  MOV ECX,EDX
+        {
+            r[1] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+        }
+        // 14009f84e  c1e91f  SHR ECX,0x1f
+        {
+            let v = r[1] & 0xffffffffu64;
+            let n = 31u32;
+            if n != 0 {
+                let v = (v >> n) & 0xffffffffu64;
+                f.logic(v, 32);
+                r[1] = (v) & 0xffff_ffff;
+            }
+        }
+        // 14009f851  03d1  ADD EDX,ECX
+        {
+            let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+            r[2] = (v) & 0xffff_ffff;
+        }
+        // 14009f853  48b900000000c0ff0000  MOV RCX,0xffc000000000
+        {
+            r[1] = 0xffc000000000u64;
+        }
+        // 14009f85d  410fafd1  IMUL EDX,R9D
+        {
+            r[2] = ((r[2] & 0xffffffffu64).wrapping_mul(r[9] & 0xffffffffu64)) & 0xffff_ffff;
+        }
+        // 14009f861  4403c2  ADD R8D,EDX
+        {
+            let v = f.arithmetic(r[8] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
+            r[8] = (v) & 0xffff_ffff;
+        }
+        // 14009f864  4c85f1  TEST RCX,R14
+        {
+            let v = r[1] & r[14];
+            f.logic(v, 64);
+        }
+        // 14009f867  751c  JNZ 0x14009f885
+        if !f.z {
+            break 'b_163;
+        }
+        // 14009f869  b899999999  MOV EAX,0x99999999
+        {
+            r[0] = (0x99999999u64) & 0xffff_ffff;
+        }
+        // 14009f86e  f72d88b53100  IMUL dword ptr [0x1403badfc]
+        {
+            let v = (r[0] as i32 as i128)
+                * ((m.read::<32>(0u64.wrapping_add(0x1403badfcu64))) as i32 as i128);
+            r[0] = v as u64 & 0xffffffffu64;
+            r[2] = (v >> 32) as u64 & 0xffffffffu64;
+        }
+        // 14009f874  c1fa02  SAR EDX,0x2
+        {
+            let v = r[2] & 0xffffffffu64;
+            let n = 2u32;
+            if n != 0 {
+                let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+                f.logic(v, 32);
+                r[2] = (v) & 0xffff_ffff;
+            }
+        }
+        // 14009f877  8bca  MOV ECX,EDX
+        {
+            r[1] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+        }
+        // 14009f879  c1e91f  SHR ECX,0x1f
+        {
+            let v = r[1] & 0xffffffffu64;
+            let n = 31u32;
+            if n != 0 {
+                let v = (v >> n) & 0xffffffffu64;
+                f.logic(v, 32);
+                r[1] = (v) & 0xffff_ffff;
+            }
+        }
+        // 14009f87c  03d1  ADD EDX,ECX
+        {
+            let v = f.arithmetic(r[2] & 0xffffffffu64, r[1] & 0xffffffffu64, 32, false);
+            r[2] = (v) & 0xffff_ffff;
+        }
+        // 14009f87e  410fafd1  IMUL EDX,R9D
+        {
+            r[2] = ((r[2] & 0xffffffffu64).wrapping_mul(r[9] & 0xffffffffu64)) & 0xffff_ffff;
+        }
+        // 14009f882  4403c2  ADD R8D,EDX
+        {
+            let v = f.arithmetic(r[8] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, false);
+            r[8] = (v) & 0xffff_ffff;
         }
     }
+    // 14009f885  488b4c2478  MOV RCX,qword ptr [RSP + 0x78]
+    {
+        r[1] = m.read::<64>(0u64.wrapping_add(r[4]).wrapping_add(0x78u64));
+    }
+    // 14009f88a  4c8d9c24a0000000  LEA R11,[RSP + 0xa0]
+    {
+        r[11] = 0u64.wrapping_add(r[4]).wrapping_add(0xa0u64);
+    }
+    // 14009f892  498b5b38  MOV RBX,qword ptr [R11 + 0x38]
+    {
+        r[3] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x38u64));
+    }
+    // 14009f896  b867666666  MOV EAX,0x66666667
+    {
+        r[0] = (0x66666667u64) & 0xffff_ffff;
+    }
+    // 14009f89b  498b6b40  MOV RBP,qword ptr [R11 + 0x40]
+    {
+        r[5] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x40u64));
+    }
+    // 14009f89f  498b7348  MOV RSI,qword ptr [R11 + 0x48]
+    {
+        r[6] = m.read::<64>(0u64.wrapping_add(r[11]).wrapping_add(0x48u64));
+    }
+    // 14009f8a3  41f7ea  IMUL R10D
+    {
+        let v = (r[0] as i32 as i128) * ((r[10] & 0xffffffffu64) as i32 as i128);
+        r[0] = v as u64 & 0xffffffffu64;
+        r[2] = (v >> 32) as u64 & 0xffffffffu64;
+    }
+    // 14009f8a6  c6417c00  MOV byte ptr [RCX + 0x7c],0x0
+    {
+        m.write::<8>(0u64.wrapping_add(r[1]).wrapping_add(0x7cu64), 0x0u64);
+    }
+    // 14009f8aa  c1fa02  SAR EDX,0x2
+    {
+        let v = r[2] & 0xffffffffu64;
+        let n = 2u32;
+        if n != 0 {
+            let v = (((v as i32) >> n) as u64) & 0xffffffffu64;
+            f.logic(v, 32);
+            r[2] = (v) & 0xffff_ffff;
+        }
+    }
+    // 14009f8ad  8bc2  MOV EAX,EDX
+    {
+        r[0] = (r[2] & 0xffffffffu64) & 0xffff_ffff;
+    }
+    // 14009f8af  c1e81f  SHR EAX,0x1f
+    {
+        let v = r[0] & 0xffffffffu64;
+        let n = 31u32;
+        if n != 0 {
+            let v = (v >> n) & 0xffffffffu64;
+            f.logic(v, 32);
+            r[0] = (v) & 0xffff_ffff;
+        }
+    }
+    // 14009f8b2  03d0  ADD EDX,EAX
+    {
+        let v = f.arithmetic(r[2] & 0xffffffffu64, r[0] & 0xffffffffu64, 32, false);
+        r[2] = (v) & 0xffff_ffff;
+    }
+    // 14009f8b4  418bc0  MOV EAX,R8D
+    {
+        r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
+    }
+    // 14009f8b7  2bc2  SUB EAX,EDX
+    {
+        let v = f.arithmetic(r[0] & 0xffffffffu64, r[2] & 0xffffffffu64, 32, true);
+        r[0] = (v) & 0xffff_ffff;
+    }
+    // 14009f8b9  89416c  MOV dword ptr [RCX + 0x6c],EAX
+    {
+        m.write::<32>(
+            0u64.wrapping_add(r[1]).wrapping_add(0x6cu64),
+            r[0] & 0xffffffffu64,
+        );
+    }
+    // 14009f8bc  418bc0  MOV EAX,R8D
+    {
+        r[0] = (r[8] & 0xffffffffu64) & 0xffff_ffff;
+    }
+    // 14009f8bf  498be3  MOV RSP,R11
+    {
+        r[4] = r[11];
+    }
+    // 14009f8c2  415f  POP R15
+    {
+        r[15] = m.read::<64>(r[4]);
+        r[4] = r[4].wrapping_add(8);
+    }
+    // 14009f8c4  415e  POP R14
+    {
+        r[14] = m.read::<64>(r[4]);
+        r[4] = r[4].wrapping_add(8);
+    }
+    // 14009f8c6  415d  POP R13
+    {
+        r[13] = m.read::<64>(r[4]);
+        r[4] = r[4].wrapping_add(8);
+    }
+    // 14009f8c8  415c  POP R12
+    {
+        r[12] = m.read::<64>(r[4]);
+        r[4] = r[4].wrapping_add(8);
+    }
+    // 14009f8ca  5f  POP RDI
+    {
+        r[7] = m.read::<64>(r[4]);
+        r[4] = r[4].wrapping_add(8);
+    }
+    // 14009f8cb  c3  RET
+    *registers = r;
+    *simd = x;
+    r[0]
 }
 
 // Source SHA-256: 264f2eede4c737f938c726e3c91e5ce07460e998110cf197abfc463dfa4622ae
