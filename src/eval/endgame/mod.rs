@@ -23,6 +23,22 @@ pub(super) const OCB_SCALE_NORMAL: i32 = 48;
 /// scale; specialised material patterns are checked next; everything else
 /// falls through to the opposite-coloured-bishop rule and the KNNK draw.
 pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
+    // Every recogniser but two needs five men or fewer; the wrong-corner
+    // draw and the KNNK draw need a bare king. Past five men without one,
+    // only the opposite-bishop rule can apply, so the rest are not asked.
+    if board.occupied_count() > 5
+        && !has_only_king(board, Color::White)
+        && !has_only_king(board, Color::Black)
+    {
+        debug_assert!(
+            knnkp_adjustment(board).is_none() && specialized_endgame_scale(board).is_none(),
+            "a recogniser fires past five men without a bare king"
+        );
+        if let Some(scale) = opposite_bishop_scale(board) {
+            score = score * scale / OCB_SCALE_NORMAL;
+        }
+        return score;
+    }
     if let Some(adjustment) = knnkp_adjustment(board) {
         return score + adjustment;
     }
@@ -752,6 +768,20 @@ mod endgame_311c_tests {
             let distinct = (0..5).all(|i| (i + 1..5).all(|j| squares[i] != squares[j]));
             if !distinct || !(8..56).contains(&bp) || KING_DISTANCE[wk][bk] < 2 {
                 continue;
+            }
+            // A pawn one push from a promotion square that no knight holds or
+            // covers cannot be kept by the knights, so the position is not one
+            // they can win and its order against "the pawn gone" means nothing.
+            if bp < 16 {
+                let promotion = bp - 8;
+                let covers = |knight: usize| {
+                    let files = (knight % 8).abs_diff(promotion % 8);
+                    let ranks = (knight / 8).abs_diff(promotion / 8);
+                    knight == promotion || (files, ranks) == (1, 2) || (files, ranks) == (2, 1)
+                };
+                if !covers(n1) && !covers(n2) {
+                    continue;
+                }
             }
             // A knight checking the side not to move is illegal. With only
             // knights and kings there are no discovered checks, so removing a

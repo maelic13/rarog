@@ -106,7 +106,7 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 |---|---|---|
 | `audit_spsa_coverage.ps1` | Check a tune surface against `src/search/params.rs` | PROCESS "SPSA go/no-go procedure" |
 | `spsa_convergence_model.py` | Compare SPSA horizons under the live schedule | SPSA registration |
-| `datagen.ps1` | Deterministic self-play PGN segments for Texel data | PROCESS "Texel convergence procedure" |
+| `datagen.ps1` | Deterministic self-play PGN segments for Texel data, on Colosseum by default (fastchess as backup) | PROCESS "Texel convergence procedure" |
 | `texel-tuner/` | The Rust Texel tuner, its own Cargo workspace | `texel/README.md` |
 | `texel/extract.py`, `texel/extract_parallel.py` | PGN to `FEN;target` datasets | `texel/README.md` |
 | `texel/sample_fens.py`, `texel/build_book.py` | Datagen start books | `texel/README.md` |

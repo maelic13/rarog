@@ -5,16 +5,60 @@
 use super::pawns::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, forward_square, relative_rank};
+use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
 use crate::board::movegen;
-use crate::board::{Bitboard, Board, Color, Piece, Square};
+use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
+
+/// `set` moved one rank toward `color`'s promotion rank.
+fn forward_one(color: Color, set: Bitboard) -> Bitboard {
+    match color {
+        Color::White => set.north(),
+        Color::Black => set.south(),
+    }
+}
+
+/// Every square on or ahead of a square of `set`, toward `color`'s
+/// promotion rank.
+fn forward_fill(color: Color, set: Bitboard) -> Bitboard {
+    let mut fill = set.0;
+    match color {
+        Color::White => {
+            fill |= fill << 8;
+            fill |= fill << 16;
+            fill |= fill << 32;
+        }
+        Color::Black => {
+            fill |= fill >> 8;
+            fill |= fill >> 16;
+            fill |= fill >> 32;
+        }
+    }
+    Bitboard(fill)
+}
+
+/// Every square `color`'s pieces attack under `occupied`.
+fn attacks_of(board: &Board, color: Color, occupied: Bitboard) -> Bitboard {
+    let atk = &ATTACKS;
+    let queens = board.pieces(color, Piece::Queen);
+    let mut attacks = pawn_attacks_of(color, board.pieces(color, Piece::Pawn))
+        | knight_attacks_of(board.pieces(color, Piece::Knight))
+        | atk.king(board.king_sq(color));
+    for sq in board.pieces(color, Piece::Bishop) | queens {
+        attacks |= atk.bishop(sq, occupied);
+    }
+    for sq in board.pieces(color, Piece::Rook) | queens {
+        attacks |= atk.rook(sq, occupied);
+    }
+    attacks
+}
 
 impl Evaluator {
     /// Passed-pawn advance bonuses that depend on non-pawn occupancy: a clear
     /// stop square ("free stop") and an unattacked stop square ("safe stop").
     /// These are deliberately kept out of `eval_pawns` — whose result is cached
     /// by a pawn-structure-only key — so the whole evaluation stays a pure
-    /// function of the position and the eval cache is exact (Phase 3.14).
+    /// function of the position (Phase 3.14).
     pub(super) fn eval_passed_pawn_advance(
         &self,
         board: &Board,
@@ -27,6 +71,15 @@ impl Evaluator {
             let sign = color_sign(color);
             let them = !color;
             let mut pp = passed[color as usize];
+            // The squares the enemy attacks, built at the first question and
+            // shared by every stop and path square of this side's passers. A
+            // square is attacked exactly when it is in the union of the enemy
+            // pieces' attacks, by the symmetry of the attack tables.
+            let mut enemy_attacks = None;
+            let mut attacked = |squares: Bitboard| {
+                (*enemy_attacks.get_or_insert_with(|| attacks_of(board, them, occupied)) & squares)
+                    .any()
+            };
             while pp.any() {
                 let sq = pp.pop_lsb();
                 let rel_rank = relative_rank(color, sq) as i32;
@@ -37,7 +90,11 @@ impl Evaluator {
                     *eg += sign * rel_rank * self.params.passed_freestop_eg_per_rank[0];
                     tr_mg!(self, passed_freestop_mg_per_rank, 0, sign * rel_rank);
                     tr_eg!(self, passed_freestop_eg_per_rank, 0, sign * rel_rank);
-                    if !board.is_attacked_by_with_occ(stop, them, occupied) {
+                    debug_assert_eq!(
+                        attacked(Bitboard::from(stop)),
+                        board.is_attacked_by_with_occ(stop, them, occupied)
+                    );
+                    if !attacked(Bitboard::from(stop)) {
                         *eg += sign * rel_rank * self.params.passed_safestop_eg_per_rank[0];
                         tr_eg!(self, passed_safestop_eg_per_rank, 0, sign * rel_rank);
                     }
@@ -55,16 +112,7 @@ impl Evaluator {
                     *eg += sign * rel_rank * self.params.passed_freepath_eg_per_rank[0];
                     tr_mg!(self, passed_freepath_mg_per_rank, 0, sign * rel_rank);
                     tr_eg!(self, passed_freepath_eg_per_rank, 0, sign * rel_rank);
-                    let mut path_sqs = path;
-                    let mut safe = true;
-                    while path_sqs.any() {
-                        let psq = path_sqs.pop_lsb();
-                        if board.is_attacked_by_with_occ(psq, them, occupied) {
-                            safe = false;
-                            break;
-                        }
-                    }
-                    if safe {
+                    if !attacked(path) {
                         *eg += sign * rel_rank * self.params.passed_safepath_eg_per_rank[0];
                         tr_eg!(self, passed_safepath_eg_per_rank, 0, sign * rel_rank);
                     }
@@ -90,16 +138,15 @@ impl Evaluator {
         // capture on the path even when the king cannot arrive. Restrict to a
         // defender with no non-pawn material (passed pawns are already
         // immune to enemy pawns by definition).
+        if board.has_non_pawn_material(them) {
+            return;
+        }
         let enemy_king = board.king_sq(them);
         let enemy_to_move = board.side_to_move() == them;
-        let defender_has_pieces = board.has_non_pawn_material(them);
         let mut pp = passed[color as usize];
         let mut unstoppable = 0i32;
         while pp.any() {
             let ps = pp.pop_lsb();
-            if defender_has_pieces {
-                continue;
-            }
             let promo = if color == Color::White {
                 56 + (ps.index() % 8)
             } else {
@@ -141,29 +188,25 @@ impl Evaluator {
         // file, and doubled friendly rooks double-counted. Now each passer scores
         // "is any own rook behind it" (bonus) and "is any enemy rook behind it"
         // (penalty) independently and at most once — explicit blocker semantics.
+        // "Behind" = same file, on the near side of the passer (toward our own
+        // back rank). A passer has a rook behind it exactly when it stands on
+        // the squares ahead of that rook on its file, so each term counts the
+        // passers in a forward fill of the rooks.
         let them = !color;
-        let own_rooks = board.pieces(color, Piece::Rook);
-        let enemy_rooks = board.pieces(them, Piece::Rook);
-        let mut pp = passed[color as usize];
-        while pp.any() {
-            let passer = pp.pop_lsb();
-            let file = SQUARE_FILE[passer.index()];
-            // "Behind" = same file, on the near side of the passer (toward our own
-            // back rank) — the ranks the enemy travels *forward* through.
-            let behind = FORWARD_RANKS[them as usize][SQUARE_RANK[passer.index()]] & FILE_BBS[file];
-            if (own_rooks & behind).any() {
-                *mg += sign * self.params.rook_behind_passer_mg[0];
-                *eg += sign * self.params.rook_behind_passer_eg[0];
-                tr_mg!(self, rook_behind_passer_mg, 0, sign);
-                tr_eg!(self, rook_behind_passer_eg, 0, sign);
-            }
-            if (enemy_rooks & behind).any() {
-                *mg -= sign * self.params.enemy_rook_behind_passer_mg[0];
-                *eg -= sign * self.params.enemy_rook_behind_passer_eg[0];
-                tr_mg!(self, enemy_rook_behind_passer_mg, 0, -sign);
-                tr_eg!(self, enemy_rook_behind_passer_eg, 0, -sign);
-            }
-        }
+        let passers = passed[color as usize];
+        let ahead_of = |rooks: Bitboard| forward_fill(color, forward_one(color, rooks));
+        let own = infra::to_i32((passers & ahead_of(board.pieces(color, Piece::Rook))).count());
+        let enemy = infra::to_i32((passers & ahead_of(board.pieces(them, Piece::Rook))).count());
+        *mg += sign
+            * (own * self.params.rook_behind_passer_mg[0]
+                - enemy * self.params.enemy_rook_behind_passer_mg[0]);
+        *eg += sign
+            * (own * self.params.rook_behind_passer_eg[0]
+                - enemy * self.params.enemy_rook_behind_passer_eg[0]);
+        tr_mg!(self, rook_behind_passer_mg, 0, sign * own);
+        tr_eg!(self, rook_behind_passer_eg, 0, sign * own);
+        tr_mg!(self, enemy_rook_behind_passer_mg, 0, -sign * enemy);
+        tr_eg!(self, enemy_rook_behind_passer_eg, 0, -sign * enemy);
     }
 
     /// Passer/blockade detail needing piece squares (Phase 3.8; seeded 0):
@@ -179,34 +222,26 @@ impl Evaluator {
         mg: &mut i32,
         eg: &mut i32,
     ) {
+        // Our passers whose stop square holds an enemy piece, and enemy
+        // passers whose stop square holds our knight: the stop squares of a
+        // set of passers are the set moved one rank forward.
         let them = !color;
-        let enemy_occ = board.color_occ(them);
-        let mut ours = passed[color as usize];
-        while ours.any() {
-            let sq = ours.pop_lsb();
-            if let Some(stop) = forward_square(color, sq)
-                && (enemy_occ & Bitboard::from(stop)).any()
-            {
-                *mg -= sign * self.params.blocked_passer_mg[0];
-                *eg -= sign * self.params.blocked_passer_eg[0];
-                tr_mg!(self, blocked_passer_mg, 0, -sign);
-                tr_eg!(self, blocked_passer_eg, 0, -sign);
-            }
-        }
-
-        let our_knights = board.pieces(color, Piece::Knight);
-        let mut theirs = passed[them as usize];
-        while theirs.any() {
-            let sq = theirs.pop_lsb();
-            if let Some(stop) = forward_square(them, sq)
-                && (our_knights & Bitboard::from(stop)).any()
-            {
-                *mg += sign * self.params.ideal_blockader_mg[0];
-                *eg += sign * self.params.ideal_blockader_eg[0];
-                tr_mg!(self, ideal_blockader_mg, 0, sign);
-                tr_eg!(self, ideal_blockader_eg, 0, sign);
-            }
-        }
+        let blocked = infra::to_i32(
+            (forward_one(color, passed[color as usize]) & board.color_occ(them)).count(),
+        );
+        let blockaders = infra::to_i32(
+            (forward_one(them, passed[them as usize]) & board.pieces(color, Piece::Knight)).count(),
+        );
+        *mg += sign
+            * (blockaders * self.params.ideal_blockader_mg[0]
+                - blocked * self.params.blocked_passer_mg[0]);
+        *eg += sign
+            * (blockaders * self.params.ideal_blockader_eg[0]
+                - blocked * self.params.blocked_passer_eg[0]);
+        tr_mg!(self, blocked_passer_mg, 0, -sign * blocked);
+        tr_eg!(self, blocked_passer_eg, 0, -sign * blocked);
+        tr_mg!(self, ideal_blockader_mg, 0, sign * blockaders);
+        tr_eg!(self, ideal_blockader_eg, 0, sign * blockaders);
     }
 
     /// Kings against a passer from its fourth rank on, measured at the square

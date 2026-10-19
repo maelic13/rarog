@@ -96,6 +96,19 @@ def joint_columns(family: dict) -> list:
             columns.append(family[name])
     return columns
 
+
+# Single trace rows read as their own directions beside the families: the
+# Material row (material and piece-square tables), Imbalance and each piece row.
+# The Queens row is already the `queens` family. They join no family model, so
+# the families' numbers do not move.
+ROWS = {
+    "material_row": ["Material"],
+    "imbalance": ["Imbalance"],
+    "knights": ["Knights"],
+    "bishops": ["Bishops"],
+    "rooks": ["Rooks"],
+}
+
 # Stockfish 11 phase constants (types.h): midgame piece values and the limits
 # between which the game phase is interpolated.
 SF11_NPM = {"n": 781, "b": 825, "r": 1276, "q": 2538}
@@ -392,6 +405,8 @@ def analyse(args: argparse.Namespace) -> int:
     models["rarog+pieces+queens"] = np.column_stack(
         [rarog, family[JOINED[0]] + family[JOINED[1]]]
     )
+    for name, terms in ROWS.items():
+        models[f"rarog+{name}"] = np.column_stack([rarog, sum(tapered(t) for t in terms)])
 
     cohorts = {
         "all": np.ones(n, dtype=bool),
@@ -410,6 +425,10 @@ def analyse(args: argparse.Namespace) -> int:
         cohorts["men>=7"] = men >= 7
         cohorts["|rarog|<=500"] = np.abs(rarog) <= 500.0
         cohorts["|rarog|>500"] = np.abs(rarog) > 500.0
+        # Six men or fewer belong to the endgame instruments and the tables;
+        # these read the endgame band and queenless play above them.
+        cohorts["phase<32 men>=7"] = (phase < 32) & (men >= 7)
+        cohorts["no queens men>=7"] = ~queens & (men >= 7)
 
     def squared_errors(mask):
         return {

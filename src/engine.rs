@@ -175,6 +175,7 @@ impl Engine {
         let mut total_ms_first = 0u128;
         let mut nps_samples: Vec<u128> = Vec::with_capacity(repeats as usize);
 
+        println!("Large pages     : {}", crate::large_pages::large_pages());
         println!();
         for repeat in 0..repeats {
             // Clean, identical starting state each repeat (TT + histories + eval

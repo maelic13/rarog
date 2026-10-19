@@ -208,6 +208,13 @@ impl Evaluator {
             passed[us as usize] = Bitboard::EMPTY;
             while tmp.any() {
                 let sq = tmp.pop_lsb();
+                // Each pawn's material and square, which `evaluate` leaves to
+                // this entry (see `PSQ_PIECES`).
+                #[cfg(not(feature = "texel"))]
+                {
+                    mg += sign * self.tables.mg[us as usize][Piece::Pawn as usize][sq.index()];
+                    eg += sign * self.tables.eg[us as usize][Piece::Pawn as usize][sq.index()];
+                }
                 let file = SQUARE_FILE[sq.index()];
                 let rel_rank = relative_rank(us, sq) as usize;
                 let adjacent = ADJACENT_FILES[file];
@@ -240,17 +247,6 @@ impl Evaluator {
                     // computed here — this function's result is cached by a
                     // pawn-structure-only key (Phase 3.14 fix). They are scored
                     // per-evaluation in `eval_passed_pawn_advance` instead.
-                } else if rel_rank >= 3
-                    && (atk.pawn(them, sq) & our_pawns).any()
-                    && (their_pawns
-                        & adjacent
-                        & FORWARD_RANKS[us as usize][SQUARE_RANK[sq.index()]])
-                    .is_empty()
-                {
-                    mg += sign * self.params.passed_candidate_mg[0];
-                    eg += sign * self.params.passed_candidate_eg[0];
-                    tr_mg!(self, passed_candidate_mg, 0, sign);
-                    tr_eg!(self, passed_candidate_eg, 0, sign);
                 }
 
                 let file_bb = FILE_BBS[file];
@@ -297,15 +293,6 @@ impl Evaluator {
                     tr_mg!(self, pawn_phalanx_mg, rel_rank, sign);
                     tr_eg!(self, pawn_phalanx_eg, rel_rank, sign);
                 }
-                // Pawn lever: our pawn that attacks an enemy pawn (Phase 3.8,
-                // seeded 0).
-                if (atk.pawn(us, sq) & their_pawns).any() {
-                    mg += sign * self.params.pawn_lever_mg[0];
-                    eg += sign * self.params.pawn_lever_eg[0];
-                    tr_mg!(self, pawn_lever_mg, 0, sign);
-                    tr_eg!(self, pawn_lever_eg, 0, sign);
-                }
-
                 let stop_sq = if us == Color::White {
                     sq.0.checked_add(8)
                 } else {

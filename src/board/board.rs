@@ -6,7 +6,7 @@
 use crate::infra;
 use std::fmt;
 
-use super::attacks::ATTACKS;
+use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
 use super::movegen::generate_legal_moves;
 use super::moves::{
@@ -103,6 +103,17 @@ const _: () = assert!(
     core::mem::size_of::<UnmakeInfo>() <= 24,
     "UnmakeInfo grew past 24 bytes; a 128-ply stack no longer costs 3 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
 );
+
+/// By piece type, the masks of the derived keys a piece's key enters: the
+/// pawn key, the minor-piece key and its side's non-pawn key.
+const DERIVED_KEY_MASKS: [[u64; 3]; 6] = [
+    [u64::MAX, 0, 0],
+    [0, u64::MAX, u64::MAX],
+    [0, u64::MAX, u64::MAX],
+    [0, 0, u64::MAX],
+    [0, 0, u64::MAX],
+    [0, 0, 0],
+];
 
 const NO_PIECE: u8 = 255;
 // Padded 12 → 16 so the hot mailbox decode can index with `& 15` — the
@@ -459,12 +470,6 @@ impl Board {
         decode_piece(self.mailbox[sq.index()])
     }
 
-    /// Piece type only at a given square.
-    #[inline(always)]
-    pub(crate) fn piece_type_at(&self, sq: Square) -> Option<Piece> {
-        decode_piece_type(self.mailbox[sq.index()])
-    }
-
     /// King square for a given color.
     #[inline(always)]
     pub fn king_sq(&self, color: Color) -> Square {
@@ -578,7 +583,7 @@ impl Board {
         }
 
         let promotion = mv.promotion();
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let to_bb = Bitboard::from(to);
         let canonical = match piece {
             Piece::Pawn => {
@@ -765,13 +770,34 @@ impl Board {
     /// Capture generation into a caller-owned list that also yields the pinned
     /// set, for a staged picker that will generate quiets at the same node.
     pub fn generate_legal_captures_pinned_into(&mut self, moves: &mut MoveList) -> Bitboard {
-        super::movegen::generate_captures_pinned_into(self, moves)
+        super::movegen::generate_captures_pinned_into(self, None, moves)
     }
 
     /// Quiet generation into a caller-owned list, reusing the pinned set from
     /// [`Board::generate_legal_captures_pinned_into`] at the same node.
     pub fn generate_legal_quiets_pinned_into(&self, pinned: Bitboard, moves: &mut MoveList) {
-        super::movegen::generate_quiets_pinned_into(self, pinned, moves);
+        super::movegen::generate_quiets_pinned_into(self, pinned, None, moves);
+    }
+
+    /// [`Board::generate_legal_captures_pinned_into`] for a caller that holds
+    /// this node's [`Board::threats`]: its `all` decides every king move.
+    pub(crate) fn generate_legal_captures_staged_into(
+        &mut self,
+        threats: &Threats,
+        moves: &mut MoveList,
+    ) -> Bitboard {
+        super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
+    }
+
+    /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
+    /// this node's [`Board::threats`]: its `all` decides every king move.
+    pub(crate) fn generate_legal_quiets_staged_into(
+        &self,
+        pinned: Bitboard,
+        threats: &Threats,
+        moves: &mut MoveList,
+    ) {
+        super::movegen::generate_quiets_pinned_into(self, pinned, Some(threats.all), moves);
     }
 
     pub fn perft(&mut self, depth: u32) -> u64 {
@@ -801,7 +827,7 @@ impl Board {
         let us = self.side_to_move;
         let them = !us;
         let ksq = self.king_sq(them);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let occ = self.all_occ;
         let bishop_from_k = atk.bishop(ksq, occ);
         let rook_from_k = atk.rook(ksq, occ);
@@ -846,15 +872,11 @@ impl Board {
     pub fn threats(&self) -> Threats {
         let us = self.side_to_move;
         let them = !us;
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let occ = self.all_occ ^ self.pieces(us, Piece::King);
         let mut by_piece = [Bitboard::EMPTY; 6];
-        for sq in self.pieces(them, Piece::Pawn) {
-            by_piece[Piece::Pawn as usize] |= atk.pawn(them, sq);
-        }
-        for sq in self.pieces(them, Piece::Knight) {
-            by_piece[Piece::Knight as usize] |= atk.knight(sq);
-        }
+        by_piece[Piece::Pawn as usize] = pawn_attacks_of(them, self.pieces(them, Piece::Pawn));
+        by_piece[Piece::Knight as usize] = knight_attacks_of(self.pieces(them, Piece::Knight));
         for sq in self.pieces(them, Piece::Bishop) {
             by_piece[Piece::Bishop as usize] |= atk.bishop(sq, occ);
         }
@@ -948,7 +970,7 @@ impl Board {
         let to_bb = Bitboard::from(to);
         let their_king = self.king_sq(them);
         let their_king_bb = Bitboard::from(their_king);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
 
         let moving_piece = if mv.is_promo() {
             mv.promo_piece()
@@ -1092,7 +1114,7 @@ impl Board {
         occ: Bitboard,
         captured: Option<(Square, Piece)>,
     ) -> bool {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let captured_bb = captured.map_or(Bitboard::EMPTY, |(captured_sq, _)| {
             Bitboard::from(captured_sq)
         });
@@ -1335,7 +1357,7 @@ impl Board {
 
     #[inline(always)]
     pub fn attackers_to_color(&self, sq: Square, occ: Bitboard, color: Color) -> Bitboard {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let diagonal = self.pieces(color, Piece::Bishop) | self.pieces(color, Piece::Queen);
         let orthogonal = self.pieces(color, Piece::Rook) | self.pieces(color, Piece::Queen);
 
@@ -1356,7 +1378,7 @@ impl Board {
     /// slider lookups whenever a pawn, knight or king already answers it.
     #[inline(always)]
     pub(crate) fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         if (atk.pawn(!color, sq) & self.pieces(color, Piece::Pawn) & occ).any() {
             return true;
         }
@@ -1597,7 +1619,7 @@ impl Board {
     #[inline(always)]
     pub(crate) fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
         let occ = self.all_occ;
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
 
         // Pawn attacks
         if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
@@ -1642,7 +1664,7 @@ impl Board {
     /// Bitboard of all pieces that attack the given square (any color).
     #[inline(always)]
     pub fn attackers_to(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         atk.pawn(Color::Black, sq) & self.pieces(Color::White, Piece::Pawn)
             | atk.pawn(Color::White, sq) & self.pieces(Color::Black, Piece::Pawn)
             | atk.knight(sq)
@@ -2011,6 +2033,17 @@ impl Board {
     // Internal helpers
     // -----------------------------------------------------------------------
 
+    /// Toggle `key` into the pawn, minor-piece and non-pawn keys a piece of
+    /// type `piece` belongs to. A mask per type, not a branch: the moving
+    /// piece's type is as unpredictable as the move.
+    #[inline(always)]
+    fn toggle_derived_keys(&mut self, color: Color, piece: Piece, key: u64) {
+        let [pawn, minor, non_pawn] = DERIVED_KEY_MASKS[piece as usize];
+        self.pawn_hash ^= key & pawn;
+        self.minor_hash ^= key & minor;
+        self.non_pawn_hash[color as usize] ^= key & non_pawn;
+    }
+
     #[inline(always)]
     fn add_piece(&mut self, color: Color, piece: Piece, sq: Square) {
         let bb = Bitboard::from(sq);
@@ -2019,15 +2052,7 @@ impl Board {
         self.occupancy[color as usize] |= bb;
         self.all_occ |= bb;
         let piece_key = ZOBRIST.piece(color, piece, sq);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= piece_key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= piece_key;
-                self.non_pawn_hash[color as usize] ^= piece_key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, piece_key);
     }
 
     /// Fused ordinary relocation of `piece` from `from` to `to`.
@@ -2046,15 +2071,7 @@ impl Board {
         self.occupancy[color as usize] ^= mask;
         self.all_occ ^= mask;
         let key = ZOBRIST.piece(color, piece, from) ^ ZOBRIST.piece(color, piece, to);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= key;
-                self.non_pawn_hash[color as usize] ^= key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, key);
     }
 
     #[inline(always)]
@@ -2065,15 +2082,7 @@ impl Board {
         self.occupancy[color as usize] ^= bb;
         self.all_occ ^= bb;
         let piece_key = ZOBRIST.piece(color, piece, sq);
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= piece_key,
-            Piece::Knight | Piece::Bishop => {
-                self.minor_hash ^= piece_key;
-                self.non_pawn_hash[color as usize] ^= piece_key;
-            }
-            Piece::Rook | Piece::Queen => self.non_pawn_hash[color as usize] ^= piece_key,
-            Piece::King => {}
-        }
+        self.toggle_derived_keys(color, piece, piece_key);
     }
 
     #[inline(always)]
@@ -2106,7 +2115,7 @@ impl Board {
         crate::diag_count!(board_calculate_checkers_calls);
         let attacker = !self.side_to_move;
         let king_sq = self.king_sq(self.side_to_move);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let diagonal = self.pieces(attacker, Piece::Bishop) | self.pieces(attacker, Piece::Queen);
         let orthogonal = self.pieces(attacker, Piece::Rook) | self.pieces(attacker, Piece::Queen);
 
@@ -2205,7 +2214,7 @@ impl Board {
         let Some(cap_sq) = ep_capture_square(capturer, ep_sq) else {
             return Ok(false);
         };
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let mut attackers = atk.pawn(!capturer, ep_sq) & self.pieces(capturer, Piece::Pawn);
         while attackers.any() {
             let from = attackers.pop_lsb();
@@ -2227,7 +2236,7 @@ impl Board {
         let king_sq = self.king_sq(capturer);
         let occ_after =
             (self.all_occ ^ Bitboard::from(from) ^ Bitboard::from(cap_sq)) | Bitboard::from(ep_sq);
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let exposed_rook = (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen))
             & atk.rook(king_sq, occ_after);
         let exposed_diag = (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen))
@@ -2436,15 +2445,6 @@ fn decode_piece(encoded: u8) -> Option<(Color, Piece)> {
     };
     let piece = PIECE_FROM_ENCODED[encoded as usize];
     Some((color, piece))
-}
-
-#[inline(always)]
-fn decode_piece_type(encoded: u8) -> Option<Piece> {
-    if encoded < 12 {
-        Some(PIECE_FROM_ENCODED[encoded as usize])
-    } else {
-        None
-    }
 }
 
 // -----------------------------------------------------------------------

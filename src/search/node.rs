@@ -708,8 +708,6 @@ impl Searcher {
         self.td.stack[ply].static_eval = static_eval;
         self.td.stack[ply].tt_pv = tt_pv;
         self.td.stack[ply].tt_move = tt_move;
-        let threats = board.threats();
-        self.td.stack[ply].threats = threats.all;
         // The eval swing across the parent's quiet move trains that move's
         // history: a move after which the side to move stands worse than the
         // parent stood was a good one for the parent.
@@ -846,31 +844,55 @@ impl Searcher {
         // the position improves, widens with the correction's size (an eval
         // the tables keep moving is less trusted) and relaxes when no piece
         // of ours stands attacked. Returns a score pulled toward beta.
+        //
+        // The node's threat set is read here only by that relief, and the
+        // relief only lowers the margin. So the test runs in two steps: a
+        // node that clears the full margin cuts without the set, one short
+        // of the relieved margin cannot cut, and only a node between the two
+        // computes the set, which the move loop then reuses.
+        let mut threats = None;
         if !tt_pv && !in_check && excluded.is_null() {
             let core = &self.cfg.core;
-            let unthreatened = (threats.all & board.color_occ(board.side_to_move())).is_empty();
-            let margin = (core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
+            let base = core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
                 - core.rfp_improvement * improvement / 1024
                 + core.rfp_correction * corr_abs / 1024
-                - core.rfp_threat * i32::from(unthreatened)
-                + core.rfp_constant)
-                .max(2);
-            if eval_for_pruning >= beta + margin
-                && beta > -TB_WIN_SCORE
-                && eval_for_pruning < TB_WIN_SCORE
+                + core.rfp_constant;
+            let in_band = beta > -TB_WIN_SCORE && eval_for_pruning < TB_WIN_SCORE;
+            let cuts = in_band
+                && eval_for_pruning >= beta + (base - core.rfp_threat).max(2)
+                && (eval_for_pruning >= beta + base.max(2) || {
+                    let set = board.threats();
+                    let relief = (set.all & board.color_occ(board.side_to_move())).is_empty();
+                    threats = Some(set);
+                    relief
+                });
+            #[cfg(debug_assertions)]
             {
+                let set = threats.unwrap_or_else(|| board.threats());
+                let relief = (set.all & board.color_occ(board.side_to_move())).is_empty();
+                let margin = (base - core.rfp_threat * i32::from(relief)).max(2);
+                debug_assert_eq!(
+                    cuts,
+                    in_band && eval_for_pruning >= beta + margin,
+                    "the two-step reverse-futility test disagrees with the full one"
+                );
+            }
+            if cuts {
                 crate::diag_count!(rfp_cut);
                 let score = eval_for_pruning + (beta - eval_for_pruning) * core.rfp_lerp / 1024;
                 trace_decision!(
                     self,
                     ply,
                     "rfp depth {depth} estimated {eval_for_pruning} static {static_eval} \
-                     improvement {improvement} corr {corr_abs} unthreatened {unthreatened} \
-                     margin {margin} beta {beta} returns {score}"
+                     improvement {improvement} corr {corr_abs} relief_consulted {} \
+                     base {base} beta {beta} returns {score}",
+                    threats.is_some()
                 );
                 return score;
             }
         }
+        let threats = threats.unwrap_or_else(|| board.threats());
+        self.td.stack[ply].threats = threats.all;
 
         // Whether the table suggests the TT move may be singular: a deep
         // enough lower or exact bound with a score short of the decisive
@@ -1401,6 +1423,10 @@ impl Searcher {
             self.td.extended_nodes += 1;
         }
 
+        // Per-node check masks, built at most once and shared by every move's
+        // check test, the make-move hint and quiet scoring; unmaking restores
+        // the board each iteration, so they stay valid for the whole loop.
+        let mut node_ci: Option<CheckInfo> = None;
         let mut move_picker = if NODE::ROOT {
             let mut legal_moves = MoveList::new();
             board.generate_legal_movelist_into(&mut legal_moves);
@@ -1429,7 +1455,15 @@ impl Searcher {
             };
 
             let mut scored = ScoredMoveList::new();
-            self.score_moves(board, &threats, legal_moves, tt_move, ply, &mut scored);
+            self.score_moves(
+                board,
+                &threats,
+                legal_moves,
+                tt_move,
+                ply,
+                &mut scored,
+                &mut node_ci,
+            );
             // Order the root list from the pool's view: a move another thread
             // already proved at a deeper depth goes first. The rotation below
             // diversifies on top of it.
@@ -1459,22 +1493,25 @@ impl Searcher {
         #[cfg(feature = "diag")]
         let diag_order_sample = diag_sample && excluded.is_null();
         let mut legal_move_seen = false;
-        // Per-node check masks, built at most once and shared by every move's
-        // check test and the make-move hint; unmaking restores the board each
-        // iteration, so they stay valid for the whole loop.
-        let mut node_ci: Option<CheckInfo> = None;
         let mut quiet_moves = SearchedMoves::new();
         let mut noisy_moves = SearchedMoves::new();
         // Set by late-move or quiet-futility pruning: the picker hands over no
         // more quiets.
         let mut skip_quiets = false;
-        while let Some(picked) = move_picker.next(self, board, &threats, skip_quiets) {
+        while let Some(picked) = move_picker.next(self, board, &threats, skip_quiets, &mut node_ci)
+        {
             let mv = picked.mv;
             if mv == excluded {
                 continue;
             }
             legal_move_seen = true;
             move_count += 1;
+            // The child's cluster is asked for as soon as the move is picked,
+            // from a key that is exact for most moves, so the line arrives
+            // during the pruning tests, the check test and the make; the exact
+            // prefetch after the make covers the rest. A pruned move's line is
+            // fetched for nothing, which costs less than waiting for it.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             let is_capture = mv.is_capture();
             let is_quiet = board.is_quiet_move(mv);
             let mut search_count = 0u32;
@@ -1677,11 +1714,6 @@ impl Searcher {
             // when it has one and kept its slot.
             let extension = if move_count == 1 { node_extension } else { 0 };
 
-            // The child's cluster is asked for before the make, from a key
-            // that is exact for most moves, so the line arrives during the
-            // check test and the make; the exact prefetch after the make
-            // covers the rest.
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.push_move(board, ply, mv, moving_piece);
             self.record_move_order(ply, move_count);
             {
@@ -1929,6 +1961,10 @@ impl Searcher {
                 self.td.pv_len[ply] = child_len;
 
                 if score >= beta {
+                    // The node's own cluster was probed at entry and the
+                    // subtree has since evicted it; it is asked for before the
+                    // history and correction updates so the store finds it.
+                    self.shared.tt.prefetch(hash);
                     let score = tb_cap.map_or(score, |cap| score.min(cap));
                     let cut_bound = if score >= beta {
                         Bound::Lower
@@ -1958,24 +1994,6 @@ impl Searcher {
                         } else {
                             crate::diag_count!(cutoff_quiet);
                         }
-                        // A later MultiPV line's root result is not the
-                        // position's: it excludes the better moves.
-                        if !(NODE::ROOT && self.td.multipv_line > 0) {
-                            self.shared.tt.store(TtStore {
-                                key: hash,
-                                depth,
-                                score,
-                                bound: cut_bound,
-                                mv,
-                                ply,
-                                static_eval: raw_static_eval,
-                                is_pv: tt_pv,
-                            });
-                        }
-                        #[cfg(feature = "diag")]
-                        if diag_sample {
-                            crate::diag_count!(main_store_lower);
-                        }
                     }
                     self.update_best_move_histories(
                         board,
@@ -1995,6 +2013,28 @@ impl Searcher {
                     // trains the correction; see the node's end.
                     if !in_check && !is_noisy(mv) && score > static_eval {
                         self.train_correction(board, depth, score - static_eval, ply);
+                    }
+                    // Stored after the updates, which read no table entry it
+                    // writes, so the prefetch above has their time as its lead.
+                    // A later MultiPV line's root result is not the position's:
+                    // it excludes the better moves.
+                    if excluded.is_null() {
+                        if !(NODE::ROOT && self.td.multipv_line > 0) {
+                            self.shared.tt.store(TtStore {
+                                key: hash,
+                                depth,
+                                score,
+                                bound: cut_bound,
+                                mv,
+                                ply,
+                                static_eval: raw_static_eval,
+                                is_pv: tt_pv,
+                            });
+                        }
+                        #[cfg(feature = "diag")]
+                        if diag_sample {
+                            crate::diag_count!(main_store_lower);
+                        }
                     }
                     return score;
                 }
@@ -2023,6 +2063,11 @@ impl Searcher {
             } else {
                 0
             };
+        }
+        // The node's own cluster, for the store at the end: asked for ahead
+        // of the correction and history updates, as on a cutoff.
+        if excluded.is_null() {
+            self.shared.tt.prefetch(hash);
         }
 
         // A tablebase win no move beat stands as what it is, a lower bound;
@@ -2264,16 +2309,28 @@ impl Searcher {
         }
 
         let mut best_move = Move::NULL;
-        let threats = board.threats();
         let mut scored = ScoredMoveList::new();
-        if in_check {
-            self.score_moves(board, &threats, moves.as_slice(), tt_move, ply, &mut scored);
-        } else {
-            self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
-        }
         // Per-node check masks, built lazily as in the main search; a
         // capture-only qnode that never tests for check never builds them.
         let mut node_ci: Option<CheckInfo> = None;
+        // Only the scoring reads the threat set; a node with nothing to score
+        // (19% of capture generations find none) skips it.
+        if !moves.is_empty() {
+            let threats = board.threats();
+            if in_check {
+                self.score_moves(
+                    board,
+                    &threats,
+                    moves.as_slice(),
+                    tt_move,
+                    ply,
+                    &mut scored,
+                    &mut node_ci,
+                );
+            } else {
+                self.score_tactical_moves(board, &threats, moves.as_slice(), tt_move, &mut scored);
+            }
+        }
         let mut tactical_count = 0usize;
         // A capture on the square the previous move landed on is a recapture;
         // a null move lands nowhere.
@@ -2296,8 +2353,13 @@ impl Searcher {
                 crate::diag_count!(q_check_moves_tried);
             }
             let mv = picked.mv;
+            // As in the main loop: the child's cluster as soon as the move is
+            // picked, from the hint.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
+            // Whether `mv` gives check, once a pruning test has asked: the make
+            // then skips recomputing the checkers.
+            let mut gives_check = None;
             if !in_check {
-                let mut gives_check = None;
                 tactical_count += 1;
                 crate::diag_count!(q_capture_considered);
                 let futility_margin = self.cfg.quiet.qs_futility_margin;
@@ -2365,15 +2427,16 @@ impl Searcher {
                     continue;
                 }
             }
-            // As in the main loop: the child's cluster early, from the hint.
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             let moving_piece = board.moving_piece(mv);
             self.push_move(board, ply, mv, moving_piece);
             #[cfg(feature = "diag")]
             if !in_check {
                 crate::diag_count!(q_capture_searched);
             }
-            board.make_move(mv);
+            match gives_check {
+                Some(checks) => board.make_move_with_check(mv, checks),
+                None => board.make_move(mv),
+            }
             self.shared.tt.prefetch(board.hash());
             let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);

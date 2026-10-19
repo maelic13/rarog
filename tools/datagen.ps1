@@ -3,13 +3,21 @@
     Generate a deterministic self-play PGN segment for Texel tuning.
 
 .DESCRIPTION
-    Runs fastchess self-play between two copies of the given engine at a fixed
-    node limit, collecting a large PGN file suitable for tools\texel\extract.py.
+    Runs self-play between two copies of the given engine at a fixed node
+    limit, one game per opening, collecting a large PGN file suitable for
+    tools\texel\extract.py. Colosseum plays the games by default; fastchess
+    stays available as the backup runner (-Runner fastchess).
 
-    A fixed -Seed shuffles the opening book reproducibly. -Start and -Rounds
-    select a non-wrapping range in that shuffled order, so a pilot and its
-    continuation cannot silently replay openings. The output filename records
-    the engine suffix, node count, start, and game count.
+    A fixed -Seed shuffles the opening book reproducibly in fastchess's order.
+    -Start and -Rounds select a non-wrapping range in that shuffled order, so a
+    pilot and its continuation cannot silently replay openings. The output
+    filename records the engine suffix, node count, start, and game count.
+
+    Colosseum shuffles with its own generator, so it does not shuffle here: it
+    plays -OpeningSequence, the book's lines already in fastchess's seeded order
+    (written by tools\texel\opening_sequence.py from earlier fastchess corpora),
+    in sequential order. A segment therefore means the same openings under
+    either runner, and the corpora keep the same starts.
 
     Adjudication is OFF by default (profile datagen-v2, 2026-09-01, RAR-M17):
     games play to a rules result. The reason is sample depletion rather than
@@ -78,6 +86,19 @@
 .PARAMETER FastchessPath
     Path to fastchess.exe. Default: tools\bin\fastchess.exe
 
+.PARAMETER Runner
+    colosseum (default) or fastchess. Colosseum runs the no-adjudication
+    contract only; -Adjudicate and -SyzygyPath need -Runner fastchess.
+
+.PARAMETER OpeningSequence
+    Colosseum only: the ordered EPD for -Book and -Seed. Default:
+    <book directory>\<book name>-s<Seed>.order.epd. Its sidecar JSON must name
+    the book's SHA-256, the seed and the sequence file's own SHA-256.
+
+.PARAMETER ColosseumPath
+    Path to colosseum-cli.exe. Default: tools\bin\colosseum-cli.exe, which must
+    be the build tools\colosseum\colosseum.pin.json pins.
+
 .EXAMPLE
     # First measure a 20k pilot.
     .\tools\datagen.ps1 -Suffix p1025a-zero -Rounds 20000 -Start 1 -Seed 10403
@@ -106,6 +127,10 @@ param(
     [ValidateSet("pgn", "epd")]
     [string]$BookFormat  = "pgn",
     [string]$FastchessPath = "",
+    [ValidateSet("colosseum", "fastchess")]
+    [string]$Runner      = "colosseum",
+    [string]$OpeningSequence = "",
+    [string]$ColosseumPath = "",
     [switch]$Append,
     # Opt back into datagen-v1 adjudication. Off by default since 2026-09-01.
     [switch]$Adjudicate,
@@ -159,14 +184,38 @@ try {
         if (-not $PSBoundParameters.ContainsKey('BookFormat')) { $BookFormat = "epd" }
     }
     if (-not $FastchessPath) { $FastchessPath = "$PSScriptRoot\bin\fastchess.exe" }
+    if (-not $ColosseumPath) { $ColosseumPath = "$PSScriptRoot\bin\colosseum-cli.exe" }
     $enginePath = "$PSScriptRoot\test_engines\rarog-$Suffix-pext-pgo.exe"
+    $runnerPath = if ($Runner -eq "fastchess") { $FastchessPath } else { $ColosseumPath }
 
-    foreach ($p in @($Book, $FastchessPath, $enginePath)) {
+    foreach ($p in @($Book, $runnerPath, $enginePath)) {
         if (-not (Test-Path $p)) { throw "Not found: $p" }
     }
     $enginePath   = (Resolve-Path $enginePath).Path
     $Book         = (Resolve-Path $Book).Path
-    $FastchessPath = (Resolve-Path $FastchessPath).Path
+    $runnerPath   = (Resolve-Path $runnerPath).Path
+
+    if ($Runner -eq "colosseum") {
+        if ($Adjudicate -or $SyzygyPath) {
+            throw "-Adjudicate and -SyzygyPath are legacy label contracts; run them with -Runner fastchess."
+        }
+        if (-not $PSBoundParameters.ContainsKey('BookFormat') -and
+            [IO.Path]::GetExtension($Book) -eq ".epd") {
+            $BookFormat = "epd"
+        }
+        if ($BookFormat -ne "epd") {
+            throw "-Runner colosseum plays an ordered EPD sequence; -Book must be an EPD book."
+        }
+        if (-not $OpeningSequence) {
+            $OpeningSequence = Join-Path (Split-Path -Parent $Book) (
+                [IO.Path]::GetFileNameWithoutExtension($Book) + "-s$Seed.order.epd")
+        }
+        if (-not (Test-Path -LiteralPath $OpeningSequence -PathType Leaf)) {
+            throw ("Opening sequence not found: $OpeningSequence. Write it with " +
+                   "tools\texel\opening_sequence.py from fastchess corpora of this book and seed.")
+        }
+        $OpeningSequence = (Resolve-Path -LiteralPath $OpeningSequence).Path
+    }
 
     if ($Start -lt 1) { throw "Start must be >= 1 (got $Start)." }
     if ($Rounds -lt 0) { throw "Rounds must be >= 0 (got $Rounds)." }
@@ -203,9 +252,51 @@ try {
         throw "Start $Start exceeds the $openings openings in the book."
     }
     $remaining = $openings - $Start + 1
+
+    # The sequence Colosseum plays must be this book in this seed's order, and
+    # a segment must lie inside the part of that order already recovered.
+    $sequenceInfo = $null
+    if ($Runner -eq "colosseum") {
+        $sidecarPath = [IO.Path]::ChangeExtension($OpeningSequence, ".json")
+        if (-not (Test-Path -LiteralPath $sidecarPath -PathType Leaf)) {
+            throw "Opening sequence has no sidecar: $sidecarPath"
+        }
+        $sidecar = Get-Content -LiteralPath $sidecarPath -Raw | ConvertFrom-Json
+        $sequenceHash = Get-HarnessSha256 -Path $OpeningSequence
+        if ($sidecar.schema -ne "rarog-opening-sequence-v1") {
+            throw "$sidecarPath is not a rarog-opening-sequence-v1 record."
+        }
+        if ($sidecar.book.sha256 -ne (Get-HarnessSha256 -Path $Book)) {
+            throw "Opening sequence $OpeningSequence was written for another book ($($sidecar.book.sha256))."
+        }
+        if ([int]$sidecar.seed -ne $Seed) {
+            throw "Opening sequence $OpeningSequence is seed $($sidecar.seed)'s order, not seed $Seed's."
+        }
+        if ($sidecar.output.sha256 -ne $sequenceHash) {
+            throw "Opening sequence $OpeningSequence is not the file its sidecar records."
+        }
+        $sequenceOpenings = [int]$sidecar.openings
+        $sequenceLines = 0
+        foreach ($line in [IO.File]::ReadLines($OpeningSequence)) { $sequenceLines++ }
+        if ($sequenceLines -ne $sequenceOpenings) {
+            throw "Opening sequence holds $sequenceLines lines; its sidecar records $sequenceOpenings."
+        }
+        if ($Start -gt $sequenceOpenings) {
+            throw "Start $Start lies past the $sequenceOpenings openings recovered in $OpeningSequence."
+        }
+        $remaining = $sequenceOpenings - $Start + 1
+        $sequenceInfo = [ordered]@{
+            path           = $OpeningSequence
+            sha256         = $sequenceHash
+            openings       = $sequenceOpenings
+            sidecar        = $sidecarPath
+            sidecar_sha256 = Get-HarnessSha256 -Path $sidecarPath
+        }
+    }
     if ($Rounds -eq 0) { $Rounds = $remaining }
     if ($Rounds -gt $remaining) {
-        throw "Segment [$Start, $($Start + $Rounds - 1)] exceeds the $openings-opening book and would wrap/reuse openings. Maximum Rounds from Start=$Start is $remaining."
+        $limit = if ($sequenceInfo) { "the $($sequenceInfo.openings) openings recovered in the sequence" } else { "the $openings-opening book" }
+        throw "Segment [$Start, $($Start + $Rounds - 1)] exceeds $limit and would wrap/reuse openings. Maximum Rounds from Start=$Start is $remaining."
     }
 
     $segmentEnd = $Start + $Rounds - 1
@@ -222,6 +313,9 @@ try {
     if (Test-Path $outputManifest) {
         throw "Output manifest already exists: $outputManifest. Choose a new segment or -OutputPgn."
     }
+    # Colosseum's durable run directory: an interrupted segment resumes from it
+    # when the same command is run again.
+    $runDir = [IO.Path]::ChangeExtension($OutputPgn, ".colosseum")
 
     # Refuse anonymous or dirty label generators. The sidecar was produced by
     # build_test.ps1 after its bench smoke test.
@@ -244,7 +338,15 @@ try {
         throw "Datagen requires a production PGO build, not a tune binary."
     }
 
-    $fastchessInfo = Get-FastchessVersion -Path $FastchessPath
+    $runnerInfo = if ($Runner -eq "fastchess") {
+        [pscustomobject]@{
+            Text   = (Get-FastchessVersion -Path $runnerPath).Text
+            Sha256 = Get-HarnessSha256 -Path $runnerPath
+        }
+    } else {
+        $cli = Assert-ColosseumCli -Path $runnerPath -PinPath "$PSScriptRoot\colosseum\colosseum.pin.json"
+        [pscustomobject]@{ Text = $cli.Version; Sha256 = $cli.Sha256; Revision = $cli.Pin.revision }
+    }
     if ($Adjudicate -and $SyzygyPath) {
         throw "-Adjudicate and -SyzygyPath are contradictory; pick one label contract."
     }
@@ -289,7 +391,6 @@ try {
         }
     }
     $bookHash = Get-HarnessSha256 -Path $Book
-    $fastchessHash = Get-HarnessSha256 -Path $FastchessPath
     # Adjudication off by default since 2026-09-01 (RAR-M17). See
     # Get-DatagenProfileV2 for why the label-quality case is stronger here than
     # for a strength gate: the harm is sample depletion, not mislabeling.
@@ -304,27 +405,45 @@ try {
     } else {
         @()
     }
-    $fastchessArgs = @(
-        '-engine', "cmd=$enginePath", 'name=A', "option.Hash=$Hash", 'option.Threads=1',
-        '-engine', "cmd=$enginePath", 'name=B', "option.Hash=$Hash", 'option.Threads=1',
-        '-each', 'tc=inf', "nodes=$Nodes",
-        '-openings', "file=$Book", "format=$BookFormat", 'order=random', "start=$Start",
-        '-srand', "$Seed",
-        '-rounds', "$Rounds", '-games', '1',
-        '-concurrency', "$Concurrency"
-    ) + $adjudicationArgs + @(
-        '-maxmoves', '200',
-        '-pgnout', "file=$OutputPgn", 'append=false',
-        '-output', 'format=fastchess'
-    )
+    $runnerArgs = if ($Runner -eq "fastchess") {
+        @(
+            '-engine', "cmd=$enginePath", 'name=A', "option.Hash=$Hash", 'option.Threads=1',
+            '-engine', "cmd=$enginePath", 'name=B', "option.Hash=$Hash", 'option.Threads=1',
+            '-each', 'tc=inf', "nodes=$Nodes",
+            '-openings', "file=$Book", "format=$BookFormat", 'order=random', "start=$Start",
+            '-srand', "$Seed",
+            '-rounds', "$Rounds", '-games', '1',
+            '-concurrency', "$Concurrency"
+        ) + $adjudicationArgs + @(
+            '-maxmoves', '200',
+            '-pgnout', "file=$OutputPgn", 'append=false',
+            '-output', 'format=fastchess'
+        )
+    } else {
+        # A tournament of one engine against itself, one game per encounter and
+        # one opening per encounter, read from the ordered sequence (Colosseum's
+        # book start is zero-based). A fixed match would play each opening twice.
+        @(
+            'tournament', 'run', '--format', 'round-robin',
+            '--engine', $enginePath, '--engine', $enginePath, '--label', 'A', '--label', 'B',
+            '--games-per-pair', '1', '--cycles', "$Rounds",
+            '--nodes', "$Nodes", '--option', "Hash=$Hash", '--option', 'Threads=1',
+            '--book', $OpeningSequence, '--book-order', 'sequential', '--book-start', "$($Start - 1)",
+            '--seed', "$Seed", '--max-moves', '200', '--concurrency', "$Concurrency",
+            '--engine-processes', 'per-slot',
+            '--progress-every', '2000', '--progress-min-secs', '60',
+            '--dir', $runDir
+        )
+    }
 
     $games = $Rounds
+    $orderText = if ($Runner -eq "fastchess") { "shuffled with seed $Seed" } else { "seed $Seed's order, from $(Split-Path $OpeningSequence -Leaf)" }
     Write-Host ""
     Write-Host "============================================================"
     Write-Host "  Rarog Texel datagen — self-play"
     Write-Host "  Engine  : $enginePath"
     Write-Host "  Games   : $games (one independent opening each)"
-    Write-Host "  Segment : $Start..$segmentEnd of $openings (shuffled with seed $Seed)"
+    Write-Host "  Segment : $Start..$segmentEnd of $openings ($orderText)"
     Write-Host "  Nodes   : $Nodes per move"
     Write-Host "  Hash    : $Hash MB"
     Write-Host "  Conc.   : $Concurrency"
@@ -338,18 +457,21 @@ try {
         "no adjudication; games play to a rules result"
     }
     Write-Host "  Profile : $($profile.Name) ($profileDetail)"
-    Write-Host "  Runner  : $($fastchessInfo.Text)"
+    Write-Host "  Runner  : $($runnerInfo.Text)"
     Write-Host "  Output  : $OutputPgn"
+    if ($Runner -eq "colosseum") {
+        Write-Host "  Run dir : $runDir$(if (Test-Path -LiteralPath $runDir) { ' (exists: the run resumes)' })"
+    }
     Write-Host "============================================================"
     Write-Host ""
 
-    # NOTE (2026-07-22): datagen deliberately has NO -use-affinity and may use
-    # oversubscribed concurrency. Games are NODE-limited (tc=inf), so scheduler
+    # NOTE (2026-07-22): datagen deliberately has NO affinity and may use
+    # oversubscribed concurrency. Games are NODE-limited, so scheduler
     # placement cannot change a move or label; only throughput is affected.
-    $quotedArgs = $fastchessArgs | ForEach-Object {
+    $quotedArgs = $runnerArgs | ForEach-Object {
         if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
     }
-    Write-Host "Command  : & `"$FastchessPath`" $($quotedArgs -join ' ')"
+    Write-Host "Command  : & `"$runnerPath`" $($quotedArgs -join ' ')"
 
     if ($SetupOnly) {
         Write-Host ""
@@ -364,20 +486,125 @@ try {
     }
 
     $startedUtc = (Get-Date).ToUniversalTime()
-    & $FastchessPath @fastchessArgs
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "fastchess exited with code $LASTEXITCODE; partial PGN retained at $OutputPgn."
+    # Colosseum refuses to resume a completed run, so a segment whose games
+    # finished before the wrapper did goes straight to verification.
+    $existingRecord = Join-Path $runDir "run-record.json"
+    if ($Runner -eq "colosseum" -and (Test-Path -LiteralPath $existingRecord) -and
+        (Get-Content -LiteralPath $existingRecord -Raw | ConvertFrom-Json).status -eq "completed") {
+        Write-Host "The run in $runDir is already complete; verifying it without playing."
+        $runExit = 0
+    } else {
+        & $runnerPath @runnerArgs
+        $runExit = $LASTEXITCODE
     }
-    if (-not (Test-Path -LiteralPath $OutputPgn -PathType Leaf)) {
-        throw "fastchess exited successfully without producing $OutputPgn."
+
+    $runnerRecord = $null
+    if ($Runner -eq "fastchess") {
+        if ($runExit -ne 0) {
+            throw "fastchess exited with code $runExit; partial PGN retained at $OutputPgn."
+        }
+        if (-not (Test-Path -LiteralPath $OutputPgn -PathType Leaf)) {
+            throw "fastchess exited successfully without producing $OutputPgn."
+        }
+    } else {
+        $exit = Resolve-ColosseumExit -Mode "tournament" -ExitCode $runExit
+        if ($exit.Kind -ne "outcome") {
+            throw ("colosseum-cli exited $runExit ($($exit.Kind)). The run directory $runDir keeps " +
+                   "its durable games; run the same command again to resume.")
+        }
+        # The runner's own records, not its console: completion, every game
+        # scored, no engine fault, and the openings and limits it resolved.
+        $recordPath = Join-Path $runDir "run-record.json"
+        $resolvedPath = Join-Path $runDir "resolved-config.json"
+        $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
+        if ($record.status -ne "completed") {
+            throw "The Colosseum run's status is '$($record.status)', not completed. See $runDir."
+        }
+        $scored = [int]$record.official_sample.scored_games
+        if ($scored -ne $Rounds) {
+            throw "The Colosseum run scored $scored games, not $Rounds. See $runDir."
+        }
+        $status = Get-ColosseumRunStatus -CliPath $runnerPath -Dir $runDir
+        Assert-ColosseumRunFaults -Status $status -ScoredGames $scored -TimeLossRateCeiling 0 -Dir $runDir | Out-Null
+        $resolved = Get-Content -LiteralPath $resolvedPath -Raw | ConvertFrom-Json
+        $o = $resolved.openings
+        $expected = @(
+            @("openings.path", [IO.Path]::GetFullPath($o.path), $OpeningSequence),
+            @("openings.order", "$($o.order)", "Sequential"),
+            @("openings.wrap", "$($o.wrap)", "False"),
+            @("openings.first_index", "$($o.first_index)", "$($Start - 1)"),
+            @("openings.last_index", "$($o.last_index)", "$($segmentEnd - 1)"),
+            @("openings.reused_openings", "$($o.reused_openings)", "0"),
+            @("time_control nodes", "$($resolved.time_control.control.Nodes.nodes)", "$Nodes"),
+            @("adjudication.draw", "$($resolved.adjudication.draw)", ""),
+            @("adjudication.resign", "$($resolved.adjudication.resign)", ""),
+            @("adjudication.max_moves", "$($resolved.adjudication.max_moves)", "200"),
+            @("participants", "$(@($resolved.plan.participants).Count)", "2"),
+            @("games_per_pair", "$($resolved.plan.design.games_per_pair)", "1"),
+            @("engine_processes", "$($resolved.engine_processes)", "per-slot")
+        )
+        foreach ($entry in @($resolved.plan.participants)) {
+            $launch = $entry.participant.launch
+            $expected += , @("participant executable", [IO.Path]::GetFullPath($launch.executable), $enginePath)
+            $expected += , @("participant Hash", "$($launch.options.Hash.value)", "$Hash")
+            $expected += , @("participant Threads", "$($launch.options.Threads.value)", "1")
+        }
+        foreach ($check in $expected) {
+            if ($check[1] -ne $check[2]) {
+                throw "The Colosseum run resolved $($check[0]) = '$($check[1])', expected '$($check[2])'. See $resolvedPath."
+            }
+        }
+        # One game per opening, exactly the segment: compare the PGN's start
+        # positions with the sequence's lines Start..End.
+        $want = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $index = 0
+        foreach ($line in [IO.File]::ReadLines($OpeningSequence)) {
+            $index++
+            if ($index -lt $Start) { continue }
+            if ($index -gt $segmentEnd) { break }
+            [void]$want.Add((($line.Split(' ', [StringSplitOptions]::RemoveEmptyEntries))[0..3] -join ' '))
+        }
+        $runPgn = Join-Path $runDir "games.pgn"
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $pgnGames = 0
+        foreach ($line in [IO.File]::ReadLines($runPgn)) {
+            if (-not $line.StartsWith('[FEN "')) { continue }
+            $pgnGames++
+            $fen = $line.Substring(6, $line.LastIndexOf('"') - 6)
+            $key = ($fen.Split(' ', [StringSplitOptions]::RemoveEmptyEntries))[0..3] -join ' '
+            if (-not $seen.Add($key)) { throw "$runPgn plays opening '$key' twice." }
+            if (-not $want.Contains($key)) { throw "$runPgn plays opening '$key', which is outside the segment." }
+        }
+        if ($pgnGames -ne $Rounds -or $seen.Count -ne $want.Count) {
+            throw "$runPgn holds $pgnGames games on $($seen.Count) openings; the segment has $($want.Count)."
+        }
+        Move-Item -LiteralPath $runPgn -Destination $OutputPgn
+        $runnerRecord = [ordered]@{
+            version                = $runnerInfo.Text
+            sha256                 = $runnerInfo.Sha256
+            revision               = $runnerInfo.Revision
+            run_directory          = $runDir
+            run_record_sha256      = Get-HarnessSha256 -Path $recordPath
+            resolved_config_sha256 = Get-HarnessSha256 -Path $resolvedPath
+            pgn                    = "moved from the run directory to output.path"
+        }
     }
 
     Write-Host ""
     Write-Host "Done. PGN: $OutputPgn"
 
+    $bookRecord = [ordered]@{
+        path      = $Book
+        format    = $BookFormat
+        sha256    = $bookHash
+        openings  = $openings
+        seed      = $Seed
+        start     = $Start
+        end       = $segmentEnd
+    }
+    if ($sequenceInfo) { $bookRecord.sequence = $sequenceInfo }
     $runManifest = [ordered]@{
-        schema             = "rarog-fastchess-datagen-v2"
+        schema             = if ($Runner -eq "fastchess") { "rarog-fastchess-datagen-v2" } else { "rarog-colosseum-datagen-v1" }
         started_utc        = $startedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
         completed_utc      = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         engine             = [ordered]@{
@@ -392,31 +619,27 @@ try {
             verified_bench_nodes = $verifiedBenchNodes
             built_utc   = $engineManifest.built_utc
         }
-        book               = [ordered]@{
-            path      = $Book
-            format    = $BookFormat
-            sha256    = $bookHash
-            openings  = $openings
-            seed      = $Seed
-            start     = $Start
-            end       = $segmentEnd
-        }
+        book               = $bookRecord
         games              = $Rounds
         nodes_per_move     = $Nodes
         hash_mb            = $Hash
         effective_threads  = 1
         concurrency        = $Concurrency
-        fastchess          = [ordered]@{
-            version = $fastchessInfo.Text
-            sha256  = $fastchessHash
+    }
+    if ($Runner -eq "fastchess") {
+        $runManifest.fastchess = [ordered]@{
+            version = $runnerInfo.Text
+            sha256  = $runnerInfo.Sha256
         }
-        adjudication       = $profile
-        max_moves          = 200
-        output             = [ordered]@{
-            path   = $OutputPgn
-            bytes  = (Get-Item -LiteralPath $OutputPgn).Length
-            sha256 = Get-HarnessSha256 -Path $OutputPgn
-        }
+    } else {
+        $runManifest.colosseum = $runnerRecord
+    }
+    $runManifest.adjudication = $profile
+    $runManifest.max_moves = 200
+    $runManifest.output = [ordered]@{
+        path   = $OutputPgn
+        bytes  = (Get-Item -LiteralPath $OutputPgn).Length
+        sha256 = Get-HarnessSha256 -Path $OutputPgn
     }
     Write-JsonAtomic -Path $outputManifest -Value $runManifest
     Write-Host "Manifest: $outputManifest"

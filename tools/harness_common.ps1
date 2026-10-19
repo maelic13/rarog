@@ -928,11 +928,14 @@ function Get-ColosseumRunFaults {
     if ($null -eq $checkpoint) {
         throw "FAULT COUNTERS UNREADABLE - the run's status carries no checkpoint, so its faults are unknown."
     }
-    $faults = $checkpoint.faults
+    # Look fields up by name: a caller under Set-StrictMode throws on reading a
+    # property the object lacks, and each command's checkpoint lacks the other's.
+    $field = { param($Object, $Name) $p = $Object.PSObject.Properties[$Name]; if ($p) { $p.Value } }
+    $faults = & $field $checkpoint 'faults'
     if ($null -ne $faults) {
-        foreach ($field in @('engine_a', 'engine_b', 'time_losses_a', 'time_losses_b', 'infrastructure')) {
-            if ($null -eq $faults.$field) {
-                throw "FAULT COUNTERS UNREADABLE - the checkpoint's faults lack '$field'."
+        foreach ($name in @('engine_a', 'engine_b', 'time_losses_a', 'time_losses_b', 'infrastructure')) {
+            if ($null -eq (& $field $faults $name)) {
+                throw "FAULT COUNTERS UNREADABLE - the checkpoint's faults lack '$name'."
             }
         }
         $timeLosses = [int]$faults.time_losses_a + [int]$faults.time_losses_b
@@ -940,8 +943,9 @@ function Get-ColosseumRunFaults {
                  ([int]$faults.engine_b - [int]$faults.time_losses_b) + [int]$faults.infrastructure
         return [pscustomobject]@{ Split = $true; TimeLosses = $timeLosses; Other = $other }
     }
-    if ($null -ne $checkpoint.engine_faults) {
-        return [pscustomobject]@{ Split = $false; TimeLosses = $null; Other = [int]$checkpoint.engine_faults }
+    $engineFaults = & $field $checkpoint 'engine_faults'
+    if ($null -ne $engineFaults) {
+        return [pscustomobject]@{ Split = $false; TimeLosses = $null; Other = [int]$engineFaults }
     }
     throw "FAULT COUNTERS UNREADABLE - the checkpoint carries neither per-side faults nor an engine-fault count."
 }

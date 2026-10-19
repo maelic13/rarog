@@ -16,7 +16,7 @@
 /// `u64 → usize` for hash/key indexing. Lossless: the crate compiles only on
 /// 64-bit targets, so `usize` is exactly `u64`-wide.
 #[inline(always)]
-pub fn index(x: u64) -> usize {
+pub const fn index(x: u64) -> usize {
     x as usize
 }
 
@@ -120,11 +120,6 @@ impl SmallInt for u8 {
     }
 }
 
-/// Narrows an `i32` to `i16`, saturating at the bounds.
-///
-/// Used in hot places (SEE scoring, history updates, TT score and static-eval
-/// packing). Expressed with `try_from` so
-/// there is **no cast at all** — the saturation is explicit and the compiler
 /// Clamp an `i64` into `i32` range.
 ///
 /// The texel tuner's `reconstruct` accumulates `weight * count` products in
@@ -138,7 +133,11 @@ pub(crate) fn saturating_i32(value: i64) -> i32 {
     i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
 }
 
-/// still emits the same compare-and-select.
+/// Narrows an `i32` to `i16`, saturating at the bounds.
+///
+/// Used in hot places (history updates, TT score and static-eval packing).
+/// Expressed with `try_from` so there is **no cast at all** — the saturation
+/// is explicit and the compiler still emits the same compare-and-select.
 #[inline(always)]
 pub(crate) fn saturating_i16(value: i32) -> i16 {
     i16::try_from(value).unwrap_or(if value < 0 { i16::MIN } else { i16::MAX })

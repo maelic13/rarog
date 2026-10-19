@@ -15,7 +15,7 @@ param(
     [double]$LinearL2 = 0.0000001,
     # Every coefficient's status (free / fixed / excluded); the tuner reads
     # it at every stage. tools/texel/fit_manifest.py writes it.
-    [string]$FitManifest = "tools/texel/hce_fit_manifest_v5.tsv",
+    [string]$FitManifest = "tools/texel/hce_fit_manifest_v6.tsv",
     # Finish a run that stopped after its fit (tools/results/hce-fit-<stamp>):
     # its final vector is not refitted; verification and provenance run again
     # into a resume-<stamp> subdirectory, from the inputs the run recorded.
@@ -28,6 +28,13 @@ param(
     # The baseline's `bench 13` fingerprint, "N / EBF x.xxx", when the fit
     # starts from a branch rather than the head GUIDE.md declares.
     [string]$BaselineFingerprint = "",
+    # Publish the dataset if it is missing, run the corpus contract checks a
+    # fit runs first, and stop: no build, bench or fit.
+    [switch]$ValidateDatasetOnly,
+    # Start the first stage from this complete vector instead of the compiled
+    # defaults (an initialization control); the baseline, K and the bake
+    # still come from the defaults.
+    [string]$InitialVector = "",
     [switch]$Smoke
 )
 
@@ -58,6 +65,13 @@ if ($trackedStatus -and -not $Smoke) {
 }
 if ($trackedStatus -and $Smoke) {
     Write-Warning "SMOKE mode is running against tracked tooling changes; production mode refuses this"
+}
+
+if ($ValidateDatasetOnly -and ($Smoke -or $Resume)) {
+    throw "-ValidateDatasetOnly checks a real corpus; it excludes -Smoke and -Resume"
+}
+if ($InitialVector -and $Resume) {
+    throw "-InitialVector applies to a new fit; a resumed run keeps its recorded start"
 }
 
 if ($DeferFrozenTest) {
@@ -187,19 +201,28 @@ function Resolve-RepoPath {
 }
 
 function Get-WdlCsvAudit {
-    param([Parameter(Mandatory)][string]$Path)
-    $counts = @{ "0" = 0L; "0.5" = 0L; "1" = 0L }
+    # With -AllowBlended a target may also be any number in [0, 1] (a blended
+    # training target); it is counted apart, and a pure split never takes it.
+    param([Parameter(Mandatory)][string]$Path, [switch]$AllowBlended)
+    $counts = @{ "0" = 0L; "0.5" = 0L; "1" = 0L; "blended" = 0L }
     $rows = 0L
+    $value = 0.0
     $reader = [IO.File]::OpenText($Path)
     try {
         while ($null -ne ($line = $reader.ReadLine())) {
             $sep = $line.LastIndexOf(';')
             if ($sep -lt 0) { throw "$Path row $($rows + 1) has no target separator" }
             $target = $line.Substring($sep + 1).Trim()
-            if (-not $counts.ContainsKey($target)) {
+            if ($target -ne "blended" -and $counts.ContainsKey($target)) {
+                $counts[$target]++
+            } elseif ($AllowBlended -and
+                      [double]::TryParse($target, [Globalization.NumberStyles]::Float,
+                          [Globalization.CultureInfo]::InvariantCulture, [ref]$value) -and
+                      $value -ge 0.0 -and $value -le 1.0) {
+                $counts["blended"]++
+            } else {
                 throw "$Path row $($rows + 1) has non-WDL target '$target'"
             }
-            $counts[$target]++
             $rows++
         }
     } finally {
@@ -398,9 +421,17 @@ try {
                 # draws. See tools/texel/relabel_tb.py.
                 "white-perspective self-play WDL, <=6-man Syzygy corrected"
             )
+            # Blended training targets, a NAMED list for the same reason: pure
+            # outcomes, or C.13.6's blend (RAR-E67), half outcome and half the
+            # datagen search's score through the tuner's own sigmoid at the K
+            # RAR-E61's fit pinned. Validation and test stay pure in every case.
+            $blendK = if ($null -eq $manifest.train_blend_k) { $null } else { [double]$manifest.train_blend_k }
+            $pureTarget = [double]$manifest.train_blend -eq 1.0
+            $c136Blend = [double]$manifest.train_blend -eq 0.5 -and $null -ne $blendK -and
+                [math]::Abs($blendK - 1.6166) -lt 1e-9
             if ($manifest.schema -ne "rarog-hce-wdl-v2" -or
                 $acceptedLabels -notcontains $manifest.label -or
-                [double]$manifest.train_blend -ne 1.0) {
+                -not ($pureTarget -or $c136Blend)) {
                 throw ("dataset label contract '$($manifest.label)' is not one this " +
                        "runner knows how to fit; accepted: $($acceptedLabels -join ' | ')")
             }
@@ -440,7 +471,15 @@ try {
                 # hce-v4: the same book and profile from start 1, labelled by the
                 # Phase C frozen head; the count is the 3,000-game pilot's
                 # preflight (PLAN C.2).
-                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 612747 }
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 612747 },
+                # hce-v5: C.8's first cycle, the same book and profile from
+                # start 1, labelled by the accepted head (52cc6de); the count
+                # is its 3,000-game pilot's preflight (PLAN C.8.1).
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 595240 },
+                # hce-v6: C.8's second cycle, the same book and profile from
+                # start 1, labelled by the cycle-1 head (bfd008a) on Colosseum;
+                # the count is its pilot's preflight (PLAN C.8.5).
+                [pscustomobject]@{ Adjudication = "datagen-v2"; Starts = 569664 }
             )
             $corpusProfile = [string]$manifest.label_contract.adjudication.Name
             $corpusStarts = [int]$manifest.independent_starts
@@ -510,12 +549,13 @@ try {
                 $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash
                 $expected = $manifest.output_sha256.$split
                 if ($actual -ne $expected) { throw "$split.csv hash mismatch" }
-                $wdl = Get-WdlCsvAudit $file
+                $wdl = Get-WdlCsvAudit $file -AllowBlended:($split -eq "train" -and $c136Blend)
                 if ($wdl.Rows -ne [int]$manifest.rows.$split) {
                     throw "$split.csv contains $($wdl.Rows) rows, expected $($manifest.rows.$split)"
                 }
-                Write-Host ("  {0}: {1:N0} pure-WDL rows (0={2:N0}, 0.5={3:N0}, 1={4:N0})" -f `
-                    $split, $wdl.Rows, $wdl.Counts["0"], $wdl.Counts["0.5"], $wdl.Counts["1"])
+                Write-Host ("  {0}: {1:N0} rows (0={2:N0}, 0.5={3:N0}, 1={4:N0}, blended={5:N0})" -f `
+                    $split, $wdl.Rows, $wdl.Counts["0"], $wdl.Counts["0.5"], $wdl.Counts["1"],
+                    $wdl.Counts["blended"])
             }
             Write-Host "Hash/row/WDL-verified frozen dataset $dataset"
             Write-Host "Opening provenance: $usedOpenings independent starts from a $bookOpenings-opening book"
@@ -535,12 +575,28 @@ try {
                            "(a registration that reads it after its games takes -DeferFrozenTest <experiment ID>)")
                 }
             }
+            if ($ValidateDatasetOnly) {
+                # Nothing was patched, so the cleanup has nothing to restore or rebuild.
+                $sourceRestored = $true
+                Write-Host ("CORPUS CONTRACT PASSED: $dataset " +
+                            "(test marker absent: $(-not (Test-Path -LiteralPath $testMarker)))")
+                exit 0
+            }
             $linearMax = 0
         }
 
         $fitManifestPath = Resolve-RepoPath $FitManifest
         if (-not (Test-Path -LiteralPath $fitManifestPath -PathType Leaf)) {
             throw "missing fitting manifest $fitManifestPath"
+        }
+        $initialCopy = $null
+        if ($InitialVector) {
+            $initialSource = Resolve-RepoPath $InitialVector
+            if (-not (Test-Path -LiteralPath $initialSource -PathType Leaf)) {
+                throw "missing initial vector $initialSource"
+            }
+            $initialCopy = Join-Path $runDir "00-initial.txt"
+            Copy-Item -LiteralPath $initialSource -Destination $initialCopy
         }
         $settings = [ordered]@{
             schema = "rarog-complete-hce-fit-v6"
@@ -568,6 +624,8 @@ try {
             label_contract = if ($Smoke) { "legacy smoke data" } else { [string]$manifest.label }
             fit_manifest = $fitManifestPath
             fit_manifest_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $fitManifestPath).Hash
+            initial_vector = if ($initialCopy) { $InitialVector } else { "source defaults" }
+            initial_vector_sha256 = if ($initialCopy) { (Get-FileHash -Algorithm SHA256 -LiteralPath $initialCopy).Hash } else { $null }
             schedule = @("nonlinear", "complete-linear", "nonlinear", "complete-linear-polish", "frozen-test-after-checks")
         }
         $settings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $runDir "settings.json") -Encoding utf8
@@ -599,13 +657,15 @@ try {
         $ks2 = Join-Path $runDir "03-kingsafety.txt"
         $final = Join-Path $runDir "04-final.txt"
 
-        [void](Invoke-Logged "fit-01-kingsafety" $tuner @(
+        $firstArgs = @(
             "--tune-kingsafety", $train, $validation, $ks1,
             "--manifest", $fitManifestPath,
             "--epochs", [string]$NonlinearEpochs,
             "--max-positions", [string]$NonlinearPositions,
             "--fix-k", $fixedK
-        ))
+        )
+        if ($initialCopy) { $firstArgs += @("--initial", $initialCopy) }
+        [void](Invoke-Logged "fit-01-kingsafety" $tuner $firstArgs)
 
         $linearArgs = @(
             "--tune", "complete", $train, $validation, $linear1,

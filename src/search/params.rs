@@ -26,15 +26,25 @@ macro_rules! search_params {
         /// history. To re-tune, copy the weather-factory configs from
         /// `tools/spsa_configs/` and run `./tools/spsa.ps1` (see that
         /// directory's README).
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct $name {
             $( $(#[$meta])* pub $field: i32, )+
         }
 
+        impl $name {
+            /// The compiled-in values, as a constant a production build
+            /// folds into the search; see [`Compiled`].
+            pub const DEFAULT: Self = Self { $( $field: $default, )+ };
+        }
+
         impl Default for $name {
             fn default() -> Self {
-                Self { $( $field: $default, )+ }
+                Self::DEFAULT
             }
+        }
+
+        impl CompiledDefault for $name {
+            const VALUE: &'static Self = &Self::DEFAULT;
         }
 
         impl $name {
@@ -95,6 +105,41 @@ macro_rules! search_params {
         }
     };
 }
+
+/// A parameter set with compiled-in values.
+pub trait CompiledDefault: 'static {
+    const VALUE: &'static Self;
+}
+
+/// A zero-sized handle to a parameter set's compiled-in values. A production
+/// build cannot change a search parameter (only `tune` builds expose them as
+/// UCI options), so the search reads its per-node sets (core, proof, quiet)
+/// through this handle: every read is a load from a constant the compiler
+/// sees, and folds into the code, where a read through the searcher's memory
+/// is a load at every use.
+pub struct Compiled<T>(std::marker::PhantomData<T>);
+
+impl<T> Default for Compiled<T> {
+    fn default() -> Self {
+        Self(std::marker::PhantomData)
+    }
+}
+
+impl<T: CompiledDefault> std::ops::Deref for Compiled<T> {
+    type Target = T;
+
+    #[inline(always)]
+    fn deref(&self) -> &T {
+        T::VALUE
+    }
+}
+
+/// How the searcher holds a parameter set: the set itself where it can change
+/// (`tune` builds and tests), the compiled-in handle otherwise.
+#[cfg(any(feature = "tune", test))]
+pub type Param<T> = T;
+#[cfg(not(any(feature = "tune", test)))]
+pub type Param<T> = Compiled<T>;
 
 // The single source of truth for every tunable: `field = default, "UciName",
 // min..=max;`. Struct field, Default value, UCI option string and setter clamp

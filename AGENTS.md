@@ -137,13 +137,15 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 
 ## Measurement
 
-- Colosseum CLI is the main harness for gates, fixed matches, tunes, null pairs
-  and gauntlets; `tools/colosseum.ps1` drives it from the committed run files
-  and carries every guard. fastchess and weather-factory (`tools/sprt.ps1`,
-  `tools/spsa.ps1`) stay installed and working as the backup and the second
-  opinion (reviewed at 2.5.0 on 2026-10-04 and kept; they retire only on a
-  maintainer decision recorded here). PROCESS's *Harness* section names the
-  cross-check triggers.
+- Colosseum CLI is the main harness for gates, fixed matches, tunes, null pairs,
+  gauntlets and datagen; `tools/colosseum.ps1` and `tools/datagen.ps1` drive it
+  and carry every guard. fastchess and weather-factory (`tools/sprt.ps1`,
+  `tools/spsa.ps1`, `tools/gauntlet.ps1`, `datagen.ps1 -Runner fastchess`)
+  stay installed and working as backup only, the second opinion. They were
+  reviewed at 2.5.0 on 2026-10-04 and kept, and kept again as backup only on
+  2026-10-14 when datagen moved to Colosseum. They retire only on a maintainer
+  decision recorded here. PROCESS's *Harness* section names the cross-check
+  triggers.
 - Never measure a `--all-features` binary: it enables `texel`, which bypasses
   the eval and pawn caches. If a number you are not changing changes, check
   the binary.
@@ -197,7 +199,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **14,197,472 / EBF 2.557**) plus targeted checks
+  fingerprint (currently **10,521,141 / EBF 2.521**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
@@ -310,7 +312,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   (`[-1.75, 0.25]`). A repair is gated by what it can change:
   1. One that reproduces the fingerprint in the rated configuration needs no
      strength gate; it gets an activation and correctness read where it is
-     active.
+     active. So does one that moves the fingerprint only through positions
+     a static differential confines to the repair's domain, with that
+     differential as its correctness read (maintainer decision 2026-10-15).
   2. One expected near zero, where a small loss is acceptable for
      correctness, takes a pre-registered 2,000-game fixed read with a harm
      rule; the registration states the threshold and its power. Scaled from

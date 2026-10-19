@@ -9,6 +9,11 @@ use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
 use rarog::uci_protocol::{CommandOutcome, UciProtocol};
 
+// The big tables in large pages where Windows grants them; see `large_pages`.
+#[cfg(windows)]
+#[global_allocator]
+static ALLOCATOR: rarog::large_pages::PageAllocator = rarog::large_pages::PageAllocator;
+
 // No startup CPU guard. A runtime check for a feature the build STATICALLY
 // requires is `true` by construction: `std::is_x86_feature_detected!` expands
 // to `cfg!(target_feature = "…") || runtime_detect(…)`, so in the PEXT tier
@@ -96,14 +101,10 @@ fn main() {
 /// reverts it at exit, so no paired `timeEndPeriod` is needed.
 #[cfg(windows)]
 fn request_fine_grained_scheduling() {
-    #[link(name = "winmm")]
-    unsafe extern "system" {
-        fn timeBeginPeriod(u_period: u32) -> u32;
-    }
     // SAFETY: plain FFI call with no pointers or state; the only effect is a
     // process-scoped timer-resolution request the OS reverts at exit.
     unsafe {
-        timeBeginPeriod(1);
+        rarog::win32::timeBeginPeriod(1);
     }
 }
 

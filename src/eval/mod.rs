@@ -22,7 +22,6 @@ mod params;
 mod passers;
 mod pawns;
 mod pieces;
-mod space;
 mod threats;
 mod trace;
 
@@ -33,7 +32,10 @@ use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
 use crate::infra;
 use attacks::AttackMaps;
 use endgame::scale_endgame;
-use material::PHASE_W;
+use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
+#[cfg(not(any(feature = "tune", feature = "texel", test)))]
+use params::{CompiledParams, CompiledTables};
+#[cfg(any(feature = "tune", feature = "texel", test))]
 use params::{EvalTables, build_tables};
 use pawns::RELATIVE_RANKS;
 use trace::{tr_eg, tr_mg};
@@ -53,7 +55,6 @@ pub(crate) const INF_SCORE: i32 = 32_001;
 pub(crate) const VALUE_NONE: i32 = 32_002;
 
 const PAWN_TABLE_SIZE: usize = 16_384;
-const EVAL_TABLE_SIZE: usize = 32_768;
 const TOTAL_PHASE: i32 = 24;
 /// Lazy-eval threshold: if the tapered material + PST + pawn score already
 /// exceeds it, the positional block is skipped. It must equal the search's
@@ -62,6 +63,20 @@ const TOTAL_PHASE: i32 = 24;
 /// the margin, describe a function the engine does not play.
 const LAZY_MARGIN: i32 = 423;
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
+/// The pieces whose material and squares `evaluate` sums itself. The pawns'
+/// depend on the pawns alone, so the pawn entry holds them with the
+/// structure, except under `texel`, which bypasses that cache and traces
+/// every piece here.
+#[cfg(not(feature = "texel"))]
+const PSQ_PIECES: [Piece; 5] = [
+    Piece::Knight,
+    Piece::Bishop,
+    Piece::Rook,
+    Piece::Queen,
+    Piece::King,
+];
+#[cfg(feature = "texel")]
+const PSQ_PIECES: [Piece; 6] = Piece::ALL;
 
 // Under `texel` the caches are written but never read (hits are bypassed so
 // every position re-emits its trace), so the fields look dead to that build.
@@ -90,21 +105,20 @@ struct CachedShelter {
     eg: i32,
 }
 
-#[cfg_attr(feature = "texel", allow(dead_code))]
-#[derive(Copy, Clone, Default)]
-struct EvalEntry {
-    key: u64,
-    halfmove_clock: u8,
-    value: i32,
-    occupied: bool,
-}
-
 #[derive(Clone)]
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
-    eval_table: Vec<EvalEntry>,
+    /// Imbalances by piece counts; see `eval_imbalance`.
+    #[cfg_attr(feature = "texel", allow(dead_code))]
+    imbalance_table: Vec<Option<ImbalanceEntry>>,
+    #[cfg(any(feature = "tune", feature = "texel", test))]
     params: EvalParams,
+    #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+    params: CompiledParams,
+    #[cfg(any(feature = "tune", feature = "texel", test))]
     tables: Box<EvalTables>,
+    #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+    tables: CompiledTables,
     /// Lazy-eval threshold. Seeded from `LAZY_MARGIN` and overridden by the
     /// `LazyMargin` UCI option (pushed in at every search start).
     lazy_margin: i32,
@@ -129,12 +143,15 @@ impl Default for Evaluator {
     fn default() -> Self {
         #[cfg(feature = "tune")]
         let params = EvalParams::load_from_env();
-        #[cfg(not(feature = "tune"))]
+        #[cfg(all(any(feature = "texel", test), not(feature = "tune")))]
         let params = EvalParams::default();
+        #[cfg(any(feature = "tune", feature = "texel", test))]
         let tables = Box::new(build_tables(&params));
+        #[cfg(not(any(feature = "tune", feature = "texel", test)))]
+        let (params, tables) = (CompiledParams, CompiledTables);
         Self {
             pawn_table: vec![PawnEntry::default(); PAWN_TABLE_SIZE],
-            eval_table: vec![EvalEntry::default(); EVAL_TABLE_SIZE],
+            imbalance_table: vec![None; IMBALANCE_TABLE_SIZE],
             params,
             tables,
             lazy_margin: LAZY_MARGIN,
@@ -160,9 +177,9 @@ impl Evaluator {
     /// changed weight is fully reflected. Used by the nonlinear king-safety
     /// fit, which re-evaluates the dataset many times with perturbed
     /// danger-index weights (they reach the score only through the capped
-    /// map, so the linear trace cannot see them). The whole-eval cache
-    /// is never *read* under `texel` (hits are bypassed), so stale entries from
-    /// a previous parameter set are harmless and need no clearing.
+    /// map, so the linear trace cannot see them). The pawn cache is never
+    /// *read* under `texel` (hits are bypassed), so stale entries from a
+    /// previous parameter set are harmless and need no clearing.
     pub fn set_params(&mut self, params: EvalParams) {
         *self.tables = build_tables(&params);
         self.params = params;
@@ -177,20 +194,15 @@ impl Evaluator {
 impl Evaluator {
     /// Override the lazy-eval margin (Phase 5.1b `LazyMargin` UCI option).
     /// Returns whether the evaluation semantics changed, so the search owner
-    /// can invalidate cached raw evaluations outside this evaluator as well.
+    /// can invalidate the raw evaluations it caches.
     pub fn set_lazy_margin(&mut self, margin: i32) -> bool {
-        if self.lazy_margin != margin {
-            self.lazy_margin = margin;
-            self.eval_table.fill(EvalEntry::default());
-            true
-        } else {
-            false
-        }
+        let changed = self.lazy_margin != margin;
+        self.lazy_margin = margin;
+        changed
     }
 
     pub(crate) fn clear_pawn_table(&mut self) {
         self.pawn_table.fill(PawnEntry::default());
-        self.eval_table.fill(EvalEntry::default());
     }
 
     pub fn evaluate_result(&self, result: GameResult, color: Color, ply: usize) -> i32 {
@@ -222,20 +234,10 @@ impl Evaluator {
             };
             crate::diag::record_endgame_family(counts(Color::White), counts(Color::Black));
         }
-        // The whole-eval cache must be bypassed under `texel`: a cache hit
-        // returns without re-emitting trace counts, which would poison the
-        // per-position trace the tuner records.
-        let eval_slot = infra::index(board.hash()) & (EVAL_TABLE_SIZE - 1);
-        #[cfg(not(feature = "texel"))]
-        {
-            let cached = self.eval_table[eval_slot];
-            if cached.occupied
-                && cached.key == board.hash()
-                && cached.halfmove_clock == board.halfmove_clock()
-            {
-                return cached.value;
-            }
-        }
+        // No whole-evaluation cache: the search stores every raw evaluation
+        // in its transposition table, and a cache behind it met one call in
+        // four thousand while its lookup missed the processor's caches on
+        // every call.
         #[cfg(feature = "texel")]
         self.trace.borrow_mut().reset();
         #[cfg(feature = "tune")]
@@ -243,14 +245,14 @@ impl Evaluator {
             self.masks = self.mask_source.fix();
         }
 
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let mut mg = 0;
         let mut eg = 0;
         let mut phase = 0;
 
         for color in [Color::White, Color::Black] {
             let sign = color_sign(color);
-            for piece in Piece::ALL {
+            for piece in PSQ_PIECES {
                 let mut bb = board.pieces(color, piece);
                 let phase_weight = PHASE_W[piece as usize];
                 while bb.any() {
@@ -301,7 +303,7 @@ impl Evaluator {
         // applies in every build, `texel` included, so the tuner traces and
         // fits the function the engine plays: above the gate a position's
         // trace holds only the terms evaluated before it, plus mop-up and
-        // tempo. The eval stays a pure function of the position, so the eval
+        // tempo. The eval stays a pure function of the position, so the pawn
         // cache and `tests/eval_cache.rs` remain exact.
         let lazy =
             ((mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE).abs() > self.lazy_margin;
@@ -340,18 +342,11 @@ impl Evaluator {
         // No rule-50 damping here: the transposition table stores this eval
         // keyed without the clock, so the search damps it with the current
         // clock instead.
-        let value = if board.side_to_move() == Color::White {
+        if board.side_to_move() == Color::White {
             score
         } else {
             -score
-        };
-        self.eval_table[eval_slot] = EvalEntry {
-            key: board.hash(),
-            halfmove_clock: board.halfmove_clock(),
-            value,
-            occupied: true,
-        };
-        value
+        }
     }
 }
 #[inline(always)]

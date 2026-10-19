@@ -307,8 +307,7 @@ impl Evaluator {
         mobility_mg: &[i32; 2],
         shelter: &Shelter,
     ) {
-        // One LazyLock resolution covers every king-zone attack lookup below.
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let them = !color;
 
         // A `tune` build can mask shelter and storm, their feedback into the
@@ -540,7 +539,7 @@ mod tests {
 
     /// Both kings' danger inputs from attack maps filled for `board`.
     fn inputs(board: &Board) -> [KingDangerInputs; 2] {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let mut maps = AttackMaps::new();
         maps.fill(board, atk, &pawn_attacks(board));
         let color_occ = [board.color_occ(Color::White), board.color_occ(Color::Black)];
@@ -600,7 +599,7 @@ mod tests {
     /// holds no such line.
     #[test]
     fn king_blockers_lift_the_other_sliders_on_the_line() {
-        let atk = &*ATTACKS;
+        let atk = &ATTACKS;
         let rook_before_queen = Board::from_fen("4q2k/8/8/8/4r3/8/8/4K3 w - - 0 1").unwrap();
         assert_eq!(
             king_blockers(&rook_before_queen, atk, Color::White).count(),
@@ -622,8 +621,11 @@ mod tests {
         let [white, _] = inputs(&board);
         let mut ev = Evaluator::default();
         let index = ev.king_danger_index(&white, false, false, 0, 0);
+        // The fitted danger weights move the fixture's index (3,381 at the
+        // 2.6.0-dev defaults, 3,149 after C.8's first refit); the property
+        // needs only an index past the cap.
         assert!(
-            index > 2 * KS_INDEX_CAP,
+            index > KS_INDEX_CAP,
             "the fixture must saturate the index: {index}"
         );
         let capped = ev.king_danger_penalty(index.min(KS_INDEX_CAP));
@@ -795,7 +797,6 @@ mod tests {
             &on_g1,
             &on_e1_castling,
         ] {
-            ev.eval_table.fill(super::super::EvalEntry::default());
             assert_eq!(ev.evaluate(board), fresh(board));
         }
         let shelter = |board: &Board| {

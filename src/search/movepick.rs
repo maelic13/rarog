@@ -3,7 +3,8 @@
 use std::mem::MaybeUninit;
 use std::slice;
 
-use crate::board::{ATTACKS, Bitboard, Board, Color, Move, MoveList, Piece, Threats};
+use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
+use crate::board::{ATTACKS, Bitboard, Board, CheckInfo, Color, Move, MoveList, Piece, Threats};
 use crate::eval::piece_value;
 
 use super::Searcher;
@@ -118,10 +119,11 @@ pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
     let mut best = 0;
     let mut best_score = tail[0].score;
     for (offset, candidate) in tail.iter().enumerate().skip(1) {
-        if candidate.score > best_score {
-            best = offset;
-            best_score = candidate.score;
-        }
+        // A new maximum turns up at no predictable point in the scan, so a
+        // branch here mispredicts at every one; a conditional move does not.
+        let better = candidate.score > best_score;
+        best = std::hint::select_unpredictable(better, offset, best);
+        best_score = std::hint::select_unpredictable(better, candidate.score, best_score);
     }
     tail.swap(0, best);
     tail[0]
@@ -270,7 +272,7 @@ impl MovePicker {
         } = self
         {
             let mut noisy = MoveList::new();
-            *pinned = board.generate_legal_captures_pinned_into(&mut noisy);
+            *pinned = board.generate_legal_captures_staged_into(threats, &mut noisy);
             for &mv in noisy.as_slice() {
                 if mv != *tt_move {
                     moves.push(mv, searcher.noisy_score(board, threats, mv), 0, 0);
@@ -289,13 +291,16 @@ impl MovePicker {
     }
 
     /// Yield the next move. With `skip_quiets` set no further quiet is
-    /// emitted; the picker goes straight to the bad noisy moves.
+    /// emitted; the picker goes straight to the bad noisy moves. `node_ci`
+    /// is the node's check masks, shared with the move loop: quiet scoring
+    /// reads them, and whichever of the two needs them first computes them.
     pub(super) fn next(
         &mut self,
         searcher: &Searcher,
         board: &mut Board,
         threats: &Threats,
         skip_quiets: bool,
+        node_ci: &mut Option<CheckInfo>,
     ) -> Option<ScoredMove> {
         match self {
             Self::Full {
@@ -374,7 +379,7 @@ impl MovePicker {
                     }
                     Stage::GenerateQuiets => {
                         let mut quiets = MoveList::new();
-                        board.generate_legal_quiets_pinned_into(*pinned, &mut quiets);
+                        board.generate_legal_quiets_staged_into(*pinned, threats, &mut quiets);
                         *survivors_left = searcher.append_quiet_moves(
                             board,
                             threats,
@@ -382,6 +387,7 @@ impl MovePicker {
                             *tt_move,
                             *ply,
                             moves,
+                            node_ci,
                         );
                         *stage = Stage::Quiets;
                     }
@@ -428,11 +434,6 @@ fn attacks_from(sources: Bitboard, attacks: impl Fn(crate::board::Square) -> Bit
     sources.fold(Bitboard::EMPTY, |all, sq| all | attacks(sq))
 }
 
-/// Squares attacked by pawns of `color` standing on `pawns`.
-fn pawn_attacks(pawns: Bitboard, color: Color) -> Bitboard {
-    attacks_from(pawns, |sq| ATTACKS.pawn(color, sq))
-}
-
 /// Node-invariant inputs of quiet scoring, resolved once per node.
 struct QuietContext {
     stm: Color,
@@ -447,7 +448,13 @@ struct QuietContext {
 }
 
 impl Searcher {
-    fn quiet_context(&self, board: &Board, threats: &Threats, ply: usize) -> QuietContext {
+    fn quiet_context(
+        &self,
+        board: &Board,
+        threats: &Threats,
+        ply: usize,
+        node_ci: &mut Option<CheckInfo>,
+    ) -> QuietContext {
         let stm = board.side_to_move();
         let them = !stm;
         let by = &threats.by_piece;
@@ -469,28 +476,43 @@ impl Searcher {
             | by[Piece::Rook as usize]
             | by[Piece::Queen as usize]
             | by[Piece::King as usize];
+        let atk = &ATTACKS;
         let their = |piece| board.pieces(them, piece);
         let knight_targets =
             (their(Piece::Bishop) & !all) | their(Piece::Rook) | their(Piece::Queen);
-        let pawn_offense = (pawn_attacks(board.color_occ(them), them) & !all)
+        // A pawn of ours attacks their piece from the squares one of their
+        // pawns there would attack; the same holds for knights.
+        let pawn_offense = (pawn_attacks_of(them, board.color_occ(them)) & !all)
             | (by[Piece::Pawn as usize] & LEVER_RANKS[stm as usize] & !non_pawn);
         let offense = [
             pawn_offense,
-            attacks_from(knight_targets, |sq| ATTACKS.knight(sq)) & !all,
-            attacks_from(their(Piece::Rook), |sq| ATTACKS.bishop(sq, occ)) & !all,
+            knight_attacks_of(knight_targets) & !all,
+            attacks_from(their(Piece::Rook), |sq| atk.bishop(sq, occ)) & !all,
             (Bitboard::FILE_A << u32::from(board.king_sq(them).0 % 8)) & !all,
-            (attacks_from(their(Piece::Bishop) & !all, |sq| ATTACKS.rook(sq, occ))
-                | attacks_from(their(Piece::Rook) & !all, |sq| ATTACKS.bishop(sq, occ)))
+            (attacks_from(their(Piece::Bishop) & !all, |sq| atk.rook(sq, occ))
+                | attacks_from(their(Piece::Rook) & !all, |sq| atk.bishop(sq, occ)))
                 & !all,
             Bitboard::EMPTY,
         ];
         let king = board.king_sq(stm);
         let wall_pawns = if HOME_RANKS[stm as usize].contains(king) {
-            ATTACKS.king(king) & (board.pieces(stm, Piece::Pawn) | board.pieces(them, Piece::Pawn))
+            atk.king(king) & (board.pieces(stm, Piece::Pawn) | board.pieces(them, Piece::Pawn))
         } else {
             Bitboard::EMPTY
         };
-        let check_info = board.check_info();
+        // The node's check masks, shared with the move loop's check tests:
+        // the first of the two to need them computes them.
+        let check_info = node_ci.get_or_insert_with(|| board.check_info());
+        #[cfg(debug_assertions)]
+        {
+            let fresh = board.check_info();
+            debug_assert!(
+                Piece::ALL.iter().all(|&piece| {
+                    check_info.direct_check_squares(piece) == fresh.direct_check_squares(piece)
+                }),
+                "the shared check masks are not this position's"
+            );
+        }
         let mut check_squares = [Bitboard::EMPTY; 6];
         for piece in Piece::ALL {
             check_squares[piece as usize] = check_info.direct_check_squares(piece);
@@ -521,11 +543,12 @@ impl Searcher {
         tt_move: Move,
         ply: usize,
         out: &mut ScoredMoveList,
+        node_ci: &mut Option<CheckInfo>,
     ) -> usize {
         if quiets.is_empty() {
             return 0;
         }
-        let ctx = self.quiet_context(board, threats, ply);
+        let ctx = self.quiet_context(board, threats, ply, node_ci);
         let hist = &self.td.hist;
         let mut survivors = 0;
         for &mv in quiets {
@@ -623,6 +646,7 @@ impl Searcher {
         tt_move: Move,
         ply: usize,
         scored: &mut ScoredMoveList,
+        node_ci: &mut Option<CheckInfo>,
     ) {
         let mut ctx = None;
         for &mv in moves {
@@ -637,7 +661,8 @@ impl Searcher {
                     scored.push(mv, -2_000_000 + noisy, -1, 0);
                 }
             } else {
-                let ctx = ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply));
+                let ctx =
+                    ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply, node_ci));
                 let (score, history) = self.quiet_score(board, threats, ctx, &self.td.hist, mv);
                 scored.push(mv, score, 0, history);
             }
@@ -759,7 +784,7 @@ mod tests {
         threats: &Threats,
     ) -> Vec<(Move, Stage)> {
         let mut out = Vec::new();
-        while let Some(picked) = picker.next(searcher, board, threats, false) {
+        while let Some(picked) = picker.next(searcher, board, threats, false, &mut None) {
             out.push((picked.mv, picker.stage()));
         }
         out
@@ -797,7 +822,7 @@ mod tests {
                 assert_eq!(got, legal, "staged picker, fen {fen}, tt {tt}");
 
                 let mut scored = ScoredMoveList::new();
-                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored);
+                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored, &mut None);
                 let mut full = MovePicker::full(scored, tt);
                 let mut got: Vec<Move> = drain(&mut full, &searcher, &mut board, &threats)
                     .into_iter()
@@ -876,7 +901,7 @@ mod tests {
         let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let mut emitted = Vec::new();
         let mut skip = false;
-        while let Some(picked) = picker.next(&searcher, &mut board, &threats, skip) {
+        while let Some(picked) = picker.next(&searcher, &mut board, &threats, skip, &mut None) {
             if picker.stage() == Stage::Quiets {
                 skip = true;
             }
@@ -889,10 +914,14 @@ mod tests {
                 .iter()
                 .any(|(mv, s)| *mv == losing && *s == Stage::BadNoisy)
         );
-        assert!(picker.next(&searcher, &mut board, &threats, true).is_none());
         assert!(
             picker
-                .next(&searcher, &mut board, &threats, false)
+                .next(&searcher, &mut board, &threats, true, &mut None)
+                .is_none()
+        );
+        assert!(
+            picker
+                .next(&searcher, &mut board, &threats, false, &mut None)
                 .is_none()
         );
     }
@@ -907,10 +936,10 @@ mod tests {
         let check_info = board.check_info();
         let mut picker = staged_filled(&searcher, &mut board, &threats, Move::NULL, 0);
         let first = picker
-            .next(&searcher, &mut board, &threats, false)
+            .next(&searcher, &mut board, &threats, false, &mut None)
             .expect("a quiet first");
         let mut after_skip = Vec::new();
-        while let Some(picked) = picker.next(&searcher, &mut board, &threats, true) {
+        while let Some(picked) = picker.next(&searcher, &mut board, &threats, true, &mut None) {
             after_skip.push(picked.mv);
         }
         let legal = board.generate_legal_moves();
@@ -940,7 +969,15 @@ mod tests {
         let threats = board.threats();
         let legal = board.generate_legal_moves();
         let mut scored = ScoredMoveList::new();
-        searcher.score_moves(&board, &threats, &legal, Move::NULL, 0, &mut scored);
+        searcher.score_moves(
+            &board,
+            &threats,
+            &legal,
+            Move::NULL,
+            0,
+            &mut scored,
+            &mut None,
+        );
         let score_of = |uci: &str, scored: &mut ScoredMoveList| {
             let mv = board.parse_move(uci).expect("legal");
             scored

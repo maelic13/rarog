@@ -124,3 +124,58 @@ fn eval_is_colour_symmetric() {
     }
     assert!(checked > 200, "expected a broad sample, checked {checked}");
 }
+
+/// The seed games never reach promoted material, where a term that picks
+/// pieces by square order sees a different set in the mirror. The versioned
+/// sample holds held-out corpus rows, the rows that once exposed such a term
+/// and constructed three-rook, three-queen and three-knight positions;
+/// `tools/diag/eval_symmetry_sample.py` regenerates it. The sweep runs at the
+/// default lazy margin and again with the gate open, since a lopsided
+/// promoted position otherwise never reaches the piece terms.
+#[test]
+fn eval_is_colour_symmetric_over_the_versioned_sample() {
+    let mut asymmetric = sweep_versioned_sample(None);
+    asymmetric.extend(sweep_versioned_sample(Some(i32::MAX)));
+    assert!(
+        asymmetric.is_empty(),
+        "{} evaluations not colour-symmetric:\n{}",
+        asymmetric.len(),
+        asymmetric.join("\n")
+    );
+}
+
+/// Every row of the sample whose evaluation differs from its mirror's.
+fn sweep_versioned_sample(lazy_margin: Option<i32>) -> Vec<String> {
+    let sample = include_str!("data/eval-symmetry-v1.tsv");
+    let mut evaluator = Evaluator::default();
+    if let Some(margin) = lazy_margin {
+        evaluator.set_lazy_margin(margin);
+    }
+    let mut counts = [0usize; 3];
+    let mut asymmetric = Vec::new();
+    for line in sample
+        .lines()
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+    {
+        let (source, fen) = line
+            .split_once('\t')
+            .unwrap_or_else(|| panic!("bad row {line:?}"));
+        let slot = ["sample", "audit", "promoted"]
+            .iter()
+            .position(|s| *s == source)
+            .unwrap_or_else(|| panic!("unknown source {source:?}"));
+        counts[slot] += 1;
+        let mirror = mirror_fen(fen);
+        let board = Board::from_fen(fen).unwrap_or_else(|e| panic!("bad FEN {fen}: {e}"));
+        let mirrored =
+            Board::from_fen(&mirror).unwrap_or_else(|e| panic!("bad mirror {mirror}: {e}"));
+        let (a, b) = (evaluator.evaluate(&board), evaluator.evaluate(&mirrored));
+        if a != b {
+            asymmetric.push(format!(
+                "lazy margin {lazy_margin:?}, {fen}: {a} against {b} for {mirror}"
+            ));
+        }
+    }
+    assert_eq!(counts, [2000, 4, 12], "the sample file lost or gained rows");
+    asymmetric
+}

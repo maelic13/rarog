@@ -41,6 +41,7 @@ use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE};
 
 use params::CoreParams;
+use params::Param;
 use params::ProofParams;
 use params::QuietParams;
 use params::SearchParams;
@@ -199,22 +200,23 @@ impl RootMove {
 /// Configuration fixed for one `go`: the parameters, the reduction table built
 /// from them, the resolved limits and the instant the clock started.
 struct SearchConfig {
+    /// Root, clock and quiescence settings, which integration tests set to
+    /// exercise switches production leaves off, so they stay runtime values.
     params: SearchParams,
-    core: CoreParams,
-    proof: ProofParams,
-    quiet: QuietParams,
+    core: Param<CoreParams>,
+    proof: Param<ProofParams>,
+    quiet: Param<QuietParams>,
     limits: RuntimeLimits,
     start: Instant,
 }
 
 impl Default for SearchConfig {
     fn default() -> Self {
-        let params = SearchParams::default();
         Self {
-            params,
-            core: CoreParams::default(),
-            proof: ProofParams::default(),
-            quiet: QuietParams::default(),
+            params: SearchParams::default(),
+            core: Param::<CoreParams>::default(),
+            proof: Param::<ProofParams>::default(),
+            quiet: Param::<QuietParams>::default(),
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -675,12 +677,11 @@ impl Searcher {
         game_ply: u32,
         age_tt: bool,
     ) {
-        // LazyMargin changes the raw evaluation function. The evaluator owns
-        // its whole-eval cache, while the main searcher owns TT lifecycle and
-        // must also discard stored raw evals and bounds from the old function.
-        // Helpers receive the already-cleared shared TT, so they clear only
-        // their private evaluator cache; clearing shared storage here would
-        // race with helpers or main already searching.
+        // LazyMargin changes the raw evaluation function. The main searcher
+        // owns TT lifecycle and must discard stored raw evals and bounds from
+        // the old function. Helpers receive the already-cleared shared TT;
+        // clearing shared storage here would race with helpers or main
+        // already searching.
         let lazy_margin_changed = self
             .td
             .evaluator
@@ -708,10 +709,24 @@ impl Searcher {
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
-        self.cfg.core = engine_options.core_params.clone();
-        self.cfg.proof = engine_options.proof_params.clone();
+        #[cfg(any(feature = "tune", test))]
+        {
+            self.cfg.core = engine_options.core_params.clone();
+            self.cfg.proof = engine_options.proof_params.clone();
+            self.cfg.quiet = engine_options.quiet_params.clone();
+        }
+        // Without `tune` no option reaches these sets, so the compiled-in
+        // handles are what the options hold. A caller outside the crate that
+        // sets one (an integration test) needs a `tune` build.
+        #[cfg(not(any(feature = "tune", test)))]
+        debug_assert!(
+            engine_options.core_params == CoreParams::DEFAULT
+                && engine_options.proof_params == ProofParams::DEFAULT
+                && engine_options.quiet_params == QuietParams::DEFAULT,
+            "a core, proof or quiet search parameter was set in a build that reads the \
+             compiled-in values; set it in a `tune` build"
+        );
         self.td.nmp_min_ply = 0;
-        self.cfg.quiet = engine_options.quiet_params.clone();
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.root_iteration_nodes = 0;
         self.td.tb_root_scores.clear();

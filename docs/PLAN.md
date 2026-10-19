@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's C.3 evaluation inside Stockfish's search by **+129.4 ± 17.1 Elo at equal nodes** (150,000 a move; RAR-O06, 2026-10-09), the current meter, 52.4 ± 25.6 below Phase C's baseline: +181.7 ± 19.0 at equal nodes and +266.3 ± 19.9 at equal time (`3+0.03`) on the 2.4.0 evaluation, measured 2026-10-05 (equal time not re-read). RAR-O02's earlier **about 329** measured the 2.3.2 evaluation in about 205 games with the Rarog-evaluation arm at 1.5 Mnps against the control's 2.3 | RAR-O06; RAR-O05; RAR-O02 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **14,197,472 / EBF 2.557**: C.6's pawns-and-passers unit (passer king proximity at the block square, weak unopposed pawns, the square rule, the surface refitted), accepted 2026-10-12 by gate 1 (RAR-E42, `[0,3]` at `3+0.03`) H1 at +6.4 ± 3.6 Elo, +10.7 ± 6.0 nElo (12,924 games; a first-crossing estimate), no screen flag, NPS +0.07%; on branch `c5`, not yet on `master`; before it 12,567,796 / EBF 2.535: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
+| Fingerprint | `bench 13` **10,521,141 / EBF 2.521**: C.13.1's audit fixes (connected rooks score every aligned pair, a deliberate behaviour change reached only where a side has three rooks; the terms fitted to exactly zero removed, exact), 2026-10-15, on branch `c7` (`f5cad09`, `43b34ec`), not yet on `master`; no strength read (maintainer decision 2026-10-15): a static differential over the 194,444 held-out rows confines the change to three-rook positions (5 rows); before it 14,126,183 / EBF 2.557: C.8's refit cycle 2 (the unchanged surface refitted on `hce-v6-tb`), accepted 2026-10-15 by gate 1 (RAR-E61, `[0,3]` at `3+0.03`) H1 at +6.7 ± 3.7 Elo, +11.1 ± 6.1 nElo (12,362 games; a first-crossing estimate), no screen flag, NPS −0.92%; on branch `c7` (`75c3db5`), not yet on `master`; before it 14,291,377 / EBF 2.538: C.8's refit cycle 1 (the unchanged surface refitted on `hce-v5-tb`), accepted 2026-10-13 by gate 1 (RAR-E60, `[0,3]` at `3+0.03`) H1 at +11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo (7,202 games; a first-crossing estimate), no screen flag, NPS −0.48%; on branch `c7` (`bfd008a`), not yet on `master`; before it 14,197,472 / EBF 2.557: C.6's pawns-and-passers unit (passer king proximity at the block square, weak unopposed pawns, the square rule, the surface refitted), accepted 2026-10-12 by gate 1 (RAR-E42, `[0,3]` at `3+0.03`) H1 at +6.4 ± 3.6 Elo, +10.7 ± 6.0 nElo (12,924 games; a first-crossing estimate), no screen flag, NPS +0.07%; with C.5.7's bench-neutral KNN-KP terms (`ab2a6ab`), landed on `master` in `52cc6de` (PR #8, 2026-10-13); before it 12,567,796 / EBF 2.535: C.4.3's threats unit (the king threat and the safe-square slider threat on the queen, the x-ray slider term removed, the surface refitted), accepted 2026-10-11 by gate 1 (RAR-E32, `[0,3]` at `3+0.03`) H1 at +13.0 ± 5.3 Elo, +21.8 ± 8.9 nElo (5,898 games), no screen flag; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,562,404 / EBF 2.546: C.5.2's opposite-bishop rule (pure endings of three pawns or more take `s = min(1 + 2·pawns + 10·passers, 48)`), accepted 2026-10-10 by RAR-E29: the opposite-bishop endgame-start cohort SPRT `[0,10]` accepted H1 at +12.7 ± 9.8 nElo (4,792 games), and the 2,000-game STC harm read measured +8.3 ± 15.2 nElo (+4.5 ± 8.3 Elo), clear of its −12.8 rule; landed on `master` in `36f04d5` (PR #7, 2026-10-11); before it 13,187,295 / EBF 2.546: C.3's king-safety unit (RAR-E25) with the `c3margin` block's 28 margins, accepted by gate 2 on 2026-10-09 at +32.7 ± 8.9 Elo and the default since `dcef971`; before it 12,351,448 / EBF 2.544: RAR-E24's baseline (C.2), the evaluation refitted on `hce-v4-tb` with the `c2margin` block's 28 margins, accepted by gate 2 on 2026-10-08 at +35.9 ± 9.3 Elo and the default since `1abeb46`; before it 11,171,726 / EBF 2.512: cluster 3 (`b4quiet`: the stored PV bit on quiescence stores, fail-high interpolation, the count rule, margins as coordinates, evasion pruning) with RAR-S86's theta, accepted by RAR-S88's gate on 2026-09-30 at +4.4 ± 2.9 Elo and the default since `5a5c150`; before it cluster 2 (`b3proof`) with RAR-S83's theta read 12,897,901 / EBF 2.523 (`f53ca7d`, accepted 2026-09-27 at +50.5 ± 10.9, RAR-S84); before it the selectivity core with RAR-S78's theta read 7,435,006 / EBF 2.457 (`52c46df`, accepted 2026-09-25 at +13.1 ± 5.4, RAR-S78); before it the B.2.3-fitted core read 7,185,678 / EBF 2.444, the default since B.2.4b (2026-09-20, `a47e85b`). `--no-default-features` compiled the superseded B.1 search, which read 7,590,542 / EBF 2.473 since `5a5c150` (three quiescence thresholds shared with the core took their fitted values); before that it read 7,601,220 / EBF 2.474 — the 2.4.0 fingerprint, accepted by RAR-E15 and reproduced in A.7, A.8.3 and A.8.4 — until B.8 deleted it in `84de712` (2026-10-03); B.9 froze the search head at 11,171,726 / EBF 2.512 | GUIDE checkpoint; RAR-S73; RAR-M48 manifests |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -71,7 +71,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06) | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
-| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C |
+| Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
 band, and the B.9 head scores at least 50% against all four E.2 targets at 1T
@@ -294,8 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.7 | RESEARCH | I2 | Opens on RAR-E37's reading: its residual step reads the piece rows one by one, no named weak-queen candidate (zero games, may run between the large items) |
-| C.8 | RESEARCH | V | The next large item after C.6 (2026-10-11): regeneration and refit |
 | C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -413,7 +411,7 @@ is nodes rather than speed may be re-gated once at `10+0.1`, `[0,3]`,
 registered before the read and never a second time. The frozen head: engine source `ee02ed1` (no engine input changed
 through 2.5.0 and `d6998db`'s version bump; the behaviour-neutral source
 changes since are listed under D.3's change log with their exact
-fingerprints, latest `6433760`, then C.1's evaluation restructure
+fingerprints, latest C.12's speed pass (2026-10-17, on `c7`), then C.1's evaluation restructure
 (`801f1b4`, exact, recorded under C.1), and a registration names the
 revision it builds from); the measured binary
 `tools/test_engines/rarog-b9head-pext-pgo.exe`, built at `24aefb4` (clean,
@@ -1571,7 +1569,7 @@ loss).
       donor's whole passed set, not one group. C.6 closes with it: the
       unit is accepted (RAR-E42), the structure definitions and the
       passed set stay Rarog's.
-- **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`.**
+- **C.7 Material, imbalance, phase and pieces cluster; refit; gate — `I2`, then `V`, NO_CHANGE 2026-10-13.**
   Imbalance in the donor's quadratic form seeded from current material terms,
   phase interpolation review, bishop pair and bishop-pawn colour terms,
   outposts, minor behind pawn, rook on open and semi-open files, trapped
@@ -1583,10 +1581,103 @@ loss).
   term, but the weak-queen row holds only 0.39 of it; the rest is in the
   knight, bishop and rook rows, about two standard errors in all. So C.7
   opens without a named weak-queen candidate, and its residual step reads
-  the piece rows one by one.
-- **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`.** After the family clusters: regenerate data with
+  the piece rows one by one. **Opened 2026-10-13.**
+    - **C.7.1 Residual step: the donor's material, imbalance and piece rows one by one, and the phase taper, on the current head (RAR-E57) — `V`, DONE 2026-10-13.** Zero
+      games: the head's played score substituted into the donor rows, and
+      each trace row read alone, along with Rarog's score rescaled by
+      phase. Above six men, the endgame band and queenless play are read
+      apart from the endings C.5 owns. A direction has signal at 0.10% or
+      more, at four standard errors, and above the cohort's re-pricing of
+      Rarog's own score. A direction with signal goes to a sub-term
+      attribution; with none, C.7 closes `NO_CHANGE`.
+      **Read 2026-10-13 (RAR-E57): two directions have signal, both only
+      where Rarog's score exceeds 500 cp:** the donor's Material row
+      (material and piece-square tables) at +0.333 ± 0.056% and the phase
+      slope at +1.316 ± 0.201%. These positions are mostly decided, so in
+      whole-file terms the two are about 0.014% and 0.056% of the loss.
+      Imbalance and the Knights, Bishops, Rooks and Queens rows stay below
+      +0.06% in every cohort, so the imbalance, bishop, knight, rook and
+      weak-queen items on C.7's list are not supported and are not built.
+      The endgame band's material residual lies above six men (+0.360,
+      under the magnitude comparator there), not in C.5's endings
+      (−0.029). Cautions: the magnitude comparator is weakest in a cohort
+      selected on the score it rescales, so the signal may be calibration
+      of decided scores; and the two signals may be one, since the donor's
+      endgame piece values exceed its middlegame ones.
+    - **C.7.2 Attribution: the Material row and the phase slope among decided scores — `V`, DONE 2026-10-13.** Zero
+      games, its own registration before any number. It decides what
+      carries RAR-E57's two signals: the donor's Material row rebuilt from
+      the FEN (material values and piece-square tables, each phase) and
+      verified exactly against the printed row before any loss; whether it
+      adds anything once the phase slope is in the model; and which way
+      Rarog's large scores are mis-scaled by phase. A comparator that can
+      still move among decided scores is registered with it. With nothing
+      beyond calibration, C.7 closes `NO_CHANGE` and the calibration goes
+      to C.8's refit; with knowledge, a research card decides readiness.
+      RAR-E58's registration refined this before any number. The
+      Material row is split exactly into its count-linear part and the
+      remainder, rather than rebuilt from the donor's tables. The full
+      score (lazy gate out of reach, 423 cp) separates the gate from the
+      evaluation. A phase calibration surviving both goes to a research
+      card rather than closing.
+      **Read 2026-10-13 (RAR-E58):** over a hinge-spline re-pricing of
+      Rarog's score at |played| > 500, the **phase slope survives** on the
+      played score (+1.318 ± 0.203%) and on the full score (+0.908 ±
+      0.216%). The **Material row** survives on the played score only
+      (+0.322 ± 0.058% → −0.005), so it is the **lazy gate's** and not
+      material knowledge. Post hoc, 18.5% of those rows are the donor's
+      specialised endgames, whose all-zero trace flags near-certain wins.
+      The slope's sign: a large score converts more often toward the
+      endgame (+500 to +800 cp: 0.971 of points under phase 32, 0.907 at
+      96 or more, where about 6.6% of games are lost). Those opening and
+      middlegame large scores are mostly built by the activity terms, not
+      by material. The slope is about 0.05% of the whole file's loss and
+      nil over all rows. C.7 continues to C.7.3.
+    - **C.7.3 Research card: phase interpolation of large scores — `R3`, NO_CHANGE 2026-10-13.** Zero
+      games before its own registration. The card decides, with the
+      maintainer, whether RAR-E58's phase slope is worth any candidate at
+      its size, and what the candidate would be. Its first registered
+      checks: the slope without the donor's specialised-endgame rows, and
+      split by whether Rarog's large score is material or positional
+      (activity terms). Competing readings to separate: an evaluation
+      scale by phase (trading down when ahead); over-confident large
+      positional scores (king danger, threats) in the middlegame;
+      label noise from the games that produced the corpus. The card also
+      weighs C.8's refit and C.10's tune as cheaper owners. With no
+      candidate worth a game, C.7 closes `NO_CHANGE`.
+      **RAR-E59 (2026-10-13, zero games): C.7 closes `NO_CHANGE`.** Each
+      row's game was recovered from the source PGN with the extractor's own
+      split (the manifest's game counts reproduced exactly). On the full
+      score the slope falls under the line in three ways:
+      - with game-clustered errors: 3.26 SE (the error is 1.29 times the
+        naive one, about 3 rows a game);
+      - on rows the tablebases could not correct (men ≥ 7): 3.35 SE;
+      - over plies to the game's end: 2.94 SE.
+
+      No contributor group sits below the rest. King-danger-dominant large
+      scores convert 2.7 points worse (0.927 against 0.954, ± 0.9), short of
+      the 3-point line. The played score's slope survives clustering
+      (5.11 SE) and is carried mostly by remaining game length, a lazy-gate
+      and label matter. The imbalance, bishop, knight, rook and weak-queen
+      items are not supported (RAR-E57); the phase slope is calibration,
+      recorded for C.8 and C.10 with the king-danger lead.
+- **C.8 Refit cycles: regenerate, refit, gate; stop at the first non-accepting cycle — `V`, DONE 2026-10-15.** After the family clusters: regenerate data with
   the accepted head, refit the whole surface, gate; repeat while a cycle
-  accepts, stop at the first that does not. Initialization control (neutral
+  accepts, stop at the first that does not. **Stopped after cycle 2
+  (maintainer decision 2026-10-15).** Both cycles were accepted: cycle 1
+  at +11.0 Elo at gate 1 and +17.0 at `10+0.1`, cycle 2 at +6.7 and +3.1.
+  Cycle 3 was expected near +3 Elo, and it would bring nothing else:
+  - C.9 and C.10 tune in games, not on a new corpus.
+  - Phase F's data must come from the final classical head after C.10.
+  - Label quality was flat across three generations (6.86%, 6.74%,
+    6.66% of clean wins not won).
+  - The Colosseum datagen path is already proven.
+  So its regeneration, refit and gate were not worth the compute.
+  Cycle 3 was opened and withdrawn before its generation. Its pilot,
+  its preflight (631,315 games) and the opening sequence's extension to
+  640,000 openings are recorded here, and the extension serves Phase F.
+  The `hce-v7` contract was dropped (`c8a4ca7`), and RAR-M71 was
+  withdrawn unrun. Initialization control (neutral
   start against accepted start) in the first cycle. Each cycle records the
   C.2 manifest it fitted from, so every refit states what was and was not
   fitted; a coefficient's status changes only by a recorded decision, never
@@ -1601,6 +1692,565 @@ loss).
   fixed vector, 1.25% of the per-row gradient weight came back, most of it
   at clocks of 10 or more), so the next fit, C.6's or the first cycle's, is
   the first under it and its coefficient changes include this one.
+  **Carried from C.7 (RAR-E58, RAR-E59):** among decided scores Rarog's
+  large scores convert more often toward the endgame (a phase-dependent K,
+  calibration, not knowledge), most strongly on the lazy score and through
+  remaining game length. King-danger-dominant large scores convert 2.7
+  points worse than the rest (± 0.9, under the line). A cycle that changes
+  the fit's weighting of decided rows, or the danger map's scale, re-reads
+  both with RAR-E59's game-clustered errors. **Opened 2026-10-13.** Cycle
+  1 follows C.2's frozen protocol (programme document, section 9) with the
+  accepted head (`52cc6de`) as the labeller. The corpus is `hce-v5`, with
+  `hce-v5-tb` its Syzygy relabelling and its own unread frozen test.
+    - **C.8.1 Cycle 1 regeneration: the head's datagen engine, pilot and preflight, `hce-v5` generation, extraction, relabel to `hce-v5-tb`, label audit (RAR-M68) — `V`, DONE 2026-10-13.** The
+      datagen engine `rarog-c8head-pext-pgo.exe` (`E73E3230…`, bench
+      14,197,472, engine source equal to `52cc6de`'s) is built and pinned.
+      `datagen.ps1` refuses a wrong SHA-256 and a wrong fingerprint
+      (checked). The 3,000-game pilot from start 1 ran at about 2,118 games
+      a minute (concurrency 30). `extract.py --preflight-games 3000
+      --target-train 3500000` recommends **595,240 games**; the same flags
+      on C.2's pilot reproduce its 612,747. The full command passed a dry
+      run; the generation is the maintainer's (about 4.7 hours).
+      Remaining once the PGN exists:
+      - `fit_complete.ps1` names `datagen-v2` at 595,240 starts as the
+        `hce-v5` contract, exercised on the corpus it admits;
+      - extraction to `hce-v5` and the relabel to `hce-v5-tb`, every split
+        hash and row count verified;
+      - RAR-M68.
+
+      **Done 2026-10-13:**
+      - *Generation:* the maintainer generated 595,240 games
+        (`selfplay-c8head-n8000-s1-g595240.pgn`, `7A0EA868…`, 3 h 2 min
+        at concurrency 30, about 3,270 games a minute). The engine was
+        verified in the run.
+      - *Contract:* `fit_complete.ps1` names the `hce-v5` contract
+        (`91ff6ab`) and gained `-ValidateDatasetOnly`, which runs a fit's
+        corpus checks and stops (`63fa024`, after the first form let the
+        cleanup rebuild the release binary). The checks pass on `hce-v4-tb`
+        unchanged, on `hce-v5` and on `hce-v5-tb`. A copy naming 595,241
+        starts refuses `hce-v5-tb` with the contract error.
+      - *Corpus:* extraction published `hce-v5` with every phase quota
+        filled (3,500,000 / 194,444 / 194,444 rows from 535,762 / 29,557 /
+        29,921 games, 6,661 skipped). The relabel to `hce-v5-tb` changed
+        0.65% of train rows with 0 probe failures (train `c5e9c4b7…`,
+        validation `3aad7a01…`, test `56d51eaa…`, each equal to its
+        manifest's hash).
+      - *RAR-M68:* 6.74% of clean wins not won (`hce-v4` 6.86%), so
+        C.8.2's fit is not held.
+    - **C.8.2 Cycle 1 refit on `hce-v5-tb`: the initialization control (neutral start against accepted start), static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-13.** By
+      PROCESS's *Evaluation change under a fitted search*, as C.6.5;
+      registered before any fit is read.
+      **Progress 2026-10-13 (RAR-E60):**
+      - *Control:* the neutral start fits the frozen test 2.38% worse than
+        the accepted start (−13.2 game-clustered SE), so arm A is the
+        candidate.
+      - *Candidate:* committed as `bfd008a`, bench 14,291,377 / EBF 2.538.
+        It lowers the frozen-test loss by +0.080% ± 0.036 against the
+        accepted vector.
+      - *A test precondition:* the king-danger cap test demanded twice the
+        cap from a weight-dependent fixture (3,149 after the refit). It was
+        fixed in its own commit (`f634ced`), and the fit resumed rather than
+        refitted.
+      - *Screens:* no flag. The donor screen moves every family 0.028 points
+        or less, magnitude shifts at most +2.8 cp up to 600, and the tree
+        grows +3.4% (geometric mean 1.004).
+      - *NPS:* the agent's pooled read was twice disturbed by interactive
+        use of the host. The maintainer's read on an idle machine gives
+        −0.48% (95% −0.93% to −0.04%), clear of the −1.5% stop, so gate 1
+        (dry run passed) is handed over.
+    - **C.8.3 Cycle 1 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-14.** A
+      second cycle opens only if this one accepts.
+      **Gate 1 (RAR-E60, 2026-10-13): H1, accepted.**
+      - *Result:* +11.0 ± 4.9 Elo, +18.1 ± 8.0 nElo (7,202 games; a
+        first-crossing estimate), no faults, no screen flag. The
+        fingerprint 14,291,377 / EBF 2.538 becomes the development
+        fingerprint on `c7`.
+      - *Margin block:* skipped (maintainer decision 2026-10-14).
+      - *`10+0.1` read (RAR-E60, 2026-10-14):* +17.0 ± 11.8 Elo, +31.2 ±
+        21.5 nElo (1,000 games), no faults; predicted +7. By the frozen
+        rule (below 0 reopens) the acceptance stands. Cycle 1 accepted, so
+        cycle 2 opens; its regeneration waits on C.8.4.
+    - **C.8.4 Datagen on Colosseum before the next regeneration; fastchess's remaining uses retired or kept by a recorded decision — `I1`, DONE 2026-10-14.** Gates,
+      matches, gauntlets and tunes run on Colosseum. `tools/datagen.ps1`
+      still drives fastchess (alpha 1.8.0) directly: `hce-v4` and `hce-v5`
+      were generated through it, with fastchess's raw per-game console output
+      and no filtered progress (maintainer direction 2026-10-13). This step
+      must land before the next regeneration, which is cycle 2's, or F.2's if
+      C.8 stops at cycle 1. It blocks nothing before that.
+      1. **Gap, proved first:** from Colosseum's code and documentation, what
+         it lacks for datagen. Both sides at fixed nodes (8,000), no
+         adjudication, the EPD book in seeded random order from a start
+         index without wrapping, one game per opening, a 200-move cap,
+         oversubscribed concurrency (30), a PGN and a run manifest. Any gap
+         goes to the maintainer as a verified request, never as an assumption.
+      2. **Port:** a Colosseum run file and a `colosseum.ps1` datagen mode,
+         or `datagen.ps1` calling Colosseum. It keeps every guard
+         (`-ExpectSha256`, `-ExpectFingerprint`, the book audit, never
+         overwriting a PGN) and the manifest fields `extract_parallel.py`
+         reads. Progress shows as a filtered status line, as Colosseum's
+         matches do: games done, rate, ETA, results, failures.
+      3. **Equivalence:** a 3,000-game Colosseum pilot on C.8.1's engine and
+         book against the fastchess pilot (`selfplay-c8head-n8000-s1-g3000.pgn`).
+         Every opening both play gives the same game move for move (fixed
+         nodes, one thread, Hash 16). The opening set matches, or the
+         difference in order rule is documented. The preflight recommends
+         the same game count.
+      4. **The other uses:** an inventory of every remaining fastchess and
+         weather-factory consumer (`sprt.ps1`, `spsa.ps1`, `gauntlet.ps1`,
+         `watch.ps1`, `pgn_result.ps1`, `setup_tools.ps1`,
+         `harness_common.ps1`, the texel tools' references). By a
+         maintainer decision recorded in AGENTS, which today keeps both as
+         the backup and second opinion, each is retired or kept as backup
+         only. PROCESS's *Harness* section and its cross-check triggers
+         change with that decision.
+      **Step 1, 2026-10-14** (`analysis/c84_colosseum_datagen_gap_2026-10-14.md`):
+      - *No functional gap* in `colosseum-cli 0.2.0`. `tournament run`
+        with two copies of the engine, `--games-per-pair 1` and
+        `--cycles N` meets every item, checked by short runs. A fixed
+        `match` cannot: it always plays a colour-reversed pair per
+        opening, whose second game extraction discards.
+      - *Port items, Rarog side:* `extract.py` reads Colosseum's score
+        comments (`s=…`, `colosseum-move-comment/3`) beside fastchess's;
+        the start index is zero-based; the manifest and guards stay the
+        wrapper's.
+      - *Openings:* Colosseum's shuffle is not fastchess's, so seed
+        10403 gives another sequence. fastchess's `Round` tag is the
+        opening's offset in its order (0 mismatches over 612,747 rounds
+        across four corpora), so the port plays the frozen sequence
+        from an ordered EPD in sequential order. That also gives step
+        3 the same opening set.
+      - *Throughput:* on one 900-game workload Colosseum takes 34.1 s
+        against fastchess's 25.1 s (three alternated repeats each, equal
+        plies), about 4.6 h against 6.3 h at 595,240 games. It loses
+        nothing in the contract; a request to Colosseum is the
+        maintainer's choice.
+      **Steps 2 and 3, 2026-10-14** (same analysis):
+      - *Port* (`8bd33d2`): `datagen.ps1 -Runner colosseum`, the
+        default, plays the ordered sequence
+        `phase_book_v1-s10403.order.epd` (612,747 starts, written by
+        `opening_sequence.py`) and keeps every guard. After the run it
+        checks the runner's records and one game per opening of the
+        segment before writing a `rarog-colosseum-datagen-v1` manifest.
+        `-Runner fastchess` is unchanged.
+      - *Equivalence:* the 3,000-game pilot has the fastchess pilot's
+        opening set, 2,994 games identical move for move, every result
+        equal and the same preflight count (595,240).
+      - *The 6 other games* are a Colosseum rules defect: the setup
+        position is never counted for threefold repetition
+        (`runner.rs` at `ca05dfa`), so a game whose start recurs
+        plays one ply past FIDE's draw. 0 of RAR-E60's 8,232 gate games
+        are affected. The fix is with the maintainer; after its
+        re-pin the pilot is re-run.
+      - *Speed, maintainer decision 2026-10-14:* Colosseum may not stay
+        slower than fastchess. On identical games (the first 900 of the
+        ordered sequence, sequential, concurrency 30) it takes 33.6–34.3 s
+        against 24.8–24.9 s. `colosseum-cli 0.3.0` must bring its median
+        within 2% of fastchess's, with the repetition fix. The request and
+        the runnable benchmark are in `analysis/artifacts/c84/`
+        (`colosseum-cli-prompt.md`, `speed/harness_speed.ps1`).
+      - *0.3.0 verified before release (2026-10-14,* branch
+        `rarog-cli-0.3.0` at `af712d9`*):* 410 tests pass. The pilot is
+        identical to fastchess's in 3,000 of 3,000 games. On the
+        900-game benchmark, wall time is 28% *below* fastchess's
+        (median 18.0 s against 24.9 s). Over a full generation the two
+        run level, as C.8.5 measured: start-up and the end of a run weigh
+        on a short benchmark, and a long one is bound by the engines. The
+        gate
+        wrapper passes a dry run and a 280-game match. The release asset
+        is checked again before the pin moves.
+      - *Kept engines, maintainer decision 2026-10-14:* every Colosseum run
+        keeps each slot's engine processes, gauntlets and datagen
+        included, unless kept engines cause a problem. This reverses the
+        recommendation above it to keep pool gauntlets on fresh processes.
+        The change needs 0.3.0, because 0.2.0's `tournament` rejects the
+        option, so it lands with the re-pin as the verified patch
+        `analysis/artifacts/c84/v030/kept-engines.patch`. That patch makes
+        `gauntlet.toml` inherit per-slot, has `datagen.ps1` request and
+        check it, adds a `colosseum.ps1` policy guard for every mode, and
+        updates PROCESS and the run-file README. Under the 0.3.0 build,
+        dry runs of sprt, match, calibrate and gauntlet pass the guard,
+        and a gauntlet asking for `per-game` is refused.
+      - *Adopted 2026-10-14* (`c5f11b1`): `colosseum-cli 0.3.0`
+        (`cli-v0.3.0`, `cb12cd3`, the same tree as the verified
+        `af712d9`). Archive `948FA316…` and exe `381EB7A5…` are verified
+        by `setup_tools.ps1`, and the kept-engines patch is applied.
+        On the released exe:
+        - the pilot through `datagen.ps1` is identical to fastchess's in
+          3,000 of 3,000 games, and the preflight matches exactly (30
+          skipped, 39,744 raw and 39,739 unique positions, 595,240
+          recommended);
+        - the benchmark runs 18.1 / 18.0 / 17.9 s against fastchess's
+          24.8 / 24.9 / 24.9 s;
+        - `test_colosseum_guards.ps1` passes 55 of 55, with two new
+          per-slot cases;
+        - dry runs of sprt, match, calibrate and gauntlet pass, and a
+          280-game `3+0.03` match has no faults and its recount agrees.
+        Steps 1–3 are done.
+      - *Step 4, inventory for the maintainer's decision:*
+        `sprt.ps1` (fastchess SPRT), `spsa.ps1` (weather-factory SPSA),
+        `gauntlet.ps1` (fastchess gauntlet), `watch.ps1` (their console
+        filter), `pgn_result.ps1` and `pgn_depth_at_nodes.py` (PGN
+        readers for fastchess output), `setup_tools.ps1` (stages both),
+        `harness_common.ps1`'s fastchess helpers,
+        `datagen.ps1 -Runner fastchess`, `spsa_config_to_colosseum.py`
+        and `colosseum_parity.py` (the cross-check), and the prose
+        mentions in `build_test.ps1`, `build_book.py`,
+        `sample_fens.py` and `colosseum/common.toml`. AGENTS and
+        PROCESS's *Harness* section keep both as backup and second
+        opinion until a recorded decision.
+      - *Step 4, maintainer decision 2026-10-14:* every fastchess and
+        weather-factory consumer is kept as backup only, until the
+        maintainer retires them. This is recorded in AGENTS and PROCESS's
+        *Harness* section, whose cross-check triggers are unchanged. The
+        re-pin fires two of them, a runner change and a Colosseum version
+        change, so C.8.7 owes the cross-check and the null pair before its
+        gate 1.
+    - **C.8.5 Cycle 2 regeneration: the head's datagen engine, pilot and preflight, `hce-v6` generation, extraction, relabel to `hce-v6-tb`, label audit (RAR-M69) — `V`, DONE 2026-10-14.** As
+      C.8.1. The labeller is the accepted cycle-1 head,
+      `rarog-c8cycle1-pext-pgo.exe` (`76CD1F3C…`, bench 14,291,377, built
+      at `bfd008a`; the engine source is unchanged since). The rest is
+      also as C.8.1: the same book, seed 10403 from start 1, 8,000 nodes
+      and `datagen-v2`. It runs through `datagen.ps1 -Runner colosseum`.
+      The generation is the maintainer's.
+      **Progress 2026-10-14:**
+      - *Pilot:* 3,000 games from start 1 in 79 s, engine verified in the
+        run, every termination normal
+        (`selfplay-c8cycle1-n8000-s1-g3000.pgn`).
+      - *Preflight:* `extract.py --preflight-games 3000 --target-train
+        3500000` recommends **569,664 games** (39,873 unique positions
+        from the pilot; cycle 1's 595,240). The full command passes
+        `-SetupOnly`, and the generation is with the maintainer.
+      - *An interruption contaminates a run:* the first pilot attempt was
+        stopped by killing its process. Its 30 in-flight games stayed in
+        the PGN as `abandoned`, each scored 0-1, and resuming did not
+        replay them. `datagen.ps1` refused the run on its zero-fault
+        guard, so no label was taken from it
+        (`analysis/artifacts/c85/interrupted-pilot.colosseum`). A
+        generation that is interrupted therefore needs a decision before
+        it is resumed.
+
+      **Done 2026-10-14:**
+      - *Generation:* the maintainer generated 569,664 games
+        (`selfplay-c8cycle1-n8000-s1-g569664.pgn`, `C8B78329…`) on
+        Colosseum in 2 h 52 min at concurrency 30, about 3,310 games a
+        minute (cycle 1's fastchess run: about 3,270). The engine was
+        verified in the run, and the wrapper's post-run checks passed.
+        One game was drawn at the 200-move cap, which Colosseum names
+        `adjudication`.
+      - *Contract:* `fit_complete.ps1` names the `hce-v6` contract
+        (`3d5a5a6`). The first publication attempt was refused because
+        that edit was not yet committed (the clean-tree guard). After
+        the commit, `hce-v6` and `hce-v6-tb` pass the corpus checks, and
+        a copy naming 569,665 starts refuses `hce-v6-tb` with the
+        contract error.
+      - *Corpus:* extraction published `hce-v6` with every phase quota
+        filled: 3,500,000 / 194,444 / 194,444 rows from 512,788 /
+        28,284 / 28,592 games, 6,371 games skipped. The relabel to
+        `hce-v6-tb` changed 0.64% of train rows with 0 probe failures
+        (train `9575a916…`, validation `7ada0924…`, test `fda14533…`,
+        each equal to its manifest's hash).
+      - *RAR-M69:* 6.66% of clean wins not won (`hce-v5` 6.74%), so
+        C.8.6's fit is not held.
+    - **C.8.6 Cycle 2 refit on `hce-v6-tb`: the fit from the accepted vector, static screens, tree and NPS reads, PGO bake, gate-1 registration and handover — `V`, DONE 2026-10-14.** As
+      C.8.2, without the initialization control, which C.8 runs in the
+      first cycle only.
+      **Done 2026-10-14 (RAR-E61):**
+      - *Fit:* the candidate's tests stopped the first run on a KNN-KP
+        order test. The refit had activated a comparison on a position
+        Syzygy calls a draw. The test's precondition was fixed in its own
+        commit (`fd6bb30`), and the fit resumed. Both coordinate passes
+        converged, and validation loss fell 0.10%.
+      - *Candidate:* `75c3db5`, bench 14,126,183 / EBF 2.557.
+      - *Screens:* no flag. Donor families move 0.039 points or less;
+        magnitude shifts at most 5.2 cp up to 600; the tree shrinks
+        3.2% (geometric mean 1.007).
+      - *NPS:* −0.92% (95% −1.26% to −0.57%), clear of the −1.5% stop.
+      - *Gate 1* (dry run passed) is handed over, to run after RAR-M70's
+        runner checks pass.
+    - **C.8.7 Cycle 2 gate: gate 1's read, the margin block when flagged, gate 2, the `10+0.1` read, the ledger row — `V`, DONE 2026-10-15.** As
+      C.8.3. Before gate 1 come the runner checks the Colosseum 0.3.0
+      re-pin owes under PROCESS's *Harness* triggers: a backup-path
+      cross-check (a fixed match on the same arms under both runners)
+      and the null pair (RAR-M03). A third cycle opens only if this one
+      accepts.
+      **Progress 2026-10-15:**
+      - *Runner checks (RAR-M70):* the cross-check agrees (Colosseum +6.9
+        ± 9.4 Elo, fastchess +6.8 ± 9.1, 2,000 games each). The null
+        pair was not run, by maintainer decision 2026-10-15.
+      - *Gate 1 (RAR-E61): H1, accepted:* +6.7 ± 3.7 Elo, +11.1 ± 6.1
+        nElo (12,362 games; a first-crossing estimate), no faults, no
+        screen flag. The fingerprint 14,126,183 / EBF 2.557 becomes the
+        development fingerprint on `c7`.
+      - *`10+0.1` read (RAR-E61, 2026-10-15):* +3.1 ± 11.5 Elo, +5.8 ±
+        21.5 nElo (1,000 games), no faults; predicted +5. By the frozen
+        rule (below 0 reopens) the acceptance stands.
+      - *Margin block:* skipped (maintainer decision 2026-10-15). C.8.7
+        closes with cycle 2 accepted, and cycle 3 opens.
+- **C.13 HCE audit repairs, the fitting target and residual instruments — `R2`, then `I1` and `V`, DONE 2026-10-16.** Added
+  2026-10-15 (maintainer request after the whole-HCE review,
+  `analysis/hce_audit_2026-10-15.md`). It runs **before C.9, C.10 and
+  C.12** (maintainer decision 2026-10-15): its repairs and a changed fitting
+  target move the surface the tunes would fit and the code the speed pass
+  would rewrite. The audit read every module under `src/eval/` and swept
+  the 194,444 held-out rows for colour symmetry: one bug (connected rooks
+  pair the lowest and highest rook squares, so three rooks score
+  asymmetrically; 4 rows, 31 cp), four definitions that miss their common
+  case (a passer with an own pawn ahead scores in full, 3.3 % of passers;
+  the trapped-rook condition fires 173 times against the donor shape's
+  8,603; rank-4 outposts, the most common at 26,472, are outside the
+  definition while ranks 7 and 8 are inside; initiative has no intercept
+  and no sign clamp, so its weight is inert at 1), and inert terms still
+  computed (space, rook_trapped, pawn_lever, passed_candidate,
+  pawn_isolated). The levers the review named and no other step holds are
+  the fitting target (pure outcome labels; RAR-E04's blended-label
+  rejection was read on a static loss that cannot judge a target change,
+  and its retry trigger, a representation change, fired with Phase C) and
+  two instruments: the residual's pairwise interactions and the static
+  evaluation's residual against the engine's own 8,000-node search. The
+  zero-game sub-steps run first, so whatever they admit joins one refit and
+  one gate. Evidence under `analysis/artifacts/c13audit/`.
+    - **C.13.1 Audit fixes — `I1`, DONE 2026-10-15.** Connected rooks: any aligned pair
+      with nothing between, every pair counted once; the bench fingerprint
+      expected unchanged (verified, not assumed) and the colour-symmetry
+      sweep as the targeted check. The sweep becomes a standing test: a
+      versioned sample of about 2,000 held-out rows plus the four
+      three-rook rows and constructed promoted-material positions
+      (`tests/data/`), each evaluated against its mirror in
+      `tests/eval_invariants.rs`. Then the terms fitted to exactly zero in
+      every half are removed with their code (maintainer decision
+      2026-10-15): `space_weight`, `space_piece_mg`,
+      `space_behind_piece_mg` (all of `eval_space`), `passed_candidate_mg`
+      and `_eg` (the candidate branch), `pawn_lever_mg` and `_eg`, and
+      `rook_trapped_mg` and `_eg` with the condition C.13.5 would replace
+      anyway. `pawn_isolated_*` stays (its flag feeds the weak-unopposed
+      term and the penalty costs nothing) and `hanging_*` stays (0, 1, 1
+      is not zero). A zero-weight term's removal is behaviour-neutral, so
+      the fingerprint must reproduce exactly; the parameter list, the
+      texel trace and the fitting manifest regenerate from one list, and
+      the removed names leave the manifest's counts. Any speed gained is
+      C.12's profile to measure; none is claimed here. Engine commits and
+      the test commit apart.
+      **Done 2026-10-15** (logs and recipes in the ignored
+      `analysis/artifacts/c131-impl/`). The connected-rooks repair
+      (`f5cad09`) **moved the bench**, from 14,126,183 to **10,521,141 /
+      EBF 2.521**, recorded as a deliberate behaviour change. No bench
+      root position has three rooks of one colour, but the search trees
+      do: with the old and new pairing compared at every evaluation of
+      the bench, all 191 mismatches have a side with three or more
+      rooks; position 1 keeps its exact node count, and position 2, the
+      first whose tree reaches such a node, is where the counts part
+      (bench keeps the TT and histories across positions). The repair
+      takes **no strength read** (maintainer decision 2026-10-15): its
+      correctness read is a static differential of `26158b9` against
+      `6f8618d` over all 194,444 held-out rows of `hce-v6-tb`
+      (`analysis/artifacts/c13audit/c131-differential/`, ignored:
+      `compare.log`, the two `fen;eval` dumps, `compare_dumps.py`). Five
+      evaluations differ, every one with three or more rooks on a side
+      (four by −31 cp, one by −56), and the other 194,439 are identical, so
+      the change is confined to the repair's domain; AGENTS' first repair
+      case now names that reading. The standing sweep (`98093f3`):
+      `tests/data/eval-symmetry-v1.tsv`, 2,000 held-out rows (seed
+      20261015, written by `tools/diag/eval_symmetry_sample.py`), the
+      four audit rows and 12 constructed promoted-material positions,
+      swept at the default lazy margin and with the gate open, since a
+      lopsided promoted position otherwise never reaches the piece
+      terms; on the pre-repair engine it reports 12 asymmetric
+      evaluations, on the repair none. The removal (`43b34ec`, nine
+      slots, with `Bitboard::RANK_4` and `RANK_5`, which only space
+      read) reproduced 10,521,141 / EBF 2.521 exactly. The tuner and
+      manifest v6 (`1b56071`, feature support on `hce-v6-tb`) differ from
+      v5 by exactly the nine rows: 1,254 coefficients, free 1,133, fixed
+      98, excluded 23; v5 stays for the fits that cite it.
+      `tools/diag/pawn_subterms.py`, RAR-E41's instrument, still names
+      `pawn_lever_eg` and `passed_candidate_eg` and runs at its own
+      revision only. Final state: fmt clean, clippy
+      `--all-features --all-targets` at zero warnings, tests debug 396,
+      release 397 and `--features texel` 402 passed, none failing.
+    - **C.13.2 Definitions and inert terms, measured before anything is built — `R2`, NO_CHANGE 2026-10-15.**
+      Registered before any number. For the passer-with-own-pawn-ahead,
+      trapped-rook, outpost-rank and initiative-with-intercept-and-clamp
+      definitions: each corrected feature read as a direction over
+      Rarog's score on the held-out rows with RAR-E57's instrument, frozen
+      predictions, and the decision which enter C.13.5's cluster (at the
+      line, or a correctness repair with a cheap test and no static claim).
+      The inert-term inventory from the texel trace, firing rate and mean
+      |contribution| per term over the corpus, written for C.12 (removing a
+      zero-weight term is behaviour-neutral; the fingerprint proves it) and
+      the fitting manifest, over the terms C.13.1 kept. `NO_CHANGE` per
+      definition is a result.
+      **Read 2026-10-15** (RAR-E62, `analysis/artifacts/c132/`): every
+      wire held. The offline definitions equal the engine's trace on all
+      194,444 held-out rows of `hce-v6-tb`, the endgame sum at the
+      initiative term was rebuilt exactly, and every row's game was
+      found. **No definition reaches the line in any deciding cohort, so
+      all four close `NO_CHANGE` and none enters C.13.5.** Over all rows:
+      the passer with an own pawn ahead +0.001 ± 0.013%, the
+      donor-shaped trapped rook +0.002 ± 0.007, outpost ranks 4 to 6
+      +0.014 ± 0.017, and initiative with an intercept and the clamp
+      +0.069 ± 0.019 (3.7 SE, the closest). Initiative's reported-only
+      endgame band (+0.54 ± 0.09) exceeds both its parts (+0.090 above six
+      men), so the direction is partly separating the small endings the
+      tablebases decide; it is retried only on the trigger RAR-E62 names.
+      The inventory names no further whole term at exactly zero:
+      `pawn_isolated_*` stays by C.13.1's decision, and 13 zero halves of
+      live terms cost nothing to keep. Near-inert are `hanging_rook` and
+      `hanging_queen` (0.02 cp mean), `trapped_bishop_*` (0.04% of rows,
+      hand-frozen) and `bishop_outpost_eg`. C.12 gains no free removal;
+      the fitting manifest needs no change.
+    - **C.13.3 Residual interaction tree — `R2`, DONE 2026-10-15.** Registered before any
+      number: a shallow boosted tree (depth 2 to 3) on the held-out residual
+      with Rarog's traced term values, phase and material as inputs, with
+      game-clustered standard errors and a permutation null; the pairwise
+      interactions that carry loss at the line (0.10 % at 4 SE) are named,
+      each with its mechanism and a frozen prediction, or the read closes
+      `NO_CHANGE`. An admitted interaction is a candidate for C.13.5's
+      cluster, never built here.
+      **Read 2026-10-15** (RAR-E63, `analysis/artifacts/c133/`): every
+      wire held, with the planted interaction found first at 13.3 SE.
+      On the non-lazy held-out rows two pairs pass the line, the
+      permutation null (+0.024%) and the phase-slope guard:
+      **material × men** (+0.151 ± 0.023%, +0.131 with the slope in the
+      base) and **mobility × men** (+0.103 ± 0.017%, +0.109). Both are
+      C.13.5 candidates. Imbalance × phase (+0.122) fails the guard,
+      so it is C.7's calibration. Men tracks the pawn count (0.933) and
+      the phase (0.905), so a score × men calibration is a competing
+      explanation the guard did not cover. Before either candidate is
+      defined, a cheap registered read re-tests both pairs with
+      `r·(men/32 − 0.5)` and `r·(pawns/16 − 0.5)` in the base. A pair
+      that falls under the line there is calibration (C.13.6's target and
+      C.10); a pair that survives gets its definition card in C.13.5.
+      **Checked 2026-10-15** (RAR-E64, `analysis/artifacts/c134cal/`):
+      both survive with score × phase, men and pawns slopes all in the
+      base. Material × men reads +0.122 ± 0.021% (5.8 SE) and mobility ×
+      men +0.102 ± 0.017% (6.0 SE, 0.002 points over the line). No slope
+      moves either by more than 0.03, so they are not calibration and
+      both go to C.13.5's definition cards.
+    - **C.13.4 Self-search residual map — `R2`, NO_CHANGE 2026-10-15.** Registered before any
+      number: the 8,000-node search score of each datagen position (the
+      PGN comments `extract.py` already parses) against the static
+      evaluation of the same position (`rarog-texel --dump-scores`),
+      bucketed by material, phase and dominant term, with clustered
+      errors. Where the static evaluation systematically disagrees with
+      its own deeper search is where a term is missing or mis-shaped; the
+      offline form of the correction histories. Outcome: candidate terms
+      for C.13.5 or `NO_CHANGE`.
+      **Read 2026-10-15** (RAR-E65, `analysis/artifacts/c134/`). The
+      current head re-searched every held-out row at 8,000 nodes with a
+      fresh hash; the PGN comments came from the pre-refit evaluation and
+      were not used. Every wire held, and the re-search was deterministic.
+      **No direction reaches the line, so C.13.4 closes `NO_CHANGE`.**
+      The material map reads +0.046 ± 0.012% (4.0 SE, under 0.10%), the
+      dominant map +0.017 and the family repricing +0.019. The material
+      map's large departures (100 to 160 cp on 9.6% of rows, mostly
+      endgame imbalances) do not carry to outcomes, so they are transient
+      material. The search score itself adds +10.4% (+19.7% in the
+      endgame band), recorded as context for C.13.6.
+    - **C.13.5 Repairs cluster: implement, refit, gate — `R2` for the definition cards (escalated from `I1`, maintainer decision 2026-10-15), then `I1` and `V`, NO_CHANGE 2026-10-15.**
+      The definitions and terms C.13.2 to C.13.4 admitted, as one
+      dependency-complete cluster: implementation with focused tests, one
+      joint refit on the current corpus by `fit_complete.ps1`, the
+      fingerprint record updated, and PROCESS's evaluation-change
+      procedure (static screens, tree read, gate 1 `[0,3]`, the margin
+      block when gate 1 fails or a screen flags, `10+0.1` read). Nothing
+      admitted: closes `NO_CHANGE` with the measurements recorded.
+      **Definition cards (2026-10-15, `R2`):**
+      `analysis/c135_cards_2026-10-15.md` holds the two cards.
+      - Material × men: a band-wise material-edge correction in
+        conventional pawns by men band. The bands come from the training
+        quartiles: ≤ 9, 10–16, 17–22, ≥ 23.
+      - Mobility × men: a band-wise slope on the total mobility count,
+        kept out of king danger's mobility input.
+      - Each has six weights, seeded 0 (fingerprint held), post-gate,
+        fitted in the cluster's refit.
+      Neither is `READY_FOR_IMPLEMENTATION`: the two explanations that
+      would make a term useless, game length (RAR-E59's mechanism) and
+      transient material (RAR-E65), are untested. **RAR-E66**, registered
+      before any number, re-reads both pairs at RAR-E64's deciding base,
+      once with `r · z(log1p plies to the end)` added and once on the
+      search-settled rows (|S − g(E)| ≤ 100 cp). A pair that falls under
+      the line in either reading closes `NO_CHANGE`; a survivor becomes
+      ready with the card's frozen handoff. The build, refit and gate
+      return to `I1` and `V`.
+      **Read 2026-10-15** (RAR-E66, `analysis/artifacts/c135/`): neither
+      pair survives.
+      - With the game-length term in the base, material × men reads
+        +0.109% and mobility × men +0.093%, the latter under the line.
+      - On the 98,541 search-settled rows, material × men reads
+        +0.053 ± 0.025% (2.1 SE) and mobility × men −0.021%.
+      The pairs live where the search does not settle the static score:
+      transient material, which belongs to the quiet filter and C.13.6's
+      target, not to a term. **C.13.5 closes `NO_CHANGE`**, since C.13.2
+      and C.13.4 admitted nothing. Nothing is built, and C.13.6's gate
+      runs against the current head (10,521,141 / EBF 2.521).
+    - **C.13.6 Blended fitting target — `V`, NO_CHANGE 2026-10-15.** Registered before the fit,
+      prediction frozen: the current source games re-extracted with
+      `extract.py --blend 0.5` (train split only; validation and test stay
+      pure WDL, so the static loss is reported, not a criterion), Syzygy
+      relabel as standard, one refit by `fit_complete.ps1`, gate 1 `[0,3]`
+      against the C.13.5 head. Kept only by games. If kept, the blend joins
+      C.2's label contract for C.9 and C.10; if not, the retry trigger is
+      a changed datagen budget or label source, recorded. RAR-E04 is
+      cited as the earlier read and why it does not bind.
+      **Read 2026-10-15** (RAR-E67, `analysis/artifacts/c136/`; run by
+      the agent under the maintainer's exception). `hce-v6`'s games were
+      re-extracted with train targets half outcome and half the datagen
+      search's score on the tuner's scale (K 1.6166), relabelled and
+      refitted. The refit predicts outcomes slightly *better*
+      (validation −0.07%, frozen test −0.05%), but **gate 1 accepted
+      H0 at −13.0 ± 5.7 Elo** (5,050 games).
+      - The blend shrinks every magnitude band by 3 to 11 cp, reshapes
+        the tree (per-position nodes +5.4%) and costs 1.1% NPS.
+      - The frozen search's margins, fitted to the head's magnitudes,
+        are the likeliest cause.
+      The candidate is reverted (`e2c23d1`, fingerprint 10,521,141 /
+      EBF 2.521 again), the blend does not join C.2's label contract,
+      and C.13.6 closes `NO_CHANGE`. A target change is retried only with
+      the margins refitted alongside it (C.10's joint tune).
+      **RAR-E68 registered (2026-10-15, diagnostic):** the blended refit
+      with its scores scaled ×1.0183 back to the head's magnitude, 4,000
+      games against the head. At ≥ −4 Elo the blend goes to C.10 as a
+      candidate target; at ≤ −9 it stays closed. **RAR-M72 registered**
+      (the maintainer's request): the C.13 head against the pre-C.13
+      head, 2,000 games, AGENTS' harm rule.
+      **RAR-E68 read (2026-10-15): inconclusive.** The scaled blend reads
+      −6.3 ± 6.6 Elo against the head (4,000 games), between the registered
+      −9 and −4. About half of RAR-E67's loss is recovered, within noise.
+      The blend stays out, and C.10's registration decides whether to
+      include it. RAR-M72 was not played overnight: the host was busy when
+      it started. It runs once on an idle host.
+      **RAR-M72 read (2026-10-16): no harm.** The C.13 head reads
+      +1.9 ± 8.5 Elo, +3.4 ± 15.2 nElo against the pre-C.13 head (2,000
+      games), above the −13 nElo harm line. C.13.1 stands.
+    - **C.13.7 Contempt and draw avoidance, research card — `R2`, NO_CHANGE 2026-10-16.** Whether
+      a list-Elo lever exists against the weaker pool engines: the
+      candidate forms (a draw score offset in the search, a sign-aware
+      endgame scale), their interaction with the evaluation's drawn-score
+      bands, the endgame scale and the search's draw detection, and the
+      falsifier; the measurement, if any, is E.2's pool gauntlet and is
+      registered there. Decided with the maintainer; `NO_CHANGE` is a
+      result.
+      **Card written 2026-10-16** (`analysis/c137_contempt_card_2026-10-16.md`).
+      The engine scores every draw 0. In the B.9 pool gauntlet's 1,600
+      games against the four targets, 369 were draws. A draw offset could
+      touch at most 194 of them (12.1% of games): repetition or fifty-move
+      draws Rarog reached while level or after thinking itself better. It
+      would cost in the 70 reached while worse, and it cannot touch the 93
+      dead-material draws. Estimated lever: +1 to +4 Elo against the E.2
+      field, about 0 on a rating list, and no playing strength.
+      **Recommendation: `NO_CHANGE`**, with the retry trigger an E.2 1T miss
+      against one engine by 5 Elo or less. The maintainer decides.
+      **Closed `NO_CHANGE` 2026-10-16** (maintainer decision, as
+      recommended). Retry trigger: E.2's 1T gate missed against one engine
+      by 5 Elo or less; then form 1 only, measured in E.2's gauntlet.
+      **C.13 closes DONE.**
+      - C.13.1 repaired connected rooks and removed the terms fitted to
+        zero.
+      - C.13.2 to C.13.5 found no missing term.
+      - C.13.6's search-informed target lost −13 Elo with the search
+        frozen. RAR-E68's scaled read was inconclusive, and C.10's
+        registration decides whether to include the blend.
+      - RAR-M72, the C.13 head against the pre-C.13 head, found no harm
+        (+3.4 ± 15.2 nElo, 2,000 games, 2026-10-16).
 - **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
@@ -1625,6 +2275,14 @@ loss).
     `CoreLmpSquare`'s range floor (256) widened first; `QsCountLimit` and
     any other discrete threshold read as a switch by games before block 1,
     never pinned.
+  - **Carried from C.7.2 (RAR-E58):** among decided scores the lazy
+    score lacks information the full score has: the donor's Material row
+    adds +0.32% to the played score's outcome prediction above 500 cp,
+    and nothing to the full score's. `LazyMargin`'s range and fit are
+    read with that in mind. RAR-E59 adds that the played score's
+    phase miscalibration survives game-clustered errors (5.11 SE) where
+    the full score's does not (3.26), and that remaining game length
+    carries most of it.
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.
@@ -1638,6 +2296,162 @@ loss).
   C.5.2 is frozen, each later unit appends its expected movement before the
   match, and the budget row is corrected by its reading, never by an
   estimate.
+- **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2` and `V`, DONE 2026-10-17.** Added
+  2026-10-13 (maintainer request). B.7 was the search's speed pass (about
+  20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
+  evaluation: the king-danger index and shelter, threats, passer and pawn
+  terms, the endgame scale and recognisers. Its speed has only been
+  accounted, unit by unit, never optimised. The budget row "Speed inside B
+  and C" (10–30 Elo) has no other owner. It runs after C.8, whose cycles
+  change numbers and not code, so the rewrites survive later refits. It runs
+  before C.9 and C.10, whose tunes play at time controls and should see the
+  final speed.
+  1. **Profile (`R2`):** a fresh profile of the accepted head at `bench 13`
+     and in a short self-play sample (`tools/profile_etw.ps1`), by function
+     and by evaluation term. Board work, evaluation, move generation and
+     picking, TT, the search loop. The 2.4.0 split (board 24%, evaluation
+     29%, search 23%) is stale.
+     - Beside the profile, a code review of the evaluation, then the rest,
+       for every kind of saving. The list is a starting point, not a limit
+       (maintainer direction 2026-10-13):
+       - *Duplicate work:* the same attack set, king zone, pin set,
+         mobility area, popcount or square scan computed by more than one
+         term or more than once per node.
+       - *Caching and reuse:*
+         - what the pawn and eval caches key and hold, and what else is a
+           pure function of a cacheable key (pawn structure, king shelter
+           by king square);
+         - per-node shared inputs computed once and passed down;
+         - incremental state kept in make/unmake instead of recomputed;
+         - work skipped before an early exit (the lazy gate's order of
+           terms).
+       - *Data structures and layout:* bitboards against arrays, table
+         size, element width and packing, structure-of-arrays against
+         array-of-structures, cache-line alignment, precomputed masks and
+         lookup tables against arithmetic, and the hot path's memory
+         traffic.
+       - *Code generation:* inlining, bounds checks the compiler cannot
+         remove, branchy forms with branch-free equivalents, loop and
+         iterator shapes, `Option` and `Result` in the per-node path,
+         copies of large values (AGENTS' `memcpy` rule), and
+         auto-vectorisable shapes.
+       - *Build:* the PGO workload's representativeness, codegen units,
+         LTO, target features, and anything only the `texel` or `diag`
+         features should pay for.
+     - Out: a ranked list of candidates before any implementation. Each
+       carries:
+       - where it is;
+       - the profile share it touches and the cheapest plausible saving;
+       - the reason it is behaviour-neutral, or why it is not and so is out
+         of scope;
+       - its risk.
+
+       Also out: the evaluation's share of search time, which C.11 states
+       against B.9's 24%.
+     - A long profiling campaign is the maintainer's (AGENTS, *Expensive
+       jobs*).
+  2. **Rewrites (`I2`):** the new evaluation code first (the shared
+     attack-map producer and what each term recomputes, the pawn and eval
+     caches, the lazy path's cost below the gate). Then re-check B.7's
+     search, move generation, make/unmake and the TT. Build settings too:
+     PGO workload, codegen units, LTO, target features.
+     - Each change is its own commit and is proven exact: fingerprint (10,521,141 / EBF 2.521 today),
+       debug and release suites, clippy, B.7.1's allocation guard, no
+       `memcpy` on the per-node path (AGENTS), and a pooled-PGO NPS read
+       (`nps_build_pool.ps1`, `nps_read.py`) on an idle host.
+     - Search-side changes are behaviour-neutral under the search freeze
+       and listed in D.3's change log with their fingerprints.
+     - No games: an exact fingerprint means unchanged behaviour, so the
+       speed converts to Elo at about 2 per 1% (RAR-S98).
+  3. **Stop:** when the next ranked candidate's measured gain sits inside
+     the instrument's resolution (about ±0.5%), or the list is exhausted.
+     The step's record gives the total pooled gain against the head it
+     started from.
+  - **Record, 2026-10-17 (one night, on the maintainer's delegation):** the
+    profile (step 1, `tools/profile_etw.ps1` as extended in `55f0e11`) and
+    the rewrites (step 2) ran together; `analysis/c12_speed_pass_2026-10-17.md`
+    holds the profile, each change with its screen, the recorded reads and
+    every candidate measured and dropped. 21 engine commits on `c7` are
+    kept, `1781b34` to `b52520d`, each exact at 10,521,141 / EBF 2.521; a
+    further one, `c8934ec`, read +0.02% and `1108805` reverts it. The debug
+    and release suites (the allocation guard included), clippy and fmt pass
+    on the head. **+22.47% pooled-PGO NPS** (95% +21.60% .. +23.34%) for the head
+    against the engine the night started from (`f86a657`, the C.13 head's
+    engine), four builds an arm on a quiet host. The search-side commits are
+    in D.3's change log. Stop: the last six candidates read inside the
+    instrument's resolution or below zero. Two exact cleanups followed
+    (`91d0b0f`, `e55dc9e`: the narrowings' doc comments and the PEXT path's
+    clippy findings). RAR-S99, the speed gate the maintainer asked for on
+    2026-10-16, accepted H1 on 2026-10-17 at 875 pairs: **+42.3 ± 9.5 Elo**
+    at `3+0.03` for `a829601`'s binary over the C.13 head's, with +23.6%
+    nodes a second and +0.60 plies inside the games. The step is done.
+  - **Follow-up, 2026-10-17 (day session, maintainer request):** a fresh
+    ETW profile and a research pass over the evaluation, search and board
+    for further exact speed-ups (`analysis/c12_speed_followup_2026-10-17.md`).
+    Three exact engine commits (`45d4c30`, `4806fad`, `6285e3d`) read flat
+    together, +0.15% (−0.35% .. +0.65%) with eight PGO builds an arm, and
+    `90700b2` reverts them, so the engine source is `60fedc5`'s; six more
+    candidates were measured and dropped. Large pages for the big tables
+    read **+2.48%** (+2.13% .. +2.84%) on the C.12 head, exact, but add six
+    `unsafe` sites against the frozen floor: `db58a00` stays unmerged on
+    branch `large-pages` until the unsafe floor is reviewed (maintainer
+    decision 2026-10-17; G.1 owns large pages). Every read puts the
+    remaining cost in memory latency rather than instruction count.
+  - **Third pass, 2026-10-17/18 (evening session, maintainer request; an
+    independent review of both passes and fresh research):**
+    `analysis/c12_speed_review_2026-10-18.md`. Seven exact candidates, each
+    its own commit on `c7` read with eight PGO builds an arm: two small gains
+    below the bar (the threat set computed only where a node reads it,
+    `6c89771`, +0.19%; the check masks shared between the move loop and
+    quiet scoring, `630e2b5`, +0.17%), two null or losing prefetches, a
+    losing build flag, and two losing rewrites (a branch-free probe −2.0%,
+    history tables as aligned lines −2.9%). The two gains together read
+    **+0.41%** (+0.28% .. +0.54%) against the C.12 head, real by the
+    interval and under the protocol's +0.5% bar, so both were reverted by
+    the rule declared before the reads; `git cherry-pick 6c89771 630e2b5`
+    re-applies them. **Decision (maintainer, 2026-10-18):** both kept as
+    safe exact changes, re-applied as `842b586` and `c01db68` (D.3's change
+    log), after a read with both arms on large pages gave +0.08%
+    (−0.11% .. +0.27%); no gate, since nothing in the search's behaviour
+    changed. The day's quiet-SEE skip alone reads −0.58% and its
+    capture-SEE extension about −1.7%, both losses. The follow-up's reading
+    of the remaining cost as memory latency is superseded: the fresh profile
+    puts the memory-stall lines at 14-17% of samples, the rest is compute
+    spread over many small terms, and under 4 KB pages every added software
+    prefetch pays the page walk it triggers, so the prefetch leads are closed
+    until large pages land.
+  - **Large pages delivered, 2026-10-18 (maintainer decision):** `db58a00`
+    was audited and brought onto `c7` (`ac7c13b`, then `34eb4bc`). The audit
+    found the allocator sound (the privilege check reads the last error, as
+    `AdjustTokenPrivileges` requires; the size is rounded to whole large
+    pages; a region is 64 KB aligned; release uses the region's base; the
+    default `realloc` routes each side by its own layout) and changed three
+    things: every Windows API the crate calls is declared in one `unsafe
+    extern` block (`src/win32.rs`, which also absorbs `main.rs`'s timer
+    declaration), so large pages add four `unsafe` sites instead of six and
+    **the unsafe floor is 23** (FFI 8 + 1 block + 1 privilege call,
+    intrinsics 4, measured hot path 7, the allocator's impl and two blocks);
+    a page allocation refused large pages is counted and `bench` reports
+    `partial`; `tests/large_pages.rs` exercises the allocator directly. The
+    floor stays frozen at 23. CHANGELOG carries the user-facing entry; branch
+    `large-pages` is superseded and goes once `db58a00`'s citations point at
+    the PR. On top, read with both arms on large pages (eight builds an arm,
+    idle host): the page-allocation threshold lowered to 512 KB so the pawn
+    history and pawn cache join the large pages (`47bc1ba`, +0.36%,
+    +0.06% .. +0.66%) and the node's own cluster prefetched before its
+    closing updates (`039ff22`, +0.32%, +0.11% .. +0.54% over the
+    threshold; a loss under 4 KB pages), both under the protocol's bar and
+    kept by the maintainer's rule for safe small gains; together +0.28%
+    (+0.02% .. +0.54%) over the audited head. The TT-move prefetch loses on
+    large pages too (−0.58%, −0.89% .. −0.28%) and stays out. In games
+    (400 at `3+0.03`, `tools/results/c12-lp-ingame/`) the delivered head
+    searches **+2.76%** nodes a second over the C.12 gate binary, median per
+    game +2.14%, +0.04 plies; the match's −8.7 ± 18.0 Elo is a measurement
+    with an interval, consistent with the expected +5 and with zero. G.1 keeps transparent huge pages on
+    Linux and the thread-count memory accounting.
+  - **Not in scope:** anything that changes a node count, a score or a move
+    (that is an engine change with its own gate), and NNUE inference
+    (F.5).
 
 ## Phase D — Clock, threads, robustness
 
@@ -1858,6 +2672,26 @@ loss).
     fails on the old code with one allocation). `bench 13` exact on default
     and pext; pooled-PGO no-regression read passed at −0.24% (−0.55% to
     +0.07%, six cycles; `analysis/artifacts/rule50-alloc/`).
+  - C.12's speed pass (2026-10-17, on `c7`; `analysis/c12_speed_pass_2026-10-17.md`),
+    the search, ordering, generation and board side, each `bench 13` exact
+    at 10,521,141 / EBF 2.521: the per-node search parameter sets read as
+    compile-time constants outside `tune` builds (`d61d4f6`; `d2ab515` keeps
+    the root, clock and quiescence set runtime); pawn and knight attack sets
+    from shifts (`58547cd`); quiescence's known check status passed to the
+    make (`60f8b96`); the derived keys toggled by mask (`acd767e`); a
+    one-kind generation pass's move flag known statically (`09bb98c`); the
+    best-move selection by conditional moves (`081041c`); the child's TT
+    cluster prefetched when the move is picked (`1aaa39e`, `65f490e`);
+    staged king moves decided from the node's threat set (`9f388c5`); the
+    attack tables built at compile time (`b52520d`).
+  - C.12's third pass (2026-10-18, on `c7`; `analysis/c12_speed_review_2026-10-18.md`),
+    kept by maintainer decision below the protocol's bar, each `bench 13`
+    exact at 10,521,141 / EBF 2.521: the node's threat set computed only
+    where a node reads it, the reverse-futility test in two steps and
+    quiescence skipping it for an empty capture list (`842b586`); the node's
+    check masks shared between the move loop and quiet scoring (`c01db68`).
+    Together +0.41% (+0.28% .. +0.54%) pooled-PGO NPS with eight builds an
+    arm, +0.08% (−0.11% .. +0.27%) with large pages on both arms.
 
   **Input from B.5.2.2:** a table read the page cache misses held the PV
   extension's DTZ root probe for about 54 ms and lost RAR-S94's round 745
@@ -1936,6 +2770,10 @@ loss).
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
   of the four targets, by 26 to 75 Elo, so Phases B and C are judged against
   the 1T column.
+  **Contingency (C.13.7, 2026-10-16):** if the 1T gate is missed against one
+  engine by 5 Elo or less, C.13.7's contempt card (form 1, a search draw
+  offset) is the registered lever, measured in this gauntlet with and
+  without it (`analysis/c137_contempt_card_2026-10-16.md`).
 - **E.3 Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version

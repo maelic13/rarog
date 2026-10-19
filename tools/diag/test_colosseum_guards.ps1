@@ -334,6 +334,13 @@ try {
     Invoke-Case -Name "gauntlet participants off the Hash policy" -Expect "not Rarog's policy" `
         -Arguments (Merge-Arguments $gauntlet @{ ExtraArgs = @($field + @('--option', 'Hash=128')) })
 
+    # Every run keeps its engine processes; a command's default changed between
+    # runner versions (a tournament started fresh ones before 0.3.0).
+    Invoke-Case -Name "gauntlet with fresh engine processes" -Expect "engine processes are 'per-game'" `
+        -Arguments (Merge-Arguments $gauntlet @{ ExtraArgs = @($field + @('--option', 'Hash=64', '--engine-processes', 'per-game')) })
+    Invoke-Case -Name "gate with fresh engine processes" -Expect "engine processes are 'per-game'" `
+        -Arguments (Merge-Arguments $base @{ ExtraArgs = @('--engine-processes', 'per-game') })
+
     # The post-run fault guard, on status views in the shape cli-v0.1.0's
     # `status --json` returns. Its first live run found the earlier guard
     # parsing progress text it did not recognise and passing the run with a

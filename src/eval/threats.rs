@@ -26,82 +26,65 @@ impl Evaluator {
         let them = !color;
         let own_pawns = pawns[color as usize];
         let their_pawns = pawns[them as usize];
-
-        let mut threats = pawn_attacks[color as usize] & board.color_occ(them);
-        while threats.any() {
-            let sq = threats.pop_lsb();
-            match board.piece_type_at(sq) {
-                Some(Piece::Knight | Piece::Bishop) => {
-                    *mg += sign * self.params.threat_minor_mg[0];
-                    *eg += sign * self.params.threat_minor_eg[0];
-                    tr_mg!(self, threat_minor_mg, 0, sign);
-                    tr_eg!(self, threat_minor_eg, 0, sign);
-                }
-                Some(Piece::Rook) => {
-                    *mg += sign * self.params.threat_rook_mg[0];
-                    *eg += sign * self.params.threat_rook_eg[0];
-                    tr_mg!(self, threat_rook_mg, 0, sign);
-                    tr_eg!(self, threat_rook_eg, 0, sign);
-                }
-                Some(Piece::Queen) => {
-                    *mg += sign * self.params.threat_queen_mg[0];
-                    *eg += sign * self.params.threat_queen_eg[0];
-                    tr_mg!(self, threat_queen_mg, 0, sign);
-                    tr_eg!(self, threat_queen_eg, 0, sign);
-                }
-                _ => {}
-            }
-        }
-
-        // ---- Threats package v2 (Phase 3.6); every weight seeded 0, so
-        // these contribute nothing until Phase 4 tunes them (bench unchanged).
         let ci = color as usize;
         let ti = them as usize;
         let enemy_occ = board.color_occ(them);
+        // Every per-victim term below counts the victims of each type in one
+        // set: a square-by-square walk decoding each victim from the mailbox
+        // adds the same weights once per square.
+        let victims =
+            |set: Bitboard, piece: Piece| infra::to_i32((set & board.pieces(them, piece)).count());
 
-        // Threat by minor / rook, indexed by victim piece type.
+        // Pawn attacks on enemy knights, bishops, rooks and queens.
+        let pawn_threats = pawn_attacks[ci] & enemy_occ;
+        let minors = victims(pawn_threats, Piece::Knight) + victims(pawn_threats, Piece::Bishop);
+        let rooks = victims(pawn_threats, Piece::Rook);
+        let queens = victims(pawn_threats, Piece::Queen);
+        *mg += sign
+            * (minors * self.params.threat_minor_mg[0]
+                + rooks * self.params.threat_rook_mg[0]
+                + queens * self.params.threat_queen_mg[0]);
+        *eg += sign
+            * (minors * self.params.threat_minor_eg[0]
+                + rooks * self.params.threat_rook_eg[0]
+                + queens * self.params.threat_queen_eg[0]);
+        tr_mg!(self, threat_minor_mg, 0, sign * minors);
+        tr_eg!(self, threat_minor_eg, 0, sign * minors);
+        tr_mg!(self, threat_rook_mg, 0, sign * rooks);
+        tr_eg!(self, threat_rook_eg, 0, sign * rooks);
+        tr_mg!(self, threat_queen_mg, 0, sign * queens);
+        tr_eg!(self, threat_queen_eg, 0, sign * queens);
+
+        // Threat by minor / rook, and the hanging refinement: an enemy piece
+        // other than the king that we attack while it is undefended, or that
+        // we attack twice while it is defended once. Each weighted by victim
+        // type.
         let our_minor_att = maps.attacked_by[ci][Piece::Knight as usize]
             | maps.attacked_by[ci][Piece::Bishop as usize];
-        let mut tb = our_minor_att & enemy_occ;
-        while tb.any() {
-            let sq = tb.pop_lsb();
-            if let Some(v) = board.piece_type_at(sq) {
-                *mg += sign * self.params.threat_by_minor_mg[v as usize];
-                *eg += sign * self.params.threat_by_minor_eg[v as usize];
-                tr_mg!(self, threat_by_minor_mg, v as usize, sign);
-                tr_eg!(self, threat_by_minor_eg, v as usize, sign);
-            }
-        }
-        let mut tb = maps.attacked_by[ci][Piece::Rook as usize] & enemy_occ;
-        while tb.any() {
-            let sq = tb.pop_lsb();
-            if let Some(v) = board.piece_type_at(sq) {
-                *mg += sign * self.params.threat_by_rook_mg[v as usize];
-                *eg += sign * self.params.threat_by_rook_eg[v as usize];
-                tr_mg!(self, threat_by_rook_mg, v as usize, sign);
-                tr_eg!(self, threat_by_rook_eg, v as usize, sign);
-            }
-        }
-
-        // Hanging refinement: enemy piece (non-king) we attack that is
-        // weakly defended — undefended, or doubly-attacked yet defended
-        // only once. Generalises the flat hanging penalty (still active).
-        let mut hb = enemy_occ & !Bitboard::from(board.king_sq(them));
-        while hb.any() {
-            let sq = hb.pop_lsb();
-            let bb = Bitboard::from(sq);
-            let att1 = (maps.attacked[ci] & bb).any();
-            let att2 = (maps.attacked2[ci] & bb).any();
-            let def1 = (maps.attacked[ti] & bb).any();
-            let def2 = (maps.attacked2[ti] & bb).any();
-            if ((att1 && !def1) || (att2 && def1 && !def2))
-                && let Some(v) = board.piece_type_at(sq)
-            {
-                *mg += sign * self.params.threat_hanging_refined_mg[v as usize];
-                *eg += sign * self.params.threat_hanging_refined_eg[v as usize];
-                tr_mg!(self, threat_hanging_refined_mg, v as usize, sign);
-                tr_eg!(self, threat_hanging_refined_eg, v as usize, sign);
-            }
+        let by_minor = our_minor_att & enemy_occ;
+        let by_rook = maps.attacked_by[ci][Piece::Rook as usize] & enemy_occ;
+        let weakly_defended = (maps.attacked[ci] & !maps.attacked[ti])
+            | (maps.attacked2[ci] & maps.attacked[ti] & !maps.attacked2[ti]);
+        let hanging = enemy_occ & !board.pieces(them, Piece::King) & weakly_defended;
+        for victim in Piece::ALL {
+            let v = victim as usize;
+            let minor_hits = victims(by_minor, victim);
+            let rook_hits = victims(by_rook, victim);
+            let hanging_hits = victims(hanging, victim);
+            *mg += sign
+                * (minor_hits * self.params.threat_by_minor_mg[v]
+                    + rook_hits * self.params.threat_by_rook_mg[v]
+                    + hanging_hits * self.params.threat_hanging_refined_mg[v]);
+            *eg += sign
+                * (minor_hits * self.params.threat_by_minor_eg[v]
+                    + rook_hits * self.params.threat_by_rook_eg[v]
+                    + hanging_hits * self.params.threat_hanging_refined_eg[v]);
+            tr_mg!(self, threat_by_minor_mg, v, sign * minor_hits);
+            tr_eg!(self, threat_by_minor_eg, v, sign * minor_hits);
+            tr_mg!(self, threat_by_rook_mg, v, sign * rook_hits);
+            tr_eg!(self, threat_by_rook_eg, v, sign * rook_hits);
+            tr_mg!(self, threat_hanging_refined_mg, v, sign * hanging_hits);
+            tr_eg!(self, threat_hanging_refined_eg, v, sign * hanging_hits);
         }
 
         // Threat by safe pawn push: enemy non-pawn pieces a pawn would
@@ -190,45 +173,25 @@ impl Evaluator {
         attacked: &[Bitboard; 2],
     ) {
         let them = !color;
-        let mut pieces = board.color_occ(color)
-            & !board.pieces(color, Piece::Pawn)
-            & !board.pieces(color, Piece::King);
-        while pieces.any() {
-            let sq = pieces.pop_lsb();
-            let Some(piece) = board.piece_type_at(sq) else {
-                continue;
-            };
-            let sq_bb = Bitboard::from(sq);
-            let is_attacked = (attacked[them as usize] & sq_bb).any();
-            let is_defended = (attacked[color as usize] & sq_bb).any();
-            if !is_attacked || is_defended {
-                continue;
-            }
-            let penalty = match piece {
-                Piece::Knight | Piece::Bishop => self.params.hanging_minor[0],
-                Piece::Rook => self.params.hanging_rook[0],
-                Piece::Queen => self.params.hanging_queen[0],
-                _ => 0,
-            };
-            *mg -= sign * penalty;
-            *eg -= sign * penalty;
-            // The same flat penalty enters both mg and eg, so trace both.
-            match piece {
-                Piece::Knight | Piece::Bishop => {
-                    tr_mg!(self, hanging_minor, 0, -sign);
-                    tr_eg!(self, hanging_minor, 0, -sign);
-                }
-                Piece::Rook => {
-                    tr_mg!(self, hanging_rook, 0, -sign);
-                    tr_eg!(self, hanging_rook, 0, -sign);
-                }
-                Piece::Queen => {
-                    tr_mg!(self, hanging_queen, 0, -sign);
-                    tr_eg!(self, hanging_queen, 0, -sign);
-                }
-                _ => {}
-            }
-        }
+        // Our knights, bishops, rooks and queens the enemy attacks and we do
+        // not defend, counted by type.
+        let hanging = attacked[them as usize] & !attacked[color as usize];
+        let count = |piece: Piece| infra::to_i32((board.pieces(color, piece) & hanging).count());
+        let minors = count(Piece::Knight) + count(Piece::Bishop);
+        let rooks = count(Piece::Rook);
+        let queens = count(Piece::Queen);
+        let penalty = minors * self.params.hanging_minor[0]
+            + rooks * self.params.hanging_rook[0]
+            + queens * self.params.hanging_queen[0];
+        *mg -= sign * penalty;
+        *eg -= sign * penalty;
+        // The same flat penalty enters both mg and eg, so trace both.
+        tr_mg!(self, hanging_minor, 0, -sign * minors);
+        tr_eg!(self, hanging_minor, 0, -sign * minors);
+        tr_mg!(self, hanging_rook, 0, -sign * rooks);
+        tr_eg!(self, hanging_rook, 0, -sign * rooks);
+        tr_mg!(self, hanging_queen, 0, -sign * queens);
+        tr_eg!(self, hanging_queen, 0, -sign * queens);
     }
 }
 

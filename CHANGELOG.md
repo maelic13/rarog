@@ -10,6 +10,16 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Changed
 
+- **Large pages on Windows.** When the account running the engine holds the
+  *Lock pages in memory* right, the hash table and the search's other large
+  tables are allocated in 2 MB pages, which spares the processor a
+  page-table walk on most of their accesses: about **+2.5% nodes a second**
+  at the default settings on the development machine, and exact in every
+  other respect (`bench` reports the same node count). Without the right
+  the engine runs as before. `bench` prints `Large pages : on`, `off` (the
+  right is not held) or `partial` (some table fell back to ordinary pages
+  for lack of contiguous memory). The right is granted in the Local Security
+  Policy under User Rights Assignment and takes effect at the next logon.
 - **The evaluation was refitted** on 612,747 new self-play games labelled by
   the 2.5 search and corrected by endgame tablebases, fitting the evaluation
   the engine actually plays (including its fast path for lopsided
@@ -54,8 +64,26 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   generous). The evaluation was refitted around the change. Against the
   previous development version it measured **+6.4 ± 3.6 Elo at
   `3+0.03`** (12,924 games) and −1.7 ± 12.3 at `10+0.1` (1,000 games, too
-  few to tell a gain from no change). `bench` now reports 14,197,472
+  few to tell a gain from no change). `bench` then reported 14,197,472
   nodes.
+- **The evaluation was refitted twice on games played by the current
+  engine.** Each time, about 570,000 to 600,000 new self-play games,
+  labelled by the engine's own play and corrected by endgame tablebases,
+  replaced the games the evaluation was last fitted on; the fit starts from
+  the existing values, which a control fit from neutral values confirmed is
+  the better start. The first refit measured **+11.0 ± 4.9 Elo at
+  `3+0.03`** (7,202 games) and **+17.0 ± 11.8 at `10+0.1`** (1,000 games)
+  against the version before it; the second measured **+6.7 ± 3.7 Elo at
+  `3+0.03`** (12,362 games) and **+3.1 ± 11.5 at `10+0.1`** (1,000
+  games) against the first. `bench` then reported 14,126,183 nodes.
+- **The engine searches about 22% more positions a second** while playing
+  exactly as before: it visits the same positions in the same order, so
+  `bench` still reports 10,521,141 nodes, but evaluation, move ordering and
+  move generation do less work per position, and the attack tables are
+  built into the executable instead of at startup (which makes it about
+  0.85 MB larger). Against the previous development version it measured
+  **+42.3 ± 9.5 Elo at `3+0.03`** (1,750 games), searching 23.6% more
+  positions a second inside the games.
 
 ### Fixed
 
@@ -69,6 +97,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   39 of 77 won positions where it won 28 before (Stockfish 50). The
   ending is rare (5 of 12,954 gate games), so no rating change is
   expected; with tablebases loaded the engine probes it as before.
+- **Connected rooks are scored the same for either side when a side has
+  three rooks** (after a promotion). Every pair of rooks on one rank or
+  file with nothing between them now earns the bonus; before, only the
+  rooks on the lowest and highest squares were compared, so a position
+  and its mirror image could be scored differently. `bench` now
+  reports 10,521,141 nodes.
 
 ## [2.5.0] - 2026-10-05
 

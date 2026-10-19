@@ -68,6 +68,9 @@ PIECE_VAL = {
 
 # fastchess comment: "+0.25/12 0.013s" or mate "+M5/12 0.002s".
 COMMENT_CP = re.compile(r"^([+-]?)(M?)(\d+(?:\.\d+)?)/")
+# Colosseum comment (colosseum-move-comment/3): "s=25 d=12 t=13ms h=1ms n=7456",
+# centipawns or "s=#5" / "s=#-5" for a mate, from the mover's point of view.
+COMMENT_COLOSSEUM = re.compile(r"(?:^|\s)s=(#?)(-?\d+)(?:\s|$)")
 CP_CLAMP = 2000
 
 
@@ -131,17 +134,36 @@ def has_winning_capture(board: "chess.Board") -> bool:
 
 
 def comment_cp_white(comment: str, white_to_move: bool) -> float | None:
-    match = COMMENT_CP.match(comment.strip())
-    if not match:
-        return None
-    sign = -1.0 if match.group(1) == "-" else 1.0
-    cp = sign * (CP_CLAMP if match.group(2) else float(match.group(3)) * 100.0)
+    text = comment.strip()
+    match = COMMENT_CP.match(text)
+    if match:
+        sign = -1.0 if match.group(1) == "-" else 1.0
+        cp = sign * (CP_CLAMP if match.group(2) else float(match.group(3)) * 100.0)
+    else:
+        match = COMMENT_COLOSSEUM.search(text)
+        if not match:
+            return None
+        value = int(match.group(2))
+        if match.group(1):
+            cp = float(CP_CLAMP if value >= 0 else -CP_CLAMP)
+        else:
+            cp = float(value)
     cp = max(-CP_CLAMP, min(CP_CLAMP, cp))
     return cp if white_to_move else -cp
 
 
 def sigmoid_cp(cp: float) -> float:
     return 1.0 / (1.0 + 10.0 ** (-cp / 400.0))
+
+
+def blend_probability(cp: float, k: float | None) -> float:
+    """The search score as an expected result. Without `k` it is the Elo
+    scale above; with `k` it is the tuner's own sigmoid, `1/(1+exp(-k*cp/400))`,
+    so a fit sees the search half of a blended target on the scale it fits
+    its own scores to (`--fix-k`)."""
+    if k is None:
+        return sigmoid_cp(cp)
+    return 1.0 / (1.0 + math.exp(-k * cp / 400.0))
 
 
 @dataclass
@@ -339,6 +361,9 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--no-quiet-filter", dest="quiet_filter", action="store_false")
     command.add_argument("--blend", default=1.0, type=float, metavar="LAMBDA",
                          help="training target = lambda*WDL + (1-lambda)*sigmoid(search cp)")
+    command.add_argument("--blend-k", default=None, type=float, metavar="K",
+                         help="map search cp with the tuner's sigmoid at this K "
+                              "instead of the Elo scale")
     return command
 
 
@@ -351,6 +376,8 @@ def validate_args(args, command: argparse.ArgumentParser) -> None:
         command.error("validation/test percentages must be non-negative and sum below 100")
     if not 0.0 <= args.blend <= 1.0:
         command.error("--blend must be in [0,1]")
+    if args.blend_k is not None and not args.blend_k > 0.0:
+        command.error("--blend-k must be positive")
     if args.skip_start < 0 or args.skip_end < 0:
         command.error("skip counts cannot be negative")
 
@@ -411,7 +438,8 @@ def main() -> int:
                         if cp is None:
                             missing_evals += 1
                         else:
-                            target = args.blend * result + (1.0 - args.blend) * sigmoid_cp(cp)
+                            target = (args.blend * result
+                                      + (1.0 - args.blend) * blend_probability(cp, args.blend_k))
                     reservoirs[split][bucket].offer((fen, target, cp))
         if args.preflight_games and independent >= args.preflight_games:
             break
@@ -492,6 +520,7 @@ def main() -> int:
                     "max_per_game": args.max_per_game},
         "label": "white-perspective self-play WDL",
         "train_blend": args.blend,
+        "train_blend_k": args.blend_k,
     }
     manifest_tmp = manifest_path.with_name(manifest_path.name + ".tmp")
     manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")

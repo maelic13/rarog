@@ -84,11 +84,23 @@ if ($dupes) {
     throw "IDENTICAL binaries in the pool ($names) - the PGO profile did not vary, so pooling them measures nothing"
 }
 
+# The manifest names one source for every build, so the tree is read again
+# after them: a commit or an edit made while they compiled means the builds
+# need not share a source, and such a pool is labelled as one that cannot be
+# identified, or refused when it was asked to be clean.
+$shaAfter = (& git rev-parse HEAD).Trim()
+$dirtyAfter = (& git status --porcelain)
+$clean = (-not $dirty) -and (-not $dirtyAfter) -and ($shaAfter -eq $sha)
+if (-not $clean -and -not $AllowDirty) {
+    throw "the source changed while the pool was built (HEAD $sha, now $shaAfter, or files modified) - its builds cannot be identified"
+}
+$sourceState = if ($clean) { "(clean)" } else { "(DIRTY: not reproducible, must not back a recorded result)" }
+
 $manifest = Join-Path $OutDir "manifest-$Arch.txt"
 @(
     "arch          : $Arch"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
-    "source        : $sha (clean)"
+    "source        : $sha $sourceState"
     "builds        : $Builds"
     "fingerprint   : $ExpectFingerprint (verified on every copy)"
     "generated     : $(Get-Date -Format o)"
