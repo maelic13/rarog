@@ -2273,6 +2273,18 @@ loss).
 
   **C.9 closes `NO_CHANGE`**, the written skip: the residue has no
   surface for a game tune, and the evaluation enters C.10 as it is.
+  **Reviewed 2026-10-19** (`analysis/phase_c_review_2026-10-19.md`,
+  section 1): the skip is at the static layer. These coordinates carry
+  no outcome information the fit cannot reach; a game surface could
+  exist only through the search, which C.10 refits to the frozen
+  evaluation. RAR-E69's inventory placed the mop-up among the five-men
+  recognisers; its generic branch fires wherever the running score
+  passes 200 cp (48% of the held-out rows), and RAR-E71 swept its two
+  weights: fitted (removal −0.125 ± 0.017% of the loss at 7.5
+  game-clustered SE, 1.5x and 2x within the line), so the omission hid
+  no surface. The phase weights (`PHASE_W`) are the one discrete
+  unfitted coordinate left unswept; the men evidence (RAR-E63, RAR-E66)
+  points away from them.
 - **C.10 Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — `V`.** The search
   was fitted on the B-era evaluation: its cp-valued margins sit on that
   scale, and a new evaluation moves every node population the other
@@ -2314,7 +2326,9 @@ loss).
       each way. No relevant coordinate is left out: the 17 coordinates
       in history units have no firing-rate counter, so C.10.1's reason
       for leaving them out is unevidenced, and C.10.3's re-audit decides
-      them before the pilot. The tune runs until the surface settles.
+      them before the pilot (the review of 2026-10-19: they enter the
+      pilot, and the re-audit after it decides the blocks). The tune runs
+      until the surface settles.
     - The pilot runs first.
     - The blocks are rule 7c's, 2,000 iterations × 30 games (about
       10.5 hours each at 5,700 games an hour). Blocks are chained, each
@@ -2335,7 +2349,11 @@ loss).
     stay out, each with a reason (`analysis/artifacts/c10/surface.tsv`).
     Seven ranges are widened before the pilot. The blended target stays
     out (recommended; an evaluation change belongs to its own unit, with
-    its own margin block).
+    its own margin block). **Reviewed 2026-10-19:** the firing-rate
+    contrast against the B.9 head includes the `c2margin` and `c3margin`
+    blocks' retuning of the 28 margins, so it selects a surface and does
+    not attribute the movement to the evaluation alone; the cp scale's
+    5.2% is by mean |score| (3.1% by median per row, 4.7% by slope).
   - **C.10.2 `QsCountLimit` read as a switch: 2 and 4 against 3 — `V`, NO_CHANGE 2026-10-19.**
     RAR-S100, two 2,000-game reads on one tune build (about 50 minutes),
     the maintainer's command. A direction fixes the value for the pilot
@@ -2345,12 +2363,22 @@ loss).
     blocks.
   - **C.10.3 Widened ranges, the sensitivity pilot and the re-audit — `I1`, then `V`.**
     One behaviour-neutral engine commit widens the seven ranges (the tune
-    clamp only; the fingerprint is unchanged). Then PROCESS's pilot,
-    128 iterations × 30 games over the 83 coordinates, seeded at the
-    head, with `QsCountLimit` at C.10.2's value. Pilot theta is never
-    promoted. The re-audit of the whole active surface follows (PROCESS
-    step 6). A pilot with no full-step mover and a journal inside the
-    sign-redraw null stops C.10 for the maintainer's decision.
+    clamp only; the fingerprint is unchanged). The relevance condition is
+    checked first by `analysis/artifacts/c10/bench_steps.py` (every
+    coordinate moves `bench 13` one step each way; about fifteen minutes
+    on the tune build), and a coordinate it flags is decided before the
+    registration. Then PROCESS's pilot, 128 iterations × 30 games over
+    the 83 coordinates plus the 15 history-unit coordinates now out
+    (100; the review of 2026-10-19, section 2.3: no counter measures
+    their consumers, so the pilot decides them), seeded at the head,
+    with `QsCountLimit` at C.10.2's value. Pilot theta is never promoted.
+    The re-audit of the whole active surface follows (PROCESS step 6) and
+    sets the blocks' surface. A pilot with no full-step mover and a
+    journal inside the sign-redraw null stops C.10 for the maintainer's
+    decision. The blocks' registration states the expected value as
+    +5 Elo, 80% band [−1, +15], H1 under `[0,3]` with probability 0.5
+    (the review's section 2.4; the research card's own frozen +8 and
+    [+2, +18] stand as written there).
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
@@ -2366,7 +2394,17 @@ loss).
   conditions, not to be played before C.11): its prediction for C.4 and
   C.5.2 is frozen, each later unit appends its expected movement before the
   match, and the budget row is corrected by its reading, never by an
-  estimate.
+  estimate. **Reviewed 2026-10-19** (`analysis/phase_c_review_2026-10-19.md`,
+  section 3): the classical evaluation is frozen in substance from
+  2026-10-19 (C.9 `NO_CHANGE`, the blend out, no unit scheduled); C.11
+  records it formally with its checkpoint reads. RAR-O07's addendum of
+  2026-10-19 completes its prediction (+108, 80% band [+90, +126]) from
+  the units accepted since its registration; it stays at C.11, since no
+  decision before it depends on the reading and C.10 does not move it.
+  The one pre-freeze read is RAR-E72, the king middlegame-band
+  attribution (zero games; the review's section 3.3): conditioning opens
+  a king-refinement research card before the freeze, magnitude closes
+  the lead.
 - **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2` and `V`, DONE 2026-10-17.** Added
   2026-10-13 (maintainer request). B.7 was the search's speed pass (about
   20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
