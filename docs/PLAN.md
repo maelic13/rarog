@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.3.1 | READY_FOR_IMPLEMENTATION | I1 | The pilot stopped at 28 of 128 (2026-10-19); the dead `CoreNmpTtPv` deleted exactly, RAR-S102 reads `CoreLmrResearchShallower` as a switch, then RAR-S101 is amended and relaunched |
-| C.10.3 | GAME_GATE | I1 | RAR-S101 registered and stopped before any journal was read; relaunched after C.10.3.1, then the re-audit |
+| C.10.3 | GAME_GATE | I1 | RAR-S101 played 2026-10-19/20: the stop rule fires (no full-step mover, the journal inside its null); the maintainer decides block 1 over 82 coordinates or `NO_CHANGE` |
 | C.10.4 | RESEARCH | V | After the pilot's re-audit |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2424,7 +2423,17 @@ loss).
       until the two coordinates the check found are settled: the search
       should be correct before it is fitted to the new evaluation. The
       work is C.10.3.1; RAR-S101 is amended and relaunched after it.
-    - **C.10.3.1 Dead and switched-off search coordinates before the tune — `I1`, then `V`.**
+    - **Pilot played 2026-10-19/20 (RAR-S101, relaunched on `rarog-c103b-tune.exe`
+      after C.10.3.1):** 3,840 games, 0 faults. The frozen re-audit reads no
+      full-step mover, the journal's mean z² 0.963 inside its sign-redraw
+      null (95% point 1.237, p 0.60), six coordinates at |z| ≥ 2 where about
+      five are chance, and one history coordinate entering by that route
+      (`CoreSeeQuietHistory`). **The stop rule fires; C.10 waits for the
+      maintainer's decision:** block 1 over the 82 (the 81 evidence-selected
+      plus `CoreSeeQuietHistory`, rule 7c as amended lets a watched tune run
+      regardless, the pilot cannot exclude a gradient of a few Elo), or
+      C.10 closes `NO_CHANGE` without a block.
+    - **C.10.3.1 Dead and switched-off search coordinates before the tune — `I1`, then `V`, DONE 2026-10-19.**
       `analysis/c103_search_coordinates_2026-10-19.md`. (a) `CoreNmpTtPv`
       is dead by a measured decision, not by mistake: B.3 kept Rarog's
       null-move population (`!tt_pv` at any node type) after RAR-S80 read
