@@ -3,18 +3,20 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **One group is prepared and
-not yet run: `c3margin`** (PLAN C.3's margin block, if C.3's gates call for
-it). `c2margin` (PLAN C.2, RAR-E24) was baked on 2026-10-08 after gate 2
-accepted it. `b23core`, `b27all`, `b27core`, `b33`, `b43` and `c2margin` are historical: their
+options applied to both sides at fixed values. **No group is prepared.**
+`c2margin` (PLAN C.2, RAR-E24) and `c3margin` (PLAN C.3, RAR-E25) were baked
+after their gates accepted them. `b23core`, `b27all`, `b27core`, `b33`, `b43`, `c2margin` and `c3margin` are historical: their
 thetas are baked, their seeds are kept as evidence, and `historical.txt`
 exempts them from the audit's seed checks. B.8 folded the arm features
 (`b2core`, `b3proof`, `b4quiet`) into the only search, so a historical
 group's build line records how its binary was built then; a tune build of
 the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 
-## `c3margin` — PROCESS's margin block for C.3 (prepared, not registered)
+## `c3margin` — PROCESS's margin block for C.3, registered by RAR-E25 (historical)
 
+- **Result:** run 2026-10-08/09 (60,000 games); its rounded final theta was
+  baked into the 28 defaults with C.3's unit (`dcef971`) after RAR-E25's
+  gate 2 accepted it. The seeds below are the registration's.
 - **Surface:** `c2margin`'s 28 coordinates, ranges, steps and fixed options
   unchanged, seeded at the head RAR-E24 landed (`1abeb46`), so a block on
   C.3's candidate starts from the margins that head plays.
