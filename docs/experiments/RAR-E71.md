@@ -41,7 +41,26 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Expected Elo: none here.
   - Most likely failure mode: prediction 3 misses toward improving at 2x, which the frozen use records as magnitude and not as a candidate.
 - **Cheapest prior falsifier:** this sweep.
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
+- **Result (run 2026-10-19, once, after the registration commit `f999900`; all 25 runner steps and the reader exited 0, read from `status.txt`; `tools/results/c91-mop-20261019/`, `read.json` `bd955c73…`, `read.log` `44b5521d…`):**
+  - *Wires held:* every row has a game (27,721 games); the base point equals `c132/head_played.csv` on all 194,444 rows and reads 10,521,141 / EBF 2.521; every other point moves 92,385 to 92,510 rows (47.5 to 47.6%).
+  - *Gains*, percent of the head's loss, K refitted per point, ± one game-clustered SE; the head's K 1.6372, loss 0.092712:
+
+    | Point | Gain % | SE | z | K | Gain at the head's K | Moved | Mean move | `bench 13` |
+    |---|---:|---:|---:|---:|---:|---:|---:|---:|
+    | `mop=0` | **−0.125** | 0.017 | −7.5 | 1.7303 | −0.196 | 47.6% | 36.1 cp | 10,637,597 |
+    | `mop=0.5` | −0.041 | 0.008 | −5.3 | 1.6798 | −0.056 | 47.6% | 17.0 cp | 10,763,883 |
+    | `mop=0.75` | −0.017 | 0.004 | −4.4 | 1.6582 | −0.021 | 47.5% | 8.5 cp | 12,664,956 |
+    | `mop=1.5` | +0.017 | 0.008 | +2.0 | 1.5919 | −0.001 | 47.6% | 19.0 cp | 11,577,835 |
+    | `mop=2` | +0.008 | 0.015 | +0.6 | 1.5538 | −0.052 | 47.6% | 36.1 cp | 14,872,829 |
+
+  - *Shape:* **fitted.** Removing the generic branch loses beyond the line (−0.125% at 7.5 SE), halving and three-quarters lose less, and neither enlargement gains to the line.
+  - *What the K column says:* the refitted K falls from 1.73 at the removal to 1.55 at the doubling, and the gains at the head's K are 0.07 and 0.06 points below the refitted ones at those two points: about a third of the term's static effect is a uniform inflation of decided scores that the sigmoid's scale absorbs, and the remaining 0.12% of the loss is information the linear weights do not carry (the king piece-square tables were fitted with the push present and hold it on average, not conditioned on who is ahead).
+- **Disposition:** observation. **By the frozen use, C.9's close stands and its inventory is corrected:** the generic mop-up is a fifth continuous unfitted coordinate pair, active on 48% of the held-out rows, and it sits at its static optimum. Not Elo: a term that inflates decided scores is the kind RAR-E19 and RAR-E20 measured as statically better and worse in play, so this read says only that a removal would have a measured static cost and no static case; it says nothing about the head's weights in play.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - Original prediction (not rewritten): items 1 to 6 above.
+  - Observed: (1) hit. (2) activation hit (47.6% at every point); mean move 10 to 40 cp hit at four points and **miss** at `mop=0.75` (8.5 cp). (3) fitted, hit (0.45). (4) `mop=0` −0.125 inside [−0.35, +0.05], hit; `mop=2` +0.008 inside [−0.15, +0.15], hit. (5) **miss**: `bench 13` at the removal moved +1.1%, not more than 10%; the doubling moved it +41%. (6) **miss**: the refitted and fixed-K gains differ by 0.07 at the removal and 0.06 at the doubling, against the 0.03 predicted; the term is more of a uniform scale on decided scores than I took it for.
+  - Which assumption failed: that a conditional push on the losing king is mostly conditioning. A third of it is magnitude, and the fixed-depth tree's response to its removal is small while its response to doubling is large, which is the hypersensitivity RAR-E69 recorded, not a signal.
+- **Conditional lesson:** read a sweep's fixed-K column beside the refitted one; the gap between them is the share of a term that is a scale, which the search's margins own, and only the remainder is conditioning.
+- **Retry trigger or `closed`:** closed. The weights are retried only on a game record of under-converted large middlegame scores after C.10 (RAR-E59's lead), as a magnitude question, never on this static read.
+- **Artifacts / commits:** registration `f999900`; `analysis/artifacts/c91/`; `tools/results/c91-mop-20261019/` (every point's patch, build, dump and bench log, `hashes.txt`, `status.txt`, `tree-status.txt`, `read.json`, `read.log`), ignored storage.
 - **Artifacts / commits:** this registration; `analysis/artifacts/c91/` and `tools/results/c91-mop-20261019/` (ignored storage).
