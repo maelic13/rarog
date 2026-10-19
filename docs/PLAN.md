@@ -2373,7 +2373,12 @@ loss).
     their consumers, so the pilot decides them), seeded at the head,
     with `QsCountLimit` at C.10.2's value. Pilot theta is never promoted.
     The re-audit of the whole active surface follows (PROCESS step 6) and
-    sets the blocks' surface. A pilot with no full-step mover and a
+    sets the blocks' surface: a history-unit coordinate enters the blocks
+    on a full-step move in the pilot or on a journal |z| ≥ 2 (RAR-S95's
+    statistic; maintainer decision 2026-10-19, since 128 iterations have
+    little power for a full step and |z| ≥ 2 over 15 coordinates admits
+    about one by chance), and the evidence-selected coordinates stay
+    unless the relevance check removed them. A pilot with no full-step mover and a
     journal inside the sign-redraw null stops C.10 for the maintainer's
     decision. The blocks' registration states the expected value as
     +5 Elo, 80% band [−1, +15], H1 under `[0,3]` with probability 0.5
@@ -2435,7 +2440,19 @@ loss).
   fingerprint reproduced, debug and release tests, `clippy` at zero
   warnings on the new compiler, and an interleaved pooled-PGO NPS read
   against the old toolchain, so C.11 measures the toolchain that ships
-  and no gate mixes toolchains between its arms.
+  and no gate mixes toolchains between its arms. **Maintainer decision
+  2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
+  danger index, carried by inputs Rarog's index already has at fitted
+  weights about half the donor's (safe checks, attackers × weight,
+  unsafe checks, the weak ring), so no king-refinement unit precedes
+  C.10. The lead goes to one zero-game read alongside C.10: the 23
+  king-danger coordinates refitted alone from the donor's seeds with the
+  linear weights fixed, once at the cap of 1,600 and once at 2,400, read
+  as held-out loss in the band and as RAR-E72's reading (B) against each
+  refitted map. A refit that captures at least half of (B)'s +0.194%
+  makes the lead a king-coordinate refit cycle gated by gate 1 after
+  C.10; otherwise it closes as the index's structure, which Phase F
+  supersedes.
 - **C.12 Speed pass on the classical engine: a fresh profile, behaviour-neutral rewrites of the evaluation first and then the rest, each proven exact — `R2`, then `I2` and `V`, DONE 2026-10-17.** Added
   2026-10-13 (maintainer request). B.7 was the search's speed pass (about
   20% won back, +35.5 Elo, RAR-S98). Since then C's units rebuilt the
