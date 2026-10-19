@@ -148,7 +148,7 @@ search_params! {
     struct SearchParams, generated_param_checks;
 
     /// Initial aspiration window half-width (centipawns).
-    aspiration_delta = 14, "AspirationDelta", 5..=100;
+    aspiration_delta = 14, "AspirationDelta", 1..=100;
 
     // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
     // The widening loop is parameterised so its shape can be SPSA'd rather than
@@ -218,13 +218,13 @@ search_params! {
     /// 0, so this can only ever tighten the old contract, never loosen it —
     /// RAR-S55 v3 measured Rarog searching 5.17x the reference's normalised
     /// ProbCut moves and converting 32.6% of them against 71.9%.
-    probcut_see_gap_scale = 100, "ProbCutSeeGapScale", 0..=100;
+    probcut_see_gap_scale = 100, "ProbCutSeeGapScale", 0..=200;
 
     /// Lazy-eval margin: if the tapered material + PST + pawn score already
     /// exceeds it, the positional block is skipped. Pushed into the evaluator
     /// at every search start; the default must equal `eval::LAZY_MARGIN`, the
     /// evaluator's own seed and the margin `texel` fits use.
-    lazy_margin = 423, "LazyMargin", 200..=2000;
+    lazy_margin = 423, "LazyMargin", 100..=2000;
 
     // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
@@ -263,7 +263,7 @@ search_params! {
     corr_update_slope = 237, "CoreCorrUpdateSlope", 32..=512;
     /// Clamps of one update, in table units (64 per evaluation unit).
     corr_update_min = -1_742, "CoreCorrUpdateMin", -8192..=-256;
-    corr_update_max = 789, "CoreCorrUpdateMax", 128..=8192;
+    corr_update_max = 789, "CoreCorrUpdateMax", 128..=4096;
     /// Blend weights of the six tables, in 128ths.
     corr_weight_pawn = 121, "CoreCorrWeightPawn", 0..=384;
     corr_weight_minor = 42, "CoreCorrWeightMinor", 0..=384;
@@ -313,7 +313,7 @@ search_params! {
     /// Quiet futility value: `eval + base + linear * depth + history *
     /// history/1024 + above_beta * (eval >= beta) + correction * |corr|/1024`.
     fp_base = 132, "CoreFpBase", -100..=500;
-    fp_linear = 40, "CoreFpLinear", 10..=300;
+    fp_linear = 40, "CoreFpLinear", 0..=300;
     fp_history = 44, "CoreFpHistory", 0..=200;
     fp_eval_above_beta = 44, "CoreFpEvalAboveBeta", 0..=200;
     fp_correction = 213, "CoreFpCorrection", 0..=2048;
@@ -446,10 +446,10 @@ search_params! {
     /// node searched with a null window)) / 16`: sixteenths of an
     /// evaluation unit per ply of span. 64 is Rarog's fitted `4 * depth`;
     /// both donors convert to about 8.
-    singular_margin = 17, "CoreSingularMargin", 4..=192;
+    singular_margin = 17, "CoreSingularMargin", 4..=96;
     /// The span of the margin when the stored bound is exact, in sixteenths
     /// of the depth, rounded up; a non-exact bound spans the whole depth.
-    sing_exact_span = 4, "CoreSingExactSpan", 2..=16;
+    sing_exact_span = 4, "CoreSingExactSpan", 1..=16;
     /// A stored lower bound seeds a singular candidate only when it is at
     /// most this many plies shallower than the node; 2 here, not the
     /// accepted search's `SingularTtDepthMargin` of 3, because 2 measured
