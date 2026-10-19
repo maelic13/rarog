@@ -294,7 +294,8 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.3 | GAME_GATE | I1 | RAR-S101 registered; the maintainer's pilot, then the re-audit |
+| C.10.3.1 | READY_FOR_IMPLEMENTATION | I1 | The pilot stopped at 28 of 128 (2026-10-19); the dead `CoreNmpTtPv` deleted exactly, RAR-S102 reads `CoreLmrResearchShallower` as a switch, then RAR-S101 is amended and relaunched |
+| C.10.3 | GAME_GATE | I1 | RAR-S101 registered and stopped before any journal was read; relaunched after C.10.3.1, then the re-audit |
 | C.10.4 | RESEARCH | V | After the pilot's re-audit |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2417,6 +2418,27 @@ loss).
       96 (`e0292e8`'s `c10pilot` group) with the frozen re-audit reader
       `analysis/artifacts/c10/pilot_reaudit.py`; the pilot is the
       maintainer's command.
+    - **Maintainer decision 2026-10-19, after the relevance check:** the
+      pilot's first launch was stopped by the maintainer at 28 of 128
+      iterations, before any journal was read, and the joint tune waits
+      until the two coordinates the check found are settled: the search
+      should be correct before it is fitted to the new evaluation. The
+      work is C.10.3.1; RAR-S101 is amended and relaunched after it.
+    - **C.10.3.1 Dead and switched-off search coordinates before the tune — `I1`, then `V`.**
+      `analysis/c103_search_coordinates_2026-10-19.md`. (a) `CoreNmpTtPv`
+      is dead by a measured decision, not by mistake: B.3 kept Rarog's
+      null-move population (`!tt_pv` at any node type) after RAR-S80 read
+      the donors' population (cut nodes, PV-flagged ones included) at
+      +3.1 ± 9.3 at STC and −10.4 ± 12.0 at `10+0.1`, and B.8 removed the
+      switch but left the margin term that only the other population
+      reaches. The term is deleted as an exact change (the fingerprint
+      reproduced); the veto question stays closed on RAR-S80 with its
+      retry trigger. (b) `CoreLmrResearchShallower` is read as a switch
+      (RAR-S102: 2 and 4 against −1); a direction fixes it on with its
+      floor at 2 in the pilot and the blocks, none keeps it off and
+      records it for removal after the freeze. (c) The 43 tunables the
+      relevance check did not cover are swept the same way; the result is
+      in the analysis.
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
