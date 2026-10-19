@@ -2439,6 +2439,16 @@ loss).
       records it for removal after the freeze. (c) The 43 tunables the
       relevance check did not cover are swept the same way; the result is
       in the analysis.
+      **Done 2026-10-19:** (a) `CoreNmpTtPv` deleted in `dfb53e5`, exact
+      (bench 10,521,141 / EBF 2.521, debug 398 and release 399 tests,
+      clippy clean); the tune build is `rarog-c103b-tune.exe`
+      (`98AAA3F6…`). (b) RAR-S102 read no direction: 2 against off
+      +0.5 ± 8.5 Elo, 4 against off −12.9 ± 8.9; the mechanism stays off
+      and out of the surface, recorded for removal after the freeze. (c)
+      The sweep found no further dead coordinate: 34 of the 43 live, nine
+      flagged for expected reasons (the clock multipliers, the termination
+      guard, the material guard at its floor). RAR-S101 is amended and
+      relaunched on the unchanged 96.
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
