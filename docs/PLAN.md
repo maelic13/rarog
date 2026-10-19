@@ -294,7 +294,10 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
+| C.10.2 | GAME_GATE | V | RAR-S100 registered; the maintainer's two reads |
+| C.10.3 | READY_FOR_IMPLEMENTATION | I1 | After C.10.2: widen seven ranges, then the pilot |
+| C.10.4 | RESEARCH | V | After the pilot's re-audit |
+| C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
@@ -2303,6 +2306,36 @@ loss).
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.
+  - **C.10.1 Research card: firing rates and the cp scale against the B.9 head, the surface, the blend decision — `V`, DONE 2026-10-19.**
+    `analysis/c10_research_2026-10-19.md`, zero games. 56 counters moved
+    10% or more per interior node (quiescence futility 0.62, delta 0.52,
+    SEE flips 1.59, the correction residual per update 0.54, quiet
+    futility 1.19, null-move attempts 0.86, aspiration fail-lows 1.32),
+    and the played evaluation is 5.2% smaller over all held-out rows
+    (11% in the middlegame), so the skip rule does not fire. The
+    surface is 83 coordinates; `QsCountLimit` is read as a switch; 58
+    stay out, each with a reason (`analysis/artifacts/c10/surface.tsv`).
+    Seven ranges are widened before the pilot. The blended target stays
+    out (recommended; an evaluation change belongs to its own unit, with
+    its own margin block).
+  - **C.10.2 `QsCountLimit` read as a switch: 2 and 4 against 3 — `V`.**
+    RAR-S100, two 2,000-game reads on one tune build (about 50 minutes),
+    the maintainer's command. A direction fixes the value for the pilot
+    and the blocks; none keeps 3.
+  - **C.10.3 Widened ranges, the sensitivity pilot and the re-audit — `I1`, then `V`.**
+    One behaviour-neutral engine commit widens the seven ranges (the tune
+    clamp only; the fingerprint is unchanged). Then PROCESS's pilot,
+    128 iterations × 30 games over the 83 coordinates, seeded at the
+    head, with `QsCountLimit` at C.10.2's value. Pilot theta is never
+    promoted. The re-audit of the whole active surface follows (PROCESS
+    step 6). A pilot with no full-step mover and a journal inside the
+    sign-redraw null stops C.10 for the maintainer's decision.
+  - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
+    games a block (about 12.5 hours), at most three, the movement rule,
+    from the head's values, registered before block 1.
+  - **C.10.5 Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — `V`.**
+    The last completed block's rounded centres, pasted by the maintainer,
+    baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
 - **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch; the first re-read is
