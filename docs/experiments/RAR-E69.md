@@ -30,7 +30,7 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Instrument** (`analysis/artifacts/c9/`, SHA-256):
   - `patch_point.py` `3366a940…`: applies one point to a scratch copy (`git archive HEAD`), each anchor asserted unique, line endings kept.
   - `zz_c9_dump.rs` `3e38b455…`: copied into the scratch tree's `tests/`, writes each row's played White-POV score.
-  - `run_c9.sh` `50d5c0b4…`: per point, restore, patch, `cargo build --release`, dump, `bench 13`; every exit status to `status.txt`.
+  - `run_c9.sh` `a3d0b331…` (amended, below; registered as `50d5c0b4…`): per point, restore, patch, `cargo build --release`, dump, `bench 13`; every exit status to `status.txt`.
   - `read_e69.py` `897dafe6…`: the reader below.
 - **Rows:** `hce-v6-tb`'s validation file (194,444 rows, `7ada0924…`), each row's game from C.13.2's provenance (`c132/provenance.csv`, `f8d572c4…`), as RAR-E62 to RAR-E66 read them.
 - **Reading (frozen):** per point, the tuner's sigmoid `1/(1+exp(−K·s/400))` with K refitted to that point, so a coordinate is read for the outcome information it carries, not for the score's size (the size is C.10's magnitude question). The **gain** is the squared-error loss saved against the head, in percent of the head's loss, with RAR-E63's game-clustered bootstrap (2,000 resamples, seed 20261019). Beside it, not deciding: the gain at the head's K, the rows a point moves and by how much, and `bench 13` as the tree surface.
@@ -60,3 +60,4 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   6. **C.9 closes `NO_CHANGE` (0.6).**
   - Expected Elo: none here.
 - **Cheapest prior falsifier:** this sweep.
+- **Amendment before exposure (2026-10-19):** the first run of the registered order was void. The runner passed the rows and output paths on as given, relative to the repository, while the dump runs inside the scratch tree, so every point's dump exited 101 on a missing file and no validation row was scored (`tools/results/c9-sweep-20261019-void1/`, no `.scores` file). The runner now makes both paths absolute and refuses a missing rows file (`a3d0b331…`). The guard fired once on a missing file, and the fixed runner reproduced the smoke's head scores byte for byte from a relative path. The only number seen from the void run is the head's `bench 13`, 10,521,141. The registered order runs again, once, unchanged otherwise.
