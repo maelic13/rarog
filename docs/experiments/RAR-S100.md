@@ -18,3 +18,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   - Neither finds a direction (0.75).
   - Low confidence: the only local evidence is node counts and a firing rate, which have pointed the wrong way before on this search (RAR-S86, RAR-S89).
 - **Cheapest prior falsifier:** these reads.
+- **Result (played 2026-10-19 by the maintainer, `reads.ps1`; manifests `colosseum_match_c10-qscount2_20261019_124720.manifest.txt` and `colosseum_match_c10-qscount4_20261019_130821.manifest.txt`; no faults, no time losses, no abnormal games):**
+  - **Read 1, 2 against 3:** +3.1 ± 8.7 Elo (95% −5.6 to +11.9), +5.4 ± 15.2 nElo; W/D/L 492/1,034/474; pentanomial [11, 257, 466, 235, 31].
+  - **Read 2, 4 against 3:** +1.9 ± 9.2 Elo (95% −7.3 to +11.1), +3.2 ± 15.2 nElo; W/D/L 522/967/511; pentanomial [21, 264, 429, 255, 31].
+  - Recount from `games.jsonl` by pair (`analysis/artifacts/c10/recount_s100.py`, `recount_s100.txt`): both pentanomials and both intervals agree with the harness exactly; every side-A option was the read's value and side B carried none (`resolved-config.json`).
+- **Disposition:** observation. **Neither read is a direction** (both under +5 Elo), so by the frozen rule `QsCountLimit` stays at **3**, fixed on both sides of C.10's pilot and blocks, and no third value is read. C.10.2 closes `NO_CHANGE`. The two reads cannot tell 2, 3 and 4 apart at this budget; all three sit inside about ±10 Elo of each other.
+- **PREDICTION CALIBRATION (appended after exposure):** neither a direction held (0.75). Read 1 missed in sign at the point estimate (predicted −3, read +3.1), inside both intervals; read 2 (predicted 0, read +1.9) held. The tree's response (1.65× the nodes at 2) did not show up as a cost in games, which is what the low confidence anticipated: node counts are not Elo.

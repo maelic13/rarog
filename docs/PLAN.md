@@ -294,8 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.2 | GAME_GATE | V | RAR-S100 registered; the maintainer's two reads |
-| C.10.3 | READY_FOR_IMPLEMENTATION | I1 | After C.10.2: widen seven ranges, then the pilot |
+| C.10.3 | READY_FOR_IMPLEMENTATION | I1 | Widen seven ranges, then the pilot with `QsCountLimit` 3 (RAR-S100) |
 | C.10.4 | RESEARCH | V | After the pilot's re-audit |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2318,10 +2317,13 @@ loss).
     Seven ranges are widened before the pilot. The blended target stays
     out (recommended; an evaluation change belongs to its own unit, with
     its own margin block).
-  - **C.10.2 `QsCountLimit` read as a switch: 2 and 4 against 3 — `V`.**
+  - **C.10.2 `QsCountLimit` read as a switch: 2 and 4 against 3 — `V`, NO_CHANGE 2026-10-19.**
     RAR-S100, two 2,000-game reads on one tune build (about 50 minutes),
     the maintainer's command. A direction fixes the value for the pilot
-    and the blocks; none keeps 3.
+    and the blocks; none keeps 3. **Played 2026-10-19:** 2 against 3
+    +3.1 ± 8.7 Elo, 4 against 3 +1.9 ± 9.2 (recount agrees). Neither is
+    a direction, so 3 stays, fixed on both sides of the pilot and the
+    blocks.
   - **C.10.3 Widened ranges, the sensitivity pilot and the re-audit — `I1`, then `V`.**
     One behaviour-neutral engine commit widens the seven ranges (the tune
     clamp only; the fingerprint is unchanged). Then PROCESS's pilot,
