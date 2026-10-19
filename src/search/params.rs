@@ -405,13 +405,14 @@ search_params! {
     struct ProofParams, generated_proof_param_checks;
 
     // Null move.
-    /// Entry margin above beta: `max(2, base - depth_term * depth/4 +
-    /// tt_pv_term * tt_pv - improvement_term * improvement/1024 - cutoff *
-    /// (child cutoffs < 2))`, evaluation units; the depth term is in
-    /// quarters of a unit per ply.
+    /// Entry margin above beta: `max(2, base - depth_term * depth/4 -
+    /// improvement_term * improvement/1024 - cutoff * (child cutoffs < 2))`,
+    /// evaluation units; the depth term is in quarters of a unit per ply.
+    /// The null move runs only at nodes without the table's PV flag, so no
+    /// term for that flag belongs here (RAR-S80 read the donors' population,
+    /// which admits such nodes, and it was not taken).
     nmp_base = 174, "CoreNmpBase", 0..=400;
     nmp_depth = 16, "CoreNmpDepth", 0..=80;
-    nmp_tt_pv = 48, "CoreNmpTtPv", 0..=200;
     nmp_improvement = 43, "CoreNmpImprovement", 0..=200;
     nmp_cutoff = 11, "CoreNmpCutoff", 0..=60;
     /// Reduction in 1024ths of a ply: `base + improving_term * improving +

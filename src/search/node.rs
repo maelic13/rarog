@@ -334,12 +334,14 @@ impl Searcher {
 
     /// How far above beta the estimated score must stand for a null move, in
     /// evaluation units, never below 2: less at depth and with improvement,
-    /// more on a PV line, less when the children have failed high fewer than
-    /// twice (a null move there is likelier to hold).
+    /// less when the children have failed high fewer than twice (a null move
+    /// there is likelier to hold). The null move runs only at nodes without
+    /// the table's PV flag, so the margin carries no term for that flag.
     #[inline(always)]
-    fn nmp_margin(&self, depth: i32, tt_pv: bool, improvement: i32, child_cutoffs: i32) -> i32 {
+    fn nmp_margin(&self, depth: i32, improvement: i32, child_cutoffs: i32) -> i32 {
         let p = &self.cfg.proof;
-        (p.nmp_base - p.nmp_depth * depth / 4 + p.nmp_tt_pv * i32::from(tt_pv)
+        (p.nmp_base
+            - p.nmp_depth * depth / 4
             - p.nmp_improvement * improvement / 1024
             - p.nmp_cutoff * i32::from(child_cutoffs < 2))
         .max(2)
@@ -934,13 +936,7 @@ impl Searcher {
             && !is_loss(beta)
             && !is_win(eval_for_pruning)
             && eval_for_pruning
-                >= beta
-                    + self.nmp_margin(
-                        depth,
-                        tt_pv,
-                        improvement,
-                        self.td.stack[ply + 1].cutoff_count,
-                    )
+                >= beta + self.nmp_margin(depth, improvement, self.td.stack[ply + 1].cutoff_count)
             && !(ev.bound == Some(Bound::Lower)
                 && !tt_move.is_null()
                 && board
@@ -1015,12 +1011,7 @@ impl Searcher {
                     ply,
                     "nmp depth {depth} reduction {reduction} estimated {eval_for_pruning} \
                      margin {} bound {null_bound} score {score} beta {beta} min_ply {}",
-                    self.nmp_margin(
-                        depth,
-                        tt_pv,
-                        improvement,
-                        self.td.stack[ply + 1].cutoff_count
-                    ),
+                    self.nmp_margin(depth, improvement, self.td.stack[ply + 1].cutoff_count),
                     self.td.nmp_min_ply
                 );
                 if score >= null_bound && !is_loss(score) {
@@ -3094,17 +3085,11 @@ mod tests {
     fn null_move_margin_and_reduction_follow_their_coordinates() {
         let searcher = Searcher::default();
         let p = &searcher.cfg.proof;
-        let margin = |depth, tt_pv, improvement, cutoffs| {
-            searcher.nmp_margin(depth, tt_pv, improvement, cutoffs)
-        };
-        assert_eq!(margin(8, false, 0, 2), p.nmp_base - 8 * p.nmp_depth / 4);
-        assert_eq!(margin(8, true, 0, 2) - margin(8, false, 0, 2), p.nmp_tt_pv);
-        assert_eq!(
-            margin(8, false, 0, 2) - margin(8, false, 0, 1),
-            p.nmp_cutoff
-        );
-        assert!(margin(8, false, 1024, 2) < margin(8, false, 0, 2));
-        assert_eq!(margin(8, false, 1_000_000, 0), 2, "floored at 2");
+        let margin = |depth, improvement, cutoffs| searcher.nmp_margin(depth, improvement, cutoffs);
+        assert_eq!(margin(8, 0, 2), p.nmp_base - 8 * p.nmp_depth / 4);
+        assert_eq!(margin(8, 0, 2) - margin(8, 0, 1), p.nmp_cutoff);
+        assert!(margin(8, 1024, 2) < margin(8, 0, 2));
+        assert_eq!(margin(8, 1_000_000, 0), 2, "floored at 2");
 
         let reduction =
             |depth, improving, surplus| searcher.nmp_reduction(depth, improving, surplus);
