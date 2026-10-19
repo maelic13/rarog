@@ -2305,6 +2305,25 @@ loss).
   - **Skip rule:** none by a zero-game read. If the firing-rate check
     moves no mechanism by 10% and the cp scale ratio against the B era is
     within 5%, the leaf records that and asks the maintainer.
+  - **Maintainer decisions (2026-10-19), after C.10.1:**
+    - The blended target stays out of C.10. It stays open as a later
+      option, as its own unit with its own margin block (RAR-E68).
+    - The larger surface is accepted on three conditions. Every
+      coordinate is relevant: no 0/1 or inert switch (none exists among
+      the 142 tunables), and every coordinate moves `bench 13` one step
+      each way. No relevant coordinate is left out: the 17 coordinates
+      in history units have no firing-rate counter, so C.10.1's reason
+      for leaving them out is unevidenced, and C.10.3's re-audit decides
+      them before the pilot. The tune runs until the surface settles.
+    - The pilot runs first.
+    - The blocks are rule 7c's, 2,000 iterations × 30 games (about
+      10.5 hours each at 5,700 games an hour). Blocks are chained, each
+      starting from the last one's rounded centres, and the maintainer
+      stops them by hand after reviewing a block's movement. No
+      automatic stop applies. With 80 or more coordinates the surface
+      may still be moving after two or three blocks; more blocks are
+      then registered (rule 7c's ceiling asks for a new registration,
+      not a stop).
   - **C.10.1 Research card: firing rates and the cp scale against the B.9 head, the surface, the blend decision — `V`, DONE 2026-10-19.**
     `analysis/c10_research_2026-10-19.md`, zero games. 56 counters moved
     10% or more per interior node (quiescence futility 0.62, delta 0.52,
@@ -2333,8 +2352,8 @@ loss).
     step 6). A pilot with no full-step mover and a journal inside the
     sign-redraw null stops C.10 for the maintainer's decision.
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
-    games a block (about 12.5 hours), at most three, the movement rule,
-    from the head's values, registered before block 1.
+    games a block, chained from the head's values and stopped by the
+    maintainer (decisions above), registered before block 1.
   - **C.10.5 Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — `V`.**
     The last completed block's rounded centres, pasted by the maintainer,
     baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
