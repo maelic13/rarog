@@ -24,7 +24,9 @@ foreach ($m in (Select-String -Path (Join-Path $repo "src\search\params.rs") `
 
 # A historical group is a surface whose tune has been baked: its seeds are the
 # registration's, frozen as evidence, and no longer the engine's defaults, so
-# classes 2 and 3 do not apply to it. Groups are listed one per line in
+# classes 2 and 3 do not apply to it. Its ranges are the registration's too,
+# so class 5 checks them for internal validity only, not against a range the
+# engine has since narrowed. Groups are listed one per line in
 # tools/spsa_configs/historical.txt; everything else is live.
 $historicalPath = Join-Path $repo "tools\spsa_configs\historical.txt"
 $historical = @()
@@ -49,7 +51,7 @@ foreach ($file in Get-ChildItem (Join-Path $repo "tools\spsa_configs\config_*.js
 }
 
 "declared tunables: $($defaults.Count)    names across reusable SPSA groups: $($groups.Count)"
-"historical groups (classes 2 and 3 not applied): $(if ($historical) { $historical -join ', ' } else { 'none' })"
+"historical groups (classes 2 and 3 and class 5's engine range not applied): $(if ($historical) { $historical -join ', ' } else { 'none' })"
 $problems = 0
 
 ""
@@ -102,7 +104,7 @@ foreach ($name in ($groups.Keys | Sort-Object)) {
         $span = $entry.Max - $entry.Min
         $bad = $entry.Min -gt $entry.Max -or $entry.Value -lt $entry.Min -or `
             $entry.Value -gt $entry.Max -or $entry.Step -le 0
-        if (-not $bad -and $declared.ContainsKey($name)) {
+        if (-not $bad -and $declared.ContainsKey($name) -and $historical -notcontains $entry.Group) {
             $engine = $declared[$name]
             $bad = $entry.Min -lt $engine.Min -or $entry.Max -gt $engine.Max
         }
