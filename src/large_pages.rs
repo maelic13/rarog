@@ -52,6 +52,10 @@ impl fmt::Display for LargePages {
 
 const UNASKED: u8 = 0;
 const DENIED: u8 = 1;
+#[cfg_attr(
+    not(windows),
+    expect(dead_code, reason = "only the Windows allocator asks for the right")
+)]
 const GRANTED: u8 = 2;
 
 /// Whether the process may use large pages, decided at the first page
