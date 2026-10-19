@@ -61,3 +61,14 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Expected Elo: none here.
 - **Cheapest prior falsifier:** this sweep.
 - **Amendment before exposure (2026-10-19):** the first run of the registered order was void. The runner passed the rows and output paths on as given, relative to the repository, while the dump runs inside the scratch tree, so every point's dump exited 101 on a missing file and no validation row was scored (`tools/results/c9-sweep-20261019-void1/`, no `.scores` file). The runner now makes both paths absolute and refuses a missing rows file (`a3d0b331…`). The guard fired once on a missing file, and the fixed runner reproduced the smoke's head scores byte for byte from a relative path. The only number seen from the void run is the head's `bench 13`, 10,521,141. The registered order runs again, once, unchanged otherwise.
+- **Result (run 2026-10-19, once after the amendment `57c3c74`; all 69 runner steps and the reader exited 0; `tools/results/c9-sweep-20261019/`, `read.json` `c2e2ef54…`; the table is in [`analysis/c9_sweep_2026-10-19.md`](../../analysis/c9_sweep_2026-10-19.md)):**
+  - *Wires held:* every row has a game; the head point equals `head_played.csv` on all 194,444 rows (27,721 games) and reads 10,521,141 / EBF 2.521; every other point moves at least 607 rows.
+  - *`taper`, fitted:* every bend loses beyond the line, both ways (γ 0.5 −1.08 ± 0.09%, 0.75 −0.18 ± 0.04, 1.5 −0.35 ± 0.06, 2 −0.98 ± 0.10).
+  - *`thr`, flat:* no point moves the loss by 0.01%; the threshold moves scores by 1 to 4 cp.
+  - *`cap`, fitted:* 800 loses −0.37 ± 0.07%; 1,200, 2,400 and 3,200 are within the line. 0.43% of rows pass an index of 1,600.
+  - *`ocb`, flat:* every point within 0.10%; base 24 gains +0.020 ± 0.005% (4.5 SE), a fifth of the line, in 0.7% of rows.
+  - **No coordinate improves.** The gain at the head's K differs from the refitted gain by at most 0.021 points, so no classification depends on the refit.
+- **Disposition:** observation. **By the frozen use, C.9 closes `NO_CHANGE`, the written skip:** the unfitted nonlinear residue is at its static optimum (`taper`, `cap`) or carries no outcome information (`thr`, `ocb`), so a game tune has no surface to climb, and the evaluation enters C.10 as it is. `ocb` at 24 is recorded, not scheduled (C.5.2's opposite-bishop history). Not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  - 1, 2, 3, 5 and 6 held: the wires, `taper` fitted, `thr` flat, `ocb` flat, C.9 `NO_CHANGE`.
+  - 4 missed in mechanism: `cap` read *fitted*, not flat or improving. Few rows pass 1,600 (0.43%), as assumed, but halving the cap reaches 8.3% of rows and loses 0.37%. Shrinking the largest king penalties is not the direction RAR-E30's magnitude recalibration points: that recalibration is global and the refitted K absorbs it, while the king's large penalties carry outcome information.

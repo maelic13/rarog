@@ -294,7 +294,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.9 | RESEARCH | V | Conditional on a non-flat surface |
 | C.10 | RESEARCH | V | The second large item after C.6 (2026-10-11), after C.9 or its skip |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
@@ -2251,7 +2250,7 @@ loss).
         registration decides whether to include the blend.
       - RAR-M72, the C.13 head against the pre-C.13 head, found no harm
         (+3.4 ± 15.2 nElo, 2,000 games, 2026-10-16).
-- **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`.** Only the activated nonlinear or
+- **C.9 HCE SPSA of nonlinear residue, or a written skip — `V`, NO_CHANGE 2026-10-19.** Only the activated nonlinear or
   global terms the linear trace cannot fit; skipped with a written reason if
   the surface is flat.
   **Registered 2026-10-19** (RAR-E69, zero games): the tuner fits every
@@ -2261,6 +2260,17 @@ loss).
   Each is swept at 0.5x to 2x on held-out outcomes; one gaining 0.10% at
   4 game-clustered SE opens a game tune over it, none closes C.9
   `NO_CHANGE`.
+  **Read 2026-10-19** (RAR-E69, `analysis/c9_sweep_2026-10-19.md`):
+  every wire held, and no coordinate improves.
+  - The taper is fitted: every bend of it loses, γ 0.5 −1.08% and
+    γ 2 −0.98% of the loss. RAR-E58's phase slope is not the taper's
+    shape and stays calibration for C.10.
+  - The index cap is fitted: halving it loses 0.37%.
+  - The threshold is flat (under 0.01%), and so is the opposite-bishop
+    base (its best point +0.020%, a fifth of the line).
+
+  **C.9 closes `NO_CHANGE`**, the written skip: the residue has no
+  surface for a game tune, and the evaluation enters C.10 as it is.
 - **C.10 Joint search SPSA after the new evaluation: cp margins plus every mechanism whose firing rate moved 10% or more (the whole-surface tune B.6 left for here); rule-7c blocks; SPRT `[0,3]` — `V`.** The search
   was fitted on the B-era evaluation: its cp-valued margins sit on that
   scale, and a new evaluation moves every node population the other
