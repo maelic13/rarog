@@ -294,7 +294,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.3 | IMPLEMENTED | I1 | Ranges widened (`b7bc142`); the relevance check is the maintainer's, then RAR-S101 and the pilot |
+| C.10.3 | GAME_GATE | I1 | RAR-S101 registered; the maintainer's pilot, then the re-audit |
 | C.10.4 | RESEARCH | V | After the pilot's re-audit |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
@@ -2409,6 +2409,14 @@ loss).
     - The relevance check (`bench_steps.py` over the 98) is the
       maintainer's command. RAR-S101 is registered after its flags are
       decided.
+    - **Relevance check and registration, 2026-10-19:** 96 of the 98
+      move `bench 13` both ways. `CoreNmpTtPv` is dead in every build
+      (the null move's guard requires `!tt_pv`). `CoreLmrResearchShallower`
+      cannot fire below 2 and sits at −1, so its mechanism is off. Both
+      leave the surface. **RAR-S101** registers the pilot over the other
+      96 (`e0292e8`'s `c10pilot` group) with the frozen re-audit reader
+      `analysis/artifacts/c10/pilot_reaudit.py`; the pilot is the
+      maintainer's command.
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
