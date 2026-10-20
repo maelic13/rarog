@@ -191,3 +191,19 @@ Once PLAN names the experiment, its surface and gates:
 - **Run:** `./tools/colosseum.ps1 -Mode spsa -Engine tools\test_engines\rarog-c103c-tune.exe
   -ConfigGroup c10block1 -Iterations 2000 -TotalGames 60000 -Seed 20261024 -Dir tools\results\c10-block1`.
   A later block starts from this one's run directory with `-SeedFrom`.
+
+## `c10long` — C.10.4 as one long run, registered by RAR-S104
+
+- **Surface:** the 82 coordinates of `c10block1`, with every step doubled
+  except `CoreSingExactSpan` and `QsSeeBadFloor`, whose seeds sit near a
+  range end. Written by `analysis/artifacts/c103/gen_c10block.py c10long
+  --history CoreSeeQuietHistory --scale-steps 2 --keep-step CoreSingExactSpan,QsSeeBadFloor`.
+- **`fixed_c10long.json`:** the pilot's, unchanged.
+- **`schedule_c10long.json`:** the registration's gain ratio, `r_end` 0.0016
+  (spsa-tune.toml's default is 0.0031). The converter reads this file and
+  writes `r-end` into the run file, so `colosseum.ps1`'s regeneration check
+  reproduces it; a `--r-end` flag, if given, must equal it.
+- **Conversion:** `python tools/spsa_config_to_colosseum.py c10long --iterations 4000`.
+- **Run:** `./tools/colosseum.ps1 -Mode spsa -Engine tools\test_engines\rarog-c103c-tune.exe
+  -ConfigGroup c10long -Iterations 4000 -TotalGames 120000 -Seed 20261025 -Dir tools\results\c10-long`.
+  Movement is read in b43 steps: `pilot_reaudit.py ... --movement-config tools/spsa_configs/config_c10pilot.json`.
