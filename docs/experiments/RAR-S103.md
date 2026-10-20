@@ -27,7 +27,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   - Most likely failure mode: a block that reads like the pilot (no mover, journal inside the null), which closes C.10 `NO_CHANGE` by the recommendation above.
 - **Cheapest prior falsifier:** RAR-S101's pilot, done; this block is the next instrument.
 - **Amendment before the launch (2026-10-20, after the registration commit `0877986`):** the tune build is `tools/test_engines/rarog-c103c-tune.exe`, SHA-256 `E7CECF8FB6CA9836A1BBD6ECA65439DA129C0145A0C10AFE289AE824193C0F7B`, built clean at `0877986` (whose engine sources are `ca53d3b`'s), `pext-tune`, bench 10,521,141 (`rarog-c103c-tune.json`); `surface.tsv` regenerated on the 140 tunables reads 81 in / 1 read / 58 out, the `c10pilot` group regenerated from it is byte-identical, and `c10block1` regenerated from it hashes as above. Nothing else changes.
-- **Result:** pending.
-- **Disposition:** pending.
-- **PREDICTION CALIBRATION (append after exposure):** pending.
+- **Result:** **stopped, unread.** The block was launched at 07:56 on 2026-10-20 (`tools/results/c10-block1`, manifest `colosseum_spsa_c10-block1_20261020_075604`; the registered binary, group and seed; host idle) and stopped by the maintainer's instruction at 80 of 2,000 iterations (2,400 games, 0 faults), before any journal was read, when the maintainer asked for the tune's shape to be analysed outside rule 7c's defaults rather than inside them. The run directory is set aside unread as `tools/results/c10-block1-stopped-1`; a stopped block never counts (PLAN rule 7c).
+- **Disposition:** **withdrawn, superseded by RAR-S104**, one longer run with a larger perturbation and a smaller gain ratio over the same 82 coordinates. The analysis in this registration's *shape* item stands as the record of why the standard block was first chosen; RAR-S104's registration carries the analysis that replaced it.
+- **PREDICTION CALIBRATION:** not applicable; nothing was read.
 - **Artifacts / commits:** this registration; the group files above; `tools/results/c10-block1` and its manifest; `analysis/artifacts/c103/` (the generator, the driver and its console log).

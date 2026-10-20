@@ -156,6 +156,18 @@ gating. The rules below decide order and acceptance in this roadmap.
    and the count said stop. A chained launch may run every registered block
    unconditionally; theta stays the last completed block, and a block cut
    short never counts. A tune is judged by its gate, not by its movement.
+   **Amended 2026-10-20 (maintainer decision, C.10.4):** the chain of
+   2,000-iteration blocks is the shape for seeds far from their optimum.
+   Where a pilot and an earlier block read the surface as near its optimum
+   with small gradients, a tune may instead be registered as one longer run
+   with a larger perturbation and a smaller gain ratio (RAR-S104: 4,000
+   iterations, perturbations twice the b43 step, `r-end` 0.0016 in a
+   committed `schedule_<group>.json`), because the signal-to-noise of each
+   gradient estimate grows with the perturbation and a restarted schedule
+   only re-inflates the random walk near an optimum; the registration
+   derives the resolution it buys. The b43 step stays the unit of "a full
+   step" in every reading (`pilot_reaudit.py --movement-config`), and a run
+   cut short is still not theta.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
@@ -295,7 +307,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.10.3 | GAME_GATE | I1 | RAR-S101 played 2026-10-19/20: the stop rule fires (no full-step mover, the journal inside its null); the maintainer decides block 1 over 82 coordinates or `NO_CHANGE` |
-| C.10.4 | GAME_GATE | V | RAR-S103, block 1 over 82 coordinates, running from 2026-10-20; the maintainer decides block 2, the bake, or `NO_CHANGE` after its read |
+| C.10.4 | GAME_GATE | V | RAR-S104, one 4,000-iteration run over 82 coordinates with doubled perturbations and `r-end` 0.0016, the maintainer's command; RAR-S103's block withdrawn unread; the maintainer decides the bake or `NO_CHANGE` after the read |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
@@ -2471,6 +2483,16 @@ loss).
     (30 games an iteration, 2,000 iterations, the b43 steps, r-end 0.0031)
     is kept with the reasons in the registration. The maintainer decides
     after its read: block 2, the bake and gate, or `NO_CHANGE`.
+    **Stopped and withdrawn the same morning** at 80 of 2,000 iterations,
+    unread, when the maintainer asked for the tune's shape to be analysed
+    outside rule 7c's defaults. **RAR-S104** replaces it: one run of 4,000
+    iterations × 30 games over the same 82 coordinates, perturbations twice
+    the b43 step (the two near-rail coordinates excepted) and `r-end`
+    0.0016, which resolves a small gradient about 2.8 times better than a
+    2,000-iteration block for 2.2 times the games (the derivation is in
+    the registration; rule 7c's amendment records the decision). The
+    maintainer runs it and decides the bake and gate or `NO_CHANGE` after
+    its read.
   - **C.10.5 Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — `V`.**
     The last completed block's rounded centres, pasted by the maintainer,
     baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
