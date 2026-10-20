@@ -295,7 +295,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | C.10.3 | GAME_GATE | I1 | RAR-S101 played 2026-10-19/20: the stop rule fires (no full-step mover, the journal inside its null); the maintainer decides block 1 over 82 coordinates or `NO_CHANGE` |
-| C.10.4 | RESEARCH | V | After the pilot's re-audit |
+| C.10.4 | GAME_GATE | V | RAR-S103, block 1 over 82 coordinates, running from 2026-10-20; the maintainer decides block 2, the bake, or `NO_CHANGE` after its read |
 | C.10.5 | RESEARCH | V | After the last block |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
@@ -2461,6 +2461,16 @@ loss).
   - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
+    **Maintainer rule 2026-10-20:** when the maintainer is away, the
+    delegated session runs the next registered step and reports; a stop
+    is the maintainer's to make on the running job, which costs no time.
+    **Block 1 registered 2026-10-20 (RAR-S103)** over 82 coordinates (the
+    81 evidence-selected plus `CoreSeeQuietHistory` from the pilot's |z|
+    route), seeded at the head's defaults, on `rarog-c103c-tune.exe` (the
+    shallower re-search removed after RAR-S102, exact); the tune's shape
+    (30 games an iteration, 2,000 iterations, the b43 steps, r-end 0.0031)
+    is kept with the reasons in the registration. The maintainer decides
+    after its read: block 2, the bake and gate, or `NO_CHANGE`.
   - **C.10.5 Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — `V`.**
     The last completed block's rounded centres, pasted by the maintainer,
     baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
