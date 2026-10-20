@@ -26,6 +26,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   - Expected Elo: none here; a block measures movement, and only C.10.5's SPRT measures strength (PLAN C.10's expected value for the whole tune stands at +5, band [−1, +15]).
   - Most likely failure mode: a block that reads like the pilot (no mover, journal inside the null), which closes C.10 `NO_CHANGE` by the recommendation above.
 - **Cheapest prior falsifier:** RAR-S101's pilot, done; this block is the next instrument.
+- **Amendment before the launch (2026-10-20, after the registration commit `0877986`):** the tune build is `tools/test_engines/rarog-c103c-tune.exe`, SHA-256 `E7CECF8FB6CA9836A1BBD6ECA65439DA129C0145A0C10AFE289AE824193C0F7B`, built clean at `0877986` (whose engine sources are `ca53d3b`'s), `pext-tune`, bench 10,521,141 (`rarog-c103c-tune.json`); `surface.tsv` regenerated on the 140 tunables reads 81 in / 1 read / 58 out, the `c10pilot` group regenerated from it is byte-identical, and `c10block1` regenerated from it hashes as above. Nothing else changes.
 - **Result:** pending.
 - **Disposition:** pending.
 - **PREDICTION CALIBRATION (append after exposure):** pending.
