@@ -373,9 +373,8 @@ search_params! {
     lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
     lmr_parent = 130, "CoreLmrParent", 0..=1024;
     /// Re-search a reduced move one ply deeper when it beats the best score
-    /// by more than this, one ply shallower when by less than this.
+    /// by more than this.
     lmr_research_deeper = 35, "CoreLmrResearchDeeper", 0..=200;
-    lmr_research_shallower = -1, "CoreLmrResearchShallower", -50..=50;
 
     // History update policy, history units.
     /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.

@@ -1849,13 +1849,15 @@ impl Searcher {
                     self.td.stack[ply].reduction = 0;
                     if score > alpha {
                         // A reduced move that beat alpha by a wide margin earns
-                        // a deeper verification; one that barely did, a
-                        // shallower one. Not at the root, as the donor does.
+                        // a deeper verification. Not at the root, as the donor
+                        // does. The donor also re-searches a ply shallower when
+                        // the move barely beat alpha; two tunes walked that
+                        // margin below the point where it can fire, and read
+                        // as a switch it lost at the donor's value (RAR-S102),
+                        // so it is not here.
                         let deeper =
                             !NODE::ROOT && score > best_score + self.cfg.core.lmr_research_deeper;
-                        let shallower = !NODE::ROOT
-                            && score < best_score + self.cfg.core.lmr_research_shallower;
-                        new_depth += i32::from(deeper) - i32::from(shallower);
+                        new_depth += i32::from(deeper);
                         if new_depth > reduced_depth {
                             crate::diag_count!(lmr_research);
                             trace_decision!(
