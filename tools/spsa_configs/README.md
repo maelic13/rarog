@@ -176,3 +176,18 @@ Once PLAN names the experiment, its surface and gates:
 ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -SetupOnly -Iterations <registered-N>
 ./tools/spsa.ps1 -ConfigGroup <group> -LaunchOnly -Iterations <registered-N>
 ```
+
+## `c10block1` — C.10.4's first block, registered by RAR-S103
+
+- **Surface:** 82 coordinates, the pilot's 96 less the 15 history-unit
+  coordinates it did not admit plus `CoreSeeQuietHistory`, which it admitted
+  by its |z| ≥ 2 route; seeds, ranges and steps are the pilot group's (the
+  head's defaults, the declared ranges, the b43 steps). Written by
+  `analysis/artifacts/c103/gen_c10block.py c10block1 --history CoreSeeQuietHistory`.
+  The two dead coordinates C.10.3.1 removed (`CoreNmpTtPv`,
+  `CoreLmrResearchShallower`) are not in the engine any more.
+- **`fixed_c10block1.json`:** the pilot's, unchanged.
+- **Conversion:** `python tools/spsa_config_to_colosseum.py c10block1 --iterations 2000`.
+- **Run:** `./tools/colosseum.ps1 -Mode spsa -Engine tools\test_engines\rarog-c103c-tune.exe
+  -ConfigGroup c10block1 -Iterations 2000 -TotalGames 60000 -Seed 20261024 -Dir tools\results\c10-block1`.
+  A later block starts from this one's run directory with `-SeedFrom`.
