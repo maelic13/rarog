@@ -2512,7 +2512,7 @@ loss).
     clamped at 0 on every iteration; the estimate is sign-true and the
     coordinate did not move (80 → 95). The rail check now runs against
     the run's own perturbation (PROCESS, step 8). Theta, the rounded
-    final centres, is baked for C.10.5 (`160f414` on `c10-arm`: 76 of
+    final centres, is baked for C.10.5 (recipe `analysis/arm_patches/160f414-rar-s105-c10gate.patch`: 76 of
     the 82 defaults change, `eval::LAZY_MARGIN` with `LazyMargin`; bench
     13,987,223 / EBF 2.565, equal to the tune build with the values set
     by `setoption`). The run is judged by its gate, not its journal.
@@ -2520,7 +2520,7 @@ loss).
     The last completed block's rounded centres, pasted by the maintainer,
     baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
     **Registered 2026-10-21 (RAR-S105), the maintainer's command:**
-    `rarog-c10gate-pext-pgo.exe` (`160f414`, 13,987,223) against
+    `rarog-c10gate-pext-pgo.exe` (the arm of `analysis/arm_patches/160f414-rar-s105-c10gate.patch`, 13,987,223) against
     `rarog-c10head-pext-pgo.exe` (`4e7a391`, 10,521,141), both clean PGO
     builds at `rustc 1.98.1`; SPRT `[0,3]` at `3+0.03`, cap 20,000 pairs,
     seed 20261026; the `10+0.1` read of 1,000 games (seed 20261027) if
@@ -2538,7 +2538,7 @@ loss).
     bound. The `10+0.1` read follows, then the landing.
     **`10+0.1` read 2026-10-21: +2.8 ± 12.0 Elo, +5.0 ± 21.5 nElo** (1,000
     games, 0 faults), positive, so nothing reopens. **Landed on `c9` in
-    `60e865f`** (the 82 values from `160f414`, the version suffix dropped;
+    `60e865f`** (the 82 values from `analysis/arm_patches/160f414-rar-s105-c10gate.patch`, the version suffix dropped;
     fingerprint **13,987,223 / EBF 2.565**; debug and release tests, fmt
     and clippy clean). C.10 closes at +4.5 ± 2.9 Elo at `3+0.03` against
     its standing expectation of +5. Next: the Rust toolchain update
