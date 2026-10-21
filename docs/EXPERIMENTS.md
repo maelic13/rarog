@@ -458,6 +458,7 @@ make any historical parameter group exempt from the current audit and gate.
 
 | ID | Experiment | Disposition |
 |---|---|---|
+| [RAR-P38](experiments/RAR-P38.md) | Where rustc 1.99.1's 1.6% goes: plain builds on both compilers — REGISTERED 2026-10-21, before any build | Pending |
 | [RAR-P37](experiments/RAR-P37.md) | The rustc 1.99.1 speed read repeated: replay, fresh pools and two pool nulls — REGISTERED 2026-10-21, before any build; READ 2026-10-21: −1.63% on fresh pools, conditions cleared | Replay **−1.66%** (−1.93 .. −1.38), fresh pools **−1.63%** (−1.83 .. −1.42), pool nulls 0.00% and −0.20% (each ±0.4–0.6%); two of six reads disturbed on a guard-idle host and repeated |
 | [RAR-P36](experiments/RAR-P36.md) | Toolchain update rustc 1.98.1 -> 1.99.1, pooled NPS and the exact fingerprint — REGISTERED 2026-10-21, before any build; READ 2026-10-21: −1.51% | Regression: 13,987,223 / EBF 2.565 exact on both compilers; pooled-PGO NPS **−1.51%** (95% −1.64% .. −1.38%), predicted 0.0% in [−1.5%, +1.5%]; the pin's fate is the maintainer's |
 | [RAR-P35](experiments/RAR-P35.md) | B.9 pooled NPS, the search head against the 2.4.0 release — REGISTERED 2026-10-03, before any read; READ … | Read 2026-10-03 19:56–20:00 local |
