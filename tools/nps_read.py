@@ -21,6 +21,11 @@ variance, 2B-2 degrees of freedom. Disturbance: in step 1 an arm's two cycles
 must agree within 1%; over six cycles a cycle more than 1% from its arm's
 median cycle is disturbed, and three or more mean the read is repeated.
 
+The host must be idle before step 1 and before `--extend`: no engine,
+harness or build process and at most 15% CPU, read by the harness's own
+measure (`harness_common.ps1`), the one `colosseum.ps1` refuses on.
+`--allow-busy-host` waives it and the waiver is archived with the read.
+
 Every build is checked against its manifest hash before and after the read,
 every run must print its own pool's fingerprint (from that pool's manifest, so a
 release baseline can be read against the head), and the pools must be distinct bytes.
@@ -38,6 +43,7 @@ import hashlib
 import json
 import math
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -51,6 +57,8 @@ MANIFEST_FINGERPRINT = re.compile(r"^fingerprint\s*:\s*(\d+)\b", re.M)
 # 5 a three-build pool against a four-build one.
 T95 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
        12: 2.179, 14: 2.145, 16: 2.120, 20: 2.086, 30: 2.042}
+HARNESS = Path(__file__).resolve().parent / "harness_common.ps1"
+MAX_BUSY_PERCENT = 15.0  # colosseum.ps1's default ceiling
 
 
 def pool_fingerprint(directory: Path) -> int:
@@ -122,15 +130,56 @@ def check_arms(base_dir: Path, cand_dir: Path, builds: dict, options: dict) -> N
         raise SystemExit("two pool binaries are identical")
 
 
-def cpu_load() -> float | None:
+def host_state() -> dict:
+    """Host CPU and competing processes by the harness's measure. A one-shot
+    `Win32_Processor.LoadPercentage` from a fresh PowerShell, which this
+    replaced, reported that PowerShell's own start-up: 12-14% on a host the
+    harness measure read at 3%."""
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    script = (f". '{HARNESS}'; [pscustomobject]@{{ busy = Get-HarnessHostBusyPercent; "
+              "procs = @(Get-HarnessBusyProcess | ForEach-Object { \"$($_.ProcessName):$($_.Id)\" }) }"
+              " | ConvertTo-Json -Compress")
     try:
-        out = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "(Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average"],
-            capture_output=True, text=True, timeout=60).stdout.strip()
-        return float(out.replace(",", ".")) if out else None
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        return None
+        out = subprocess.run([shell, "-NoProfile", "-Command", script],
+                             capture_output=True, text=True, timeout=60).stdout.strip()
+        state = json.loads(out)
+    except (OSError, TypeError, ValueError, subprocess.TimeoutExpired):
+        return {"busy_percent": None, "busy_processes": []}
+    busy = state.get("busy")
+    return {"busy_percent": None if busy is None else round(float(busy), 1),
+            "busy_processes": list(state.get("procs") or [])}
+
+
+def cpu_load() -> float | None:
+    return host_state()["busy_percent"]
+
+
+def idle_refusal(state: dict, max_busy: float = MAX_BUSY_PERCENT) -> list[str]:
+    """Why the host is not idle; empty when it is. An unreadable CPU figure
+    refuses nothing on its own, as in the harness."""
+    reasons = []
+    if state["busy_processes"]:
+        reasons.append("engine, harness or build processes are running: "
+                       + ", ".join(state["busy_processes"]))
+    if state["busy_percent"] is not None and state["busy_percent"] > max_busy:
+        reasons.append(f"host CPU is {state['busy_percent']:.0f}%, over the {max_busy:.0f}% ceiling")
+    return reasons
+
+
+def check_host(record: dict, allow_busy: bool) -> None:
+    """AGENTS, *Measurement*: measure only on an idle host; refuse otherwise,
+    unless waived, and archive the state and any waiver with the read."""
+    state = host_state()
+    reasons = idle_refusal(state)
+    record.setdefault("host_checks", []).append(
+        {**state, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "waived": bool(reasons and allow_busy)})
+    if reasons and not allow_busy:
+        raise SystemExit("HOST NOT IDLE - " + "; ".join(reasons)
+                         + ". Stop the other work and re-run, or pass --allow-busy-host and say why.")
+    if reasons:
+        print("WARNING: host not idle, check waived: " + "; ".join(reasons), flush=True)
+    else:
+        print(f"host idle: {state['busy_percent']}% CPU, no engine, harness or build process", flush=True)
 
 
 # --- the estimator, on archived readings ------------------------------------
@@ -250,6 +299,8 @@ def main() -> int:
     parser.add_argument("--extend", type=Path, help="add four cycles to this read (step 2)")
     parser.add_argument("--report", type=Path, help="recompute a read from its raw.json")
     parser.add_argument("--no-regression", action="store_true")
+    parser.add_argument("--allow-busy-host", action="store_true",
+                        help="read on a host that is not idle; the waiver is archived")
     parser.add_argument("--base-option", action="append", default=[], metavar="NAME=VALUE",
                         help="setoption sent to every base run (tune builds)")
     parser.add_argument("--cand-option", action="append", default=[], metavar="NAME=VALUE",
@@ -275,6 +326,7 @@ def main() -> int:
         for arm in builds:
             if [str(e) for e in builds[arm]] != record["arms"][arm]["builds"]:
                 raise SystemExit(f"{out}: the {arm} pool changed since step 1")
+        check_host(record, args.allow_busy_host)
         cycles = 4
     else:
         if not (args.base and args.cand and args.out):
@@ -296,6 +348,7 @@ def main() -> int:
                      for arm, path in (("base", args.base), ("cand", args.cand))},
             "cycles": [],
         }
+        check_host(record, args.allow_busy_host)
         for arm in builds:
             for exe in builds[arm]:
                 read(exe, fingerprints[arm], options[arm])  # warm-up, and the fingerprint check

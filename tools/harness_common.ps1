@@ -514,7 +514,9 @@ function Get-HarnessBusyProcess {
     # engine children, which these patterns do catch.
     $patterns = @(
         'rarog*', 'fastchess*', 'colosseum-cli*', 'cutechess*',
-        'stockfish*', 'basilisk*', 'reckless*', 'cargo*', 'rustc*'
+        'stockfish*', 'basilisk*', 'reckless*', 'cargo*', 'rustc*',
+        # nps_build_pool.ps1's copies are named <tier>-<n>.exe, not rarog*.
+        'pext-[0-9]*', 'avx2-[0-9]*', 'x86-64-[0-9]*', 'base-[0-9]*'
     )
     $self = $PID
     @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
