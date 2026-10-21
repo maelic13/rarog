@@ -2568,7 +2568,15 @@ loss).
   fingerprint reproduced, debug and release tests, `clippy` at zero
   warnings on the new compiler, and an interleaved pooled-PGO NPS read
   against the old toolchain, so C.11 measures the toolchain that ships
-  and no gate mixes toolchains between its arms. **Maintainer decision
+  and no gate mixes toolchains between its arms. **Run 2026-10-21
+  (RAR-P36):** `rustc 1.99.1` pinned on `c9` in `acc3640`, with `f3f78c6`
+  (`try_update`, the 1.99 name for the deprecated `fetch_update`, exact)
+  and `da2780f` (xtask takes `llvm-profdata` from the toolchain before
+  PATH); 13,987,223 / EBF 2.565 exact on both compilers, debug and
+  release tests, fmt and `clippy` clean; the pooled-PGO read **fails the
+  no-regression check at −1.51%** (95% −1.64% .. −1.38%, four builds an
+  arm), so whether 1.99.1 stays or the pin returns to 1.98.1 is the
+  maintainer's decision, before C.11's reads. **Maintainer decision
   2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
   danger index, carried by inputs Rarog's index already has at fitted
   weights about half the donor's (safe checks, attackers × weight,
