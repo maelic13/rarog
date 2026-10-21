@@ -16,8 +16,9 @@
 #
 # -NoPgo builds the plain tier instead, to separate a compiler's code
 # generation from its use of the profile. A plain build has no profile to
-# vary, so its copies must be IDENTICAL: each later build first touches
-# src/lib.rs to force a real recompile, any difference fails, and the
+# vary, so its copies must be IDENTICAL apart from the link's own stamps
+# (Get-PeContentHash): each later build first touches src/lib.rs to force
+# a real recompile, any other difference fails, and the
 # manifest keeps the one binary, which `nps_read.py` reads as a single-build
 # arm.
 
@@ -49,6 +50,49 @@ if ($dirty -and -not $AllowDirty) {
     throw "working tree is dirty - refusing to build a pool whose source cannot be identified (-AllowDirty to override locally)"
 }
 if ($dirty) { Write-Warning "DIRTY TREE: this pool is not reproducible and must not back a recorded result" }
+
+function Get-PeContentHash {
+    # SHA-256 of a PE image with the link's own stamps zeroed: the header's
+    # TimeDateStamp, each debug directory's TimeDateStamp and the CodeView
+    # record's PDB GUID and age. MSVC's linker writes these fresh on every link,
+    # so two links of the same code differ only there.
+    param([string]$Path)
+    $b = [System.IO.File]::ReadAllBytes($Path)
+    $pe = [BitConverter]::ToInt32($b, 0x3c)
+    if ([BitConverter]::ToUInt32($b, $pe) -ne 0x4550) { throw "$Path is not a PE image" }
+    $zero = { param($at, $n) for ($k = 0; $k -lt $n; $k++) { $b[$at + $k] = 0 } }
+    & $zero ($pe + 8) 4
+    $opt = $pe + 24
+    if ([BitConverter]::ToUInt16($b, $opt) -ne 0x20b) { throw "$Path is not PE32+" }
+    & $zero ($opt + 64) 4                                   # CheckSum
+    $sections = [BitConverter]::ToUInt16($b, $pe + 6)
+    $table = $opt + [BitConverter]::ToUInt16($b, $pe + 20)
+    $toFile = {
+        param($rva)
+        for ($s = 0; $s -lt $sections; $s++) {
+            $h = $table + 40 * $s
+            $va = [BitConverter]::ToUInt32($b, $h + 12)
+            $size = [Math]::Max([BitConverter]::ToUInt32($b, $h + 8), [BitConverter]::ToUInt32($b, $h + 16))
+            if ($rva -ge $va -and $rva -lt $va + $size) { return [BitConverter]::ToUInt32($b, $h + 20) + ($rva - $va) }
+        }
+        throw "RVA $rva lies in no section of $Path"
+    }
+    $debugRva = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8)
+    $debugSize = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8 + 4)
+    if ($debugRva -ne 0) {
+        $dir = & $toFile $debugRva
+        for ($e = 0; $e -lt [int]($debugSize / 28); $e++) {
+            $entry = $dir + 28 * $e
+            & $zero ($entry + 4) 4
+            if ([BitConverter]::ToUInt32($b, $entry + 12) -eq 2) {   # IMAGE_DEBUG_TYPE_CODEVIEW
+                $cv = [BitConverter]::ToUInt32($b, $entry + 24)
+                if ([BitConverter]::ToUInt32($b, $cv) -eq 0x53445352) { & $zero ($cv + 4) 20 }   # RSDS: GUID, age
+            }
+        }
+    }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    ([BitConverter]::ToString($sha.ComputeHash($b))).Replace("-", "")
+}
 
 $benchIn = Join-Path $env:TEMP "nps_pool_bench_in.txt"
 Set-Content -LiteralPath $benchIn -Value "bench $Depth" -Encoding ascii
@@ -93,9 +137,9 @@ for ($i = 1; $i -le $Builds; $i++) {
 
 if ($NoPgo) {
     # The check that makes one plain build stand for its arm: no build luck.
-    $distinct = @($rows | Group-Object Hash)
-    if ($distinct.Count -ne 1) {
-        throw "plain builds of one tree differ ($($distinct.Count) distinct hashes) - one build cannot stand for the arm"
+    $content = @($rows | ForEach-Object { Get-PeContentHash $_.File } | Sort-Object -Unique)
+    if ($content.Count -ne 1) {
+        throw "plain builds of one tree differ beyond the link stamps ($($content.Count) distinct contents) - one build cannot stand for the arm"
     }
     Get-ChildItem -LiteralPath $OutDir -Filter "$Arch-*.exe" | Where-Object { $_.Name -ne "$Arch-1.exe" } | Remove-Item
     $kept = $rows.Count
@@ -127,7 +171,7 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
     "source        : $sha $sourceState"
     "builds        : $Builds"
-    $(if ($NoPgo) { "pgo           : no (deterministic: $kept builds identical, one kept)" } else { "pgo           : yes" })
+    $(if ($NoPgo) { "pgo           : no (deterministic: $kept builds identical but for link stamps, content $($content[0].Substring(0, 16)), one kept)" } else { "pgo           : yes" })
     "fingerprint   : $ExpectFingerprint (verified on every copy)"
     "generated     : $(Get-Date -Format o)"
     ""
