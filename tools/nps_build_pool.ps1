@@ -18,9 +18,10 @@
 # generation from its use of the profile. A plain build has no profile to
 # vary, so its copies must be IDENTICAL apart from the link's own stamps
 # (Get-PeContentHash): each later build first touches src/lib.rs to force
-# a real recompile, any other difference fails, and the
-# manifest keeps the one binary, which `nps_read.py` reads as a single-build
-# arm.
+# a real recompile, and any other difference fails. Every copy is kept: the
+# copies carry no build luck, but each is read in its own processes, and one
+# plain binary's processes differ by up to 6% here (RAR-P38), so a plain arm
+# is read as a pool like any other.
 
 param(
     [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
@@ -41,7 +42,6 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-if ($NoPgo -and $Builds -lt 2) { throw "-NoPgo needs -Builds 2 or more: the extra builds prove the plain build deterministic" }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 $sha = (& git rev-parse HEAD).Trim()
@@ -136,14 +136,11 @@ for ($i = 1; $i -le $Builds; $i++) {
 }
 
 if ($NoPgo) {
-    # The check that makes one plain build stand for its arm: no build luck.
+    # A plain arm carries no build luck only if its copies are the same code.
     $content = @($rows | ForEach-Object { Get-PeContentHash $_.File } | Sort-Object -Unique)
     if ($content.Count -ne 1) {
-        throw "plain builds of one tree differ beyond the link stamps ($($content.Count) distinct contents) - one build cannot stand for the arm"
+        throw "plain builds of one tree differ beyond the link stamps ($($content.Count) distinct contents) - the plain build is not deterministic"
     }
-    Get-ChildItem -LiteralPath $OutDir -Filter "$Arch-*.exe" | Where-Object { $_.Name -ne "$Arch-1.exe" } | Remove-Item
-    $kept = $rows.Count
-    $rows = @($rows[0])
 }
 
 # The check that makes pooling meaningful: independent profiles => distinct bytes.
@@ -171,7 +168,7 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
     "source        : $sha $sourceState"
     "builds        : $Builds"
-    $(if ($NoPgo) { "pgo           : no (deterministic: $kept builds identical but for link stamps, content $($content[0].Substring(0, 16)), one kept)" } else { "pgo           : yes" })
+    $(if ($NoPgo) { "pgo           : no (all builds identical but for link stamps, content $($content[0].Substring(0, 16)))" } else { "pgo           : yes" })
     "fingerprint   : $ExpectFingerprint (verified on every copy)"
     "generated     : $(Get-Date -Format o)"
     ""
@@ -180,7 +177,7 @@ Set-Content -LiteralPath $manifest -Encoding ascii
 
 Write-Host ""
 if ($NoPgo) {
-    Write-Host "plain OK: $Builds identical $Arch builds at fingerprint $ExpectFingerprint, one kept"
+    Write-Host "plain OK: $Builds $Arch builds, identical but for link stamps, at fingerprint $ExpectFingerprint"
 } else {
     Write-Host "pool OK: $Builds distinct $Arch builds, all at fingerprint $ExpectFingerprint"
 }

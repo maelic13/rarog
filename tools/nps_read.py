@@ -35,13 +35,6 @@ LazyMargin=2000`, sent as `setoption` before the bench). Then one pool may serve
 both arms, which cancels each build's PGO offset (the unpaired interval below is
 conservative for that design), the options must differ, and an option that
 changes the search names that arm's fingerprint (`--cand-fingerprint`).
-
-Plain builds (`nps_build_pool.ps1 -NoPgo`) are deterministic, so each arm is
-one binary and the spread is between cycles: the interval is t on the
-per-cycle ratios of the paired readings, cycles − 1 degrees of freedom; run
-it with `--cycles 10`. It is an estimate for a screen, with no verdict, and
-covers run noise only: the one code layout each compiler produced is not
-averaged.
 """
 from __future__ import annotations
 
@@ -60,7 +53,6 @@ from pathlib import Path
 RUN = re.compile(r"^run (\d)/3\s+nodes (\d+)\s+time (\d+)ms\s+nps (\d+)", re.M)
 MANIFEST_ROW = re.compile(r"^([0-9A-F]{64})\s+(\S+\.exe)$", re.M)
 MANIFEST_FINGERPRINT = re.compile(r"^fingerprint\s*:\s*(\d+)\b", re.M)
-MANIFEST_PLAIN = re.compile(r"^pgo\s*:\s*no \(deterministic", re.M)
 # Two-sided 95% t quantiles by degrees of freedom; 6 is the four-build read,
 # 5 a three-build pool against a four-build one.
 T95 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
@@ -82,14 +74,10 @@ def pool_fingerprint(directory: Path) -> int:
 
 def pool(directory: Path) -> list[Path]:
     manifest = directory / "manifest-pext.txt"
-    text = manifest.read_text(encoding="utf-8")
-    rows = MANIFEST_ROW.findall(text)
+    rows = MANIFEST_ROW.findall(manifest.read_text(encoding="utf-8"))
     if not rows:
         raise SystemExit(f"{manifest}: no build rows")
-    if MANIFEST_PLAIN.search(text):
-        if len(rows) != 1:
-            raise SystemExit(f"{manifest}: a deterministic plain arm is one binary")
-    elif len(rows) < 2:
+    if len(rows) < 2:
         raise SystemExit(f"{manifest}: one build gives no spread; a pool needs at least two")
     pool_fingerprint(directory)
     builds = []
@@ -212,22 +200,11 @@ def estimate(record: dict) -> dict:
     cand_level = statistics.mean(cand_medians)
     delta = 100.0 * (cand_level / base_level - 1.0)
     nb, nc = len(base_medians), len(cand_medians)
-    cycles = len(record["cycles"])
-    if nb == 1 and nc == 1:
-        # Single deterministic builds: the noise is between cycles, and each
-        # cycle reads both arms, so the cycles pair.
-        if cycles < 3:
-            raise SystemExit("single-build arms need three or more cycles (use --cycles 10)")
-        ratios = [cand[0][c] / base[0][c] - 1.0 for c in range(cycles)]
-        se = 100.0 * statistics.stdev(ratios) / math.sqrt(cycles)
-        df = cycles - 1
-    elif nb == 1 or nc == 1:
-        raise SystemExit("a single-build arm is read only against another single-build arm")
-    else:
-        pooled = ((nb - 1) * statistics.variance(base_medians) + (nc - 1) * statistics.variance(cand_medians)) / (nb + nc - 2)
-        se = 100.0 * math.sqrt(pooled * (1 / nb + 1 / nc)) / base_level
-        df = nb + nc - 2
+    pooled = ((nb - 1) * statistics.variance(base_medians) + (nc - 1) * statistics.variance(cand_medians)) / (nb + nc - 2)
+    se = 100.0 * math.sqrt(pooled * (1 / nb + 1 / nc)) / base_level
+    df = nb + nc - 2
     t = T95.get(df) or T95[max(k for k in T95 if k <= df)]
+    cycles = len(record["cycles"])
     # Disturbance: an arm's cycle mean against its median cycle.
     disturbed = []
     for arm, rows in (("base", base), ("cand", cand)):
@@ -254,8 +231,6 @@ def decide(est: dict, no_regression: bool) -> str:
     disturbed_cycles = {c for _, c in est["disturbed"]}
     if (cycles == 2 and disturbed_cycles) or (cycles >= 6 and len(disturbed_cycles) >= 3):
         return "disturbed: repeat the step, do not interpret"
-    if est["builds"] == [1, 1]:
-        return "single-build screen: an estimate, no verdict (screens rank, reads decide)"
     if no_regression:
         # The thresholds mirrored around -0.5%.
         if cycles < 6:
