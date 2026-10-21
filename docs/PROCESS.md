@@ -306,7 +306,11 @@ xtask takes `llvm-profdata` and the other LLVM tools from the toolchain's own
 `llvm-tools` before PATH: the raw profile format follows rustc's LLVM, and an
 MSYS2 LLVM on PATH refused rustc 1.99's profiles (RAR-P36). A pinned bump
 that crosses an LLVM major is a speed change to read, not a formality: 1.98.1
-to 1.99.1 (LLVM 22 to 23) cost 1.6% at the same fingerprint (RAR-P37).
+to 1.99.1 (LLVM 22 to 23) cost 1.6% at the same fingerprint (RAR-P37), all
+of it code generation (plain builds −3.6%, RAR-P38). **Maintainer decision
+2026-10-21:** Rarog follows the latest stable Rust whenever possible; a bump
+is qualified and its speed read and recorded, and a measured slowdown does
+not revert it.
 
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
@@ -363,7 +367,12 @@ the host's level wanders by about 3% in half an hour, and two of six reads
 started idle were disturbed and wrong (RAR-P37), so the disturbance rule
 stands and a disturbed read is repeated. Two pools of one source and
 compiler read within ±0.4% of each other, so four builds an arm resolve a
-change of 1% or more.
+change of 1% or more. To split a compiler's code generation from its use of
+the profile, `nps_build_pool.ps1 -NoPgo` builds plain pools: its copies must
+be the same code apart from the link's own stamps, and they are read as a
+pool, because one binary's processes alone vary by up to 6% (RAR-P38). A
+plain build embeds its build directory's path, so it reproduces per
+directory only.
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%

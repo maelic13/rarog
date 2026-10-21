@@ -2580,7 +2580,12 @@ loss).
   (RAR-P37)** on a guard-idle host: the same pools −1.66%, fresh pools on
   the final head (`9fb525e`, which adds the `raw_borrows_via_references`
   lint) **−1.63%** (95% −1.83% .. −1.42%), two pool-against-pool nulls
-  0.00% and −0.20%; the regression is the compiler, not the conditions. **Maintainer decision
+  0.00% and −0.20%; the regression is the compiler, not the conditions.
+  **Localised 2026-10-21 (RAR-P38):** plain builds read −3.63% (95%
+  −4.44% .. −2.82%), so LLVM 23's code generation carries the loss and
+  its PGO recovers about two points. **Maintainer decision 2026-10-21:**
+  Rarog follows the latest stable Rust whenever possible; 1.99.1 stays,
+  and C.11's reads run on it. **Maintainer decision
   2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
   danger index, carried by inputs Rarog's index already has at fitted
   weights about half the donor's (safe checks, attackers × weight,

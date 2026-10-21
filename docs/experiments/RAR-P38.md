@@ -1,4 +1,4 @@
-# RAR-P38 — Where rustc 1.99.1's 1.6% goes: plain builds on both compilers — REGISTERED 2026-10-21, before any build
+# RAR-P38 — Where rustc 1.99.1's 1.6% goes: plain builds on both compilers — REGISTERED 2026-10-21, before any build; READ 2026-10-21: plain −3.63%, the loss is code generation
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -18,11 +18,18 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
 
 ## Result / disposition
 
-Pending.
+**The loss is LLVM 23's code generation: plain builds −3.63%; the profile recovers about two points of it.** Design 2, run 2026-10-21 19:26–19:36 local (`analysis/artifacts/toolchain-1.99/p38b-status.txt`).
+
+- **Pools.** Plain 1.98.1 `analysis/artifacts/toolchain-1.99/plainpool-1.98.1`, source `7099ff0` (clean, a detached worktree, removed afterwards), four builds of one content `4359AAE4…` (raw `C8A4C6A9…`, `6A1FCFBE…`, `697690B4…`, `3BEDD169…`). Plain 1.99.1 `analysis/artifacts/toolchain-1.99/plainpool-1.99.1`, source `ff26acd` (clean), four builds of one content `736124381B75…` (raw `C16E47E2…`, `DE9DCD3F…`, `4C378243…`, `D45B30E8…`). Every copy benched 13,987,223.
+- **Read** (`analysis/artifacts/toolchain-1.99/plain-pool-read/`), step 1, guard-idle host (2.5% at the start; 3.4% and 4.2% before the cycles): per-build medians base 2,688,458 / 2,712,563 / 2,722,850 / 2,709,916, candidate 2,623,014 / 2,602,334 / 2,600,822 / 2,614,204; levels **2,708,447 against 2,610,093**; **−3.63%**, 95% **−4.44% .. −2.82%** (df 6); no disturbed cycle. The tool's line "closed NO_CHANGE by step 1" is its acceptance verdict and does not apply to a measurement.
+- **Reading rule (registered):** −1.1% or below says the code generation carries the PGO loss. It carries all of it and more: without a profile 1.99.1's code is 3.6% slower, with one 1.6% (RAR-P37). So 1.99.1's PGO gains about **2.0 points more** than 1.98.1's (−1.63 less −3.63), a difference of two deltas each read within its own interleaved run.
+- **Provenance note.** The 1.98.1 plain content differs between design 1 (`7BB18925…`, worktree `rarog-p38-base`) and design 2 (`4359AAE4…`, `rarog-p38b-base`): the build directory's path is embedded in the binary, so a plain build is reproducible per directory, not across directories. The 1.99.1 content, built in the main tree both times, is the same in both designs.
+
+**Prediction calibration, appended after exposure.** The blind prediction (design 1) was −1.0% in [−3.0%, +1.0%]: a **miss in magnitude**, the plain loss is larger than its band. The assumption that failed is that code generation and profile use would share the loss; LLVM 23 makes this engine's unprofiled code markedly slower, and its PGO compensates more. Design 2's prediction (−3.0% in [−4.5%, −1.5%]) was a hit but not blind. Instrument: design 1 failed, and not for load: one plain binary's processes varied by 6%, which only a pool averages (recorded above).
 
 ## Conditional lesson and retry trigger
 
-Pending.
+**A compiler's speed is read on pools, plain or PGO; a single binary is not an arm** on this host, because one binary's processes differ by several percent. **LLVM 23's code generation is what costs Rarog speed**, and its PGO recovers part of it; a later LLVM may move either. **Maintainer decision 2026-10-21:** Rarog follows the latest stable Rust whenever possible, so 1.99.1 stays whatever the speed reads say (PLAN C.11's note); a later bump repeats RAR-P37's PGO read, and this plain read when the PGO number moves by more than 1%. **Retry trigger:** the next pinned bump.
 
 ## Source
 
