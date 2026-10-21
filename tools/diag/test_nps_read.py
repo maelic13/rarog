@@ -259,6 +259,44 @@ class HostTests(unittest.TestCase):
             nps_read.host_state = saved
 
 
+class SingleBuildTests(unittest.TestCase):
+    def test_single_builds_pair_the_cycles(self):
+        # Cycle levels wander by 1%; the paired ratio stays at -1.6% +- 0.1%.
+        drift = (1.000, 1.004, 0.997, 1.002, 0.996, 1.003, 1.000, 0.996, 1.002, 1.004)
+        wobble = (0.001, -0.001, 0.0, 0.001, -0.001, 0.0, 0.001, -0.001, 0.0, 0.0)
+        base = [[BENCH * d for d in drift]]
+        cand = [[BENCH * d * (0.984 + w) for d, w in zip(drift, wobble)]]
+        est = nps_read.estimate(record(base, cand))
+        self.assertEqual(est["df"], 9)
+        self.assertEqual(est["t"], 2.262)
+        self.assertAlmostEqual(est["delta_percent"], -1.6, delta=0.15)
+        # Paired, the interval is the ratio's wobble, not the levels' drift.
+        self.assertLess(est["high_percent"] - est["low_percent"], 0.3)
+        self.assertTrue(nps_read.decide(est, False).startswith("single-build screen"))
+
+    def test_a_whole_cycle_moved_by_load_still_flags_the_screen(self):
+        drift = (1.00, 1.03, 0.99, 1.01, 0.98, 1.02, 1.00, 0.97, 1.01, 1.02)
+        est = nps_read.estimate(record([[BENCH * d for d in drift]], [[BENCH * d * 0.984 for d in drift]]))
+        self.assertTrue(nps_read.decide(est, False).startswith("disturbed"))
+
+    def test_single_builds_need_cycles_and_a_single_build_partner(self):
+        with self.assertRaises(SystemExit):
+            nps_read.estimate(record([[BENCH] * 2], [[BENCH] * 2]))
+        with self.assertRaises(SystemExit):
+            nps_read.estimate(record([[BENCH] * 3], [[BENCH] * 3, [BENCH] * 3]))
+
+    def test_one_row_is_a_pool_only_when_marked_deterministic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            WireTests.write_pool(directory, HEAD, 1)
+            with self.assertRaises(SystemExit):
+                nps_read.pool(directory)
+            manifest = directory / "manifest-pext.txt"
+            manifest.write_text("pgo           : no (deterministic: 2 builds identical, one kept)\n"
+                                + manifest.read_text(encoding="utf-8"), encoding="utf-8")
+            self.assertEqual(nps_read.pool(directory), [directory / "pext-1.exe"])
+
+
 class UnequalPoolTests(unittest.TestCase):
     def test_three_builds_against_four_use_five_degrees_of_freedom(self):
         base = [[BENCH * f] * 2 for f in (0.999, 1.000, 1.001)]

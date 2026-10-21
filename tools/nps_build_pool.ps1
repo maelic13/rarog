@@ -13,6 +13,13 @@
 #      expected bench fingerprint before it is accepted into the pool.
 #
 # Output: $OutDir\<tier>-<n>.exe plus a manifest.txt of hashes and fingerprints.
+#
+# -NoPgo builds the plain tier instead, to separate a compiler's code
+# generation from its use of the profile. A plain build has no profile to
+# vary, so its copies must be IDENTICAL: each later build first touches
+# src/lib.rs to force a real recompile, any difference fails, and the
+# manifest keeps the one binary, which `nps_read.py` reads as a single-build
+# arm.
 
 param(
     [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
@@ -22,6 +29,8 @@ param(
     # own). No default: a default goes stale with the first integrated
     # behaviour change and then refuses every honest build.
     [Parameter(Mandatory = $true)][int]$ExpectFingerprint,
+    # Plain (non-PGO) builds, checked deterministic; see the header.
+    [switch]$NoPgo,
     [int]$Depth = 13,
     # Cargo features for a candidate arm compiled behind a flag.
     [string]$Features = "",
@@ -31,6 +40,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($NoPgo -and $Builds -lt 2) { throw "-NoPgo needs -Builds 2 or more: the extra builds prove the plain build deterministic" }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 $sha = (& git rev-parse HEAD).Trim()
@@ -48,7 +58,11 @@ for ($i = 1; $i -le $Builds; $i++) {
     Write-Host "== $Arch build $i/$Builds =="
     $log = Join-Path $OutDir "build-$Arch-$i.log"
     $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
-    & cargo xtask build --arch $Arch --pgo @featureArgs *> $log
+    $pgoArgs = if ($NoPgo) { @() } else { @("--pgo") }
+    # A plain build of an unchanged tree is cargo's no-op; the touch makes
+    # the determinism check compare two real compiles.
+    if ($NoPgo -and $i -gt 1) { (Get-Item src/lib.rs).LastWriteTime = Get-Date }
+    & cargo xtask build --arch $Arch @pgoArgs @featureArgs *> $log
     if ($LASTEXITCODE -ne 0) { throw "build $i failed (exit $LASTEXITCODE); see $log" }
 
     # Take the artifact path from xtask itself rather than reconstructing the
@@ -77,6 +91,17 @@ for ($i = 1; $i -le $Builds; $i++) {
     $rows += [pscustomobject]@{ File = $dst; Hash = $hash; Nodes = $nodes }
 }
 
+if ($NoPgo) {
+    # The check that makes one plain build stand for its arm: no build luck.
+    $distinct = @($rows | Group-Object Hash)
+    if ($distinct.Count -ne 1) {
+        throw "plain builds of one tree differ ($($distinct.Count) distinct hashes) - one build cannot stand for the arm"
+    }
+    Get-ChildItem -LiteralPath $OutDir -Filter "$Arch-*.exe" | Where-Object { $_.Name -ne "$Arch-1.exe" } | Remove-Item
+    $kept = $rows.Count
+    $rows = @($rows[0])
+}
+
 # The check that makes pooling meaningful: independent profiles => distinct bytes.
 $dupes = $rows | Group-Object Hash | Where-Object { $_.Count -gt 1 }
 if ($dupes) {
@@ -102,6 +127,7 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
     "source        : $sha $sourceState"
     "builds        : $Builds"
+    $(if ($NoPgo) { "pgo           : no (deterministic: $kept builds identical, one kept)" } else { "pgo           : yes" })
     "fingerprint   : $ExpectFingerprint (verified on every copy)"
     "generated     : $(Get-Date -Format o)"
     ""
@@ -109,6 +135,10 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
 Set-Content -LiteralPath $manifest -Encoding ascii
 
 Write-Host ""
-Write-Host "pool OK: $Builds distinct $Arch builds, all at fingerprint $ExpectFingerprint"
+if ($NoPgo) {
+    Write-Host "plain OK: $Builds identical $Arch builds at fingerprint $ExpectFingerprint, one kept"
+} else {
+    Write-Host "pool OK: $Builds distinct $Arch builds, all at fingerprint $ExpectFingerprint"
+}
 Write-Host "manifest: $manifest"
 Write-Host ("set for nps_multibuild: " + (($rows.File | ForEach-Object { "`"$_`"" }) -join ", "))
