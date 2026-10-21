@@ -10,6 +10,15 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Changed
 
+- **The search was re-tuned on the new evaluation.** 82 search parameters
+  (the futility, reverse-futility, razoring, null-move, ProbCut, singular
+  and late-move-reduction margins, the aspiration window, the quiescence
+  margins and the correction-history blend) were tuned together in a
+  120,000-game run on the classical evaluation that Phase C produced.
+  Against the previous development version the tuned search measured
+  **+4.5 ± 2.9 Elo at `3+0.03`** (19,344 games) and **+2.8 ± 12.0 at
+  `10+0.1`** (1,000 games), at the same speed. `bench` then reported
+  13,987,223 nodes.
 - **Large pages on Windows.** When the account running the engine holds the
   *Lock pages in memory* right, the hash table and the search's other large
   tables are allocated in 2 MB pages, which spares the processor a
