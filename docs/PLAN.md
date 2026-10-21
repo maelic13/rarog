@@ -306,9 +306,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.3 | GAME_GATE | I1 | RAR-S101 played 2026-10-19/20: the stop rule fires (no full-step mover, the journal inside its null); the maintainer decides block 1 over 82 coordinates or `NO_CHANGE` |
-| C.10.4 | GAME_GATE | V | RAR-S104, one 4,000-iteration run over 82 coordinates with doubled perturbations and `r-end` 0.0016, the maintainer's command; RAR-S103's block withdrawn unread; the maintainer decides the bake or `NO_CHANGE` after the read |
-| C.10.5 | RESEARCH | V | After the last block |
+| C.10.5 | GAME_GATE | V | RAR-S105 registered 2026-10-21, the maintainer's command: RAR-S104's theta baked (`160f414`, 13,987,223 / EBF 2.565) against the C head, SPRT `[0,3]` at `3+0.03`, cap 20,000 pairs, then the `10+0.1` read if it accepts; H0 closes C.10 `NO_CHANGE` |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
@@ -2373,7 +2371,7 @@ loss).
     +3.1 ± 8.7 Elo, 4 against 3 +1.9 ± 9.2 (recount agrees). Neither is
     a direction, so 3 stays, fixed on both sides of the pilot and the
     blocks.
-  - **C.10.3 Widened ranges, the sensitivity pilot and the re-audit — `I1`, then `V`.**
+  - **C.10.3 Widened ranges, the sensitivity pilot and the re-audit — `I1`, then `V`, DONE 2026-10-20.**
     One behaviour-neutral engine commit widens the seven ranges (the tune
     clamp only; the fingerprint is unchanged). The relevance condition is
     checked first by `analysis/artifacts/c10/bench_steps.py` (every
@@ -2445,6 +2443,9 @@ loss).
       plus `CoreSeeQuietHistory`, rule 7c as amended lets a watched tune run
       regardless, the pilot cannot exclude a gradient of a few Elo), or
       C.10 closes `NO_CHANGE` without a block.
+    - **Decided 2026-10-20:** the maintainer chose the tune over
+      `NO_CHANGE`, as one long run (RAR-S104, C.10.4) rather than rule
+      7c's chain of blocks. C.10.3 is done.
     - **C.10.3.1 Dead and switched-off search coordinates before the tune — `I1`, then `V`, DONE 2026-10-19.**
       `analysis/c103_search_coordinates_2026-10-19.md`. (a) `CoreNmpTtPv`
       is dead by a measured decision, not by mistake: B.3 kept Rarog's
@@ -2470,7 +2471,7 @@ loss).
       flagged for expected reasons (the clock multipliers, the termination
       guard, the material guard at its floor). RAR-S101 is amended and
       relaunched on the unchanged 96.
-  - **C.10.4 The tune: rule-7c blocks — `V`.** 2,000 iterations × 30
+  - **C.10.4 The tune: rule-7c blocks — `V`, DONE 2026-10-21.** 2,000 iterations × 30
     games a block, chained from the head's values and stopped by the
     maintainer (decisions above), registered before block 1.
     **Maintainer rule 2026-10-20:** when the maintainer is away, the
@@ -2493,9 +2494,43 @@ loss).
     the registration; rule 7c's amendment records the decision). The
     maintainer runs it and decides the bake and gate or `NO_CHANGE` after
     its read.
+    **Played 2026-10-20/21 (RAR-S104, the maintainer's run):** 120,000
+    games in 24.3 hours, 0 faults. The frozen read: **six full-step
+    movers** in b43 steps (`CoreFpHistory` −1.66, `CoreRfpSquare` +1.54,
+    `QsDeltaMargin` +1.42, `CoreNmpCutoff` +1.22, `QsSeeMargin` −1.04,
+    `CoreNmpREval` −1.00), the journal's mean z² **1.695** against its
+    null's 95% point of 1.263 (p 0.0005), eight coordinates at |z| ≥ 2
+    where about four are chance; none of the pilot's six |z| ≥ 2
+    coordinates repeats and five reverse sign. The second half of the run
+    reads inside the null (mean z² 1.130, the last quarter 0.894), so the
+    resolvable signal was taken in the first 2,000 iterations and **no
+    further block is registered**: a chained block, at a standard block's
+    resolution, would add a fresh random walk and little signal;
+    `CoreLmrSingularSlope` and `CoreFpCorrection`, which moved mostly in
+    the second half, are the two to watch if a later tune runs. One
+    registration miss: the doubled perturbation (256) exceeded
+    `CoreRfpCorrection`'s seed (80 on `0..=2048`), so its minus arm sat
+    clamped at 0 on every iteration; the estimate is sign-true and the
+    coordinate did not move (80 → 95). The rail check now runs against
+    the run's own perturbation (PROCESS, step 8). Theta, the rounded
+    final centres, is baked for C.10.5 (`160f414` on `c10-arm`: 76 of
+    the 82 defaults change, `eval::LAZY_MARGIN` with `LazyMargin`; bench
+    13,987,223 / EBF 2.565, equal to the tune build with the values set
+    by `setoption`). The run is judged by its gate, not its journal.
   - **C.10.5 Bake and gate: clean PGO build, SPRT `[0,3]` at `3+0.03` against the C head, the `10+0.1` read — `V`.**
     The last completed block's rounded centres, pasted by the maintainer,
     baked with C.10.2's value. H0 closes C.10 `NO_CHANGE`.
+    **Registered 2026-10-21 (RAR-S105), the maintainer's command:**
+    `rarog-c10gate-pext-pgo.exe` (`160f414`, 13,987,223) against
+    `rarog-c10head-pext-pgo.exe` (`4e7a391`, 10,521,141), both clean PGO
+    builds at `rustc 1.98.1`; SPRT `[0,3]` at `3+0.03`, cap 20,000 pairs,
+    seed 20261026; the `10+0.1` read of 1,000 games (seed 20261027) if
+    it accepts; both commands dry-run clean. Frozen: H1 at 0.55, +5 Elo
+    at the stop, 80% band [−2, +12]. H1 lands the values on `c9` with
+    the version suffix dropped and closes C.10; H0 or the cap closes
+    C.10 `NO_CHANGE` with the interval recorded, the arm branch deleted
+    and its patch (`analysis/arm_patches/160f414-rar-s105-c10gate.patch`)
+    the recipe.
 - **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch; the first re-read is

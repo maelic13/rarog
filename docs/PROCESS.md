@@ -582,7 +582,13 @@ Before any SPSA:
    per iteration**, so the budget is `iterations x 30` games (RAR-M62);
    `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
    registered surface for that horizon and `--check` refuses a file that has
-   drifted from it.
+   drifted from it. Check every seed against the run's own perturbation,
+   not the b43 step: a seed within `c0` of a range end plays one arm
+   clamped at the rail (the engine clamps the option) until the
+   perturbation decays below the gap, which biases that estimate's
+   magnitude (RAR-S104: `CoreRfpCorrection`, seed 80 on `0..=2048`,
+   perturbation 256, clipped on all 4,000 iterations); keep such a
+   coordinate's step inside its range.
 9. Theta is the last completed block's rounded final centres, without
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
    and run a paired SPRT, then LTC/4T where appropriate.
