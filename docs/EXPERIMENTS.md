@@ -458,6 +458,7 @@ make any historical parameter group exempt from the current audit and gate.
 
 | ID | Experiment | Disposition |
 |---|---|---|
+| [RAR-P36](experiments/RAR-P36.md) | Toolchain update rustc 1.98.1 -> 1.99.1, pooled NPS and the exact fingerprint — REGISTERED 2026-10-21, before any build | Pending |
 | [RAR-P35](experiments/RAR-P35.md) | B.9 pooled NPS, the search head against the 2.4.0 release — REGISTERED 2026-10-03, before any read; READ … | Read 2026-10-03 19:56–20:00 local |
 | [RAR-P34](experiments/RAR-P34.md) | B.8 cleanup, no-regression NPS read — REGISTERED 2026-10-03, before the pool is built; PASSED 2026-10-03 | Step 1, 2026-10-03 10:19–10:25 |
 | [RAR-P33](experiments/RAR-P33.md) | B.7.3 SEE recapturer, accepted or rejected on NPS alone — REGISTERED 2026-10-03, before its pool is built … | Step 1, 2026-10-03 07:50–07:56 |
