@@ -185,8 +185,10 @@ finally {
     }
     # xperf is done; restore the PDB beside the executable under its embedded
     # name so summarize_board_search_etw.py can symbolize.  llvm-symbolizer
-    # resolves by the name in the PE debug directory, not by --pdb.
-    Copy-Item -LiteralPath $pdbPath -Destination $adjacentPdb -Force
+    # resolves by the name in the PE debug directory, not by --pdb.  Restore
+    # from the copy in $symbolDir: when the PDB already sat beside the
+    # executable, $pdbPath IS the slot cleared above, so it no longer exists.
+    Copy-Item -LiteralPath (Join-Path $symbolDir "rarog.pdb") -Destination $adjacentPdb -Force
 }
 
 Write-Host "ETW profile complete: $outputPath"
