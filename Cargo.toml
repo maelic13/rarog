@@ -52,6 +52,10 @@ texel = []
 [lints.rust]
 # Unsafe inside an `unsafe fn` must still be an explicit `unsafe {}` block.
 unsafe_op_in_unsafe_fn = "deny"
+# A raw pointer is taken with `&raw const` / `&raw mut`, never from a
+# reference cast at once, which asserts aliasing the pointer may not keep
+# (rustc 1.99's lint, allow by default; zero sites).
+raw_borrows_via_references = "deny"
 
 [lints.clippy]
 # Baseline: the whole `clippy::all` set is at zero and stays there.
