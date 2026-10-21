@@ -306,7 +306,7 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.10.5 | GAME_GATE | V | RAR-S105 registered 2026-10-21, the maintainer's command: RAR-S104's theta baked (`160f414`, 13,987,223 / EBF 2.565) against the C head, SPRT `[0,3]` at `3+0.03`, cap 20,000 pairs, then the `10+0.1` read if it accepts; H0 closes C.10 `NO_CHANGE` |
+| C.10.5 | GAME_GATE | V | RAR-S105's gate **H1 accepted 2026-10-21** at +4.5 ± 2.9 Elo (19,344 games, a first-crossing estimate); the `10+0.1` read of 1,000 games is next (registered, the maintainer's command), then the values land on `c9` from `160f414` and C.10 closes |
 | C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
@@ -2531,6 +2531,12 @@ loss).
     C.10 `NO_CHANGE` with the interval recorded, the arm branch deleted
     and its patch (`analysis/arm_patches/160f414-rar-s105-c10gate.patch`)
     the recipe.
+    **Gate played 2026-10-21 (RAR-S105): H1 accepted at +4.5 ± 2.9 Elo,
+    +7.7 ± 4.9 nElo** (19,344 games, a first-crossing estimate; 0 faults,
+    the recount agrees). The arms are equally fast in play and the tuned
+    arm searches 0.4 ply shallower, the wider tree the tune chose; the
+    first 4,500 games read near zero before the run climbed to its
+    bound. The `10+0.1` read follows, then the landing.
 - **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch; the first re-read is
