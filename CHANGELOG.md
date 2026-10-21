@@ -12,9 +12,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 - **Built with Rust 1.99.1** (from 1.98.1). The engine plays exactly as
   before (`bench` reports the same 13,987,223 nodes), but the new
-  compiler's code is about **1.5% slower**: −1.51% nodes a second in
+  compiler's code is about **1.6% slower**: −1.63% nodes a second in
   `bench` on the development machine (four profile-guided builds each,
-  95% interval −1.64% to −1.38%).
+  95% interval −1.83% to −1.42%, confirmed by a repeat).
 - **The search was re-tuned on the new evaluation.** 82 search parameters
   (the futility, reverse-futility, razoring, null-move, ProbCut, singular
   and late-move-reduction margins, the aspiration window, the quiescence

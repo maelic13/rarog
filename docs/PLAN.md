@@ -2576,7 +2576,11 @@ loss).
   release tests, fmt and `clippy` clean; the pooled-PGO read **fails the
   no-regression check at −1.51%** (95% −1.64% .. −1.38%, four builds an
   arm), so whether 1.99.1 stays or the pin returns to 1.98.1 is the
-  maintainer's decision, before C.11's reads. **Maintainer decision
+  maintainer's decision, before C.11's reads. **Re-read 2026-10-21
+  (RAR-P37)** on a guard-idle host: the same pools −1.66%, fresh pools on
+  the final head (`9fb525e`, which adds the `raw_borrows_via_references`
+  lint) **−1.63%** (95% −1.83% .. −1.42%), two pool-against-pool nulls
+  0.00% and −0.20%; the regression is the compiler, not the conditions. **Maintainer decision
   2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
   danger index, carried by inputs Rarog's index already has at fitted
   weights about half the donor's (safe checks, attackers × weight,

@@ -302,6 +302,12 @@ Measure only on an idle host: `colosseum.ps1` refuses when another engine,
 harness or build is running, or when the host is above 15% CPU, and
 `-AllowBusyHost` records the waiver in the run's manifest.
 
+xtask takes `llvm-profdata` and the other LLVM tools from the toolchain's own
+`llvm-tools` before PATH: the raw profile format follows rustc's LLVM, and an
+MSYS2 LLVM on PATH refused rustc 1.99's profiles (RAR-P36). A pinned bump
+that crosses an LLVM major is a speed change to read, not a formality: 1.98.1
+to 1.99.1 (LLVM 22 to 23) cost 1.6% at the same fingerprint (RAR-P37).
+
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
 and PGO training refuses. `rust-toolchain.toml` pins the channel, not the host
@@ -349,6 +355,15 @@ from the archive, `--no-regression` for a neutral change); its tests are
 `tools/diag/test_nps_read.py`, and on RAR-P32's archived runs it reproduces the
 study's deltas. `nps_multibuild.ps1`'s bootstrap interval is not this interval
 and is not quoted as one; that tool is kept only to compare with earlier rows.
+The read refuses a busy host before step 1 and step 2 by the harness's own
+measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
+figure is that measure; the one-shot `LoadPercentage` it replaced read its own
+start-up, 12–14% on an idle host. An idle start does not make a read clean:
+the host's level wanders by about 3% in half an hour, and two of six reads
+started idle were disturbed and wrong (RAR-P37), so the disturbance rule
+stands and a disturbed read is repeated. Two pools of one source and
+compiler read within ±0.4% of each other, so four builds an arm resolve a
+change of 1% or more.
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
