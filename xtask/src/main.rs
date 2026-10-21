@@ -949,8 +949,13 @@ fn disassembled_mnemonic(line: &str) -> Option<&str> {
         .then_some(mnemonic)
 }
 
+/// The toolchain's own copy first: the raw profile format `llvm-profdata`
+/// reads follows the LLVM that rustc was built with, so the sysroot copy
+/// matches by construction and a PATH copy (an MSYS2 or system LLVM) only by
+/// coincidence. An LLVM 22 `llvm-profdata` on PATH rejected rustc 1.99's
+/// version-11 raw profiles outright.
 fn find_llvm_tool(name: &str) -> Option<PathBuf> {
-    find_on_path(name).or_else(|| find_rustup_llvm_tool(name))
+    find_rustup_llvm_tool(name).or_else(|| find_on_path(name))
 }
 
 fn find_rustup_llvm_tool(name: &str) -> Option<PathBuf> {
