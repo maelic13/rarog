@@ -6,7 +6,7 @@ edition = "2024"
 # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
 # stale local toolchain fails with a clear cargo message, not a confusing
 # mid-compile error about an unstable feature.
-rust-version = "1.98"
+rust-version = "1.99"
 description = "A UCI-compatible chess engine written in Rust"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/maelic13/rarog"
