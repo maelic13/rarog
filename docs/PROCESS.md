@@ -253,6 +253,20 @@ gap between the instruments (RAR-M61); on the B.2.4a arms both reached H1 under
 **A registered experiment names its runner and never changes it mid-way.**
 Moving an experiment in flight to the other harness voids it.
 
+**The runner's report is trusted (maintainer decision 2026-10-21).** A
+ledger row quotes Colosseum's own result and the wrapper's manifest, which
+already recounts the pentanomial from `games.pgn` and says so on its
+`pentanomial:` line; an agent does not recompute what the report gives.
+It computes only what the report lacks, from the run directory, and names
+the gap so it can be closed in the runner: on 2026-10-21 those gaps were
+the results by colour per side, the in-play telemetry (depth, nodes a
+move, speed, time a move; `colosseum-cli stats <run dir>` replays it
+offline but the end-of-run summary and `run-record.json` do not carry
+it), and for a tune the count of arms clamped at a range end with a
+dry-run warning for a seed within one perturbation of a rail (RAR-S104).
+`tools/diag/colosseum_recount.py` stays as the cross-check of a reporter
+change, run when the runner is re-pinned, not per row.
+
 **Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
 RAR-E32). A registration adopts the runner's fault policy by reference
 (Colosseum scores a time loss or crash as a game and fails the run above
