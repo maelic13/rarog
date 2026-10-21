@@ -61,7 +61,7 @@ const TOTAL_PHASE: i32 = 24;
 /// `LazyMargin` default: otherwise a fresh process's first search clears the
 /// evaluation cache and the TT on its clock, and `texel` fits, which never set
 /// the margin, describe a function the engine does not play.
-const LAZY_MARGIN: i32 = 423;
+const LAZY_MARGIN: i32 = 475;
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 /// The pieces whose material and squares `evaluate` sums itself. The pawns'
 /// depend on the pawns alone, so the pawn entry holds them with the
