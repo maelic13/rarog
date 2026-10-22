@@ -772,6 +772,9 @@ and adjudication never change after games are seen.
 - 2.5.0 adopts 2.4.0's rule against 2.4.0 (maintainer decision 2026-10-04)
   and meets it: STC +272.4 (95% about +245 .. +308, RAR-M64), `10+0.1`
   +260.5 ± 16.0 (RAR-M65), 4T +322.7 (95% +289 .. +362, RAR-M66).
+- A 2.6.0 from the C head meets the same rule against 2.5.0 (RAR-M76,
+  2026-10-22): STC +153.4 ± 10.7, `10+0.1` +149.3 ± 15.1, 4T +149.7 ± 14.7.
+  An interim release ahead of 3.0.0 is the maintainer's decision.
 - NNUE releases require a win over the last classical release at STC, LTC and
   4T, and a clean platform matrix.
 - Tag, push and publish only on maintainer instruction. From E.3.1 on, a

@@ -1,4 +1,4 @@
-# RAR-M76 — The 2.6.0 release reads: the C head against the Rarog 2.5.0 release at 3+0.03, 10+0.1 and four threads
+# RAR-M76 — The 2.6.0 release reads: the C head against the Rarog 2.5.0 release at 3+0.03, 10+0.1 and four threads — PLAYED 2026-10-22: +153, +149, +150; the rule passes
 
 Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -20,5 +20,12 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Most likely failure mode: the 4T read under the band, if the scaling loss weighs more head to head than against the pool.
 - **Stop rule:** each read once, no early stop, no extension; a voided read is repeated.
 - **Use:** if the rule passes, an interim 2.6.0 release is the maintainer's decision, cut by PROCESS's *Release* procedure from `master` after the work branch lands; GUIDE's *Next release* row and PLAN §4 record the decision. If it fails, no 2.6.0, and the failing read is reported with what it says.
-- **Result:** not played.
+- **Result (played 2026-10-22 10:43–12:30 UTC by the maintainer through `run.ps1`; each manifest: repo `3731859` clean, host 0.0%, `dry_run_sha256` equal to the registered one, exit 0, status completed, pentanomial recount of `games.pgn` agreeing, 0 faults, 0 time losses, no abnormal games):** Colosseum's reports, trusted as reported:
+  1. **STC** (`tools/results/colosseum_match_rel260-stc_20261022_124328.manifest.txt`, `games.pgn` `1CD2CBC0…`): **+153.4 ± 10.7 Elo**, nElo +248.2 ± 15.2, W-D-L 1,031-768-201, pentanomial [4, 49, 266, 475, 206], 1,000 pairs.
+  2. **LTC** (`tools/results/colosseum_match_rel260-ltc_20261022_130433.manifest.txt`, `games.pgn` `EB8648C7…`): **+149.3 ± 15.1 Elo**, nElo +239.6 ± 21.5, W-D-L 504-397-99, pentanomial [1, 31, 130, 238, 100], 500 pairs.
+  3. **4T** (`tools/results/colosseum_match_rel260-4t_20261022_134049.manifest.txt`, `games.pgn` `D3D3DE21…`): **+149.7 ± 14.7 Elo**, nElo +248.5 ± 21.5, W-D-L 507-392-101, pentanomial [2, 24, 133, 248, 93], 500 pairs.
+- **Disposition: the release rule passes on all three.** STC +153.4 with its lower bound +142.7 (rule: at least +40, lower bound above +25); LTC lower bound +134.2 and 4T lower bound +135.0 (rule: above 0). The C head qualifies as 2.6.0 against 2.5.0 by the rule 2.5.0 itself met; whether to release is the maintainer's decision.
+- **PREDICTION CALIBRATION (appended after exposure):** STC predicted +150 in [+115, +185]: hit (+153.4). LTC +135 in [+95, +175]: hit (+149.3); the longer control did not narrow the gap. 4T +95 in [+55, +135]: **a miss, 55 high** (+149.7). The assumption that failed is that the pool's 4T difference (+94, RAR-M74 against RAR-M66) would carry head to head. It does not: against its own predecessor the C head leads as much at four threads as at one. RAR-M74 already showed the same thing against Rarog 2.4.0 (+370 at 4T against +363 at 1T); its 4T shortfall came against the foreign engines, which gain more from four threads than Rarog does. So the fallen thread scaling (held for D.2) is real against other engines and invisible against another Rarog. Overall probability that the rule passes (0.97): yes.
+- **Conditional lesson:** a release read against the previous Rarog does not see a thread-scaling loss that both versions share; the pool at 4T does. Read both before a release that claims multi-thread strength.
+- **Retry trigger:** `closed`; the release itself is the maintainer's.
 - **Artifacts:** `analysis/artifacts/rel260/` (drivers, wrapper, dry-run logs); results `tools/results/rel260-{stc,ltc,4t}/`.
