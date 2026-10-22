@@ -10,14 +10,14 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   | # | Engine | Binary (SHA-256 prefix) | Role | Prior / held | CCRL Blitz 1CPU | CCRL 40/15 1CPU |
   |---|---|---|---|---|---|---|
   | 1 | Rarog C.11 head (`2.6.0-dev+c11head`) | `rarog-c11head-pext-pgo.exe` (`9750D3DE`) | fitted | 3429 (RAR-M73) | — | — |
-  | 2 | Houdini 3 Pro | `houdini\Houdini_3_Pro_x64.exe` (`b0e7a631`) | **anchor, fixed 3287** | RAR-M57 | not listed | 3186 |
-  | 3 | Critter 1.6a | `Critter_1.6a_64bit.exe` (`a8988ac9`) | **anchor, fixed 3192** | RAR-M57 | 3164 | 3137 |
-  | 4 | Houdini 4 Pro | `houdini\Houdini_4_Pro_x64B-v1x.exe` (`a7363131`) | fitted; a check of the scale | 3310 (RAR-M57's value; that binary's hash was not recorded, so it is not fixed) | not listed | 3210 |
-  | 5 | Komodo 10.4 | `komodo\komodo-10.4-64bit.exe` (`63d8593e`) | fitted, about level | 3420 | not listed | 3359 |
-  | 6 | Houdini 6.03 Pro pext | `houdini\Houdini_6.03_Pro_pext_x64.exe` (`e5c0fdc5`) | fitted, stronger | 3460 | 3468 (Houdini 6) | 3389 |
-  | 7 | Komodo 13.3 bmi2 | `komodo\komodo-13.3-64bit-bmi2.exe` (`5cdebfc8`) | fitted, stronger | 3478 | 3471 | 3402 |
-  | 8 | Stockfish 11 bmi2 | `stockfish\stockfish-11-x64-bmi2.exe` (`271b62dc`) | fitted, clearly stronger | 3600 | 3563 | 3493 |
-  | 9 | Dragon 1 (avx2) | `dragon\dragon-64bit-avx2.exe` (`672e2ec4`) | fitted, clearly stronger | 3648 | 3613 | 3527 |
+  | 2 | Houdini 3 Pro | `houdini\Houdini_3_Pro_x64.exe` (`b0e7a631…`) | **anchor, fixed 3287** | RAR-M57 | not listed | 3186 |
+  | 3 | Critter 1.6a | `Critter_1.6a_64bit.exe` (`a8988ac9…`) | **anchor, fixed 3192** | RAR-M57 | 3164 | 3137 |
+  | 4 | Houdini 4 Pro | `houdini\Houdini_4_Pro_x64B-v1x.exe` (`a7363131…`) | fitted; a check of the scale | 3310 (RAR-M57's value; that binary's hash was not recorded, so it is not fixed) | not listed | 3210 |
+  | 5 | Komodo 10.4 | `komodo\komodo-10.4-64bit.exe` (`63d8593e…`) | fitted, about level | 3420 | not listed | 3359 |
+  | 6 | Houdini 6.03 Pro pext | `houdini\Houdini_6.03_Pro_pext_x64.exe` (`e5c0fdc5…`) | fitted, stronger | 3460 | 3468 (Houdini 6) | 3389 |
+  | 7 | Komodo 13.3 bmi2 | `komodo\komodo-13.3-64bit-bmi2.exe` (`5cdebfc8…`) | fitted, stronger | 3478 | 3471 | 3402 |
+  | 8 | Stockfish 11 bmi2 | `stockfish\stockfish-11-x64-bmi2.exe` (`271b62dc…`) | fitted, clearly stronger | 3600 | 3563 | 3493 |
+  | 9 | Dragon 1 (avx2) | `dragon\dragon-64bit-avx2.exe` (`672e2ec4…`) | fitted, clearly stronger | 3648 | 3613 | 3527 |
 
   Left out: Dragon 2.6.1 and 3.3, Reckless 0.9.0 and Stockfish 18/19 (head expected under 20%, little information; Dragon 3.3 also prints a foreign licence string), Lc0 (CUDA only), the WinBoard-only programs, and engines well below the head.
 - **Conditions: RAR-M73's,** except the format and the field: `tools/colosseum.ps1 -Mode gauntlet -Seed 44 -Hash 128 -MarginMs 2000` with `--format round-robin --games-per-pair 2 --cycles 150` through `analysis/artifacts/pool2/round_robin.ps1`: 36 pairs, **300 games a pair, 10,800 games**, about 2 hours; `3+0.03`, margin 2,000 ms, Hash 128 for every engine, one thread each set explicitly under each engine's own option (`Threads=1`; Houdini 3/4 and Critter default to 32), UHO_Lichess_4852_v1 at seed 44, no adjudication, 14 concurrent games, runner the pinned Colosseum 0.3.0. Dry run 2026-10-22 09:27, exit 0, at policy: the plan's `fixed_ratings` hold exactly participants 2 (3287) and 3 (3192), every participant carries `Hash=128` and `Threads=1`, the format is a round robin of 150 cycles; `dry-run.json` SHA-256 **`D42B868428274CE15C687544718F12C1C3E831E4640102CE8EB3A7B7F283143B`** (stable over two dry runs), which the run's manifest must repeat. The wrapper's `-SelfTest` proved the idle wait, the live stream and both fault paths.
