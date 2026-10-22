@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.1.2.1** (`R2`): Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13).
+**Now: D.1.3** (`I2`): The clock cluster: six clock-only mechanisms from RAR-R14's handoff.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -33,10 +33,13 @@ field, about 3,475 on CCRL's Blitz scale.
 
 - [ ] **D.1** Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — **R2**
     - [x] **D.1.1** Time-management diagnosis, pulled forward: rec1's stalled re-search, rec2's search past a found mate, rec3's clock-independent stop; mechanism, frequency in games, the frozen fix and its gate — NO_CHANGE 2026-10-06
-    - [ ] **D.1.2** Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — **RESEARCH / R2**
-        - [ ] **D.1.2.1** Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — **RESEARCH / R2**
-        - [ ] **D.1.2.2** The forfeit margin against OS holds — **RESEARCH / R2**
-        - [ ] **D.1.2.3** The audit and the bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier; one SPRT `[0,3]` for D.1.2 — **RESEARCH / R2**
+    - [ ] **D.1.2** Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — **READY_FOR_IMPLEMENTATION / R2**
+        - [ ] **D.1.2.1** Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — **READY_FOR_IMPLEMENTATION / R2**
+        - [ ] **D.1.2.2** The forfeit margin against OS holds — **READY_FOR_IMPLEMENTATION / R2**
+        - [x] **D.1.2.3** The audit against the ADR-0065 checklist and the bound-model decision — DONE 2026-10-22
+    - [ ] **D.1.3** The clock cluster: six clock-only mechanisms from RAR-R14's handoff — **READY_FOR_IMPLEMENTATION / I2**
+    - [ ] **D.1.4** The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — **READY_FOR_IMPLEMENTATION / V**
+    - [ ] **D.1.5** The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — **READY_FOR_IMPLEMENTATION / V**
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — **RESEARCH / R2**
 - [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — **RESEARCH / R2**
 - [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
@@ -84,13 +87,13 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None registered; the board's Now is D.1.2.1. Last closed: **RAR-M76** (2026-10-22), the 2.6.0 release reads against the 2.5.0 release: STC **+153.4 ± 10.7**, `10+0.1` **+149.3 ± 15.1**, four threads **+149.7 ± 14.7**, so the C head meets the release rule and is released as 2.6.0 (maintainer decision 2026-10-22). Before it, **RAR-M75**: the C head 3,478.9 ± 15.1 in a nine-engine round robin, CCRL Blitz-equivalent 3,475 ± 82. Earlier closes are in `docs/EXPERIMENTS.md` and `docs/HISTORY.md` |
+| Active experiment | None registered; the board's Now is D.1.3. Last closed: **RAR-R14** (2026-10-22), D.1.2's time-management research, zero games: the fifty-move horizon drifts `3+0.03` games to a 155 ms clock floor and the four forfeits since 2026-10-10 are OS holds longer than the clock they hit; one clock-only cluster, one fit and one SPRT `[0,3]` follow (D.1.3–D.1.5). Before it, **RAR-M76** (2026-10-22), the 2.6.0 release reads against the 2.5.0 release: STC **+153.4 ± 10.7**, `10+0.1` **+149.3 ± 15.1**, four threads **+149.7 ± 14.7**, so the C head meets the release rule and is released as 2.6.0 (maintainer decision 2026-10-22). Before it, **RAR-M75**: the C head 3,478.9 ± 15.1 in a nine-engine round robin, CCRL Blitz-equivalent 3,475 ± 82. Earlier closes are in `docs/EXPERIMENTS.md` and `docs/HISTORY.md` |
 
 ## Holds and obligations
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13): real, no measured cost at `3+0.03`/`10+0.1`. Forfeit-margin evidence for D.1.2: the three time losses in gates since 2026-10-10 (RAR-E29 round 3068, RAR-E32 rounds 1777 and 1855; Colosseum's `failed-games` records) each came on a short search (2, 15 and 32 ms of engine time) whose process the OS then held for 88.0, 82.4 and 69.4 ms, so the move arrived at 94.3, 99.9 and 90.8 ms against deadlines of 89.2, 69.9 and 75.0 ms; all three in games already decided on the board. A margin under about 90 ms with that little clock left does not cover one such hold. A fourth came at `10+0.1` (RAR-E42's read, round 875: an 81 ms search, a 129.3 ms hold, the move at 194.8 ms against a 163.4 ms deadline), so the holds reach past 120 ms | Scheduled as PLAN **D.1.2.1** (the stalls) and **D.1.2.2** (the forfeit margin), first in D.1 after Phase C, gated with D.1.2.3; earlier if RAR-R13's trigger fires (a game record shows a cost) | D.1.2.1 and D.1.2.2 close (owners) |
+| Won-ending time stalls (rec1 cascade, rec2 no stop after a proved mate, rec3 overrun; RAR-R13, reproduced on the C head by RAR-R14): real, no measured cost at `3+0.03`/`10+0.1`. The forfeit margin (RAR-R14): the four time losses since 2026-10-10 (RAR-E29 round 3068, RAR-E32 rounds 1777 and 1855, RAR-E42 round 875) are 69–129 ms OS holds at clocks of 70–163 ms, in 226,180 games at the 20 ms margin; holds of 80 ms or more hit 0.11–0.15% of moves at one thread and 0.4% at four. No reserve covers a hold longer than the clock, and the clock is there because the fifty-move horizon drifts a `3+0.03` game to a 155 ms floor (22–41% of the head's games touch 100 ms; Stockfish 11, Dragon and Komodo never go under 200 ms) | Researched (RAR-R14, `analysis/d12_tm_research_2026-10-22.md`): the fixes are items of the clock cluster **D.1.3** (a proved-mate stop, a root fail-high stop past the soft target, the sub-second horizon contraction; reserve and harness margin unchanged), fitted by **D.1.4** and read by **D.1.5**'s probe, profile and forfeit checks | D.1.5 closes; D.1.2.1 and D.1.2.2 (owners) tick on its reads |
 | RAR-M74's finding: the C head's thread scaling fell (in-game NPS 4T/1T 2.60 against the B.9 head's 3.72; −9.2% against B.9 at 4T) | A zero-game bench read at 1T and 4T on both heads (`tools/nps_scaling.ps1`) locates it in the engine or in the games' conditions | D.2 (Lazy SMP quality at 4T/8T), whose premise RAR-M46 had contradicted for 2.4.0 |
 
 Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows (the order can differ from the numbering). Held items stay unticked in place.

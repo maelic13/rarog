@@ -323,10 +323,12 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.2.1 | RESEARCH | R2 | Won-ending time stalls (RAR-R13): rec1's cascade, rec2's missing stop, rec3's overrun |
-| D.1.2.2 | RESEARCH | R2 | The forfeit margin against OS holds |
-| D.1.2.3 | RESEARCH | R2 | The audit and the bound model; one SPRT `[0,3]` for D.1.2 |
-| D.1.2 | RESEARCH | R2 | Closes with D.1.2.3's SPRT, which gates the three addenda together |
+| D.1.3 | READY_FOR_IMPLEMENTATION | I2 | The clock cluster: six clock-only mechanisms from RAR-R14's handoff, `bench 13` unchanged |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
+| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
+| D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
+| D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
@@ -444,28 +446,148 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
       D.1.2 is carried out in three addenda (added 2026-10-11 by maintainer
       request, so the two GUIDE holds it owns have steps that discharge
-      them), gated together by D.1.2.3's SPRT:
-        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.** First
-          in D.1, after Phase C; earlier if RAR-R13's trigger fires (a game
-          record shows a cost). Reproduce each with the timed probe
-          (`tm_rec_probe.py`) on the head D.1 starts from, fix it inside the
-          bound model (an end inside an iteration after a fail-high past the
-          soft target; a stop on a proved, stable mate), and show the probe
-          with no move at the hard maximum and `tm_games.py`'s won and mate
-          shares at ≥ 0.9 × the maximum below their Phase C values (above).
-        - **D.1.2.2 The forfeit margin against OS holds — `R2`.** The
-          three gate time losses since 2026-10-10 (RAR-E29 round 3068,
-          RAR-E32 rounds 1777 and 1855) each came on a short search whose
-          process the OS held for 88.0, 82.4 and 69.4 ms with deadlines of
-          89.2, 69.9 and 75.0 ms. Measure the hold distribution on this host
-          from the gates' own `failed-games` and per-move timing records,
-          then decide the engine's minimum move reserve at low clock (and
-          whether the harness's 20 ms margin should change, a maintainer
-          decision recorded in PROCESS) so that a hold of that size does not
-          forfeit; a deterministic test with an injected delay checks it.
-        - **D.1.2.3 The audit and the bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier; one SPRT `[0,3]` for D.1.2 — `R2`, then `V`.** The
-          rest of D.1.2 as written above, with D.1.2.1 and D.1.2.2 inside
-          the one gated change.
+      them), gated together by one SPRT, which D.1.5 now holds.
+      **Research closed 2026-10-22, `READY_FOR_IMPLEMENTATION`** (RAR-R14,
+      `analysis/d12_tm_research_2026-10-22.md`; re-opened in full by the
+      maintainer's request of 2026-10-22; zero games). Read from 11,200 of
+      the C head's games in six runs (RAR-M73–M76) and the formulas:
+      - **The floor.** The budget assumes fifty moves to go at every clock,
+        so at 500 ms it still counts 1,470 ms of future increments; a
+        `3+0.03` game drifts to the clock where the optimum equals the
+        increment, 155 ms. 22–41% of the head's games touch 100 ms and 21%
+        of its moves against RAR-M75's field are played under 200 ms.
+        Stockfish 11, Dragon 1 and Komodo 13.3 never go under 200, 790 and
+        650 ms; Houdini 3 and 6.03 go as low as the head. Current
+        Stockfish's sub-second horizon contraction (`mtg = time_ms / 20`)
+        alone lifts the drift to 400 ms; Reckless's linear bounds sit at
+        510 ms.
+      - **Holds and forfeits.** OS holds of 80 ms or more hit 0.11–0.15%
+        of moves at one thread and 0.4% at four (the move waits for every
+        helper); four time losses in 226,180 games at the 20 ms margin
+        since 2026-10-10, each a 69–129 ms hold at a clock of 70–163 ms in
+        a lost game. No reserve covers a hold longer than the clock; a
+        policy that never holds such a clock does. Elo value here under
+        0.01; the cost is robustness on another harness.
+      - **Spend.** Median 0.78–0.91 of the optimum, 99th percentile 3.7–4.5;
+        21–31% of all head time is past the optimum; the front-loaded shape
+        (44–47% of the game's time in the first forty plies) is shared with
+        Stockfish 11 and Houdini 6, while Dragon and Komodo spread it and
+        leave 1.2–1.6 s unused. No zero-game instrument reads the shape's
+        Elo.
+      - **Stalls.** RAR-R13 reproduces on the C head (won and mate moves at
+        ≥ 0.9 × the maximum 0.30–0.44% and 0.24–0.53% at `3+0.03`, 1.44% and
+        3.40% at `10+0.1`), all in wins bar three draws.
+      - **Donors.** Reckless 0.10.0-dev: linear soft and hard bounds in the
+        main clock, a continuous node-fraction multiplier (×0.55–2.5), pv
+        and eval stability discounts, no mate stop, no in-iteration stop,
+        a 65% vote. Stockfish master 2026-09-30: Rarog's shape plus
+        `originalTimeAdjust` (a per-control scale, 0.76 at `3+0.03`, 1.53 at
+        40/15), the sub-second contraction, a time-disadvantage scale, a
+        stability discount (`timeReduction`), an effort cut that fires only
+        above 90% concentration, a `mate_in(3)` stop, shallower iterations
+        once half the target is spent. RAR-R13's "Stockfish has no clock-mode
+        mate stop" is corrected there; rec2's `mate 5` lies outside its rule.
+      The decision is one clock-only cluster (D.1.3), one fit (D.1.4) and
+      one gate (D.1.5); the addenda's findings:
+        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.**
+          Research closed 2026-10-22: the fix is two cluster items, a
+          proved-mate stop (a clock search ends after a completed iteration
+          whose root mate for the side to move has held with the same move
+          and distance for three iterations, or whose score is a loss in at
+          most two plies) and a root fail-high stop past the soft target
+          (a window that fails high once the elapsed time is at or past the
+          soft target ends the search and plays the move that failed high,
+          with its lower bound; that bound exceeds the previous best's
+          exact score, so no best move is discarded and B.5's mid-iteration
+          trigger is not reopened). Ticks when D.1.5's timed probe
+          (`tm_rec_probe.py`, both clocks, idle host) shows no rec move at
+          the hard maximum, rec2 under 2 s, and `tm_profile.py` on the
+          gate's games reads the won and mate shares at ≥ 0.9 × the maximum
+          below 0.2%.
+        - **D.1.2.2 The forfeit margin against OS holds — `R2`.**
+          Research closed 2026-10-22: the margin is a horizon question. The
+          cluster contracts the horizon below one second of clock
+          (`mtg = min(50, ⌊clock_s × TmHorizonPerSec⌋)`, seed 50, a fit
+          coordinate); the engine's reserve (`2 × Move Overhead`, +30 ms
+          above one thread) and the harness's 20 ms margin stay, with the
+          arithmetic recorded in the packet. A deterministic test injects a
+          late `go` stamp at a 150 ms clock and checks the reserve holds.
+          Ticks when D.1.5's games show no candidate-arm time loss and
+          `tm_profile.py` reads the candidate's clock-floor median above
+          350 ms at `3+0.03` with under 3% of games touching 100 ms.
+        - **D.1.2.3 The audit against the ADR-0065 checklist and the bound-model decision — `R2`, DONE 2026-10-22.**
+          Ticked in the packet: present are distinct budgets, an immutable
+          maximum rooted at `go` receipt, and completed-iteration
+          adjustment by best-move change, score trend and effort; absent
+          are a stability-over-iterations discount (both donors carry one),
+          ponder credit (ponder is off in CCRL and Colosseum) and a
+          first-iteration guard on the hard stop; different is the helper
+          vote (D.2). The effort term has Stockfish's shape, a cut only for
+          concentrated effort, which is why RAR-S47 read it inert; Reckless's
+          is a continuous extender. The bound model: a clock search may end
+          inside an iteration after a root fail-high past the soft target,
+          and on a proved stable mate; a stability factor is added; the
+          effort band's floor and endpoints become coordinates whose ranges
+          reach both donors' shapes, so the fit decides the shape question.
+          The SPRT moves to D.1.5.
+    - **D.1.3 The clock cluster: six clock-only mechanisms from RAR-R14's handoff — `I2`.**
+      From `analysis/d12_tm_research_2026-10-22.md`, *Implementation
+      handoff*, in `src/search/time.rs` and the root loop of
+      `src/search/mod.rs`: (1) the sub-second horizon contraction
+      (`TmHorizonPerSec`, seed 50, range 20–100); (2) a stability factor
+      `max(TmStabFloor, TmStabBase − TmStabSlope × k)`, `k` the completed
+      iterations since the best move last changed, seeds 1.2881 / 0.0440 /
+      0.716; (3) the effort band as coordinates, `TmEffortHigh` → `TmEffortLow`
+      as the best move's share of the search's nodes rises from
+      `TmEffortFloor` to 1.0, seeds 0.924 / 0.71 / 0.79, ranges 0.6–2.0 /
+      0.4–1.0 / 0.0–0.95; (4) the proved-mate stop and (5) the root
+      fail-high stop of D.1.2.1; (6) no hard stop before the first
+      iteration completes. Invariants: `bench 13` unchanged (13,987,223 /
+      EBF 2.565, by construction); `bestmove` is the move the last `info`
+      line names and a fail-high stop's line carries `lowerbound`; the
+      maximum is never raised; the DTZ root's `maximum = optimum` and the
+      tablebase extension's box are unchanged; nothing per node changes.
+      Tests: the first-iteration guard, the mate stop at a fixed node budget
+      (fires after three stable mate iterations, not under `go infinite`),
+      the fail-high stop on a constructed window, the horizon at 500 and
+      1,000 ms, the injected late `go` stamp at 150 ms, SMP inertness at one
+      thread. Instrumentation behind `diag`: counters for the two stops and
+      the guard; a per-iteration log of `k`, the effort share and each
+      factor for the activation read. Cheap qualification: the fingerprint;
+      the timed probe (maintainer-run, idle host, about eight minutes).
+      Non-goals: the aspiration loop (RAR-S89, RAR-S17), the thread vote
+      (D.2), ponder, `nodestime`, the `movestogo` branch, the harness
+      margin, Stockfish's `originalTimeAdjust` and time-disadvantage scale
+      and `increaseDepth` (their triggers are in the packet).
+    - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`.**
+      Conditional (PLAN rule 4), with the zero-game sweep replaced by what
+      a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
+      0.3 and each new coordinate at a range end in a 200-game match, each
+      of which must move `tm_profile.py`'s time per game as the formula
+      says (about −60% for the first); (b) the activation read from D.1.3's
+      log on B.5's 300-position `3000+30` replay: a factor at one end on
+      more than 90% of iterations drops its coordinate. Then one registered
+      SPSA block of 60,000 games at `3+0.03`, Colosseum `spsa-tune`, over
+      the twelve clock coordinates (the seven of 2.3.0 and the five new
+      ones), seeded from the values above; the movement stop rule (rule 7c)
+      ends it, and a second block runs only if block 1 moved a coordinate a
+      full step and the rule did not fire. About ten hours a block.
+    - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
+      Registered as its own ledger entry before any game, with the packet's
+      prediction re-frozen at the fitted values: the fitted cluster against
+      the head, Colosseum `sprt-default`, `[0,3]` nElo, `3+0.03`, one
+      thread, cap 20,000 pairs (about seven hours; a true +6 nElo accepts
+      near 26,000 games); then 1,000 games at `10+0.1` and 1,000 at four
+      threads as direction reads (about 0.6 and 0.8 hours). Acceptance adds
+      D.1.2.1's probe and D.1.2.2's profile and forfeit reads. H1 bakes the
+      fitted values, ticks D.1.2.1, D.1.2.2, D.1.2 and D.1, re-declares the
+      fingerprint (unchanged) and writes the user-facing changelog entry.
+      H0 returns the cluster to research with its estimate; the cap bakes
+      nothing and records "unresolved". **Fallback, registered now:** on
+      H0 or the cap, mechanisms 1, 4, 5 and 6 alone at their seeds are
+      offered under AGENTS' repair case 2 (a 2,000-game read with a harm
+      rule at −13 nElo), each expected near zero and bought for
+      correctness; the maintainer decides whether to run it.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
