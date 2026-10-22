@@ -51,12 +51,14 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **E.3** Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — **M**
     - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
     - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
+- [ ] **E.4** The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — **R2**
 
 ## Phase F — NNUE (own data only)
 
 - [ ] **F.0** Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — **R3**
 - [ ] **F.1** Board events and accumulator scaffolding, behaviour-neutral for HCE; cost ledger — **I2**
 - [ ] **F.2** Data generation at scale: 30–60M unique positions, splits, manifests, hashes — **V**
+    - [ ] **F.2.1** Classical refit on search-visited data: the frozen HCE's whole surface refitted on F.2's dataset, gated as an evaluation change; the classical line's release if it wins — **V**
 - [ ] **F.3** Trainer hardening and baseline nets, two seeds per configuration — **I2**
 - [ ] **F.4** Scalar integration: `quantised.bin` contract, integer-exact conformance, HCE fallback — **I2**
 - [ ] **F.5** Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — **I2**
