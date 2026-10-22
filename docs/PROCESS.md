@@ -241,7 +241,10 @@ Run the backup path as a cross-check when:
 - a result is surprising: a sign nobody predicted, a magnitude well outside the
   registered band, or a gate that resolves far faster or slower than RAR-M10
   predicts for its bounds;
-- the Colosseum version changes, which means `colosseum.pin.json` was re-pinned.
+- the Colosseum version changes, which means `colosseum.pin.json` was re-pinned,
+  unless the release changes reporting only: no game played, paired, scored
+  or tested differently, as its release notes state (maintainer decision
+  2026-10-22, on the 0.4.0 re-pin, which owed none).
 
 A cross-check is a fixed match or a replayed gate on the same arms, read as
 "do the two instruments agree inside their intervals" and never as a second

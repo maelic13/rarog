@@ -170,7 +170,9 @@ clamps beside its verdict. Neither is a refusal. The re-pin was qualified as
 above: both digests through `setup_tools.ps1`, `test_colosseum_guards.ps1`
 58/58 with the new reporting cases, a real `match` and an `spsa` dry run
 through the wrapper, and a `datagen.ps1` run. No null pair was played: a
-re-pin owes none (maintainer decision 2026-10-22; PROCESS, *Harness*).
+re-pin owes none. No fastchess cross-check was run either: a release that
+changes reporting only owes none (maintainer decisions 2026-10-22;
+PROCESS, *Harness*).
 
 ## The backup path
 
