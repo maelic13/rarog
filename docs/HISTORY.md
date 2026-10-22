@@ -59,6 +59,27 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-22 — PLAN C.11 DONE, and PHASE C IS CLOSED.** The evaluation
+  programme, 2026-10-05 to 2026-10-22, each step's record verbatim in
+  `docs/archive/PLAN-closed-2026-10-22.md`. Accepted units, each gated at
+  `3+0.03` against its predecessor: C.2's refit (RAR-E24, +35.9 ± 9.3 Elo),
+  C.3's king safety (RAR-E25, +32.7 ± 8.9), C.5.2's opposite-bishop rule
+  (RAR-E29), C.4.3's threats (RAR-E32, +13.0 ± 5.3), C.6's pawns and passers
+  (RAR-E42, +6.4 ± 3.6), C.8's two refit cycles (RAR-E60 +11.0 ± 4.9,
+  RAR-E61 +6.7 ± 3.7), C.12's speed pass (RAR-S99, +42.3 ± 9.5, +22.5%
+  NPS) and C.10's search tune (RAR-S105, +4.5 ± 2.9); C.7, C.9 and C.13's
+  research leads closed `NO_CHANGE`. C.11's checkpoint: the same-search
+  evaluation deficit +99.2 ± 16.6 Elo (RAR-O07; +181.7 at the start), the
+  pool at 1T 3,428.8 (+142.3 ± 24.8 over the B.9 head, RAR-M73) and at 4T
+  3,433.7 (+93.7 ± 25.5, RAR-M74, the thread scaling fallen and held for
+  D.2), bench NPS +28.92% over the B.9 head (RAR-P39), the evaluation 21.1%
+  of search samples (RAR-P40); the king-danger lead closed as the index's
+  structure (RAR-E73), and the classical evaluation frozen at engine source
+  `9fb525e` (13,987,223 / EBF 2.565). The toolchain moved to `rustc 1.99.1`
+  (RAR-P36–P38, −1.6% NPS, kept by maintainer decision). A wider field
+  (RAR-M75) rates the C head 3,478.9, fourth of nine, CCRL Blitz-equivalent
+  3,475 ± 82.
+
 - **2026-10-06 — Allocation and copy audit of the per-node code.** Every
   clone, lock, `Arc` and `unsafe` site in `src/` was traced to where it
   runs, and the fat-LTO pext assembly of `dcf15c5` (fingerprint exact) was

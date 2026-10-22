@@ -142,7 +142,7 @@ VALID_STATES = {
     "CLOSED",
 }
 VALID_CLASSES = {"R3", "R2", "I2", "I1", "M", "V"}
-ACTIVE_PREFIXES = ("C.",)
+ACTIVE_PREFIXES = ("D.",)
 
 
 def parse_workflow_rows(lines):
