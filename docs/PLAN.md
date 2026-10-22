@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: activation read done (all twelve stay); the five wire checks, then SPSA block 1 (maintainer) |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: activation read done; four of five wire checks live, the horizon's missed its frozen rule; block 1 waits on the maintainer's decision |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -734,6 +734,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         at most two blocks on rule 7c's count. The surface's ranges are
         the declared ones, except `TmOptScale` at 5000..20000. It runs
         only after all five wire checks read live.
+
+      **Wire checks played 2026-10-22: four live, the horizon's not by its
+      frozen rule** (RAR-R15, *Result of (a)*). The stability base, slope
+      and floor and the effort floor moved time a move by +39%, −15%, +17%
+      and −9%, each live and inside or past its band. The horizon moved the
+      1000–2000 ms band −19% but the 500–1000 ms band only −2.3%, against
+      "both bands ≥ 5% lower". The engine applies the coordinate exactly
+      there (the optimum at 750 ms is 0.686 of the seed's, the formula's
+      figure), and the clock floor rose (p10 146 → 242 ms, games under
+      200 ms 35 → 11). Near 40 ms a move, time spent stops following the
+      optimum. **Block 1 waits on a maintainer decision:** accept the wire
+      on that evidence and keep all twelve coordinates (recommended), drop
+      `TmHorizonPerSec`, or re-register a horizon check first.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against

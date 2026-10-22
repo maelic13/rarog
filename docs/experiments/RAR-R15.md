@@ -157,3 +157,64 @@ fault stop leaves nothing to bake, and D.1.4 returns to its registration.
 - Most likely failure: the surface is flat at `3+0.03` (RAR-R14's H2). Then
   one or two coordinates move, mostly the near-collinear scale pair, and
   the rule stops after block 1.
+
+## Result of (a), the five wire checks (played 2026-10-22, maintainer-run)
+
+`run_wire_checks.ps1` played all five. Each ran on an idle host (0.4–4.4%
+busy, no waiver), completed with 0 faults and 0 time losses, and its recount
+agreed. The readings are `d14-wire-<check>.txt` beside the script:
+horizon20 `c3b835f9…`, stabbase20000 `f8bf5bd5…`, stabslope2000
+`d0ba0899…`, stabfloor10000 `69a7a599…`, efffloor0 `365857ee…`.
+
+| Check | Read (arm A / arm B) | Ratio | Expected (band) | Frozen rule |
+|---|---|---:|---|---|
+| horizon, 500–1000 ms band | 42 / 43 ms a move | 0.977 | 0.78–0.89 (0.65–0.97) | **not ≥ 5% lower** |
+| horizon, 1000–2000 ms band | 55 / 68 ms | 0.809 | 0.78–0.89 (0.65–0.97) | live |
+| stability base | 129.2 / 92.8 ms, plies 0–19 | 1.392 | 1.36 (1.15–1.60) | live |
+| stability slope | 75.4 / 89.1 ms | 0.846 | 0.89 (0.70–0.97) | live |
+| stability floor (slope 2000 on both arms) | 89.8 / 76.8 ms | 1.169 | 1.09 (1.02–1.25) | live |
+| effort floor, 800 games | 81.6 / 89.4 ms | 0.913 | 0.94 (0.85–0.99) | live |
+
+The standard errors are 1.5–1.9% a mean at 200 games and 0.9% at 800, as
+sized.
+
+**Four checks are live. The horizon check fails its frozen rule**, which
+required both bands ≥ 5% lower; the 500–1000 ms band read −2.3%. Under
+the registration a check that is not live stops the fit until it is
+understood.
+
+What is known about the miss, all read after the games:
+- **The engine applies the coordinate exactly.** `horizon_engine_check.py`
+  (`7b481162…`) on a `tune,diag` build (`rarog-d14-tune-diag.exe`,
+  `612f02cb4e9c81c5…`, bench 13,987,223) reads the optimum at a 750 ms
+  clock, ply 80, as 35.8 ms at 20 against 52.2 at 50: a ratio of 0.686, the
+  formula's to three decimals. At 1,500 ms it reads 0.833, also the
+  formula's.
+- **The instrument reports the coordinate elsewhere.** The 1000–2000 ms band
+  fell 19%, past the expectation. The clock floor rose: p10 146 → 242 ms,
+  median 735 → 1,024 ms, games under 200 ms 35 → 11 of 200. The 100–200 and
+  200–500 ms bands fell 21% and 9%.
+- **So the miss is in the response, not the wire.** At about 40 ms a move,
+  time spent stops following the optimum. The seed arm spends 0.83 of its
+  52 ms optimum in that band, while arm A spends 1.17 of its 36 ms optimum.
+  Likely causes, not tested: the soft stop is checked only between
+  completed iterations, whose granularity near 40 ms is a large share of
+  the move; and arm A reaches that band later in the game.
+- **Calibration of the four live checks:** the 0.66 damping taken from
+  `TmOptScale` underpredicted them. Their measured log ratios are 0.71
+  (base), 0.98 (slope), 1.24 (floor) and 0.94 (effort floor) of the
+  formula's, so the damping is closer to 1 for factors than for a 0.3
+  scale.
+- **Prediction 1 (all five live, 0.75) missed.** Its weakest-check guess
+  (the effort floor) was wrong: the effort floor passed, the horizon did
+  not.
+
+**Decision owed to the maintainer before block 1.** The frozen rule stops
+the fit, and whether this is "understood" is not the agent's to rule after
+the result. The options:
+1. **Accept the wire as live on the evidence above, and run block 1 with all
+   twelve coordinates,** recording the failed criterion as a calibration
+   (the agent's recommendation).
+2. Drop `TmHorizonPerSec` from the surface, fixed at its seed 50.
+3. Re-register a horizon check at lower clocks, or one read by the clock
+   floor, and run it before the block.
