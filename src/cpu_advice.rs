@@ -153,8 +153,8 @@ fn advice_for(built: Tier, recommended: Tier, slow_pext: bool) -> Option<String>
             recommended.asset()
         ),
         // Leaving measured speed unclaimed. No figure here on purpose: the
-        // README owns the numbers, so they can be revised without
-        // rebuilding the engine, and base-to-pext is not directly measured yet.
+        // gap between builds depends on the CPU, so the advisory names the
+        // faster build and the README explains the choice without numbers.
         _ => format!(
             "CPU advisory: this CPU supports the `{}` build, which is faster than \
              the `{}` build you are running.",
