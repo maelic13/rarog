@@ -3,48 +3,26 @@ fn main() {
 
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
-    // The macOS PGO warning below is EXPECTED. Do not "fix" it by silencing
-    // warnings.
-    //
-    // A PGO build on macOS prints:
-    //
-    //     warning: rarog@x.y.z: Inherited flag "-fprofile-use=<...>.profdata"
-    //              is not supported by the currently used CC
-    //
-    // What it means: `cc` inherits a subset of rustc codegen flags, and PGO
-    // flags are inherited for CLANG ONLY, by design — GCC and clang use
-    // incompatible profile formats, and rustc is LLVM like clang. So on macOS
-    // `cc` translates `-C profile-use` into `-fprofile-use=`, probes whether
-    // the compiler accepts it, and Apple clang refuses: its LLVM is older than
-    // the one whose `llvm-profdata` wrote the file. `cc` then drops the flag
-    // and says so.
-    //
-    // What it does NOT mean: that macOS is the odd one out. On MSVC the PGO
-    // flags are never inherited at all — verified by capturing the invocation,
-    // which is plain `cl.exe -nologo -MD -O2 -Brepro -I vendor/fathom/src -W0
-    // /TP /std:c++17 -DTB_NO_HELPER_API ...` with no profile flag of any form.
-    // **No platform compiles this file with PGO.** macOS is only the one that
-    // mentions it. Windows' silence does not mean "it works there".
-    //
-    // Why it is left alone: tablebases work normally — this is about how
-    // `tbprobe.c` is optimised, never about whether probing runs or is
-    // correct. `SyzygyPath` is empty by default, no gate harness sets it, and
-    // datagen hands its tablebase flags to fastchess rather than to the
-    // engine, so no measurement can be affected. The exposure is a little
-    // probe speed for users who configure tablebases.
-    //
-    // If the noise ever needs to go, `.inherit_rustflags(false)` is the switch,
-    // and it is ISA-safe: `cc` never inherits `-C target-cpu`/`target-feature`
-    // and emits no `-march`/`-mcpu`/`-mtune`, so it cannot move this file's
-    // instruction set. It is blunt, though — it also stops inheriting
-    // `stack-protector`, `dwarf-version` and `control-flow-guard`, none of
-    // which we set today but any of which a future flag might rely on.
+    // Fathom's C is compiled without PGO on every platform. `cc` inherits
+    // rustc's codegen flags and, for clang, turns `-C profile-generate` and
+    // `-C profile-use` into `-fprofile-*`. Apple clang accepts the generate
+    // flag and instruments `tbprobe.c` in its own LLVM's raw-profile format,
+    // which the Rust profiling runtime refuses once the two LLVMs differ
+    // (rustc 1.99, LLVM 23: "Runtime and instrumentation version mismatch:
+    // expected 11, but get 10"), so training writes no profile and the macOS
+    // PGO build fails. MSVC and GCC never inherit the PGO flags, so their C
+    // object is unchanged. Inheritance is off only under PGO; `cc` never
+    // inherits `-C target-cpu`/`target-feature`, so this cannot move the
+    // file's instruction set, which the ISA tier sets below.
+    let rustflags = std::env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+    let pgo = rustflags.contains("profile-generate") || rustflags.contains("profile-use");
     let mut build = cc::Build::new();
     build
         .file("vendor/fathom/src/tbprobe.c")
         .include("vendor/fathom/src")
         .define("TB_NO_HELPER_API", None)
-        .warnings(false);
+        .warnings(false)
+        .inherit_rustflags(!pgo);
 
     if !target_has_feature("popcnt") {
         // The ISA tier must reach the VENDORED C, not only the Rust.

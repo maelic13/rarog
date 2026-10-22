@@ -1,0 +1,4 @@
+{
+  "r_end": 0.0016,
+  "why": "RAR-S104: one long run on a near-optimum surface; the perturbation is doubled (the steps in config_c10long.json) and the gain ratio halved from spsa-tune.toml's 0.0031, so each move is the standard block's size while the gradient estimate carries twice the signal"
+}

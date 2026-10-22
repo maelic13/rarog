@@ -207,7 +207,7 @@ impl SharedContext {
             return;
         };
         let packed = pack_root_score(depth, score, bound);
-        let _ = slot.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+        let _ = slot.try_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
             if current == NO_ROOT_SCORE {
                 return Some(packed);
             }
@@ -290,7 +290,7 @@ impl SharedContext {
     pub(crate) fn request_stop(&self) {
         let _ = self
             .stop_state
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |state| {
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |state| {
                 (state != STOP_QUIT).then_some(STOP_SEARCH)
             });
     }

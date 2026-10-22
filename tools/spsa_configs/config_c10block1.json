@@ -1,0 +1,494 @@
+{
+  "AspirationDelta": {
+    "value": 14,
+    "min_value": 1,
+    "max_value": 100,
+    "step": 6
+  },
+  "AspGrowthPct": {
+    "value": 150,
+    "min_value": 100,
+    "max_value": 400,
+    "step": 19
+  },
+  "AspGrowthHighPct": {
+    "value": 150,
+    "min_value": 100,
+    "max_value": 400,
+    "step": 19
+  },
+  "AspGrowthAdd": {
+    "value": 5,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "QsSeeMargin": {
+    "value": 287,
+    "min_value": 0,
+    "max_value": 600,
+    "step": 38
+  },
+  "QsSeeClampHi": {
+    "value": 208,
+    "min_value": 0,
+    "max_value": 600,
+    "step": 38
+  },
+  "QsSeeBadFloor": {
+    "value": -43,
+    "min_value": -400,
+    "max_value": 0,
+    "step": 25
+  },
+  "ProbCutSeeGapScale": {
+    "value": 100,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "LazyMargin": {
+    "value": 423,
+    "min_value": 100,
+    "max_value": 2000,
+    "step": 119
+  },
+  "CoreCorrUpdateSlope": {
+    "value": 237,
+    "min_value": 32,
+    "max_value": 512,
+    "step": 30
+  },
+  "CoreCorrUpdateMin": {
+    "value": -1742,
+    "min_value": -8192,
+    "max_value": -256,
+    "step": 496
+  },
+  "CoreCorrUpdateMax": {
+    "value": 789,
+    "min_value": 128,
+    "max_value": 4096,
+    "step": 248
+  },
+  "CoreCorrWeightPawn": {
+    "value": 121,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightMinor": {
+    "value": 42,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightNonPawnWhite": {
+    "value": 122,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightNonPawnBlack": {
+    "value": 127,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightCont2": {
+    "value": 165,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreCorrWeightCont4": {
+    "value": 147,
+    "min_value": 0,
+    "max_value": 384,
+    "step": 24
+  },
+  "CoreEvalMaterialScale": {
+    "value": 20,
+    "min_value": -64,
+    "max_value": 64,
+    "step": 8
+  },
+  "CoreRazorBase": {
+    "value": 279,
+    "min_value": 50,
+    "max_value": 800,
+    "step": 47
+  },
+  "CoreRazorSquare": {
+    "value": 164,
+    "min_value": 20,
+    "max_value": 400,
+    "step": 24
+  },
+  "CoreRfpSquare": {
+    "value": 139,
+    "min_value": 0,
+    "max_value": 320,
+    "step": 20
+  },
+  "CoreRfpLinear": {
+    "value": 16,
+    "min_value": -100,
+    "max_value": 200,
+    "step": 19
+  },
+  "CoreRfpImprovement": {
+    "value": 63,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 32
+  },
+  "CoreRfpCorrection": {
+    "value": 80,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreRfpThreat": {
+    "value": 14,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 8
+  },
+  "CoreRfpConstant": {
+    "value": -24,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreHindsightReduceMargin": {
+    "value": 34,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreLmpImprovement": {
+    "value": 76,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "CoreFpBase": {
+    "value": 132,
+    "min_value": -100,
+    "max_value": 500,
+    "step": 38
+  },
+  "CoreFpLinear": {
+    "value": 40,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreFpHistory": {
+    "value": 44,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreFpEvalAboveBeta": {
+    "value": 44,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreFpCorrection": {
+    "value": 213,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreBnfpBase": {
+    "value": 46,
+    "min_value": -100,
+    "max_value": 400,
+    "step": 31
+  },
+  "CoreBnfpLinear": {
+    "value": 47,
+    "min_value": 10,
+    "max_value": 300,
+    "step": 18
+  },
+  "CoreBnfpHistory": {
+    "value": 36,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreSeeQuietConstant": {
+    "value": 16,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreSeeNoisyConstant": {
+    "value": 24,
+    "min_value": -100,
+    "max_value": 100,
+    "step": 13
+  },
+  "CoreLmrImprovement": {
+    "value": 411,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrCorrection": {
+    "value": 3505,
+    "min_value": 0,
+    "max_value": 8192,
+    "step": 512
+  },
+  "CoreLmrAlphaGap": {
+    "value": 195,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrAlphaGapLo": {
+    "value": -69,
+    "min_value": -512,
+    "max_value": 0,
+    "step": 32
+  },
+  "CoreLmrAlphaGapHi": {
+    "value": 84,
+    "min_value": 0,
+    "max_value": 512,
+    "step": 32
+  },
+  "CoreLmrResearchDeeper": {
+    "value": 35,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreNmpBase": {
+    "value": 174,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "CoreNmpDepth": {
+    "value": 16,
+    "min_value": 0,
+    "max_value": 80,
+    "step": 5
+  },
+  "CoreNmpImprovement": {
+    "value": 43,
+    "min_value": 0,
+    "max_value": 200,
+    "step": 13
+  },
+  "CoreNmpCutoff": {
+    "value": 11,
+    "min_value": 0,
+    "max_value": 60,
+    "step": 4
+  },
+  "CoreNmpRBase": {
+    "value": 4203,
+    "min_value": 2048,
+    "max_value": 8192,
+    "step": 384
+  },
+  "CoreNmpRImproving": {
+    "value": 949,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreNmpRDepth": {
+    "value": 253,
+    "min_value": 64,
+    "max_value": 640,
+    "step": 36
+  },
+  "CoreNmpREval": {
+    "value": 1092,
+    "min_value": 0,
+    "max_value": 3072,
+    "step": 192
+  },
+  "CoreNmpRClamp": {
+    "value": 534,
+    "min_value": 128,
+    "max_value": 1536,
+    "step": 88
+  },
+  "CoreProbcutBase": {
+    "value": 159,
+    "min_value": 50,
+    "max_value": 400,
+    "step": 22
+  },
+  "CoreProbcutImproving": {
+    "value": 42,
+    "min_value": 0,
+    "max_value": 150,
+    "step": 9
+  },
+  "CoreProbcutMoveCap": {
+    "value": 5,
+    "min_value": 1,
+    "max_value": 16,
+    "step": 2
+  },
+  "CoreProbcutDepthDiv": {
+    "value": 131,
+    "min_value": 48,
+    "max_value": 512,
+    "step": 29
+  },
+  "CoreProbcutAdjust": {
+    "value": 105,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreProbcutLerp": {
+    "value": 240,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreSingularMargin": {
+    "value": 17,
+    "min_value": 4,
+    "max_value": 96,
+    "step": 6
+  },
+  "CoreSingExactSpan": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 16,
+    "step": 2
+  },
+  "CoreSingDoubleBase": {
+    "value": -2,
+    "min_value": -100,
+    "max_value": 200,
+    "step": 19
+  },
+  "CoreSingDoublePv": {
+    "value": 101,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreSingDoubleNotTtPv": {
+    "value": 26,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreSingDoubleQuiet": {
+    "value": 8,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingDoubleCorr": {
+    "value": 10,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTriplePv": {
+    "value": 119,
+    "min_value": 0,
+    "max_value": 350,
+    "step": 22
+  },
+  "CoreSingTripleNotTtPv": {
+    "value": 23,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreSingTripleQuiet": {
+    "value": 7,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTripleCorr": {
+    "value": 7,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 3
+  },
+  "CoreSingTripleBase": {
+    "value": 15,
+    "min_value": 0,
+    "max_value": 80,
+    "step": 5
+  },
+  "CoreSingMulticutLerp": {
+    "value": 383,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "CoreLdseMargin": {
+    "value": 8,
+    "min_value": 0,
+    "max_value": 100,
+    "step": 6
+  },
+  "CoreLmrSingularSlope": {
+    "value": 1123,
+    "min_value": 0,
+    "max_value": 3072,
+    "step": 192
+  },
+  "CoreLmrSingularOffset": {
+    "value": 78,
+    "min_value": 0,
+    "max_value": 300,
+    "step": 19
+  },
+  "CoreLmrSingularCap": {
+    "value": 2051,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 256
+  },
+  "QsStandPatLerp": {
+    "value": 565,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "QsCutoffLerp": {
+    "value": 586,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 64
+  },
+  "QsFutilityMargin": {
+    "value": 232,
+    "min_value": 0,
+    "max_value": 400,
+    "step": 25
+  },
+  "QsDeltaMargin": {
+    "value": 237,
+    "min_value": 0,
+    "max_value": 800,
+    "step": 50
+  },
+  "CoreSeeQuietHistory": {
+    "value": 18,
+    "min_value": 0,
+    "max_value": 120,
+    "step": 8
+  }
+}

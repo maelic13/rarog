@@ -13,6 +13,15 @@
 #      expected bench fingerprint before it is accepted into the pool.
 #
 # Output: $OutDir\<tier>-<n>.exe plus a manifest.txt of hashes and fingerprints.
+#
+# -NoPgo builds the plain tier instead, to separate a compiler's code
+# generation from its use of the profile. A plain build has no profile to
+# vary, so its copies must be IDENTICAL apart from the link's own stamps
+# (Get-PeContentHash): each later build first touches src/lib.rs to force
+# a real recompile, and any other difference fails. Every copy is kept: the
+# copies carry no build luck, but each is read in its own processes, and one
+# plain binary's processes differ by up to 6% here (RAR-P38), so a plain arm
+# is read as a pool like any other.
 
 param(
     [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
@@ -22,6 +31,8 @@ param(
     # own). No default: a default goes stale with the first integrated
     # behaviour change and then refuses every honest build.
     [Parameter(Mandatory = $true)][int]$ExpectFingerprint,
+    # Plain (non-PGO) builds, checked deterministic; see the header.
+    [switch]$NoPgo,
     [int]$Depth = 13,
     # Cargo features for a candidate arm compiled behind a flag.
     [string]$Features = "",
@@ -40,6 +51,49 @@ if ($dirty -and -not $AllowDirty) {
 }
 if ($dirty) { Write-Warning "DIRTY TREE: this pool is not reproducible and must not back a recorded result" }
 
+function Get-PeContentHash {
+    # SHA-256 of a PE image with the link's own stamps zeroed: the header's
+    # TimeDateStamp, each debug directory's TimeDateStamp and the CodeView
+    # record's PDB GUID and age. MSVC's linker writes these fresh on every link,
+    # so two links of the same code differ only there.
+    param([string]$Path)
+    $b = [System.IO.File]::ReadAllBytes($Path)
+    $pe = [BitConverter]::ToInt32($b, 0x3c)
+    if ([BitConverter]::ToUInt32($b, $pe) -ne 0x4550) { throw "$Path is not a PE image" }
+    $zero = { param($at, $n) for ($k = 0; $k -lt $n; $k++) { $b[$at + $k] = 0 } }
+    & $zero ($pe + 8) 4
+    $opt = $pe + 24
+    if ([BitConverter]::ToUInt16($b, $opt) -ne 0x20b) { throw "$Path is not PE32+" }
+    & $zero ($opt + 64) 4                                   # CheckSum
+    $sections = [BitConverter]::ToUInt16($b, $pe + 6)
+    $table = $opt + [BitConverter]::ToUInt16($b, $pe + 20)
+    $toFile = {
+        param($rva)
+        for ($s = 0; $s -lt $sections; $s++) {
+            $h = $table + 40 * $s
+            $va = [BitConverter]::ToUInt32($b, $h + 12)
+            $size = [Math]::Max([BitConverter]::ToUInt32($b, $h + 8), [BitConverter]::ToUInt32($b, $h + 16))
+            if ($rva -ge $va -and $rva -lt $va + $size) { return [BitConverter]::ToUInt32($b, $h + 20) + ($rva - $va) }
+        }
+        throw "RVA $rva lies in no section of $Path"
+    }
+    $debugRva = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8)
+    $debugSize = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8 + 4)
+    if ($debugRva -ne 0) {
+        $dir = & $toFile $debugRva
+        for ($e = 0; $e -lt [int]($debugSize / 28); $e++) {
+            $entry = $dir + 28 * $e
+            & $zero ($entry + 4) 4
+            if ([BitConverter]::ToUInt32($b, $entry + 12) -eq 2) {   # IMAGE_DEBUG_TYPE_CODEVIEW
+                $cv = [BitConverter]::ToUInt32($b, $entry + 24)
+                if ([BitConverter]::ToUInt32($b, $cv) -eq 0x53445352) { & $zero ($cv + 4) 20 }   # RSDS: GUID, age
+            }
+        }
+    }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    ([BitConverter]::ToString($sha.ComputeHash($b))).Replace("-", "")
+}
+
 $benchIn = Join-Path $env:TEMP "nps_pool_bench_in.txt"
 Set-Content -LiteralPath $benchIn -Value "bench $Depth" -Encoding ascii
 
@@ -48,7 +102,11 @@ for ($i = 1; $i -le $Builds; $i++) {
     Write-Host "== $Arch build $i/$Builds =="
     $log = Join-Path $OutDir "build-$Arch-$i.log"
     $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
-    & cargo xtask build --arch $Arch --pgo @featureArgs *> $log
+    $pgoArgs = if ($NoPgo) { @() } else { @("--pgo") }
+    # A plain build of an unchanged tree is cargo's no-op; the touch makes
+    # the determinism check compare two real compiles.
+    if ($NoPgo -and $i -gt 1) { (Get-Item src/lib.rs).LastWriteTime = Get-Date }
+    & cargo xtask build --arch $Arch @pgoArgs @featureArgs *> $log
     if ($LASTEXITCODE -ne 0) { throw "build $i failed (exit $LASTEXITCODE); see $log" }
 
     # Take the artifact path from xtask itself rather than reconstructing the
@@ -77,6 +135,14 @@ for ($i = 1; $i -le $Builds; $i++) {
     $rows += [pscustomobject]@{ File = $dst; Hash = $hash; Nodes = $nodes }
 }
 
+if ($NoPgo) {
+    # A plain arm carries no build luck only if its copies are the same code.
+    $content = @($rows | ForEach-Object { Get-PeContentHash $_.File } | Sort-Object -Unique)
+    if ($content.Count -ne 1) {
+        throw "plain builds of one tree differ beyond the link stamps ($($content.Count) distinct contents) - the plain build is not deterministic"
+    }
+}
+
 # The check that makes pooling meaningful: independent profiles => distinct bytes.
 $dupes = $rows | Group-Object Hash | Where-Object { $_.Count -gt 1 }
 if ($dupes) {
@@ -102,6 +168,7 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
     "source        : $sha $sourceState"
     "builds        : $Builds"
+    $(if ($NoPgo) { "pgo           : no (all builds identical but for link stamps, content $($content[0].Substring(0, 16)))" } else { "pgo           : yes" })
     "fingerprint   : $ExpectFingerprint (verified on every copy)"
     "generated     : $(Get-Date -Format o)"
     ""
@@ -109,6 +176,10 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
 Set-Content -LiteralPath $manifest -Encoding ascii
 
 Write-Host ""
-Write-Host "pool OK: $Builds distinct $Arch builds, all at fingerprint $ExpectFingerprint"
+if ($NoPgo) {
+    Write-Host "plain OK: $Builds $Arch builds, identical but for link stamps, at fingerprint $ExpectFingerprint"
+} else {
+    Write-Host "pool OK: $Builds distinct $Arch builds, all at fingerprint $ExpectFingerprint"
+}
 Write-Host "manifest: $manifest"
 Write-Host ("set for nps_multibuild: " + (($rows.File | ForEach-Object { "`"$_`"" }) -join ", "))

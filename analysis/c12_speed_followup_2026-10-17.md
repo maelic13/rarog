@@ -19,7 +19,8 @@ EBF 2.521** on each build.
 - **Large pages: +2.48% (95% +2.13 .. +2.84)** on the C.12 head (`60fedc5` with
   the allocator, four builds, against eight of `60fedc5`). Exact. It needs six
   new `unsafe` sites against the frozen floor, so it waits on the maintainer:
-  commit `db58a00` on branch `large-pages`, on top of `90700b2`.
+  a commit on branch `large-pages` on top of `90700b2`, whose patch landed
+  unchanged as `ac7c13b` (equal patch-id; the branch was deleted 2026-10-19).
   **Decision (maintainer, 2026-10-17):** left unmerged on its branch until the
   unsafe floor is reviewed; GUIDE's holds carry it, and G.1 owns large pages.
 
@@ -98,7 +99,7 @@ fill, dropping the per-square attack array.
 
 ## Large pages: what the decision involves
 
-- **Mechanism:** `src/large_pages.rs` (branch `large-pages`, `db58a00`). On
+- **Mechanism:** `src/large_pages.rs` (`ac7c13b`'s patch on `90700b2`). On
   Windows the global allocator sends every allocation of 2 MB or more to
   `VirtualAlloc`: with `MEM_LARGE_PAGES` when the user holds "Lock pages in
   memory" (enabled in the process token at the first such allocation), with

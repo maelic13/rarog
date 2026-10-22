@@ -228,6 +228,37 @@ class OptionArmTests(unittest.TestCase):
                 nps_read.check_arms(p, q, twin, {"base": [], "cand": [("LazyMargin", "2000")]})
 
 
+class HostTests(unittest.TestCase):
+    def test_idle_host_refuses_nothing(self):
+        self.assertEqual(nps_read.idle_refusal({"busy_percent": 3.1, "busy_processes": []}), [])
+
+    def test_load_over_the_ceiling_or_a_competing_process_refuses(self):
+        self.assertEqual(len(nps_read.idle_refusal({"busy_percent": 15.1, "busy_processes": []})), 1)
+        self.assertEqual(nps_read.idle_refusal({"busy_percent": 15.0, "busy_processes": []}), [])
+        both = nps_read.idle_refusal({"busy_percent": 40.0, "busy_processes": ["cargo:12"]})
+        self.assertEqual(len(both), 2)
+        self.assertIn("cargo:12", both[0])
+
+    def test_unreadable_cpu_refuses_only_for_processes(self):
+        self.assertEqual(nps_read.idle_refusal({"busy_percent": None, "busy_processes": []}), [])
+        self.assertEqual(len(nps_read.idle_refusal({"busy_percent": None, "busy_processes": ["rarog:7"]})), 1)
+
+    def test_a_busy_host_is_refused_unless_waived_and_both_are_archived(self):
+        busy = {"busy_percent": 50.0, "busy_processes": []}
+        saved = nps_read.host_state
+        nps_read.host_state = lambda: dict(busy)
+        try:
+            record = {}
+            with self.assertRaises(SystemExit):
+                nps_read.check_host(record, allow_busy=False)
+            self.assertFalse(record["host_checks"][-1]["waived"])
+            nps_read.check_host(record, allow_busy=True)
+            self.assertTrue(record["host_checks"][-1]["waived"])
+            self.assertEqual(record["host_checks"][-1]["busy_percent"], 50.0)
+        finally:
+            nps_read.host_state = saved
+
+
 class UnequalPoolTests(unittest.TestCase):
     def test_three_builds_against_four_use_five_degrees_of_freedom(self):
         base = [[BENCH * f] * 2 for f in (0.999, 1.000, 1.001)]

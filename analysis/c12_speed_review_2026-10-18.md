@@ -150,7 +150,7 @@ reverts follow it.
 | F. The quiet, pawn and continuation history tables allocated as 64-byte lines and indexed through them (the 64 KB quiet table had landed at a 16-byte offset, every 128-byte row on three lines) | `47a06f9` | pool c | **−2.88% (−3.11 .. −2.64)**, 8v8 | loss; reverted (`f180e98`) |
 | Bundle: A + C, the head's engine at `630e2b5` | — | `base8` | +0.37% (+0.17 .. +0.57) at 2 cycles; **+0.41% (+0.28 .. +0.54)** at 6, 8v8 | NO_CHANGE by the protocol; both reverted by the pre-declared rule |
 | K. The day's capture-SEE pool `s2` | — | `base8` | **−1.54% (−2.30 .. −0.77)**, 4v8 | the day's loss confirmed |
-| A + C on large pages: both cherry-picked onto `db58a00` in a worktree, against `db58a00` itself (both arms with large pages on, eight clean builds each; the day's `base-lp` pool is labelled dirty and was not used) | — | large pages alone | **+0.08% (−0.11 .. +0.27)**, 8v8 | not shown on large pages |
+| A + C on large pages: both cherry-picked onto the `large-pages` commit (`ac7c13b`'s patch on `90700b2`) in a worktree, against that commit itself (both arms with large pages on, eight clean builds each; the day's `base-lp` pool is labelled dirty and was not used) | — | large pages alone | **+0.08% (−0.11 .. +0.27)**, 8v8 | not shown on large pages |
 
 Each shortcut carries a debug assertion against the computation it skips, shown
 live on debug `bench 12` (7,417,463 nodes) by a mutant: A's two-step test against
@@ -228,7 +228,7 @@ the session's null, and the yardstick for every number above.
 
 ## Large pages delivered (2026-10-18)
 
-At the maintainer's request the `large-pages` branch (`db58a00`) was audited
+At the maintainer's request the `large-pages` branch (`ac7c13b`'s patch on `90700b2`) was audited
 and brought onto `c7` (`ac7c13b`, then the audit commit `34eb4bc`). Findings:
 
 - The allocator is sound. `AdjustTokenPrivileges` reports a missing right

@@ -23,6 +23,9 @@ any prune while those bases were on a ref.
 | `11e7145` | RAR-S84 | `f5d16d8` | RAR-S83's block-2 theta baked into all 36 coordinates (the B.3.4 gate candidate; `f53ca7d` baked the same values on `dev`) |
 | `bff5fbf` | RAR-E24 | `f5802ef` | C.2's attribution-baseline candidate: the unchanged surface refitted on `hce-v4-tb` (`src/eval/params.rs`, `src/eval/material.rs`, final vector `50D7C4FE…`) and version `2.6.0-dev+e24refit`; a detached commit on no ref, proved through a temporary index to reproduce its tree (`f65a08b`) from `f5802ef` |
 | `be5a802` | RAR-E24 | `bff5fbf` | Gate 2's arm: the `c2margin` block's rounded theta baked into the 28 `src/search/params.rs` defaults on the refit candidate, version `2.6.0-dev+e24gate2` (bench 12,351,448); applied after `bff5fbf`'s patch on `f5802ef`, proved through a temporary index to reproduce its tree (`2832703`); the throwaway branch is deleted |
+| `f68bd31` | RAR-E25 | `05c792b` | Gate 1's candidate: C.3's king-safety unit, version `2.6.0-dev+c3king` (bench 14,270,302); proved through a temporary index to reproduce the arm's tree (`25f76d41…`); the throwaway branch `c3-arm` is deleted |
+| `936e274` | RAR-E25 | `f68bd31` | Gate 2's arm: the `c3margin` block's rounded theta baked into the 28 `src/search/params.rs` defaults on the gate-1 candidate, version `2.6.0-dev+c3gate2` (bench 13,187,295); applied after `f68bd31`'s patch on `05c792b`, proved to reproduce its tree (`c31a02ec…`) |
+| `160f414` | RAR-S105 | `4e7a391` | C.10.5's gate arm: RAR-S104's rounded theta baked into 76 of the 82 `src/search/params.rs` defaults and `eval::LAZY_MARGIN`, version `2.6.0-dev+c10gate` (bench 13,987,223); proved through a temporary index to reproduce the arm's tree (`04c60308…`); on the throwaway branch `c10-arm` until the gate is read |
 
 **Added 2026-10-04 (B.10's ref review):** the last three rows came from the
 throwaway branches `diag/b23-theta3900`, `b33-block1-probe` and `b33-gate`,

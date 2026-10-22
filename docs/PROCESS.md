@@ -253,6 +253,20 @@ gap between the instruments (RAR-M61); on the B.2.4a arms both reached H1 under
 **A registered experiment names its runner and never changes it mid-way.**
 Moving an experiment in flight to the other harness voids it.
 
+**The runner's report is trusted (maintainer decision 2026-10-21).** A
+ledger row quotes Colosseum's own result and the wrapper's manifest, which
+already recounts the pentanomial from `games.pgn` and says so on its
+`pentanomial:` line; an agent does not recompute what the report gives.
+It computes only what the report lacks, from the run directory, and names
+the gap so it can be closed in the runner: on 2026-10-21 those gaps were
+the results by colour per side, the in-play telemetry (depth, nodes a
+move, speed, time a move; `colosseum-cli stats <run dir>` replays it
+offline but the end-of-run summary and `run-record.json` do not carry
+it), and for a tune the count of arms clamped at a range end with a
+dry-run warning for a seed within one perturbation of a rail (RAR-S104).
+`tools/diag/colosseum_recount.py` stays as the cross-check of a reporter
+change, run when the runner is re-pinned, not per row.
+
 **Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
 RAR-E32). A registration adopts the runner's fault policy by reference
 (Colosseum scores a time loss or crash as a game and fails the run above
@@ -287,6 +301,16 @@ ceiling and protocol failures, and archive hashes of their logs and PGNs.
 Measure only on an idle host: `colosseum.ps1` refuses when another engine,
 harness or build is running, or when the host is above 15% CPU, and
 `-AllowBusyHost` records the waiver in the run's manifest.
+
+xtask takes `llvm-profdata` and the other LLVM tools from the toolchain's own
+`llvm-tools` before PATH: the raw profile format follows rustc's LLVM, and an
+MSYS2 LLVM on PATH refused rustc 1.99's profiles (RAR-P36). A pinned bump
+that crosses an LLVM major is a speed change to read, not a formality: 1.98.1
+to 1.99.1 (LLVM 22 to 23) cost 1.6% at the same fingerprint (RAR-P37), all
+of it code generation (plain builds −3.6%, RAR-P38). **Maintainer decision
+2026-10-21:** Rarog follows the latest stable Rust whenever possible; a bump
+is qualified and its speed read and recorded, and a measured slowdown does
+not revert it.
 
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
@@ -335,6 +359,20 @@ from the archive, `--no-regression` for a neutral change); its tests are
 `tools/diag/test_nps_read.py`, and on RAR-P32's archived runs it reproduces the
 study's deltas. `nps_multibuild.ps1`'s bootstrap interval is not this interval
 and is not quoted as one; that tool is kept only to compare with earlier rows.
+The read refuses a busy host before step 1 and step 2 by the harness's own
+measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
+figure is that measure; the one-shot `LoadPercentage` it replaced read its own
+start-up, 12–14% on an idle host. An idle start does not make a read clean:
+the host's level wanders by about 3% in half an hour, and two of six reads
+started idle were disturbed and wrong (RAR-P37), so the disturbance rule
+stands and a disturbed read is repeated. Two pools of one source and
+compiler read within ±0.4% of each other, so four builds an arm resolve a
+change of 1% or more. To split a compiler's code generation from its use of
+the profile, `nps_build_pool.ps1 -NoPgo` builds plain pools: its copies must
+be the same code apart from the link's own stamps, and they are read as a
+pool, because one binary's processes alone vary by up to 6% (RAR-P38). A
+plain build embeds its build directory's path, so it reproduces per
+directory only.
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
@@ -582,7 +620,13 @@ Before any SPSA:
    per iteration**, so the budget is `iterations x 30` games (RAR-M62);
    `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
    registered surface for that horizon and `--check` refuses a file that has
-   drifted from it.
+   drifted from it. Check every seed against the run's own perturbation,
+   not the b43 step: a seed within `c0` of a range end plays one arm
+   clamped at the rail (the engine clamps the option) until the
+   perturbation decays below the gap, which biases that estimate's
+   magnitude (RAR-S104: `CoreRfpCorrection`, seed 80 on `0..=2048`,
+   perturbation 256, clipped on all 4,000 iterations); keep such a
+   coordinate's step inside its range.
 9. Theta is the last completed block's rounded final centres, without
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
    and run a paired SPRT, then LTC/4T where appropriate.

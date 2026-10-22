@@ -6,7 +6,7 @@ edition = "2024"
 # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
 # stale local toolchain fails with a clear cargo message, not a confusing
 # mid-compile error about an unstable feature.
-rust-version = "1.98"
+rust-version = "1.99"
 description = "A UCI-compatible chess engine written in Rust"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/maelic13/rarog"
@@ -52,6 +52,10 @@ texel = []
 [lints.rust]
 # Unsafe inside an `unsafe fn` must still be an explicit `unsafe {}` block.
 unsafe_op_in_unsafe_fn = "deny"
+# A raw pointer is taken with `&raw const` / `&raw mut`, never from a
+# reference cast at once, which asserts aliasing the pointer may not keep
+# (rustc 1.99's lint, allow by default; zero sites).
+raw_borrows_via_references = "deny"
 
 [lints.clippy]
 # Baseline: the whole `clippy::all` set is at zero and stays there.
