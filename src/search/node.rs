@@ -1939,9 +1939,6 @@ impl Searcher {
             if score > best_score {
                 best_score = score;
                 best_move = mv;
-                if NODE::ROOT {
-                    self.td.root_best_nodes = move_nodes;
-                }
             }
             let raised_alpha = score > alpha;
             if raised_alpha {

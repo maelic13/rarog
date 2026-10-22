@@ -324,6 +324,12 @@ pub mod counters {
         root_iterations,
         root_best_changes,
         root_interrupted_fallback,
+        // Clock stops: a proved mate held for three iterations (or a loss in
+        // two plies), a root fail-high past the soft target, and hard-limit
+        // polls held because no iteration had completed.
+        tm_mate_stop,
+        tm_fail_high_stop,
+        tm_first_iteration_guard,
         // Endgame-family occurrence in the SEARCH TREE, which differs from
         // occurrence on the board in real games: a bare-king minor mate drive
         // can leave `bench 13` byte-identical (no bench tree reaches one at

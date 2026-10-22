@@ -49,9 +49,7 @@ use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootD
 use stack::{PlyArray, StackEntry};
 use thread::ThreadData;
 use threads::WorkerPool;
-use time::{
-    RuntimeLimits, TbExtension, compute_runtime_limits, tm_effort_factor, tm_instability_factor,
-};
+use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runtime_limits};
 
 const MAX_DEPTH: usize = 100;
 
@@ -728,12 +726,9 @@ impl Searcher {
         );
         self.td.nmp_min_ply = 0;
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
-        self.td.root_iteration_nodes = 0;
         self.td.tb_root_scores.clear();
         self.td.tb_root_board = None;
         self.td.last_reported_move.set(Move::NULL);
-        self.td.root_best_nodes = 0;
-        self.td.root_best_effort = 0.0;
         if age_tt {
             self.shared.tt.new_search();
         }
@@ -864,6 +859,11 @@ impl Searcher {
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
         let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
         let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
+        let mut stable_iterations = 0_u32;
+        let mut mate_watch = MateWatch::default();
+        // The soft target the last completed iteration set; a root window
+        // that fails high past it ends the search.
+        let mut soft_target_ms = f64::INFINITY;
         // This thread's soft-stop vote is cast at most ONCE per search.
         // Without the latch a thread that keeps iterating past its own soft
         // target votes again every iteration and can reach the majority
@@ -879,9 +879,7 @@ impl Searcher {
                 root_move.begin_iteration();
             }
             let previous_bestmove = bestmove;
-            self.td.root_iteration_nodes = self.td.nodes;
-            self.td.root_best_nodes = 0;
-            self.td.root_best_effort = 0.0;
+            let mut failed_high_past_target = false;
             // The aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
@@ -946,17 +944,36 @@ impl Searcher {
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }
+                    // Past the soft target a fail-high ends the search on the
+                    // move that failed high, with its lower bound as the
+                    // score: the re-search that would confirm it is what ran
+                    // won endings to the hard maximum. Nothing better is
+                    // discarded: the bound reaches beta, which lies above the
+                    // score the window centred on or, after a fail-low pulled
+                    // it down, above every move's bound from that fail-low.
+                    // The main thread decides; helpers keep their vote.
+                    if self.td.thread_id == 0
+                        && !self.td.pondering
+                        && self.elapsed_ms() >= soft_target_ms
+                    {
+                        crate::diag_count!(tm_fail_high_stop);
+                        if self.td.pv_len[0] > 0 {
+                            bestmove = self.td.pv_table[0][0];
+                            pondermove = if self.td.pv_len[0] > 1 {
+                                self.td.pv_table[0][1]
+                            } else {
+                                Move::NULL
+                            };
+                        }
+                        best_score = score;
+                        failed_high_past_target = true;
+                        break;
+                    }
                     window.fail_high(&self.cfg.params, score);
                     continue;
                 }
                 best_score = score;
                 completed_depth = depth;
-                let iteration_nodes = self
-                    .td
-                    .nodes
-                    .saturating_sub(self.td.root_iteration_nodes)
-                    .max(1);
-                self.td.root_best_effort = self.td.root_best_nodes as f64 / iteration_nodes as f64;
                 if self.td.pv_len[0] > 0 {
                     bestmove = self.td.pv_table[0][0];
                     pondermove = if self.td.pv_len[0] > 1 {
@@ -981,7 +998,7 @@ impl Searcher {
                 break;
             }
 
-            if self.td.stopped || self.td.quit {
+            if self.td.stopped || self.td.quit || failed_high_past_target {
                 break;
             }
 
@@ -1019,6 +1036,11 @@ impl Searcher {
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
+            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
+                0
+            } else {
+                stable_iterations + 1
+            };
 
             // `falling_eval` compares this iteration's score against the
             // average of the *prior* iterations. At this point `prev_avg_score`
@@ -1046,9 +1068,27 @@ impl Searcher {
             if elapsed_ms >= self.cfg.limits.maximum_ms {
                 break;
             }
+            if self.cfg.limits.mate_stop
+                && self.td.thread_id == 0
+                && mate_watch.completed(bestmove, best_score)
+            {
+                crate::diag_count!(tm_mate_stop);
+                break;
+            }
             if !self.cfg.limits.movetime_mode {
-                let soft_target =
-                    self.soft_target_ms(falling_baseline, best_score, tot_best_move_changes);
+                let signals = IterationSignals {
+                    score_fall: falling_baseline - f64::from(best_score),
+                    best_move_changes: tot_best_move_changes,
+                    stable_iterations,
+                    effort_share: self.effort_share(bestmove),
+                };
+                let soft = time::soft_stop(&self.cfg.params, &self.cfg.limits, signals);
+                soft_target_ms = soft.target_ms;
+                #[cfg(feature = "diag")]
+                if emit_info && self.cfg.limits.optimum_ms.is_finite() {
+                    self.log_soft_stop(depth, signals, soft, elapsed_ms);
+                }
+                let soft_target = soft.target_ms;
                 if self.td.pondering {
                     // While pondering: flag to stop immediately on ponderhit.
                     if elapsed_ms >= soft_target {
@@ -1136,32 +1176,38 @@ impl Searcher {
         }
     }
 
-    /// The between-iteration soft time target: the optimum scaled by the
-    /// falling-eval, best-move-instability and effort factors, capped at the
-    /// maximum. The multipliers are stored ×10000 in `SearchParams`, so
-    /// `/ 10000.0` reconstructs the Stockfish seeds bit-exactly.
-    fn soft_target_ms(
+    /// `mv`'s share of this thread's nodes since the search began: the
+    /// effort the soft stop reads.
+    fn effort_share(&self, mv: Move) -> f64 {
+        self.root_record(mv).map_or(0.0, |record| {
+            record.nodes as f64 / self.td.nodes.max(1) as f64
+        })
+    }
+
+    /// One `info string tm` line per completed iteration of a clock search:
+    /// the soft stop's inputs and factors, for reading which of them move.
+    #[cfg(feature = "diag")]
+    #[cold]
+    #[inline(never)]
+    fn log_soft_stop(
         &self,
-        falling_baseline: f64,
-        best_score: i32,
-        tot_best_move_changes: f64,
-    ) -> f64 {
-        let opt_scale = self.cfg.params.tm_opt_scale as f64 / 10_000.0;
-        let fall_base = self.cfg.params.tm_fall_base as f64 / 10_000.0;
-        let fall_slope = self.cfg.params.tm_fall_slope as f64 / 10_000.0;
-        // Falling eval: more time when the score falls.
-        let falling_eval =
-            (fall_base + fall_slope * (falling_baseline - best_score as f64)).clamp(0.572, 1.708);
-        // Instability: more time when the best move changed recently.
-        let best_move_instab = tm_instability_factor(&self.cfg.params, tot_best_move_changes);
-        // Effort: less time when the best move took most of the iteration.
-        let effort_factor = tm_effort_factor(&self.cfg.params, self.td.root_best_effort);
-        let total_time = self.cfg.limits.optimum_ms
-            * opt_scale
-            * falling_eval
-            * best_move_instab
-            * effort_factor;
-        total_time.min(self.cfg.limits.maximum_ms)
+        depth: usize,
+        signals: IterationSignals,
+        soft: time::SoftStop,
+        elapsed_ms: f64,
+    ) {
+        self.td.sink.line(&format!(
+            "info string tm depth {depth} k {} share {:.4} fall {:.4} instab {:.4} stab {:.4} \
+             effort {:.4} optimum {:.1} target {:.1} elapsed {elapsed_ms:.1}",
+            signals.stable_iterations,
+            signals.effort_share,
+            soft.falling,
+            soft.instability,
+            soft.stability,
+            soft.effort,
+            self.cfg.limits.optimum_ms,
+            soft.target_ms,
+        ));
     }
 
     /// Iterative deepening with more than one principal variation.
@@ -1202,6 +1248,8 @@ impl Searcher {
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
         let mut prev_avg_score = 0.0_f64;
         let mut tot_best_move_changes = 0.0_f64;
+        let mut stable_iterations = 0_u32;
+        let mut mate_watch = MateWatch::default();
         let mut cast_stop_vote = false;
         // The lines of the last depth whose every line completed, best first.
         // A record's score alone is not a line: a move that never raised alpha
@@ -1238,11 +1286,6 @@ impl Searcher {
                 self.td.root_moves.clear();
                 self.td.root_moves.extend_from_slice(&order[line..]);
                 self.td.multipv_line = line;
-                if line == 0 {
-                    self.td.root_iteration_nodes = self.td.nodes;
-                    self.td.root_best_nodes = 0;
-                    self.td.root_best_effort = 0.0;
-                }
                 let center = self
                     .root_record(order[line])
                     .map_or(-INF_SCORE, |rm| rm.previous_score);
@@ -1312,13 +1355,6 @@ impl Searcher {
                 });
                 if line == 0 {
                     completed_depth = depth;
-                    let iteration_nodes = self
-                        .td
-                        .nodes
-                        .saturating_sub(self.td.root_iteration_nodes)
-                        .max(1);
-                    self.td.root_best_effort =
-                        self.td.root_best_nodes as f64 / iteration_nodes as f64;
                 }
                 if let Some(record) = self.root_record(order[0]) {
                     best_score = record.score;
@@ -1381,6 +1417,11 @@ impl Searcher {
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
+            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
+                0
+            } else {
+                stable_iterations + 1
+            };
             let falling_baseline = if completed_depth <= 1 {
                 best_score as f64
             } else {
@@ -1395,9 +1436,22 @@ impl Searcher {
             if elapsed_ms >= self.cfg.limits.maximum_ms {
                 break;
             }
+            // Line 1's mate ends the search as in the one-line path. A root
+            // fail-high does not: it would end the depth before the other
+            // lines were searched at it.
+            if self.cfg.limits.mate_stop && mate_watch.completed(bestmove, best_score) {
+                crate::diag_count!(tm_mate_stop);
+                break;
+            }
             if !self.cfg.limits.movetime_mode {
+                let signals = IterationSignals {
+                    score_fall: falling_baseline - f64::from(best_score),
+                    best_move_changes: tot_best_move_changes,
+                    stable_iterations,
+                    effort_share: self.effort_share(bestmove),
+                };
                 let soft_target =
-                    self.soft_target_ms(falling_baseline, best_score, tot_best_move_changes);
+                    time::soft_stop(&self.cfg.params, &self.cfg.limits, signals).target_ms;
                 if self.td.pondering {
                     if elapsed_ms >= soft_target {
                         self.td.stop_on_ponderhit = true;
@@ -1673,8 +1727,14 @@ impl Searcher {
                 }
                 SearchEvent::None => {}
             }
+            // Not before the first iteration has completed: an aborted first
+            // iteration has no move to fall back on.
             if !self.td.pondering && self.elapsed_ms() >= self.cfg.limits.maximum_ms {
-                self.td.stopped = true;
+                if self.td.root_depth > 1 {
+                    self.td.stopped = true;
+                } else {
+                    crate::diag_count!(tm_first_iteration_guard);
+                }
             }
         }
         self.td.stopped
@@ -1733,6 +1793,14 @@ impl Searcher {
     }
 
     fn elapsed_ms(&self) -> f64 {
+        #[cfg(test)]
+        if let Some((from_nodes, elapsed_ms)) = self.td.test_clock {
+            return if self.td.nodes >= from_nodes {
+                elapsed_ms
+            } else {
+                0.0
+            };
+        }
         self.cfg.start.elapsed().as_secs_f64() * 1000.0
     }
 
@@ -2396,6 +2464,294 @@ mod tests {
         assert!(stopped);
         assert!(searcher.td.ponderhit);
         assert!(!searcher.td.pondering);
+    }
+
+    /// A search's `info depth` lines, parsed: depth, the score as printed,
+    /// its bound (empty when exact), the node count and the first PV move.
+    struct InfoLine {
+        depth: usize,
+        score: String,
+        bound: &'static str,
+        nodes: u64,
+        first: String,
+    }
+
+    fn parse_info(line: &str) -> InfoLine {
+        let field = |name: &str| {
+            line.split_once(&format!(" {name} "))
+                .and_then(|(_, rest)| rest.split_whitespace().next())
+                .unwrap_or_else(|| panic!("no {name} in {line}"))
+                .to_string()
+        };
+        let score = line
+            .split_once(" score ")
+            .map(|(_, rest)| {
+                rest.split_whitespace()
+                    .take(2)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+            .unwrap_or_else(|| panic!("no score in {line}"));
+        InfoLine {
+            depth: field("depth").parse().expect("numeric depth"),
+            score,
+            bound: if line.contains(" lowerbound ") {
+                "lowerbound"
+            } else if line.contains(" upperbound ") {
+                "upperbound"
+            } else {
+                ""
+            },
+            nodes: field("nodes").parse().expect("numeric nodes"),
+            first: field("pv"),
+        }
+    }
+
+    /// A one-thread search of `fen` with `test_clock` standing in for the
+    /// clock, ended by the GUI after `poll_budget` polls of 2,048 nodes;
+    /// returns the result and its `info depth` lines.
+    fn clock_search(
+        fen: &str,
+        limits: &SearchLimits,
+        options: &EngineOptions,
+        test_clock: Option<(u64, f64)>,
+        poll_budget: usize,
+    ) -> (SearchResult, Vec<InfoLine>) {
+        let board = Board::from_fen(fen).expect("valid fen");
+        let legal = board.generate_legal_moves();
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        searcher.reset_search_state(limits, options, board.side_to_move(), 0, true);
+        assert!(searcher.shared.pool().is_none());
+        searcher.td.test_clock = test_clock;
+        let mut polls = 0;
+        let result = searcher.search_root(board, &legal, true, &mut || {
+            polls += 1;
+            if polls >= poll_budget {
+                SearchEvent::Stop
+            } else {
+                SearchEvent::None
+            }
+        });
+        assert!(legal.contains(&result.bestmove));
+        let lines = lines
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|line| line.starts_with("info depth "))
+            .map(|line| parse_info(line))
+            .collect();
+        (result, lines)
+    }
+
+    /// A clock that never moves: no soft or hard limit is ever reached.
+    const FROZEN_CLOCK: Option<(u64, f64)> = Some((u64::MAX, 0.0));
+    const SCHOLARS_MATE: &str =
+        "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4";
+
+    fn minute_clock() -> SearchLimits {
+        SearchLimits {
+            white_time: 60_000,
+            black_time: 60_000,
+            ..SearchLimits::default()
+        }
+    }
+
+    #[test]
+    fn a_proved_mate_ends_a_clock_search_after_three_iterations_but_not_analysis() {
+        const BUDGET: usize = 500;
+        let (result, lines) = clock_search(
+            SCHOLARS_MATE,
+            &minute_clock(),
+            &EngineOptions::default(),
+            FROZEN_CLOCK,
+            BUDGET,
+        );
+        let first_mate = lines
+            .iter()
+            .position(|line| line.score == "mate 1")
+            .expect("the mate is found");
+        assert_eq!(
+            lines.len(),
+            first_mate + 3,
+            "three mate iterations, then the stop"
+        );
+        for line in &lines[first_mate..] {
+            assert!(line.score == "mate 1" && line.first == "h5f7" && line.bound.is_empty());
+        }
+        assert_eq!(result.depth, lines[first_mate].depth + 2);
+        assert_eq!(result.bestmove.to_string(), "h5f7");
+        assert!(
+            result.nodes < (BUDGET * 2048) as u64,
+            "the stop came from the mate"
+        );
+
+        let (analysis, analysis_lines) = clock_search(
+            SCHOLARS_MATE,
+            &SearchLimits {
+                infinite: true,
+                ..minute_clock()
+            },
+            &EngineOptions::default(),
+            FROZEN_CLOCK,
+            BUDGET,
+        );
+        assert!(analysis.depth > result.depth + 3, "{}", analysis.depth);
+        assert!(analysis_lines.len() > lines.len());
+    }
+
+    /// Positions in which some iteration from depth 4 fails high at the root.
+    const FAIL_HIGH_CANDIDATES: [&str; 4] = [
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 7",
+        "2rq1rk1/pb1nbppp/1p2pn2/2pp4/2PP4/1PN1PN2/PB2BPPP/2RQ1RK1 w - - 0 11",
+        LAZY_MARGIN_REGRESSION_FEN,
+    ];
+
+    #[test]
+    fn a_root_fail_high_past_the_soft_target_plays_the_move_with_its_lower_bound() {
+        const DEPTH: u32 = 10;
+        // The fail-high, and the node count at which the iteration before it
+        // completed, read from a search with no clock: a serial tree does not
+        // depend on the clock until something stops it.
+        let (fen, fail_high, completed_nodes) = FAIL_HIGH_CANDIDATES
+            .iter()
+            .find_map(|&fen| {
+                let probe = SearchLimits {
+                    depth: Some(DEPTH),
+                    ..SearchLimits::default()
+                };
+                let (_, mut lines) =
+                    clock_search(fen, &probe, &EngineOptions::default(), None, usize::MAX);
+                let at = lines.iter().position(|line| line.bound == "lowerbound")?;
+                let completed = lines[..at]
+                    .iter()
+                    .rev()
+                    .find(|line| line.bound.is_empty())?;
+                assert_eq!(completed.depth + 1, lines[at].depth);
+                let completed_nodes = completed.nodes;
+                Some((fen, lines.swap_remove(at), completed_nodes))
+            })
+            .expect("a candidate fails high at the root");
+        assert!(fail_high.depth >= 4);
+
+        // Half the optimum keeps every soft target below 99% of the maximum.
+        let mut options = EngineOptions::default();
+        options.search_params.tm_opt_scale = 5_000;
+        let board = Board::from_fen(fen).expect("valid fen");
+        let clock = SearchLimits {
+            depth: Some(DEPTH),
+            ..minute_clock()
+        };
+        let maximum_ms =
+            compute_runtime_limits(&clock, &options, board.side_to_move(), 0, MAX_DEPTH).maximum_ms;
+
+        // The clock passes the soft target, not the maximum, during the
+        // iteration that fails high.
+        let late = Some((completed_nodes + 1, 0.99 * maximum_ms));
+        let (stopped, lines) = clock_search(fen, &clock, &options, late, usize::MAX);
+        let last = lines.last().expect("a line was printed");
+        assert_eq!(last.bound, "lowerbound");
+        assert_eq!(
+            (last.depth, &last.score, last.nodes, &last.first),
+            (
+                fail_high.depth,
+                &fail_high.score,
+                fail_high.nodes,
+                &fail_high.first
+            )
+        );
+        assert_eq!(stopped.bestmove.to_string(), fail_high.first);
+        assert_eq!(format_score(stopped.score), fail_high.score);
+        assert_eq!(stopped.depth, fail_high.depth - 1);
+
+        // Short of the soft target the fail-high is searched again as before.
+        let (unstopped, lines) = clock_search(fen, &clock, &options, FROZEN_CLOCK, usize::MAX);
+        assert_eq!(unstopped.depth, DEPTH as usize);
+        assert!(lines.last().expect("a line was printed").bound.is_empty());
+    }
+
+    #[test]
+    fn the_hard_limit_waits_for_the_first_iteration() {
+        let mut searcher = Searcher::default();
+        searcher.cfg.start = Instant::now() - Duration::from_millis(10);
+        searcher.cfg.limits = RuntimeLimits {
+            depth: 64,
+            optimum_ms: 1.0,
+            maximum_ms: 1.0,
+            ..RuntimeLimits::default()
+        };
+        searcher.td.root_depth = 1;
+        searcher.td.nodes = 2047;
+        assert!(!searcher.check_stop(&mut || SearchEvent::None));
+        searcher.td.root_depth = 2;
+        searcher.td.nodes = 4095;
+        assert!(searcher.check_stop(&mut || SearchEvent::None));
+    }
+
+    #[test]
+    fn a_clock_spent_before_the_search_began_still_returns_a_first_iteration_move() {
+        let limits = SearchLimits {
+            issued: Some(Instant::now() - Duration::from_secs(10)),
+            ..minute_clock()
+        };
+        let (result, lines) = clock_search(
+            SCHOLARS_MATE,
+            &limits,
+            &EngineOptions::default(),
+            None,
+            usize::MAX,
+        );
+        assert_eq!(result.depth, 1);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].first, result.bestmove.to_string());
+    }
+
+    /// `go` parsed 60 ms before the search starts, at a 150 ms clock: the
+    /// hard limit is measured from the parse and the move still leaves the
+    /// `2 × Move Overhead` reserve.
+    #[test]
+    fn a_late_go_at_a_150_ms_clock_leaves_the_reserve() {
+        let board = Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).expect("valid fen");
+        let legal = board.generate_legal_moves();
+        let engine = EngineOptions::default();
+        // Built first: allocating the table is not part of this move.
+        let mut searcher = Searcher::default();
+        let limits = SearchLimits {
+            white_time: 150,
+            black_time: 150,
+            white_increment: 30,
+            black_increment: 30,
+            issued: Some(Instant::now() - Duration::from_millis(60)),
+            ..SearchLimits::default()
+        };
+        searcher.reset_search_state(&limits, &engine, board.side_to_move(), 120, true);
+        let ceiling = 150.0 - 2.0 * engine.move_overhead;
+        assert!(searcher.cfg.limits.maximum_ms <= ceiling);
+        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+        assert!(result.depth >= 1 && legal.contains(&result.bestmove));
+        assert!(
+            (result.elapsed_ms as f64) < ceiling,
+            "{} ms of a 150 ms clock",
+            result.elapsed_ms
+        );
+    }
+
+    /// The clock's stops read only this thread's state: one thread stays
+    /// deterministic and never builds a pool.
+    #[test]
+    fn the_clock_stops_are_deterministic_and_poolless_on_one_thread() {
+        let run = || {
+            let (result, _) = clock_search(
+                SCHOLARS_MATE,
+                &minute_clock(),
+                &EngineOptions::default(),
+                FROZEN_CLOCK,
+                usize::MAX,
+            );
+            (result.nodes, result.bestmove, result.score, result.depth)
+        };
+        assert_eq!(run(), run());
     }
 
     #[test]

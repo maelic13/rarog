@@ -234,8 +234,9 @@ search_params! {
     // (`x / 10000.0` is correctly-rounded, identical to the original literal).
     // TM affects only clock play, never the depth-limited `bench` fingerprint.
     /// Overall multiplier on `optimum_ms` (10000 = ×1.0). The single
-    /// highest-leverage TM knob; lets SPSA scale base time allocation.
-    tm_opt_scale = 10_000, "TmOptScale", 5000..=20000;  // ×1.0
+    /// highest-leverage TM knob; lets SPSA scale base time allocation. The
+    /// range reaches 0.3, the value a harness wire check sets.
+    tm_opt_scale = 10_000, "TmOptScale", 2000..=20000;  // ×1.0
     /// Falling-eval base term. Seed 1187 (0.1187).
     tm_fall_base = 1_187, "TmFallBase", 0..=5000;  // 0.1187
     /// Falling-eval slope on `(prev_avg_score - score)`. Seed 221 (0.0221).
@@ -244,10 +245,27 @@ search_params! {
     tm_instab_base = 11_000, "TmInstabBase", 8000..=16000;  // 1.10
     /// Best-move-instability slope on `tot_best_move_changes`. Seed 22900 (2.29).
     tm_instab_slope = 22_900, "TmInstabSlope", 0..=50000;  // 2.29
-    /// Effort factor at low effort (interp endpoint at t=0). Seed 9240 (0.924).
-    tm_effort_high = 9_240, "TmEffortHigh", 6000..=12000;  // 0.924
-    /// Effort factor at high effort (interp endpoint at t=1). Seed 7100 (0.71).
+    /// Effort factor at or below `TmEffortFloor` of the search's nodes on the
+    /// best move. Seed 9240 (0.924); the range reaches an extending shape.
+    tm_effort_high = 9_240, "TmEffortHigh", 6000..=20000;  // 0.924
+    /// Effort factor when the best move took all of the search's nodes. Seed
+    /// 7100 (0.71).
     tm_effort_low = 7_100, "TmEffortLow", 4000..=10000;  // 0.71
+    /// Best-move node share at which the effort factor starts to fall from
+    /// `TmEffortHigh` toward `TmEffortLow`. Seed 7900 (0.79).
+    tm_effort_floor = 7_900, "TmEffortFloor", 0..=9500;  // 0.79
+    /// Moves to go assumed per second of clock below one second: the
+    /// sudden-death horizon is `min(50, clock_s * this)`, at least one move,
+    /// so a short clock stops counting increments it will not live to
+    /// receive. Plain moves per second. Seed 50.
+    tm_horizon_per_sec = 50, "TmHorizonPerSec", 20..=100;
+    /// Stability factor with the best move just changed. Seed 12881 (1.2881).
+    tm_stab_base = 12_881, "TmStabBase", 8000..=20000;  // 1.2881
+    /// Stability factor's fall per completed iteration the best move has
+    /// held. Seed 440 (0.0440).
+    tm_stab_slope = 440, "TmStabSlope", 0..=2000;  // 0.0440
+    /// Stability factor's floor. Seed 7160 (0.716).
+    tm_stab_floor = 7_160, "TmStabFloor", 4000..=10000;  // 0.716
 }
 
 // The selectivity core's own coordinates. Seeds follow the handoff's seed
@@ -527,5 +545,8 @@ mod tests {
         assert!(p.tm_instab_slope > 0);
         assert!(p.tm_effort_high > 0);
         assert!(p.tm_effort_low > 0);
+        assert!(p.tm_effort_floor < 10_000);
+        assert!(p.tm_horizon_per_sec > 0);
+        assert!(p.tm_stab_floor <= p.tm_stab_base);
     }
 }
