@@ -6,6 +6,8 @@ All notable changes to Rarog are documented in this file. Each is added under
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [Unreleased]
+
 ## [2.6.0] - 2026-10-22
 
 A new evaluation. Measured head to head against 2.5.0 with no adjudication,

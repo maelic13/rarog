@@ -243,5 +243,5 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 Rarog is an independent engine, but it benefits from the open chess-engine
 community's published ideas, testing practices, and protocol conventions.
-Special thanks to Stockfish and its team for the inspiration their work provides
-to chess engine authors and testers.
+Special thanks to Stockfish and Reckless and their developers for the
+inspiration their work provides to chess engine authors and testers.
