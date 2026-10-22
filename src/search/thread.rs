@@ -67,6 +67,10 @@ pub(super) struct ThreadData {
     /// The depth of the iteration this thread is searching; positive
     /// extensions stop at twice it. Zero before any root search.
     pub(super) root_depth: i32,
+    /// The root score this thread's previous search in the game ended on,
+    /// which the falling eval compares with this search's; none at a new
+    /// game, so the first move reads no fall across the pair.
+    pub(super) previous_search_score: Option<i32>,
     /// The plies at which a null move was made, for the tests of its gates.
     #[cfg(test)]
     pub(super) null_move_plies: Vec<usize>,
@@ -134,6 +138,7 @@ impl Default for ThreadData {
             root_delta: 1,
             nmp_min_ply: 0,
             root_depth: 0,
+            previous_search_score: None,
             #[cfg(test)]
             null_move_plies: Vec::new(),
             #[cfg(test)]

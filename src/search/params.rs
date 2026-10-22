@@ -241,6 +241,12 @@ search_params! {
     tm_fall_base = 1_187, "TmFallBase", 0..=5000;  // 0.1187
     /// Falling-eval slope on `(prev_avg_score - score)`. Seed 221 (0.0221).
     tm_fall_slope = 221, "TmFallSlope", 0..=1000;  // 0.0221
+    /// Falling-eval slope on the fall across the move pair: this thread's
+    /// previous search's root score in the game less this iteration's. Both
+    /// donors read the previous move's score; the slope above reads only this
+    /// search. Seed 204 (0.0204, Stockfish's raw cross-move slope; its score
+    /// unit is not this engine's, so the fit sets the weight).
+    tm_fall_prev_slope = 204, "TmFallPrevSlope", 0..=1000;  // 0.0204
     /// Best-move-instability base. Seed 11000 (1.10).
     tm_instab_base = 11_000, "TmInstabBase", 8000..=16000;  // 1.10
     /// Best-move-instability slope on `tot_best_move_changes`. Seed 22900 (2.29).

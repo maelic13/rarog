@@ -409,6 +409,7 @@ impl Searcher {
         self.shared.tt.clear();
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
+        self.td.previous_search_score = None;
         self.worker_pool.new_game();
     }
 
@@ -1078,6 +1079,7 @@ impl Searcher {
             if !self.cfg.limits.movetime_mode {
                 let signals = IterationSignals {
                     score_fall: falling_baseline - f64::from(best_score),
+                    cross_move_fall: self.cross_move_fall(best_score),
                     best_move_changes: tot_best_move_changes,
                     stable_iterations,
                     effort_share: self.effort_share(bestmove),
@@ -1156,6 +1158,7 @@ impl Searcher {
             crate::diag::dump();
         }
 
+        self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -1173,6 +1176,22 @@ impl Searcher {
                 SearchExit::Stop
             },
             ponderhit: self.td.ponderhit,
+        }
+    }
+
+    /// The fall from this thread's previous search in the game to `score`,
+    /// the previous move's score both donors read; zero without one.
+    fn cross_move_fall(&self, score: i32) -> f64 {
+        self.td
+            .previous_search_score
+            .map_or(0.0, |previous| f64::from(previous - score))
+    }
+
+    /// Keep this search's root score for the next search's falling eval. A
+    /// search that completed no iteration leaves the previous one in place.
+    fn remember_search_score(&mut self, score: i32) {
+        if score > -INF_SCORE {
+            self.td.previous_search_score = Some(score);
         }
     }
 
@@ -1197,10 +1216,11 @@ impl Searcher {
         elapsed_ms: f64,
     ) {
         self.td.sink.line(&format!(
-            "info string tm depth {depth} k {} share {:.4} fall {:.4} instab {:.4} stab {:.4} \
-             effort {:.4} optimum {:.1} target {:.1} elapsed {elapsed_ms:.1}",
+            "info string tm depth {depth} k {} share {:.4} cross {:.1} fall {:.4} instab {:.4} \
+             stab {:.4} effort {:.4} optimum {:.1} target {:.1} elapsed {elapsed_ms:.1}",
             signals.stable_iterations,
             signals.effort_share,
+            signals.cross_move_fall,
             soft.falling,
             soft.instability,
             soft.stability,
@@ -1446,6 +1466,7 @@ impl Searcher {
             if !self.cfg.limits.movetime_mode {
                 let signals = IterationSignals {
                     score_fall: falling_baseline - f64::from(best_score),
+                    cross_move_fall: self.cross_move_fall(best_score),
                     best_move_changes: tot_best_move_changes,
                     stable_iterations,
                     effort_share: self.effort_share(bestmove),
@@ -1481,6 +1502,7 @@ impl Searcher {
         if self.shared.threads == 1 {
             crate::diag::dump();
         }
+        self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -2705,6 +2727,37 @@ mod tests {
         assert_eq!(result.depth, 1);
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].first, result.bestmove.to_string());
+    }
+
+    /// Each search leaves its root score for the next one's falling eval; a
+    /// new game forgets it, and before any search there is no fall to read.
+    #[test]
+    fn a_search_leaves_its_score_for_the_next_move_until_a_new_game() {
+        let engine = EngineOptions::default();
+        let mut searcher = Searcher::default();
+        assert_eq!(searcher.cross_move_fall(0), 0.0);
+        let depth_limited = SearchLimits {
+            depth: Some(4),
+            ..SearchLimits::default()
+        };
+        let board = Board::from_fen(LAZY_MARGIN_REGRESSION_FEN).expect("valid fen");
+        let legal = board.generate_legal_moves();
+        searcher.reset_search_state(&depth_limited, &engine, board.side_to_move(), 0, true);
+        let first = searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
+        assert_eq!(searcher.td.previous_search_score, Some(first.score));
+        assert_eq!(searcher.cross_move_fall(first.score - 25), 25.0);
+        assert_eq!(searcher.cross_move_fall(first.score + 40), -40.0);
+
+        let mut next = board;
+        next.make_move(first.bestmove);
+        let legal = next.generate_legal_moves();
+        searcher.reset_search_state(&depth_limited, &engine, next.side_to_move(), 1, true);
+        let second = searcher.search_root(next, &legal, false, &mut || SearchEvent::None);
+        assert_eq!(searcher.td.previous_search_score, Some(second.score));
+
+        searcher.new_game();
+        assert_eq!(searcher.td.previous_search_score, None);
+        assert_eq!(searcher.cross_move_fall(second.score), 0.0);
     }
 
     /// `go` parsed 60 ms before the search starts, at a 150 ms clock: the

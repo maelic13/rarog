@@ -300,6 +300,10 @@ pub(super) struct IterationSignals {
     /// The prior iterations' average score less this one's: positive when the
     /// score falls.
     pub(super) score_fall: f64,
+    /// The previous search's root score in this game less this iteration's:
+    /// positive when the score fell across the move pair; zero without a
+    /// previous search.
+    pub(super) cross_move_fall: f64,
     /// Best-move changes, halved every iteration.
     pub(super) best_move_changes: f64,
     /// Completed iterations since the best move last changed.
@@ -320,8 +324,12 @@ pub(super) fn soft_stop(
     let opt_scale = f64::from(params.tm_opt_scale) / 10_000.0;
     let fall_base = f64::from(params.tm_fall_base) / 10_000.0;
     let fall_slope = f64::from(params.tm_fall_slope) / 10_000.0;
-    // Falling eval: more time when the score falls.
-    let falling = (fall_base + fall_slope * signals.score_fall).clamp(0.572, 1.708);
+    let fall_prev_slope = f64::from(params.tm_fall_prev_slope) / 10_000.0;
+    // Falling eval: more time when the score falls, within this search and
+    // across the move pair.
+    let falling =
+        (fall_base + fall_slope * signals.score_fall + fall_prev_slope * signals.cross_move_fall)
+            .clamp(0.572, 1.708);
     // Instability: more time when the best move changed recently.
     let instability = tm_instability_factor(params, signals.best_move_changes);
     // Stability: less time the longer the best move has held.
@@ -840,6 +848,7 @@ mod tests {
         };
         let signals = IterationSignals {
             score_fall: 30.0,
+            cross_move_fall: 10.0,
             best_move_changes: 0.5,
             stable_iterations: 3,
             effort_share: 0.9,
@@ -847,11 +856,65 @@ mod tests {
         let soft = soft_stop(&params, &clock, signals);
         let product = soft.falling * soft.instability * soft.stability * soft.effort;
         assert!((soft.target_ms - 1_000.0 * product).abs() < 1e-9);
-        assert!((soft.falling - (0.1187 + 0.0221 * 30.0)).abs() < 1e-12);
+        assert!((soft.falling - (0.1187 + 0.0221 * 30.0 + 0.0204 * 10.0)).abs() < 1e-12);
         assert!((soft.instability - (1.10 + 2.29 * 0.5)).abs() < 1e-12);
         assert!((soft.stability - (1.2881 - 3.0 * 0.044)).abs() < 1e-12);
         clock.maximum_ms = 1_200.0;
         assert_eq!(soft_stop(&params, &clock, signals).target_ms, 1_200.0);
+    }
+
+    #[test]
+    fn the_falling_factor_reads_the_fall_across_the_move_pair_within_its_clamps() {
+        let params = SearchParams::default();
+        let clock = RuntimeLimits {
+            optimum_ms: 1_000.0,
+            maximum_ms: 5_000.0,
+            ..RuntimeLimits::default()
+        };
+        let falling = |score_fall: f64, cross_move_fall: f64| {
+            soft_stop(
+                &params,
+                &clock,
+                IterationSignals {
+                    score_fall,
+                    cross_move_fall,
+                    best_move_changes: 0.0,
+                    stable_iterations: 0,
+                    effort_share: 0.0,
+                },
+            )
+            .falling
+        };
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
+        // Without a previous search the factor is the within-search one.
+        assert!(close(falling(30.0, 0.0), 0.1187 + 0.0221 * 30.0));
+        // A fall across the move pair alone lifts it off the lower clamp from
+        // about 22 cp; a rise never pushes it under the clamp.
+        assert!(close(falling(0.0, 20.0), 0.572));
+        assert!(close(falling(0.0, 30.0), 0.1187 + 0.0204 * 30.0));
+        assert!(close(falling(0.0, -300.0), 0.572));
+        // Both falls add, and the upper clamp holds.
+        assert!(close(
+            falling(30.0, 30.0),
+            0.1187 + 0.0221 * 30.0 + 0.0204 * 30.0
+        ));
+        assert!(close(falling(60.0, 60.0), 1.708));
+        let off = SearchParams {
+            tm_fall_prev_slope: 0,
+            ..SearchParams::default()
+        };
+        let without = soft_stop(
+            &off,
+            &clock,
+            IterationSignals {
+                score_fall: 30.0,
+                cross_move_fall: 500.0,
+                best_move_changes: 0.0,
+                stable_iterations: 0,
+                effort_share: 0.0,
+            },
+        );
+        assert!(close(without.falling, 0.1187 + 0.0221 * 30.0));
     }
 
     #[test]
