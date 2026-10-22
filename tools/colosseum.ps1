@@ -719,6 +719,7 @@ if ($Mode -eq "spsa") {
     $lines.Add("tune_horizon:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $($resolved.total_games) games")
     $lines.Add("tune_r_end:       $($resolved.r_end)")
     $lines.Add("seed_from:        $(if ($seedSource) { "$($seedSource.Directory) ($($seedSource.Iterations) iterations; result.json sha256 $($seedSource.ResultSha256))" } else { 'none (seeds are the engine defaults)' })")
+    $lines.Add((Format-ColosseumRailWarnings -Warnings @($dry.rail_warnings)))
 }
 $lines.Add("host_busy_percent: $(if ($null -eq $hostState.BusyPercent) { 'unreadable' } else { '{0:N1}' -f $hostState.BusyPercent })")
 $lines.Add("categorical:      $(if ($CategoricalTuneBuild) { 'one tune build on both sides, options A vs B (-CategoricalTuneBuild)' } else { 'no' })")
@@ -824,6 +825,13 @@ $completion.Add("scored_games:     $scored")
 $completion.Add("completed_pairs:  $($record.official_sample.completed_pairs)")
 $completion.Add("pentanomial:      $pentanomial")
 $completion.Add("faults:           $faults")
+if ($Mode -eq 'spsa') {
+    $resultPath = Join-Path $Dir "result.json"
+    $tuneResult = if (Test-Path -LiteralPath $resultPath) { Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json }
+    $completion.Add((Format-ColosseumClampWarnings -Result $tuneResult))
+} else {
+    foreach ($line in (Format-ColosseumResults -Record $record)) { $completion.Add($line) }
+}
 foreach ($artifact in @('result.json', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
     $path = Join-Path $Dir $artifact
     if (Test-Path -LiteralPath $path) { $completion.Add("$($artifact)_sha256: $(Get-HarnessSha256 $path)") }

@@ -10,10 +10,10 @@
     "while the top-level `sha256` is checked on the extracted executable. Re-pinning",
     "to a later release is an edit to this file and to nothing else in the tree."
   ],
-  "revision": "cb12cd3ab3a98dd3be1e5d9155cb1ea2b3a1f1e7",
-  "sha256": "381EB7A5AE49D954E11D58282EA9E47B50F0E2D514369CE9368147ECF244F8D6",
-  "version": "colosseum-cli 0.3.0",
-  "pinned_utc": "2026-10-14",
+  "revision": "9c72539414bbda101d21bf6ca28c3a92c665fe0a",
+  "sha256": "F3201288F79AF8F9EDF76FE72F3AEB224F391B2DBF9DE25F70D14D8E909862D1",
+  "version": "colosseum-cli 0.4.0",
+  "pinned_utc": "2026-10-22",
   "source": {
     "kind": "release-archive",
     "repository": "https://github.com/maelic13/colosseum",
@@ -21,10 +21,10 @@
     "artifact": "target/release/colosseum-cli.exe"
   },
   "archive": {
-    "tag": "cli-v0.3.0",
-    "asset": "colosseum-cli-0.3.0-windows-x64.zip",
-    "url": "https://github.com/maelic13/colosseum/releases/download/cli-v0.3.0/colosseum-cli-0.3.0-windows-x64.zip",
-    "sha256": "948FA316E0080741AAFCCA515D3716CA5113F6EA037469F5AB6C62D53FCCD9DB",
-    "size_bytes": 2871740
+    "tag": "cli-v0.4.0",
+    "asset": "colosseum-cli-0.4.0-windows-x64.zip",
+    "url": "https://github.com/maelic13/colosseum/releases/download/cli-v0.4.0/colosseum-cli-0.4.0-windows-x64.zip",
+    "sha256": "3068174531C6CF3C8234CAEFDC568A27D9E4F52274C114EFB03CE57F63B56A73",
+    "size_bytes": 3013561
   }
 }

@@ -990,3 +990,134 @@ function Assert-ColosseumRunFaults {
     }
     $faults
 }
+
+function Format-HarnessInvariant {
+    # Manifest figures are written with '.' decimals whatever the host's
+    # culture, so a reader in another locale parses the same number.
+    param([Parameter(Mandatory)][string]$Format, [object[]]$Values)
+    [string]::Format([System.Globalization.CultureInfo]::InvariantCulture, $Format, $Values)
+}
+
+function Format-ColosseumResults {
+    # What the runner reports at the end of a run beyond its statistics
+    # (run-record schema 6, CLI 0.4.0): each engine's games by colour, how the
+    # counted games ended, faults and time losses by engine, each engine's
+    # search, and a tournament's pairs and standings. The manifest quotes them,
+    # so a ledger row cites the runner's own figures and nobody re-derives them
+    # from games.pgn. Two sides with one name (a categorical match) share one
+    # search line, because the PGN names them alike.
+    param([Parameter(Mandatory)][object]$Record)
+
+    $results = $Record.results
+    if (-not $results) {
+        return @("results:          not in this run record (schema $($Record.schema_version))")
+    }
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $side = {
+        param($s)
+        Format-HarnessInvariant "{0} W / {1} D / {2} L of {3} ({4:0.0}%)" `
+            @($s.wins, $s.draws, $s.losses, $s.games, (100.0 * [double]$s.score))
+    }
+    $counts = {
+        param($map)
+        if (-not $map) { return "none" }
+        $parts = @($map.PSObject.Properties | ForEach-Object { "$($_.Name) $($_.Value)" })
+        if ($parts.Count -eq 0) { "none" } else { $parts -join ', ' }
+    }
+
+    foreach ($engine in @($results.by_colour)) {
+        if (-not $engine) { continue }
+        $lines.Add("by_colour:        $($engine.engine): White $(& $side $engine.as_white); Black $(& $side $engine.as_black)")
+    }
+    if ($results.terminations) {
+        $lines.Add("terminations:     $(& $counts $results.terminations.overall)")
+    }
+    if ($results.faults) {
+        $losses = @($results.faults.time_losses | ForEach-Object { "$($_.engine) $($_.games)" })
+        $lines.Add("time_losses:      $(if ($losses.Count -gt 0) { $losses -join ', ' } else { 'none' })")
+        $groups = @($results.faults.faults | ForEach-Object {
+            "$($_.engine) $($_.kind) in $($_.phase), $($_.termination), scored $($_.scored_as): $($_.games)"
+        })
+        $lines.Add("engine_faults:    $(if ($groups.Count -gt 0) { $groups -join '; ' } else { 'none' })")
+        $lines.Add("infra_faults:     $($results.faults.infrastructure_faults)")
+    }
+    foreach ($engine in @($results.telemetry.engines)) {
+        if (-not $engine) { continue }
+        $parts = [System.Collections.Generic.List[string]]::new()
+        if ($engine.depth.status -eq 'available') {
+            $parts.Add((Format-HarnessInvariant "depth {0:0.00} mean" @($engine.depth.mean)))
+        }
+        if ($engine.non_mate_depth.status -eq 'available') {
+            $parts.Add((Format-HarnessInvariant "non-mate depth {0:0.00} over {1} moves" `
+                @($engine.non_mate_depth.mean, $engine.non_mate_depth.samples)))
+        }
+        if ($engine.nodes.status -eq 'available') {
+            $parts.Add((Format-HarnessInvariant "{0:0} nodes a move" @($engine.nodes.mean)))
+        }
+        if ($engine.elapsed_seconds.status -eq 'available') {
+            $parts.Add((Format-HarnessInvariant "{0:0.0} ms a move" @(1000.0 * [double]$engine.elapsed_seconds.mean)))
+        }
+        if ($null -ne $engine.nodes_per_second) {
+            $parts.Add((Format-HarnessInvariant "{0:0} nps" @($engine.nodes_per_second)))
+        }
+        $lines.Add("search:           $($engine.engine): $($engine.annotated_moves) moves; $($parts -join '; ')")
+        $hold = $engine.harness_overhead_ms
+        if ($hold -and $hold.status -eq 'available') {
+            $lines.Add((Format-HarnessInvariant "harness_hold_ms:  {0}: p50 {1}, p99 {2}, p999 {3}, max {4}; {5} of {6} moves over the margin" `
+                @($engine.engine, $hold.p50, $hold.p99, $hold.p999, $hold.max, $hold.over_margin, $hold.moves_with_margin)))
+        }
+    }
+    if ($results.tournament) {
+        foreach ($pair in @($results.tournament.pairs)) {
+            if (-not $pair) { continue }
+            $ptnml = if ($pair.pentanomial) { "; ptnml [$($pair.pentanomial -join ', ')]" } else { "" }
+            $lines.Add((Format-HarnessInvariant "pair:             {0} vs {1}: {2} W / {3} D / {4} L of {5}, Elo {6:0.0} [{7:0.0}, {8:0.0}]{9}" `
+                @($pair.engine, $pair.opponent, $pair.wins, $pair.draws, $pair.losses, $pair.games,
+                  $pair.elo, $pair.elo_lower, $pair.elo_upper, $ptnml)))
+        }
+        foreach ($row in @($results.tournament.standings)) {
+            if (-not $row) { continue }
+            $rating = if ($row.fixed) { Format-HarnessInvariant "{0:0.0} fixed" @($row.rating) }
+                      else { Format-HarnessInvariant "{0:0.0} +/- {1:0.0}" @($row.rating, $row.error_95) }
+            $lines.Add("standing:         $($row.rank). $($row.name) $rating, $($row.games) games")
+        }
+    }
+    if ($results.analysis_unavailable) {
+        $lines.Add("results_note:     $($results.analysis_unavailable)")
+    }
+    $lines
+}
+
+function Format-ColosseumRailWarnings {
+    # A tune whose first arms, `seed +/- c_0`, already leave a coordinate's
+    # range plays that arm at the range end from iteration 1, a smaller
+    # perturbation than the update assumes. The runner lists them in its dry
+    # run (CLI 0.4.0); this records them. A warning, not a refusal: whether to
+    # start there is the registration's decision.
+    param([object[]]$Warnings)
+
+    $items = @($Warnings | Where-Object { $_ })
+    if ($items.Count -eq 0) { return "rail_warnings:    none" }
+    $described = $items | ForEach-Object {
+        $ends = @()
+        if ($_.clamped_at_min) { $ends += "min $($_.min)" }
+        if ($_.clamped_at_max) { $ends += "max $($_.max)" }
+        Format-HarnessInvariant "{0} seed {1} c_0 {2:0.###} -> {3}" @($_.name, $_.seed, $_.c0, ($ends -join ' and '))
+    }
+    "rail_warnings:    $($described -join '; ')"
+}
+
+function Format-ColosseumClampWarnings {
+    # A finished tune's arms clamped at a range end, per coordinate, from
+    # result.json's tune_audit (SPSA result schema 4, CLI 0.4.0).
+    param([object]$Result)
+
+    # Before schema 4 the audit existed but never counted clamps.
+    if (-not $Result -or -not $Result.tune_audit -or [int]$Result.schema_version -lt 4) {
+        return "arm_clamps:       not recorded (result schema $(if ($Result) { $Result.schema_version } else { 'none' }))"
+    }
+    $clamped = @($Result.tune_audit.warnings | Where-Object { $_.kind -eq 'arms-clamped-at-range-end' } | ForEach-Object {
+        "$($_.name) at min on $($_.clamped_at_min), at max on $($_.clamped_at_max) of $($_.completed_iterations) iterations"
+    })
+    "arm_clamps:       $(if ($clamped.Count -gt 0) { $clamped -join '; ' } else { 'none' })"
+}
