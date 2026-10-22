@@ -17,6 +17,12 @@
     "max_value": 1000,
     "step": 63
   },
+  "TmFallPrevSlope": {
+    "value": 204,
+    "min_value": 0,
+    "max_value": 1000,
+    "step": 63
+  },
   "TmInstabBase": {
     "value": 11000,
     "min_value": 8000,

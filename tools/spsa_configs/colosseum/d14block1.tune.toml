@@ -24,6 +24,13 @@ max = 1000
 c_end = 29.0159
 
 [[parameters]]
+name = "TmFallPrevSlope"
+initial = 204
+min = 0
+max = 1000
+c_end = 29.0159
+
+[[parameters]]
 name = "TmInstabBase"
 initial = 11000
 min = 8000
