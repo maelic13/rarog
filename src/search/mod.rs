@@ -2379,6 +2379,8 @@ mod tests {
     #[test]
     fn ponderhit_preserves_elapsed_time_budget() {
         let mut searcher = Searcher::default();
+        // Mid-search: the second iteration is running.
+        searcher.td.root_depth = 2;
         searcher.td.pondering = true;
         searcher.cfg.start = Instant::now() - Duration::from_millis(10);
         searcher.cfg.limits = RuntimeLimits {

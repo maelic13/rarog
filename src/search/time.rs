@@ -446,12 +446,14 @@ mod tests {
 
     #[test]
     fn the_reserve_decides_the_hard_limit_only_below_about_five_overheads() {
+        // An increment large enough that the optimum, and the maximum it
+        // scales, reach both caps at any horizon.
         let clock = |time: usize| {
             limits(
                 126,
                 &SearchLimits {
                     white_time: time,
-                    white_increment: 30,
+                    white_increment: 300,
                     ..SearchLimits::default()
                 },
             )
