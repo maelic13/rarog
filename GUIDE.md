@@ -48,9 +48,9 @@ field, about 3,475 on CCRL's Blitz scale.
 
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — **V**
-- [ ] **E.3** Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — **M**
+- [ ] **E.3** Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — **M**
     - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
-    - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
+    - [ ] **E.3.2** Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 - [ ] **E.4** The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — **R2**
 
 ## Phase F — NNUE (own data only)
@@ -65,7 +65,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **F.6** Search re-fit for the network — **V**
 - [ ] **F.7** Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — **R3**
 - [ ] **F.8** Data frontier: on-policy refresh, deduplication, hard-position mining — **V**
-- [ ] **F.9** NNUE release: beat the classical release at STC, LTC and 4T; platform matrix — **M**
+- [ ] **F.9** NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — **M**
 - [ ] **F.10** CCRL top-100 gate — **V**
 
 ## Phase G — Scaling, platforms and the top 50
@@ -79,7 +79,7 @@ field, about 3,475 on CCRL's Blitz scale.
 
 | Item | Value |
 |---|---|
-| Next release | **3.0.0** at E.3 if the E.2 target gate is met (its four targets already pass at 1T and 4T, RAR-M73, RAR-M74), otherwise 2.7.0 |
+| Next release | **2.7.0** at E.3 after Phases D and E (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.2.1) release as 2.8.0 onward under Phase F's rule |
 | Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
 | Development head | `d1` from `master` at `0127e58` (the 2.6.0 release, PR #11, 2026-10-22), version **2.7.0-dev**: the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, and C.10's search tune, plus D.1.3's clock cluster at its seeds (`5fec0d7`, clock-only, not yet gated); the classical evaluation frozen at engine source `9fb525e`; fingerprint **13,987,223 / EBF 2.565**; `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: PLAN D.3's change log, `docs/HISTORY.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |

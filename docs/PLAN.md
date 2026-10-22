@@ -846,11 +846,14 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   engine by 5 Elo or less, C.13.7's contempt card (form 1, a search draw
   offset) is the registered lever, measured in this gauntlet with and
   without it (`analysis/c137_contempt_card_2026-10-16.md`).
-- **E.3 Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.7.0 (2.5.0 was cut at B.10 and 2.6.0 from
-  the C head ahead of E, maintainer decisions 2026-10-03 and 2026-10-22). The release is cut through the
+  is 2.7.0 whatever E.2 reads (maintainer decision 2026-10-22: Rarog 3 is
+  the first NNUE Rarog, F.9; E.2's result is recorded, not a version number;
+  2.5.0 was cut at B.10 and 2.6.0 from the C head ahead of E, maintainer
+  decisions 2026-10-03 and 2026-10-22). Later classical gains (E.4, F.2.1)
+  release as 2.8.0 and onward under Phase F's rule. The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
@@ -858,9 +861,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
-      E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
-      E.2 is met, otherwise 2.7.0, behaviour-neutral with the fingerprint
+    - **E.3.2 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05): the version from `2.7.0-dev` to 2.7.0,
+      behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
       builds; GUIDE's checkpoint marks the release; the PR to `master`,
@@ -966,7 +969,7 @@ with an evaluator option, never two release builds.
   Reckless, one axis at a time; each net gated against the previous.
 - **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
-- **F.9 NNUE release: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
+- **F.9 NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
   and 4T; platform matrix; publish.
 - **F.10 CCRL top-100 gate — `V`.** Submit; the list decides. Shortfall
   measured against the pool and fed back into F.7/F.8.
@@ -1011,7 +1014,9 @@ and adjudication never change after games are seen.
 
 - A release ships only from a head whose every accepted cluster has a ledger
   row and whose deficit meters are recorded at the checkpoint before it.
-- 3.0.0 requires the E.2 gate met; 2.4.0 requires at least +40 Elo at STC over
+- 3.0.0 is the first NNUE release (F.9; maintainer decision 2026-10-22,
+  replacing "3.0.0 requires the E.2 gate met": the classical stage releases
+  as 2.7.0 and onward, and E.2's result is recorded, not a version); 2.4.0 requires at least +40 Elo at STC over
   2.3.2 with the lower bound above +25, positive LTC and 4T lower bounds.
 - 2.5.0 adopts 2.4.0's rule against 2.4.0 (maintainer decision 2026-10-04)
   and meets it: STC +272.4 (95% about +245 .. +308, RAR-M64), `10+0.1`
