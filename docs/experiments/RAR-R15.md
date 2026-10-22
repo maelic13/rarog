@@ -326,3 +326,73 @@ rail warning, 15 slots, Hash 64, Threads 1, MultiPV 1, seed 20261023,
 `3+0.03` with a 20 ms margin, the tune build at `eff17c3` with bench
 13,987,223 verified against the registration; the run directory unused. The
 command is (c)'s, unchanged. The frozen readings and predictions 2–7 stand.
+
+## Amendment 2026-10-22, before any game of the block: a thirteenth coordinate, the cross-move score trend
+
+**Maintainer decision 2026-10-22:** this fit is the last clock work for some
+time, so a mechanism both donors carry and the cluster lacked joins it now
+rather than in a later fit: the score trend across the move pair. Stockfish's
+falling eval compares the previous move's average score with this
+iteration's (`bestPreviousAverageScore`); Reckless's score trend is the
+previous move's score less this one's. Rarog's falling eval read only this
+search's prior iterations, which the ADR-0065 audit ticked as "score trend:
+present" without the cross-move half.
+
+**Evidence, zero games** (`cross_move_screen.py`, `4d777fdf…`;
+`cross_move_screen.txt`, `a7c9c372…`, beside this entry's artifacts): over
+the seeds arm of the six wire checks (1,600 games, 89,676 consecutive
+own-move pairs) the score moves 18 cp at the median across a pair, 39 at p75
+and 80 at p90, symmetrically (22.3% of pairs fall by 20 cp or more, 25.8%
+rise). A cross-move term at Stockfish's raw slope lifts the falling factor
+off its lower clamp on 20.0% of moves, beside the within-search term's 33.1%
+of iterations in the activation read: a live signal of the same order from
+another source, the opponent's reply. No Elo is claimed; the fit sets the
+weight.
+
+**Mechanism** (engine `1f185cb`, clock-only, bench 13 unchanged). Each
+thread keeps the root score its previous search in the game ended on
+(`previous_search_score`, cleared by `ucinewgame`; a search that completed no
+iteration leaves it in place), and the falling eval becomes `TmFallBase +
+TmFallSlope × (the within-search fall) + TmFallPrevSlope × (the previous
+search's score − this iteration's)`, clamped at 0.572..1.708 as before.
+`TmFallPrevSlope` seeds at 204 (0.0204 a cp, Stockfish's raw value; its
+score unit is not this engine's, so the seed is a start, not a claim), range
+0..1000, b43 step 63. Interactions: it shares the clamp with the
+within-search slope, so the two trade off inside the unclamped band; nothing
+per node; helpers keep their own previous score (own-thread signals,
+RAR-R05). Invariants: `bench 13` (no clock, the target is infinite); the
+first search of a game reads a zero cross-move fall. Falsifier: a wire check
+that does not move time a move, and the fit, which may send the slope to 0.
+
+**Wire check (frozen before its games).** Arm A `TmFallPrevSlope=1000`
+(0.1 a cp) against the seeds, 200 games, `-CategoricalTuneBuild` on the
+thirteen-coordinate tune build, seed 20261030, into
+`tools/results/d14-wire-fallprev1000`, read per move at equal clock in plies
+0–19 by `tm_wire_read.py` and `wire_resolution.py`. Formula: the cross-move
+term alone gives a mean factor of 0.930 at arm A against 0.684 at the seed,
+×1.36; expected ×1.25 (band 1.10–1.60) after the four live factor checks'
+calibration (0.7 to 1.0 of the log ratio). Live if ≥ 5% higher (twice the
+SE at 200 games). The activation replay cannot read this signal (every
+position there is a first search), so the screen above is its activation
+evidence.
+
+**The surface at thirteen, regenerated before any game:**
+`config_d14block1.json` (`89f2da6c…`), `d14block1.tune.toml`
+(`7ca3514b…`), `fixed_d14block1.json` and `d14block1.run.toml`
+unchanged, by `gen_d14block1.py` (`86b04bb2…`) and the converter at
+N = 2000; `audit_spsa_coverage.ps1` clean. The tune build is
+`tools/test_engines/rarog-d13cluster7-tune.exe` (`a5efb11c5e25ea9f…`, `pext-tune`, built clean at
+`2b9831f`, whose engine inputs are `1f185cb`'s; bench 13,987,223).
+The block's command becomes
+`./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d13cluster7-tune.exe -ConfigGroup d14block1 -Iterations 2000 -TotalGames 60000 -Seed 20261023 -ExpectRevision 2b9831f -ExpectBench 13987223 -Dir tools/results/d14-spsa-block1`,
+the run directory still unused, after the wire check above reads live.
+Blocks, readings and use are unchanged.
+
+**Prediction, amended before any game** (items 2–7 above were frozen over
+twelve coordinates and stand as written):
+- 2a. Block 1's full-step movers over thirteen: **3**, 80% band 1 to 6,
+  `TmFallPrevSlope` among them with 0.5 (a donor seed in a foreign unit).
+- 8. The cross-move wire check is live: 0.85.
+- 9. `TmFallPrevSlope` ends above zero: 0.8; above its seed: 0.5.
+- The coordinate changes neither the block's shape nor the chance of a
+  second block, which rule 7c's count decides.

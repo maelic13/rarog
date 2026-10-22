@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: wire checks and activation read done, the horizon's miss a recorded calibration (maintainer decision 2026-10-22), the surface reviewed and kept at twelve; block 1 prepared, maintainer-run |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: wire checks and activation read done, the horizon's miss a recorded calibration, the cross-move score trend added as a thirteenth coordinate (maintainer decisions 2026-10-22); its wire check, then block 1, maintainer-run |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -529,7 +529,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           effort band's floor and endpoints become coordinates whose ranges
           reach both donors' shapes, so the fit decides the shape question.
           The SPRT moves to D.1.5.
-    - **D.1.3 The clock cluster: six clock-only mechanisms from RAR-R14's handoff — `I2`, DONE 2026-10-22.**
+    - **D.1.3 The clock cluster: RAR-R14's six clock-only mechanisms and the cross-move score trend — `I2`, DONE 2026-10-22.**
       From `analysis/d12_tm_research_2026-10-22.md`, *Implementation
       handoff*, in `src/search/time.rs` and the root loop of
       `src/search/mod.rs`: (1) the sub-second horizon contraction
@@ -655,6 +655,20 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
       This is the cheap qualification at the seeds. D.1.2.1 still ticks on
       D.1.5's probe at the fitted values and on its profile read.
+      **Addendum 2026-10-22 (maintainer decision): a seventh mechanism, the
+      cross-move score trend** both donors carry (RAR-R15, *Amendment*).
+      Each thread keeps the root score its previous search in the game ended
+      on, cleared by `ucinewgame`, and the falling eval adds `TmFallPrevSlope
+      × (the previous search's score − this iteration's)` inside the same
+      clamps; seed 0.0204 (Stockfish's raw slope, a foreign unit), range
+      0–0.1. Zero-game screen on 1,600 wire-check games: the score moves
+      18 cp at the median across a move pair, and the term lifts the factor
+      off its clamp on 20% of moves. Engine `1f185cb`, clock-only;
+      verification on the final state, exit status read directly:
+      `cargo fmt --check` 0, `cargo clippy --all-features --all-targets` 0 at
+      zero warnings, `cargo test` 0 and `cargo test --release` 0, `bench 13`
+      on a fresh no-feature release build **13,987,223 / EBF 2.565**. Its
+      wire check and the thirteenth coordinate are D.1.4's.
     - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`.**
       Conditional (PLAN rule 4), with the zero-game sweep replaced by what
       a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
@@ -762,7 +776,16 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       `r-end` 0.0031, no rail warning, 15 slots, Hash 64, Threads 1,
       MultiPV 1), about 8–11 hours. The morning read is
       `python tools/spsa_block_rule.py d14block1 tools/results/d14-spsa-block1`
-      and the manifest's `arm_clamps:` line.
+      and the manifest's `arm_clamps:` line. **Amended 2026-10-22
+      (maintainer decision), before any game:** the cross-move score trend
+      joins the cluster (D.1.3's addendum) and the surface, thirteen
+      coordinates (`TmFallPrevSlope`, seed 204, range 0..1000, step 63),
+      regenerated and audited; its wire check (`TmFallPrevSlope=1000` against
+      the seeds, 200 games, live if plies 0–19 spend ≥ 5% more a move;
+      formula ×1.36) runs before the block on the new tune build,
+      `tools/test_engines/rarog-d13cluster7-tune.exe` (built clean at `2b9831f`, engine
+      inputs `1f185cb`'s, bench 13,987,223), which the block's `-Engine`
+      and `-ExpectRevision` name.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
