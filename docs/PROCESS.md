@@ -318,12 +318,15 @@ default: those defaults were set for controls forty times longer, and at
 and Komodo 13.3 left 25–30% of their time unused in RAR-M75's games, see
 `analysis/d12_tm_research_2026-10-22.md`). CCRL plays defaults too, but at
 its controls they cost nothing, so these settings bring the pool closer to
-CCRL's conditions, not further. The settings, kept identically in the GUI
-registry and in every CLI run file: Stockfish 10, 11 and 15.1 `Move
-Overhead` 10 (Stockfish's own default since 12); Komodo 13.3, 14.1 and
-Dragon 1 `Overhead ms` 20 (`Time Usage` stays at the engine's default, a
-style setting); Ethereal 12.75 and Reckless `MoveOverhead` 20; Houdini 6
-(0), Houdini 3, Critter, Fritz, Rybka and Fire (no such option) unchanged;
+CCRL's conditions, not further. The rule, kept identically in the GUI
+registry and in every CLI run file: every engine that has such an option
+plays it at 10 ms, or at the option's minimum if 10 is below it, until a
+problem is seen with that engine, which then gets its own value recorded
+here. Today that is Stockfish 10, 11 and 15.1 `Move Overhead` 10
+(Stockfish's own default since 12); Komodo 13.3, 14.1 and Dragon 1
+`Overhead ms` 10 (`Time Usage` stays at the engine's default, a style
+setting); Ethereal 12.75 and Reckless `MoveOverhead` 10; Houdini 6 (0),
+Houdini 3, Critter, Fritz, Rybka and Fire (no such option) unchanged;
 Rarog's own default 10. A held rating measured before this decision
 (RAR-M75 and earlier) carries the default and is not comparable with one
 measured after it; an engine whose setting changed is re-rated in the next
