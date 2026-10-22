@@ -26,6 +26,8 @@ a chess GUI or an engine-testing tool.
 - **Pondering** — thinks on the opponent's clock when the GUI enables it.
 - **Optimized binaries** — published for Windows, Linux and macOS, on both
   x86-64 and ARM64, and every one of them profile-guided-optimized.
+- **Large pages on Windows** — a few percent more speed when Windows allows
+  the engine to use them; see [Large pages](#large-pages-windows).
 - **Built-in benchmark** — a `bench` command for reproducible speed and
   search comparisons.
 
@@ -41,19 +43,19 @@ the one matching your operating system and CPU:
 
 | Asset suffix | CPU required | Use when |
 | --- | --- | --- |
-| `pext` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | Modern Intel, or AMD Zen 3 and newer. The fastest build. |
-| `avx2` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | Same CPUs as `pext`, but the right choice on AMD Zen 1, Zen 2 and Excavator, where the PEXT instruction runs in microcode and is slow. |
-| `x86-64` | SSE3 (Intel 2004+, AMD 2005+) | Anything older, or when the two above do not start. |
+| `pext` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | Modern Intel, or AMD Zen 3 and newer. Usually the fastest build. |
+| `avx2` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | AMD Zen 1, Zen 2 and Excavator. These CPUs run `pext` too, but slowly, because their PEXT instruction is emulated in microcode. |
+| `x86-64` | SSE3 (Intel 2004+, AMD 2005+) | Older CPUs, or when the two above do not start. It runs almost anywhere but is the slowest of the three. |
 | `arm64` | ARM64 baseline | ARM64 Linux, Windows on ARM, and Apple Silicon Macs. |
 
-### How much the choice is worth
+Not sure? Start with `pext`. If it does not start, your CPU lacks AVX2 or
+BMI2, so `avx2` will not start either: use `x86-64`. The engine also checks
+your CPU when it starts and prints a `CPU advisory` line when a different
+build would be faster on it.
 
-Measured on a Ryzen 9 5950X:
-
-| Comparison | Result |
-| --- | --- |
-| `pext` against `avx2` | `pext` is **2.4%** faster |
-| `pext` against `x86-64` | `pext` is **6.7%** faster |
+How much the choice matters depends on the CPU, but the order is usually the
+same: on a CPU that runs PEXT natively `pext` is a little faster than `avx2`,
+and both are clearly faster than `x86-64`.
 
 ---
 
@@ -67,6 +69,28 @@ Measured on a Ryzen 9 5950X:
 
 Rarog is tested with Arena, ChessBase/Fritz, ChessOK Aquarium and Hiarcs Chess
 Explorer. Any UCI-compatible GUI should work.
+
+### Large pages (Windows)
+
+On Windows, Rarog can keep its hash table and other large tables in 2 MB
+memory pages instead of the usual 4 KB ones. The processor then spends less
+time looking up memory addresses, and the engine searches a few percent more
+positions per second. Nothing else changes: moves and analysis are exactly
+the same.
+
+Windows allows this only for accounts that hold the *Lock pages in memory*
+right. To grant it:
+
+1. Run `secpol.msc` (Local Security Policy; it needs administrator rights and
+   is not included in Windows Home editions).
+2. Open *Local Policies → User Rights Assignment → Lock pages in memory*.
+3. Add your user account and confirm.
+4. Sign out and sign in again; the right takes effect at the next sign-in.
+
+Without the right, Rarog runs normally with ordinary pages. To check, run
+`bench`: its first line, `Large pages`, reads `on`, `off` (the right is not
+held) or `partial` (Windows could not find enough contiguous memory for every
+table; restarting the engine or the computer often helps).
 
 ---
 
@@ -120,41 +144,56 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 
 ## Build From Source
 
-Install Rust, then:
+Rarog is built with the `xtask` helper, a small program in this repository
+that Cargo runs for you. It picks the right compiler settings for each CPU
+build and writes the finished engine to `target/dist`.
 
-```bash
-cargo build --release
-```
+1. Install Rust with [rustup](https://rustup.rs).
+2. Add the LLVM tools, which the `--pgo` builds below need:
 
-This produces `target/release/rarog` (`rarog.exe` on Windows). It is portable
-but not tuned for any particular CPU.
+   ```bash
+   rustup component add llvm-tools
+   ```
 
-For a build equivalent to the published ones, use the `xtask` helper, which
-writes finished binaries to `target/dist`:
+3. In the repository folder, build the engine. For most modern x86-64 CPUs
+   this is the fastest build for the computer you are on:
+
+   ```bash
+   cargo xtask build --arch pext --native --pgo
+   ```
+
+   On an AMD Zen 1, Zen 2 or Excavator CPU use `--arch avx2` instead of
+   `--arch pext`; on an older x86-64 CPU use `--arch x86-64`; on ARM64 use
+   `--arch arm64`. The [Download](#download) table explains the choice.
+
+A `--pgo` build takes a while, because it builds the engine twice: once to
+measure how it runs on `bench`, then again using what it measured.
+
+### Build options
+
+| Option | Meaning |
+| --- | --- |
+| `--arch x86-64` | Portable x86-64; requires SSE3. The default on x86-64. |
+| `--arch avx2` | Requires AVX2, BMI2 and FMA. |
+| `--arch pext` | Same requirements as `avx2`, and also uses the PEXT instruction. |
+| `--arch arm64` | ARM64. The default on ARM64. |
+| `--native` | Also tunes the build for the exact CPU you are building on. |
+| `--pgo` | Profile-guided optimization, as used for every published build. |
+
+`--arch` and `--native` combine freely. A `--native` build is usually a little
+faster on the computer that built it but may not run on any other, so its
+file name ends in `-native`. Leave `--native` out to build an engine that runs
+on every CPU its `--arch` supports, like the published ones:
 
 ```bash
 cargo xtask build --arch pext --pgo
 ```
 
-### Options
+A `--pgo` build cannot be cross-compiled, because it has to run the engine
+while building it. On Windows ARM64, `xtask` selects the linker a valid
+profile needs by itself; no separate LLVM installation is required.
 
-| Option | Meaning |
-| --- | --- |
-| `--arch x86-64` | Portable x86-64; requires SSE3. |
-| `--arch avx2` | Requires AVX2, BMI2 and FMA. |
-| `--arch pext` | Same requirements as `avx2`, plus it uses the PEXT instruction. |
-| `--arch arm64` | ARM64 targets. |
-| `--native` | Additionally tunes for the CPU you are building on. |
-| `--pgo` | Profile-guided optimization. Used for all published builds. |
-
-`--arch` and `--native` are independent, so they can be combined freely. A
-`--native` build is faster on the machine that produced it but may not run
-anywhere else, so it is marked `-native` in the filename and never published.
-
-`--pgo` builds an instrumented engine, trains it with `bench`, then rebuilds
-using the collected profile. It cannot be cross-compiled, because training has
-to run the engine. On Windows ARM64, `xtask` automatically selects the linker
-needed for a valid profile; no separate LLVM installation is required.
+`cargo xtask help` lists every command and option.
 
 ### Tests
 

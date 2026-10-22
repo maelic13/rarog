@@ -652,11 +652,11 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   engine by 5 Elo or less, C.13.7's contempt card (form 1, a search draw
   offset) is the registered lever, measured in this gauntlet with and
   without it (`analysis/c137_contempt_card_2026-10-16.md`).
-- **E.3 Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.6.0 (2.5.0 is cut at B.10, maintainer
-decision 2026-10-03). The release is cut through the
+  is 3.0.0 if E.2 is met, else 2.7.0 (2.5.0 was cut at B.10 and 2.6.0 from
+  the C head ahead of E, maintainer decisions 2026-10-03 and 2026-10-22). The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
@@ -664,9 +664,9 @@ decision 2026-10-03). The release is cut through the
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
-      E.2 is met, otherwise 2.6.0, behaviour-neutral with the fingerprint
+      E.2 is met, otherwise 2.7.0, behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
       builds; GUIDE's checkpoint marks the release; the PR to `master`,
@@ -772,9 +772,9 @@ and adjudication never change after games are seen.
 - 2.5.0 adopts 2.4.0's rule against 2.4.0 (maintainer decision 2026-10-04)
   and meets it: STC +272.4 (95% about +245 .. +308, RAR-M64), `10+0.1`
   +260.5 ± 16.0 (RAR-M65), 4T +322.7 (95% +289 .. +362, RAR-M66).
-- A 2.6.0 from the C head meets the same rule against 2.5.0 (RAR-M76,
-  2026-10-22): STC +153.4 ± 10.7, `10+0.1` +149.3 ± 15.1, 4T +149.7 ± 14.7.
-  An interim release ahead of 3.0.0 is the maintainer's decision.
+- 2.6.0, cut from the C head ahead of Phase E (maintainer decision
+  2026-10-22), meets the same rule against 2.5.0 (RAR-M76): STC +153.4 ±
+  10.7, `10+0.1` +149.3 ± 15.1, 4T +149.7 ± 14.7.
 - NNUE releases require a win over the last classical release at STC, LTC and
   4T, and a clean platform matrix.
 - Tag, push and publish only on maintainer instruction. From E.3.1 on, a
