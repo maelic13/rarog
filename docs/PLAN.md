@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.3 | READY_FOR_IMPLEMENTATION | I2 | The clock cluster: six clock-only mechanisms from RAR-R14's handoff, `bench 13` unchanged |
+| D.1.3 | IMPLEMENTED | I2 | The clock cluster at its seeds (`5fec0d7`), `bench 13` unchanged; `LOCAL_QUALIFIED` on the maintainer's PGO build and timed probe |
 | D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
@@ -559,6 +559,78 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       (D.2), ponder, `nodestime`, the `movestogo` branch, the harness
       margin, Stockfish's `originalTimeAdjust` and time-disadvantage scale
       and `increaseDepth` (their triggers are in the packet).
+      **Implemented 2026-10-22 on `d1`, `IMPLEMENTED`** (engine commit
+      `5fec0d7`; `d829a8b` before it states the preconditions of two
+      existing tests that the guard and the horizon change, and passes on
+      the unchanged engine; tooling `2811a8a`). At the seeds, in
+      `src/search/time.rs` (`sudden_death_horizon`, `MateWatch`,
+      `soft_stop`) and both root loops of `src/search/mod.rs`. The five
+      coordinates are in `SearchParams` with ranges `TmHorizonPerSec`
+      20–100, `TmStabBase` 0.80–2.00, `TmStabSlope` 0–0.20, `TmStabFloor`
+      0.40–1.00 (the packet set no stability ranges; these are the
+      implementation's), `TmEffortFloor` 0–0.95, and `TmEffortHigh` widened
+      to 0.6–2.0. What the handoff left open:
+      - The two stops are the main thread's decision and end a pool's
+        search directly; every thread's own soft target carries the new
+        factors, and the vote is unchanged. D.1.5's 4T read covers this.
+      - MultiPV takes the mate stop on line 1, not the fail-high stop, which
+        would end a depth before its other lines are searched.
+      - The guard holds the hard stop while the first iteration runs
+        (`root_depth ≤ 1`).
+      - The effort share is the best move's `RootMove.nodes` over the
+        thread's nodes. The per-iteration counters went, with their one
+        root-only store in `negamax`.
+      - A fail-high after a fail-low can have a lower bound under the
+        previous iteration's score. The move is still not a discard: the
+        bound is above every move's bound from that fail-low.
+
+      Verification on the final state, exit status read directly:
+      `cargo fmt --check` 0; `cargo clippy --all-features --all-targets` 0,
+      zero warnings; `cargo test --release` 0, 412 passed; `bench 13` on a
+      fresh no-feature release build **13,987,223 / EBF 2.565**; the search
+      tests under `diag` 0, 116 passed. `cargo test` in debug passed all
+      411 on the same content before a line-ending-only change, then failed
+      2 of 3 times on `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does`
+      (19 and 22 ms cold against 2 and 4 ms warm). That is a timing test of
+      a `go depth 4` search the clock never reaches. The unchanged engine
+      fails it at the same rate when `tt_sizing` runs just before it (1 of
+      5 on each tree), and it passes 11 of 11 alone on the cluster: a
+      load flake that predates the cluster. Each new test fails when its own
+      mechanism is disabled (four mutations: fail-high, mate, guard,
+      horizon). Instrumentation: `diag` counters `tm_mate_stop`,
+      `tm_fail_high_stop` and `tm_first_iteration_guard`, and an
+      `info string tm` line per completed iteration, read by
+      `tools/diag/tm_activation.py` over B.5's 300 positions at `3000+30`.
+
+      **Instrument findings for D.1.4 and D.1.5:**
+      1. `TmOptScale`'s range was 0.5–2.0, so the wire check's 0.3 would have
+         been clamped to 0.5 without a word. Colosseum's guard checks option
+         names, not values. The lower bound is now 0.2.
+      2. `tm_profile.py` profiles by PGN name, and a one-binary categorical
+         match names both players alike, so it would pool the arms.
+         `analysis/artifacts/d13-clock-cluster-2026-10-22/tm_wire_read.py`
+         (SHA-256 `23ef9c7bcc360cda…`) relabels each game by arm from
+         `games.jsonl`, checking each game's PGN hash, then runs
+         `tm_profile.py` unchanged. Checked on `b32-cat-both`: 2,000 games,
+         both arms 4.26 s a game.
+      3. `tm_profile.py` and `tm_table.py` transcribe the fifty-move
+         horizon, so they overstate the candidate's maximum on sub-second
+         moves. D.1.5's "≥ 0.9 × the maximum" read must transcribe the
+         contraction first. The probe's 60 s and 180 s clocks are
+         unaffected.
+      4. The registered fallback (mechanisms 1, 4, 5 and 6 without 2 and 3)
+         cannot be set by options alone. Stability is neutral at
+         `TmStabBase` = `TmStabFloor` = 1.0 with `TmStabSlope` 0, but moving
+         the effort share to the whole search is code. The fallback arm
+         needs the per-iteration share back, as a recipe patch.
+
+      **Remaining for `LOCAL_QUALIFIED`:** the maintainer's PGO build
+      (`tools/build_test.ps1 -Suffix d13cluster`) and the timed probe
+      `analysis/artifacts/d13-clock-cluster-2026-10-22/tm_rec_probe_d13.py`
+      (SHA-256 `53a42b924714eea8…`). The probe is the 2026-10-06 method
+      pointed at that build, with Stockfish 19 beside it. It writes its own
+      output, so the original's cited record is untouched, and it prints a
+      verdict on D.1.2.1's two rules.
     - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`.**
       Conditional (PLAN rule 4), with the zero-game sweep replaced by what
       a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
