@@ -665,7 +665,9 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 nothing exists on GitHub until every cell has passed.
 
 1. Close `CHANGELOG.md`'s `[Unreleased]`, which collected each change as it
-   landed (AGENTS, *Changes*), as `## [X.Y.Z] - YYYY-MM-DD` and
+   landed (AGENTS, *Changes*), as `## [X.Y.Z] - YYYY-MM-DD`. The section
+   becomes the release notes, so read it once as a user would and cut it
+   to AGENTS' user-facing rule (short, plain, one rounded strength line). Then
    bump `Cargo.toml` to `X.Y.Z` (bench unmoved), and mark the release
    released in GUIDE's checkpoint: its *Released baseline* row names
    `X.Y.Z` at the fingerprint the *Development head* row declares, and

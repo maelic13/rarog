@@ -252,6 +252,13 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   gets its entry, written for users, in the commit that records it.
   Experiments, refutations and internal refactors get none. A release dates
   the section and never reconstructs it.
+- The README, the changelog and the release notes cut from it are for users,
+  not for the record: short, simple and to the point. An entry says what
+  changed for the user in a sentence or two, not how it was done or measured:
+  no game counts, error bars, node counts, parameter counts or internal
+  names. A number appears only for a strength gain (rounded, once, in the
+  release's opening line) or when the user acts on it, such as an option's
+  range. The evidence lives in EXPERIMENTS and the ledger, never here.
 - Most of the tree is CRLF. A scripted edit preserves the file's existing line
   endings, asserts each anchor is present exactly once, and re-reads the
   region afterwards; a mixed-ending file or a silently unmatched anchor is a
