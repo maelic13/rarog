@@ -1,4 +1,4 @@
-# RAR-P40 — C.11 evaluation share of search time, against B.9's 24.3% — REGISTERED 2026-10-21, before any capture
+# RAR-P40 — C.11 evaluation share of search time, against B.9's 24.3% — REGISTERED 2026-10-21, before any capture; READ 2026-10-21: 21.1%
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -14,7 +14,15 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
 
 ## Result / disposition
 
-Pending.
+**Captured 2026-10-21 21:08–21:09 local** by `run_all.ps1`'s second step in an elevated shell (`tools/results/c11-profile-etw/`: manifest exe `9d1e3786…`, PDB `e52e3957…`, 600,000 nodes, 5 repeats, 8 kHz; `analysis/artifacts/c11-checkpoint/step-2-profile.log`). All five cohorts were captured and every report passed the tool's own contract checks; the script then failed in its clean-up, restoring the PDB beside the executable from the slot it had itself cleared, which was the PDB's only location here. The PDB was restored from the capture's `symbols/` copy (SHA-256 equal to the registered one) and the tool fixed to restore from that copy (`d42fa46`); the fixed path has not yet run, since it needs an elevated shell.
+
+**Read** (`summarize_board_search_etw.py --scheme search`, MSYS2's `llvm-symbolizer`; `tools/results/c11-profile-etw/summary-search.json`): 169,211 process samples, **every cohort's engine samples resolved (100%)**. **Evaluation 21.06%** of process samples (opening 30.39%, middlegame 19.89%, check-heavy 24.33%, promotion 8.60%, sparse endgame 10.57%); evaluation correction 4.36%; move ordering 22.98%; search node 14.94%; move generation 9.35%; SEE 6.78%; TT 5.83%; make/unmake 5.41%; history 4.73%; check queries 1.46%. **Against B.9's 24.3%: 3.2 points lower**, so PLAN's requirement (explain a share above it) has nothing to explain.
+
+**Prediction calibration, appended after exposure.** Predicted 28% in [22%, 36%]: **a miss in sign and magnitude**, the share fell. The assumption that failed is that Phase C's added terms (king safety, threats, pawns) would outweigh C.12's rewrites; C.12 rewrote the evaluation first (its shared attack-map producer and cache work), and those cut more than the units added. A share is not a cost per node, and this read does not give one.
+
+## Conditional lesson and retry trigger
+
+**The classical evaluation leaves Phase C cheaper in relative terms than it entered: 21% of search time.** Move ordering (23%) is again the largest region. **Retry trigger:** Phase F's NNUE, whose inference cost replaces this region; E.1 may re-profile the final classical head.
 
 ## Source
 

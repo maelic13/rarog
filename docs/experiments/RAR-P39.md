@@ -1,4 +1,4 @@
-# RAR-P39 — C.11 pooled NPS, the C head against the B.9 head — REGISTERED 2026-10-21, before any read
+# RAR-P39 — C.11 pooled NPS, the C head against the B.9 head — REGISTERED 2026-10-21, before any read; READ 2026-10-21: +28.92%
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -10,7 +10,13 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
 
 ## Result / disposition
 
-Pending.
+**Read 2026-10-21 21:02–21:08 local** by `run_all.ps1`'s first step (`analysis/artifacts/c11-checkpoint/nps-read/{raw.json,read.txt}`, `step-1-nps-1.log`; the read's guard 0.0% at the start, CPU 2.0% and 3.1% before the cycles, 1.4% after): per-build medians base 2,345,034 / 2,345,295 / 2,343,561 / 2,340,757, candidate 3,018,399 / 3,019,372 / 3,021,978 / 3,025,584; levels **2,343,662 against 3,021,333**; **+28.92%**, 95% **+28.72% .. +29.11%** (t 2.447, df 6); no disturbed cycle. The tool's line "accepted by step 1" is its acceptance verdict and does not apply to a measurement. The base pool read 0.7% above its RAR-P35 level (2,326,903), inside the day-to-day drift the basis named. In the games the bench figure carried at one thread (RAR-M73: +27.8% over the B.9 head) and not at four (RAR-M74: −10.3%), which this single-thread bench cannot see.
+
+**Prediction calibration, appended after exposure.** Predicted +28% in [+18%, +38%]: **a hit**, 0.9 above the centre; the chain of recorded speed changes and the levels both pointed here.
+
+## Conditional lesson and retry trigger
+
+**Phase C, as shipped, is 29% faster in bench than the B.9 head**, the compiler's −1.6% included; C.12's speed pass carried it. **Retry trigger:** E.1's attribution checkpoint; a bench read at four threads belongs to Phase D (RAR-M74's finding).
 
 ## Source
 

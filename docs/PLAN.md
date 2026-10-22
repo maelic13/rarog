@@ -2587,7 +2587,19 @@ loss).
   Rarog follows the latest stable Rust whenever possible; 1.99.1 stays,
   and C.11's reads run on it. **RAR-O07 read 2026-10-21:** +99.2 ± 16.6
   Elo at equal nodes (predicted +108 in [+90, +126]), 82.5 ± 25.2
-  recovered since RAR-O05; the budget row is corrected by it. **Maintainer decision
+  recovered since RAR-O05; the budget row is corrected by it.
+  **C.11's reads, 2026-10-21 (the maintainer's overnight run):** the 1T
+  pool gauntlet (RAR-M73) **3,428.8 ± 19.2**, +142.3 ± 24.8 over the
+  B.9 head's 3,286.5, all E.2 targets passing; at 4T (RAR-M74) **3,433.7
+  ± 19.3**, +93.7 ± 25.5 over the B.9 head's 3,340.0, with the C head's
+  thread scaling fallen (in-game NPS 4T/1T 2.61 against 3.72, held for
+  Phase D); conversion 13.8 draws and 0.0 losses per 1,000 after a
+  persistent piece-up (B.9 15.8 and 0.8, not resolved); pooled-PGO NPS
+  +28.92% over the B.9 head (RAR-P39); the evaluation 21.1% of search
+  samples against B.9's 24.3% (RAR-P40), so nothing needs explaining.
+  **The freeze waits on one read:** the king-danger refit below, which
+  PLAN put alongside C.10 and which has not run; C.11 is marked done
+  when it closes and the freeze is recorded. **Maintainer decision
   2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
   danger index, carried by inputs Rarog's index already has at fitted
   weights about half the donor's (safe checks, attackers × weight,
