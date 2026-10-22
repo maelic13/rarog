@@ -782,10 +782,12 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       coordinates (`TmFallPrevSlope`, seed 204, range 0..1000, step 63),
       regenerated and audited; its wire check (`TmFallPrevSlope=1000` against
       the seeds, 200 games, live if plies 0–19 spend ≥ 5% more a move;
-      formula ×1.36) runs before the block on the new tune build,
+      formula ×1.36) ran before the block on the new tune build,
       `tools/test_engines/rarog-d13cluster7-tune.exe` (built clean at `2b9831f`, engine
       inputs `1f185cb`'s, bench 13,987,223), which the block's `-Engine`
-      and `-ExpectRevision` name.
+      and `-ExpectRevision` name: **live, ×1.163 in plies 0–19** (about six
+      SE; RAR-R15, *Result of the cross-move wire check*), 0 time losses.
+      Block 1 at thirteen is dry-run and prepared, maintainer-run.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against

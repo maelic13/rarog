@@ -396,3 +396,29 @@ twelve coordinates and stand as written):
 - 9. `TmFallPrevSlope` ends above zero: 0.8; above its seed: 0.5.
 - The coordinate changes neither the block's shape nor the chance of a
   second block, which rule 7c's count decides.
+
+**Result of the cross-move wire check (played 2026-10-22, agent-run as cheap
+qualification, idle host 3% busy, no waiver).** 200 games, 0 faults, 0 time
+losses, the runner's pentanomial 4, 28, 43, 24, 1 (recount agrees), holds
+p999 103 ms; manifest
+`tools/results/colosseum_match_d14-wire-fallprev1000_20261022_211325.manifest.txt`
+(`828c1321…`), reading `d14-wire-fallprev1000.txt` (`776a8557…`). Plies
+0–19 at equal clock: **112.9 ms a move against the seeds' 97.1, ×1.163**,
+SE 1.9% a mean, so the difference is about six SE: **live** by the frozen
+rule (≥ 5% higher), inside the band (1.10–1.60) and under the point
+estimate of 1.25. Calibration: the log ratio is 0.49 of the formula's
+(×1.36), the smallest damping of the six factor checks (the four earlier
+ones read 0.71–1.24); the within-search term, held at zero in the formula,
+already lifts the factor on a third of iterations, so the cross-move term
+has less clamp room than the formula gave it. Arm A spends its gain early:
+its clock floor median is 400 ms against the seeds' 654, and 59 of 200
+games touch 200 ms against 38. Prediction 8 (live, 0.85) held.
+
+**The block at thirteen, prepared 2026-10-22** (dry run through
+`colosseum.ps1`, host 0.5% busy, no waiver;
+`tools/results/colosseum_spsa_d14-spsa-block1_20261022_211548.manifest.txt`):
+13 coordinates, 2,000 × 30 = 60,000 games, `r-end` 0.0031, no rail
+warning, 15 slots, Hash 64, Threads 1, MultiPV 1, seed 20261023, the tune
+build `a5efb11c…` at `2b9831f` with bench 13,987,223 verified; the run
+directory unused. The manifest's `repo_dirty: True` is two untracked files
+of the maintainer's in the working tree, not an engine or surface input.
