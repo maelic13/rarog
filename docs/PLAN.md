@@ -323,8 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.3 | IMPLEMENTED | I2 | The clock cluster at its seeds (`5fec0d7`), `bench 13` unchanged; `LOCAL_QUALIFIED` on the maintainer's PGO build and timed probe |
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit: `TmOptScale`'s wire check live (2026-10-22); next the new coordinates' wire checks, the activation read, then SPSA blocks |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -530,7 +529,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           effort band's floor and endpoints become coordinates whose ranges
           reach both donors' shapes, so the fit decides the shape question.
           The SPRT moves to D.1.5.
-    - **D.1.3 The clock cluster: six clock-only mechanisms from RAR-R14's handoff — `I2`.**
+    - **D.1.3 The clock cluster: six clock-only mechanisms from RAR-R14's handoff — `I2`, DONE 2026-10-22.**
       From `analysis/d12_tm_research_2026-10-22.md`, *Implementation
       handoff*, in `src/search/time.rs` and the root loop of
       `src/search/mod.rs`: (1) the sub-second horizon contraction
@@ -624,13 +623,38 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
          the effort share to the whole search is code. The fallback arm
          needs the per-iteration share back, as a recipe patch.
 
-      **Remaining for `LOCAL_QUALIFIED`:** the maintainer's PGO build
-      (`tools/build_test.ps1 -Suffix d13cluster`) and the timed probe
+      **`LOCAL_QUALIFIED` 2026-10-22, DONE.** The maintainer's PGO build,
+      `tools/test_engines/rarog-d13cluster-pext-pgo.exe` (SHA-256
+      `63d49fdcbc0824c6…`), was built from a clean tree at `da2df4e`, which
+      has the same engine inputs as `5fec0d7`; it benches 13,987,223 / EBF
+      2.565. The timed probe,
       `analysis/artifacts/d13-clock-cluster-2026-10-22/tm_rec_probe_d13.py`
-      (SHA-256 `53a42b924714eea8…`). The probe is the 2026-10-06 method
-      pointed at that build, with Stockfish 19 beside it. It writes its own
-      output, so the original's cited record is untouched, and it prints a
-      verdict on D.1.2.1's two rules.
+      (SHA-256 `53a42b924714eea8…`), is the 2026-10-06 method pointed at
+      that build. It ran on an idle host (3.5% CPU over 20 s) and wrote
+      `tm_rec_probe_d13.txt` (SHA-256 `c33fef86716335a9…`). **Verdict PASS:**
+      no rec move reached the maximum, and rec2 finished under 2 s.
+
+      | Clock | rec1 | rec2 | rec3 |
+      |---|---|---|---|
+      | `60000+600` | 4,079 ms, 0.87 × optimum, d18, exact | 5 ms, d10, mate 6 | 2,061 ms, 0.47 ×, d21, lowerbound |
+      | `180000+2000` | 8,585 ms, 0.57 ×, d19, lowerbound | 5 ms, d10, mate 6 | 12,821 ms, 0.90 ×, d21, lowerbound |
+
+      On 2026-10-06 the B.9 head spent 32.3, 31.6 and 10.4 s at the short
+      clock and 104.4, 102.2 and 10.4 s at the long one. Stockfish 19 spent
+      1.5–45.6 s on the same three.
+      - Three of the four non-mate moves ended on the fail-high stop's
+        `lowerbound` line, and every one ended under its optimum.
+      - The packet's "rec1 and rec3 within about 1.5 × their soft target"
+        cannot be read from this output, which prints no soft target. It is
+        D.1.5's to read at the fitted values.
+      - rec2 stopped at depth 10 on a mate in 6 that held three iterations.
+        Stockfish reports mate in 5. The stop plays a proved mate, not the
+        shortest; each later move searches again from a mate at most one
+        move shorter. The packet allowed this (`mate_in(3)`, the donor's
+        rule, would not have stopped rec2 at all).
+
+      This is the cheap qualification at the seeds. D.1.2.1 still ticks on
+      D.1.5's probe at the fitted values and on its profile read.
     - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`.**
       Conditional (PLAN rule 4), with the zero-game sweep replaced by what
       a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
@@ -644,6 +668,50 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       ones), seeded from the values above; the movement stop rule (rule 7c)
       ends it, and a second block runs only if block 1 moved a coordinate a
       full step and the rule did not fire. About ten hours a block.
+      **(a) `TmOptScale` played 2026-10-22: the wire is live, but the
+      registered size missed.** Maintainer-run: 200 games at `3+0.03`
+      (`-CategoricalTuneBuild`, seed 20261022), on
+      `tools/test_engines/rarog-d13cluster-tune.exe` (SHA-256
+      `87c92774550c41d3…`, clean tree at `eff17c3`, bench 13,987,223). Arm A
+      set `TmOptScale=3000`; arm B kept the seeds. The run is in
+      `tools/results/d14-wire-optscale03`, with manifest
+      `colosseum_match_d14-wire-optscale03_20261022_181558.manifest.txt`
+      (SHA-256 `882daa78c8db131a…`): 0 faults, recount agrees. Read by
+      `tm_wire_read.py`:
+      - Time per game fell from 3.77 s to 2.92 s, **−22.5%**, against the
+        registered "about −60%".
+      - Time per move fell from 61 to 48 ms, −21%. In plies 0–19, where
+        both arms' clocks are near 2.9 s, it fell from 86 to 39 ms, −55%.
+      - From ply 80 arm A holds about twice the clock (2.3 s against
+        1.1 s) and spends more per move than arm B. It ends draws with
+        2.7 s left against 1.1 s.
+
+      **Calibration:** the miss is in magnitude, through the mechanism. The
+      budget is a share of the remaining clock, so time saved early buys
+      time back later, and the expectation took the clock as fixed. The
+      engine applies the value exactly (target over optimum 0.3000 of the
+      seeds' at depth 1), and the harness and reader report the change move
+      by move. So the instrument does what the check exists to prove. The
+      plies 0–19 figure is a reading, not a pass rule written after the
+      result. The coordinates still to check (each new one at a range end)
+      state, before their games, whether their expectation is per game or
+      per move at equal clock.
+
+      The `−145.1 ± 31.5` Elo of arm A says only that a third of the budget
+      costs a lot. On the arm at its seeds:
+      - its clock floor had a median of 882 ms, p10 248;
+      - no game went under 100 ms, and 16 of 200 went under 200 ms.
+
+      That is a hint for D.1.5's floor prediction, not its read: the
+      opponent was the same build at 0.3, and the sample is 200 games.
+
+      Instrument notes:
+      - `tm_profile.py` labels its 99.9th percentile as a second `p99`.
+      - Its spent-over-optimum and ≥ 0.9 × maximum columns use the head's
+        formula (D.1.3's finding 3).
+      - The manifest's `harness_hold_ms:` reads p999 101 and max 878 ms,
+        with 53 of 24,612 moves over the margin, both arms pooled. At these
+        clocks no game was lost on time.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
