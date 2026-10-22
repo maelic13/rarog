@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit: `TmOptScale`'s wire check live (2026-10-22); next the new coordinates' wire checks, the activation read, then SPSA blocks |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: activation read done (all twelve stay); the five wire checks, then SPSA block 1 (maintainer) |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -712,6 +712,28 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       - The manifest's `harness_hold_ms:` reads p999 101 and max 878 ms,
         with 53 of 24,612 moves over the margin, both arms pooled. At these
         clocks no game was lost on time.
+
+      **Registered 2026-10-22 as RAR-R15** (`docs/experiments/RAR-R15.md`),
+      before any game of the remaining checks or of the block:
+      - **(a) The five new coordinates' wire checks.** Each has a frozen
+        formula expectation per move at equal clock, and a check is live
+        past twice its SE. Two depart from "each at a range end in 200
+        games", with reasons: `TmStabFloor` is checked at `TmStabSlope` 2000
+        on both arms, because at the seed slope it binds on 5% of
+        iterations and its check would be a null; `TmEffortFloor` plays
+        800 games, because its −6% is 2.5 SE at 200. One batch runs them,
+        `analysis/artifacts/d14-clock-fit-2026-10-22/run_wire_checks.ps1`.
+      - **(b) The activation read, done:** 3,432 iterations, and no factor
+        at one end on more than 90%. The effort factor is at `TmEffortHigh`
+        on 87.5%, falling eval at its lower clamp on 66.9%, stability at
+        k = 0 on 38.1% and never at its floor. All twelve coordinates stay.
+        The rule's mapping from a pinned factor to "its coordinate" is
+        undefined for multi-coordinate factors; it was not needed, and
+        would have gone to the maintainer.
+      - **(c) Block 1 of `d14block1`.** 2,000 × 30 games, seed 20261023;
+        at most two blocks on rule 7c's count. The surface's ranges are
+        the declared ones, except `TmOptScale` at 5000..20000. It runs
+        only after all five wire checks read live.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
