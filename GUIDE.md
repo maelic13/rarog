@@ -45,9 +45,9 @@ field, about 3,475 on CCRL's Blitz scale.
 
 - [ ] **E.1** Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — **V**
 - [ ] **E.2** Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — **V**
-- [ ] **E.3** Release 3.0.0 (E.2 met) or 2.6.0 through the tag-driven flow — **M**
+- [ ] **E.3** Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — **M**
     - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
-    - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.6.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
+    - [ ] **E.3.2** Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 
 ## Phase F — NNUE (own data only)
 
@@ -74,9 +74,9 @@ field, about 3,475 on CCRL's Blitz scale.
 
 | Item | Value |
 |---|---|
-| Next release | **3.0.0** at E.3 if the E.2 target gate is met, otherwise 2.6.0 |
-| Released baseline | **2.5.0** on `master`, released 2026-10-05 from the `v2.5.0` tag; fingerprint **11,171,726 / EBF 2.512**. Over 2.4.0: +272.4 at `3+0.03` 1T, +260.5 ± 16.0 at `10+0.1`, +322.7 at 4T (RAR-M64, RAR-M65, RAR-M66) |
-| Development head | `c9`, version **2.6.0-dev**, 65 commits ahead of `master` (`6ade0e6`, PR #9): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, and C.10's search tune; the classical evaluation frozen at engine source `9fb525e` (2026-10-22); fingerprint **13,987,223 / EBF 2.565**; `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: PLAN D.3's change log, `docs/HISTORY.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
+| Next release | **3.0.0** at E.3 if the E.2 target gate is met (its four targets already pass at 1T and 4T, RAR-M73, RAR-M74), otherwise 2.7.0 |
+| Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
+| Development head | `master` at `138d867` (PR #10, 2026-10-22), version **2.6.0**: the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, and C.10's search tune; the classical evaluation frozen at engine source `9fb525e`; fingerprint **13,987,223 / EBF 2.565**; `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. The next branch's first commit moves the version to 2.7.0-dev (PROCESS, *Release* step 6). Change records: PLAN D.3's change log, `docs/HISTORY.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |
 | Pool position, `3+0.03` 4T | **3,433.7 ± 19.3** (RAR-M74, the C head, 2026-10-21), **+93.7 ± 25.5 over the B.9 head's 3,340.0 ± 16.7** (RAR-M66): Houdini 3 +171.7, Critter 1.6a +242.2, Fritz 16 +249.1, Rybka 4.1 +350.3, all four E.2 targets pass at 4T. **Thread scaling fell:** in games the C head is 9.2% slower than the B.9 head at 4T while 29.8% faster at 1T (4T/1T 2.60 against 3.72; Colosseum CLI 0.4.0's figures), and its 4T performance is only +4.9 over its 1T rating (B.9 +53.5); held for D.2 |
 | Pool position, wider field, `3+0.03` 1T | **3,478.9 ± 15.1** (RAR-M75, the C head, 2026-10-22): fourth in a round robin of nine with Houdini 3 and Critter held; Dragon 1 3,628.7, Stockfish 11 3,568.2, Houdini 6.03 3,498.5 (head −9 ± 32), Komodo 13.3 3,416.6 (head +53), Komodo 10.4 3,387.4, Houdini 4 3,303.2 (held 3,310). **CCRL-equivalent:** Blitz 1CPU **3,475 ± 82** (the held scale near 1:1 with it here; about 70 below CCRL Blitz's top-100 cut), 40/15 1CPU 3,407 ± 78 |
@@ -84,7 +84,7 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None registered; the board's Now is D.1.2.1. Last closed: **RAR-M76** (2026-10-22), the 2.6.0 release reads against the 2.5.0 release: STC **+153.4 ± 10.7**, `10+0.1` **+149.3 ± 15.1**, four threads **+149.7 ± 14.7**, so the C head meets the release rule and a 2.6.0 release is the maintainer's decision. Before it, **RAR-M75**: the C head 3,478.9 ± 15.1 in a nine-engine round robin, CCRL Blitz-equivalent 3,475 ± 82. Earlier closes are in `docs/EXPERIMENTS.md` and `docs/HISTORY.md` |
+| Active experiment | None registered; the board's Now is D.1.2.1. Last closed: **RAR-M76** (2026-10-22), the 2.6.0 release reads against the 2.5.0 release: STC **+153.4 ± 10.7**, `10+0.1` **+149.3 ± 15.1**, four threads **+149.7 ± 14.7**, so the C head meets the release rule and is released as 2.6.0 (maintainer decision 2026-10-22). Before it, **RAR-M75**: the C head 3,478.9 ± 15.1 in a nine-engine round robin, CCRL Blitz-equivalent 3,475 ± 82. Earlier closes are in `docs/EXPERIMENTS.md` and `docs/HISTORY.md` |
 
 ## Holds and obligations
 

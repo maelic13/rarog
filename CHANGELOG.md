@@ -6,7 +6,14 @@ All notable changes to Rarog are documented in this file. Each is added under
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
-## [Unreleased]
+## [2.6.0] - 2026-10-22
+
+A new evaluation. Measured head to head against 2.5.0 with no adjudication,
+2.6.0 is **+153 ± 11 Elo at `3+0.03`** (2,000 games), **+149 ± 15 at
+`10+0.1`** (1,000 games) and **+150 ± 15 at `3+0.03` with four threads**
+(1,000 games). The classical evaluation was rebuilt and refitted, the
+search re-tuned for it, and the engine searches about 29% more positions a
+second than 2.5.0. `bench` reports 13,987,223 nodes.
 
 ### Changed
 
@@ -19,7 +26,7 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   (the futility, reverse-futility, razoring, null-move, ProbCut, singular
   and late-move-reduction margins, the aspiration window, the quiescence
   margins and the correction-history blend) were tuned together in a
-  120,000-game run on the classical evaluation that Phase C produced.
+  120,000-game run on the new classical evaluation.
   Against the previous development version the tuned search measured
   **+4.5 ± 2.9 Elo at `3+0.03`** (19,344 games) and **+2.8 ± 12.0 at
   `10+0.1`** (1,000 games), at the same speed. `bench` then reported

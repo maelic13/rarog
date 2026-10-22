@@ -59,6 +59,16 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-10-22 — Rarog 2.6.0 released (maintainer decision), from the C head
+  ahead of Phase E.** The evaluation programme's work reached `master` in
+  `138d867` (PR #10, "Fit search to evaluation") after PRs #7–#9; the release
+  branch moved the version to 2.6.0 and dated the changelog. Head to head
+  against 2.5.0 (RAR-M76): +153.4 ± 10.7 Elo at `3+0.03`, +149.3 ± 15.1 at
+  `10+0.1`, +149.7 ± 14.7 with four threads, meeting the release rule 2.5.0
+  met; fingerprint 13,987,223 / EBF 2.565, `rustc 1.99.1`. The macOS PGO
+  build needed one fix before it (`b758287`: Fathom's C compiled without
+  PGO flags). E.3's fallback version becomes 2.7.0.
+
 - **2026-10-22 — PLAN C.11 DONE, and PHASE C IS CLOSED.** The evaluation
   programme, 2026-10-05 to 2026-10-22, each step's record verbatim in
   `docs/archive/PLAN-closed-2026-10-22.md`. Accepted units, each gated at
