@@ -235,8 +235,9 @@ measurable binary is.
 
 Run the backup path as a cross-check when:
 
-- the runner, the scheduler or the CPU topology on this host changes — the
-  same trigger that owes a null pair (RAR-M03);
+- the runner, the scheduler or the CPU topology on this host changes (a
+  scheduler or topology change also owes a null pair, RAR-M03; a re-pin of
+  the runner does not);
 - a result is surprising: a sign nobody predicted, a magnitude well outside the
   registered band, or a gate that resolves far faster or slower than RAR-M10
   predicts for its bounds;
@@ -258,14 +259,30 @@ ledger row quotes Colosseum's own result and the wrapper's manifest, which
 already recounts the pentanomial from `games.pgn` and says so on its
 `pentanomial:` line; an agent does not recompute what the report gives.
 It computes only what the report lacks, from the run directory, and names
-the gap so it can be closed in the runner: on 2026-10-21 those gaps were
-the results by colour per side, the in-play telemetry (depth, nodes a
-move, speed, time a move; `colosseum-cli stats <run dir>` replays it
-offline but the end-of-run summary and `run-record.json` do not carry
-it), and for a tune the count of arms clamped at a range end with a
-dry-run warning for a seed within one perturbation of a rail (RAR-S104).
-`tools/diag/colosseum_recount.py` stays as the cross-check of a reporter
-change, run when the runner is re-pinned, not per row.
+the gap so it can be closed in the runner. The gaps named on 2026-10-21
+were closed by CLI 0.4.0, pinned 2026-10-22, and the wrapper's manifest
+quotes what that version reports at the end of a run:
+- each engine's results by colour;
+- how the counted games ended, overall and per engine;
+- faults and time losses by engine;
+- each engine's search: depth with and without mate scores, nodes and time
+  a move, nodes per second, and the harness hold (`h=`) as p50 to p999 and
+  max with the moves over the margin;
+- for a tournament, every pair's W/D/L, Elo with its interval and
+  pentanomial, and the standings;
+- for a tune, the arms clamped at a range end per coordinate (`arm_clamps:`)
+  and, at launch, the coordinates whose first arms already leave the range
+  (`rail_warnings:`). Both are warnings, not refusals; RAR-S104 named them.
+
+A hand parser of `games.pgn` is not written for any of these. A one-off
+PGN regex skipped 16% of move comments and corrupted four ledger rows'
+in-game NPS. Still computed from the run directory, and named as gaps:
+conversion after a persistent advantage (`tools/diag/conversion_audit.py`),
+and per-arm search and time a game in a one-binary categorical match, whose
+PGN names both sides alike (D.1.3's `tm_wire_read.py` relabels by arm from
+`games.jsonl`). `tools/diag/colosseum_recount.py` stays as the cross-check
+of a reporter change. It runs inside every wrapper run and agreed on the
+0.4.0 re-pin's smoke match; it is not run again per row.
 
 **Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
 RAR-E32). A registration adopts the runner's fault policy by reference
@@ -328,8 +345,11 @@ starves `Threads>1`, so multi-thread runs on that path drop it. After a change
 to the pinned list, `setup_tools.ps1` must repatch weather-factory before an
 SPSA launch there, and `spsa.ps1` refuses until it has. The 1T harness is
 null-calibrated and shared with Basilisk; a new null pair (the same executable
-on both arms, `-Mode calibrate`) is owed only after a runner, scheduler or
-topology change, never for a symmetric adjudication toggle (RAR-M03).
+on both arms, `-Mode calibrate`) is owed only after a scheduler or topology
+change, never for a symmetric adjudication toggle (RAR-M03) and never for a
+re-pin of Colosseum, which is qualified in its own repository (maintainer
+decision 2026-10-22, on the 0.4.0 re-pin). Even on its trigger the agent
+asks before handing one over.
 
 NPS work: validate on a self pair first (it must read about 0.00%), pool
 several PGO builds per arm because two PGO builds of identical source differ
@@ -813,7 +833,7 @@ cargo xtask verify-isa --arch pext
   -Iterations <N> -TotalGames <N*30> -Seed <n+1> -SeedFrom tools/results/<block n> `
   -Dir tools/results/<block n+1>
 
-# Null pair, only after a runner, scheduler or topology change (RAR-M03)
+# Null pair, only after a scheduler or topology change (RAR-M03), never for a re-pin
 ./tools/colosseum.ps1 -Mode calibrate -EngineA <same.exe> -EngineB <same.exe> `
   -Seed <n> -Dir tools/results/<name>
 ```
