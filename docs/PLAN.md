@@ -306,7 +306,6 @@ numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| C.11 | RESEARCH | V | Closes the programme; freezes the classical evaluation |
 
 ## Phase C — Evaluation programme (search frozen)
 
@@ -2543,7 +2542,7 @@ loss).
     and clippy clean). C.10 closes at +4.5 ± 2.9 Elo at `3+0.03` against
     its standing expectation of +5. Next: the Rust toolchain update
     (C.11's note), then C.11's checkpoint reads.
-- **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`.** Same-search deficit against Stockfish's classical
+- **C.11 Checkpoint: same-search deficit, conversion, NPS, pool gauntlet; freeze the classical evaluation — `V`, DONE 2026-10-22.** Same-search deficit against Stockfish's classical
   HCE re-measured (a fresh hybrid build at the C head is required; the oracle
   package recipe is on the tagged `hybrid` branch; the first re-read is
   C.3.6), conversion instrument,
@@ -2592,14 +2591,19 @@ loss).
   pool gauntlet (RAR-M73) **3,428.8 ± 19.2**, +142.3 ± 24.8 over the
   B.9 head's 3,286.5, all E.2 targets passing; at 4T (RAR-M74) **3,433.7
   ± 19.3**, +93.7 ± 25.5 over the B.9 head's 3,340.0, with the C head's
-  thread scaling fallen (in-game NPS 4T/1T 2.61 against 3.72, held for
+  thread scaling fallen (in-game NPS 4T/1T 2.60 against 3.72, held for
   Phase D); conversion 13.8 draws and 0.0 losses per 1,000 after a
   persistent piece-up (B.9 15.8 and 0.8, not resolved); pooled-PGO NPS
   +28.92% over the B.9 head (RAR-P39); the evaluation 21.1% of search
   samples against B.9's 24.3% (RAR-P40), so nothing needs explaining.
-  **The freeze waits on one read:** the king-danger refit below, which
-  PLAN put alongside C.10 and which has not run; C.11 is marked done
-  when it closes and the freeze is recorded. **Maintainer decision
+  **The king-danger lead closed (RAR-E73, 2026-10-22):** the 23
+  coordinates refitted alone from the donor's seeds at caps 1,600 and
+  2,400 leave RAR-E72's (B) at +0.288 and +0.199 against the head's
+  +0.187 (the half-line +0.094) and lose held-out loss, so it is the
+  index's structure, which Phase F supersedes. **The classical
+  evaluation is frozen from 2026-10-22** at engine source `9fb525e`'s
+  evaluation (unchanged since `60e865f`; 13,987,223 / EBF 2.565): a
+  later change to it is a registered repair or Phase F's. **Maintainer decision
   2026-10-19, on RAR-E72's stage 2:** the donor's king signal is its
   danger index, carried by inputs Rarog's index already has at fitted
   weights about half the donor's (safe checks, attackers × weight,

@@ -1,4 +1,4 @@
-# RAR-E73 — The king-danger lead's fit test: the 23 coordinates refitted alone from the donor's seeds, at caps 1,600 and 2,400
+# RAR-E73 — The king-danger lead's fit test: the 23 coordinates refitted alone from the donor's seeds, at caps 1,600 and 2,400 — CLOSED 2026-10-22: the index's structure
 
 Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -17,5 +17,20 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Most likely failure mode: the descent from the donor's seeds stalls in a basin closer to them than C.3's joint fit, giving a lower (B) that reflects the seeds rather than a better fit; the loss change then shows it (a lower (B) with a worse C-alone loss).
 - **Falsification:** prediction 2 fails if either refit's band (B) is at most half of H16's.
 - **Stop rule:** one run of each fit and each dump; no point, seed, cap or cohort is added after the numbers are seen.
-- **Result:** not run.
+- **Result (run 2026-10-22 09:18–09:21 local, once, after the registration `3f5e953`; `analysis/artifacts/e73/`, every step exit 0 in `status.txt`):**
+  - *Wires, all holding:* the reader fed RAR-E72's own inputs reproduces its band (B) to the last digit (0.19421018429424058); the H16 scratch tuner's played dump equals the repository tuner's byte for byte; the scratch patch and the cap edit matched every anchor once; in every variant the frozen column equals its taper within 3.4e-4 cp and the map is zero where the flag is off; both fits started from the seeds (`initial.txt`, the 23 coordinates replaced) at the head's K 1.62483 (`--buckets` on `hce-v6-tb` validation) and converged (22 and 21 epochs).
+  - *Fits* (on `hce-v6-tb`'s validation split, from the seeds): R16 0.09300126 → 0.09263538; R24 0.09324610 → 0.09260304. R16's coordinates: attacker weights 59/44/33/28, safe checks 688/675/477/295/652/1129/515/703, weak ring 112, unsafe checks 156, blockers 212, king attacks 61, mobility lead 46, no queen 1225, knight defender 34, constant −11, shelter feedback 218, map scales 69/30; the head's are 33/26/13/20, 444/333/327/265/495/743/338/493, 57, 107, 149, 67, 32, 769, 36, 151, 207, 102/18. R24's are in `r24.txt`.
+  - *Readings* (band: phase 32–95, 50,906 rows; ± the game bootstrap's SE):
+
+    | Variant | Band (B) | z | Band loss of C alone | All rows (B) | Mean \|map\| in the band |
+    |---|---:|---:|---:|---:|---:|
+    | H16, the head, cap 1,600 | **+0.187 ± 0.046** | 4.10 | 0.120008 | +0.138 | 49.2 cp |
+    | H24, the head, cap 2,400 | +0.185 ± 0.048 | 3.88 | 0.120017 | +0.137 | 51.7 cp |
+    | R16, refit, cap 1,600 | **+0.288 ± 0.060** | 4.84 | 0.120144 | +0.202 | 44.8 cp |
+    | R24, refit, cap 2,400 | **+0.199 ± 0.048** | 4.14 | 0.120061 | +0.154 | 46.5 cp |
+
+- **Disposition: closed as the index's structure.** Half of H16's band (B) is +0.094; R16 reads +0.288 and R24 +0.199, so neither refit captures it, and both lose held-out loss in the band against the head (R16 by 0.113% of C's error, R24 by 0.044%). A refit of the king-danger coordinates from the donor's seeds does not bring Rarog's map toward the donor's signal: it lands between the seeds and the head with a smaller map scale, and the donor's term then adds more beyond it, not less. By the frozen rule the lead closes, Phase F supersedes the index, and C.11's freeze is recorded. Static loss, not Elo.
+- **PREDICTION CALIBRATION (appended after exposure):** (1) H16's band (B) +0.187, 0.007 from +0.194: hit. (2) Neither refit captures half: hit (0.75). R16 near +0.15 in [+0.09, +0.20]: **a miss in direction and magnitude** (+0.288): the refit enlarged the donor's remaining signal. R24 within 0.02 of R16: miss (0.089 apart). (3) The refits' band loss within ±0.05% of H16's: R24 hit, R16 miss (0.113% worse). Which assumption failed: that a refit of the index alone on outcome labels moves toward the donor's weighting where the static evidence prefers it. With the linear weights fixed and the map scale free, the pass traded the scale against the index weights (map 102 → 69, weights up) and fitted `hce-v6-tb`'s training split, which does not carry the band's preference for the donor into RAR-E72's rows. The failure mode I named (a lower (B) from a basin near the seeds) did not occur; the opposite did.
+- **Conditional lesson:** the donor's king advantage at the static layer is not reachable by refitting Rarog's index coordinates; it is the index's shape, as RAR-E72's stage 2 suggested.
+- **Retry trigger:** closed. Phase F's network replaces the classical evaluation.
 - **Artifacts:** `analysis/artifacts/e73/` (ignored storage): the runner, reader, seeds, logs, vectors, dumps and hashes.
