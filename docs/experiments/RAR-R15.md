@@ -218,3 +218,111 @@ the result. The options:
 2. Drop `TmHorizonPerSec` from the surface, fixed at its seed 50.
 3. Re-register a horizon check at lower clocks, or one read by the clock
    floor, and run it before the block.
+
+## Maintainer decision and review (2026-10-22, before any game of the block)
+
+**Maintainer decision 2026-10-22: `TmHorizonPerSec` stays in the surface.**
+The horizon check's miss in the 500–1000 ms band (−2.3% against the frozen
+"≥ 5% lower") is recorded as a calibration, not a pass. The engine applies
+the coordinate exactly there (the optimum at 750 ms is 0.686 of the seed's),
+the 1000–2000 ms band fell 19% and the clock floor rose (p10 146 → 242 ms,
+games under 200 ms 35 → 11 of 200): the wire is live, and the frozen rule
+read it at a clock where time spent no longer follows the optimum. What
+failed was the check's instrument assumption, that a per-band read follows
+the optimum at every clock. Prediction 1 stays a miss. Block 1 runs on this
+decision with the twelve coordinates.
+
+**Independent review 2026-10-22, before any game.** D.1.3's implementation,
+the surface and the block's shape were re-read from source, tests and
+artifacts, not from the records. No defect was found; nothing in the surface
+or the command changes. Findings:
+
+- **D.1.3 as recorded.** The horizon, stability and effort factors, the
+  share over the whole search (`RootMove.nodes` over the thread's nodes,
+  reset per search), the mate stop (three iterations, same move and
+  distance; a loss in two plies; clock searches only), the fail-high stop
+  (main thread, not pondering, elapsed at or past the last completed
+  iteration's target; the bounded `info` line and `bestmove` both name
+  `pv_table[0][0]`, and `report_result_line` prints no second line), the
+  guard (`root_depth > 1`, set at every root window), the main-thread-only
+  stops in a pool (`search_parallel` ends the helpers when the main thread
+  returns), MultiPV's mate stop without the fail-high stop, and the per-node
+  code (the diff to `node.rs` removes three lines) are as PLAN D.1.3 says.
+  The fail-high test fails under both mutations: the stop disabled (D.1.3's
+  check) and the stop firing on every root fail-high (this review: the
+  frozen-clock search then ends at depth 5, not 10). The engine inputs of
+  `5fec0d7`, `eff17c3`, `da2df4e`, `a9599af` and the head are identical
+  (`git diff --stat` empty), every SHA-256 cited here and in PLAN D.1.3–D.1.4
+  matches its file, and the tune build benches 13,987,223 / EBF 2.565 on
+  this host.
+- **The surface.** `gen_d14block1.py --check` and
+  `spsa_config_to_colosseum.py d14block1 --iterations 2000 --check` pass,
+  `audit_spsa_coverage.ps1` is clean, and the tune build advertises all
+  twelve coordinates as integer spins (its `uci` output). Every seed is more
+  than two steps from a range end (the dry run's `rail_warnings: none`; the
+  closest is `TmEffortFloor`, 2.7 steps under 9500) and the smallest end
+  perturbation, `TmHorizonPerSec`'s 2.30, rounds to 2. `TmOptScale`'s
+  surface range of 5000..20000 stays: the 2000 end exists for the wire
+  check, 0.3 cost −145 Elo, and the seed is 5.3 steps from 5000.
+- **Constants the clock reads that are not coordinates, each left as it
+  is:** the falling-eval clamps 0.572 and 1.708 (the lower clamp is the
+  factor on 66.9% of iterations, so it is the de facto base scale and would
+  be a third near-collinear scale beside `TmOptScale` and `TmEffortHigh`;
+  the donor's shape, outside the handoff); the budget's shape (0.8097, the
+  `optScale` and `maxScale` constants to 6.873, the `timeLeft` formula),
+  which RAR-R14 chose to keep as Rarog's Stockfish-shaped budget; the
+  instability count's halving and the score EWMA's weights (shape constants
+  the slopes scale); `MATE_STOP_ITERATIONS` = 3 (it spends time in won
+  games only, which a fit cannot read); the reserves (D.1.2.2 keeps them);
+  the fifty-move cap and the 2,048-node poll. Adding any would broaden the
+  mechanism past RAR-R14's handoff on no measured defect.
+- **`TmStabFloor` stays, with its noise quantified.** It has no gradient at
+  the seeds: it binds from k = 13 at the seed slope, on under 0.6% of
+  iterations, so block 1 can only random-walk it. Under this schedule a
+  gradient-free coordinate ends a block 0.41 steps from its seed (SD;
+  `tools/spsa_convergence_model.py`'s flat-coordinate variance at N = 2000,
+  `r-end` 0.0031, gradient noise 4.2), so a full-step move by noise alone
+  has about 1.5% probability a block. It stays because `TmStabSlope` is
+  live (−15% at 2000) and a slope that rises inside the block gives the
+  floor its gradient. Reading rule, frozen now: its move under a step is
+  noise, and a full-step move counts for rule 7c only with the slope above
+  its seed. The same 0.41-step noise bounds the drift of the near-collinear
+  pair along its product.
+- **Search coordinates are not added.** A ±20% change in time a move is
+  0.2 of an iteration at EBF 2.565, inside the per-position spread C.10's
+  fit averaged over; the aspiration constants set a window's growth after a
+  fail, which the fail-high stop reads at a boundary and does not change
+  (the loop is RAR-S89's and RAR-S17's refuted territory and D.1.3's
+  non-goal); any aspiration coordinate moves `bench 13`, so the fitted theta
+  would no longer be the clock-only change D.1.5 gates and the gate would
+  attribute a search refit to the clock; and five more coordinates cost
+  resolution on the twelve. No measurement in this engine says the
+  aspiration optimum moved with the clock. Trigger: a D.1.5 result that H0
+  returns to research while the fail-high stop ends a large share of moves,
+  or the next search refit, which reads the aspiration constants under the
+  fitted clock.
+- **Named, not tested:** a fail-high after a fail-low, whose bound can lie
+  under the previous exact score (not a discard: the first move searched is
+  the previous best, and a later move that fails high beats it at this
+  depth); MultiPV's mate stop; and in a pool the fail-high stop's result
+  enters `select_parallel_result`'s vote rather than being played outright
+  (the rated 1T configuration plays it; D.1.5's 4T read covers the pool).
+  Known open items left as they are: `tm_profile.py` transcribes the
+  fifty-move horizon (D.1.3's finding 3, to fix before D.1.5's ≥ 0.9 ×
+  maximum read) and labels its 99.9th percentile `p99`;
+  `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does` is a
+  load flake on the unchanged engine.
+- **The shape.** 2,000 × 30 games and at most two blocks is rule 7c's shape
+  for seeds never fitted on this search, whose distance from the optimum is
+  unknown; the 2026-10-20 amendment's single longer run is for a surface a
+  pilot has read as near its optimum, which no zero-game instrument can do
+  for a clock coordinate.
+
+**The block, prepared 2026-10-22 (dry run through `colosseum.ps1` on an
+idle host, 5.4% busy, no waiver;
+`tools/results/colosseum_spsa_d14-spsa-block1_20261022_202421.manifest.txt`):**
+12 coordinates, 2,000 iterations × 30 games = 60,000, `r-end` 0.0031, no
+rail warning, 15 slots, Hash 64, Threads 1, MultiPV 1, seed 20261023,
+`3+0.03` with a 20 ms margin, the tune build at `eff17c3` with bench
+13,987,223 verified against the registration; the run directory unused. The
+command is (c)'s, unchanged. The frozen readings and predictions 2–7 stand.

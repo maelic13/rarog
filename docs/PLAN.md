@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: activation read done; four of five wire checks live, the horizon's missed its frozen rule; block 1 waits on the maintainer's decision |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: wire checks and activation read done, the horizon's miss a recorded calibration (maintainer decision 2026-10-22), the surface reviewed and kept at twelve; block 1 prepared, maintainer-run |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -744,9 +744,25 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       there (the optimum at 750 ms is 0.686 of the seed's, the formula's
       figure), and the clock floor rose (p10 146 → 242 ms, games under
       200 ms 35 → 11). Near 40 ms a move, time spent stops following the
-      optimum. **Block 1 waits on a maintainer decision:** accept the wire
-      on that evidence and keep all twelve coordinates (recommended), drop
-      `TmHorizonPerSec`, or re-register a horizon check first.
+      optimum. **Maintainer decision 2026-10-22: `TmHorizonPerSec` stays in
+      the surface;** the miss is a calibration of the check's instrument
+      assumption (a per-band read follows the optimum at every clock), not a
+      pass, recorded in RAR-R15. An independent review the same day
+      (RAR-R15, *Maintainer decision and review*) re-read D.1.3 from
+      source, tests and artifacts and found no defect: the stops, the guard,
+      the factors and the invariants are as recorded above, and the
+      fail-high test fails under both mutations (the stop disabled, and the
+      stop firing before the soft target). The surface stays at twelve: no
+      clock constant outside the handoff becomes a coordinate, no search
+      coordinate joins (an aspiration coordinate would move `bench 13` and
+      D.1.5's attribution), and `TmStabFloor`, gradient-free at the seeds,
+      stays with its noise walk quantified (0.41 steps SD a block) and a
+      reading rule. **Block 1 is prepared, maintainer-run:** RAR-R15's
+      command, dry-run through `colosseum.ps1` (12 coordinates, 2,000 × 30,
+      `r-end` 0.0031, no rail warning, 15 slots, Hash 64, Threads 1,
+      MultiPV 1), about 8–11 hours. The morning read is
+      `python tools/spsa_block_rule.py d14block1 tools/results/d14-spsa-block1`
+      and the manifest's `arm_clamps:` line.
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
