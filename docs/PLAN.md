@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: wire checks and activation read done, the horizon's miss a recorded calibration, the cross-move score trend added as a thirteenth coordinate (maintainer decisions 2026-10-22); its wire check, then block 1, maintainer-run |
+| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: block 1 played (2 full-step movers, the rule says STOP; theta is block 1's); block 2 was started by the chain and stopped at 90 games, and resuming it is the maintainer's call |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -788,6 +788,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       and `-ExpectRevision` name: **live, ×1.163 in plies 0–19** (about six
       SE; RAR-R15, *Result of the cross-move wire check*), 0 time losses.
       Block 1 at thirteen is dry-run and prepared, maintainer-run.
+      **Block 1 played 2026-10-22/23** (60,000 games in 11 h 40 m, 0
+      faults, no clamp; RAR-R15, *Result of (c)*).
+      - Two of thirteen coordinates moved a full step: `TmOptScale` 10000 →
+        11687 (+1.80 steps, level by iteration 1,500) and `TmStabSlope` 440
+        → 302 (−1.10, still travelling). The rule says **STOP**, so theta is
+        block 1's rounded centres.
+      - Every move past noise is toward spending more time:
+        `TmOptScale × TmEffortHigh` is ×1.233.
+      - The chained launch started block 2 and stopped it after 90 games. A
+        cut block never counts. Resuming it (11.6 h) is the maintainer's
+        call; the agent recommends against.
+
+      **D.1.4 closes when that decision lands.**
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against

@@ -422,3 +422,79 @@ warning, 15 slots, Hash 64, Threads 1, MultiPV 1, seed 20261023, the tune
 build `a5efb11c…` at `2b9831f` with bench 13,987,223 verified; the run
 directory unused. The manifest's `repo_dirty: True` is two untracked files
 of the maintainer's in the working tree, not an engine or surface input.
+
+## Result of (c), block 1 (played 2026-10-22/23, maintainer-run)
+
+The run is `tools/results/d14-spsa-block1`:
+- Manifest `colosseum_spsa_d14-spsa-block1_20261022_225410.manifest.txt`
+  (`d9bb917f…`); `result.json` `AFB0F778…`; `tuned-options.txt` `ec7b161e…`;
+  `block-rule.txt` `4fc08d53…`.
+- 13 coordinates on `rarog-d13cluster7-tune.exe`, 2,000 iterations, 60,000
+  games, in 11 h 40 m (5,128 games an hour).
+- Idle host (2.1% busy, no waiver), 0 faults, 0 time losses,
+  `arm_clamps: none`, no coordinate at a rail.
+
+The trajectory, every 250 iterations, is `block1_history.json`
+(`d017bed1…`), read by `block_trajectory.py` (`bc7b4cee…`).
+
+| Coordinate | Seed | Rounded centre | Steps | Last 500 iterations |
+|---|---:|---:|---:|---:|
+| `TmOptScale` | 10000 | 11687 | **+1.80** | +0.05 |
+| `TmFallBase` | 1187 | 1345 | +0.50 | +0.09 |
+| `TmFallSlope` | 221 | 237 | +0.25 | −0.16 |
+| `TmFallPrevSlope` | 204 | 197 | −0.12 | +0.11 |
+| `TmInstabBase` | 11000 | 11221 | +0.44 | −0.13 |
+| `TmInstabSlope` | 22900 | 22395 | −0.16 | −0.06 |
+| `TmEffortHigh` | 9240 | 9747 | +0.58 | +0.03 |
+| `TmEffortLow` | 7100 | 7338 | +0.63 | −0.06 |
+| `TmEffortFloor` | 7900 | 8022 | +0.21 | +0.07 |
+| `TmHorizonPerSec` | 50 | 53 | +0.66 | −0.06 |
+| `TmStabBase` | 12881 | 13132 | +0.33 | −0.13 |
+| `TmStabSlope` | 440 | 302 | **−1.10** | −0.21 |
+| `TmStabFloor` | 7160 | 7077 | −0.22 | +0.12 |
+
+**Readings (frozen):**
+- **The rule:** 2 of 13 coordinates moved a full step (`TmOptScale`,
+  `TmStabSlope`); it needs 3, so **STOP**. Theta is block 1's rounded
+  centres above.
+- **The near-collinear pair:** `TmOptScale × TmEffortHigh` went from 0.924
+  to 1.139, ×1.233. Both coordinates moved up (+16.9% and +5.5%); they did
+  not trade along their product.
+- **`TmStabFloor`** moved −0.22 step, noise by the frozen rule.
+- **Clamps:** none.
+
+**What the block says.** Every coordinate that moved more than the 0.41-step
+noise of a gradient-free coordinate moved toward spending more time. The
+scale rose 17%, the stability discount decays more slowly with a held best
+move, and the base terms of falling eval, instability, stability and effort
+rose. `TmOptScale` found its level by iteration 1,500 (+0.05 step after
+it). `TmStabSlope` was still travelling (−0.21 step in the last quarter).
+Movement is not Elo; D.1.5 reads it.
+
+**The chained launch** started block 2 into `tools/results/d14-spsa-block2`
+(seed 20261029, `-SeedFrom` block 1), as (c) allows. It stopped after 90
+games, and its record still reads `running`. Under rule 7c a block cut
+short never counts, so theta stays block 1's unless block 2 is resumed and
+completes. That is the maintainer's call: the count says stop, and the
+2026-09-26 amendment lets a watched tune continue. The agent recommends
+against resuming:
+- the scale, which carries the block's signal, has converged;
+- the one travelling mover changes time only on stable iterations;
+- the other coordinates sit at noise level;
+- block 2 costs another 11.6 hours before D.1.5 can start.
+
+**Calibration of predictions 2–9:**
+- 2 and 2a (3 full-step movers, band 1 to 6) held at 2. `TmFallPrevSlope`
+  was not among them (0.5).
+- 3 (block 2 on the count, 0.5): not reached.
+- 4 (the pair trading in opposite directions, 0.3): did not happen; both
+  rose.
+- 5 (`TmHorizonPerSec` above 50, 0.5): 53, but at 0.66 step, inside noise.
+- 6 (no clamp, 0.85) held.
+- 7 (no fault stop in 8 to 11 hours, 0.85): missed on time. 11 h 40 m at
+  5,128 games an hour; the 8 to 11 hours assumed about 6,000.
+- 9 (`TmFallPrevSlope` above zero 0.8, above its seed 0.5): above zero, not
+  above its seed (197 against 204).
+
+The instrument assumption that missed: the prediction expected the fit to
+redistribute time, but it chose to raise the level of spending.
