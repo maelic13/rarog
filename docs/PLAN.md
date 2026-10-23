@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: block 1's theta baked (`082a780`) against the head, SPRT `[0,3]` cap 20,000 pairs, then the `10+0.1` and 4T reads, the probe and the profile; one batch, maintainer-run |
+| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: the wire check live, the `10+0.1` and 4T reads (−6.3, −10.4 Elo, deciding nothing) and the probe (PASS) done; the SPRT `[0,3]`, cap 20,000 pairs, maintainer-run |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -837,6 +837,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         `colosseum.ps1` refuses that now (`6c3a1a1`).
       - **The prediction, re-frozen:** +2 ± 4 Elo; H1 0.30, cap 0.50, H0
         0.20.
+
+      **Before the SPRT, 2026-10-23** (RAR-R16, *Results before the
+      SPRT*):
+      - **The wire rule is corrected.** As registered it compared the
+        candidate's time with the head's, but the fit's change is against
+        the cluster's seeds; it was replaced before any SPRT game (RAR-R16,
+        *Amendment*). The replacement check against a seeds PGO read
+        **live, ×1.21 a move in plies 0–19**.
+      - **Direction reads:** `10+0.1` −6.3 ± 11.7 Elo, four threads −10.4 ±
+        11.6. They decide nothing; at four threads the clock-floor median
+        rose from 151 to 353 ms and games under 100 ms fell from 39 to 0.
+      - **Probe PASS.**
+      - The SPRT is next, maintainer-run.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The

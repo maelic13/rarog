@@ -189,3 +189,57 @@ game:**
   the SPRT is not started until they are.
 - The rule's old form is not read for the SPRT. Prediction 2 is replaced
   by: the wire check reads live, 0.9.
+
+## Results before the SPRT (2026-10-23, maintainer-run unless stated)
+
+The batch's steps ran as separate commands with the batch's settings, so
+the experiment is unchanged. Every run was on an idle host (2.4–3.2% busy,
+no waiver), with 0 faults, 0 time losses and a recount that agreed.
+
+**Wire check** (agent-run as cheap qualification; manifest
+`colosseum_match_rar-r16-wire_20261023_121143.manifest.txt`, `edb0dd40…`).
+The seeds arm is `rarog-d15seeds-pext-pgo.exe`, SHA-256
+`DBC6615EE32D2217…`, built clean at `b96a9c1`, bench 13,987,223.
+- **Live.** In plies 0–19 the candidate spends **117.4 ms a move against
+  the seeds' 96.9, ×1.21**: SE 1.6–1.9% a mean, about eight SE, inside the
+  frozen ×1.15–1.25.
+- Over the whole game it spends 67.7 against 64.3 ms (+5%), so the fit
+  moves time toward the opening.
+- The baked values reach the play. The replaced prediction 2 held.
+
+**`10+0.1` direction read** (`rar-r16-ltc`,
+`colosseum_match_rar-r16-ltc_20261023_103730.manifest.txt`, `f5a4e809…`).
+- **−6.3 ± 11.7 Elo** (−11.5 ± 21.5 nElo), pentanomial 8, 128, 242, 118, 4.
+- 230.4 against 232.3 ms a move.
+- Profile (`profile_rar-r16-ltc.txt`, `838cf7e6…`): the candidate's won
+  moves at ≥ 0.9 × its maximum are 0.47% and its mate moves 0.08%. RAR-R14
+  read 1.44% and 3.40% on the head at this control.
+- Clock-floor median 492 ms against the head's 474; no game under 100 ms
+  in either arm.
+
+**Four-thread direction read** (`rar-r16-4t`,
+`colosseum_match_rar-r16-4t_20261023_111742.manifest.txt`, `9f29fe11…`).
+- **−10.4 ± 11.6 Elo** (−19.3 ± 21.5 nElo), pentanomial 9, 132, 241, 116,
+  2.
+- 67.4 against 69.1 ms a move.
+- Profile (`profile_rar-r16-4t.txt`, `016a0a7a…`): won 0.11% and mate 0.00%
+  at ≥ 0.9 × the maximum.
+- **Clock-floor median 353 ms against the head's 151.** Games under 100 ms:
+  0 against 39 of 1,000.
+
+**Timed probe** (`tm_rec_probe_d15.txt`, `71ec6bc0…`): **PASS**. No rec move
+at the maximum, rec2 in 5 ms (mate 6, depth 10). rec1 and rec3 spent 0.66
+to 0.89 × their optimum.
+
+**Calibration so far:**
+- 3 (`10+0.1` the sign of STC with a larger estimate): waits on the SPRT.
+  The read is negative, inside its interval of zero.
+- 4 (four threads within ±10 Elo of zero, 0.8): **missed by 0.4**, at
+  −10.4 ± 11.6. Its interval includes zero. Under the frozen reading, a loss
+  beyond −10 names the vote's interaction for D.2.
+- 5 (probe, 0.9 and 0.95): held.
+
+The two direction reads decide nothing (frozen). Together they lean
+negative, about −8 ± 8 Elo over 2,000 games, which makes H0 or the cap
+likelier than H1. They do not invalidate the gate, which is the only
+registered decision; a clearly negative effect ends an SPRT early.
