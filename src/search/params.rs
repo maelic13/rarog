@@ -207,6 +207,13 @@ search_params! {
     /// at 1,800 cp where `AspirationDelta` alone gives 12. 0 = off (today);
     /// at ordinary scores the term is a few centipawns.
     asp_delta_square_div = 0, "AspDeltaSquareDiv", 0..=100000;
+    /// The known-win offset a bare-king ending the winner can mate in is
+    /// given in both phases of the evaluation, pushed into the evaluator at
+    /// every search start (Stockfish 11's classical evaluation returns such
+    /// a value, about 55 pawns; Rarog's mop-up leaves the material and a
+    /// drive). 0 = off (today). With the score-scaled first window it ends
+    /// the root fail-high cascade of a won ending (RAR-R19, RAR-R20).
+    mopup_known_win = 0, "MopupKnownWin", 0..=20000;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more

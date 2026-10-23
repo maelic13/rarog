@@ -719,7 +719,11 @@ impl Searcher {
             .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
-        if lazy_margin_changed && age_tt {
+        let known_win_changed = self
+            .td
+            .evaluator
+            .set_known_win(engine_options.search_params.mopup_known_win);
+        if (lazy_margin_changed || known_win_changed) && age_tt {
             self.shared.tt.clear();
         }
 

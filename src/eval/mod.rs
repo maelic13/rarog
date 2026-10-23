@@ -122,6 +122,9 @@ pub struct Evaluator {
     /// Lazy-eval threshold. Seeded from `LAZY_MARGIN` and overridden by the
     /// `LazyMargin` UCI option (pushed in at every search start).
     lazy_margin: i32,
+    /// The known-win offset of a bare-king ending (`apply_mop_up`), pushed in
+    /// at every search start from the `MopupKnownWin` coordinate; 0 is off.
+    known_win: i32,
     /// The attack maps of the position being evaluated, filled at the start of
     /// piece activity and borrowed by its consumers. Kept across calls so the
     /// per-square slots are not re-zeroed every evaluation (see `AttackMaps`).
@@ -155,6 +158,7 @@ impl Default for Evaluator {
             params,
             tables,
             lazy_margin: LAZY_MARGIN,
+            known_win: 0,
             attacks: AttackMaps::new(),
             #[cfg(feature = "tune")]
             mask_source: &masks::FAMILY_MASKS,
@@ -198,6 +202,17 @@ impl Evaluator {
     pub fn set_lazy_margin(&mut self, margin: i32) -> bool {
         let changed = self.lazy_margin != margin;
         self.lazy_margin = margin;
+        changed
+    }
+
+    /// Set the known-win offset a bare-king ending the winner can mate in is
+    /// given in both phases (`MopupKnownWin`; 0 is off). Returns whether it
+    /// changed, so the search owner can invalidate the raw evaluations it
+    /// caches.
+    pub fn set_known_win(&mut self, offset: i32) -> bool {
+        let offset = offset.clamp(0, 20_000);
+        let changed = self.known_win != offset;
+        self.known_win = offset;
         changed
     }
 
