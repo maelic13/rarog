@@ -34,6 +34,26 @@ if (Test-Path -LiteralPath $historicalPath) {
     $historical = @(Get-Content -LiteralPath $historicalPath | ForEach-Object { ($_ -split '#')[0].Trim() } | Where-Object { $_ })
 }
 
+# An arm group is a surface registered on a throwaway arm whose defaults are
+# the cluster under tune (the harness requires a surface's seeds to be the
+# engine's defaults), so class 3 compares its seeds with that commit's
+# `src/search/params.rs`, read from git. One `group<TAB>commit` per line in
+# tools/spsa_configs/arms.txt.
+$armDefaults = @{}
+$armsPath = Join-Path $repo "tools\spsa_configs\arms.txt"
+if (Test-Path -LiteralPath $armsPath) {
+    foreach ($line in (Get-Content -LiteralPath $armsPath | ForEach-Object { ($_ -split '#')[0].Trim() } | Where-Object { $_ })) {
+        $group, $commit = ($line -split '\s+', 2)
+        $text = & git -C $repo show "${commit}:src/search/params.rs"
+        if ($LASTEXITCODE -ne 0) { throw "arms.txt: cannot read src/search/params.rs at $commit for group $group" }
+        $table = @{}
+        foreach ($m in ([regex]::Matches(($text -join "`n"), '(?m)^\s+\w+ = (-?[\d_]+), "(\w+)", (-?[\d_]+)\.\.=(-?[\d_]+)'))) {
+            $table[$m.Groups[2].Value] = [int]($m.Groups[1].Value -replace '_', '')
+        }
+        $armDefaults[$group] = $table
+    }
+}
+
 $groups = @{}
 foreach ($file in Get-ChildItem (Join-Path $repo "tools\spsa_configs\config_*.json")) {
     $group = $file.BaseName -replace '^config_', ''
@@ -52,6 +72,7 @@ foreach ($file in Get-ChildItem (Join-Path $repo "tools\spsa_configs\config_*.js
 
 "declared tunables: $($defaults.Count)    names across reusable SPSA groups: $($groups.Count)"
 "historical groups (classes 2 and 3 and class 5's engine range not applied): $(if ($historical) { $historical -join ', ' } else { 'none' })"
+"arm groups (class 3 reads the arm's defaults): $(if ($armDefaults.Count) { ($armDefaults.Keys | Sort-Object) -join ', ' } else { 'none' })"
 $problems = 0
 
 ""
@@ -76,9 +97,13 @@ foreach ($name in ($groups.Keys | Sort-Object)) {
     if (-not $defaults.ContainsKey($name)) { continue }
     foreach ($entry in $groups[$name]) {
         if ($historical -contains $entry.Group) { continue }
-        if ($entry.Value -ne $defaults[$name]) {
+        $expected = $defaults[$name]
+        if ($armDefaults.ContainsKey($entry.Group) -and $armDefaults[$entry.Group].ContainsKey($name)) {
+            $expected = $armDefaults[$entry.Group][$name]
+        }
+        if ($entry.Value -ne $expected) {
             "   {0,-22} {1,-12} seed {2,8} vs default {3,8}" -f `
-                $name, $entry.Group, $entry.Value, $defaults[$name]
+                $name, $entry.Group, $entry.Value, $expected
             $drift++
         }
     }

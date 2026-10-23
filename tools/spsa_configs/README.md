@@ -13,6 +13,34 @@ exempts them from the audit's seed checks. B.8 folded the arm features
 group's build line records how its binary was built then; a tune build of
 the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 
+## `d16fix` — D.1.6.3's fit of the cascade cluster, registered by RAR-R21
+
+- **Surface:** fourteen coordinates: the five aspiration coordinates
+  (`AspirationDelta`, `AspGrowthPct`, `AspGrowthHighPct`, `AspGrowthAdd`,
+  `AspDeltaSquareDiv`), the known-win offset `MopupKnownWin`, the
+  deepening freeze `TmDepthFreeze`, and the seven reduction terms whose
+  negative values the line budget now charges (`CoreLmrPv`,
+  `CoreLmrPvWindow`, `CoreLmrCorrection`, `CoreLmrGivesCheck`,
+  `CoreLmrImprovement`, `CoreLmrTtPv`, `CoreLmrQuietHistory`). `value` is
+  the fit arm's default (`217125b`: the cluster's four parts baked, so the
+  tune starts at the cluster's seeds, as the harness requires), the step
+  the b43 rule, and `min_value` and `max_value` the declared range except
+  for `AspDeltaSquareDiv` (2000..40000 of 0..100000), `MopupKnownWin`
+  (500..12000 of 0..20000) and `TmDepthFreeze` (2000..9000 of
+  1000..10000000), whose declared ranges hold the switches' off values.
+- **`fixed_d16fix.json`:** Hash 64, Threads 1, MultiPV 1; the line budget
+  (`CoreLmrDeeperBudget` 1) is the arm's default, not an option.
+- **Run:** block 1 is 2,000 iterations × 30 games on
+  `tools/test_engines/rarog-d16fit-tune.exe` (`217125b`, bench 8,996,837),
+  `colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d16fit-tune.exe
+  -ConfigGroup d16fix -Iterations 2000 -TotalGames 60000 -Seed 20261050`,
+  or `analysis/artifacts/d16-cascade-2026-10-23/run_r21.ps1 -Read fit`. The
+  Colosseum files are `tools/spsa_config_to_colosseum.py d16fix
+  --iterations 2000`; `--check` says whether they are current. A second
+  block starts with `-SeedFrom` only on rule 7c's count.
+- **Use:** theta is baked only for D.1.6.3's gate (RAR-R20's form, on a
+  rebuilt arm).
+
 ## `d14block1` — D.1.4's clock fit, registered by RAR-R15
 
 - **Surface:** the thirteen clock coordinates: the seven of 2.3.0, D.1.3's
