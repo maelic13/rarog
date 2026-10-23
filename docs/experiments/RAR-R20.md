@@ -242,10 +242,74 @@ two are about −20 Elo by the time rule; both are tunable (`TmDepthFreeze`,
 and the clock's scale once D.1.5 reads it on the landed engine), neither is
 the cluster's decision quality.
 
+## The in-game speed loss is composition, not speed (2026-10-23, agent-run, idle host)
+
+The maintainer asked whether the cluster's code could be optimised to win
+back the 4.6% of in-game NPS the wire check showed. Three reads, all on this
+host with only the app running (10–12% of 32 threads, the floor), say there
+is no speed to win back; the scripts and logs are `nps/` under this leaf's
+artifact directory.
+
+**Raw code cost: none measurable.** `bench 13 5` (best of five), six
+rounds in rotating order, the pre-cascade tune build
+`rarog-d18switch-tune.exe` (`a43b3a5`, before every cascade commit) against
+the new code with every switch at its neutral default
+(`rarog-d16inst2-tune.exe`, `2f17467`); both search the identical tree
+(fingerprint 13,987,223):
+
+| Arm | Median NPS | Spread | Ratio |
+|---|---|---|---|
+| pre-cascade code | 2,545,446 | 2,534,835–2,550,086 | 1.000 |
+| new code, switches off | 2,538,286 | 2,526,593–2,543,593 | 0.997 |
+| new code, the four parts on | 2,312,217 | 2,294,526–2,318,772 | 0.908 |
+
+The −0.3% is inside the samples' spread: the per-node code the cluster
+added (the budget charge, the deeper cap, the quiescence best-score, the
+known-win branch) costs nothing the instrument can see.
+
+**The cluster's −9.2% is the tree, and it is two of the parts.** Same
+binary, four rounds: the known win alone **+9.5%** (18.07 M nodes at depth
+13), the squared window alone **−6.7%** (9.81 M), the budget alone
+**−5.2%** (9.80 M), known win with the window **−7.5%** (10.18 M).
+
+**Position by position the speed is unchanged.** One `bench 13` run each,
+defaults against the cluster, the forty positions bucketed by the score at
+the defaults:
+
+| Bucket | Nodes off → on | Time off → on | NPS on / off |
+|---|---|---|---|
+| \|score\| < 100 | 1.81 M → 1.69 M | 964 → 908 ms | 0.988 |
+| 100–300 | 4.46 M → 3.83 M | 2,000 → 1,753 ms | 0.980 |
+| 300–2000 | 4.82 M → 2.93 M | 1,742 → 1,085 ms | 0.975 |
+| ≥ 2000 or mate | 2.90 M → 0.55 M | 911 → 167 ms | 1.044 |
+| all | 13.99 M → 9.00 M | 5,617 → 3,913 ms | 0.923 |
+
+Within every bucket the per-node speed holds within 1–2.5%. The aggregate
+falls because the cluster removes 82% of the time the defaults spend in
+the large-score positions, where nodes are cheapest (3.18 M a second
+against 1.88 M in the balanced ones): position 11 goes from 2.48 M nodes to
+0.28 M at the same speed. The 30% of nodes that disappear are the cascade's
+re-search revisits and the deeper reduced searches, both TT-hot and fast;
+removing them lowers the average cost of a node by raising the share of
+ordinary nodes. The same reading holds in games: from the wire check's PGN
+(nodes and time a move), the arm's NPS is below the head's in every ply
+bucket, −1.8% in plies 1–20, −2.8% in 21–40, −3.0% in 41–60, −4.1% in
+61–80, −5.0% in 81–100, rising as scores grow and endings arrive, and the
+head's larger share of time in the fast late plies inflates its aggregate;
+a PGO build pair carries ±1.5% besides.
+
+**Disposition.** Nothing to optimise: restoring the NPS would mean putting
+the wasted nodes back. The cluster's visible in-game cost is the time left
+on the clock (5.3% less a move), which is the freeze's and the clock's
+business, and whatever the search parts cost in decisions, which Stage 1
+of RAR-R21 reads. The earlier reading of the −52.5 as partly "slower in
+games" is superseded by this section.
+
 ## Calibration and disposition after the decompositions
 
 - Prediction 2's miss (the result far outside ±35) is explained in part:
-  the cluster leaves time on the clock and runs slower in games; the
+  the cluster leaves time on the clock and its in-game speed reads lower,
+  which the section above shows is the tree's composition, not speed; the
   evaluation half the research blamed first reads even at equal speed. The
   precise sizing is the maintainer's 2,000-game reads below.
 - **What the fit can and cannot do.** A fit recovers what the constants
