@@ -460,3 +460,148 @@ no clock stop on either (`tm_rec_probe_d16_gate.txt`):
   word.
 - Retry triggers as registered; the fallback (the clock stop at twice the
   target, `TmFailHighTarget` 20000, probe PASS in RAR-R18) stands.
+
+## Maintainer decision 2026-10-23: complete the device, then gate it
+
+The gate is not run on the partial device. The research continues toward a
+fix that works, several connected mechanisms if need be, each read
+node-indexed and the whole gated once.
+
+## The recovery read (2026-10-23, `go nodes 200000000`, one thread, Hash 64)
+
+`AspFailHighRecover`, the second tune-only switch (engine commit
+`bce79c6`, off by default): after an iteration with k fail-highs the next iterations
+start `(k + 1) / 2 + 2` plies short, two less each iteration (Stockfish's
+`failHighRecovery`). Verified on the final state: fmt, clippy at zero
+warnings, debug and release tests green, bench at the defaults 13,987,223 /
+EBF 2.565. Traces `trace_nodes_*.txt` beside this entry, read by
+`cascade_read.py`; a window still running when the node budget ends prints
+no line, so its cost is the budget less the last line's nodes.
+
+| Arm | rec3: costliest iteration | rec1: costliest iteration |
+|---|---|---|
+| head | depth 21: **> 192 M**, not completed (6 fail-highs printed, the seventh window 133 M and running) | depth 19: **135 M**, completed (9 fail-highs, exact window 35 M); depth 20 running at 46 M |
+| reduce 1 | depth 23: 84 M completed (5 fail-highs, exact 34 M); depth 24: **> 90 M**, its first full-depth window still running | depth 21: 41 M completed; depth 22: **> 153 M**, not completed (8 fail-highs of 14–27 M each) |
+| reduce 1 + recovery | depth 25: 28 M completed; depth 26: **> 162 M**, not completed (one fail-high, then a window of 136 M running) | depths 22–28 cheap (0.5–12 M, exact windows at reduced depth); depth 29: **> 152 M**, not completed (7 fail-highs, then a window of 129 M running) |
+
+- **Prediction (the device alone leaves an iteration over 100 M in both;
+  with the recovery the worst under 60 M in rec3 and under 100 M in rec1,
+  0.5): the first half held, the second failed.** The recovery lets the
+  nominal depth inflate cheaply (rec1 reaches depth 28 in 28 M nodes with
+  exact windows at reduced depth) and the cascade returns at the next
+  rising score, at the same cost. In these endings the cost of proving a
+  rising bound at an effective depth near 20 is 10–40 M nodes a window,
+  seven or eight windows a cascade, and no depth device changes the window
+  count or the per-window cost by more than about 20% a ply.
+- **What this says about the donors.** Stockfish does not stall on these
+  positions (RAR-R16's probe: 9.3 s and 43.8 s on rec1, 5.7 s and 19.3 s on
+  rec3, two to three times Rarog's optimum, never its maximum) because its
+  third element stops deepening once half the target is spent: the next
+  iteration repeats the effective depth, the table answers its first window
+  at once, and the soft stop fires. That element reads the clock. It cannot
+  bound an iteration begun under the target either; Stockfish's iterations
+  are cheaper on these positions than Rarog's, which is a search question
+  beyond the root loop.
+- **The remaining search-side lever is the schedule itself:** a cascade of
+  eight shrinking windows against one open window. The exact window after
+  rec1's depth-19 cascade cost 35 M where the cascade cost 100 M; opening
+  the fail-high side after a few consecutive failures would cost a few
+  small windows and one open one. `AspMaxFails` is already a coordinate
+  (both sides; RAR-S89 gated 1 at −18.3 Elo and swept 2, 4 and 8 at zero
+  games, never gating them), so this read needs no code.
+
+**Third read, registered before it ran:** `AspMaxFails` 3 and 4, alone and
+with `AspFailHighReduce` 1, rec1 and rec3 at 200 M nodes. Prediction: at 3
+the costliest iteration falls under 60 M in rec1 (head 135 M) and under
+50 M in rec3 (0.6); with the reduction as well under 40 M in both (0.5); at
+4 between those and the head's. Falsifier: a costliest iteration still over
+100 M at 3 refutes the schedule as the lever too, and the search-only fix
+of these stalls is refuted on this engine, leaving the clock-coupled
+elements (Stockfish's depth freeze past half the target, or RAR-R18's stop
+at twice the target) as the only measured devices.
+
+**Third read, result (traces `trace_nodes_maxfails*` and
+`trace_nodes_reduce1maxfails*`):** the falsifier fires in every arm. Once
+the fail-high side opens fully, the one open window costs more than the
+cascade it replaces:
+
+| Arm | rec3 | rec1 |
+|---|---|---|
+| `AspMaxFails` 3 | depth 20: three fail-highs (2–3 M each), then the open window **> 182 M**, running at the budget | depths 17–32 exact at 904 for 0.1–3.9 M each; depth 33: three fail-highs, then the open window **> 168 M** |
+| 3 with the reduction | depth 21 completes at 17.8 M; depth 22's open window **> 168 M** | depths 18–28 exact at 743; depth 29's open window **> 188 M** |
+| `AspMaxFails` 4 | depth 18: four fail-highs, then the exact window **80.8 M** (completed); depth 19's **> 104 M** running | depth 25's open window **> 184 M** |
+| 4 with the reduction | depth 22 completes at 35.6 M; the next window **> 149 M** | depth 21: exact window at 3013 **69 M**; depth 22: a 46 M window, then **> 36 M** running |
+
+The schedule is not the lever either: proving the position's rising score
+at an effective depth near 20 costs 70–190 M nodes however the windows are
+cut, so **the search-only fix of these stalls is refuted on this engine's
+root loop** (three devices, node-indexed, both positions).
+
+## Where the cost is: the score drifts with depth and the lines grow to the cap
+
+Depth for depth, one thread, Hash 64, fresh processes (`depthcost.log`,
+`rarog_rec*_d*.txt`; Stockfish 19 at `D:/chess/engines/stockfish/`):
+
+| Position, depth | Stockfish 19: nodes, score, seldepth | Rarog (the head): nodes, score, seldepth | Ratio |
+|---|---|---|---:|
+| rec3, 16 | 0.13 M, cp 484, 29 | 1.15 M, cp 706, 41 | 8.8 × |
+| rec3, 18 | 0.28 M, cp 506, 39 | 2.01 M, cp 727, 45 | 7.3 × |
+| rec3, 20 | 1.04 M, cp 573, 50 | 8.04 M, cp 831, 61 | 7.7 × |
+| rec1, 16 | 0.24 M, cp 520, 31 | 0.16 M, cp 706, 39 | 0.7 × |
+| rec1, 18 | 0.33 M, cp 541, 26 | 19.06 M, cp 1845, 89 | **57 ×** |
+| rec1, 20 | 0.72 M, cp 524, 39 | not completed in 200 M (depth 19 cost 135 M, cp 2882) | > 280 × |
+
+- **Stockfish's root score is flat across these depths** (484–573, 520–541)
+  and its windows hold; it reads the decisive value (cp 9165) only from
+  depth 31 on, in one step. **Rarog's root score rises with every ply**
+  (rec3 706 → 727 → 831 → 903 → 1028 → 1149; rec1 799 → 1845 → 2882), so
+  every iteration fails high and must prove a higher bound than the last,
+  and each proof is a tree whose lines reach four to five times the nominal
+  depth (seldepth 89 at depth 18, 127 at depth 19, the ply cap) where
+  Stockfish's reach 1.4 ×. The cascade is the aspiration loop following a
+  score that drifts with depth through a tree that grows to the cap. The
+  root loop is where the symptom shows, not where the cost is.
+- What drives the drift and the growth is the next question, and it is a
+  search and evaluation question for won rook endings (B.5's "no bound on
+  deep-iteration line growth", recorded then without a measured cost; the
+  evaluation's scaling of a winning material edge with depth; extensions
+  and quiescence checks in rook endings). The diag dump at depth 18 on rec1
+  shows an 82% TT hit rate and about 1.6% of nodes truncating an extension
+  against the line budget, against 1.05% on bench; the sampled counters
+  are not read further here (ratios need stride 1, `bench_counters.py`'s
+  method).
+
+## Disposition: `MORE_RESEARCH`, the question re-scoped
+
+- **Refuted on this engine, node-indexed:** every root-loop device read
+  here (depth-reduced re-searches, Stockfish's recovery, the schedule
+  opening after three or four failures) leaves an iteration of 90–190 M
+  nodes in rec1 and rec3, so none ends the long-control stall by itself.
+  The reduction alone still ends three of four probed stalls and reads
+  0.61 × on bench; that is a strength question, not a fix, and the gate on
+  it stays held.
+- **The cause is upstream of the root loop:** a root score that rises with
+  depth in won endings, proved through lines that grow to the ply cap, at
+  7–57 × Stockfish's nodes for the same depth. The proper fix is the
+  research leaf that explains and bounds that, with its own cheap
+  discriminators: the static evaluation along the PV against the search
+  score at each depth (drift from the evaluation's scaling or from the
+  search finding the conversion), the extension and quiescence composition
+  of these trees at stride 1, and Stockfish's classical evaluation inside
+  Rarog's search on the same positions (RAR-O07's instrument) to separate
+  the evaluation's share.
+- **For the clock, meanwhile:** the only measured devices that end every
+  probed stall are clock-coupled: RAR-R18's fail-high stop at twice the
+  target (probe PASS, +12.2 ± 8.8 against the stop at the target, 0 ± 13
+  against no stop) and Stockfish's depth freeze past half the target
+  (unread here). The research recommends the maintainer reconsider the
+  stop at twice the target as the robustness piece in D.1.5's closing read
+  while the search cause is researched; a `[-5,5]` gate on any root-loop
+  device as "the fix" is not recommended.
+- The switches stay on `d1` at their defaults (`AspFailHighReduce` 0,
+  `AspFailHighRecover` 0, `TmFailHighTarget` off), bench-neutral, as the
+  instruments of the next leaf; the arm `2d013c8` and its binary stay for
+  the held gate.
+
+**Evidence layer:** node counts and window counts throughout; Elo only in
+the RAR-R18 figures quoted.

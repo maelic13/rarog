@@ -324,9 +324,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): one ply off a root re-search per fail-high (`AspFailHighReduce`, `027a604`, tune-only, 0 = today) ends three of four probed stalls on the 2.6.0 engine and not rec3 at `180000+2000` on the PGO arm; the window count is the schedule's and a ply saves about 20% a window there. Next read registered: the costliest iteration within 200 M nodes for the head, the device, and the device with Stockfish's recovery (a second coordinate, on the maintainer's word) |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the prototype `027a604` and the arm `2d013c8` (`AspFailHighReduce` 1 as the default, bench 8,510,754) are its base |
-| D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, no clock stop in either arm, dry-run clean (`run_r19.ps1`); the research recommends against running it on the partial device |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19), the question re-scoped: every root-loop device (depth-reduced re-searches `027a604`, Stockfish's recovery, the schedule opened at 3 or 4) leaves a 90–190 M-node iteration in rec1 and rec3, node-indexed; the cause is a root score that rises with depth through lines that reach the ply cap, 7–57 × Stockfish's nodes depth for depth. Next: the drift's source (evaluation scaling or the search's conversion), the trees' composition at stride 1, the oracle's evaluation in Rarog's search on these positions |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce` and `AspFailHighRecover` (off) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
+| D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -1016,13 +1016,27 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           full depth over a TT holding only the shallower result. The
           depth reduction is the search half of both donors' device; the
           other half is clock-coupled in both (Stockfish stops deepening at
-          half the target and recovers depth over the next iterations). Next
-          read, registered in RAR-R19: the most expensive iteration of rec1
-          and rec3 within 200 M nodes for the head, the device, and the
-          device with Stockfish's recovery as a second tune-only coordinate,
-          implemented only on the maintainer's word. The gate (D.1.6.3) is
-          registered and held; the C.10 constants were fitted without the
-          device.
+          half the target and recovers depth over the next iterations).
+          **Maintainer decision 2026-10-23:** complete the device, then gate
+          it; the gate is not run on the partial device. **Node-indexed
+          reads at 200 M nodes (RAR-R19):** with Stockfish's recovery as a
+          second switch (`AspFailHighRecover`, engine commit named in
+          RAR-R19) the costliest iteration is still over 150 M in both
+          positions; with the window opened after three or four fail-highs
+          (`AspMaxFails` 3, 4, alone and with the reduction) one open window
+          costs 70–190 M. **Every root-loop device is refuted as the fix.**
+          Depth for depth Rarog spends 7–57 × Stockfish 19's nodes on these
+          positions: its root score rises with every ply (rec3 706 → 1149,
+          rec1 799 → 2882) where Stockfish's is flat (484–573), and its
+          lines reach the ply cap (seldepth 89 at depth 18 against 26). The
+          cascade is the loop following a drifting score through a tree that
+          grows to the cap; the cause is upstream of the root loop and is
+          the re-scoped question: the static evaluation along the PV against
+          the search score by depth, the extension and quiescence
+          composition at stride 1, and Stockfish's classical evaluation in
+          Rarog's search on these positions (RAR-O07's instrument). The gate
+          (D.1.6.3) stays held; the research recommends the stop at twice
+          the target (RAR-R18) as the clock's robustness piece meanwhile.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
           Waits on D.1.6.1. The prototype is the switch `027a604` (default
           0, bench unchanged) and the arm `2d013c8` (recipe
