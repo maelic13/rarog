@@ -152,6 +152,40 @@ steps set to the precedent, the Colosseum files regenerated, and the
 fit restarted from iteration 0 under the same seed. No other coordinate
 rails at c_0 (the amending script asserts it). Predictions unchanged.
 
+### The fit's start and its pause test (2026-10-24, agent-run)
+
+- **Started 23:21:17Z** (01:21 local) under seed 20261050 in
+  `tools/results/rar-r21-fit`, manifest
+  `colosseum_spsa_rar-r21-fit_20261024_012116.manifest.txt`, host 4.5%
+  busy, `rail_warnings: none`, 15 slots, about 20 s an iteration (5,300
+  games an hour, about 11 h). An earlier start at 01:07 local is the rail
+  amendment's aborted one (above).
+- **Pause tested on the live run:** Ctrl+C in the runner's tab at iteration
+  19 (23:27:50Z). The runner launched no new game, gave the games in flight
+  30 s, and exited at a committed boundary; no engine or runner process
+  remained; the manifest records `interrupted: ... Re-run the same command
+  to resume`; `colosseum-cli spsa status` read 19/2000 from the durable
+  snapshot.
+- **Resume tested:** the same command, `run_r21.ps1 -Read fit`, carried the
+  recorded seed over, started a second manifest
+  (`colosseum_spsa_rar-r21-fit_20261024_013011.manifest.txt`, 23:30:12Z,
+  host 3.8% busy) and continued from iteration 19 (34/2000 five minutes
+  later). The 15 iterations before the pause were kept, as the journal
+  promises.
+- **Host-idle refusals:** the harness's 2-second window refused six starts
+  at 16–35% CPU on a box that a 12-second read put at 0.2%, the bursts
+  coming from the desktop app while the agent read its terminal. Two
+  wrappers beside `run_r21.ps1` retry a refused start once a minute and
+  never retry a run that ran: `start_fit_when_idle.ps1` (a first start,
+  stops once the run directory exists) and `resume_fit_when_idle.ps1`
+  (stops unless the refusal was the idle check). Both record their attempts
+  in a log beside them. The plain command remains the resume of record.
+- **How the maintainer pauses and resumes:** Ctrl+C once in the tab that
+  runs the fit, wait for the prompt (up to 30 s); resume with the plain
+  command, or with `resume_fit_when_idle.ps1` when the preflight keeps
+  refusing a quiet host. `colosseum-cli spsa status tools/results/rar-r21-fit`
+  reads the state without touching it.
+
 ## Stage 3: the gate
 
 RAR-R20's gate, re-registered then on an arm rebuilt with the fitted
