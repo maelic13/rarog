@@ -307,6 +307,14 @@ search_params! {
     /// fail-highs and cost about 15 Elo at `3+0.03`. The spin stays as the
     /// control arm of that fix's probe and goes with it.
     tm_fail_high_target = 10_000_000, "TmFailHighTarget", 10000..=10000000;  // off
+    /// Switch, in ten-thousandths of the soft target: once a completed
+    /// iteration finds this much of the target spent, the following
+    /// iterations no longer deepen; each is searched `3 (n + 1) / 4` plies
+    /// short of its nominal depth, n counting them, as Stockfish stops
+    /// deepening past half its target (`increaseDepth`). The clock then
+    /// meets completed iterations whose cost no longer grows. Off at
+    /// 10000000, a thousand targets, past every maximum.
+    tm_depth_freeze = 10_000_000, "TmDepthFreeze", 1000..=10000000;  // off
 }
 
 // The selectivity core's own coordinates. Seeds follow the handoff's seed

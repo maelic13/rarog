@@ -908,6 +908,12 @@ impl Searcher {
         // Plies the iterations after a cascade start short by, regained two
         // an iteration (see `Aspiration::recovery_after`).
         let mut fail_high_recovery = 0_i32;
+        // Iterations begun after the deepening froze (`TmDepthFreeze`): each
+        // is searched `3 (n + 1) / 4` plies short, so a clock search past its
+        // target repeats a depth instead of growing an iteration.
+        let depth_freeze = f64::from(self.cfg.params.tm_depth_freeze) / 10_000.0;
+        let mut deepening_frozen = false;
+        let mut frozen_iterations = 0_i32;
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -920,6 +926,10 @@ impl Searcher {
             let previous_bestmove = bestmove;
             let mut failed_high_past_target = false;
             fail_high_recovery = (fail_high_recovery - 2).max(0);
+            if deepening_frozen {
+                frozen_iterations += 1;
+            }
+            let freeze_cut = 3 * (frozen_iterations + 1) / 4;
             // The aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
@@ -940,8 +950,11 @@ impl Searcher {
                 // Shallower by the fail-highs so far and by the recovery an
                 // earlier cascade left; the iteration still counts as this
                 // depth, as both donors count it.
-                let searched_depth =
-                    window.search_depth(&self.cfg.params, infra::to_i32(depth), fail_high_recovery);
+                let searched_depth = window.search_depth(
+                    &self.cfg.params,
+                    infra::to_i32(depth),
+                    fail_high_recovery + freeze_cut,
+                );
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
                 let score = self.search_root_window(
@@ -1147,6 +1160,8 @@ impl Searcher {
                 };
                 let soft = time::soft_stop(&self.cfg.params, &self.cfg.limits, signals);
                 soft_target_ms = soft.target_ms;
+                deepening_frozen =
+                    !self.td.pondering && elapsed_ms >= soft.target_ms * depth_freeze;
                 #[cfg(feature = "diag")]
                 if emit_info && self.cfg.limits.optimum_ms.is_finite() {
                     self.log_soft_stop(depth, signals, soft, elapsed_ms);
