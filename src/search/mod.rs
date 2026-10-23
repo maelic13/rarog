@@ -302,10 +302,22 @@ impl Aspiration {
     }
 
     /// The depth the next window of an iteration at `depth` is searched at:
-    /// each fail-high so far takes `asp_fail_high_reduce` plies off, to a
-    /// floor of one. Fail-lows take nothing off.
-    fn search_depth(&self, params: &SearchParams, depth: i32) -> i32 {
-        (depth - self.fail_highs * params.asp_fail_high_reduce).max(1)
+    /// each fail-high so far takes `asp_fail_high_reduce` plies off, and the
+    /// `recovery` carried from earlier iterations' cascades comes off too, to
+    /// a floor of one. Fail-lows take nothing off.
+    fn search_depth(&self, params: &SearchParams, depth: i32, recovery: i32) -> i32 {
+        (depth - self.fail_highs * params.asp_fail_high_reduce - recovery).max(1)
+    }
+
+    /// The plies the iterations after this one start short by, once this
+    /// one's windows failed high (`asp_fail_high_recover`); zero when they did
+    /// not or the switch is off.
+    fn recovery_after(&self, params: &SearchParams) -> i32 {
+        if params.asp_fail_high_recover == 0 || self.fail_highs == 0 {
+            0
+        } else {
+            (self.fail_highs + 1) / 2 + 2
+        }
     }
 }
 
@@ -878,6 +890,9 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
+        // Plies the iterations after a cascade start short by, regained two
+        // an iteration (see `Aspiration::recovery_after`).
+        let mut fail_high_recovery = 0_i32;
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -889,6 +904,7 @@ impl Searcher {
             }
             let previous_bestmove = bestmove;
             let mut failed_high_past_target = false;
+            fail_high_recovery = (fail_high_recovery - 2).max(0);
             // The aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
@@ -906,9 +922,11 @@ impl Searcher {
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
 
             loop {
-                // Shallower by the fail-highs so far; the iteration still
-                // counts as this depth, as both donors count it.
-                let searched_depth = window.search_depth(&self.cfg.params, infra::to_i32(depth));
+                // Shallower by the fail-highs so far and by the recovery an
+                // earlier cascade left; the iteration still counts as this
+                // depth, as both donors count it.
+                let searched_depth =
+                    window.search_depth(&self.cfg.params, infra::to_i32(depth), fail_high_recovery);
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
                 let score = self.search_root_window(
@@ -1014,6 +1032,7 @@ impl Searcher {
                         root_move.complete_iteration();
                     }
                 }
+                fail_high_recovery = window.recovery_after(&self.cfg.params);
                 break;
             }
 
@@ -2726,27 +2745,98 @@ mod tests {
     fn a_fail_high_takes_plies_off_the_next_window_and_a_fail_low_none() {
         let mut params = SearchParams::default();
         let mut window = Aspiration::new(&params, 10, 0);
-        assert_eq!(window.search_depth(&params, 10), 10);
+        assert_eq!(window.search_depth(&params, 10, 0), 10);
         window.fail_high(&params, window.beta);
         assert_eq!(
-            window.search_depth(&params, 10),
+            window.search_depth(&params, 10, 0),
             10,
             "at 0 every window is searched at the iteration's depth"
         );
-        params.asp_fail_high_reduce = 1;
-        assert_eq!(window.search_depth(&params, 10), 9);
-        window.fail_low(&params, window.alpha);
-        assert_eq!(window.search_depth(&params, 10), 9);
-        window.fail_high(&params, window.beta);
-        window.fail_high(&params, window.beta);
-        assert_eq!(window.search_depth(&params, 10), 7);
         assert_eq!(
-            window.search_depth(&params, 2),
+            window.recovery_after(&params),
+            0,
+            "the recovery is off by default"
+        );
+        params.asp_fail_high_reduce = 1;
+        assert_eq!(window.search_depth(&params, 10, 0), 9);
+        window.fail_low(&params, window.alpha);
+        assert_eq!(window.search_depth(&params, 10, 0), 9);
+        window.fail_high(&params, window.beta);
+        window.fail_high(&params, window.beta);
+        assert_eq!(window.search_depth(&params, 10, 0), 7);
+        assert_eq!(
+            window.search_depth(&params, 2, 0),
             1,
             "the depth floors at one"
         );
         params.asp_fail_high_reduce = 2;
-        assert_eq!(window.search_depth(&params, 10), 4);
+        assert_eq!(window.search_depth(&params, 10, 0), 4);
+        // A recovery carried from an earlier cascade comes off as well.
+        params.asp_fail_high_reduce = 1;
+        assert_eq!(window.search_depth(&params, 10, 3), 4);
+    }
+
+    /// The recovery after a cascade: `(k + 1) / 2 + 2` plies for k fail-highs,
+    /// none without a fail-high, and none with the switch off.
+    #[test]
+    fn a_cascade_leaves_a_recovery_for_the_next_iterations_only_when_switched_on() {
+        let mut params = SearchParams {
+            asp_fail_high_recover: 1,
+            ..SearchParams::default()
+        };
+        let mut window = Aspiration::new(&params, 12, 0);
+        assert_eq!(window.recovery_after(&params), 0);
+        window.fail_low(&params, window.alpha);
+        assert_eq!(window.recovery_after(&params), 0, "a fail-low leaves none");
+        window.fail_high(&params, window.beta);
+        assert_eq!(window.recovery_after(&params), 3);
+        for _ in 0..6 {
+            window.fail_high(&params, window.beta);
+        }
+        assert_eq!(window.recovery_after(&params), 6, "seven fail-highs");
+        params.asp_fail_high_recover = 0;
+        assert_eq!(window.recovery_after(&params), 0);
+    }
+
+    /// With the recovery on, the iteration after a cascade is searched
+    /// shallower and still reports and completes at its nominal depth.
+    #[test]
+    fn a_recovered_iteration_completes_at_its_nominal_depth() {
+        const DEPTH: u32 = 10;
+        let limits = SearchLimits {
+            depth: Some(DEPTH),
+            ..SearchLimits::default()
+        };
+        let mut options = EngineOptions::default();
+        options.search_params.asp_fail_high_reduce = 1;
+        options.search_params.asp_fail_high_recover = 1;
+        let (fen, lines) = FAIL_HIGH_CANDIDATES
+            .iter()
+            .find_map(|&fen| {
+                let (_, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
+                lines
+                    .iter()
+                    .any(|line| line.bound == "lowerbound")
+                    .then_some((fen, lines))
+            })
+            .expect("a candidate fails high at the root with the recovery on");
+        let last = lines.last().expect("a line was printed");
+        assert_eq!((last.bound, last.depth), ("", DEPTH as usize));
+        let board = Board::from_fen(fen).expect("valid fen");
+        let legal = board.generate_legal_moves();
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
+        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+        assert_eq!(result.depth, DEPTH as usize);
+        assert_eq!(result.bestmove.to_string(), last.first);
+        assert!(
+            searcher
+                .td
+                .root_move_records
+                .iter()
+                .all(|rm| rm.samples == DEPTH),
+            "every root record samples each completed iteration once"
+        );
     }
 
     /// With the reduction on, an iteration whose windows failed high still

@@ -188,6 +188,12 @@ search_params! {
     /// clock reads it. 0 searches every window at the iteration's depth;
     /// both donors take one ply.
     asp_fail_high_reduce = 0, "AspFailHighReduce", 0..=4;
+    /// Switch: after an iteration whose windows failed high k times, the
+    /// next iterations are searched shallower by `(k + 1) / 2 + 2` plies less
+    /// two for each iteration since, so the depth is regained in steps
+    /// instead of one full-depth window over a table that holds only the
+    /// shallower result (Stockfish's `failHighRecovery`). 0 = off.
+    asp_fail_high_recover = 0, "AspFailHighRecover", 0..=1;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
