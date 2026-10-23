@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | RESEARCH | V | RAR-R18: every read sits on the time rule, so the cluster moves time (+1.6 ± 4.2 Elo of decision quality pooled); the fail-high stop fires on single fail-highs at 1.2 × the target, not cascades; three reads and a probe at 2 × decide the kept set, then one repair read at both controls. RAR-R16's SPRT paused at 2,345 pairs (+0.6 ± 5.8), recommended unresolved |
+| D.1.5 | RESEARCH | V | RAR-R18 read: the stop at the target costs about 15 Elo and moves to twice the target (probe PASS); the factors read +6.9 ± 8.7, insufficient by the frozen rule; the kept set's repair read at both controls is next, its arm (factors in or out) the maintainer's decision; RAR-R16's SPRT recommended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -891,6 +891,21 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       `3+0.03` and `10+0.1` before anything lands. The research recommends
       recording RAR-R16's SPRT as unresolved, and against Reckless's shape
       or a respending budget now.
+      **RAR-R18 read 2026-10-23** (2,000 games each, probe PASS): removing
+      the stop **+15.5 ± 9.3** against the seeds, the stop at twice the
+      target **+12.2 ± 8.8**, the factors **+6.9 ± 8.7** for keeping them.
+      The stop at the target costs about 15 Elo at `3+0.03` and leaves its
+      saving on the clock; at twice the target the cost is gone and the
+      cascades still end (rec1 at `180000+2000` in 18.9 s against the
+      head's 104 s). The time rule misread the reads: between two arms of
+      one clock the whole-game time is conserved, so the rule saw
+      redistributions as decisions (calibration in RAR-R18). Frozen
+      dispositions: the stop to twice the target; the stability factor and
+      cross-move slope removed as insufficient; the kept set to one repair
+      read at both controls. Additive over the reads the kept set is
+      −9.6 ± 15.2 against the head without the factors and −2.7 ± 12.4
+      with them, so their place in the repair arm is the maintainer's
+      decision, recorded there.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The

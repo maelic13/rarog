@@ -216,3 +216,95 @@ absorb.
 - **A respending budget:** not needed at twice the target, where the stop
   saves no time at `3+0.03`; at long controls the time a cascade stop saves
   is in the remaining clock the budget already reads.
+
+## Results (played 2026-10-23, maintainer-run, the probe too)
+
+Every run was on an idle host (0.0–2.0% busy, no waiver), with 0 faults, 0
+time losses and a recount that agreed. The runner's final progress line
+gives each read's Elo. The manifests (`589a09fa…`, `47f6fbcb…`,
+`68f92fe6…`), the per-arm readings beside this entry
+(`rar-r18-stopoff.txt` `58d313ab…`, `rar-r18-cascade.txt` `11f87972…`,
+`rar-r18-factorsoff.txt` `204a58d4…`) and the probe (`tm_rec_probe_d18.txt`,
+`80f2428b…`) are the evidence.
+
+| Read | Elo, arm A less arm B | nElo | Pentanomial | Time a game, A / B | Plies 0–19, A / B | Clock left in wins, A / B |
+|---|---|---|---|---|---|---|
+| `stopoff` | **+15.5 ± 9.3** | +25.3 ± 15.2 | 25, 212, 459, 257, 47 | 4.21 / 4.09 s (+2.9%) | 110.0 / 97.1 ms (+13.3%) | 730 / 1,010 ms |
+| `cascade` (2×) | **+12.2 ± 8.8** | +21.1 ± 15.2 | 17, 217, 477, 257, 32 | 4.18 / 4.08 s (+2.5%) | 108.2 / 98.2 ms (+10.2%) | 790 / 983 ms |
+| `factorsoff` | **−6.9 ± 8.7** | −12.2 ± 15.2 | 30, 238, 493, 220, 19 | 4.17 / 4.18 s (−0.2%) | 100.6 / 111.3 ms (−9.6%) | 738 / 716 ms |
+
+**Probe, the 2× arm: PASS.** No rec move at the maximum; rec2 in 5 ms
+(mate 6, depth 10) at both clocks; rec1 4.78 s (1.02 × optimum) at
+`60000+600` and 18.9 s (1.24 ×) at `180000+2000`; rec3 1.96 s (0.44 ×)
+and 15.1 s (1.06 ×). At the target the same four took 4.80, 9.81, 1.97 and
+15.1 s. The head took 32.3, 104.4, 10.4 and 10.4 s (RAR-R13).
+
+**Against the frozen rules.**
+- `stopoff`: time rule +6.0 for +2.9%; decision effect **+9.5** (1.8 SE of
+  5.1), under 10, so "time alone" by the rule's letter, at its edge.
+- `cascade`: rule +5.1; decision effect **+7.1** (1.5 SE); arm A's time
+  within ±3% of the seeds' (+2.5%).
+- `factorsoff`: rule −0.5; decision effect **−6.4** (1.3 SE); the case in
+  which the factors buy more than their time (−10 or less) did not occur.
+- **Dispositions, as frozen:** the stop moves to **twice the target**; the
+  stability factor and the cross-move slope are **removed** on this
+  evidence; the kept set (the horizon, the mate stop, the guard, the stop at
+  2×) goes to one repair read at `3+0.03` and `10+0.1`.
+
+**Calibration.**
+1. `stopoff`: the Elo held (+15.5 against +16 ± 9) and the decision effect
+   stayed within ±10 (0.65); **the time missed** (+2.9% against +8%, band
+   +4 to +14).
+2. `cascade`: the Elo held (+12.2 against +14 ± 9); the time missed (+2.5%
+   against +7%, band +3 to +13).
+3. `factorsoff`: the time missed badly (−0.2% against −10%, band −15 to
+   −5) and the Elo missed (−6.9 against −20 ± 9); the decision effect
+   stayed within ±10 (0.6); the factors' −10 case (0.15) did not occur.
+4. Probe PASS (0.85) and rec1 and rec3 under 2.5 × optimum (0.7): held.
+5. No fault (0.9): held.
+- **The miss is in the instrument.** The registration read time over the
+  whole game, and between two arms of one clock the whole-game time is
+  nearly conserved: what an arm saves early it holds and spends later, and
+  only the remainder at the end differs. `stopoff` spends 13% more in plies
+  0–19 and 3% more over the game; `factorsoff` spends 10% less in plies
+  0–19 and the same over the game. The 2-Elo-per-1% rule was measured on
+  uniform speed changes; applied to a redistribution it reads near zero
+  and attributes the whole read to decisions. Its "time alone" verdicts
+  here therefore say little; what the reads say directly is below.
+- The seeds-against-head read is not a redistribution: there the cluster
+  leaves clock unused against the head (1.0 s in wins against 0.33), which
+  is the mate stop's and the horizon's nature, so that −7.4% is real.
+
+**What the reads say, read directly.**
+- **The stop at the target costs about 15 Elo at `3+0.03`** (+15.5 ± 9.3
+  for removing it). It ends ordinary fail-highs, and the time it saves is
+  left on the clock: the seeds end wins with 1,010 ms and draws with 934,
+  without the stop 730 and 786. At twice the target the cost is gone within
+  the read's resolution (+12.2 ± 8.8 recovered; off against 2× is +3.3 ±
+  12.8) and the long-control cascades still end: rec1 at `180000+2000` in
+  18.9 s against the head's 104 s.
+- **The factors front-load at no whole-game cost** (+10.6% in plies 0–19,
+  the same time a game) and read **+6.9 ± 8.7** for keeping them: positive
+  in sign at 1.5 SE, in the direction the fit moved (`TmStabSlope` −1.1
+  steps, less decay) and the direction both donors carry. Insufficient
+  evidence by the frozen rule, not a refutation.
+- **Arithmetic for the kept set against the 2.6.0 head**, additive over the
+  reads: the other pieces (the horizon, the mate stop, the guard, the
+  effort share) come to −6.3 ± 15.5; the kept set with the stop at 2× and
+  the factors removed to **−9.6 ± 15.2**, with them kept **−2.7 ± 12.4**.
+  A 2,000-game repair read at the −13 nElo harm rule passes a true −9.6
+  with probability about 0.3 and a true −2.7 with about 0.85.
+
+**What it directs.**
+- The stop to twice the target: settled by the frozen rule, and by the
+  reads directly.
+- RAR-R16's SPRT: its arm carries the stop at the target; recorded
+  unresolved at 2,345 pairs on the maintainer's word.
+- **The factors' place in the repair arm is a maintainer decision.** The
+  research's verdict under its frozen rule is "removed": insufficient
+  evidence that they decide better than their time. The reads' direct
+  reading is +6.9 ± 8.7, and a kept set without them is predicted to fail
+  its own harm read more often than not. The repair read's harm rule at
+  both controls is the test either way. Retry trigger if removed: the next
+  clock fit, when the search changes (F.6), re-reads a stability discount
+  seeded from the donors.
