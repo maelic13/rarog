@@ -324,8 +324,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19), the question re-scoped: every root-loop device (depth-reduced re-searches `027a604`, Stockfish's recovery, the schedule opened at 3 or 4) leaves a 90–190 M-node iteration in rec1 and rec3, node-indexed; the cause is a root score that rises with depth through lines that reach the ply cap, 7–57 × Stockfish's nodes depth for depth. Next: the drift's source (evaluation scaling or the search's conversion), the trees' composition at stride 1, the oracle's evaluation in Rarog's search on these positions |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce` and `AspFailHighRecover` (off) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): no root-loop device ends the stall (node-indexed); the drift and the cost are the search, not the evaluation (the oracle with Rarog's evaluation: flat score, 7–60 × fewer nodes); a third of reduced moves in the cascade iteration are searched deeper than their nominal depth, the correction-history term the strongest driver; capping those searches (`CoreLmrDeeperCap` 0) halves bench and delays the explosion seven plies without removing it. Next: `phase4_differential.py`'s comparable counters between Rarog and the oracle on rec1 and rec3 at fixed depth, to locate the mechanism; a fix is a search cluster with its own gate |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover` (off) and `CoreLmrDeeperCap` (4) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
 | D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
@@ -1037,6 +1037,29 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           Rarog's search on these positions (RAR-O07's instrument). The gate
           (D.1.6.3) stays held; the research recommends the stop at twice
           the target (RAR-R18) as the clock's robustness piece meanwhile.
+          **Maintainer decision 2026-10-23: the stop stays off; the
+          research continues.** **Read 2026-10-23 (RAR-R19, zero games):**
+          the oracle (Stockfish's search over Rarog's frozen evaluation)
+          reaches depth 26 on rec1 in 3.1 M nodes with a flat score where
+          Rarog spends 19 M on depth 18 and its score doubles, so the drift
+          and the cost are the search, not the evaluation. In the cascade
+          iteration a third of all reduced moves are searched deeper than
+          their nominal depth (`reduced_depth`'s negative reductions, up to
+          two plies above `new_depth` plus a PV node's two, outside the line
+          budget; diag counters `d428c00`); zeroing the correction-history
+          term alone shrinks rec1's depth 18 from 19 M to 4 M nodes,
+          selective depth 89 to 39, score 1845 to 1184, while every other
+          term moves the tree three to a hundred times at the ply scale.
+          A tune-only cap on the deeper searches (`CoreLmrDeeperCap`, 4 =
+          today, `ddbe1f2`) at 0 shrinks the
+          fixed-depth trees three to six times and halves bench 13
+          (6,639,253), but the explosion returns seven plies deeper when the
+          search proves the win (rec3 depth 27: 100 M nodes). **Not yet
+          answered:** why Rarog proves a won rook ending at 7–60 × the
+          oracle's nodes with the same evaluation. Next: the comparable
+          counters of `phase4_differential.py` between Rarog and the oracle
+          on these positions at fixed depth, to locate the mechanism; a
+          change there is a search cluster with its own gate.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
           Waits on D.1.6.1. The prototype is the switch `027a604` (default
           0, bench unchanged) and the arm `2d013c8` (recipe

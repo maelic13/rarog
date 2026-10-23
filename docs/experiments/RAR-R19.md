@@ -605,3 +605,169 @@ Depth for depth, one thread, Hash 64, fresh processes (`depthcost.log`,
 
 **Evidence layer:** node counts and window counts throughout; Elo only in
 the RAR-R18 figures quoted.
+
+## Maintainer decision 2026-10-23: the stop stays off; D.1.6.1 continues on the re-scoped question
+
+## Where the cost is (2026-10-23, zero games, node-indexed)
+
+**1. The same evaluation in Stockfish's search does not drift and does not
+grow.** The oracle `hybrid/stockfish/src/stockfish.exe` (Stockfish's search
+over Rarog's frozen HCE, `Use Rarog HCE` on; RAR-O07's instrument) and
+Stockfish 19, `go depth 26`, one thread, Hash 64 (`drift.log`,
+`drift_*_rec*.txt`):
+
+| Engine, position | Score by depth | Nodes to depth 20 / 26 | seldepth at 26 |
+|---|---|---:|---:|
+| Oracle (Rarog's eval), rec1 | 700 (d1) → 877–888 flat from d12 to d25 → 1110 at d26 (finds e7e8q) | 0.57 M / 3.07 M | 39 |
+| Oracle (Rarog's eval), rec3 | 416 → 601 (d20) → 718 (d26), about 15 cp a ply | 0.93 M / 4.73 M | 41 |
+| Stockfish 19, rec1 | 520–654, flat | 0.72 M / 3.32 M | 37 |
+| Stockfish 19, rec3 | 434–621, flat | 1.04 M / 2.31 M | 37 |
+| Rarog, rec1 | 799 (d17) → 1845 (d18) → 2882 (d19) | 19.06 M to depth 18; depth 20 not in 200 M | 89 at 18, 127 at 19 |
+| Rarog, rec3 | 706 (d16) → 831 (d20) → 1149 (d23) | 8.04 M to depth 20 | 61 at 20 |
+
+With Rarog's own evaluation, Stockfish's search reaches depth 26 on rec1 in
+3.1 M nodes with a score that moves 11 cp over fourteen depths; Rarog spends
+19 M on depth 18 and its score doubles. **The drift and the cost are the
+search, not the evaluation.** Rarog's depth-18 PV on rec1 is 21 plies long
+and ends in `e7e8q`: the search finds the conversion, correctly, through
+lines far longer than the nominal depth.
+
+**2. Where the lines grow.** `reduced_depth` searches a reduced move at
+`clamp(new_depth − r/1024, 1, new_depth + 2) + 2·PV`: a negative reduction
+takes a child up to two plies ABOVE its nominal depth, and a PV node adds
+two more, outside the line budget that caps singular and LDSE extensions at
+the iteration's depth (Reckless has the same expression; Stockfish's PV term
+is one ply). The reduction's negative terms are the PV node, the window,
+improvement, the correction history, quiet and noisy history, the TT-PV
+flags, the critical-ply distance and a checking move. Three new exact diag
+counters (`lmr_deeper`, `lmr_deeper_plies`, `lmr_deeper_pv`; engine
+`d428c00`, diag only) read how often a reduced move is searched deeper
+than `new_depth` (stride 1, `bench_counters_lmr.txt`, `lmr_rec*_d*.txt`):
+
+| Search | reduced moves | searched deeper | share | plies added | at PV nodes |
+|---|---:|---:|---:|---:|---:|
+| bench 13 | 4,216,025 | 443,080 | 10.5% | 762,867 | 103,666 |
+| rec1 depth 16 | 498,217 | 36,129 | 7.3% | 57,572 | 6,471 |
+| rec1 depth 18 (the cascade iteration) | 5,191,212 | 1,628,623 | **31.4%** | 2,721,289 | 16,633 |
+| rec3 depth 18 | 587,981 | 55,098 | 9.4% | 89,069 | 6,322 |
+| rec3 depth 20 (the cascade iteration) | 2,377,670 | 340,129 | 14.3% | 552,914 | 14,753 |
+
+In the iteration that cascades, a third of all reduced moves are searched
+deeper than their nominal depth, three times bench's share, and almost all
+of them at non-PV nodes: the growth is the negative reduction, not the PV
+bonus.
+
+**3. Which terms.** Each coefficient is a tune option, so each term was
+zeroed in turn on the `diag,tune` build, rec1 `go depth 18` and rec3
+`go depth 20` (`lmr_terms.log`, `lmr_terms_*.txt`; stride 1):
+
+| Term zeroed | rec1 d18: nodes, seldepth, score, deeper share | rec3 d20: nodes, seldepth, score, deeper share |
+|---|---|---|
+| none (the head) | 19.06 M, 89, 1845, 31.4% | 8.04 M, 61, 831, 14.3% |
+| `CoreLmrCorrection` | **4.07 M, 39, 1184, 8.9%** | **6.32 M, 48, 808, 8.3%** |
+| `CoreLmrGivesCheck` | **2,023 M, 127, 1662, 72.4%** (572 s) | stopped after 30 M nodes, unfinished |
+| `CoreLmrQuietHistory` | 6.73 M, 43, 1213, 4.0% | 23.9 M, 49, 953, 5.8% |
+| `CoreLmrPv` and `CoreLmrPvWindow` | 2.13 M, 42, 829, 9.2% | 21.8 M, 90, 968, 21.4% |
+| `CoreLmrImprovement` | 3.95 M, 47, 830, 12.0% | stopped after 11 minutes, unfinished |
+
+- **The correction term is the one term whose removal shrinks both trees,
+  bounds both selective depths and flattens both scores** (rec1's depth-18
+  score 1184 instead of 1845): `r −= 3330 · |correction| / 1024` is worth
+  one to three plies when the correction history is large, and it is large
+  exactly where the evaluation is far from the search's results, which is
+  these endings. The deeper searches then find more, the correction grows,
+  and the reductions go further negative: a feedback loop through the
+  correction history.
+- **Every other term is also live at the ply scale:** removing the check
+  term takes rec1's depth 18 to two billion nodes, removing the PV terms
+  takes rec3's to 21.8 M with selective depth 90. The reduction formula in
+  these positions sits where a one-ply change in one term changes the tree
+  by three to a hundred times. None of this is Elo; C.10 fitted these terms
+  on a `3+0.03` tune and they are right for games, not for these endings.
+
+**4. The prototype for a zero-game read, registered before it ran:**
+`CoreLmrDeeperCap` (tune-only, 0..=4, default 4 = today): the plies a
+reduced move may be searched above `new_depth`, the PV node's two included.
+Reads: bench 13 counters at 4, 2 and 0 (4 must reproduce 13,987,223); rec1
+`go depth 18` and rec3 `go depth 20` at each; the 200 M-node traces at 0 and
+2 for the costliest iteration. **Prediction:** at 4 the fingerprint is
+exact; at 0 bench falls to 0.75–0.95 × (0.6), rec1's depth 18 under 6 M
+nodes with selective depth under 50 (0.7), rec3's depth 20 under 6 M (0.6),
+rec1's depth-18 score under 1500 (0.6); in the traces at 0 the costliest
+iteration is under 60 M in both positions (0.5), at 2 between 0 and the
+head. **Falsifier:** an iteration over 100 M at 0 in either position means
+the deeper searches are not the growth's cause and the loop runs through
+another path (the correction history's own feedback through pruning and the
+TT), which is then the next read.
+
+**5. The cap, read** (engine commit `ddbe1f2`, default 4; fmt, clippy at
+zero warnings, debug and release tests green, bench at the defaults
+13,987,223 / EBF 2.565; `cap_reads.log`,
+`bench_counters_cap*.txt`, `cap*_rec*_d*.txt`, `trace_nodes_cap*_rec*.txt`):
+
+| | cap 4 (today) | cap 2 | cap 0 |
+|---|---|---|---|
+| bench 13 | 13,987,223 (exact) | 10,993,003 (0.786 ×) | **6,639,253 (0.475 ×)** |
+| reduced moves searched deeper, bench | 443,080 | 272,391 | 0 |
+| rec1 depth 18: nodes, seldepth, score | 19.06 M, 89, 1845 | 2.67 M, 51, 948 | 3.22 M, 40, 1228 |
+| rec3 depth 20: nodes, seldepth, score | 8.04 M, 61, 831 | 3.49 M, 49, 695 | 1.53 M, 39, 605 |
+| rec3, 200 M nodes: costliest iteration | depth 21 > 192 M | depth 21 **> 196 M** (six fail-highs, the seventh window 179 M and running) | depth 27 **100.4 M** completed (score 1237 → 1486, the exact window 42 M); depth 28 running |
+| rec1, 200 M nodes: costliest iteration | depth 19, 135 M | depth 23, 67.6 M; depth 24 **> 128 M** | depth 25, 75.3 M (score 2980 → 6434, decisive); depth 26 > 62 M running, scores 7353 → 9437 |
+
+- Prediction 4: the fingerprint at 4 held; at 0 the fixed-depth trees
+  shrank as predicted (rec1 3.2 M and selective depth 40; rec3 1.5 M; the
+  score 1228 under 1500) **but bench fell to 0.475 ×, far past the band**:
+  the deeper searches are half of Rarog's tree at depth 13, which C.10
+  fitted around them. In the traces at 0 the costliest iteration is 100.4 M
+  in rec3 (the rule said under 60 M; 100 M is the falsifier's line) and
+  75 M in rec1, with the explosion moved seven nominal plies deeper and
+  arriving when the score approaches the decisive value; at 2 rec3's depth
+  21 is as bad as the head's. **The falsifier fires:** the deeper searches
+  amplify the growth (three to six times at fixed depth) and are not its
+  whole cause.
+- What remains at 0 is the cost of proving the win itself: rec1's scores
+  run 2980 → 6434 → 9437 at depths 25–26 (Stockfish 19 reads 9165 there),
+  and each window of that resolution costs 3–28 M nodes. The oracle,
+  Stockfish's search over Rarog's evaluation, reads the same conversion
+  (1110 at depth 26) for 3 M nodes in all.
+
+## Disposition: `MORE_RESEARCH`, the question answered one level down
+
+- **Answered here, node-indexed:** (1) the cascade's cost and the score
+  drift are Rarog's search, not its evaluation (the oracle with the same
+  evaluation: flat score, 7–60 × fewer nodes); (2) in the cascade iteration
+  a third of all reduced moves are searched deeper than their nominal
+  depth, outside the line budget, and the correction-history term is the
+  one whose removal shrinks both trees, bounds both selective depths and
+  flattens both scores, with every other term live at the ply scale;
+  (3) capping those deeper searches shrinks the fixed-depth trees three to
+  six times and halves bench, and delays but does not remove the explosion,
+  which returns when the search proves the win.
+- **Not answered:** why Rarog's search proves a won rook ending at 7–60 ×
+  the oracle's nodes with the same evaluation. That is a search-efficiency
+  question over the whole selectivity core in one class of position, and it
+  is where the stall's cause lies. Its instrument exists: the comparable
+  counters of `phase4_differential.py` between Rarog and the oracle, run on
+  these positions at fixed depth, which locate the mechanism (pruning,
+  reductions, extensions, quiescence, TT use) whose counts diverge. That is
+  the next read, and a change there is a strength change for a cluster with
+  its own gate, not a D.1 time-management piece.
+- **The switches stay on `d1` at their defaults** (`AspFailHighReduce` 0,
+  `AspFailHighRecover` 0, `CoreLmrDeeperCap` 4, `TmFailHighTarget` off),
+  all bench-neutral, as instruments. The held gate on the reduction arm is
+  not run; the arm `2d013c8` and its binary stay for the record.
+- **Recommendation:** D.1.6 cannot close on a root-loop or reduction-cap
+  device: none ends the stall, and the cap is a halving of the tree that
+  only a search gate could judge. The research recommends (a) the
+  differential read above as D.1.6.1's next step, R3; (b) if it points, as
+  the term reads suggest, at the correction history's feedback into
+  reductions, a bounded cluster on that feedback (the correction term's
+  coefficient and clamp, the deeper-search ceiling) gated `[-5,5]` with the
+  probe as its correctness read; (c) for the clock, the maintainer's
+  decision stands: the stop stays off, and D.1.5's closing read runs
+  without a cascade device, so RAR-R13's long-control stalls remain in
+  2.7.0 until the search fix lands.
+
+**Evidence layer:** node counts, selective depths and scores at fixed depth;
+nothing here is Elo. The one Elo-adjacent fact is bench 0.475 × at cap 0,
+which says the deeper searches are half of the tuned search at depth 13.
