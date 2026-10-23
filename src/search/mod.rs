@@ -2658,9 +2658,11 @@ mod tests {
             .expect("a candidate fails high at the root");
         assert!(fail_high.depth >= 4);
 
-        // Half the optimum keeps every soft target below 99% of the maximum.
+        // Half the optimum keeps every soft target below 99% of the maximum;
+        // the stop is read at the target itself, where it was registered.
         let mut options = EngineOptions::default();
         options.search_params.tm_opt_scale = 5_000;
+        options.search_params.tm_fail_high_target = 10_000;
         let board = Board::from_fen(fen).expect("valid fen");
         let clock = SearchLimits {
             depth: Some(DEPTH),
