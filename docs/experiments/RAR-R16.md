@@ -150,3 +150,42 @@ Re-frozen at the fitted values from RAR-R14's +3 ± 4.
 - Most likely failure: the scale the fit raised costs late-game time at
   `3+0.03` (RAR-R14's H3). That would read as a negative STC estimate with
   a positive `10+0.1` one.
+
+## Amendment 2026-10-23, before any game of the SPRT: the wire rule compared the wrong arms
+
+**The error.** The registration's wire rule (*The wire, read in the games*,
+and prediction 2) said the run is void unless the candidate spends more time
+a move than the head at `3+0.03`, "since the fit raised `TmOptScale ×
+TmEffortHigh` ×1.233". That ×1.233 is the fit's change against **the cluster
+at its seeds**, not against the head. The cluster's own stops (fail-high,
+mate) and factors change time against the head on their own, so the
+candidate's time against the head says nothing about whether the baked
+values reached the play. The rule tests the wrong arms: it could void a
+valid gate or pass an invalid one. The agent wrote it, and it is withdrawn,
+not reinterpreted.
+
+**What showed it.** The two direction reads, already played, compare
+candidate and head at `3+0.03` with four threads (67.4 against 69.1 ms a
+move) and at `10+0.1` (230.4 against 232.3). The amendment uses neither
+read's score.
+
+**The replacement wire check, frozen before its games and before any SPRT
+game:**
+- **Arms:** the candidate against the cluster at its seeds:
+  `tools/test_engines/rarog-d15seeds-pext-pgo.exe`, a clean PGO build of
+  `b96a9c1` (the head of `d1` the arm was cut from), the same compiler and
+  workload.
+- **Match:** 200 games at `3+0.03`, Colosseum `match`, seed 20261034,
+  `tools/results/rar-r16-wire`.
+- **Read:** time a move at equal clock in plies 0–19 by
+  `wire_resolution.py`. The PGN names the arms by their binaries.
+- **Formula:** the baked scale terms multiply the target by about ×1.26
+  (`TmOptScale` 1.1687, `TmEffortHigh` 0.9747 against 0.924, `TmStabBase`
+  1.3132 against 1.2881). Expected ×1.15–1.25 after the factor checks'
+  damping.
+- **Live if the candidate spends at least 5% more a move,** twice the
+  difference's SE at 200 games.
+- **If not live,** the baked values are not proven to reach the play, and
+  the SPRT is not started until they are.
+- The rule's old form is not read for the SPRT. Prediction 2 is replaced
+  by: the wire check reads live, 0.9.
