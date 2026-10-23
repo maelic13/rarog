@@ -181,6 +181,13 @@ search_params! {
     /// number of times before opening fully spend far fewer nodes on a
     /// runaway iteration — which is exactly what the tune explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
+    /// Plies taken off a root window search for each fail-high so far in the
+    /// iteration, the window that finally holds included, to a floor of
+    /// depth 1. A cascade of k fail-highs then costs k shrinking re-searches
+    /// instead of k full iterations, and the iteration completes, so the
+    /// clock reads it. 0 searches every window at the iteration's depth;
+    /// both donors take one ply.
+    asp_fail_high_reduce = 0, "AspFailHighReduce", 0..=4;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more

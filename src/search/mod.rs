@@ -300,6 +300,13 @@ impl Aspiration {
             (self.center + self.beta_delta).min(INF_SCORE)
         };
     }
+
+    /// The depth the next window of an iteration at `depth` is searched at:
+    /// each fail-high so far takes `asp_fail_high_reduce` plies off, to a
+    /// floor of one. Fail-lows take nothing off.
+    fn search_depth(&self, params: &SearchParams, depth: i32) -> i32 {
+        (depth - self.fail_highs * params.asp_fail_high_reduce).max(1)
+    }
 }
 
 /// One search thread: what every thread shares, the configuration of the
@@ -899,11 +906,14 @@ impl Searcher {
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
 
             loop {
+                // Shallower by the fail-highs so far; the iteration still
+                // counts as this depth, as both donors count it.
+                let searched_depth = window.search_depth(&self.cfg.params, infra::to_i32(depth));
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
                 let score = self.search_root_window(
                     &mut board,
-                    infra::to_i32(depth),
+                    searched_depth,
                     window.alpha,
                     window.beta,
                     poll,
@@ -916,6 +926,10 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 if depth >= 4 {
                     crate::diag_add!(asp_search_nodes, window_nodes);
+                    crate::diag_add!(
+                        asp_reduced_plies,
+                        u64::try_from(infra::to_i32(depth) - searched_depth).unwrap_or(0)
+                    );
                 }
                 // Termination guard. The widened window re-centers
                 // on the previous iteration's best_score; with the delta
@@ -996,7 +1010,7 @@ impl Searcher {
                     root_move.last_best_depth = depth;
                 }
                 for root_move in &mut self.td.root_move_records {
-                    if root_move.last_search_depth == depth {
+                    if root_move.last_search_depth == infra::to_usize(searched_depth) {
                         root_move.complete_iteration();
                     }
                 }
@@ -2706,6 +2720,75 @@ mod tests {
         let (unswitched, lines) = clock_search(fen, &clock, &never, late, usize::MAX);
         assert_eq!(unswitched.depth, fail_high.depth);
         assert!(lines.last().expect("a line was printed").bound.is_empty());
+    }
+
+    #[test]
+    fn a_fail_high_takes_plies_off_the_next_window_and_a_fail_low_none() {
+        let mut params = SearchParams::default();
+        let mut window = Aspiration::new(&params, 10, 0);
+        assert_eq!(window.search_depth(&params, 10), 10);
+        window.fail_high(&params, window.beta);
+        assert_eq!(
+            window.search_depth(&params, 10),
+            10,
+            "at 0 every window is searched at the iteration's depth"
+        );
+        params.asp_fail_high_reduce = 1;
+        assert_eq!(window.search_depth(&params, 10), 9);
+        window.fail_low(&params, window.alpha);
+        assert_eq!(window.search_depth(&params, 10), 9);
+        window.fail_high(&params, window.beta);
+        window.fail_high(&params, window.beta);
+        assert_eq!(window.search_depth(&params, 10), 7);
+        assert_eq!(
+            window.search_depth(&params, 2),
+            1,
+            "the depth floors at one"
+        );
+        params.asp_fail_high_reduce = 2;
+        assert_eq!(window.search_depth(&params, 10), 4);
+    }
+
+    /// With the reduction on, an iteration whose windows failed high still
+    /// completes at its nominal depth, every root record samples that
+    /// iteration once, and `bestmove` is the move the last line names.
+    #[test]
+    fn a_reduced_re_search_completes_the_iteration_at_its_nominal_depth() {
+        const DEPTH: u32 = 10;
+        let limits = SearchLimits {
+            depth: Some(DEPTH),
+            ..SearchLimits::default()
+        };
+        let mut options = EngineOptions::default();
+        options.search_params.asp_fail_high_reduce = 1;
+        let (fen, lines) = FAIL_HIGH_CANDIDATES
+            .iter()
+            .find_map(|&fen| {
+                let (_, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
+                lines
+                    .iter()
+                    .any(|line| line.bound == "lowerbound")
+                    .then_some((fen, lines))
+            })
+            .expect("a candidate fails high at the root with the reduction on");
+        let last = lines.last().expect("a line was printed");
+        assert_eq!((last.bound, last.depth), ("", DEPTH as usize));
+
+        let board = Board::from_fen(fen).expect("valid fen");
+        let legal = board.generate_legal_moves();
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
+        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+        assert_eq!(result.depth, DEPTH as usize);
+        assert_eq!(result.bestmove.to_string(), last.first);
+        assert!(
+            searcher
+                .td
+                .root_move_records
+                .iter()
+                .all(|rm| rm.samples == DEPTH),
+            "every root record samples each completed iteration once, whatever depth its last window was searched at"
+        );
     }
 
     #[test]

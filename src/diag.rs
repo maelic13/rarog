@@ -187,6 +187,10 @@ pub mod counters {
         asp_search_nodes,
         asp_fail_low_nodes,
         asp_fail_high_nodes,
+        // Plies a root window was searched short of its iteration's depth
+        // after fail-highs (`AspFailHighReduce`), summed over windows from
+        // depth 4.
+        asp_reduced_plies,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
