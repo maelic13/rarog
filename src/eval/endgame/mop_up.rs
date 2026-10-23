@@ -245,6 +245,19 @@ impl Evaluator {
             {
                 self.trace.borrow_mut().frozen_eg += mopup;
             }
+            // The known-win offset (0 = off): a bare king against mating
+            // material reads as won at the leaf, in both phases, kept well
+            // below the band the search reads as a tablebase win.
+            let known_win = self.params.mopup_known_win[0].clamp(0, 20_000);
+            if known_win > 0 && board.color_occ(losing) == Bitboard::from(lksq) {
+                *mg += sign * known_win;
+                *eg += sign * known_win;
+                #[cfg(feature = "texel")]
+                {
+                    self.trace.borrow_mut().frozen_mg += sign * known_win;
+                    self.trace.borrow_mut().frozen_eg += sign * known_win;
+                }
+            }
         }
     }
 }

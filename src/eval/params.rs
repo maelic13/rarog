@@ -278,6 +278,12 @@ macro_rules! eval_params {
             bishop_xray_pawns_eg: 1 = [6];
             queen_battery_mg: 1 = [9];
             queen_battery_eg: 1 = [37];
+            // D.1.6.1's instrument, 0 = today: a known-win offset added in
+            // both phases to a bare-king ending the winning side can mate in
+            // (Stockfish 11's `Endgame<KXK>` returns such a value; Rarog's
+            // mop-up leaves the material and a drive). Read with node
+            // budgets only; the frozen evaluation is unchanged at 0.
+            mopup_known_win: 1 = [0];
         }
     };
 }
