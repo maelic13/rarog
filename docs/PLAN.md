@@ -323,10 +323,10 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search, research first (maintainer decision 2026-10-23): D.1.6.1, then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | The cascade fixed in the search: the research card for depth-reduced re-searches after a root fail-high (maintainer decision 2026-10-23); a prototype behind a switch for the zero-game reads; ends READY_FOR_IMPLEMENTATION or NO_CHANGE |
-| D.1.6.2 | RESEARCH | I2 | Implementation of the device D.1.6.1 hands off, its tests, the fingerprint re-declared; waits on the research |
-| D.1.6.3 | RESEARCH | V | The gate, SPRT `[-5,5]` on the 2.6.0 engine with no clock stop in either arm, the probe without a clock stop; registered at D.1.6.1's close |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): one ply off a root re-search per fail-high (`AspFailHighReduce`, `027a604`, tune-only, 0 = today) ends three of four probed stalls on the 2.6.0 engine and not rec3 at `180000+2000` on the PGO arm; the window count is the schedule's and a ply saves about 20% a window there. Next read registered: the costliest iteration within 200 M nodes for the head, the device, and the device with Stockfish's recovery (a second coordinate, on the maintainer's word) |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the prototype `027a604` and the arm `2d013c8` (`AspFailHighReduce` 1 as the default, bench 8,510,754) are its base |
+| D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, no clock stop in either arm, dry-run clean (`run_r19.ps1`); the research recommends against running it on the partial device |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -984,8 +984,66 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           fail-high rate per iteration. Ends `READY_FOR_IMPLEMENTATION` with
           the device, its seeds, the gate's registration and frozen
           prediction, or `NO_CHANGE` with the evidence.
+          **Read 2026-10-23, `MORE_RESEARCH` (RAR-R19,
+          `docs/experiments/RAR-R19.md`).** On the 2.6.0 engine every root
+          fail-high returns exactly its beta, so a cascade's length is set
+          by the window schedule alone (deltas 12, 27, 52, 93, 161, 273,
+          458, 763 …; re-centring on the failing score would save at most
+          one re-search) and each re-search costs more than the last: rec1's
+          depth 19 runs 7 fail-highs and 75 M nodes without completing,
+          rec3's depth 21 five and 18.5 M. The device is one ply off a root
+          window search per fail-high so far in the iteration, the exact
+          window included, floor depth 1, reset each iteration, the nominal
+          depth reported and sampled (`AspFailHighReduce`, tune-only,
+          default 0, engine `027a604`; bench at 0 unchanged). Reads: bench
+          13 at 1 is 8,510,754 (0.61 ×; the fail-high count unchanged, the
+          fail-high nodes −45%, and the exact window after fail-highs,
+          searched k plies shallower, −49%); rec1's depth 19 completes in
+          1 M nodes; the idle-host probe with no clock stop ends rec3 at
+          0.48 × its optimum at both clocks where the 2.6.0 engine runs it to
+          the hard maximum (30.3 s, 97.9 s), rec1 at 0.83 × at `180000+2000`
+          (head 2.51 ×) and 2.70 × at `60000+600` (head 0.91 ×, its cascade
+          completing just past the target); at `3000+30` +0.68 nominal ply
+          for +6.9% first-move spend, fail-highs an iteration unchanged.
+          **The same probe on the PGO arm (`2d013c8`, 1.3 × faster) runs
+          rec3 into the hard maximum at `180000+2000`:** it crosses the
+          target one iteration later and depth 24's cascade costs more than
+          the 90 s left. The frozen stop rule fires and the leaf stays in
+          research. Why: a cascade's window count is the schedule's and
+          unchanged (7, 7, 4, 4); in these endings a ply of depth saves about
+          20% of a window, not the bench's 2.5 × (27 → 21 → 18 → 15 M nodes
+          over four plies); and the next iteration's first window starts at
+          full depth over a TT holding only the shallower result. The
+          depth reduction is the search half of both donors' device; the
+          other half is clock-coupled in both (Stockfish stops deepening at
+          half the target and recovers depth over the next iterations). Next
+          read, registered in RAR-R19: the most expensive iteration of rec1
+          and rec3 within 200 M nodes for the head, the device, and the
+          device with Stockfish's recovery as a second tune-only coordinate,
+          implemented only on the maintainer's word. The gate (D.1.6.3) is
+          registered and held; the C.10 constants were fitted without the
+          device.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
+          Waits on D.1.6.1. The prototype is the switch `027a604` (default
+          0, bench unchanged) and the arm `2d013c8` (recipe
+          `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`): the default
+          at 1, version `2.7.0-dev+d16fix`, bench 8,510,754. When a device
+          passes its gate, the landing on `d1` is: its defaults baked,
+          `TmFailHighTarget` and its test deleted, the fingerprint
+          re-declared in GUIDE and the PLAN checkpoint, the user-facing
+          changelog entry, and the MultiPV loop given the same `Aspiration`
+          depth (recommended; analysis only, not rated).
         - **D.1.6.3 Gate: SPRT `[-5,5]` at `3+0.03` against the 2.6.0 engine, cap 20,000 pairs, the probe without a clock stop, a `10+0.1` direction read — `V`.**
+          **Registered 2026-10-23 as RAR-R19 and held**, before any game:
+          `rarog-d16fix-pext-pgo.exe` (`2d013c8`, bench 8,510,754) against
+          `rarog-d15head-pext-pgo.exe` (`468ed7b`, 13,987,223), Colosseum
+          `sprt-repair`, seed 20261040, run directory `rar-r19-gate`; then
+          `match-fixed-ltc` 1,000 games (seed 20261041) and the probe on
+          both binaries; `run_r19.ps1 -Read gate|ltc|probe`, dry-run clean.
+          Prediction, frozen: −2 ± 6 Elo, H1 0.35, cap 0.40, H0 0.25. Held
+          because the arm's probe reached the maximum once (RAR-R19): the
+          research recommends against running it on the partial device; the
+          maintainer may run it as a read of that device's Elo.
           H1 lands it (harm near −5 excluded); H0 refutes it and the
           fallback is read. The fail-high stop's spin is deleted when the
           fix lands.

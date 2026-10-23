@@ -1,0 +1,44 @@
+Arm 2d013c8  (RAR-R19 gate arm, D.1.6.3: AspFailHighReduce 1 as the default (version 2.7.0-dev+d16fix))
+Author-date: 2026-10-23 17:27:57 +0200
+Applies to: 027a604  (the d1 head with the switch; the commit is on the throwaway branch d16-arm)
+Command:    git diff <base> <arm>
+
+diff --git a/Cargo.lock b/Cargo.lock
+index d74bd69..68bdcab 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -20,7 +20,7 @@ checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+ 
+ [[package]]
+ name = "rarog"
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16fix"
+ dependencies = [
+  "cc",
+ ]
+diff --git a/Cargo.toml b/Cargo.toml
+index 920cd40..a81b955 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ name = "rarog"
+ authors = ["Miloslav Macurek"]
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16fix"
+ edition = "2024"
+ # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
+ # stale local toolchain fails with a clear cargo message, not a confusing
+diff --git a/src/search/params.rs b/src/search/params.rs
+index 9735f76..d885038 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -187,7 +187,7 @@ search_params! {
+     /// instead of k full iterations, and the iteration completes, so the
+     /// clock reads it. 0 searches every window at the iteration's depth;
+     /// both donors take one ply.
+-    asp_fail_high_reduce = 0, "AspFailHighReduce", 0..=4;
++    asp_fail_high_reduce = 1, "AspFailHighReduce", 0..=4;
+ 
+     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
+     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
