@@ -273,14 +273,14 @@ search_params! {
     /// Stability factor's floor. Seed 7160 (0.716).
     tm_stab_floor = 7_160, "TmStabFloor", 4000..=10000;  // 0.716
     /// The multiple of the soft target past which a root fail-high ends the
-    /// search on the move that failed high. At the target itself (10000) the
-    /// stop ended ordinary single fail-highs and cost about 15 Elo at
-    /// `3+0.03`, the saved time left on the clock; at twice the target it
-    /// fires on under 1% of searches and still ends the cascades that ran
-    /// won endings to the hard maximum. 10000000, a thousand targets, lies
-    /// past every maximum (at most 6.873 optima, against a target of at
-    /// least 0.0146 of one at the ranges' ends), so the stop never fires.
-    tm_fail_high_target = 20_000, "TmFailHighTarget", 10000..=10000000;  // ×2.0
+    /// search on the move that failed high. Off by default: 10000000, a
+    /// thousand targets, lies past every maximum (at most 6.873 optima,
+    /// against a target of at least 0.0146 of one at the ranges' ends). The
+    /// cascades it capped are a search property and are fixed in the
+    /// search; at the target itself (10000) the stop ended ordinary single
+    /// fail-highs and cost about 15 Elo at `3+0.03`. The spin stays as the
+    /// control arm of that fix's probe and goes with it.
+    tm_fail_high_target = 10_000_000, "TmFailHighTarget", 10000..=10000000;  // off
 }
 
 // The selectivity core's own coordinates. Seeds follow the handoff's seed
