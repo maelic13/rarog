@@ -323,10 +323,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). The HCE values a won ending flat (eight pawns against Stockfish 11's known win of 55), so the search carries the win across the horizon; a known-win offset with the donors' score-scaled first window (`AspDeltaSquareDiv`) removes the cascade on rec1 (one or two windows an iteration, a gradual score) at bench 0.73 ×; one window at depth 21 in a rook ending still costs 75–170 M nodes, the tree's composition, a search cluster of its own. Candidate cluster for D.1.6.3: the known-win offset, the squared window and the line budget, fitted then gated `[-5,5]`; the evaluation half needs leave under the freeze |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `AspDeltaSquareDiv`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4), `CoreExtensionBudgetEighths` (8), the evaluation parameter `mopup_known_win` (0) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
-| D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
+| D.1.6 | READY_FOR_IMPLEMENTATION | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the research closed (RAR-R19) with a cluster of four parts that ends every probed stall within its optimum (RAR-R20); the gate next, then the landing; before D.1.5 so each gate attributes to one change |
+| D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | The cluster under gate is the arm `6fd195e` (bench 8,996,837): `mopup_known_win` 6000, `AspDeltaSquareDiv` 10193, `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000 as the defaults. On H1 it lands on `d1` with the fingerprint re-declared, `TmFailHighTarget` and the unused instruments removed, and the changelog entry |
+| D.1.6.3 | GAME_GATE | V | Registered 2026-10-23 as RAR-R20: SPRT `[-5,5]` at `3+0.03`, the arm `6fd195e` against the 2.6.0 engine, cap 20,000 pairs, no clock stop in either arm; then the `10+0.1` read and the probe; `run_r20.ps1`. The research recommends a registered fit of the aspiration and reduction constants around the cluster before the gate. RAR-R19's first registration (the reduction arm) is withdrawn |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -972,7 +971,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       ahead of NNUE, at its price. If the gate refutes it, the fallback is
       the clock stop at twice the target behind its spin, read as RAR-R18
       read it.
-        - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`.**
+        - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
           method) and the activation replay (29% of first-move searches
@@ -1119,28 +1118,48 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           aspiration and deeper-search constants around them, gated `[-5,5]`
           with the probe; the evaluation half needs the maintainer's leave
           under the freeze. The clock-coupled half stays recommended for
-          D.1.5 meanwhile.
+          D.1.5 meanwhile. **Maintainer decision 2026-10-23: the whole
+          fix, every part, now, verified.** The evaluation half is allowed;
+          the fourth part is Stockfish's deepening freeze past half the
+          target (`TmDepthFreeze`, `097ea5d`). The probe with no clock stop
+          (RAR-R20): parts 1–3 end every probed stall under the maximum
+          (rec3 at `180000+2000` 30.8 s against 98.0 s), all four end every
+          move within its optimum (the PGO arm: rec3 2.5 s and 6.9 s, rec1
+          2.3 s and 8.3 s, against the head's 30.3, 98.0, 4.4 and 37.5 s).
+          **Done 2026-10-23, `READY_FOR_IMPLEMENTATION`:** the cluster, its
+          arm `6fd195e` (bench 8,996,837), its probe, its wire check and its
+          gate are RAR-R20's; the research recommends a fit of the
+          aspiration and reduction constants around the cluster before the
+          gate.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
-          Waits on D.1.6.1. The prototype is the switch `027a604` (default
-          0, bench unchanged) and the arm `2d013c8` (recipe
-          `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`): the default
-          at 1, version `2.7.0-dev+d16fix`, bench 8,510,754. When a device
-          passes its gate, the landing on `d1` is: its defaults baked,
-          `TmFailHighTarget` and its test deleted, the fingerprint
-          re-declared in GUIDE and the PLAN checkpoint, the user-facing
-          changelog entry, and the MultiPV loop given the same `Aspiration`
-          depth (recommended; analysis only, not rated).
+          `READY_FOR_IMPLEMENTATION` 2026-10-23. The cluster under gate is
+          the arm `6fd195e` (recipe
+          `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`, bench
+          8,996,837): the four switches of RAR-R20 baked on as the defaults
+          (`mopup_known_win` 6000, `AspDeltaSquareDiv` 10193,
+          `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000), version
+          `2.7.0-dev+d16fix4`. On H1 the landing on `d1` is: those four
+          defaults (after the fit, if it ran, its values), the fingerprint
+          re-declared in GUIDE and the PLAN checkpoint, `TmFailHighTarget`
+          and its test deleted, the instruments the cluster does not use
+          removed (`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`,
+          `QsFailSoft`, `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`,
+          the arm `2d013c8` and its binary), the MultiPV loop given the same
+          `Aspiration` form, and the user-facing changelog entry (a fixed
+          defect: the engine no longer runs a won ending into its hard
+          maximum). On H0 nothing lands and the fit is the next step.
         - **D.1.6.3 Gate: SPRT `[-5,5]` at `3+0.03` against the 2.6.0 engine, cap 20,000 pairs, the probe without a clock stop, a `10+0.1` direction read — `V`.**
-          **Registered 2026-10-23 as RAR-R19 and held**, before any game:
-          `rarog-d16fix-pext-pgo.exe` (`2d013c8`, bench 8,510,754) against
-          `rarog-d15head-pext-pgo.exe` (`468ed7b`, 13,987,223), Colosseum
-          `sprt-repair`, seed 20261040, run directory `rar-r19-gate`; then
-          `match-fixed-ltc` 1,000 games (seed 20261041) and the probe on
-          both binaries; `run_r19.ps1 -Read gate|ltc|probe`, dry-run clean.
-          Prediction, frozen: −2 ± 6 Elo, H1 0.35, cap 0.40, H0 0.25. Held
-          because the arm's probe reached the maximum once (RAR-R19): the
-          research recommends against running it on the partial device; the
-          maintainer may run it as a read of that device's Elo.
+          The first registration (RAR-R19, the reduction arm `2d013c8`,
+          seed 20261040) is withdrawn: its arm was a partial device and its
+          probe reached the maximum. **Registered 2026-10-23 as RAR-R20**,
+          before any game: `rarog-d16fix4-pext-pgo.exe` (`6fd195e`, bench
+          8,996,837, the four parts) against `rarog-d15head-pext-pgo.exe`
+          (`468ed7b`, 13,987,223), Colosseum `sprt-repair`, seed 20261042,
+          run directory `rar-r20-gate`; then `match-fixed-ltc` 1,000 games
+          (seed 20261043) and the probe on both binaries;
+          `run_r20.ps1 -Read wire|probe|gate|ltc`. Prediction, frozen,
+          unfitted: −6 ± 8 Elo, H1 0.30, cap 0.25, H0 0.45; the research
+          recommends the registered fit before the gate.
           H1 lands it (harm near −5 excluded); H0 refutes it and the
           fallback is read. The fail-high stop's spin is deleted when the
           fix lands.

@@ -1336,3 +1336,26 @@ green, bench at the defaults 13,987,223 / EBF 2.565; `knownwin2_reads.log`,
 **Evidence layer:** node counts, selective depths, window counts and scores
 at fixed depth and at fixed node budgets; depth-1 scores for the evaluation
 comparison; nothing here is Elo.
+
+## Maintainer decision 2026-10-23: the whole fix, every part, now; verify that it works
+
+## Disposition: `READY_FOR_IMPLEMENTATION`; the cluster and its verification are RAR-R20
+
+The fix is one cluster of four parts, each a switch on `d1` at its neutral
+default and baked on as the default on the arm `6fd195e`: the known-win
+evaluation of a bare-king ending (`mopup_known_win` 6000), the
+score-scaled first window (`AspDeltaSquareDiv` 10193), the line budget
+charged for deeper reduced searches (`CoreLmrDeeperBudget` 1), and the
+deepening freeze past half the soft target (`TmDepthFreeze` 5000, the
+fourth part, Stockfish's `increaseDepth`, engine `097ea5d`). The probe with
+no clock stop on either side, parts 1–3 and then all four, is in RAR-R20:
+parts 1–3 end every probed stall under the hard maximum (rec3 at
+`180000+2000` 30.8 s against the head's 98.0 s), all four end every move
+within its optimum (rec3 at `180000+2000` 6.9 s; rec1 at `60000+600` 2.7 s
+against the head's 4.1 s). The semantics, invariants and the gate's
+registration are RAR-R20's; the fit the research recommends before the gate
+is registered there too. The instruments that did not become parts
+(`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`,
+`CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`, the diag counters) stay
+on `d1` at their neutral defaults until D.1.6 lands, when D.1.6.2 removes
+the ones the landed cluster does not use.
