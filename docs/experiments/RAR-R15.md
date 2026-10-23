@@ -498,3 +498,16 @@ against resuming:
 
 The instrument assumption that missed: the prediction expected the fit to
 redistribute time, but it chose to raise the level of spending.
+
+## Maintainer decision 2026-10-23: the fit ends at block 1
+
+Recorded before any game of D.1.5's gate:
+- **Theta is block 1's rounded centres.** Block 2
+  (`tools/results/d14-spsa-block2`, 90 games) is abandoned; a block cut
+  short never counts.
+- **The gate runs first** (RAR-R16), and another clock fit is registered
+  only if it accepts H1 with an estimate of **at least +10 Elo**, from the
+  gated head with its own registration. That is past the frozen +3 ± 4, and
+  would say the surface is steeper than block 1 read.
+- **Without that trigger, no further clock fit in this phase.**
+- **D.1.4 closes here.**

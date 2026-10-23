@@ -323,8 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.4 | READY_FOR_IMPLEMENTATION | V | The clock fit, RAR-R15: block 1 played (2 full-step movers, the rule says STOP; theta is block 1's); block 2 was started by the chain and stopped at 90 games, and resuming it is the maintainer's call |
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks |
+| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: block 1's theta baked (`082a780`) against the head, SPRT `[0,3]` cap 20,000 pairs, then the `10+0.1` and 4T reads, the probe and the profile; one batch, maintainer-run |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -669,7 +668,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       zero warnings, `cargo test` 0 and `cargo test --release` 0, `bench 13`
       on a fresh no-feature release build **13,987,223 / EBF 2.565**. Its
       wire check and the thirteenth coordinate are D.1.4's.
-    - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`.**
+    - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`, DONE 2026-10-23.**
       Conditional (PLAN rule 4), with the zero-game sweep replaced by what
       a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
       0.3 and each new coordinate at a range end in a 200-game match, each
@@ -800,7 +799,10 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         cut block never counts. Resuming it (11.6 h) is the maintainer's
         call; the agent recommends against.
 
-      **D.1.4 closes when that decision lands.**
+      **Closed 2026-10-23 on the maintainer's decision.** Theta is block 1's
+      rounded centres, and block 2 is abandoned. Another clock fit is
+      registered only if D.1.5 accepts H1 at +10 Elo or more, from the gated
+      head (RAR-R15, *Maintainer decision 2026-10-23*).
     - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
@@ -817,6 +819,24 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       offered under AGENTS' repair case 2 (a 2,000-game read with a harm
       rule at −13 nElo), each expected near zero and bought for
       correctness; the maintainer decides whether to run it.
+      **Registered 2026-10-23 as RAR-R16** (`docs/experiments/RAR-R16.md`),
+      before any game:
+      - **The arms.** The candidate is `rarog-d15fit-pext-pgo.exe`, block
+        1's theta baked on the throwaway arm `d15-arm` (`082a780`, recipe
+        `analysis/arm_patches/082a780-rar-r16-d15gate.patch`), version
+        `2.7.0-dev+d15fit`. The head is `rarog-d15head-pext-pgo.exe` at
+        `468ed7b`. Both are clean PGO builds and both bench 13,987,223.
+      - **One batch runs everything,**
+        `analysis/artifacts/d15-clock-gate-2026-10-23/run_d15.ps1`: the
+        SPRT, the two direction reads, the probe, then the profile reads by
+        `tm_profile_d15.py`. That reader is `tm_profile.py` with the
+        candidate's horizon and p99.9 fixed (D.1.3's finding 3), checked
+        against `tm_profile.txt`. All three matches are dry-run clean.
+      - **The four-thread read** carries `--cores-per-game 4`. Without it
+        the runner gave a game one physical core and no check refused it;
+        `colosseum.ps1` refuses that now (`6c3a1a1`).
+      - **The prediction, re-frozen:** +2 ± 4 Elo; H1 0.30, cap 0.50, H0
+        0.20.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
