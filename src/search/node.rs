@@ -177,9 +177,12 @@ struct LateMoveInputs {
 
 /// The depth a reduced move is searched at: the reduction in whole plies,
 /// never below one ply of main search and never more than two plies above
-/// `new_depth`; a PV node searches its reduced moves two plies deeper.
-fn reduced_depth(new_depth: i32, reduction: i32, pv: bool) -> i32 {
-    (new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * i32::from(pv)
+/// `new_depth`; a PV node searches its reduced moves two plies deeper. The
+/// whole excess above `new_depth` is capped at `deeper_cap` plies.
+fn reduced_depth(new_depth: i32, reduction: i32, pv: bool, deeper_cap: i32) -> i32 {
+    ((new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * i32::from(pv))
+        .min(new_depth + deeper_cap)
+        .max(1)
 }
 
 /// How much later than the first few moves the move at `move_count` is:
@@ -1805,7 +1808,8 @@ impl Searcher {
                             self.lmr_singular_term(Some(tt_score - excluded_score))
                         );
                     }
-                    let reduced_depth = reduced_depth(new_depth, reduction, NODE::PV);
+                    let reduced_depth =
+                        reduced_depth(new_depth, reduction, NODE::PV, self.cfg.core.lmr_deeper_cap);
                     crate::diag_count!(lmr_applied);
                     #[cfg(test)]
                     {
@@ -2516,18 +2520,51 @@ mod tests {
     /// negative reduction extends by at most two plies, and PV nodes add two.
     #[test]
     fn reduced_depth_is_floored_at_one_ply_and_capped_above() {
-        assert_eq!(reduced_depth(8, 3 * 1024, false), 5);
-        assert_eq!(reduced_depth(8, 3 * 1024 + 1023, false), 5, "whole plies");
-        assert_eq!(reduced_depth(3, 10 * 1024, false), 1, "floor");
-        assert_eq!(reduced_depth(1, 1024, false), 1, "floor at depth 1");
-        assert_eq!(reduced_depth(6, -5 * 1024, false), 8, "cap");
-        assert_eq!(reduced_depth(6, -1023, false), 6, "truncates toward zero");
-        assert_eq!(reduced_depth(6, 2 * 1024, true), 6, "PV adds two");
-        assert_eq!(reduced_depth(3, 10 * 1024, true), 3, "PV floor plus two");
+        assert_eq!(reduced_depth(8, 3 * 1024, false, 4), 5);
+        assert_eq!(
+            reduced_depth(8, 3 * 1024 + 1023, false, 4),
+            5,
+            "whole plies"
+        );
+        assert_eq!(reduced_depth(3, 10 * 1024, false, 4), 1, "floor");
+        assert_eq!(reduced_depth(1, 1024, false, 4), 1, "floor at depth 1");
+        assert_eq!(reduced_depth(6, -5 * 1024, false, 4), 8, "cap");
+        assert_eq!(
+            reduced_depth(6, -1023, false, 4),
+            6,
+            "truncates toward zero"
+        );
+        assert_eq!(reduced_depth(6, 2 * 1024, true, 4), 6, "PV adds two");
+        assert_eq!(reduced_depth(3, 10 * 1024, true, 4), 3, "PV floor plus two");
+        // The excess above `new_depth`, the PV node's two included, is
+        // capped by `deeper_cap`; a reduction stays a reduction.
+        assert_eq!(reduced_depth(6, -5 * 1024, true, 4), 10, "today's ceiling");
+        assert_eq!(reduced_depth(6, -5 * 1024, true, 2), 8);
+        assert_eq!(
+            reduced_depth(6, -5 * 1024, false, 0),
+            6,
+            "never deeper at 0"
+        );
+        assert_eq!(
+            reduced_depth(6, 0, true, 0),
+            6,
+            "a PV node gains nothing at 0"
+        );
+        assert_eq!(
+            reduced_depth(8, 3 * 1024, true, 0),
+            7,
+            "a reduction keeps the PV node's two plies while it stays below new_depth"
+        );
+        assert_eq!(reduced_depth(1, -1024, true, 0), 1);
         for new_depth in 1..40 {
             for reduction in (-20_000..20_000).step_by(977) {
-                assert!(reduced_depth(new_depth, reduction, false) >= 1);
-                assert!(reduced_depth(new_depth, reduction, false) <= new_depth + 2);
+                for cap in 0..=4 {
+                    let d = reduced_depth(new_depth, reduction, false, cap);
+                    assert!(d >= 1);
+                    assert!(d <= new_depth + cap.min(2));
+                    let d_pv = reduced_depth(new_depth, reduction, true, cap);
+                    assert!((1..=new_depth + cap).contains(&d_pv));
+                }
             }
         }
     }

@@ -418,6 +418,13 @@ search_params! {
     lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
     lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
     lmr_parent = 130, "CoreLmrParent", 0..=1024;
+    /// Plies a reduced move may be searched ABOVE `new_depth` when its
+    /// reduction comes out negative, the PV node's two included: 4 is
+    /// today's ceiling (two from the clamp, two for a PV node), 0 never
+    /// searches a reduced move deeper than its nominal depth. These plies
+    /// lie outside the line budget, and in won rook endings they take lines
+    /// to the ply cap (D.1.6.1).
+    lmr_deeper_cap = 4, "CoreLmrDeeperCap", 0..=4;
     /// Re-search a reduced move one ply deeper when it beats the best score
     /// by more than this.
     lmr_research_deeper = 43, "CoreLmrResearchDeeper", 0..=200;
