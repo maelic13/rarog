@@ -324,8 +324,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). The fail-hardness is quiescence returning alpha on a fail-low; fail-soft and re-centring together, and the budget's size, still leave rec1's win resolving in one iteration of eight to thirteen windows (over 180 M nodes): every single-device read is exhausted. Open: a fit of the fail-high schedule under the bounded tree, the oracle's gradual score path against Rarog's step, the clock-coupled half; `CoreLmrDeeperBudget` and fail-soft quiescence are `[-5,5]` strength candidates of their own |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4), `CoreExtensionBudgetEighths` (8) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). The HCE values a won ending flat (eight pawns against Stockfish 11's known win of 55), so the search carries the win across the horizon; a known-win offset with the donors' score-scaled first window (`AspDeltaSquareDiv`) removes the cascade on rec1 (one or two windows an iteration, a gradual score) at bench 0.73 ×; one window at depth 21 in a rook ending still costs 75–170 M nodes, the tree's composition, a search cluster of its own. Candidate cluster for D.1.6.3: the known-win offset, the squared window and the line budget, fitted then gated `[-5,5]`; the evaluation half needs leave under the freeze |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `AspDeltaSquareDiv`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4), `CoreExtensionBudgetEighths` (8), the evaluation parameter `mopup_known_win` (0) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
 | D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
@@ -1095,7 +1095,31 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           clock-coupled half. Strength candidates of their own for a
           `[-5,5]` gate: `CoreLmrDeeperBudget` (an invariant restored,
           bench 0.70 ×) and fail-soft quiescence (bench 1.50 ×). All
-          switches on `d1` at their neutral defaults.
+          switches on `d1` at their neutral defaults. **Read 2026-10-23
+          (RAR-R19, maintainer decision to continue; the connected features
+          against the donors, and the HCE):** the HCE values a won ending
+          flat (K+R+B against K eight pawns; Stockfish 11's classical
+          evaluation 55, a known win), so the search carries the win's value
+          across the horizon and the score climbs only as deep lines reach
+          the promotion or the mate; with Stockfish 11's own evaluation the
+          oracle resolves rec1 at depth 21 for 0.7 M nodes. A known-win
+          offset alone (`mopup_known_win`, an evaluation parameter, 0)
+          makes rec1 worse (cascades of 7–16 windows, bench 1.29 ×) because
+          the first window is 12 wide whatever the score; **with the
+          donors' score-scaled first window** (`AspDeltaSquareDiv`,
+          `ff14793`) **the cascade is gone:** every iteration closes in one
+          or two windows and the score climbs gradually, the oracle's shape,
+          at bench 0.73 ×. What remains is one window's cost at depth 20 and
+          beyond in these endings (rec3's depth 21: a single exact window
+          over 168 M nodes, 100 × the oracle's iteration), the tree's
+          composition (less pruning per node, twice the singular attempts,
+          effective depth twice nominal), a search cluster of its own. The
+          candidate cluster for D.1.6.3: the known-win offset with the
+          score-scaled window and the line budget, after a fit of the
+          aspiration and deeper-search constants around them, gated `[-5,5]`
+          with the probe; the evaluation half needs the maintainer's leave
+          under the freeze. The clock-coupled half stays recommended for
+          D.1.5 meanwhile.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
           Waits on D.1.6.1. The prototype is the switch `027a604` (default
           0, bench unchanged) and the arm `2d013c8` (recipe

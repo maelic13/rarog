@@ -1098,3 +1098,241 @@ the line budget on in every arm):
 
 **Evidence layer:** node counts, selective depths, window counts and scores
 at fixed depth and at fixed node budgets; nothing here is Elo.
+
+## Maintainer decision 2026-10-23: continue; the connected features against the donors, and whether the HCE is the cause
+
+## The connected features, read in the donors' source
+
+Stockfish master (`D:/code/Stockfish`, `effdc3fd`) and Reckless
+(`D:/code/Reckless`, `ffe556d`), the lines themselves:
+
+| Feature | Stockfish | Reckless | Rarog |
+|---|---|---|---|
+| A reduced move searched above its nominal depth | `newDepth + min(−r/1024, ply < 2·rootDepth ? 2 : 0) + PvNode`: at most two plies, **only while the ply is under twice the root depth**, one more at a PV node | `clamp(new_depth − r/1024, 1, new_depth + 2) + 2·PV`, no ply cap | Reckless's form, no ply cap; `CoreLmrDeeperBudget` is Stockfish's cap in per-line form |
+| Singular extension past the root depth | penalised: `− (ply > rootDepth) · 38` (and 43) in the margin | no cap in the extension itself | capped by the line budget (extensions sum to the root depth) |
+| Quiescence on a fail-low | returns `bestValue`, seeded by the static eval | returns `best_score`, seeded by the eval, refined by the TT | **returns `alpha`** (`QsFailSoft` is the donors' form) |
+| Fail-high value at a node | `(bestValue·depth + beta)/(depth + 1)` toward beta | the same form | five interpolations toward beta (`QsCutoffLerp` …), C.10's |
+| Correction history in the reduction | `r −= |corr| / 26310` (small) | `reduction −= 3417·|corr|/1024` | `3330·|corr|/1024`, Reckless's |
+| First aspiration window | `delta = 5 + threadIdx % 8 + meanSquaredScore / 10193` | `delta = 23 − min(eval stability, pv stability, 7) + average² / 26394` | `AspirationDelta` 12, **whatever the score** |
+| Window growth on a fail-high | `delta += delta/3`, re-centred on the failing score | `delta += 60·delta/128`, re-centred | `×1.65 + 8` on the stale centre |
+| Re-search depth after a root fail-high | root depth less the fail-high count, less a recovery carried into the next iterations | one ply less per fail-high | `AspFailHighReduce`, `AspFailHighRecover` (read above) |
+| The clock and the iteration | no deepening once half the target is spent (`increaseDepth`); a stop after a completed iteration at `mate_in(3)`; the hard maximum polled in the tree | the soft bound between iterations, scaled by the best move's node share and stability; the hard bound in the tree; no mate stop | the soft target between iterations (D.1.3's factors), the hard maximum in the tree, the proved-mate stop; the fail-high stop retired |
+
+Two differences are not yet read: **the first window's width on a large
+score** (both donors widen it with the score's square; at 1,800 cp
+Stockfish's first window is about 340 wide and Reckless's about 150, where
+Rarog's is 12, so the walk from 1,274 to 7,000 starts five or six windows
+behind) and Stockfish's deepening freeze past half the target, which the
+maintainer's decision keeps out. The first is inert at ordinary scores (a
+few centipawns under 300 cp) and acts exactly where the cascade lives.
+
+**The read, registered before it ran:** `AspDeltaSquareDiv` (tune-only,
+0 = off): the first window's half-width is `AspirationDelta +
+score² / div`. Arms at 200 M nodes on rec1 and rec3: 10193 (Stockfish's
+value), 26394 (Reckless's), each alone and with `CoreLmrDeeperBudget`;
+bench for each. **Prediction:** at 10193 the resolving iteration's windows
+fall from nine to thirteen to five or fewer in rec1 (0.6) and the costliest
+iteration under 100 M (0.5); bench within 0.95–1.05 × (0.7: the term is
+under 9 cp below 300 cp); with the budget as well, rec1's costliest
+iteration under 60 M (0.4). **Falsifier:** nine or more windows in the
+resolving iteration at 10193 means the squared term does not reach the
+jump either, and the window's start is not the lever.
+
+## Could the cause be the HCE?
+
+- With Rarog's own HCE inside Stockfish's search (the oracle, above) the
+  score path is gradual and the iterations smooth, so the evaluation does
+  not force the step by itself.
+- What the HCE does do: along rec1's PVs (`pv_walk.py`,
+  `trace_nodes_head_rec1.txt`) every leaf from depth 12 to 17 is a king,
+  rook and bishop against a bare king, which the HCE values at 7.1 to 8.9
+  pawns (Rarog's `go depth 1` 720–781 cp; the oracle's `eval` with the same
+  HCE 8.1–8.9), and the leaves at depths 18 and 19 (a queen won, a pawn on
+  e7) at 12.5 to 14.7 pawns while the search reads 18.5 and 28.8. The HCE
+  is flat across the conversion: a won ending is worth about eight pawns
+  until the search sees the promotion or the mate. That flatness is why
+  the correction history grows there (the residual between search and
+  static is large), why the correction term drives the reductions
+  negative (the one term whose removal shrank the tree 4.7 ×), and why the
+  score path is a step rather than a climb: nothing in the static value
+  credits progress, so the search's score is the horizon's. The HCE is
+  frozen (engine source `9fb525e`) and Phase F replaces it; a
+  winnable-scaling term for such endings is an evaluation change under a
+  fitted search (PROCESS) and not D.1's.
+- Two reads below say how much of the step is the evaluation's: the oracle
+  with Stockfish's own classical evaluation instead of Rarog's, and Rarog
+  with every correction-history term off and the budget on.
+
+**The squared-delta read, result** (`square_reads.log`,
+`bench_counters_square*.txt`, `trace_nodes_sq*_rec*.txt`): bench at 10193
+**9,809,168 (0.70 ×)** and at 26394 11,579,261 (0.83 ×), far outside
+0.95–1.05 (missed: bench's own won positions, scores of 1,000–2,500, widen
+their windows too; fail-highs 487 → 301). rec1 at 10193: the resolving
+iteration has **seven** windows (878 → 2310) and costs 91.6 M, the next a
+single exact window of 45 M; with the budget on, depths 22–24 have 8, 4 and
+3 windows and cost 51, 86 and 60 M. rec3: still over 100 M in every arm
+(the next window 160 M and running at 10193; 125 M for two windows with the
+budget). The window count fell as predicted (seven and then three or four,
+under nine), the costliest iteration did not (prediction 0.5: held for rec1
+at 10193 by 8 M, missed everywhere else): **with three windows an
+iteration still costs 60–125 M, because each window is a bound-proof at an
+effective depth near 30, 15–70 M nodes.** The window's start is not the
+lever either; the lever is what one bound-proof costs.
+
+**Every correction term off, the budget on** (`trace_nodes_corroff_rec*.txt`):
+rec1 depth 24 twelve windows 86 M, depth 25 twelve windows 82 M; rec3
+depth 31 over 82 M. The correction history's feedback into the reductions
+and the pruning is not the lump either.
+
+**The oracle with Stockfish 11's own classical evaluation**
+(`oracle_sfhce_rec*.txt`, `Use Rarog HCE` false): rec1 reads 1230 at depth
+18, 2414 at 20, **5168 at depth 21 for 0.73 M nodes**, 7182 at 29, 9504 at
+34 (51 M in all); rec3 climbs 344 → 1217 by depth 34 (117 M). With its own
+evaluation Stockfish's search resolves rec1's win at depth 21 for under a
+million nodes; with Rarog's evaluation it needs depth 32 and 100 M nodes to
+read 2871.
+
+**Why: the evaluation's knowledge of a won ending.** Depth-1 scores
+(`go depth 1`, the static evaluation settled by quiescence) on bare-king
+endings:
+
+| Position | Rarog | the oracle with Rarog's HCE | the oracle with Stockfish 11's HCE |
+|---|---:|---:|---:|
+| K+R+B against K, centre | 730 | 833 | **5,944** |
+| K+R+B against K, edge | 787 | 915 | 5,963 |
+| K+Q against K | 857 | 1,054 | 6,156 |
+| K+R against K | 477 | 601 | 5,544 |
+| rec1 (K+R+B+P against K+R) | 593 | 700 | 483 |
+| rec3 (K+R+P against K+R) | 336 | 416 | 165 |
+
+Stockfish 11's classical evaluation returns a known-win value (its
+`Endgame<KXK>`: a large constant plus material and a corner drive) for any
+bare-king ending with mating material; Rarog's returns the material, about
+eight pawns, with a mild drive (`apply_mop_up`, whose comment records the
+choice: the full drive on queen and rook mates cost +20.5% bench nodes in
+Basilisk, so Rarog scopes the strong drive to minor-piece mates and leaves
+K+R and K+Q to the search, which solves them). In rec1 the search therefore
+has to carry the win's value across the horizon itself: capturing the rook
+is worth eight pawns at the leaf, and the score climbs only as the lines
+reach the promotion and the mate, each iteration failing high on the way.
+With Stockfish 11's evaluation the first leaf that wins the rook reads a
+decisive value and the proof is one cheap step. **This is the HCE's part of
+the cause, and it is the cost scale:** the oracle with Rarog's evaluation
+spends the same order of nodes as Rarog to reach the same scores; what the
+search adds is the lumpiness.
+
+**The read, registered before it ran:** a known-win offset in the mop-up as
+a tune-time evaluation parameter (`mopup_known_win`, default 0 = today, the
+`tune` build's loader), added with the winner's sign to both phases when the
+loser has a bare king and the winner mating material. Zero games, node
+budgets: rec1 and rec3 at 200 M nodes with the offset at a value near
+Stockfish 11's known win, bench for the record (the frozen evaluation is
+untouched at 0). **Prediction:** rec1's win resolves in one or two
+iterations once a line wins the rook, the resolving iteration under 40 M
+nodes and the search's deepest completed iteration past depth 26 within
+200 M (0.6); rec3, where no bare-king position is near, unchanged (0.8).
+**Falsifier:** rec1's resolving iteration still over 100 M with the offset
+means the cost is not the evaluation's flatness on bare-king endings.
+
+**The known-win read, result** (`mopup_known_win` 6000 through
+`RAROG_EVAL_FILE`, `knownwin_reads.log`, `trace_nodes_knownwin6000_rec*.txt`):
+the offset is live (K+R+B against K reads 5445 at depth 1). **It makes rec1
+worse, not better:** the score now climbs from 544 at depth 8 to 5092 at
+depth 15 in cascades of 7, 8, 16 and 13 windows an iteration (depth 13
+12 M, depth 14 58 M, depth 15 70 M, depth 16 six fail-highs 5104 → 5365
+and 58 M, not completed), and bench rises to 18,072,546 (**1.29 ×**), the
++20.5% the mop-up's comment recorded for Basilisk. rec3 is unchanged (no
+bare-king leaf near). The prediction (rec1 resolved in one or two
+iterations, under 40 M) **missed in direction**. The reason is in the
+interlock: once the leaves read +54 pawns, every iteration's score drifts
+up by hundreds as the win comes within the horizon and the mop-up drive
+swings, while the first window is still 12 wide and walks the schedule;
+Stockfish pairs its known-win values with a first window of
+`5 + score²/10193` (about 3,400 wide at 5,900) and a fail-soft re-centring
+walk. **A known-win evaluation and a score-scaled window are one device in
+the donor;** read next together, and with the budget and the fail-soft
+re-centring.
+
+**The interlock, read** (engine commits `ff14793` and `571eb83`; both
+verified: fmt, clippy at zero warnings, debug, release and texel-tuner tests
+green, bench at the defaults 13,987,223 / EBF 2.565; `knownwin2_reads.log`,
+`trace_nodes_kwsq*_rec*.txt`), the known-win offset 6000 with
+`AspDeltaSquareDiv` 10193:
+
+| Arm | bench 13 | rec1 at 200 M nodes | rec3 at 200 M nodes |
+|---|---|---|---|
+| known win + squared window | 10,176,102 (0.73 ×) | depths 14–21 each **one or two windows**: 1806 → 2452 → 2583 → 3027 → 3536 → 3708 → 5451 → 6096; iterations 0.8, 7.5, 5.1, 6.8, 7.6, 8.9, 44, **75 M**, all completed; depth 22 running at 43 M | one or two windows an iteration to depth 20 (20 M); depth 21 a **single exact window of over 168 M**, not completed |
+| with the line budget | — | depth 18 three windows 28 M (score 5450); depths 19–22 one window each; depth 23 one window **93 M** | depth 24 three windows, 105 M |
+| with fail-soft re-centring | — | depth 17 one window 52 M; depth 18 one window > 108 M | depth 18 one window > 194 M |
+
+- **The cascade is gone.** On rec1 no iteration needs more than two windows,
+  the score climbs in steps of 150–1,700 cp over eight iterations, and
+  every iteration completes: the oracle's shape (prediction: resolved in one
+  or two iterations; read: gradual over eight, which is better for the clock
+  and was not the prediction's form). Bench 0.73 ×, a strength question.
+- **What remains is one window's cost at depth 20 and beyond:** rec1's
+  depth 21 is a single exact window of 75 M, rec3's depth 21 a single exact
+  window over 168 M, against the oracle's whole iterations of 1–3 M at the
+  same nominal depth and 30 M at depth 32. With the cascades removed, the
+  stall on rec3 at `180000+2000` would still be one iteration of about 150 s
+  at PGO speed. That cost is the tree itself at nominal depth 21 in a rook
+  ending: effective depth about twice nominal (the budget's reach, filled
+  by singular, double and triple extensions and the deeper reduced
+  searches) and, per node, less pruning than the oracle (null-move cuts
+  0.33, futility 0.40, razoring 0.10, SEE 0.13 of the oracle's rate) and
+  twice the singular attempts. Reducing that is a search-cluster question
+  over the selectivity core in one class of position, not a device.
+
+## Disposition: `MORE_RESEARCH`; the causes named, one half of the fix in hand
+
+- **The stall, fully decomposed, node-indexed and with the same evaluation
+  on both sides where it matters:** (1) the evaluation values a won ending
+  flat (eight pawns for a bare-king mate; Stockfish 11 reads 55), so the
+  search carries the win's value across the horizon and the score climbs
+  only as deep lines reach the promotion or the mate; (2) the root is
+  fail-hard (quiescence returns alpha) and the first window is 12 wide
+  whatever the score, so each climb is a cascade of eight to thirteen
+  near-full-depth bound-proofs; (3) lines reach the ply cap through
+  negative reductions outside the budget, which makes each window and each
+  iteration far costlier than nominal depth says; (4) at nominal depth 20
+  and beyond in these endings one window costs 75–170 M nodes, 20–100 × the
+  oracle's iteration, from the tree's composition.
+- **Read and refuted as a device alone:** every root-loop device, the cap
+  and the budget alone, fail-soft and re-centring alone and together, the
+  budget's size, the known-win offset alone (worse), the squared window
+  alone.
+- **Read and in hand, as a pair:** the known-win offset with the
+  score-scaled first window removes the cascade on rec1 and gives the
+  oracle's gradual score path (1, 2 above), at bench 0.73 ×; the line
+  budget restores the stated invariant and reproduces the oracle's
+  depth-18 score (3), at 0.70 ×. Each is a strength candidate the C.10
+  constants were not fitted for; the known-win half is an evaluation change
+  under the frozen evaluation (PROCESS, *Evaluation change under a fitted
+  search*) and the maintainer's to allow.
+- **Not in hand (4):** the per-node cost of Rarog's tree in rook endings at
+  depth 20 and beyond. The differential names where the rates diverge; a
+  change there is a search cluster with its own research, its own fit and
+  its own gate. Until it lands, the long-control stall on rec3 persists
+  whatever the root loop does, and only the clock-coupled half (Stockfish's
+  deepening freeze past half the target, or RAR-R18's stop at twice the
+  target) ends it.
+- **Recommendation.** For D.1.6: register the pair, the known-win
+  evaluation offset with the score-scaled first window, and the line budget,
+  as the candidate cluster for one `[-5,5]` gate against the 2.6.0 engine
+  with the probe as its correctness read, after the maintainer allows the
+  evaluation half; predict a negative read until the aspiration and pruning
+  constants are refitted around them, so a fit before the gate (the five
+  aspiration coordinates and the deeper-search terms, with the pair on) is
+  the cheaper path. For the clock: the research recommends, again, the stop
+  at twice the target for D.1.5's closing read, since (4) is a programme of
+  its own and the stall is real at CCRL's longer controls. For the
+  evaluation: the flat valuation of won endings is a Phase F question too
+  (a network learns it), and a classical winnable term is E.4's territory.
+- All instruments stay on `d1` at neutral defaults: `AspFailHighReduce`,
+  `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `AspDeltaSquareDiv`,
+  `CoreLmrDeeperBudget` 0; `CoreLmrDeeperCap` 4;
+  `CoreExtensionBudgetEighths` 8; `mopup_known_win` 0; the diag counters.
+
+**Evidence layer:** node counts, selective depths, window counts and scores
+at fixed depth and at fixed node budgets; depth-1 scores for the evaluation
+comparison; nothing here is Elo.
