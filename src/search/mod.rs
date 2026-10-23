@@ -280,6 +280,8 @@ impl Aspiration {
             || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
         {
             -INF_SCORE
+        } else if params.asp_recentre != 0 {
+            (score - self.alpha_delta).max(-INF_SCORE)
         } else {
             (self.center - self.alpha_delta).max(-INF_SCORE)
         };
@@ -296,6 +298,8 @@ impl Aspiration {
             || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
         {
             INF_SCORE
+        } else if params.asp_recentre != 0 {
+            (score + self.beta_delta).min(INF_SCORE)
         } else {
             (self.center + self.beta_delta).min(INF_SCORE)
         };
@@ -975,6 +979,15 @@ impl Searcher {
                 if score >= window.beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
+                    #[cfg(feature = "diag")]
+                    if score == window.beta {
+                        crate::diag_count!(asp_fail_high_at_beta);
+                    } else {
+                        crate::diag_add!(
+                            asp_fail_high_overshoot,
+                            u64::try_from(score - window.beta).unwrap_or(0)
+                        );
+                    }
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }

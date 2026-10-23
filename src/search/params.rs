@@ -194,6 +194,12 @@ search_params! {
     /// instead of one full-depth window over a table that holds only the
     /// shallower result (Stockfish's `failHighRecovery`). 0 = off.
     asp_fail_high_recover = 0, "AspFailHighRecover", 0..=1;
+    /// Switch: a failed window re-centres on the failing score (both
+    /// donors) instead of the previous iteration's score. With a fail-hard
+    /// root the failing score is the window's edge and this changes little
+    /// (RAR-S17 read −4.52 on such a root); with `QsFailSoft` the score
+    /// carries how far the window missed. 0 = today.
+    asp_recentre = 0, "AspRecentre", 0..=1;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
@@ -556,6 +562,14 @@ search_params! {
     /// recapture on the previous move's square or promote, while the stand pat
     /// is not a loss.
     qs_count_limit = 3, "QsCountLimit", 2..=8;
+    /// Switch: a quiescence node that raises nothing returns and stores its
+    /// best value (the stand pat or the best capture), as both donors do,
+    /// instead of alpha. Today (0) it returns alpha, so every value that
+    /// leaves a window sits on the window's edge all the way to the root,
+    /// and a root fail-high returns exactly beta (D.1.6.1). The legacy
+    /// engine read fail-soft at −5.96 alone (8.11, 2026-07) with pruning
+    /// fitted around the fail-hard bounds.
+    qs_fail_soft = 0, "QsFailSoft", 0..=1;
     /// A capture is skipped when the stand pat, its victim and this margin
     /// cannot reach alpha; evaluation units over the search's piece scale.
     qs_futility_margin = 257, "QsFutilityMargin", 0..=400;

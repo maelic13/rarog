@@ -191,6 +191,43 @@ pub mod counters {
         // after fail-highs (`AspFailHighReduce`), summed over windows from
         // depth 4.
         asp_reduced_plies,
+        // D.1.6.1, EXACT and Rarog-only: root fail-highs whose score is
+        // exactly beta, and the sum of the overshoot above beta of the rest.
+        asp_fail_high_at_beta,
+        asp_fail_high_overshoot,
+        // D.1.6.1, EXACT and Rarog-only: at plies 1 and 2, which return path
+        // produced a value outside the window, and whether it sat exactly on
+        // the edge it crossed (`at`: a fail-low equal to the entry alpha or a
+        // fail-high equal to beta) or beyond it (`off`). The root's fail-high
+        // value is the negation of ply 1's, which is the negation of ply 2's.
+        p1_at_tt,
+        p1_off_tt,
+        p1_at_rfp,
+        p1_off_rfp,
+        p1_at_nmp,
+        p1_off_nmp,
+        p1_at_probcut,
+        p1_off_probcut,
+        p1_at_multicut,
+        p1_off_multicut,
+        p1_at_cutoff,
+        p1_off_cutoff,
+        p1_at_end,
+        p1_off_end,
+        p2_at_tt,
+        p2_off_tt,
+        p2_at_rfp,
+        p2_off_rfp,
+        p2_at_nmp,
+        p2_off_nmp,
+        p2_at_probcut,
+        p2_off_probcut,
+        p2_at_multicut,
+        p2_off_multicut,
+        p2_at_cutoff,
+        p2_off_cutoff,
+        p2_at_end,
+        p2_off_end,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,

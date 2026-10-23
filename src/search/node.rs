@@ -91,6 +91,29 @@ fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bool) -> TbVe
     }
 }
 
+/// The return path that produced a node's value, for D.1.6.1's read of where
+/// a fail-high value becomes exactly beta (`Searcher::note_edge`).
+#[cfg(feature = "diag")]
+#[derive(Clone, Copy)]
+enum EdgeKind {
+    Tt,
+    Rfp,
+    Nmp,
+    Probcut,
+    Multicut,
+    Cutoff,
+    End,
+}
+
+/// Record a return at ply 1 or 2 that left the window: see `EdgeKind`.
+/// Nothing without the `diag` feature.
+macro_rules! note_edge {
+    ($searcher:expr, $ply:expr, $kind:ident, $value:expr, $alpha:expr, $beta:expr) => {
+        #[cfg(feature = "diag")]
+        $searcher.note_edge($ply, EdgeKind::$kind, $value, $alpha, $beta);
+    };
+}
+
 /// What a null-move cutoff returns: the null search's score, but never a win
 /// the reduced search did not prove and never less than beta, which the
 /// verification established when the null search ran against a lower bound
@@ -647,6 +670,7 @@ impl Searcher {
                     ev.depth,
                     ev.bound
                 );
+                note_edge!(self, ply, Tt, score, original_alpha, beta);
                 return score;
             }
         }
@@ -893,6 +917,7 @@ impl Searcher {
                      base {base} beta {beta} returns {score}",
                     threats.is_some()
                 );
+                note_edge!(self, ply, Rfp, score, original_alpha, beta);
                 return score;
             }
         }
@@ -1020,7 +1045,9 @@ impl Searcher {
                 if score >= null_bound && !is_loss(score) {
                     let in_region = self.td.nmp_min_ply > 0;
                     if score >= beta && (depth < self.cfg.proof.nmp_verify_depth || in_region) {
-                        return null_cutoff_score(score, beta);
+                        let returned = null_cutoff_score(score, beta);
+                        note_edge!(self, ply, Nmp, returned, original_alpha, beta);
+                        return returned;
                     }
                     if !in_region {
                         let reduced = if score < beta {
@@ -1065,7 +1092,9 @@ impl Searcher {
                         );
                         if verified >= beta {
                             crate::diag_count!(nmp_verify_pass);
-                            return null_cutoff_score(score, beta);
+                            let returned = null_cutoff_score(score, beta);
+                            note_edge!(self, ply, Nmp, returned, original_alpha, beta);
+                            return returned;
                         }
                         crate::diag_count!(nmp_verify_fail);
                         if min_ply > infra::to_i32(ply) {
@@ -1278,6 +1307,7 @@ impl Searcher {
                         {
                             self.td.probcut_cuts += 1;
                         }
+                        note_edge!(self, ply, Probcut, returned, original_alpha, beta);
                         return returned;
                     }
                 }
@@ -1374,6 +1404,7 @@ impl Searcher {
                     ply,
                     "multicut score {score} beta {beta} returns {cut}"
                 );
+                note_edge!(self, ply, Multicut, cut, original_alpha, beta);
                 return cut;
             } else if score > ev.score && !is_decisive(score) {
                 #[cfg(feature = "diag")]
@@ -2052,6 +2083,7 @@ impl Searcher {
                             crate::diag_count!(main_store_lower);
                         }
                     }
+                    note_edge!(self, ply, Cutoff, score, original_alpha, beta);
                     return score;
                 }
             }
@@ -2164,7 +2196,53 @@ impl Searcher {
                 }
             }
         }
+        note_edge!(self, ply, End, best_score, original_alpha, beta);
         best_score
+    }
+
+    /// D.1.6.1's read: at plies 1 and 2, count a value that left the window
+    /// by the path that produced it and whether it sits exactly on the edge
+    /// it crossed. Diagnostic only; see `EdgeKind`.
+    #[cfg(feature = "diag")]
+    fn note_edge(&self, ply: usize, kind: EdgeKind, value: i32, alpha: i32, beta: i32) {
+        let at_edge = if value >= beta {
+            value == beta
+        } else if value <= alpha {
+            value == alpha
+        } else {
+            return;
+        };
+        match (ply, kind, at_edge) {
+            (1, EdgeKind::Tt, true) => crate::diag_count!(p1_at_tt),
+            (1, EdgeKind::Tt, false) => crate::diag_count!(p1_off_tt),
+            (1, EdgeKind::Rfp, true) => crate::diag_count!(p1_at_rfp),
+            (1, EdgeKind::Rfp, false) => crate::diag_count!(p1_off_rfp),
+            (1, EdgeKind::Nmp, true) => crate::diag_count!(p1_at_nmp),
+            (1, EdgeKind::Nmp, false) => crate::diag_count!(p1_off_nmp),
+            (1, EdgeKind::Probcut, true) => crate::diag_count!(p1_at_probcut),
+            (1, EdgeKind::Probcut, false) => crate::diag_count!(p1_off_probcut),
+            (1, EdgeKind::Multicut, true) => crate::diag_count!(p1_at_multicut),
+            (1, EdgeKind::Multicut, false) => crate::diag_count!(p1_off_multicut),
+            (1, EdgeKind::Cutoff, true) => crate::diag_count!(p1_at_cutoff),
+            (1, EdgeKind::Cutoff, false) => crate::diag_count!(p1_off_cutoff),
+            (1, EdgeKind::End, true) => crate::diag_count!(p1_at_end),
+            (1, EdgeKind::End, false) => crate::diag_count!(p1_off_end),
+            (2, EdgeKind::Tt, true) => crate::diag_count!(p2_at_tt),
+            (2, EdgeKind::Tt, false) => crate::diag_count!(p2_off_tt),
+            (2, EdgeKind::Rfp, true) => crate::diag_count!(p2_at_rfp),
+            (2, EdgeKind::Rfp, false) => crate::diag_count!(p2_off_rfp),
+            (2, EdgeKind::Nmp, true) => crate::diag_count!(p2_at_nmp),
+            (2, EdgeKind::Nmp, false) => crate::diag_count!(p2_off_nmp),
+            (2, EdgeKind::Probcut, true) => crate::diag_count!(p2_at_probcut),
+            (2, EdgeKind::Probcut, false) => crate::diag_count!(p2_off_probcut),
+            (2, EdgeKind::Multicut, true) => crate::diag_count!(p2_at_multicut),
+            (2, EdgeKind::Multicut, false) => crate::diag_count!(p2_off_multicut),
+            (2, EdgeKind::Cutoff, true) => crate::diag_count!(p2_at_cutoff),
+            (2, EdgeKind::Cutoff, false) => crate::diag_count!(p2_off_cutoff),
+            (2, EdgeKind::End, true) => crate::diag_count!(p2_at_end),
+            (2, EdgeKind::End, false) => crate::diag_count!(p2_off_end),
+            _ => {}
+        }
     }
 
     pub(super) fn quiescence<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
@@ -2325,6 +2403,13 @@ impl Searcher {
         }
 
         let mut best_move = Move::NULL;
+        // The node's best value so far: the stand pat when not in check, then
+        // the best move; what the fail-soft switch returns and stores.
+        let mut best_score = if stand_pat_for_pruning == VALUE_NONE {
+            -INF_SCORE
+        } else {
+            stand_pat_for_pruning
+        };
         let mut scored = ScoredMoveList::new();
         // Per-node check masks, built lazily as in the main search; a
         // capture-only qnode that never tests for check never builds them.
@@ -2463,6 +2548,7 @@ impl Searcher {
             if in_check {
                 evasion_best = evasion_best.max(score);
             }
+            best_score = best_score.max(score);
             if score >= beta {
                 #[cfg(feature = "diag")]
                 if diag_q_sample {
@@ -2510,17 +2596,24 @@ impl Searcher {
                 Bound::Lower => {}
             }
         }
+        // Fail-hard today: the value that leaves the window is the window's
+        // edge. With the switch, the best value found, as both donors return.
+        let returned = if self.cfg.quiet.qs_fail_soft != 0 {
+            best_score
+        } else {
+            alpha
+        };
         self.shared.tt.store(TtStore {
             key: hash,
             depth: 0,
-            score: alpha,
+            score: returned,
             bound,
             mv: best_move,
             ply,
             static_eval: q_raw_static_eval,
             is_pv: q_store_pv,
         });
-        alpha
+        returned
     }
 }
 
