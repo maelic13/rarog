@@ -15,10 +15,12 @@ the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 
 ## `d16fix` — D.1.6.3's fit of the cascade cluster, registered by RAR-R21
 
-- **Surface:** fourteen coordinates: the five aspiration coordinates
+- **Surface:** fifteen coordinates: the five aspiration coordinates
   (`AspirationDelta`, `AspGrowthPct`, `AspGrowthHighPct`, `AspGrowthAdd`,
   `AspDeltaSquareDiv`), the known-win offset `MopupKnownWin`, the
-  deepening freeze `TmDepthFreeze`, and the seven reduction terms whose
+  deepening freeze `TmDepthFreeze`, the clock's scale `TmOptScale` (added
+  2026-10-23 before any game, RAR-R21's amendment: the cluster leaves
+  time on the clock), and the seven reduction terms whose
   negative values the line budget now charges (`CoreLmrPv`,
   `CoreLmrPvWindow`, `CoreLmrCorrection`, `CoreLmrGivesCheck`,
   `CoreLmrImprovement`, `CoreLmrTtPv`, `CoreLmrQuietHistory`). `value` is
@@ -27,7 +29,10 @@ the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
   the b43 rule, and `min_value` and `max_value` the declared range except
   for `AspDeltaSquareDiv` (2000..40000 of 0..100000), `MopupKnownWin`
   (500..12000 of 0..20000) and `TmDepthFreeze` (2000..9000 of
-  1000..10000000), whose declared ranges hold the switches' off values.
+  1000..10000000), whose declared ranges hold the switches' off values,
+  and `TmOptScale` at the clock fit's range and step (5000..20000, 938,
+  as `d14block1`: a (max−min)/8 step would perturb thinking time by 19%
+  a side).
 - **`fixed_d16fix.json`:** Hash 64, Threads 1, MultiPV 1; the line budget
   (`CoreLmrDeeperBudget` 1) is the arm's default, not an option.
 - **Run:** block 1 is 2,000 iterations × 30 games on

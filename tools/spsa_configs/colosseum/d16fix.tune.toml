@@ -52,6 +52,13 @@ max = 9000
 c_end = 402.9981
 
 [[parameters]]
+name = "TmOptScale"
+initial = 10000
+min = 5000
+max = 20000
+c_end = 432.0140
+
+[[parameters]]
 name = "CoreLmrPv"
 initial = 399
 min = 0

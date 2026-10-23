@@ -41,6 +41,12 @@
     "max_value": 9000,
     "step": 875
   },
+  "TmOptScale": {
+    "value": 10000,
+    "min_value": 5000,
+    "max_value": 20000,
+    "step": 938
+  },
   "CoreLmrPv": {
     "value": 399,
     "min_value": 0,
