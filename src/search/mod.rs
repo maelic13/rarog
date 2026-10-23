@@ -863,8 +863,9 @@ impl Searcher {
         let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
         // The soft target the last completed iteration set; a root window
-        // that fails high past it ends the search.
+        // that fails high this far past it ends the search.
         let mut soft_target_ms = f64::INFINITY;
+        let fail_high_target = f64::from(self.cfg.params.tm_fail_high_target) / 10_000.0;
         // This thread's soft-stop vote is cast at most ONCE per search.
         // Without the latch a thread that keeps iterating past its own soft
         // target votes again every iteration and can reach the majority
@@ -955,7 +956,7 @@ impl Searcher {
                     // The main thread decides; helpers keep their vote.
                     if self.td.thread_id == 0
                         && !self.td.pondering
-                        && self.elapsed_ms() >= soft_target_ms
+                        && self.elapsed_ms() >= soft_target_ms * fail_high_target
                     {
                         crate::diag_count!(tm_fail_high_stop);
                         if self.td.pv_len[0] > 0 {
@@ -2690,6 +2691,15 @@ mod tests {
         // Short of the soft target the fail-high is searched again as before.
         let (unstopped, lines) = clock_search(fen, &clock, &options, FROZEN_CLOCK, usize::MAX);
         assert_eq!(unstopped.depth, DEPTH as usize);
+        assert!(lines.last().expect("a line was printed").bound.is_empty());
+
+        // With the stop's threshold past every maximum the same late clock
+        // completes the fail-high's iteration, and the soft stop ends the
+        // search between iterations on an exact line.
+        let mut never = options;
+        never.search_params.tm_fail_high_target = 10_000_000;
+        let (unswitched, lines) = clock_search(fen, &clock, &never, late, usize::MAX);
+        assert_eq!(unswitched.depth, fail_high.depth);
         assert!(lines.last().expect("a line was printed").bound.is_empty());
     }
 

@@ -272,6 +272,13 @@ search_params! {
     tm_stab_slope = 440, "TmStabSlope", 0..=2000;  // 0.0440
     /// Stability factor's floor. Seed 7160 (0.716).
     tm_stab_floor = 7_160, "TmStabFloor", 4000..=10000;  // 0.716
+    /// The multiple of the soft target past which a root fail-high ends the
+    /// search on the move that failed high: 10000 is at the target, the
+    /// registered mechanism. 10000000, a thousand targets, lies past every
+    /// maximum (at most 6.873 optima, against a target of at least 0.0146
+    /// of one at the ranges' ends), so the stop never fires. The switch
+    /// D.1.5's research reads the stop with.
+    tm_fail_high_target = 10_000, "TmFailHighTarget", 10000..=10000000;  // ×1.0
 }
 
 // The selectivity core's own coordinates. Seeds follow the handoff's seed
