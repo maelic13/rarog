@@ -1,5 +1,22 @@
 # D.1.5 — the clock cluster's mechanisms reviewed while its SPRT runs: where the candidate's time goes, what overlaps, and whether Reckless's shape fits
 
+**Correction, 2026-10-23, after RAR-R17's reads.** Section 1 named the
+horizon's late-game cut (H3) as the first suspect. **RAR-R17 does not
+support it:** the horizon at 100 against 53 reads −0.9 ± 8.0 Elo, with the
+same late time a move in both arms, and the 53 arm has 0 games under 100 ms
+against 443.
+
+What does read is the cluster at its seeds against the head: **−14.9 ± 8.8
+Elo**, with 7.4% less time a move at every stage, the opening included, and
+about 0.3–0.7 s of clock left unused at the end of draws and wins. The
+likeliest source is the fail-high stop, which removes the head's
+in-iteration overruns without spending the time elsewhere; that is not yet
+isolated.
+
+Section 1's profile figures stand as measured. Its causal reading is
+superseded, and section 3's plan is advanced to its fail-high step. The text
+below is the review as first written.
+
 **Status:** a review, written 2026-10-23 during RAR-R16's SPRT, from source
 at `bed16d1` and from results already on disk. Nothing was run on the match
 host. It changes no registered rule, reading or prediction: the SPRT decides

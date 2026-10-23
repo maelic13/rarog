@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: the wire check live, the `10+0.1` and 4T reads (−6.3, −10.4 Elo, deciding nothing) and the probe (PASS) done; the SPRT `[0,3]`, cap 20,000 pairs, maintainer-run |
+| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: SPRT paused at 1,782 pairs (+0.2 ± 6.6, unresolved); RAR-R17 reads the cluster at its seeds at −14.9 ± 8.8 against the head (clock left unused) and the horizon as neutral; the fail-high stop's own read is next |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -850,6 +850,23 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         rose from 151 to 353 ms and games under 100 ms fell from 39 to 0.
       - **Probe PASS.**
       - The SPRT is next, maintainer-run.
+
+      **The SPRT is paused at 1,782 pairs (+0.2 ± 6.6 Elo, LLR −0.10,
+      unresolved), and RAR-R17's decomposition has played, 2,000 games
+      each:**
+      - **The cluster at its seeds against the head: −14.9 ± 8.8 Elo.** It
+        spends 7.4% less time a move at every stage and ends games with
+        clock unused. The likeliest source is the fail-high stop cutting
+        the head's overruns.
+      - **The horizon at 100 against 53: −0.9 ± 8.0.** No late-game cost
+        shown, and it keeps all 2,000 games above 100 ms of clock (443 at
+        100 did not).
+      - The fit bought back roughly what the seeds lost.
+      - The research splits the mechanisms next, **the fail-high stop
+        first** (a switch). The registered fallback should not run in its
+        form, which keeps that stop at its seeds.
+      - Maintainer requirement: any fallback shows no harm at `10+0.1` as
+        well.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
