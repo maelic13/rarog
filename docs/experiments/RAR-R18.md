@@ -308,3 +308,25 @@ and 15.1 s (1.06 ×). At the target the same four took 4.80, 9.81, 1.97 and
   both controls is the test either way. Retry trigger if removed: the next
   clock fit, when the search changes (F.6), re-reads a stability discount
   seeded from the donors.
+
+## Maintainer decision 2026-10-23: the correct fix is in the search
+
+- **The cascade is fixed in the search, not capped by the clock.** Rarog
+  re-searches a root fail-high at full depth; both donors make the
+  re-searches cheaper (Stockfish's depth reduction by the count of
+  fail-highs, Reckless's one ply shallower). That is PLAN **D.1.6**,
+  research first; its gate is the symmetric `[-5,5]` on the 2.6.0 engine
+  with no clock stop in either arm, and its probe runs with no clock stop.
+  The fail-high stop is retired: off by default (`a0f9755`, after `ec416d4`),
+  the spin kept as D.1.6's control arm and deleted when the fix lands.
+- **The other six mechanisms stay at their seeds** for D.1.5, now D.1's
+  closing read after D.1.6: the horizon, the mate stop and the guard as
+  clock answers to clock problems; the stability factor, the effort band
+  over the whole search and the cross-move trend on their lean (+6.9 ± 8.7,
+  both donors). The frozen disposition's "removed" stands as this entry's
+  verdict on the evidence; the decision to carry them into the closing
+  read is the maintainer's, recorded here. The fit's block 1 is unused.
+- **Order:** D.1.6 (research, implementation, gate) before D.1.5, so the
+  search change is gated alone against the 2.6.0 engine and the clock
+  pieces are read on the engine they ship with. Neither claims Elo.
+- RAR-R16's SPRT is ended unresolved (its own entry).

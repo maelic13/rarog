@@ -243,3 +243,19 @@ The two direction reads decide nothing (frozen). Together they lean
 negative, about −8 ± 8 Elo over 2,000 games, which makes H0 or the cap
 likelier than H1. They do not invalidate the gate, which is the only
 registered decision; a clearly negative effect ends an SPRT early.
+
+## Ended unresolved (maintainer decision 2026-10-23)
+
+Paused twice and resumed once, the SPRT ends at the runner's last progress
+line: **2,345 pairs, +0.6 ± 5.8 Elo, nElo +1.0 ± 9.9, LLR −0.06**, W/D/L
+1203/2292/1195, pentanomial 60, 537, 1147, 537, 64, no fault, no time loss
+(`tools/results/rar-r16-gate/run.log`; the checkpoint holds 2,343 official
+pairs). Unresolved, and recorded so, under the cap's rule: nothing is baked.
+Its arm, block 1's fit over the fail-high stop at the target, no longer
+exists: RAR-R18 read the stop at the target at about −15 Elo and the
+cascade it capped is fixed in the search (PLAN D.1.6); the clock pieces are
+read again by D.1.5 as D.1's closing read. The direction reads, the probe
+and the profiles above stand as measured. Calibration: prediction 1 (H1
+0.30, cap 0.50, H0 0.20) is not resolved; the most likely outcome named,
+the cap read as unresolved near +1 to +3, is where the run was when it
+ended. The `10+0.1` sign (prediction 3) stays unread.

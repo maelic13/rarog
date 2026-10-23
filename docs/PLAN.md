@@ -323,8 +323,12 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | RESEARCH | V | RAR-R18 read: the stop at the target costs about 15 Elo and moves to twice the target (probe PASS); the factors read +6.9 ± 8.7, insufficient by the frozen rule; the kept set's repair read at both controls is next, its arm (factors in or out) the maintainer's decision; RAR-R16's SPRT recommended unresolved |
-| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search, research first (maintainer decision 2026-10-23): D.1.6.1, then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
+| D.1.6.1 | RESEARCH | R3 | The cascade fixed in the search: the research card for depth-reduced re-searches after a root fail-high (maintainer decision 2026-10-23); a prototype behind a switch for the zero-game reads; ends READY_FOR_IMPLEMENTATION or NO_CHANGE |
+| D.1.6.2 | RESEARCH | I2 | Implementation of the device D.1.6.1 hands off, its tests, the fingerprint re-declared; waits on the research |
+| D.1.6.3 | RESEARCH | V | The gate, SPRT `[-5,5]` on the 2.6.0 engine with no clock stop in either arm, the probe without a clock stop; registered at D.1.6.1's close |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
+| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
@@ -502,6 +506,16 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           the hard maximum, rec2 under 2 s, and `tm_profile.py` on the
           gate's games reads the won and mate shares at ≥ 0.9 × the maximum
           below 0.2%.
+          **Re-owned 2026-10-23 (maintainer decision; RAR-R18).** rec1's and
+          rec3's cascades are a search property, full-depth re-searches
+          after a root fail-high, and are fixed in the search by **D.1.6**;
+          the root fail-high stop that capped them cost about 15 Elo at
+          `3+0.03` and is retired (off by default, `a0f9755`). rec2's fix stays
+          the proved-mate stop (RAR-P42 saw 2.6.0 still searching past a
+          proved mate at `120+1`). Ticks when D.1.6's probe shows rec1 and
+          rec3 under the hard maximum with no clock stop, and D.1.5's
+          closing read shows rec2 under 2 s and the won and mate shares at
+          ≥ 0.9 × the maximum below 0.2%.
         - **D.1.2.2 The forfeit margin against OS holds — `R2`.**
           Research closed 2026-10-22: the margin is a horizon question. The
           cluster contracts the horizon below one second of clock
@@ -668,6 +682,11 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       zero warnings, `cargo test` 0 and `cargo test --release` 0, `bench 13`
       on a fresh no-feature release build **13,987,223 / EBF 2.565**. Its
       wire check and the thirteenth coordinate are D.1.4's.
+      **The fail-high stop retired 2026-10-23** (RAR-R18, maintainer
+      decision): off by default (`a0f9755`, after `ec416d4` had moved it to
+      twice the target); the cascades it capped are D.1.6's, in the search,
+      and the spin goes when that fix lands. The other six mechanisms stay
+      at their seeds for D.1.5's closing read.
     - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`, DONE 2026-10-23.**
       Conditional (PLAN rule 4), with the zero-game sweep replaced by what
       a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
@@ -803,7 +822,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       rounded centres, and block 2 is abandoned. Another clock fit is
       registered only if D.1.5 accepts H1 at +10 Elo or more, from the gated
       head (RAR-R15, *Maintainer decision 2026-10-23*).
-    - **D.1.5 The clock gate: one SPRT `[0,3]`, `10+0.1` and 4T direction reads, the probe and profile checks — `V`.**
+    - **D.1.5 The clock gate, D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix; harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — `V`.**
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
       the head, Colosseum `sprt-default`, `[0,3]` nElo, `3+0.03`, one
@@ -907,6 +926,69 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       −9.6 ± 15.2 against the head without the factors and −2.7 ± 12.4
       with them, so their place in the repair arm is the maintainer's
       decision, recorded there.
+      **Maintainer decision 2026-10-23: the correct fix, in the search.**
+      The cascade is a search property (full-depth re-searches after a root
+      fail-high) and is fixed there, by **D.1.6**, not capped by the clock:
+      the fail-high stop is retired (off by default, `a0f9755`; the spin stays
+      as D.1.6's control arm and goes with it). The other six mechanisms
+      stay on `d1` at their seeds: the horizon, the mate stop and the guard
+      as clock answers to clock problems; the stability factor, the effort
+      band over the whole search and the cross-move trend on their lean
+      (+6.9 ± 8.7, both donors), the fit's block 1 unused since it was
+      fitted around the retired stop. **This leaf is now D.1's closing
+      read, after D.1.6 lands:** `d1`'s head against the 2.6.0 engine plus
+      the cascade fix, registered then under AGENTS' repair case 2 with no
+      Elo claim: 2,000 games at `3+0.03` and 2,000 at `10+0.1`, harm rule
+      −13 nElo on each; 1,000 games at four threads as a direction read;
+      the probe and the profile reads that tick D.1.2.1 (rec2 under 2 s,
+      the won and mate shares below 0.2%) and D.1.2.2 (no time loss, the
+      clock floor). A pass lands the clock pieces in 2.7.0 as a
+      correctness change; a fail lands none of D.1's clock work. RAR-R16's
+      SPRT ended unresolved at 2,345 pairs (+0.6 ± 5.8 Elo, LLR −0.06):
+      its arm, the fit over the stop at the target, no longer exists.
+    - **D.1.6 The root fail-high cascade fixed in the search: depth-reduced re-searches, from D.1's investigation — `R3` research, `I2`/`V` sub-steps.**
+      Rarog re-searches every root fail-high at full depth, so a cascade of
+      k fail-highs costs k full iterations: rec1 ran nine re-searches to the
+      hard maximum (32 s at `60000+600`, 104 s at `180000+2000`; RAR-R13),
+      rec3 to about four times its target. Both donors make the re-searches
+      cheaper instead of stopping them: Stockfish searches each re-search at
+      the root depth less the count of fail-highs so far, and stops
+      deepening once half the target is spent; Reckless re-searches one ply
+      shallower. D.1.3's clock stop capped the symptom and cost about 15 Elo
+      at `3+0.03` at the target (RAR-R18): time spent on fail-highs is well
+      spent here, which is the evidence that makes this a gate, not a
+      probe. This is not the aspiration window's growth, which RAR-S89 and
+      RAR-S17 refused; it is a different device, untested here.
+      Interactions: the aspiration constants were fitted in C.10 around
+      full-depth re-searches and may owe a refit; the clock's factors read
+      iteration completion; the TT carries a shallower re-search's results
+      into the next iteration. It moves `bench 13`, so the fingerprint is
+      re-declared when it lands, and it changes shared search signals in
+      the rated configuration, so its gate is the symmetric `[-5,5]` with
+      its cap (AGENTS' repair case 3; about 12,000 games) on the 2.6.0
+      engine, with no clock stop in either arm. Acceptance adds the probe
+      with no clock stop: rec1 and rec3 under the hard maximum at both
+      clocks. Maintainer decision 2026-10-23: the correct fix is wanted
+      ahead of NNUE, at its price. If the gate refutes it, the fallback is
+      the clock stop at twice the target behind its spin, read as RAR-R18
+      read it.
+        - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`.**
+          The research card (mechanism, interactions, invariants, falsifier)
+          per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
+          method) and the activation replay (29% of first-move searches
+          fail high past the target). A prototype behind a tune switch (the
+          re-search's depth reduction as a coordinate, 0 = today) is allowed
+          for the zero-game reads: the probe with the clock stop off, the
+          bench and counter differential against the head
+          (`tools/diag/bench_counters.py`, `phase4_differential.py`) and the
+          fail-high rate per iteration. Ends `READY_FOR_IMPLEMENTATION` with
+          the device, its seeds, the gate's registration and frozen
+          prediction, or `NO_CHANGE` with the evidence.
+        - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
+        - **D.1.6.3 Gate: SPRT `[-5,5]` at `3+0.03` against the 2.6.0 engine, cap 20,000 pairs, the probe without a clock stop, a `10+0.1` direction read — `V`.**
+          H1 lands it (harm near −5 excluded); H0 refutes it and the
+          fallback is read. The fail-high stop's spin is deleted when the
+          fix lands.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
