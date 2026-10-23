@@ -319,6 +319,14 @@ pub mod counters {
         best_rank_8_plus,
         prune_shadow_moves,
         reduction_depth_sum,
+        // D.1.6 research, EXACT and Rarog-only: reduced moves searched DEEPER
+        // than `new_depth` (a negative reduction, capped at two plies above
+        // it, plus the PV node's two), how many plies deeper in all, and how
+        // many of them at PV nodes. These extensions lie outside the line
+        // budget, so they are where lines grow past twice the iteration.
+        lmr_deeper,
+        lmr_deeper_plies,
+        lmr_deeper_pv,
         // Correction attribution and hashed-table quality.
         corr_slot_first,
         corr_slot_repeat,

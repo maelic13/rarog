@@ -1821,6 +1821,16 @@ impl Searcher {
                             reduction_depth_sum,
                             u64::try_from(new_depth - reduced_depth).unwrap_or(0)
                         );
+                        if reduced_depth > new_depth {
+                            crate::diag_count!(lmr_deeper);
+                            crate::diag_add!(
+                                lmr_deeper_plies,
+                                u64::try_from(reduced_depth - new_depth).unwrap_or(0)
+                            );
+                            if NODE::PV {
+                                crate::diag_count!(lmr_deeper_pv);
+                            }
+                        }
                     }
                     trace_decision!(
                         self,
