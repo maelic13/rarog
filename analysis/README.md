@@ -109,6 +109,7 @@ commit that adds it.
 | [`phase_c_review_2026-10-19.md`](phase_c_review_2026-10-19.md) | Phase C review: C.9's skip, C.10's design, and the HCE against Stockfish's classical evaluation | Deliverable | C.9, C.10, RAR-E70, RAR-E71, RAR-E72, RAR-O07 |
 | [`d11_tm_diagnosis_2026-10-06.md`](d11_tm_diagnosis_2026-10-06.md) | D.1.1 — why the head spends its hard maximum in won endings (`NO_CHANGE`) | Deliverable | D.1.1, D.1.2, RAR-R13 |
 | [`d12_tm_research_2026-10-22.md`](d12_tm_research_2026-10-22.md) | D.1.2 — time management: the 2.6.0 head's clock use in games, the ADR-0065 audit, both donors' shape, the clock cluster's handoff | Deliverable | D.1.2, D.1.3, D.1.4, D.1.5, RAR-R14 |
+| [`d15_mechanism_review_2026-10-23.md`](d15_mechanism_review_2026-10-23.md) | D.1.5 — the clock cluster's mechanisms reviewed during its SPRT: where the candidate's time goes (front-loaded, and the horizon halves the late budget), the overlapping factors, and whether Reckless's shape fits | Review | D.1.5, RAR-R16 |
 | [`answer_harness_rset_correction.md`](answer_harness_rset_correction.md) | Correction: every `--rset` screen before this commit measured the defaults | Record | RAR-S70 |
 | [`board_audit_2026-09-05.md`](board_audit_2026-09-05.md) | Rarog board audit and measured comparison — 2026-09-05 | Record | RAR-M20 |
 | [`board_benchmark_recipe_2026-09-05.md`](board_benchmark_recipe_2026-09-05.md) | Reproducing the 2026-09-05 board comparison | Record | RAR-M20, RAR-M43 |
