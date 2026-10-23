@@ -65,10 +65,12 @@ move 4–6% under the defaults'. P(Stage 2 runs) 0.6.
 ## Stage 2: SPSA block 1 over the cluster and its constants (about ten hours)
 
 The surface `d16fix` (`tools/spsa_configs/config_d16fix.json`, generated
-Colosseum files current at N = 2000): fourteen coordinates, the five
-aspiration coordinates, `MopupKnownWin`, `TmDepthFreeze`, and the seven
-reduction terms whose negative values the budget now charges; the b43
-steps; `r-end` 0.0031; 2,000 iterations × 30 games = 60,000 games on the
+Colosseum files current at N = 2000): fifteen coordinates, the five
+aspiration coordinates, `MopupKnownWin`, `TmDepthFreeze`, the clock's
+scale `TmOptScale`, and the seven reduction terms whose negative values
+the budget now charges; the b43 steps, except `TmOptScale` at the clock
+fit's range and step (5000..20000, 938: a (max−min)/8 step would
+perturb thinking time by 19% a side); `r-end` 0.0031; 2,000 iterations × 30 games = 60,000 games on the
 fit arm; seed 20261050; `tools/results/rar-r21-fit`. Read by PLAN rule 7c:
 a full-step mover in the rounded centres continues to block 2 with
 `-SeedFrom`, none stops the fit at block 1.
@@ -77,6 +79,18 @@ a full-step mover in the rounded centres continues to block 2 with
 `MopupKnownWin`, `TmDepthFreeze`, `AspDeltaSquareDiv` and
 `CoreLmrCorrection` (0.6); `TmDepthFreeze` moves up (later freezing, more
 time spent), 0.6; the journal's mean z² above its sign-redraw null (0.6).
+
+**Amendment, 2026-10-23, before any game:** `TmOptScale` joined the
+surface as its fifteenth coordinate. The cluster's visible in-game cost
+is time left on the clock (RAR-R20: 5.3% less a move); `TmDepthFreeze`
+governs only the freeze's share of it, while smoother iterations lowering
+the instability factor is the clock's business, and the clock was fitted
+(RAR-R15) on the head's stability signal, which the cluster changes.
+RAR-R15 found `TmOptScale` and `TmEffortHigh` nearly collinear, so one
+of them suffices and the scale is the natural one. Added prediction:
+`TmOptScale` moves up by at least half a step (more time spent), 0.6.
+The in-game speed loss itself is not a tune target: RAR-R20 shows it is
+the tree's composition, unchanged per position.
 
 ## Stage 3: the gate
 

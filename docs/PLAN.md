@@ -1168,7 +1168,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           loss carries 5% less time a move and 5% lower in-game speed.
           **The road to the gate is RAR-R21, staged:** three 2,000-game
           equal-speed reads (the four parts, parts 1–3, the freeze alone)
-          decide whether SPSA block 1 over the `d16fix` surface (fourteen
+          decide whether SPSA block 1 over the `d16fix` surface (fifteen
           coordinates, 60,000 games, the fit arm `217125b`) runs at all;
           the gate is re-registered on an arm rebuilt with the fitted
           values. The maintainer's commands are `run_r21.ps1 -Read
