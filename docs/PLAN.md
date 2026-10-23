@@ -900,8 +900,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       head's 104 s). The time rule misread the reads: between two arms of
       one clock the whole-game time is conserved, so the rule saw
       redistributions as decisions (calibration in RAR-R18). Frozen
-      dispositions: the stop to twice the target; the stability factor and
-      cross-move slope removed as insufficient; the kept set to one repair
+      dispositions: the stop to twice the target (landed on `d1` as
+      `ec416d4`, its test precondition `7a344f5`; bench 13 unchanged); the
+      stability factor and cross-move slope removed as insufficient; the kept set to one repair
       read at both controls. Additive over the reads the kept set is
       −9.6 ± 15.2 against the head without the factors and −2.7 ± 12.4
       with them, so their place in the repair arm is the maintainer's
