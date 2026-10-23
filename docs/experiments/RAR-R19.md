@@ -771,3 +771,142 @@ zero warnings, debug and release tests green, bench at the defaults
 **Evidence layer:** node counts, selective depths and scores at fixed depth;
 nothing here is Elo. The one Elo-adjacent fact is bench 0.475 × at cap 0,
 which says the deeper searches are half of the tuned search at depth 13.
+
+## Maintainer decision 2026-10-23: continue to the root cause
+
+## The equal-result comparison (2026-10-23, zero games)
+
+`phase4_differential.py` pointed at rec1 and rec3 (`differential_d16.py`, the
+tool unchanged; `differential_*.txt`): Rarog's tree is 3.4 × the oracle's on
+the standard suite at depth 12 and on these endings at depth 14, **20.6 × at
+depth 18** (rec1 alone: 5.9 × at 17, 45.7 × at 18). Per node, between rec1's
+depth 17 and 18, Rarog's null-move verifications rise 95 × raw (norm 0.05 →
+0.32), its in-check nodes 15 × (norm 1.0 → 1.8), its reductions per node
+halve (`reduction_depth_sum` norm 0.96 → 0.45), and its exact stores and
+exact TT cuts fall to a third (norm 0.45 → 0.14, 0.28 → 0.08): the blow-up
+iteration is bound-proving through checks with the reductions gone negative.
+
+**The oracle to depth 34** (`oracle_deep_rec*.txt`), beside Rarog, same
+evaluation:
+
+| Score reached | Oracle: depth, cumulative nodes, that iteration | Rarog (head): depth, cumulative nodes, that iteration |
+|---|---|---|
+| rec1 ≈ 1850 | depth 30, 37.1 M, 13.7 M | depth 18, 19.1 M, 17.0 M |
+| rec1 ≈ 2880 | depth 32, 100.2 M, 29.9 M | depth 19, 154 M, 135 M |
+| rec1 4207 | depth 34, 172.8 M, 34.2 M | not reached in 200 M |
+| rec3 ≈ 1010 | depth 31, 44.5 M, 15.6 M | depth 21 lowerbound 1104, not completed in 200 M (cap 0: 1486 at depth 27, about 170 M, that iteration 100 M) |
+
+- **The total cost of proving the win is the same order in both searches**
+  (rec1 to 2880: 100 M against 154 M; rec3 the oracle is about four times
+  cheaper). **The iteration cost is not.** The oracle's iterations grow by
+  about 1.3 × a ply at these depths (largest 38 M, selective depth 41–48 at
+  depth 34); Rarog's jump 26 × from depth 17 to 18 and 8 × from 18 to 19,
+  with lines at ply 89 and 127. Rarog's nominal depth 18 is the oracle's
+  depth 30 in the PV region.
+- **This is the stall's cause.** A clock can only act between iterations,
+  and the iteration that resolves the win is, in Rarog, one enormous step
+  of effective depth; in the oracle it is eight ordinary ones, so its soft
+  stop ends the move within one modest iteration (Stockfish 19's 2.5–2.9 ×
+  optimum overruns in RAR-R16's probe). The depth inflation comes from
+  searching reduced moves above their nominal depth outside the line
+  budget: the budget's own comment states that no line grows deeper than
+  twice the iteration plus quiescence, and the negative reductions bypass
+  it (selective depth 89 at depth 18 against a budget of 36 plus 16).
+
+**The device, registered before its read:** `CoreLmrDeeperBudget`
+(tune-only switch, 0 = today): the plies a reduced move is searched above
+`new_depth` draw on the line's extension budget like a singular extension,
+so the invariant holds; a line at its budget searches the move at
+`new_depth`. Unlike the cap, it leaves the deeper searches alone until a
+line has spent its budget, so bench should move little. **Prediction:**
+bench 13 at 1 within 0.90–1.00 × (0.6); rec1 depth 18 selective depth at
+most 52 (0.7) and under 8 M nodes (0.6); rec3 depth 20 under 5 M (0.6); in
+the 200 M-node traces the costliest iteration under 60 M in both positions
+(0.5) and no iteration more than four times its predecessor among the last
+five completed (0.5). **Falsifier:** a costliest iteration still over 100 M
+means the inflation runs through another path (singular extensions, the
+in-check quiescence, which has no ply cap), and the next read is the
+per-node accounting of `ply + depth` against the root depth.
+
+**The budget switch, read** (engine commit `0366884`; fmt, clippy at zero
+warnings, debug and release tests green, bench at the defaults 13,987,223 /
+EBF 2.565; `budget_reads.log`, `budget1_rec*_d*.txt`,
+`trace_nodes_budget1_rec*.txt`):
+
+| | head | budget on |
+|---|---|---|
+| bench 13 | 13,987,223 | 9,802,148 (0.70 ×); reduced moves still searched deeper 188,696 of 3,129,972 |
+| rec1 depth 18: nodes, seldepth, score | 19.06 M, 89, 1845 | **2.58 M, 33, 876** (the oracle: 0.37 M, 23, 879) |
+| rec3 depth 20: nodes, seldepth, score | 8.04 M, 61, 831 | 3.18 M, 42, 688 |
+| rec3, 200 M nodes | depth 21 > 192 M | depth 20 0.24 M; depth 21 16.2 M (7 windows); depth 22 57.6 M; depth 23 **> 123 M**, not completed; selective depth 51 |
+| rec1, 200 M nodes | depth 19 135 M | depth 19 0.15 M; depth 20 **37.1 M** (9 fail-highs, 888 → 2818); depth 21 73.2 M (11 fail-highs, 2830 → 6284); depth 22 > 87 M; selective depth 52 |
+
+- **The invariant holds and the depth-for-depth gap closes:** with the
+  budget on, Rarog's depth 18 on rec1 reads the oracle's score (876 against
+  879) at 7 × its nodes instead of 51 ×, and no line passes twice the depth
+  plus quiescence (selective depth 33 and 52 against 89 and 127).
+  Predictions 2–4 held; bench missed (0.70 × against 0.90–1.00: the budget
+  bites at depth 13 too).
+- **The falsifier fires all the same.** The costliest iteration is still
+  over 100 M in rec3, and the cost still jumps 68 × (rec3, depth 20 → 21)
+  and 245 × (rec1, depth 19 → 20) at the iteration where the win first
+  resolves. With the lines bounded, that iteration is nine to eleven
+  fail-high windows walking the schedule from 888 to 2818 and from 2830 to
+  6284, each a bound-proof at near-full depth of 1–8 M nodes, then an exact
+  window of 24 M. **The lumpiness is the score jump itself times the window
+  walk, not the line growth.** The oracle climbs the same score range over
+  eight iterations with one or two windows each because its root is
+  fail-soft and its window re-centres on the failing score; Rarog's root
+  returns exactly beta on every fail-high (every trace in this entry), so
+  its window can only walk the schedule, and re-centring (RAR-S17, B.5's
+  `recentre`) had no information to use when it was read.
+- **Why the root returns beta: the interpolations are not it.** The
+  candidate was the fail-high interpolation toward beta (quiescence
+  `QsCutoffLerp` 575 and `QsStandPatLerp` 594, `CoreRfpLerp` 586,
+  `CoreProbcutLerp` 253, `CoreSingMulticutLerp` 379 of 1024). With the two
+  quiescence coefficients at 0 (`trace_nodes_lerp0_rec*.txt`, 60 M nodes)
+  and with all five at 0 (`trace_nodes_alllerp0_rec1.txt`, 40 M) every root
+  fail-high still returns exactly the schedule's beta (969 + 12, 27, 52, 93,
+  161, 273, 458, 763). A `go depth 18` on rec1 with the quiescence pair at 0
+  did not finish in five minutes and was stopped. The TT cutoff returns the
+  stored score, the null-move cutoff `max(score, beta)`, the move loop and
+  the fail-low return the fail-soft best score; none clamps to the window
+  by inspection, so where the value becomes exactly beta is the next
+  instrument: a diag histogram of `score − beta` at the root fail-high and
+  of `alpha − best_score` at the ply-1 fail-low by its source (TT cut,
+  null move, reverse futility, the move loop).
+
+## Disposition: `MORE_RESEARCH`, the cause chain established, the device not yet
+
+- **Established, node-indexed, same evaluation on both sides:** the stall is
+  the iteration in which Rarog first resolves the win. Its cost is lumpy
+  (26–245 × the previous iteration) where the oracle's is smooth (1.3 × a
+  ply), for two reasons now separated by instrument: (1) lines grow past
+  the budget through negative reductions, which the budget switch removes
+  (selective depth 127 → 52, the oracle's depth-18 score reproduced) without
+  removing the lump; (2) the root is fail-hard in effect and the window
+  walks a geometric schedule, so a 2,000 cp rise costs nine to eleven
+  near-full-depth bound-proofs in one iteration where the oracle pays one or
+  two per iteration over eight. Neither the root loop's depth devices nor
+  the schedule's opening changes (2), as the reads above showed; a fail-soft
+  root with a re-centring window would, if the fail-hardness is where the
+  candidate says.
+- **Instruments on `d1`, all off or at today's value, bench-neutral:**
+  `AspFailHighReduce` 0 (`027a604`), `AspFailHighRecover` 0 (`bce79c6`),
+  the deeper-search counters (`d428c00`), `CoreLmrDeeperCap` 4
+  (`ddbe1f2`), `CoreLmrDeeperBudget` 0 (`0366884`).
+- **Next reads, in order:** (a) where the fail-high value becomes exactly
+  beta: the overshoot histogram above (a diag change), since the five
+  interpolations are cleared; (b) once the root can carry a fail-soft value,
+  a tune-only switch for re-centring the fail-high side on the failing
+  score (the donors' form) read at 200 M nodes for the windows per
+  iteration and the costliest iteration, with the budget switch on and off;
+  (c) the budget switch alone
+  as a candidate for its own gate, since it restores a stated invariant,
+  closes the depth-for-depth gap to the oracle and costs 30% of bench: a
+  strength question `[-5,5]` cannot be skipped.
+- **For the clock, nothing changes:** the stop stays off by the
+  maintainer's decision; D.1.5's closing read runs without a cascade device.
+
+**Evidence layer:** node counts, selective depths, window counts and scores
+at fixed depth and at fixed node budgets; nothing here is Elo.

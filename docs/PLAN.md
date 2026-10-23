@@ -324,8 +324,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): no root-loop device ends the stall (node-indexed); the drift and the cost are the search, not the evaluation (the oracle with Rarog's evaluation: flat score, 7–60 × fewer nodes); a third of reduced moves in the cascade iteration are searched deeper than their nominal depth, the correction-history term the strongest driver; capping those searches (`CoreLmrDeeperCap` 0) halves bench and delays the explosion seven plies without removing it. Next: `phase4_differential.py`'s comparable counters between Rarog and the oracle on rec1 and rec3 at fixed depth, to locate the mechanism; a fix is a search cluster with its own gate |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover` (off) and `CoreLmrDeeperCap` (4) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). Next: a diag histogram of where the fail-high value becomes exactly beta (the interpolations are cleared); re-centring behind a switch; the budget switch as a `[-5,5]` candidate |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
 | D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
@@ -1054,12 +1054,30 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           today, `ddbe1f2`) at 0 shrinks the
           fixed-depth trees three to six times and halves bench 13
           (6,639,253), but the explosion returns seven plies deeper when the
-          search proves the win (rec3 depth 27: 100 M nodes). **Not yet
-          answered:** why Rarog proves a won rook ending at 7–60 × the
-          oracle's nodes with the same evaluation. Next: the comparable
-          counters of `phase4_differential.py` between Rarog and the oracle
-          on these positions at fixed depth, to locate the mechanism; a
-          change there is a search cluster with its own gate.
+          search proves the win (rec3 depth 27: 100 M nodes). **Read one
+          level further (RAR-R19, maintainer decision to continue):** the
+          Rarog-against-oracle counter differential is 3.4 × on the
+          standard suite and on these endings at depth 14 but 20.6 × at
+          depth 18; the oracle to depth 34 proves rec1's win for the same
+          order of nodes (100 M to score 2880 against Rarog's 154 M) in
+          iterations that grow 1.3 × a ply, where Rarog's jump 26–245 × at
+          the iteration that first resolves the win. A tune-only switch that
+          charges deeper reduced searches to the line budget
+          (`CoreLmrDeeperBudget`, `0366884`) restores the stated invariant
+          (selective depth 127 → 52), reproduces the oracle's depth-18 score
+          on rec1 at 7 × its nodes instead of 51 ×, and costs 30% of bench,
+          but the lump remains: nine to eleven fail-high windows walking the
+          schedule from 888 to 2818 in one iteration, because the root
+          returns exactly beta on every fail-high (fail-hard in effect; the
+          five fail-high interpolations toward beta are cleared, all at 0
+          the root still returns the schedule's beta) where the oracle's
+          fail-soft root and re-centring window climb the same range in one
+          or two windows an iteration over eight iterations. Next: a diag
+          histogram of where the value becomes exactly beta (the root
+          fail-high's overshoot, the ply-1 fail-low's source); then
+          re-centring on the failing score behind a switch, read at 200 M
+          nodes with and without the budget; the budget switch as a
+          `[-5,5]` candidate of its own.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
           Waits on D.1.6.1. The prototype is the switch `027a604` (default
           0, bench unchanged) and the arm `2d013c8` (recipe
