@@ -1244,6 +1244,72 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
+    - **E.3.0 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
+      small research step with its implementation. Added 2026-10-23 by
+      maintainer decision. E.3.2 does not cut until it closes. Known
+      evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
+      2.6.0 source):
+      - The code is Rarog's own. Raw shared token runs with Reckless cover
+        0.34% of Rarog, against 96% between two Reckless versions.
+      - The evaluation weights are Rarog's own fits, with no Stockfish 11
+        table exact or scaled.
+      - Two groups of donor material were copied unchanged:
+        - Stockfish's time budget: about 17 constants in
+          `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
+          "Rarog's Stockfish-shaped budget".
+        - Reckless's move ordering, history, correction and TT-cutoff
+          updates: 37 of the 50 hard-coded search constants of 150 or
+          more, with their control flow, adopted at B.2.
+      - The evaluation design is Stockfish 11's.
+      - Fathom (MIT) does the Syzygy probing and is not named.
+      - The README says only "inspiration", and PROCESS's independence
+        boundary says constants cross as refitted seeds. Both are out of
+        step with the shipped code.
+      - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
+        2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
+        against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
+        against Reckless. Its row runs 50.6–57.7 across nine engines.
+        The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
+        68.8%. Rarog plays like an unrelated engine against both donors.
+      - Venue rules:
+        - CCRL, CEGT and SPCC do not judge originality.
+        - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
+        - ICGA rule 2 (2019) requires every code and data source to be
+          named at registration and voids undeclared derivatives.
+
+      The step:
+      1. Rerun `tools/diag/originality_scan.py`,
+         `originality_constants.py` and `originality_eval.py` on the
+         release candidate's source, plus the screen if search or
+         evaluation changed since 2.6.0, so that the disclosure describes
+         2.7.0, not 2.6.0.
+      2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
+         and the closely ported blocks are where a derivative-work
+         argument could be made. The options:
+         - credit Reckless and ask its authors (the maintainer sends);
+         - relicense Rarog as AGPL-3.0-or-later;
+         - rewrite and refit those blocks.
+
+         The maintainer chooses; it is not legal advice.
+      3. Write the disclosure where each fact belongs:
+         - README's Acknowledgements, short and for users, naming
+           Stockfish 11's evaluation design, Reckless's search, history
+           and move ordering with some constants unchanged, Stockfish's
+           time budget, and Fathom;
+         - PROCESS's independence boundary, saying what crossed unchanged
+           and that unchanged material is disclosed;
+         - the review, updated for the release head, which also serves as
+           the donor list for an ICGA-style registration.
+      4. Ship the GPL text and Fathom's MIT notice with the release
+         binaries (`release.yml` publishes bare executables today), with
+         a `CHANGELOG.md` entry if the assets change.
+
+      Falsifier and stop rule: a rerun that finds no group beyond the two
+      above leaves the disclosure as drafted. A new group is added to it,
+      not removed by tuning here. Refitting the copied constants is out of
+      scope: that is a strength experiment that needs its own registration
+      and gate. Closes when the README, PROCESS, the licence decision, the
+      shipped notices and the updated review have landed.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
