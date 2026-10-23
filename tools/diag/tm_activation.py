@@ -11,7 +11,10 @@ one thread) and reports, per factor, the share of iterations at each end of
 its range. A factor at one end on more than 90% of iterations is inert: it
 tunes as a constant, and its coordinate leaves the fit (RAR-S47's lesson). It
 also sums the clock-stop counters (`tm_mate_stop`, `tm_fail_high_stop`,
-`tm_first_iteration_guard`).
+`tm_first_iteration_guard`), reads each search's spend from its last `info
+depth` line, and, where a search ended on the fail-high stop (its last line a
+`lowerbound`), how far past the last completed iteration's soft target the
+stop fired.
 
 Timing-dependent: run on an idle host. The ends are the seeds unless --set
 names another value, which is also sent to the engine (a `tune,diag` build).
@@ -33,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BOOK = ROOT / "tools" / "books" / "UHO_Lichess_4852_v1.epd"
 TM_LINE = re.compile(r"^info string tm (.*)$")
 DIAG_LINE = re.compile(r"^info string diag (\w+) (\d+)$")
+INFO_LINE = re.compile(r"^info depth \d+ .*? score \S+ \S+( lowerbound| upperbound)? .* time (\d+) ")
 COUNTERS = ("tm_mate_stop", "tm_fail_high_stop", "tm_first_iteration_guard", "root_iterations")
 # The seeds, in the engine's units (ten-thousandths).
 SEEDS = {
@@ -125,16 +129,30 @@ def run(engine: str, fens: list[str], base: int, inc: int, sets: dict[str, int])
     for name, value in sets.items():
         send(f"setoption name {name} value {value}")
     records, counters = [], {name: 0 for name in COUNTERS}
+    # Per search: the spend (its last info line's time) and, for a search
+    # ended by the fail-high stop, that time over the last soft target.
+    spends: list[float] = []
+    stop_ratios: list[float] = []
+    # The last completed iteration of each search: the factors the ending
+    # soft target was built from.
+    last_records: list[dict[str, float]] = []
     for fen in fens:
         send("ucinewgame")
         send("position fen " + fen)
         send(f"go wtime {base} btime {base} winc {inc} binc {inc}")
+        last_target = None
+        last_info = None
         for line in process.stdout:
             if line.startswith("bestmove"):
                 break
             record = parse_tm_line(line)
             if record is not None:
                 records.append(record)
+                last_target = record.get("target")
+                continue
+            info = INFO_LINE.match(line.strip())
+            if info:
+                last_info = (info.group(1) or "", float(info.group(2)))
                 continue
             match = DIAG_LINE.match(line.strip())
             if match and match.group(1) in counters:
@@ -142,8 +160,17 @@ def run(engine: str, fens: list[str], base: int, inc: int, sets: dict[str, int])
         if not records:
             send("quit")
             raise SystemExit("no `info string tm` line after the first search: not a diag build")
+        if last_info is not None:
+            spends.append(last_info[1])
+            if last_info[0] == " lowerbound" and last_target:
+                stop_ratios.append(last_info[1] / last_target)
+        last_records.append(records[-1])
     send("quit")
     process.wait(timeout=30)
+    counters["searches"] = len(fens)
+    counters["mean_spend_ms"] = round(sum(spends) / max(1, len(spends)), 2)
+    counters["stop_ratios"] = stop_ratios
+    counters["last_records"] = last_records
     return records, counters
 
 
@@ -174,7 +201,22 @@ def main(argv: list[str] | None = None) -> int:
     print("  k: " + ", ".join(f"{k}={v}" for k, v in sorted(summary["k_histogram"].items(),
                                                             key=lambda kv: (len(kv[0]), kv[0]))))
     print("  best-move node share: " + ", ".join(f"{q}={v:.3f}" for q, v in summary["share_quantiles"].items()))
+    ratios = sorted(counters.pop("stop_ratios"))
+    last = counters.pop("last_records")
+    mean = lambda key, rows: sum(r[key] for r in rows) / max(1, len(rows))
+    factor_means = {key: (round(mean(key, records), 4), round(mean(key, last), 4))
+                    for key in ("fall", "instab", "stab", "effort")}
     print("  counters: " + ", ".join(f"{k}={v}" for k, v in counters.items()))
+    print("  mean factor, all iterations / last completed iteration: "
+          + ", ".join(f"{k} {a:.3f}/{b:.3f}" for k, (a, b) in factor_means.items()))
+    summary["factor_means"] = factor_means
+    if ratios:
+        n = len(ratios)
+        q = lambda p: ratios[min(n - 1, int(p * n))]
+        shares = ", ".join(f">={t:g}x {sum(1 for r in ratios if r >= t) / n:.1%}" for t in (1.5, 2, 3))
+        print(f"  fail-high stops: {n} of {counters['searches']} searches ended on one; elapsed over the last "
+              f"target p10={q(0.1):.2f} p50={q(0.5):.2f} p90={q(0.9):.2f}; {shares}")
+    summary["stops"] = {"count": len(ratios), "ratios": ratios}
     if args.json:
         Path(args.json).write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     return 0
