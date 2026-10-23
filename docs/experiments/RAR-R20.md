@@ -154,3 +154,50 @@ Prediction 2 held on faults and time use and **missed badly on the result**
 cluster is a large strength loss at `3+0.03`: bench 0.643 × says it searches
 a different tree, not a faster one, and C.10's constants were fitted around
 the old one. Two equal-speed decompositions on a tune build follow.
+
+**Decompositions, 200 games each at `3+0.03` on one tune build**
+(`rarog-d16inst-tune.exe`, built clean from `883b973`, whose engine inputs
+are `097ea5d`'s, bench 13,987,223; `-CategoricalTuneBuild`, both arms the
+same binary, so speed is equal; `tools/results/rar-r20-wire-searchparts`,
+`rar-r20-wire-freeze`; host idle, 0 faults, 0 time losses):
+
+| Arm A against the defaults | Elo |
+|---|---|
+| the three search parts (`AspDeltaSquareDiv` 10193, `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000) | **−15.6 ± 29.5** |
+| the deepening freeze alone (`TmDepthFreeze` 5000) | −19.1 ± 27.3 |
+
+At this resolution the three search parts together, and the freeze alone,
+read within noise of even and lean negative, so most of the arm's −52.5 is
+the known-win evaluation half, read against a PGO head: an evaluation that
+returns +54 pawns for a bare-king ending changes how the search treats
+every leaf near such an ending, and C.10's constants were not fitted for
+it. The evaluation half is the part that most needs the fit, or a smaller
+offset; the search parts can be fitted with it.
+
+## Disposition after verification: the cluster works for the stall, is not yet playable, and one row stays open
+
+- **Verified to work, where it was built to:** every probed stall but one
+  ends within its optimum (the `diag,tune` build all eight rows, the PGO
+  arm seven of eight; the head: two rows at the hard maximum), and the
+  whole cluster plays 200 games without a fault or a time loss. The one open
+  row, rec3 at `180000+2000` on the PGO arm, is an iteration that begins
+  before the freeze engages and whose windows each cost tens of millions of
+  nodes: the per-window cost of Rarog's tree at depth 24 in a rook ending,
+  which no part of this cluster changes.
+- **Not yet playable:** −52.5 ± 23.9 Elo unfitted at `3+0.03`, most of it
+  the evaluation half. The registered gate would fail on these seeds; the
+  research recommends the registered fit first (the aspiration and
+  reduction constants and the offset's size, with the cluster on), then the
+  gate on the fitted values.
+- **To bound the open row,** either the search-cluster half (the tree's
+  per-window cost in won rook endings, a programme with its own research and
+  gate) or RAR-R18's fail-high stop at twice the target as a fifth part,
+  which with the cluster would fire only on an iteration that outruns both
+  the freeze and the window; the maintainer set the stop aside and decides.
+- **Calibration:** prediction 1 held on seven rows and missed on one;
+  prediction 2 held on faults and time use and missed on the result by
+  more than its band; the gate's prediction (−6 ± 8) stands as frozen and
+  the wire check says it leans high.
+
+**Evidence layer:** the probe is milliseconds, the wire check and the
+decompositions are 200-game Elo reads (±24 to ±30) that decide nothing.
