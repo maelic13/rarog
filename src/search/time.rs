@@ -404,6 +404,28 @@ mod tests {
         )
     }
 
+    /// The clock coordinates at D.1.3's seeds, the values these tests'
+    /// expectations are written in, so a fit that moves the defaults moves
+    /// nothing here.
+    fn seeds() -> SearchParams {
+        SearchParams {
+            tm_opt_scale: 10_000,
+            tm_fall_base: 1_187,
+            tm_fall_slope: 221,
+            tm_fall_prev_slope: 204,
+            tm_instab_base: 11_000,
+            tm_instab_slope: 22_900,
+            tm_effort_high: 9_240,
+            tm_effort_low: 7_100,
+            tm_effort_floor: 7_900,
+            tm_horizon_per_sec: 50,
+            tm_stab_base: 12_881,
+            tm_stab_slope: 440,
+            tm_stab_floor: 7_160,
+            ..SearchParams::default()
+        }
+    }
+
     #[test]
     fn movetime_uses_full_budget_as_hard_limit() {
         // Fixed movetime uses the entire budget (SF/Reckless default); the
@@ -670,7 +692,7 @@ mod tests {
 
     #[test]
     fn the_horizon_contracts_below_one_second_and_keeps_one_move() {
-        let params = SearchParams::default();
+        let params = seeds();
         assert_eq!(sudden_death_horizon(&params, 60_000), 50.0);
         assert_eq!(sudden_death_horizon(&params, 1_000), 50.0);
         assert_eq!(sudden_death_horizon(&params, 999), 49.0);
@@ -678,7 +700,7 @@ mod tests {
         assert_eq!(sudden_death_horizon(&params, 10), 1.0);
         let wide = SearchParams {
             tm_horizon_per_sec: 100,
-            ..SearchParams::default()
+            ..seeds()
         };
         assert_eq!(sudden_death_horizon(&wide, 500), 50.0);
     }
@@ -803,7 +825,7 @@ mod tests {
 
     #[test]
     fn the_stability_factor_falls_per_stable_iteration_to_its_floor() {
-        let params = SearchParams::default();
+        let params = seeds();
         let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
         assert!(close(tm_stability_factor(&params, 0), 1.2881));
         assert!(close(tm_stability_factor(&params, 10), 1.2881 - 0.44));
@@ -817,14 +839,14 @@ mod tests {
 
     #[test]
     fn the_effort_factor_falls_from_its_floor_coordinate_to_a_whole_search() {
-        let params = SearchParams::default();
+        let params = seeds();
         let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
         assert!(close(tm_effort_factor(&params, 0.3), 0.924));
         assert!(close(tm_effort_factor(&params, 0.79), 0.924));
         assert!(close(tm_effort_factor(&params, 1.0), 0.71));
         let open = SearchParams {
             tm_effort_floor: 0,
-            ..SearchParams::default()
+            ..seeds()
         };
         assert!(close(tm_effort_factor(&open, 0.5), (0.924 + 0.71) / 2.0));
         // The range reaches an extender: dispersed effort buys time.
@@ -832,7 +854,7 @@ mod tests {
             tm_effort_floor: 0,
             tm_effort_high: 20_000,
             tm_effort_low: 5_000,
-            ..SearchParams::default()
+            ..seeds()
         };
         assert!(close(tm_effort_factor(&extending, 0.0), 2.0));
         assert!(close(tm_effort_factor(&extending, 1.0), 0.5));
@@ -840,7 +862,7 @@ mod tests {
 
     #[test]
     fn the_soft_target_is_the_optimum_times_every_factor_capped_at_the_maximum() {
-        let params = SearchParams::default();
+        let params = seeds();
         let mut clock = RuntimeLimits {
             optimum_ms: 1_000.0,
             maximum_ms: 5_000.0,
@@ -865,7 +887,7 @@ mod tests {
 
     #[test]
     fn the_falling_factor_reads_the_fall_across_the_move_pair_within_its_clamps() {
-        let params = SearchParams::default();
+        let params = seeds();
         let clock = RuntimeLimits {
             optimum_ms: 1_000.0,
             maximum_ms: 5_000.0,
@@ -901,7 +923,7 @@ mod tests {
         assert!(close(falling(60.0, 60.0), 1.708));
         let off = SearchParams {
             tm_fall_prev_slope: 0,
-            ..SearchParams::default()
+            ..seeds()
         };
         let without = soft_stop(
             &off,
