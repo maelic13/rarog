@@ -149,6 +149,7 @@ commit that adds it.
 | [`b72_audit_i_correction_prefetch.patch`](b72_audit_i_correction_prefetch.patch) | B.7.2 audit candidate (i) as a patch: correction-history prefetch | Record | RAR-P30, B.7.2 |
 | [`texel_delta_scale_rule50_2026-10-11.md`](texel_delta_scale_rule50_2026-10-11.md) | The texel delta scale without the rule-50 factor | Record | C.8 |
 | [`hce_audit_2026-10-15.md`](hce_audit_2026-10-15.md) | HCE audit, 2026-10-15 | Record | C.13, C.10.3.1 |
+| [`pst_orientation_2026-10-23.md`](pst_orientation_2026-10-23.md) | PST orientation against PeSTO: seven tables mirrored v1.0.0–v2.1.0, repaired by the v2.2.0 fit, none mirrored now | Record | E.3.0 |
 | [`hce_analysis.md`](archive/hce_analysis.md) | Rarog HCE analysis | Archived | RAR-E03 |
 | [`infra_analysis.md`](archive/infra_analysis.md) | Rarog Board and Infrastructure Analysis | Archived | RAR-C01 |
 | [`search_analysis.md`](archive/search_analysis.md) | Rarog search analysis | Archived | RAR-C02, RAR-S11 |
