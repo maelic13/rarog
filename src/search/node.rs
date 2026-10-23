@@ -320,7 +320,8 @@ impl Searcher {
     /// more, so an extension at the edge is truncated, never refused whole.
     #[inline(always)]
     fn within_extension_budget(&mut self, extension: i32, spent: i32) -> i32 {
-        let granted = extension.min(self.td.root_depth - spent).max(0);
+        let budget = self.td.root_depth * self.cfg.core.extension_budget_eighths / 8;
+        let granted = extension.min(budget - spent).max(0);
         if granted < extension {
             crate::diag_count!(singular_extension_truncated);
             #[cfg(test)]

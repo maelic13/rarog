@@ -437,6 +437,11 @@ search_params! {
     /// budget's stated invariant; today (0) they bypass it, and in won rook
     /// endings lines reach the ply cap at nominal depth 18 (D.1.6.1).
     lmr_deeper_budget = 0, "CoreLmrDeeperBudget", 0..=1;
+    /// The line budget in eighths of the root depth: the positive extensions
+    /// a line may take from the root sum to at most this share of the
+    /// iteration's depth. 8 = today (a line may reach twice the iteration
+    /// plus quiescence); D.1.6.1 reads 4 and 2.
+    extension_budget_eighths = 8, "CoreExtensionBudgetEighths", 1..=8;
     /// Re-search a reduced move one ply deeper when it beats the best score
     /// by more than this.
     lmr_research_deeper = 43, "CoreLmrResearchDeeper", 0..=200;
