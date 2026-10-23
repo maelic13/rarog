@@ -324,8 +324,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search (maintainer decision 2026-10-23), research first: D.1.6.1 read 2026-10-23 (RAR-R19, `MORE_RESEARCH`); then D.1.6.2 and D.1.6.3; before D.1.5 so each gate attributes to one change |
-| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). Next: a diag histogram of where the fail-high value becomes exactly beta (the interpolations are cleared); re-centring behind a switch; the budget switch as a `[-5,5]` candidate |
-| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
+| D.1.6.1 | RESEARCH | R3 | `MORE_RESEARCH` 2026-10-23 (RAR-R19): the stall is the iteration that first resolves the win, 26–245 × its predecessor where the oracle's (same evaluation) grow 1.3 × a ply; two causes separated by instrument: lines past the budget through negative reductions (removed by `CoreLmrDeeperBudget`, selective depth 127 → 52, bench 0.70 ×) and a fail-hard root walking the window schedule (nine to eleven bound-proofs per 2,000 cp; the oracle one or two). The fail-hardness is quiescence returning alpha on a fail-low; fail-soft and re-centring together, and the budget's size, still leave rec1's win resolving in one iteration of eight to thirteen windows (over 180 M nodes): every single-device read is exhausted. Open: a fit of the fail-high schedule under the bounded tree, the oracle's gradual score path against Rarog's step, the clock-coupled half; `CoreLmrDeeperBudget` and fail-soft quiescence are `[-5,5]` strength candidates of their own |
+| D.1.6.2 | RESEARCH | I2 | Waits on D.1.6.1; the switches `AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `CoreLmrDeeperBudget` (off), `CoreLmrDeeperCap` (4), `CoreExtensionBudgetEighths` (8) and the arm `2d013c8` (bench 8,510,754) are instruments, not a handoff |
 | D.1.6.3 | RESEARCH | V | Registered 2026-10-23 as RAR-R19 and held: SPRT `[-5,5]` at `3+0.03`, arm `2d013c8` against the 2.6.0 engine, cap 20,000 pairs, dry-run clean (`run_r19.ps1`); not to be run as the fix's gate, since no root-loop device is the fix |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
@@ -1072,12 +1072,30 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           five fail-high interpolations toward beta are cleared, all at 0
           the root still returns the schedule's beta) where the oracle's
           fail-soft root and re-centring window climb the same range in one
-          or two windows an iteration over eight iterations. Next: a diag
-          histogram of where the value becomes exactly beta (the root
-          fail-high's overshoot, the ply-1 fail-low's source); then
-          re-centring on the failing score behind a switch, read at 200 M
-          nodes with and without the budget; the budget switch as a
-          `[-5,5]` candidate of its own.
+          or two windows an iteration over eight iterations. **Read
+          2026-10-23 (RAR-R19, maintainer decision to continue):** the
+          fail-hardness is quiescence returning `alpha` on a fail-low (93%
+          of bench's root fail-highs are exactly beta; ply-2 move-loop
+          cutoffs two-thirds on the edge). Fail-soft quiescence
+          (`QsFailSoft`) and re-centring (`AspRecentre`), the donors' two
+          halves, together still walk eight or nine windows in the
+          resolving iteration (the root's overshoot does not reach it;
+          bench 1.32 ×, fail-soft alone 1.50 ×, re-centring alone 0.74 ×
+          as a faster schedule). The line budget's size
+          (`CoreExtensionBudgetEighths`) at half smooths rec3's score path
+          (steps of 130 cp, largest iteration 86 M) but not rec1's, which
+          finds its win later and still in one iteration (1274 → 7000,
+          thirteen windows, over 180 M), at bench 0.50 ×. **Every
+          single-device read is exhausted:** the stall is a won ending
+          whose conversion is one forced line, seen all at once by the
+          first iteration deep enough, and the window walking that jump in
+          eight to thirteen bound-proofs. Open: a fit of the fail-high
+          schedule under the bounded tree; the per-ply differential of the
+          oracle's gradual score path against Rarog's step; the
+          clock-coupled half. Strength candidates of their own for a
+          `[-5,5]` gate: `CoreLmrDeeperBudget` (an invariant restored,
+          bench 0.70 ×) and fail-soft quiescence (bench 1.50 ×). All
+          switches on `d1` at their neutral defaults.
         - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
           Waits on D.1.6.1. The prototype is the switch `027a604` (default
           0, bench unchanged) and the arm `2d013c8` (recipe

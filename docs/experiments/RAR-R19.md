@@ -910,3 +910,191 @@ EBF 2.565; `budget_reads.log`, `budget1_rec*_d*.txt`,
 
 **Evidence layer:** node counts, selective depths, window counts and scores
 at fixed depth and at fixed node budgets; nothing here is Elo.
+
+## Maintainer decision 2026-10-23: the fail-hard instrument, then re-centring with and without the budget
+
+## Where the value becomes exactly beta (2026-10-23, zero games)
+
+Exact diag counters (engine commit named below): at the root, fail-highs
+whose score is exactly beta and the overshoot of the rest; at plies 1 and 2,
+every value that left its window, by the return path that produced it (TT
+cutoff, reverse futility, null move, ProbCut, multi-cut, a move-loop cutoff,
+the loop's end) and whether it sat exactly on the edge it crossed
+(`edge_rec*_d*.txt`, `bench_counters_edge.txt`, stride 1):
+
+| | rec1 depth 18 | rec3 depth 20 | bench 13 |
+|---|---|---|---|
+| root fail-highs exactly at beta | **31 of 31** | **30 of 30** | **451 of 487** (93%) |
+| ply 1, loop's end (the root move's fail-low): at alpha / below | 82 / 47 | 52 / 21 | 1,647 / 2,424 |
+| ply 2, move-loop cutoff: at beta / above | 1,076 / 517 | 767 / 425 | 7,896 / 8,235 |
+| ply 2, loop's end: at / off | 631 / 474 | 320 / 304 | 9,241 / 11,161 |
+| ply 2, TT cutoff: at / off | 64 / 475 | 31 / 369 | 687 / 9,427 |
+
+The root is fail-hard on the whole suite, not only here: 93% of bench's
+root fail-highs return exactly beta. The TT cutoffs and the null move return
+fail-soft values; the move loop's cutoffs and ends do not, two-thirds of
+them exactly on the edge. The source is the leaf: **quiescence returns and
+stores `alpha` when nothing raises it** (`node.rs`, the tail of
+`quiescence`), so every fail-low leaf value is the window's edge, every
+parent's cutoff is exactly beta, and the edge propagates to the root. Both
+donors return the best value found (the stand pat or the best capture). The
+legacy engine read fail-soft quiescence alone at **−5.96** (8.11, 2026-07,
+`docs/archive/PLAN-legacy-2026-07-29.md`), traced to pruning fitted against
+the fail-hard bounds, and re-centring alone at **−4.52** (RAR-S17) on a root
+that returned beta: the two halves of the donors' mechanism were each read
+without the other, and neither can work alone: re-centring on a value equal
+to beta is the schedule, and fail-soft values that no window uses are only
+different bounds in the table.
+
+**The read, registered before it ran.** Two tune-only switches, both 0 =
+today: `QsFailSoft` (quiescence returns and stores its best value) and
+`AspRecentre` (a failed window re-centres on the failing score, both sides,
+the donors' form; Rarog's growth and fail-low midpoint kept). Arms at 200 M
+nodes on rec1 and rec3, read by `cascade_read.py` for the windows per
+iteration and the costliest iteration, plus bench 13 and its counters for
+each arm: fail-soft alone; re-centring alone; both; both with
+`CoreLmrDeeperBudget`. **Predictions:** fail-soft alone cuts the root
+fail-highs exactly at beta from 93% to under 30% on bench (0.7) and leaves
+the window count of a cascade unchanged (0.8), bench within 0.85–1.15 ×
+(0.6); re-centring alone changes neither the window count nor the costliest
+iteration (0.8); **both together** bring the resolving iteration's windows
+from nine to eleven down to four or fewer (0.6) and the costliest iteration
+under 60 M in rec1 (0.5) and rec3 (0.4); with the budget as well under 40 M
+in both (0.4); bench for the pair 0.7–1.2 × (0.6). **Falsifier:** the pair
+still walking seven or more windows in the resolving iteration means the
+fail-soft overshoot at the root is too small to steer the window, and the
+lever is elsewhere (the schedule's growth under fail-soft values, which is
+then a fit, not a device).
+
+**The read, result** (engine commit `10f1b22`; fmt, clippy at zero
+warnings, debug and release tests green, bench at the defaults 13,987,223 /
+EBF 2.565; `pair_reads.log`, `bench_counters_{failsoft,recentre,pair,pairbudget}.txt`,
+`trace_nodes_{failsoft,recentre,pair,pairbudget}_rec*.txt`):
+
+| Arm | bench 13 | root fail-highs at beta, bench | rec1, 200 M: the resolving iteration | rec3, 200 M: costliest iteration |
+|---|---|---|---|---|
+| head | 13,987,223 | 451 of 487 (93%) | depth 19, 9 windows, 135 M | depth 21 > 192 M |
+| fail-soft | 20,976,489 (**1.50 ×**) | 319 of 566 (56%) | depth 21, 9 windows (1035 → 2289), > 190 M | depth 18 > 200 M, not completed |
+| re-centring | 10,332,915 (0.74 ×) | 413 of 439 (94%) | depth 20, 8 windows (861 → 2682), 100 M; depth 21 > 98 M | depth 20, 5 windows, 41 M; depth 21 > 151 M |
+| both | 18,438,572 (1.32 ×) | 251 of 470 (53%) | depth 28, **8 windows** (732 → 2559), > 192 M | depth 18 > 194 M |
+| both with the line budget | 14,309,316 (1.02 ×) | 241 of 467 (52%) | depth 26, **9 windows** (1260 → 4353), > 186 M | depth 22, 6 windows (733 → 1271), 122 M |
+
+- **The falsifier fires.** With fail-soft quiescence and re-centring
+  together the resolving iteration still walks eight or nine windows, and
+  the windows' scores are the schedule's steps added to a failing score that
+  sits on or just above the old beta (732 → 759 → 811 → 904 …): the root's
+  fail-soft overshoot is too small to steer the window. The overshoot that
+  does appear (bench: 44% of root fail-highs off beta, mean about 140 cp)
+  does not reach the cascade iterations, whose bounds come through
+  zero-window searches and the table.
+- **Calibration.** Fail-soft alone: the at-beta share fell to 56%, not under
+  30% (missed), the window count held (as predicted) and bench rose 50%,
+  outside 0.85–1.15 (missed: the legacy +14.4% nodes understated it).
+  Re-centring alone: predicted to change nothing; it cut bench 26% and
+  shortened rec3's depth-20 cascade to five windows (missed), because
+  re-centring on a value equal to beta adds the new delta to the old one,
+  a faster schedule, which is what RAR-S17's −4.52 measured. The pair:
+  predicted four windows or fewer (0.6), read eight to nine; predicted
+  under 60 M, read over 180 M. The pair with the budget: predicted under
+  40 M, read over 120 M.
+- **What remains after every device:** the score itself jumps 1,500–3,000
+  cp within one nominal ply when the win resolves (rec1: 1248 at depth 25,
+  4353 at depth 26 with the budget on; 720 at depth 27, 2559 at depth 28
+  without), where the oracle's score climbs the same range over eight
+  iterations (888 → 1110 → 1345 → 1531 → 1752 → 1866 → 2112 → 2871 → 3093
+  → 4207, depths 25–34). No window schedule walks a 3,000 cp jump cheaply;
+  the oracle never has to. Rarog's effective depth still advances several
+  plies a nominal ply even inside the budget (selective depth 52 at depth
+  22 against the oracle's 41 at 34): singular, double and triple extensions
+  and the deeper reduced searches fill the budget, which allows every line
+  twice the iteration's depth.
+
+**Next read, registered before it ran:** the budget's size as a coordinate,
+`CoreExtensionBudgetEighths` (tune-only, 8 = today: a line's extensions may
+sum to the root depth; 4 = half of it), read with `CoreLmrDeeperBudget` on
+so that every depth addition is charged. Arms 8, 4 and 2 at 200 M nodes on
+rec1 and rec3, bench for each. **Prediction:** at 4 the largest score jump
+between consecutive completed iterations of rec1 falls under 1,500 cp (head
+with the budget: 3,100) and the costliest iteration under 60 M in both
+positions (0.5); bench at 4 within 0.80–1.00 × (0.6); at 2 the trees are
+smaller again and the win is found later. **Falsifier:** a costliest
+iteration still over 100 M at 4 and 2 means the lump is not the extension
+budget's size either, and the remaining candidate is the schedule's growth
+under a bounded tree, a fit over the five aspiration coordinates with the
+budget on, which is C.10's territory and a tune, not a device.
+
+**The budget's size, read** (engine commit `7b4a9e2`; fmt, clippy at zero
+warnings, debug and release tests green, bench at the defaults 13,987,223 /
+EBF 2.565; `bench_counters_eighths*.txt`, `trace_nodes_eighths*_rec*.txt`;
+the line budget on in every arm):
+
+| Eighths | bench 13 | rec3, 200 M nodes | rec1, 200 M nodes |
+|---|---|---|---|
+| 8 (today's size) | 9,802,148 (0.70 ×) | depth 23 > 123 M (above) | depth 20 37 M, 21 73 M, 22 > 87 M (above) |
+| 4 | 6,984,801 (0.50 ×) | scores 830 → 831 → 992 → 1004 → 1164 over depths 26–31, largest step 161 cp; iterations 0.7, 3.5, 5.8, 48, 19, **86 M**, all completed | 1274 flat from depth 19 to 30 (0.2–2 M each); depth 31: **13 windows, 1286 → 7000+, > 186 M**, not completed |
+| 2 | 4,658,737 (0.33 ×) | scores 749 → 1181 over depths 27–34, largest step 128 cp; iterations up to 68 M, all completed | 1096 flat from depth 22 to 34; depth 35: **12 windows, 1108 → 6822, > 190 M** |
+
+- **rec3 behaves like the oracle at half the budget:** the score climbs in
+  steps of about 130 cp and every iteration completes, the largest 86 M.
+  Prediction 4's rec3 half held in kind and missed in size (86 against
+  under 60 M).
+- **rec1 does not.** With the lines bounded to one and a half or one and a
+  quarter times the iteration, the win is found later (depth 31, depth 35)
+  and still all at once: a flat 1274 for twelve iterations, then 7000 in
+  one, through thirteen windows, over 180 M nodes. **The falsifier fires
+  for rec1:** the lump is not the budget's size either. In this ending the
+  conversion (e5–e6–e7–e8 with the rook and bishop covering) is a single
+  forced line; the first iteration deep enough to see its end sees a
+  decisive score, and the window must walk from 1274 to 7000 whatever
+  bounds the lines. The oracle climbs the same ending in nine steps because
+  its search sees the conversion gradually, a property of its pruning and
+  extensions that no single Rarog coordinate reproduced here.
+- Bench at 4 is 0.50 × today's tree and at 2 0.33 × (prediction 0.80–1.00
+  missed): the budget's size is a large strength coordinate, not a repair.
+
+## Disposition: `MORE_RESEARCH`; the fail-hardness explained, the lump located, no device yet
+
+- **Established this round, node-indexed:** (1) the root is fail-hard in
+  effect on every position (93% of bench's root fail-highs return exactly
+  beta) and the source is quiescence returning `alpha` on a fail-low; (2)
+  fail-soft quiescence and re-centring, the two halves of the donors'
+  mechanism, do not shorten the cascade together (eight to nine windows,
+  bench 1.32 ×): the root's fail-soft overshoot does not reach the
+  resolving iteration; (3) charging the deeper reduced searches to the line
+  budget restores its invariant and reproduces the oracle's depth-18 score,
+  at 0.70 × bench; (4) a smaller budget smooths rec3's score path but not
+  rec1's, whose win resolves in one iteration whatever bounds the lines.
+- **What the stall is, in one sentence:** in a won ending whose conversion
+  is one long forced line, the first iteration deep enough to see its end
+  jumps the score by thousands of centipawns, and Rarog's window walks that
+  jump in eight to thirteen near-full-depth bound-proofs, each 1–60 M
+  nodes; the oracle reaches the same scores over eight iterations of
+  gradual increase and one or two windows each.
+- **Refuted as the device, node-indexed:** depth-reduced re-searches,
+  Stockfish's recovery, the schedule's early opening, the cap on deeper
+  searches, the line budget alone, fail-soft quiescence alone, re-centring
+  alone, the pair, the pair with the budget, the budget's size. Each is on
+  `d1` as a tune-only switch at its neutral default.
+- **Not refuted, not read:** (a) the growth of the fail-high side of the
+  schedule under a bounded tree, which a fit over `AspGrowthHighPct`,
+  `AspGrowthAdd` and `AspirationDelta` with `CoreLmrDeeperBudget` on would
+  read, a tune rather than a device (RAR-S89's one-retry rejection bounds
+  one end of it); (b) why the oracle's score path is gradual on rec1 where
+  Rarog's is a step: the per-ply differential at depths 26–34 on the
+  oracle's own iterations against Rarog's at 19–20, an instrument the tool
+  gives directly; (c) the clock-coupled half of the donors' device,
+  Stockfish's depth freeze past half the target, which the maintainer's
+  decision keeps out for now.
+- **Recommendation:** I recommend against landing any of the switches read
+  here as the cascade fix. Two of them are strength candidates in their own
+  right and only games can judge them: `CoreLmrDeeperBudget` (an invariant
+  restored, bench 0.70 ×) and the fail-hard quiescence tail (the donors
+  are fail-soft; bench 1.50 ×, the legacy −5.96 read under pruning fitted
+  to fail-hard bounds), each a `[-5,5]` gate against the 2.6.0 engine with
+  the C.10 constants unfitted, and the research recommends the budget first
+  since it restores a stated contract. For the stall itself the search-side
+  reads are exhausted at the single-device level; what remains is a fit
+  (a) and the instrument (b), and the clock-coupled half (c).
+
+**Evidence layer:** node counts, selective depths, window counts and scores
+at fixed depth and at fixed node budgets; nothing here is Elo.
