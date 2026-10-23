@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | GAME_GATE | V | The clock gate, RAR-R16: SPRT paused at 1,782 pairs (+0.2 ± 6.6, unresolved); RAR-R17 reads the cluster at its seeds at −14.9 ± 8.8 against the head (clock left unused) and the horizon as neutral; the fail-high stop's own read is next |
+| D.1.5 | RESEARCH | V | RAR-R18: every read sits on the time rule, so the cluster moves time (+1.6 ± 4.2 Elo of decision quality pooled); the fail-high stop fires on single fail-highs at 1.2 × the target, not cascades; three reads and a probe at 2 × decide the kept set, then one repair read at both controls. RAR-R16's SPRT paused at 2,345 pairs (+0.6 ± 5.8), recommended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: the proved-mate stop and the root fail-high stop are cluster items; ticks on D.1.5's probe |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -867,6 +867,30 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         form, which keeps that stop at its seeds.
       - Maintainer requirement: any fallback shows no harm at `10+0.1` as
         well.
+
+      **Research 2026-10-23, `MORE_RESEARCH` (RAR-R18,
+      `docs/experiments/RAR-R18.md`).** Every read so far sits on the time
+      rule (2 Elo per 1% of thinking time at `3+0.03`; RAR-S98, RAR-S99):
+      the seeds' −14.9 against −14.8 for their −7.4% of time; the fit's
+      +0.6 (the paused SPRT, 2,345 pairs) against −5.0 for −2.5%; the
+      `10+0.1` and four-thread reads within one SE. Pooled, the cluster
+      changes decision quality by **+1.6 ± 4.2 Elo**: it moves time. A
+      replay on the switch build (`TmFailHighTarget`, engine `f3549ff`, a
+      tune-only spin with play unchanged by default; bench 13 unchanged)
+      shows the fail-high stop ending 29% of first-move searches at a
+      median 1.18 × the target and never past 3 ×, removing about 10% of
+      the spend: single fail-highs, not cascades. At twice the target it
+      fires on under 1% and the spend is the no-stop level. The stability
+      factor adds about 12%. Three 2,000-game categorical reads on that
+      build (`stopoff`, `cascade` at 2 ×, `factorsoff` with the stop off on
+      both arms) and a probe at 2 ×, frozen with the time rule as their
+      null, decide the kept set: the horizon, the mate stop and the guard
+      stay; the stop moves to the threshold the reads choose; the stability
+      factor and the cross-move slope stay only if they decide better than
+      their time. The kept set then reads as one repair (AGENTS' case 2) at
+      `3+0.03` and `10+0.1` before anything lands. The research recommends
+      recording RAR-R16's SPRT as unresolved, and against Reckless's shape
+      or a respending budget now.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
