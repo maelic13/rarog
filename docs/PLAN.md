@@ -325,7 +325,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 |---|---|---|---|
 | D.1.6 | READY_FOR_IMPLEMENTATION | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the research closed (RAR-R19) with a cluster of four parts that ends every probed stall within its optimum (RAR-R20); the gate next, then the landing; before D.1.5 so each gate attributes to one change |
 | D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | The cluster under gate is the arm `6fd195e` (bench 8,996,837): `mopup_known_win` 6000, `AspDeltaSquareDiv` 10193, `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000 as the defaults. On H1 it lands on `d1` with the fingerprint re-declared, `TmFailHighTarget` and the unused instruments removed, and the changelog entry |
-| D.1.6.3 | GAME_GATE | V | Registered 2026-10-23 as RAR-R20: SPRT `[-5,5]` at `3+0.03`, the arm `6fd195e` against the 2.6.0 engine, cap 20,000 pairs, no clock stop in either arm; then the `10+0.1` read and the probe; `run_r20.ps1`. The research recommends a registered fit of the aspiration and reduction constants around the cluster before the gate. RAR-R19's first registration (the reduction arm) is withdrawn |
+| D.1.6.3 | GAME_GATE | V | The cluster verified (RAR-R20: seven of eight probe rows within the optimum, −52.5 ± 23.9 unfitted at PGO, even at equal speed per part). The road to the gate is RAR-R21, staged: three 2,000-game equal-speed reads decide whether SPSA block 1 over `d16fix` (fourteen coordinates, the fit arm `217125b`) runs; the gate (`[-5,5]`, cap 20,000 pairs, the probe, the `10+0.1` read) is re-registered on an arm rebuilt with the fitted values. Maintainer-run: `run_r21.ps1 -Read all4|nofreeze|freeze|fit` |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -1159,7 +1159,20 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           (seed 20261043) and the probe on both binaries;
           `run_r20.ps1 -Read wire|probe|gate|ltc`. Prediction, frozen,
           unfitted: −6 ± 8 Elo, H1 0.30, cap 0.25, H0 0.45; the research
-          recommends the registered fit before the gate.
+          recommends the registered fit before the gate. **Verified
+          2026-10-23 (RAR-R20):** the PGO arm ends seven of eight probed
+          moves within its optimum and rec3 at `180000+2000` still reaches
+          the maximum (one window at depth 24, the search-cluster half);
+          the 200-game wire check reads −52.5 ± 23.9 unfitted, while at
+          equal speed every part reads within noise of even and the PGO
+          loss carries 5% less time a move and 5% lower in-game speed.
+          **The road to the gate is RAR-R21, staged:** three 2,000-game
+          equal-speed reads (the four parts, parts 1–3, the freeze alone)
+          decide whether SPSA block 1 over the `d16fix` surface (fourteen
+          coordinates, 60,000 games, the fit arm `217125b`) runs at all;
+          the gate is re-registered on an arm rebuilt with the fitted
+          values. The maintainer's commands are `run_r21.ps1 -Read
+          all4|nofreeze|freeze|fit`.
           H1 lands it (harm near −5 excluded); H0 refutes it and the
           fallback is read. The fail-high stop's spin is deleted when the
           fix lands.

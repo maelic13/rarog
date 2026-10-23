@@ -201,3 +201,55 @@ offset; the search parts can be fitted with it.
 
 **Evidence layer:** the probe is milliseconds, the wire check and the
 decompositions are 200-game Elo reads (±24 to ±30) that decide nothing.
+
+## Where the wire check's loss is (2026-10-23, agent-run)
+
+**The known-win offset became the `MopupKnownWin` coordinate** (engine
+`2f17467`: pushed into the evaluator at every search start as `LazyMargin`
+is, so a tune build sets it per arm and a tune can fit it; fmt, clippy at
+zero warnings, debug, release and texel-tuner tests green with the one
+load-sensitive test re-run alone and passing, bench 13,987,223 at the
+defaults).
+
+**The offset's size, zero games** (`sweep_reads.log`): with the squared
+window and the budget on, bench is 9.24 M at 0, 8.74 M at 1500, 9.28 M at
+3000 and 9.00 M at 6000, the correction history never nears saturation at
+any size, and on rec1 every size gives one window an iteration to depth 21;
+the size changes where the deep single-window cost arrives, not whether.
+
+**Equal-speed reads, 200 games each on one clean tune build
+(`rarog-d16inst2-tune.exe`, `2f17467`, both arms the same binary; host
+idle, 0 faults, 0 time losses):**
+
+| Arm A against the defaults | Elo |
+|---|---|
+| known win 6000 with the squared window | **+3.5 ± 27.3** |
+| known win 3000 with the squared window | +10.4 ± 27.7 |
+| known win 1500 with the squared window | −10.4 ± 28.5 |
+| the three search parts (squared window, budget, freeze) | −15.6 ± 29.5 |
+| the freeze alone | −19.1 ± 27.3 |
+
+**The evaluation half is not the loss.** At equal speed the known win with
+its window reads even at every size. The PGO wire check's −52.5 has three
+visible components in its manifest's `search:` lines: the arm ran 4.6%
+slower in games (2,292,838 against 2,402,919 nodes a second; in-game speed
+also reflects the tree's composition, and a PGO build pair carries ±1.5%),
+it **spent 5.3% less time a move** (65.8 against 69.5 ms: the freeze and
+the smoother iterations let the soft stop fire sooner, and the time it
+saves is left on the clock, the mechanism RAR-R17 read at −15 Elo for
+−7.4%), and the rest is the parts together and 200-game noise. The first
+two are about −20 Elo by the time rule; both are tunable (`TmDepthFreeze`,
+and the clock's scale once D.1.5 reads it on the landed engine), neither is
+the cluster's decision quality.
+
+## Calibration and disposition after the decompositions
+
+- Prediction 2's miss (the result far outside ±35) is explained in part:
+  the cluster leaves time on the clock and runs slower in games; the
+  evaluation half the research blamed first reads even at equal speed. The
+  precise sizing is the maintainer's 2,000-game reads below.
+- **What the fit can and cannot do.** A fit recovers what the constants
+  lose and what the clock leaves unused; it does not turn a decision-quality
+  loss into a gain. The staged plan therefore reads the loss precisely at
+  equal speed before any tune, and the tune runs only if the loss is
+  tunable: see RAR-R21.
