@@ -32,7 +32,10 @@ the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
   1000..10000000), whose declared ranges hold the switches' off values,
   and `TmOptScale` at the clock fit's range and step (5000..20000, 938,
   as `d14block1`: a (max−min)/8 step would perturb thinking time by 19%
-  a side).
+  a side), and `AspirationDelta` (step 6, as `c10block1`) and
+  `CoreLmrTtPv` (step 128, as `b23core`): at the b43 step their first
+  arms rail, which the harness warns about (RAR-R21's rail amendment,
+  2026-10-24).
 - **`fixed_d16fix.json`:** Hash 64, Threads 1, MultiPV 1; the line budget
   (`CoreLmrDeeperBudget` 1) is the arm's default, not an option.
 - **Run:** block 1 is 2,000 iterations × 30 games on

@@ -3,7 +3,7 @@
     "value": 12,
     "min_value": 1,
     "max_value": 100,
-    "step": 12
+    "step": 6
   },
   "AspGrowthPct": {
     "value": 164,
@@ -81,7 +81,7 @@
     "value": 179,
     "min_value": 0,
     "max_value": 2048,
-    "step": 256
+    "step": 128
   },
   "CoreLmrQuietHistory": {
     "value": 316,

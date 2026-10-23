@@ -7,7 +7,7 @@ name = "AspirationDelta"
 initial = 12
 min = 1
 max = 100
-c_end = 5.5268
+c_end = 2.7634
 
 [[parameters]]
 name = "AspGrowthPct"
@@ -98,7 +98,7 @@ name = "CoreLmrTtPv"
 initial = 179
 min = 0
 max = 2048
-c_end = 117.9057
+c_end = 58.9529
 
 [[parameters]]
 name = "CoreLmrQuietHistory"
