@@ -584,6 +584,15 @@ if ($resolved.openings.wrap) { Add-Violation "openings wrap; a run must not repl
 if ([int]$resolved.execution.concurrency -ne $expectedConcurrency) {
     Add-Violation "concurrency is $($resolved.execution.concurrency), expected $expectedConcurrency"
 }
+# A multi-thread engine needs a physical core per thread. The runner gives a
+# game one core unless told otherwise, so a four-thread match resolved to two
+# four-thread engines on one core, and nothing refused it (RAR-M76 passed
+# `--cores-per-game 4` by hand).
+$coresPerGame = [int]$resolved.execution.allocation.cores_per_game
+if ($Threads -gt 1 -and $coresPerGame -lt $Threads) {
+    Add-Violation ("cores_per_game is $coresPerGame for Threads $Threads, so the engines' threads share " +
+        "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$Threads')")
+}
 if ("$($resolved.execution.placement_policy.mode)" -ne "auto") {
     Add-Violation "placement is '$($resolved.execution.placement_policy.mode)', expected auto (RAR-M48: unpinned games carry a hidden per-run offset)"
 }

@@ -126,6 +126,16 @@ try {
 
     Invoke-Case -Name "control: a clean gate resolves" -Expect "" -Arguments $base
 
+    # A multi-thread match must give each game a physical core per thread.
+    $fourThreads = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; Threads = 4; Hash = 512; Concurrency = 3
+        OptionsA = @("Threads=4"); OptionsB = @("Threads=4")
+    } @("MaxPairs")
+    Invoke-Case -Name "four threads on one core a game" -Expect "cores_per_game is 1 for Threads 4" `
+        -Arguments $fourThreads
+    Invoke-Case -Name "control: four threads, four cores" -Expect "" `
+        -Arguments (Merge-Arguments $fourThreads @{ ExtraArgs = @("--cores-per-game", "4") })
+
     $stale = Copy-Arm -Source $EngineA -Name "stale"
     Set-Sidecar -EnginePath $stale -Fields @{ binary_sha256 = ("0" * 64) }
     Invoke-Case -Name "stale sidecar hash" -Expect "PROVENANCE MISMATCH" `
