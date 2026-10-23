@@ -62,6 +62,50 @@ end, as RAR-R18 learned).
 200-game lean); `nofreeze` **−8 ± 10**; `freeze` **−12 ± 10**, its time a
 move 4–6% under the defaults'. P(Stage 2 runs) 0.6.
 
+## Stage 1 results (2026-10-24, agent-run, idle host; the maintainer delegated the night's runs)
+
+Three Colosseum `match` runs, 2,000 games each, `3+0.03`, both arms
+`rarog-d16inst2-tune.exe` (`2f17467`), 0 faults and 0 time losses in each,
+host 0.4–6.2% busy at launch. The runner's final report lines:
+
+| Read | Elo | nElo | W/D/L | Pentanomial |
+|---|---|---|---|---|
+| `all4` (the four parts) | **−6.9 ± 8.8** | −12.0 ± 15.2 | 462/1036/502 | 22, 273, 447, 239, 19 |
+| `nofreeze` (parts 1–3) | **−9.7 ± 8.9** | −16.7 ± 15.2 | 480/984/536 | 24, 270, 469, 212, 25 |
+| `freeze` (the freeze alone) | **−7.8 ± 8.7** | −13.7 ± 15.2 | 467/1021/512 | 24, 255, 485, 214, 22 |
+
+Time use from the PGN move comments (arm A against the defaults, same
+binary, `nps/nps_by_arm.py` in the artifact directory):
+
+| Read | Time a move, plies 1–20 | Time a move, all | NPS, all | Whole-game time a side |
+|---|---|---|---|---|
+| `all4` | −10.7% | −3.0% | +2.0% | 4.07 s against 4.19 s |
+| `nofreeze` | +0.9% | −0.1% | −0.9% | 4.19 s against 4.19 s |
+| `freeze` | −12.1% | −2.6% | +2.8% | 4.09 s against 4.20 s |
+
+**Readings.** The three reads sit within one standard error of each other
+and do not add: the four parts together read no worse than either half.
+At equal speed the in-game NPS of the arm is not below the defaults', as
+RAR-R20's composition section predicts for one binary. The freeze cuts the
+opening's time a move by 11–12% and the whole game's by 2.6–3.0%, the time
+it leaves on the clock; `nofreeze` spends the same time as the defaults and
+still reads −9.7 ± 8.9, so the search parts' cost, if any, is in decisions
+or in the constants the tune covers, and is bounded above by about −1 Elo
+at one standard error.
+
+**Rule applied:** `all4` at −6.9 is better than −15, so **Stage 2 runs**;
+it is not within ±5, so the fit is not optional. The run started
+2026-10-24 (the fit's command and directory below).
+
+**Calibration.** `all4` was predicted −18 ± 10 and read −6.9: inside the
+band's edge, a miss in magnitude (the loss is about a third of the
+prediction; the 200-game −52.5 at PGO over-weighted the composition
+effect, which RAR-R20 later showed is not speed). `nofreeze` −8 ± 10 read
+−9.7 and `freeze` −12 ± 10 read −7.8: both held. The freeze's time a move
+was predicted 4–6% under the defaults' and read 2.6% under over the game
+but 12% under in the opening: a miss in where the time is cut, not in
+whether. P(Stage 2 runs) was 0.6; it runs.
+
 ## Stage 2: SPSA block 1 over the cluster and its constants (about ten hours)
 
 The surface `d16fix` (`tools/spsa_configs/config_d16fix.json`, generated
@@ -70,7 +114,9 @@ aspiration coordinates, `MopupKnownWin`, `TmDepthFreeze`, the clock's
 scale `TmOptScale`, and the seven reduction terms whose negative values
 the budget now charges; the b43 steps, except `TmOptScale` at the clock
 fit's range and step (5000..20000, 938: a (max−min)/8 step would
-perturb thinking time by 19% a side); `r-end` 0.0031; 2,000 iterations × 30 games = 60,000 games on the
+perturb thinking time by 19% a side), `AspirationDelta` at 6 and
+`CoreLmrTtPv` at 128 (the steps C.10's and B.2's tunes used for them;
+see the rail amendment below); `r-end` 0.0031; 2,000 iterations × 30 games = 60,000 games on the
 fit arm; seed 20261050; `tools/results/rar-r21-fit`. Read by PLAN rule 7c:
 a full-step mover in the rounded centres continues to block 2 with
 `-SeedFrom`, none stops the fit at block 1.
@@ -91,6 +137,20 @@ of them suffices and the scale is the natural one. Added prediction:
 `TmOptScale` moves up by at least half a step (more time spent), 0.6.
 The in-game speed loss itself is not a tune target: RAR-R20 shows it is
 the tree's composition, unchanged per position.
+
+**Rail amendment, 2026-10-24, at iteration 2 of the first start, no
+centre read:** the harness's preflight warned that `AspirationDelta`
+(12, step 12 on 1..100) and `CoreLmrTtPv` (179, step 256 on 0..2048)
+send one first arm to the rail, and c decays only 2.2× over the run, so
+the asymmetric perturbation would have stayed for most of it. The
+earlier tunes of these coordinates used half the step (`c10block1`:
+AspirationDelta 6; `b23core`, `b27all`: CoreLmrTtPv 128) and RAR-R15
+records "no rail warning" as a preflight check. The run was stopped at
+iteration 2 (60 games, no centre looked at), its directory and manifest
+moved to `fit-aborted-rail-010710/` in the artifact directory, the two
+steps set to the precedent, the Colosseum files regenerated, and the
+fit restarted from iteration 0 under the same seed. No other coordinate
+rails at c_0 (the amending script asserts it). Predictions unchanged.
 
 ## Stage 3: the gate
 
