@@ -1808,8 +1808,19 @@ impl Searcher {
                             self.lmr_singular_term(Some(tt_score - excluded_score))
                         );
                     }
-                    let reduced_depth =
+                    let mut reduced_depth =
                         reduced_depth(new_depth, reduction, NODE::PV, self.cfg.core.lmr_deeper_cap);
+                    // The plies above the nominal depth are an extension of
+                    // this line and, with the switch on, come out of the same
+                    // budget as the others; the child reads the spent total
+                    // from this ply's stack entry, restored after the search.
+                    let spent_before_lmr = self.td.stack[ply].extension_spent;
+                    if self.cfg.core.lmr_deeper_budget != 0 && reduced_depth > new_depth {
+                        let granted = self
+                            .within_extension_budget(reduced_depth - new_depth, spent_before_lmr);
+                        reduced_depth = new_depth + granted;
+                        self.td.stack[ply].extension_spent = spent_before_lmr + granted;
+                    }
                     crate::diag_count!(lmr_applied);
                     #[cfg(test)]
                     {
@@ -1861,6 +1872,7 @@ impl Searcher {
                         poll,
                     );
                     self.td.stack[ply].reduction = 0;
+                    self.td.stack[ply].extension_spent = spent_before_lmr;
                     if score > alpha {
                         // A reduced move that beat alpha by a wide margin earns
                         // a deeper verification. Not at the root, as the donor

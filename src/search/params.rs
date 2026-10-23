@@ -425,6 +425,12 @@ search_params! {
     /// lie outside the line budget, and in won rook endings they take lines
     /// to the ply cap (D.1.6.1).
     lmr_deeper_cap = 4, "CoreLmrDeeperCap", 0..=4;
+    /// Switch: the plies a reduced move is searched above `new_depth` draw on
+    /// the line's extension budget like a singular extension, so no line
+    /// grows past twice the iteration's depth plus quiescence, which is the
+    /// budget's stated invariant; today (0) they bypass it, and in won rook
+    /// endings lines reach the ply cap at nominal depth 18 (D.1.6.1).
+    lmr_deeper_budget = 0, "CoreLmrDeeperBudget", 0..=1;
     /// Re-search a reduced move one ply deeper when it beats the best score
     /// by more than this.
     lmr_research_deeper = 43, "CoreLmrResearchDeeper", 0..=200;
