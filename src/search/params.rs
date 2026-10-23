@@ -200,6 +200,13 @@ search_params! {
     /// (RAR-S17 read −4.52 on such a root); with `QsFailSoft` the score
     /// carries how far the window missed. 0 = today.
     asp_recentre = 0, "AspRecentre", 0..=1;
+    /// The first window's half-width grows with the square of the score it
+    /// centres on, divided by this: both donors open wider on a large score
+    /// (Stockfish's mean squared score over 10,193, Reckless's squared
+    /// average over 26,394), so a won position's window starts 150–340 wide
+    /// at 1,800 cp where `AspirationDelta` alone gives 12. 0 = off (today);
+    /// at ordinary scores the term is a few centipawns.
+    asp_delta_square_div = 0, "AspDeltaSquareDiv", 0..=100000;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more

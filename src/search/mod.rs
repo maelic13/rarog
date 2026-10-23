@@ -251,7 +251,18 @@ struct Aspiration {
 impl Aspiration {
     fn new(params: &SearchParams, depth: usize, center: i32) -> Self {
         let use_aspiration = depth >= 4 && center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-        let delta = params.aspiration_delta;
+        // A large score widens the first window with its square (both
+        // donors), capped well under the open window; off at 0.
+        let square_term = if params.asp_delta_square_div > 0 && use_aspiration {
+            i32::try_from(
+                (i64::from(center) * i64::from(center) / i64::from(params.asp_delta_square_div))
+                    .min(i64::from(INF_SCORE / 2)),
+            )
+            .unwrap_or(INF_SCORE / 2)
+        } else {
+            0
+        };
+        let delta = params.aspiration_delta + square_term;
         Self {
             alpha: if use_aspiration {
                 (center - delta).max(-INF_SCORE)
