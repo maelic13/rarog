@@ -186,6 +186,76 @@ rails at c_0 (the amending script asserts it). Predictions unchanged.
   refusing a quiet host. `colosseum-cli spsa status tools/results/rar-r21-fit`
   reads the state without touching it.
 
+### Stage 2 results (2026-10-24; the maintainer ran the tune from 09:52 local, the agent read it)
+
+Block 1 completed: 2,000 iterations, 60,000 games, 0 faults, no rail, no
+clamp (`colosseum_spsa_rar-r21-fit_20261024_095217.manifest.txt`,
+`tools/results/rar-r21-fit`, the runner's closing table pasted by the
+maintainer and equal to `tuned-options.txt`). The rounded values, with the
+move in units of the registered step:
+
+| Coordinate | Seed | Tuned | Step | Moved |
+|---|---|---|---|---|
+| AspirationDelta | 12 | 12 | 6 | 0.00 |
+| AspGrowthPct | 164 | 178 | 38 | +0.37 |
+| AspGrowthHighPct | 165 | 168 | 38 | +0.08 |
+| AspGrowthAdd | 8 | 10 | 6 | +0.33 |
+| AspDeltaSquareDiv | 10193 | 14707 | 4750 | **+0.95** |
+| MopupKnownWin | 6000 | 5826 | 1438 | −0.12 |
+| TmDepthFreeze | 5000 | 5781 | 875 | **+0.89** |
+| TmOptScale | 10000 | 10801 | 938 | **+0.85** |
+| CoreLmrPv | 399 | 401 | 256 | +0.01 |
+| CoreLmrPvWindow | 306 | 279 | 256 | −0.11 |
+| CoreLmrCorrection | 3330 | 3357 | 1024 | +0.03 |
+| CoreLmrGivesCheck | 1030 | 840 | 512 | −0.37 |
+| CoreLmrImprovement | 333 | 282 | 256 | −0.20 |
+| CoreLmrTtPv | 179 | 155 | 128 | −0.19 |
+| CoreLmrQuietHistory | 316 | 347 | 128 | +0.24 |
+
+**Rule 7c (`tools/spsa_block_rule.py d16fix tools/results/rar-r21-fit
+--min-moved 1`, its record `block-rule.txt` beside the run):** "0 of 15
+coordinates moved >= 1 step from the block's seeds; rule needs 1: STOP".
+The fit ends at block 1 and these rounded values are theta. Three
+coordinates stopped within 5–15% of a full step; the rule was frozen and is
+applied as written, and the gate, not a second block, decides their worth.
+
+**Sign-redraw null** (`nps/spsa_signnull.py` over `spsa history --csv`: a
+coordinate's final displacement divided by the root of the sum of its
+squared per-iteration updates, which is its standard deviation when every
+update's sign is a coin flip): mean z² **1.93** against a null of 1.00;
+`AspDeltaSquareDiv` z = +2.96, `TmDepthFreeze` +2.78, `TmOptScale` +2.66,
+every other coordinate within ±1.2. The trajectories of the three were
+monotone from iteration 145 on (read mid-run at 1,453 iterations, after the
+maintainer asked; descriptive, no decision taken on it).
+
+**Reading.** The tune found three directions and nothing else. The two
+clock coordinates both spend more time: the freeze moves from 50% to 58%
+of the soft target and the scale adds 8%, which is the time Stage 1
+measured the freeze leaving on the clock (12% of the opening's time a
+move, 3% of the game's). The squared divisor rises by 44%, so the first
+window at a large score is narrower than Stockfish's constant gives: the
+HCE's known-win scores are smaller than Stockfish's, so the same divisor
+over-widened. The known-win offset did not move, as predicted for a step
+function. The seven reduction terms moved at most 0.37 step, within what a
+coin-flip walk gives: the budget did not move where the reductions want to
+be, and the fit changes few decisions.
+
+**Calibration.** Prediction 1 (at least two full-step movers among
+`MopupKnownWin`, `TmDepthFreeze`, `AspDeltaSquareDiv`, `CoreLmrCorrection`,
+0.6) **missed in magnitude**: the two named ones reached 0.89 and 0.95 of a
+step, none a full step; `MopupKnownWin` and `CoreLmrCorrection` did not
+move at all, a miss in mechanism for those two (the offset is a step
+function, and the correction term's negative values were charged by the
+budget without wanting a new scale). Prediction 2 (`TmDepthFreeze` moves
+up, 0.6) **held**. The amendment's prediction (`TmOptScale` up by at least
+half a step, 0.6) **held**. Prediction 3 (mean z² above the null, 0.6)
+**held** at 1.93.
+
+**Evidence:** `tools/results/rar-r21-fit` (result.json, games.jsonl,
+tuned-options.txt, block-rule.txt); the trajectory and the null statistic
+under `nps/` in the artifact directory (`fit_history_full.csv`,
+`fit_signnull.txt`).
+
 ## Stage 3: the gate
 
 RAR-R20's gate, re-registered then on an arm rebuilt with the fitted
