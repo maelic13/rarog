@@ -323,10 +323,10 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the research closed (RAR-R19) with a cluster of four parts that ends every probed stall (RAR-R20; eight of eight rows at the fitted values, RAR-R22); fitted by RAR-R21; **its gate accepted H0 on 2026-10-24 (RAR-R22: −7.4 ± 7.5 at `3+0.03`, +2.1 ± 11.6 at `10+0.1`)**, so the cluster returns to research to locate the cost part by part (RAR-R22's disposition lists the reads); before D.1.5 so each gate attributes to one change |
-| D.1.6.2 | RESEARCH | I2 | Nothing lands: the fitted cluster (arm `584c02d`, bench 9,013,917) was refuted at `3+0.03` by RAR-R22. The landing list (the defaults, the fingerprint re-declared, `TmFailHighTarget` and the unused instruments removed, the changelog entry) waits for a cluster that passes its gate |
-| D.1.6.3 | GAME_GATE | V | The cluster verified (RAR-R20: seven of eight probe rows within the optimum, −52.5 ± 23.9 unfitted at PGO, even at equal speed per part). The road to the gate is RAR-R21, staged: three 2,000-game equal-speed reads decide whether SPSA block 1 over `d16fix` (fourteen coordinates, the fit arm `217125b`) runs; the gate (`[-5,5]`, cap 20,000 pairs, the probe, the `10+0.1` read) is re-registered on an arm rebuilt with the fitted values. Maintainer-run: `run_r21.ps1 -Read all4|nofreeze|freeze|fit` **Stage 1 read 2026-10-24:** the four parts −6.9 ± 8.8 Elo at equal speed over 2,000 games (parts 1–3 −9.7 ± 8.9, the freeze alone −7.8 ± 8.7); the rule allows Stage 2 and the fit started that day. **Stage 2 read 2026-10-24:** block 1 found three directions (the freeze later, the clock's scale up 8%, the squared divisor up 44%), no full-step mover, rule 7c stops the fit. **The gate is RAR-R22** on the arm `584c02d` (bench 9,013,917), registered 2026-10-24 before any game; `run_r22.ps1 -Read gate|ltc`. **Gate read 2026-10-24: H0** at 1,377 pairs (−7.4 ± 7.5 Elo; `10+0.1` +2.1 ± 11.6; 0 faults; the probe eight of eight). The gate is re-registered once the research (RAR-R23) names the surviving cluster. |
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
+| D.1.6 | GAME_GATE | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the four-part cluster ended every probed stall but its gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`, +2.1 ± 11.6 at `10+0.1`). The research above the mechanism re-scoped it to a confined repair. The window floor planned with it is inert (0 of 40 bench positions, every probe node count unchanged), so **the repair is the known-win offset alone (RAR-R23, registered 2026-10-24)**. Its harm reads are the maintainer's |
+| D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | Lands on RAR-R23's pass: `MopupKnownWin` 5826 as the default; the fingerprint re-declared (16,175,922 / EBF 2.580 on the tune build); `TmFailHighTarget` and its test deleted; the ten unused instruments removed, `AspKnownWinWindow` among them; the changelog entry. On a fail nothing lands |
+| D.1.6.3 | GAME_GATE | V | RAR-R23 (registered 2026-10-24, before any game): the offset alone against the defaults on one tune build (`3f4dcf4`), 2,000 games at `3+0.03` and 1,000 at `10+0.1`, harm rules −13 and −18 nElo. The correctness reads are done: the probe has no row at the maximum, and the differential confines the change to positions of 19 pieces or fewer. Maintainer-run: `run_r23.ps1 -Read stc\|ltc`. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. Maintainer-run: `run_r24.ps1 -Read stc\|ltc\|stalls`; the maintainer chooses its order against RAR-R23 |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -945,6 +945,24 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       correctness change; a fail lands none of D.1's clock work. RAR-R16's
       SPRT ended unresolved at 2,345 pairs (+0.6 ± 5.8 Elo, LLR −0.06):
       its arm, the fit over the stop at the target, no longer exists.
+      **The clock pieces alone, registered 2026-10-24 as RAR-R24**, before
+      any game:
+      - **Why:** RAR-R22's addendum found that this read had never been
+        run, and that `d1`'s clock reaches the hard maximum in about twice
+        as many `3+0.03` games as 2.6.0's. Every D.1.6 arm carried that
+        clock.
+      - **The arms:** `rarog-d1head-pext-pgo.exe` (`3f4dcf4`, the `d1`
+        defaults, bench 13,987,223) against `rarog-d15head-pext-pgo.exe`
+        (`468ed7b`).
+      - **The reads:** 2,000 games at `3+0.03` and 1,000 at `10+0.1`, harm
+        rules −13 and −18 nElo, and `stall_scan2.py`'s maximum-hitting rate
+        per side.
+      - **Predictions:** 0 ± 14 and −3 ± 16 nElo.
+      - **Command and order:** `run_r24.ps1 -Read stc|ltc|stalls`, dry-run
+        clean. It informs this leaf and does not close it; the closing read
+        above stays. The maintainer chooses whether it runs before
+        RAR-R23's reads; both arms are fixed binaries, so either order
+        attributes cleanly.
     - **D.1.6 The root fail-high cascade fixed in the search: depth-reduced re-searches, from D.1's investigation — `R3` research, `I2`/`V` sub-steps.**
       Rarog re-searches every root fail-high at full depth, so a cascade of
       k fail-highs costs k full iterations: rec1 ran nine re-searches to the
@@ -987,15 +1005,30 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       fresh-process bench positions move), the offset is confined to
       bare-king trees (13 of 40, all 19 pieces or fewer); a clock stop
       conditioned on the chosen move (Basilisk's) would fire on 24% of
-      searches here and is rejected. **The re-scoped plan (RAR-R23,
-      register before any game):** the confined cluster {`MopupKnownWin`,
-      a known-win window floor `AspKnownWinWindow` active only when the
-      centre is in the known-win band}, no clock piece, no budget charge;
-      the probe and a fresh-process differential as correctness, a
-      2,000-game equal-speed harm read on one tune build and the `10+0.1`
-      read as the Elo evidence (AGENTS' repair cases 1 and 2). D.1.5's
-      harm read of the clock pieces alone against 2.6.0 is recommended
-      first. The fit arm's lesson stands: a refused SPSA step and a
+      searches here and is rejected. **The re-scoped plan:** the confined
+      cluster {`MopupKnownWin`, a known-win window floor
+      `AspKnownWinWindow` active only when the centre is in the known-win
+      band}. It has no clock piece and no budget charge. Its evidence was
+      to be the probe and a fresh-process differential for correctness, a
+      2,000-game equal-speed harm read on one tune build, and the `10+0.1`
+      read (AGENTS' repair cases 1 and 2). D.1.5's harm read of the clock
+      pieces alone against 2.6.0 is recommended first.
+      **The floor refuted, zero games (2026-10-24, RAR-R23):**
+      - The floor (`3f4dcf4`, tune-only, 0 = off) changes nothing measured:
+        0 of 40 fresh-process bench positions, 0 of 2 won endings, and
+        every probe node count at 1000, 2000 and 3000.
+      - Its premise was a jump of about 5,800 cp as the offset enters the
+        horizon. What rec1 shows instead is a 12 cp window walking a score
+        that climbs from 750 to 3,314 cp, below the band, five to fifteen
+        windows an iteration. Only the global window term shortens that
+        walk.
+      - The offset alone keeps every probe row under the maximum and
+        changes 13 of 40 positions, all with 19 pieces or fewer.
+      - So **the repair registered is the offset alone** (RAR-R23), with
+        the floor at 0. The window walk below the band is a search
+        question outside D.1.6.
+      - D.1.5's harm read of the clock pieces alone is registered as
+        RAR-R24. The fit arm's lesson stands: a refused SPSA step and a
       2-second idle window are preflight matters, not results.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
@@ -1157,7 +1190,26 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           gate are RAR-R20's; the research recommends a fit of the
           aspiration and reduction constants around the cluster before the
           gate.
-        - **D.1.6.2 Implementation: the device in the root loop, its tests, the fingerprint re-declared — `I2`.**
+        - **D.1.6.2 Implementation: the confined repair's landing, the known-win offset as the default, the instruments removed, the fingerprint re-declared — `I2`.**
+          **Re-scoped 2026-10-24 to the offset alone (RAR-R23).** On its
+          pass the landing on `d1` is:
+          - `MopupKnownWin` 5826 as the default;
+          - the fingerprint re-declared in GUIDE and the PLAN checkpoint:
+            16,175,922 / EBF 2.580 on the tune build, with the landed
+            production build's own bench recorded then;
+          - `TmFailHighTarget` and its test deleted;
+          - the unused instruments removed: `AspFailHighReduce`,
+            `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`,
+            `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`,
+            `AspDeltaSquareDiv`, `CoreLmrDeeperBudget`, `TmDepthFreeze` and
+            `AspKnownWinWindow`. A coordinate whose default is today's
+            behaviour returns to its constant;
+          - the user-facing changelog entry: a fixed defect, the engine no
+            longer runs a won ending against a bare king into its time
+            limit.
+
+          On a fail nothing lands; RAR-R23's dispositions name the two
+          closes. The history follows.
           `READY_FOR_IMPLEMENTATION` 2026-10-23. The cluster under gate is
           the arm `6fd195e` (recipe
           `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`, bench
@@ -1174,7 +1226,23 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           `Aspiration` form, and the user-facing changelog entry (a fixed
           defect: the engine no longer runs a won ending into its hard
           maximum). On H0 nothing lands and the fit is the next step.
-        - **D.1.6.3 Gate: SPRT `[-5,5]` at `3+0.03` against the 2.6.0 engine, cap 20,000 pairs, the probe without a clock stop, a `10+0.1` direction read — `V`.**
+        - **D.1.6.3 Gate: the confined repair's harm reads at equal speed, 2,000 games at `3+0.03` and 1,000 at `10+0.1`, the probe and the differential — `V`.**
+          **Registered 2026-10-24 as RAR-R23**, before any game:
+          - **The read:** the offset alone (`MopupKnownWin=5826`) against
+            the defaults on one tune build, `rarog-d16inst3-tune.exe`
+            (`3f4dcf4`, bench 13,987,223), Colosseum `match
+            -CategoricalTuneBuild`. 2,000 games at `3+0.03` (seed
+            20261071) and 1,000 at `10+0.1` (seed 20261072).
+          - **The harm rules:** −13 nElo at `3+0.03` and −18 nElo at
+            `10+0.1`, AGENTS' repair case 2 with the maintainer's longer
+            control.
+          - **The correctness reads, done:** the probe has no row at the
+            maximum; the differential confines the change to positions of
+            19 pieces or fewer whose trees reach a bare king.
+          - **Predictions:** −2 ± 10 nElo at `3+0.03` and 0 ± 14 at
+            `10+0.1`.
+          - **Command:** `run_r23.ps1 -Read stc|ltc`, dry-run clean. The
+            earlier gate's history follows.
           The first registration (RAR-R19, the reduction arm `2d013c8`,
           seed 20261040) is withdrawn: its arm was a partial device and its
           probe reached the maximum. **Registered 2026-10-23 as RAR-R20**,
