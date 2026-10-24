@@ -187,3 +187,99 @@ was rightly given no weight on its own.
      freeze replaced by the fail-high stop at twice the target (RAR-R18's
      reading, the D.1.6 fallback) and read again;
   4. the gate re-registered on the surviving cluster, in this entry's form.
+
+## Research resumed at the level above the mechanism (2026-10-24, agent-run; scripts and logs in `higher-level-2026-10-24/` under the artifact directory)
+
+**1. Hitting the hard maximum is the clock's ordinary behaviour, and d1's
+clock does it twice as often as 2.6.0's.** From every move's `t=` in the
+PGNs, each side's clock rebuilt, and `tm_table.limits` giving the optimum
+and the maximum the engine computed (`stall_scan2.py`, `stall_by_arm.py`;
+a stall is a move at 90% of the hard maximum or more):
+
+| Games | Side | Stall moves | Games with one | Typical score, ply | Those games W/D/L |
+|---|---|---|---|---|---|
+| RAR-R22 gate, `3+0.03`, 2,790 | 2.6.0 head | 623 | 18.5% | 419 cp, ply 65 | 91 / 119 / 306 |
+| | fitted arm (d1 clock) | 939 | 27.6% | 125 cp, ply 29 | 108 / 310 / 353 |
+| RAR-R20 wire, `3+0.03`, 200 | 2.6.0 head | 33 | 15.0% | 418 cp, ply 73 | 8 / 8 / 14 |
+| | arm `6fd195e` (d1 clock) | 49 | 22.0% | 141 cp, ply 28 | 3 / 18 / 23 |
+| RAR-R22 `10+0.1`, 1,000 | 2.6.0 head | 680 | 36.2% | 905 cp, ply 103 | 94 / 50 / 218 |
+| | fitted arm | 885 | 36.4% | 524 cp, ply 90 | 32 / 107 / 225 |
+| RAR-R21 Stage 1, one d1 tune build, 2,000 each | defaults | 1,054 | 40.9% | 114 cp, ply 25 | 147 / 370 / 300 |
+| | the four parts | 562 | 23.9% | 127 cp, ply 30 | 61 / 198 / 219 |
+| | parts 1–3, no freeze | 1,115 | 42.4% | 110 cp, ply 24 | 142 / 378 / 327 |
+| | the freeze alone | 538 | 23.0% | 140 cp, ply 30 | 57 / 180 / 223 |
+
+The 2.6.0 head runs to its maximum in 15–18% of games, late and as the
+side in trouble (ply 65–73, the stalling side loses three of four such
+games), which is what a maximum is for. The d1 build at its defaults does
+it in 41% of games, before ply 40 at balanced scores: D.1.3's clock pieces
+at D.1.4's seeds, which are d1's defaults and whose read against the 2.6.0
+engine (D.1.5) has not been run. The freeze halves that rate and parts
+1–3 do not touch it. The won-ending cascade with a mate-like score is a
+small subset: 14 such stall moves at STC and 87 at `10+0.1` on the head,
+over 172,000 and 64,000 moves. **Consequence for this gate:** its arm
+carried d1's clock and its baseline 2.6.0's, so −7.4 ± 7.5 is the sum of
+the clock pieces' effect and the cluster's; Stage 1's equal-clock reads put
+the cluster's own share near −7 at equal speed, with each part in
+isolation reading −8 to −10 at one standard error.
+
+**2. Confinement, measured without bench's chained hash table**
+(`perpos_fresh.py`: a fresh process per bench position, depth 13; bench
+itself runs its forty positions on one table, so only its first position
+is a clean differential). The known-win offset alone (5826) changes 13 of
+40 positions, every one with 19 pieces or fewer and a tree that reaches a
+bare king; no position with more than 19 pieces changes. The window term
+alone (divisor 14707) changes 32 of 40, among them 32-piece openings at
+−60 and +28 cp, because the term applies at every iteration's centre: it is
+a global change by construction, and so is the budget charge.
+
+**3. Basilisk's conditioned stop (its note of 2026-10-24), evaluated.**
+Decision conflict: adopting any clock stop contradicts the maintainer's
+decision of 2026-10-23 and this leaf's "no clock stop in either arm"; the
+evidence below makes the re-decision unnecessary. Zero-game replay
+(`fh_replay.py`: B.5's 300 openings, a fresh game each at `3000+30`, the
+raw optimum from `tm_table`, host 1–4% busy):
+
+| Stop, fires on a root fail-high once elapsed ≥ the raw optimum | 2.6.0 head: searches | spend removed | d1 build: searches | spend removed |
+|---|---|---|---|---|
+| any fail-high (RAR-R18's device at the raw optimum) | 28.3% | 14.2% | 39.7% | 23.6% |
+| only on the move the last completed iteration chose (Basilisk's) | 24.3% | 10.7% | 36.3% | 18.5% |
+
+Basilisk's filter does not discriminate on Rarog: 299 of 300 searches
+contain a same-move root fail-high (2,203 fail-high lines in 300 searches,
+seven a search; Rarog's root is fail-hard with a 12 cp first window), so the
+conditioned stop fires on a quarter of the searches at a median 1.25 ×
+optimum and removes 11% of the spend, RAR-R18's territory (29%, about 10%,
+−15 Elo). On rec3 the condition holds (`rec3_head_nodes.log`: every
+fail-high from depth 17 to 21 is on f3f4, which depth 20 chose), so it would
+cap that row at about the optimum, at that price everywhere. **Verdict (c):
+rejected as a cap for Rarog**, with the reason above; the evidence layer is
+time and firing rate, zero games. What transfers from Basilisk is the
+observation that its root fails high far less often; Rarog's seven root
+fail-highs a search are a search-programme question (a fail-soft root, a
+wider first window), outside D.1.6.
+
+**4. What is fixable, and how (the re-scoped approach for RAR-R23).** The
+cascade's cause in bare-king trees is the flat evaluation; the offset
+removes it and is confined to those trees. Its one side effect, a cascade
+when a known-win score first enters the horizon (a jump of some 5,800 cp
+against a 12 cp window), was met in RAR-R20 by the global squared window;
+the confined device is a **known-win window floor**: when the aspiration
+centre lies in the known-win band (|centre| at least the offset less a
+margin), the first window's half-width is at least a tune-only `W`, and
+nothing changes outside the band. The cluster is then {`MopupKnownWin`,
+`AspKnownWinWindow`}: a static differential confines both to bare-king
+trees. Not in D.1.6: the budget charge (global, −5 to −10 at one standard
+error, a separate search leaf if ever) and the freeze (its halving of the
+maximum-hitting is evidence for D.1.5, the clock's leaf, where the
+maximum-hitting lives), and no clock stop (3). Acceptance: AGENTS' repair
+case 1 (the differential) with case 2's 2,000-game equal-speed harm read on
+the tune build and the `10+0.1` read as the Elo evidence, the probe as the
+correctness read; mate-score stalls stay with D.1.5's proved-mate stop.
+
+**5. Recommendation on order.** Run D.1.5's harm read of the clock pieces
+alone (a PGO build of d1's defaults against the 2.6.0 engine, 2,000 games
+at `3+0.03`, 1,000 at `10+0.1`) before any further D.1.6 gate: every D.1.6
+arm carries d1's clock, that clock runs to the maximum in 41% of games, and
+its share of −7.4 is unknown. Then RAR-R23's confined cluster, read at equal
+speed on one tune build, where the clock cancels.

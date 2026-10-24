@@ -979,16 +979,24 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       is known about the cost: the evaluation half reads even at equal
       speed at every size; the in-game NPS loss is the tree's composition,
       not speed; the arm still spends 5.5% less a move after the fit; parts
-      1–3 at equal time read −9.7 ± 8.9. **The plan (RAR-R23, register
-      before any game):** the probe on the offset with the fitted window
-      alone; 2,000-game equal-speed reads of each part against the
-      defaults (the offset with its window, the budget alone, the freeze
-      alone at the fitted values, the fitted vector without the freeze);
-      a frozen rule keeps the parts that read even and pass the probe,
-      drops a costly one or replaces the freeze by the fail-high stop at
-      twice the target; the gate re-registered on the survivors in
-      RAR-R22's form. The fit arm's lesson stands: a refused SPSA step
-      and a 2-second idle window are preflight matters, not results.
+      1–3 at equal time read −9.7 ± 8.9. **The level above (2026-10-24,
+      RAR-R22's addendum):** d1's clock runs to the hard maximum in 41% of
+      `3+0.03` games before ply 40, double the 2.6.0 head's 15–18%, so the
+      gate's −7.4 sums the ungated clock pieces (D.1.5) and the cluster;
+      the window term and the budget charge are global changes (32 of 40
+      fresh-process bench positions move), the offset is confined to
+      bare-king trees (13 of 40, all 19 pieces or fewer); a clock stop
+      conditioned on the chosen move (Basilisk's) would fire on 24% of
+      searches here and is rejected. **The re-scoped plan (RAR-R23,
+      register before any game):** the confined cluster {`MopupKnownWin`,
+      a known-win window floor `AspKnownWinWindow` active only when the
+      centre is in the known-win band}, no clock piece, no budget charge;
+      the probe and a fresh-process differential as correctness, a
+      2,000-game equal-speed harm read on one tune build and the `10+0.1`
+      read as the Elo evidence (AGENTS' repair cases 1 and 2). D.1.5's
+      harm read of the clock pieces alone against 2.6.0 is recommended
+      first. The fit arm's lesson stands: a refused SPSA step and a
+      2-second idle window are preflight matters, not results.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
