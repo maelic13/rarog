@@ -323,9 +323,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | READY_FOR_IMPLEMENTATION | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the research closed (RAR-R19) with a cluster of four parts that ends every probed stall within its optimum (RAR-R20); the gate next, then the landing; before D.1.5 so each gate attributes to one change |
-| D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | The cluster under gate is the arm `6fd195e` (bench 8,996,837): `mopup_known_win` 6000, `AspDeltaSquareDiv` 10193, `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000 as the defaults. On H1 it lands on `d1` with the fingerprint re-declared, `TmFailHighTarget` and the unused instruments removed, and the changelog entry |
-| D.1.6.3 | GAME_GATE | V | The cluster verified (RAR-R20: seven of eight probe rows within the optimum, −52.5 ± 23.9 unfitted at PGO, even at equal speed per part). The road to the gate is RAR-R21, staged: three 2,000-game equal-speed reads decide whether SPSA block 1 over `d16fix` (fourteen coordinates, the fit arm `217125b`) runs; the gate (`[-5,5]`, cap 20,000 pairs, the probe, the `10+0.1` read) is re-registered on an arm rebuilt with the fitted values. Maintainer-run: `run_r21.ps1 -Read all4|nofreeze|freeze|fit` **Stage 1 read 2026-10-24:** the four parts −6.9 ± 8.8 Elo at equal speed over 2,000 games (parts 1–3 −9.7 ± 8.9, the freeze alone −7.8 ± 8.7); the rule allows Stage 2 and the fit started that day. **Stage 2 read 2026-10-24:** block 1 found three directions (the freeze later, the clock's scale up 8%, the squared divisor up 44%), no full-step mover, rule 7c stops the fit. **The gate is RAR-R22** on the arm `584c02d` (bench 9,013,917), registered 2026-10-24 before any game; `run_r22.ps1 -Read gate|ltc`. |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the research closed (RAR-R19) with a cluster of four parts that ends every probed stall (RAR-R20; eight of eight rows at the fitted values, RAR-R22); fitted by RAR-R21; **its gate accepted H0 on 2026-10-24 (RAR-R22: −7.4 ± 7.5 at `3+0.03`, +2.1 ± 11.6 at `10+0.1`)**, so the cluster returns to research to locate the cost part by part (RAR-R22's disposition lists the reads); before D.1.5 so each gate attributes to one change |
+| D.1.6.2 | RESEARCH | I2 | Nothing lands: the fitted cluster (arm `584c02d`, bench 9,013,917) was refuted at `3+0.03` by RAR-R22. The landing list (the defaults, the fingerprint re-declared, `TmFailHighTarget` and the unused instruments removed, the changelog entry) waits for a cluster that passes its gate |
+| D.1.6.3 | GAME_GATE | V | The cluster verified (RAR-R20: seven of eight probe rows within the optimum, −52.5 ± 23.9 unfitted at PGO, even at equal speed per part). The road to the gate is RAR-R21, staged: three 2,000-game equal-speed reads decide whether SPSA block 1 over `d16fix` (fourteen coordinates, the fit arm `217125b`) runs; the gate (`[-5,5]`, cap 20,000 pairs, the probe, the `10+0.1` read) is re-registered on an arm rebuilt with the fitted values. Maintainer-run: `run_r21.ps1 -Read all4|nofreeze|freeze|fit` **Stage 1 read 2026-10-24:** the four parts −6.9 ± 8.8 Elo at equal speed over 2,000 games (parts 1–3 −9.7 ± 8.9, the freeze alone −7.8 ± 8.7); the rule allows Stage 2 and the fit started that day. **Stage 2 read 2026-10-24:** block 1 found three directions (the freeze later, the clock's scale up 8%, the squared divisor up 44%), no full-step mover, rule 7c stops the fit. **The gate is RAR-R22** on the arm `584c02d` (bench 9,013,917), registered 2026-10-24 before any game; `run_r22.ps1 -Read gate|ltc`. **Gate read 2026-10-24: H0** at 1,377 pairs (−7.4 ± 7.5 Elo; `10+0.1` +2.1 ± 11.6; 0 faults; the probe eight of eight). The gate is re-registered once the research (RAR-R23) names the surviving cluster. |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -971,6 +971,24 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       ahead of NNUE, at its price. If the gate refutes it, the fallback is
       the clock stop at twice the target behind its spin, read as RAR-R18
       read it.
+      **Where it stands (2026-10-24).** The four-part cluster (RAR-R19,
+      RAR-R20), fitted by RAR-R21 (block 1: the freeze later, the clock's
+      scale up 8%, the squared divisor up 44%, nothing else moved), ends
+      every probed stall (eight of eight rows) but its gate accepted H0:
+      −7.4 ± 7.5 Elo at `3+0.03`, +2.1 ± 11.6 at `10+0.1` (RAR-R22). What
+      is known about the cost: the evaluation half reads even at equal
+      speed at every size; the in-game NPS loss is the tree's composition,
+      not speed; the arm still spends 5.5% less a move after the fit; parts
+      1–3 at equal time read −9.7 ± 8.9. **The plan (RAR-R23, register
+      before any game):** the probe on the offset with the fitted window
+      alone; 2,000-game equal-speed reads of each part against the
+      defaults (the offset with its window, the budget alone, the freeze
+      alone at the fitted values, the fitted vector without the freeze);
+      a frozen rule keeps the parts that read even and pass the probe,
+      drops a costly one or replaces the freeze by the fail-high stop at
+      twice the target; the gate re-registered on the survivors in
+      RAR-R22's form. The fit arm's lesson stands: a refused SPSA step
+      and a 2-second idle window are preflight matters, not results.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
@@ -1175,7 +1193,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           all4|nofreeze|freeze|fit`.
           H1 lands it (harm near −5 excluded); H0 refutes it and the
           fallback is read. The fail-high stop's spin is deleted when the
-          fix lands.
+          fix lands. **Run 2026-10-24 as RAR-R22** on the arm `584c02d`
+          (the fifteen fitted values and the budget baked, bench
+          9,013,917): the probe eight of eight within the optimum, the
+          wire check faultless, the SPRT **H0 at 1,377 pairs, −7.4 ± 7.5**,
+          the `10+0.1` read +2.1 ± 11.6. Nothing lands; D.1.6 returns to
+          research (above), and this gate is re-registered on the
+          surviving cluster.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The

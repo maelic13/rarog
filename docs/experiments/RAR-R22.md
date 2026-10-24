@@ -127,6 +127,63 @@ band at −4.2%, so the fit spent back most of the freeze's 5.3% but not all.
 The Elo line decides nothing at ±26 and is recorded as read; the gate's
 prediction stays as frozen above.
 
-## Results
+## Results (2026-10-24, maintainer-run, idle host)
 
-_(the gate and the `10+0.1` read: none yet)_
+**The gate accepted H0.** `rar-r22-gate`, manifest
+`colosseum_sprt_rar-r22-gate_20261024_132142.manifest.txt`, host 3.9% busy
+at launch, 0 faults, 0 time losses; the runner's closing line:
+
+> Elo −7.4 ± 7.5 | nElo −13.0 ± 13.0 | W/D/L 650/1395/709 | Ptnml 39, 338,
+> 673, 297, 30 | LLR −2.95 in [−2.94, 2.94] (accept H0) | 1,377 official
+> pairs, 2,754 games.
+
+The arm's time a move 66.4 ms against the head's 70.3 (−5.5%), in-game NPS
+2,338,422 against 2,458,212 (−4.9%, composition), mean completed depth
+14.23 against 15.23.
+
+**The `10+0.1` read** (`rar-r22-ltc`, 1,000 games, seed 20261062, manifest
+`colosseum_match_rar-r22-ltc_20261024_135016.manifest.txt`, host 4.7%, 0
+faults; a first start at 13:21 local was interrupted after two seconds
+while the gate ran and holds no game): **+2.1 ± 11.6 Elo** (233/540/227,
+pentanomial 5, 119, 248, 121, 7). Time a move 221.3 ms against 232.4
+(−4.8%), NPS −3.4%.
+
+**Calibration.** STC was predicted +1 ± 8 (band −7 to +9) and read −7.4 ±
+7.5: a miss in sign at the band's edge; H0 carried 0.25. The `10+0.1` point
+estimate above STC's (0.65) **held**, by 9.5 Elo, consistent with the
+mechanism being worth more where the won endings and the stalls weigh
+more. The wire check's −29.6 ± 26.2 pointed the same way as the gate and
+was rightly given no weight on its own.
+
+## Disposition: H0, the cluster returns to research
+
+- **What is established:** the cluster ends every probed stall (eight of
+  eight rows within the optimum at the fitted values, the first arm to do
+  so), plays without fault at both clocks, and reads even or better at
+  `10+0.1`. The known-win offset with its window reads even at equal speed
+  at every size (RAR-R20), and the fit did not move the offset or the LMR
+  terms (RAR-R21).
+- **What is refuted:** the cluster as a whole at the fitted values at
+  `3+0.03` against the 2.6.0 engine; harm near −5 nElo is not excluded, so
+  nothing lands. `TmFailHighTarget` and the unused instruments stay until a
+  cluster lands.
+- **Where the cost most likely is**, from the reads in hand: the arm still
+  spends 5.5% less a move at STC after the fit (the freeze), and parts 1–3
+  at equal time read −9.7 ± 8.9 at equal speed (RAR-R21 Stage 1), so both
+  the freeze and the search half are candidates; the evaluation half is
+  not (RAR-R20's decompositions). The 200-game decompositions cannot
+  separate them; 2,000-game reads can.
+- **The next research (RAR-R23, to register before any game):**
+  1. zero games: the probe on the known-win offset with the fitted window
+     alone (`MopupKnownWin` 5826, `AspDeltaSquareDiv` 14707, no budget, no
+     freeze) on the tune build, to learn whether the evaluation half alone
+     ends the stalls at the fitted divisor;
+  2. 2,000-game equal-speed reads on one tune build, each part against the
+     defaults: the offset with its window; the budget alone; the freeze
+     alone at the fitted 5781 with the fitted scale; the fitted vector
+     without the freeze; each with a frozen prediction;
+  3. the rule, frozen then: a part within noise of even that passes the
+     probe joins the next cluster; a part that costs is dropped, or for the
+     freeze replaced by the fail-high stop at twice the target (RAR-R18's
+     reading, the D.1.6 fallback) and read again;
+  4. the gate re-registered on the surviving cluster, in this entry's form.
