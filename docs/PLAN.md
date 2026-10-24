@@ -326,7 +326,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | D.1.6 | GAME_GATE | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23): the four-part cluster ended every probed stall but its gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`, +2.1 ± 11.6 at `10+0.1`). The research above the mechanism re-scoped it to a confined repair. The window floor planned with it is inert (0 of 40 bench positions, every probe node count unchanged), so **the repair is the known-win offset alone (RAR-R23, registered 2026-10-24)**. Its harm reads are the maintainer's |
 | D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | Lands on RAR-R23's pass: `MopupKnownWin` 5826 as the default; the fingerprint re-declared (16,175,922 / EBF 2.580 on the tune build); `TmFailHighTarget` and its test deleted; the ten unused instruments removed, `AspKnownWinWindow` among them; the changelog entry. On a fail nothing lands |
 | D.1.6.3 | GAME_GATE | V | RAR-R23 (registered 2026-10-24, before any game): the offset alone against the defaults on one tune build (`3f4dcf4`), 2,000 games at `3+0.03` and 1,000 at `10+0.1`, harm rules −13 and −18 nElo. The correctness reads are done: the probe has no row at the maximum, and the differential confines the change to positions of 19 pieces or fewer. Maintainer-run: `run_r23.ps1 -Read stc\|ltc`. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. Maintainer-run: `run_r24.ps1 -Read stc\|ltc\|stalls`; the maintainer chooses its order against RAR-R23 |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -960,9 +960,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       - **Predictions:** 0 ± 14 and −3 ± 16 nElo.
       - **Command and order:** `run_r24.ps1 -Read stc|ltc|stalls`, dry-run
         clean. It informs this leaf and does not close it; the closing read
-        above stays. The maintainer chooses whether it runs before
-        RAR-R23's reads; both arms are fixed binaries, so either order
-        attributes cleanly.
+        above stays. Both arms are fixed binaries, so either order against
+        RAR-R23 attributes cleanly; the maintainer ran this one first.
+      **Read 2026-10-24, no harm at either control** (RAR-R24):
+      - `3+0.03`: +8.0 ± 8.9 Elo (+13.7 ± 15.2 nElo).
+      - `10+0.1`: +14.3 ± 11.2 Elo (+27.3 ± 21.5 nElo).
+      - 0 faults and 0 time losses. d1head spends 3–4% less a move.
+      - **Stalls:** d1head runs to the maximum in 38.0% of `3+0.03` games
+        against 2.6.0's 20.5%, early and at balanced scores. That
+        reproduces RAR-R22's addendum between PGO builds, with no measured
+        cost.
+      - **Disposition:** the clock pieces stay on `d1` at their seeds.
+        RAR-R22's −7.4 is not the clock's. A harm read accepts no gain, so
+        this leaf's closing read after D.1.6 stands.
     - **D.1.6 The root fail-high cascade fixed in the search: depth-reduced re-searches, from D.1's investigation — `R3` research, `I2`/`V` sub-steps.**
       Rarog re-searches every root fail-high at full depth, so a cascade of
       k fail-highs costs k full iterations: rec1 ran nine re-searches to the
