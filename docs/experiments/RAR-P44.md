@@ -130,6 +130,24 @@ with the same hashes.
   builds here lost far less against their entered ratings: Houdini 5.01 −44
   and Komodo 14.1 −22 on the GUI's Δ column. Where those entered ratings came
   from is not recorded, so the Δ column is a hint only.
+- **Emulation does cost speed; the Elo cost is small and not resolved.**
+  Total nodes over total time from the move comments (`speed.py`), each
+  engine divided by Rarog 2.6.0's 1.81M, against the same ratio on the
+  match host (RAR-M75, the C head's 2.43M):
+  - Houdini 3: 1.14 here, 1.82 there (0.63 of it).
+  - Houdini 4: 1.16 here, 1.70 there (0.68).
+  - Critter 1.6a: 1.09 here, 1.43 there (0.76).
+  - The native rebuilds keep more: Stockfish 11 0.91, Houdini 6.03 0.90.
+
+  The emulated engines run about a quarter to a third slower relative to
+  Rarog, yet their three Elo shifts average −9 ± about 15. The shifts allow
+  anything from no cost to a few tens of Elo. They do not show that
+  emulation is free.
+- **The host held a steady speed.** Rarog 2.6.0's speed by tenths of the
+  run stays between 1.76M and 1.85M, with no downward trend. Under the
+  bottom half's identical load on 2026-10-24, sampled for 10 s, all ten
+  cores were busy at 2.19–2.52 GHz of the X1P-64-100's 3.40 GHz, on mains
+  power with the Balanced plan.
 - **Rarog against Rarog,** over the whole pool:
   - 2.6.0 over 2.5.0: +137.0 ± 18.5, against RAR-M76's +153.4 ± 10.7.
   - 2.5.0 over 2.4.0: +248.2 ± 19.3, against RAR-M64's +272.4.
@@ -151,6 +169,8 @@ with the same hashes.
   `7e7162ca…462a8d`) and `stand.out` (`72838b7e…a5cd7f`).
 - `fit.py` (the anchored fit and bootstrap, `52dcd26d…ed8d3b`) and `fit.out`
   (`2a4a469f…7fa89b`).
+- `speed.py` (speed from the move comments, `4cee81d2…42bd4b`) and `speed.out`
+  (`6d2aa6f8…7e7f97`).
 - `tf.py` (the time forfeits, `edcac2cf…44a11c`) and `tf.out`
   (`e323d43b…3ed6b5`).
 - `export.py` (`c45eeb8e…be8620`).
