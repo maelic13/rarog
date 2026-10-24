@@ -231,6 +231,12 @@ struct ReportedLine {
     pv: Vec<Move>,
 }
 
+/// How far under the known-win offset a window's centre still counts as in
+/// the known-win band. A known-win evaluation is the offset plus a material
+/// lead, so the band starts under the offset itself; 2,000 keeps it far
+/// above the scores of positions the offset does not reach.
+const KNOWN_WIN_BAND_MARGIN: i32 = 2_000;
+
 /// An aspiration window and its widening state for one root search.
 ///
 /// From depth 4 the window centres on `center` unless that is a mate score.
@@ -262,7 +268,17 @@ impl Aspiration {
         } else {
             0
         };
-        let delta = params.aspiration_delta + square_term;
+        let mut delta = params.aspiration_delta + square_term;
+        // A centre in the known-win band opens at least the band's width, so
+        // the offset entering the horizon is not met by a cascade of narrow
+        // windows; nothing changes outside the band.
+        if use_aspiration
+            && params.asp_known_win_window > 0
+            && params.mopup_known_win > 0
+            && center.abs() >= params.mopup_known_win - KNOWN_WIN_BAND_MARGIN
+        {
+            delta = delta.max(params.asp_known_win_window);
+        }
         Self {
             alpha: if use_aspiration {
                 (center - delta).max(-INF_SCORE)
@@ -2817,6 +2833,57 @@ mod tests {
         // A recovery carried from an earlier cascade comes off as well.
         params.asp_fail_high_reduce = 1;
         assert_eq!(window.search_depth(&params, 10, 3), 4);
+    }
+
+    /// The known-win floor widens the first window only for a centre in the
+    /// band, only while both the floor and the offset are on, and never
+    /// narrows a window that is already wider.
+    #[test]
+    fn the_known_win_floor_widens_the_first_window_only_in_the_band() {
+        let half_width = |params: &SearchParams, depth: usize, center: i32| {
+            let window = Aspiration::new(params, depth, center);
+            assert_eq!(window.beta - window.center, window.center - window.alpha);
+            window.beta - window.center
+        };
+        let defaults = SearchParams::default();
+        let ordinary = defaults.aspiration_delta;
+        let mut params = SearchParams {
+            mopup_known_win: 5_826,
+            asp_known_win_window: 2_000,
+            ..SearchParams::default()
+        };
+        let edge = params.mopup_known_win - KNOWN_WIN_BAND_MARGIN;
+        for center in [edge, -edge, 6_400, -9_000] {
+            assert_eq!(half_width(&params, 10, center), 2_000, "centre {center}");
+        }
+        for center in [edge - 1, -(edge - 1), 0, 900, -1_500] {
+            assert_eq!(half_width(&params, 10, center), ordinary, "centre {center}");
+        }
+        let shallow = Aspiration::new(&params, 3, 6_400);
+        assert_eq!(
+            (shallow.alpha, shallow.beta),
+            (-INF_SCORE, INF_SCORE),
+            "below depth 4 the window stays open"
+        );
+
+        params.asp_known_win_window = ordinary - 1;
+        assert_eq!(
+            half_width(&params, 10, 6_400),
+            ordinary,
+            "a floor never narrows"
+        );
+
+        params.asp_known_win_window = 2_000;
+        params.mopup_known_win = 0;
+        assert_eq!(
+            half_width(&params, 10, 6_400),
+            ordinary,
+            "off with the offset"
+        );
+        params.mopup_known_win = 5_826;
+        params.asp_known_win_window = 0;
+        assert_eq!(half_width(&params, 10, 6_400), ordinary, "off at 0");
+        assert_eq!(half_width(&defaults, 10, 6_400), ordinary, "off by default");
     }
 
     /// The recovery after a cascade: `(k + 1) / 2 + 2` plies for k fail-highs,

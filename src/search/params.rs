@@ -214,6 +214,12 @@ search_params! {
     /// drive). 0 = off (today). With the score-scaled first window it ends
     /// the root fail-high cascade of a won ending (RAR-R19, RAR-R20).
     mopup_known_win = 0, "MopupKnownWin", 0..=20000;
+    /// The least half-width of the first window centred in the known-win
+    /// band (a score within 2,000 of `MopupKnownWin` or past it): the jump
+    /// as the offset enters the horizon is some 5,800 cp against a 12 cp
+    /// window, and only that band opens wider, so ordinary scores keep
+    /// `AspirationDelta`. 0 = off (today), and off while the offset is.
+    asp_known_win_window = 0, "AspKnownWinWindow", 0..=5000;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
