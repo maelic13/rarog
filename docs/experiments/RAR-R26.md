@@ -1,4 +1,4 @@
-# RAR-R26 — D.1.6: the LMR correction term capped at one ply, a global search change, read at equal speed at `3+0.03` and `10+0.1` before any gate — REGISTERED 2026-10-25, before any game
+# RAR-R26 — D.1.6: the LMR correction term capped at one ply, a global search change, read at equal speed at `3+0.03` and `10+0.1` before any gate — REGISTERED 2026-10-25, before any game; READ 2026-10-25: no harm, and the cap and the stop cover each other in the probe
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -100,3 +100,70 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
 - **Time a move:** within ±1%, P 0.8.
 - **Most likely miss:** a small negative at `stc` from the fitted slope,
   which 2,000 games cannot separate from zero.
+
+## Results (2026-10-25, maintainer-run, idle host)
+
+Both matches completed with 0 faults and 0 time losses. The figures are the
+runner's final report lines (colosseum-cli 0.4.0). A is the cap at 1024, B
+uncapped.
+
+| Read | Elo | nElo | Harm threshold | W/D/L (A) | Pentanomial | Host at launch |
+|---|---|---|---|---|---|---|
+| `stc`, 2,000 games | **−1.4 ± 9.0** | **−2.4 ± 15.2** | −13 | 511/970/519 | 29, 237, 475, 231, 28 | 0.3% |
+| `ltc`, 1,000 games | **+1.7 ± 11.5** | **+3.2 ± 21.5** | −18 | 242/521/237 | 4, 122, 246, 121, 7 | 4.8% |
+
+- **Manifests:** `colosseum_match_rar-r26-stc_20261025_155523.manifest.txt`
+  (`games.pgn` `88AB94DC…15F9729BC8`) and
+  `colosseum_match_rar-r26-ltc_20261025_161536.manifest.txt` (`C5B831AF…EAB02DC847F`),
+  in `tools/results/`.
+- **Time and depth per arm** (`nps_by_arm_n.py`, `nps_r26_*.txt` beside the
+  evidence). A against B:
+  - `stc`: time a move −0.6%, mean completed depth 12.77 against 12.68
+    (+0.09 ply);
+  - `ltc`: −0.6%, 16.28 against 16.04 (+0.24 ply).
+
+  The cap acted in the games: deeper at equal time.
+
+**Rule applied.** −2.4 nElo is above −13, and +3.2 is above −18: **no harm
+at either control; RAR-R26 passes.** This is a harm read, so neither
+estimate is accepted as a gain.
+
+**The timed probe, added after the matches and before any gate (agent-run,
+2026-10-25).** `tm_rec_probe_d16.py` on the same tune build, idle check
+2.9% CPU over 20 s, no engine process (`tm_rec_probe_r26.txt`; one earlier
+attempt was refused by the idle check and measured nothing). As a multiple
+of the probe's optimum:
+
+| Clock, position | cap, stop off | uncapped, stop off | cap with the stop at twice the target |
+|---|---|---|---|
+| `60000+600` rec1 | 0.91 | 1.05 | 0.91 |
+| `60000+600` rec3 | 0.61 | 0.46 | 0.61 |
+| `180000+2000` rec1 | **MAX** (104.4 s; depth 26, 3,910 cp lower bound) | 2.92 | **0.78** (11.8 s) |
+| `180000+2000` rec3 | 0.41 (5.9 s) | **MAX** (97.9 s) | **0.42** (6.0 s) |
+
+- **The cap is not the fix on its own.**
+  - It ends rec3's single expensive window at depth 21, the case the stop
+    cannot reach because it is checked only when a window returns.
+  - But it takes rec1 deeper sooner, into the window walk that comes when
+    the win resolves (depth 26), and that walk runs to the maximum with no
+    stop.
+- **The cap and the stop cover each other.** Together they end every row
+  at or under its optimum. The stop alone ended rec1 and rec3 at
+  `180000+2000` at 1.30 × and 1.10 × (RAR-R25).
+
+**Disposition, as frozen, with the probe's correction.**
+- The cap goes to its gate: a PGO arm with the cap baked at 1024 against
+  `d1`'s head (which has the stop at twice the target), `[-5,5]` with its
+  cap, AGENTS' repair case 3.
+- The frozen text's probe "with the stop off, to read the search half
+  alone" is now read: it fails on rec1. The gate's probe acceptance is
+  therefore the cluster as it would ship, the cap with the stop, which
+  passes here.
+- Registered before any game when the gate is prepared.
+
+**Calibration.**
+- `stc` −2.4 inside the predicted −3 ± 12; `ltc` +3.2 inside −1 ± 16; time
+  within ±1%, as predicted.
+- The research card's trace reading (a deeper rec1 means a shorter stall)
+  missed in mechanism. Deeper search reaches the window walk at the win's
+  resolution sooner, and only a stop bounds that walk.
