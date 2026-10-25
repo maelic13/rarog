@@ -364,6 +364,16 @@ pub mod counters {
         lmr_deeper,
         lmr_deeper_plies,
         lmr_deeper_pv,
+        // D.1.6 research, EXACT: the uncapped correction term of every
+        // reduction, bucketed by the plies it takes off (under half a ply,
+        // under one, under two, under three, three or more), and the deeper
+        // searches whose term alone was a ply or more.
+        lmr_corr_term_lt_half,
+        lmr_corr_term_lt_one,
+        lmr_corr_term_lt_two,
+        lmr_corr_term_lt_three,
+        lmr_corr_term_ge_three,
+        lmr_deeper_corr_ge_one,
         // Correction attribution and hashed-table quality.
         corr_slot_first,
         corr_slot_repeat,

@@ -426,6 +426,12 @@ search_params! {
     lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
     lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
     lmr_correction = 3_330, "CoreLmrCorrection", 0..=8192;
+    /// Switch: the most the correction term may take off a reduction, in
+    /// 1024ths of a ply; 0 leaves it uncapped (today). A won ending's
+    /// climbing score builds corrections of hundreds of centipawns, and the
+    /// uncapped term then turns reductions negative, so reduced moves are
+    /// searched deeper than nominal, outside the line budget (D.1.6).
+    lmr_correction_cap = 0, "CoreLmrCorrectionCap", 0..=8192;
     lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
     lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
     lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;

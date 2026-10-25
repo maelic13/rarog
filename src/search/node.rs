@@ -448,7 +448,12 @@ impl Searcher {
         let mut r = p.lmr_log * i.depth.ilog2().cast_signed();
         r -= (p.lmr_improvement * i.improvement / 128)
             .clamp(p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi);
-        r -= p.lmr_correction * i.corr_abs / 1024;
+        let correction_term = p.lmr_correction * i.corr_abs / 1024;
+        r -= if p.lmr_correction_cap > 0 {
+            correction_term.min(p.lmr_correction_cap)
+        } else {
+            correction_term
+        };
         r += p.lmr_exact * i32::from(i.exact);
         r += p.lmr_tt_score_below_alpha * i32::from(i.tt_score_below_alpha);
         r += p.lmr_tt_shallow * i32::from(i.tt_shallow);
@@ -1868,6 +1873,14 @@ impl Searcher {
                             reduction_depth_sum,
                             u64::try_from(new_depth - reduced_depth).unwrap_or(0)
                         );
+                        let correction_term = self.cfg.core.lmr_correction * corr_abs / 1024;
+                        match correction_term {
+                            ..512 => crate::diag_count!(lmr_corr_term_lt_half),
+                            512..1024 => crate::diag_count!(lmr_corr_term_lt_one),
+                            1024..2048 => crate::diag_count!(lmr_corr_term_lt_two),
+                            2048..3072 => crate::diag_count!(lmr_corr_term_lt_three),
+                            _ => crate::diag_count!(lmr_corr_term_ge_three),
+                        }
                         if reduced_depth > new_depth {
                             crate::diag_count!(lmr_deeper);
                             crate::diag_add!(
@@ -1876,6 +1889,9 @@ impl Searcher {
                             );
                             if NODE::PV {
                                 crate::diag_count!(lmr_deeper_pv);
+                            }
+                            if correction_term >= 1024 {
+                                crate::diag_count!(lmr_deeper_corr_ge_one);
                             }
                         }
                     }
@@ -2702,6 +2718,44 @@ mod tests {
             parent_reduction: 0,
             singular_gap: None,
         }
+    }
+
+    /// The correction term is linear in the correction and uncapped by
+    /// default; a cap bounds what it takes off the reduction and leaves a
+    /// smaller term unchanged.
+    #[test]
+    fn the_correction_cap_bounds_the_term_and_is_off_by_default() {
+        let mut searcher = Searcher::default();
+        assert_eq!(searcher.cfg.core.lmr_correction_cap, 0, "off by default");
+        let slope = searcher.cfg.core.lmr_correction;
+        assert!(
+            slope * 2_000 / 1024 > 1_024,
+            "the largest probe exceeds the cap below"
+        );
+        // The parent-reduction rule adds a step once the reduction falls far
+        // enough below the parent's; a parent reduction far below any
+        // reduction keeps it off, so only the correction term moves.
+        let taken = |searcher: &Searcher, corr_abs: i32| {
+            let mut inputs = LateMoveInputs {
+                parent_reduction: -1_000_000,
+                ..quiet_late_move()
+            };
+            let neutral = searcher.late_move_reduction(&inputs);
+            inputs.corr_abs = corr_abs;
+            neutral - searcher.late_move_reduction(&inputs)
+        };
+        for corr_abs in [100, 800, 2_000] {
+            assert_eq!(taken(&searcher, corr_abs), slope * corr_abs / 1024);
+        }
+        searcher.cfg.core.lmr_correction_cap = 1_024;
+        let under = 1_024 * 1024 / slope - 1;
+        assert!(slope * under / 1024 < 1_024);
+        assert_eq!(
+            taken(&searcher, under),
+            slope * under / 1024,
+            "under the cap"
+        );
+        assert_eq!(taken(&searcher, 2_000), 1_024, "at the cap");
     }
 
     /// The improvement term saturates at its coordinates' bounds and the alpha
