@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host. **The interim cap, the stop at twice the target, passed its harm read** (RAR-R25, 2026-10-25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS). It lands as the default next, in its own engine commit |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host. **The interim cap, the stop at twice the target, passed its harm read** (RAR-R25, 2026-10-25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS). It landed as the default in `a79efe4`. **The card's zero-game reads (2026-10-25):** capping the correction term at one ply takes rec1 six plies deeper, but changes 24 of 40 bench positions, so it is a global change. Its equal-speed harm read is **RAR-R26**, registered, dry-run clean and maintainer-run |
 | D.1.6.2 | RESEARCH | I2 | Nothing lands: RAR-R23 failed. On `NO_CHANGE` a cleanup removes `TmFailHighTarget` and its test and the ten unused instruments, `AspKnownWinWindow` among them, at the fingerprint 13,987,223 |
 | D.1.6.3 | RESEARCH | V | RAR-R23 read 2026-10-24: **FAIL**. The offset alone against the defaults on one tune build read −2.3 ± 7.7 Elo at `3+0.03` and −11.1 ± 9.6 at `10+0.1` (−25.0 nElo, below the −18 threshold), with 0 faults, equal time a move and the wire live. The correctness reads had passed. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
@@ -1152,6 +1152,27 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         of bench's reduced searches suggests, a fix that keeps lines inside
         their budget could gain where the stalls themselves cost nothing.
         Only games can say.
+      - **Read 2026-10-25, zero games** (instruments `c4da889`; evidence in
+        `analysis/artifacts/d16-cascade-2026-10-23/tree-growth-2026-10-25/`,
+        `RESULTS.md` against the frozen `PREDICTIONS.md`):
+        - **The term at reductions.** It takes a ply or more off 19.2% of
+          bench's reductions and 73.5% of rec1's. It drives 56.8% and
+          91.4% of their deeper searches.
+        - **Cap 1024** takes rec1 from depth 20 to 26 and rec3 from 21 to
+          24 inside 200 M nodes. With the term at 0 they reach 35 and 28.
+          Caps of 2048 and 3072 do not help, and neither does the deeper
+          ceiling at 2.
+        - **But cap 1024 changes 24 of 40 bench positions**, 32-piece
+          openings among them (bench 11,480,295).
+        - **No configuration proves a mate in the budget.** Each ends in
+          the window walk as the win resolves, which the stop at twice the
+          target now caps in play.
+        - **Reading:** H1 is supported as the driver, but the term drives
+          ordinary positions too, so the working cap is a global search
+          change. H2 is refuted. Predictions 2 and 3 held; 1 and 4 missed,
+          in mechanism.
+        - **By the stop rule,** the cap is read at equal speed first:
+          **RAR-R26**, registered and dry-run clean.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
