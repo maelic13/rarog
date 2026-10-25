@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decision pending:** close `NO_CHANGE` (recommended: no read has found a cost of the stalls, and RAR-R24's doubled maximum-hitting reads +8.0 and +14.3 against 2.6.0), or read the registered fallback clock stop, which reverses "no clock stop in D.1.6" |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host |
 | D.1.6.2 | RESEARCH | I2 | Nothing lands: RAR-R23 failed. On `NO_CHANGE` a cleanup removes `TmFailHighTarget` and its test and the ten unused instruments, `AspKnownWinWindow` among them, at the fingerprint 13,987,223 |
 | D.1.6.3 | RESEARCH | V | RAR-R23 read 2026-10-24: **FAIL**. The offset alone against the defaults on one tune build read −2.3 ± 7.7 Elo at `3+0.03` and −11.1 ± 9.6 at `10+0.1` (−25.0 nElo, below the −18 threshold), with 0 faults, equal time a move and the wire live. The correctness reads had passed. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
@@ -1046,12 +1046,97 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         `3+0.03` and **−25.0 ± 21.5 at `10+0.1`**, below the −18 harm
         threshold, with the wire live and time a move equal. Nothing lands,
         and the leaf is back in RESEARCH.
-      - **The maintainer's choice:** `NO_CHANGE` or the fallback stop.
-        `NO_CHANGE` is recommended, and RAR-R23's disposition gives the
-        evidence. On `NO_CHANGE`, D.1.2.1's cascade half (rec1, rec3) is
-        recorded as accepted with no measured cost, and its rec2 half stays
-        with D.1.5's proved-mate stop. The fit arm's lesson stands: a refused SPSA step and a
-      2-second idle window are preflight matters, not results.
+      - **Maintainer decisions 2026-10-25:**
+        - Research the cause rather than close `NO_CHANGE`.
+        - The fallback stop at twice the target is open to re-evaluation if
+          it does not cost strength. It is a separate read, a cap and not a
+          fix; the card below is the fix.
+
+      The fit arm's lesson stands: a refused SPSA step and a 2-second idle
+      window are preflight matters, not results.
+      **Research card (2026-10-25): the won-ending tree, not the window or
+      the clock.**
+      - **Mechanism.** In rec1 Rarog's tree grows far faster per ply than a
+        search that converts the win:
+        - Rarog at 200 M nodes reaches depth 16–20 and proves no mate
+          (RAR-R23's traces).
+        - Basilisk's current head, with its clock stop removed, proves mate
+          in 25 at depth 26 in 73 M nodes. That is 0.56 × its maximum at
+          `60000+600` and 0.20 × at `180000+2000`; its 2026-10-24 probe is
+          in `D:\code\basilisk\tools\results\stall-probe-20261024\`.
+        - Stockfish's search over Rarog's evaluation reaches depth 34 for
+          about the same nodes (RAR-R19).
+        - The window walk RAR-R23 found is the symptom: the root score keeps
+          rising because each deeper tree finds more, and a 12 cp window
+          chases it.
+      - **The measured drivers** (RAR-R19, rec1 at depth 18, 19.1 M nodes
+        and selective depth 89 at the defaults):
+        - with LMR's correction term at 0: 4.1 M nodes, selective depth 39;
+        - with no reduced move searched deeper than its nominal depth:
+          3.2 M and 40;
+        - with at most 2 plies deeper: 2.7 M and 51.
+        - On bench, 443,080 of 4,216,025 reduced searches (10.5%) run
+          deeper than nominal, by 1.7 plies on average, outside the line
+          budget. The cap at 0 halves bench and the cap at 2 takes 21% off
+          it, so the deeper ceiling is a global setting. Neither has been
+          played in games.
+      - **A difference from Basilisk, read in both sources.**
+        - Basilisk caps its LMR correction term at 2,695, about 2.6 plies,
+          "the donor's largest value of the term"
+          (`search_kernel_core.cpp`).
+        - Rarog's term is `lmr_correction * |correction| / 1024` with no
+          cap (`late_move_reduction`, `src/search/node.rs`): about 0.33 ply
+          a 100 cp of correction at the default 3330.
+        - So a large correction turns a reduction negative, and the reduced
+          move is searched up to 4 plies deeper, past the line budget.
+          Basilisk allows 2 plus 1 at a PV node.
+      - **Competing hypotheses.**
+        - **H1:** the uncapped correction term in LMR drives the won-ending
+          explosion. A cap would be confined to nodes with a large
+          correction.
+        - **H2:** the deeper-search ceiling (+4 against Basilisk's +2/+3)
+          drives it, and is a global change.
+        - **H3:** the window walk is a cause of its own. Weakened, because
+          it shrinks wherever the tree does.
+        - **H4:** the evaluation's flatness. Refuted as a net fix by
+          RAR-R23.
+      - **Interactions.**
+        - C.10 fitted the LMR terms and their correction slope around the
+          uncapped term and the +4 ceiling.
+        - Correction history also feeds the singular margins
+          (`sing_double_corr`, `sing_triple_corr`) and the static
+          evaluation.
+        - The line budget's invariant is stated in source and broken by the
+          deeper plies (`CoreLmrDeeperBudget` restores it).
+        - The aspiration constants were fitted around the present tree.
+      - **Invariants.**
+        - A cap leaves every node with a correction under it unchanged,
+          checked by a fresh-process differential.
+        - The fingerprint moves and is re-declared on landing.
+        - No clock change is part of this card.
+      - **Cheapest discriminating tests** (zero games; they need an idle
+        host and wait for Basilisk's runs to finish):
+        1. A diag histogram of the correction term's size at LMR nodes, on
+           bench and on rec1/rec3. It says whether large terms are rare in
+           ordinary positions, so whether a cap is confined.
+        2. A tune-only cap on the term (0 = today), and node traces of rec1
+           and rec3 at 200 M nodes for a few cap values, with and without
+           the deeper ceiling at 2. Does rec1 reach a proved mate, as
+           Basilisk's does?
+        3. A fresh differential over bench for the chosen setting.
+      - **Falsifier and stop rule.**
+        - If no cap value ends rec1 and rec3 under the maximum in the probe
+          without the window term, H1 is false. H2 is then read the same
+          way.
+        - If what ends them changes more than half of the bench positions,
+          it is a global search change. Its read is an equal-speed
+          2,000-game harm read first, and then the `[-5,5]` gate.
+        - The line stops when that read is below −13 nElo or no setting
+          ends the stalls.
+      - **Why it could pay for itself.** If the escape is general, as 10.5%
+        of bench's reduced searches suggests, a fix that keeps lines inside
+        their budget could gain where the stalls themselves cost nothing.
+        Only games can say.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
