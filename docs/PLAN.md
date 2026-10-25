@@ -1051,6 +1051,11 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         - The fallback stop at twice the target is open to re-evaluation if
           it does not cost strength. It is a separate read, a cap and not a
           fix; the card below is the fix.
+        - That read is registered as **RAR-R25**: one tune build, the stop
+          at twice the target against off, the probe, 2,000 games at
+          `3+0.03` and 1,000 at `10+0.1`, harm rules −13 and −18 nElo.
+          Both matches dry-ran clean. A pass makes it the default as an
+          interim cap, re-read when the search fix lands.
 
       The fit arm's lesson stands: a refused SPSA step and a 2-second idle
       window are preflight matters, not results.
