@@ -1,4 +1,4 @@
-# RAR-R23 — D.1.6.3: the confined cascade repair, the known-win offset alone, read at equal speed with a harm rule — REGISTERED 2026-10-24, before any game
+# RAR-R23 — D.1.6.3: the confined cascade repair, the known-win offset alone, read at equal speed with a harm rule — REGISTERED 2026-10-24, before any game; READ 2026-10-24: FAIL, harm at `10+0.1`
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -174,3 +174,77 @@ put outside D.1.6.
   comments, P 0.8. The change is confined, so the openings are untouched.
 - **Most likely miss:** a small negative at `stc` from the deeper per-node
   cost in rook endings, which a 2,000-game read cannot separate from zero.
+
+## Results (2026-10-24, maintainer-run, after RAR-R24)
+
+Both reads completed with 0 faults and 0 time losses. The figures are the
+runner's final report lines (colosseum-cli 0.4.0). A is the offset, B the
+defaults.
+
+| Read | Elo | nElo | Harm threshold | W/D/L (A) | Pentanomial | Host at launch |
+|---|---|---|---|---|---|---|
+| `stc`, 2,000 games | **−2.3 ± 7.7** | **−4.4 ± 15.2** | −13 | 478/1031/491 | 15, 201, 585, 180, 19 | 3.7% |
+| `ltc`, 1,000 games | **−11.1 ± 9.6** | **−25.0 ± 21.5** | −18 | 193/582/225 | 6, 96, 324, 72, 2 | 8.6% |
+
+- **One `stc` run, interrupted once.** The first launch
+  (`colosseum_match_rar-r23-stc_20261024_205603`, 18:56Z) was stopped by an
+  interrupt after 79 games, at a report of −34.9 ± 41.2 over 61. The same
+  command resumed it at 20:55Z: the log reads "resuming: 79 of 2000 games
+  complete". Seed, directory and size are the registered ones.
+- **Manifests:** `colosseum_match_rar-r23-stc_20261024_225520.manifest.txt`
+  (`games.pgn` `ADD86800…6274A2CE4C`) and
+  `colosseum_match_rar-r23-ltc_20261024_231447.manifest.txt`
+  (`BB778AB4…A89B3EAF`), in `tools/results/`.
+- **Time per arm.** The two arms share a binary name, so the PGN is split
+  by `games.jsonl` (`nps_by_arm_n.py`, RAR-R21's reader with the game count
+  read from the run). A against B: time a move +0.0% at `stc` and +0.2% at
+  `ltc`, plies 1–20 within 0.3%, nps within 0.5%. The result is not a time
+  artefact.
+- **The wire is live** (`knownwin_by_arm.py`). Arm A reports a known-win
+  score (|s| from 5,826 up to the mate range) in 536 of 2,000 `stc` games
+  and 274 of 1,000 `ltc` games, 1,617 and 745 moves. Arm B does in 37 and
+  47 games, from large material leads. The offset acted in about a quarter
+  of the games at both clocks.
+
+**Rule applied.**
+- `stc` at −4.4 nElo is above its −13 threshold.
+- **`ltc` at −25.0 nElo is below its −18 threshold: harm.**
+- **RAR-R23 fails** under the frozen rule (either read below its
+  threshold), and nothing lands.
+- The `ltc` interval (−46.5 to −3.5 nElo) does not reach zero. That is
+  harm at the registered 5% false-alarm rate, not a refutation at high
+  confidence. The rule was frozen before any game and is applied as
+  written.
+
+**Disposition.** Nothing lands; D.1.6 returns to RESEARCH with this
+estimate. The maintainer chooses between the two closes registered above:
+- **D.1.6 `NO_CHANGE`.** The stalls are accepted, and the instruments,
+  `AspKnownWinWindow` included, are removed in a cleanup.
+- **The fallback clock stop at twice the target.** This needs the
+  maintainer to reverse "no clock stop in D.1.6".
+
+**Recommendation: `NO_CHANGE`.**
+- Every arm that ended the probed stalls has cost Elo against its
+  defaults: RAR-R22's cluster and this offset alone.
+- No read has found a cost of the stalls themselves. RAR-R24's doubled
+  maximum-hitting read +8.0 and +14.3 Elo against 2.6.0, and the hold
+  records no measured cost at either control.
+- The fallback stop cost about 15 Elo at the target (RAR-R18), and its
+  conditioned form fires on a quarter of searches (RAR-R22, item 3).
+- **What would change this:** a measured cost of the stalls in games, for
+  instance a conversion read whose losses or draws come from moves at the
+  maximum.
+
+**Calibration.**
+- **`stc`:** −4.4 nElo inside the predicted −2 ± 10, as predicted.
+- **`ltc`:** −25.0 against the predicted 0 ± 14 (P pass 0.85), a miss in
+  sign and magnitude.
+  - The failed assumption was that a longer clock would weigh the repaired
+    stalls and the deeper search equally.
+  - The likelier mechanism, not measured here: the offset starts rec1's
+    window walk six plies earlier (depth 10–16 against 19 at the defaults,
+    with 33 × the nodes at depth 14). A longer clock reaches that climb in
+    more of the quarter of games where the offset acts.
+  - The confidence was also too high for a read of this size: the
+    interval is ±21.5 nElo.
+- **Time a move:** within ±1% at both clocks, as predicted.
