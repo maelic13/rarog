@@ -323,11 +323,11 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host |
+| D.1.6 | RESEARCH | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host. **The interim cap, the stop at twice the target, passed its harm read** (RAR-R25, 2026-10-25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS). It lands as the default next, in its own engine commit |
 | D.1.6.2 | RESEARCH | I2 | Nothing lands: RAR-R23 failed. On `NO_CHANGE` a cleanup removes `TmFailHighTarget` and its test and the ten unused instruments, `AspKnownWinWindow` among them, at the fingerprint 13,987,223 |
 | D.1.6.3 | RESEARCH | V | RAR-R23 read 2026-10-24: **FAIL**. The offset alone against the defaults on one tune build read −2.3 ± 7.7 Elo at `3+0.03` and −11.1 ± 9.6 at `10+0.1` (−25.0 nElo, below the −18 threshold), with 0 faults, equal time a move and the wire live. The correctness reads had passed. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
-| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read |
+| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read. **Cascade half met 2026-10-25** by RAR-R25's probe on the stop at twice the target (no row at the maximum), once that stop lands; the rec2 half waits for D.1.5 |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
@@ -1056,6 +1056,16 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           `3+0.03` and 1,000 at `10+0.1`, harm rules −13 and −18 nElo.
           Both matches dry-ran clean. A pass makes it the default as an
           interim cap, re-read when the search fix lands.
+        - **RAR-R25 read 2026-10-25: PASS.**
+          - The probe ended rec1 and rec3 at `180000+2000` in 19.7 s and
+            15.7 s, against 43.2 s and the hard maximum off.
+          - `3+0.03` read +4.3 ± 8.3 Elo (+8.0 nElo), and `10+0.1` +4.9 ±
+            9.8 (+10.7 nElo). 0 faults.
+          - The landing is the default `TmFailHighTarget` 20000 in its own
+            engine commit, with the changelog entry, at an unchanged
+            fingerprint. It is not yet made.
+          - D.1.2.1's cascade half is met by the probe; its rec2 half stays
+            with D.1.5's proved-mate stop.
 
       The fit arm's lesson stands: a refused SPSA step and a 2-second idle
       window are preflight matters, not results.
