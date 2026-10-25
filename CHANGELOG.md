@@ -10,6 +10,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Fixed
+
+- **No more full-time-limit thinks in won endings.** In some won endings
+  the engine could spend its whole time limit on a single move. It now
+  plays the move once the search has run well past its target.
+
 ## [2.6.0] - 2026-10-22
 
 A new evaluation. Measured head to head against 2.5.0 with no adjudication,

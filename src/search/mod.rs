@@ -1035,13 +1035,14 @@ impl Searcher {
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }
-                    // Past a multiple of the soft target (off by default: the
-                    // cascades this capped are fixed in the search) a fail-high
-                    // ends the search on the move that failed high, with its
-                    // lower bound as the score: the re-searches that would
-                    // confirm it are what ran won endings to the hard maximum.
-                    // At the target itself the stop cut ordinary fail-highs
-                    // and cost Elo. Nothing better is discarded: the
+                    // Past a multiple of the soft target (twice it by default)
+                    // a fail-high ends the search on the move that failed high,
+                    // with its lower bound as the score: the re-searches that
+                    // would confirm it are what ran won endings to the hard
+                    // maximum. At the target itself the stop cut ordinary
+                    // fail-highs and cost Elo. It is checked only when a window
+                    // returns, so one window that never fails high still runs
+                    // to the maximum. Nothing better is discarded: the
                     // bound reaches beta, which lies above the score the window
                     // centred on or, after a fail-low pulled it down, above
                     // every move's bound from that fail-low. The main thread

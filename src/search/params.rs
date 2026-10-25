@@ -312,14 +312,14 @@ search_params! {
     /// Stability factor's floor. Seed 7160 (0.716).
     tm_stab_floor = 7_160, "TmStabFloor", 4000..=10000;  // 0.716
     /// The multiple of the soft target past which a root fail-high ends the
-    /// search on the move that failed high. Off by default: 10000000, a
-    /// thousand targets, lies past every maximum (at most 6.873 optima,
-    /// against a target of at least 0.0146 of one at the ranges' ends). The
-    /// cascades it capped are a search property and are fixed in the
-    /// search; at the target itself (10000) the stop ended ordinary single
-    /// fail-highs and cost about 15 Elo at `3+0.03`. The spin stays as the
-    /// control arm of that fix's probe and goes with it.
-    tm_fail_high_target = 10_000_000, "TmFailHighTarget", 10000..=10000000;  // off
+    /// search on the move that failed high, in ten-thousandths: twice the
+    /// target. A won ending's score can climb with every re-search, and
+    /// without the stop such a move ran to the hard maximum. At twice the
+    /// target it fires on well under 1% of searches. At the target itself
+    /// (10000) it ended ordinary single fail-highs and cost about 15 Elo at
+    /// `3+0.03`. 10000000, a thousand targets, lies past every maximum and
+    /// switches it off.
+    tm_fail_high_target = 20_000, "TmFailHighTarget", 10000..=10000000;  // 2.0
     /// Switch, in ten-thousandths of the soft target: once a completed
     /// iteration finds this much of the target spent, the following
     /// iterations no longer deepen; each is searched `3 (n + 1) / 4` plies
