@@ -48,6 +48,24 @@ fn main() {
         build.define("TB_NO_HW_POP_COUNT", None);
     }
 
+    // The C compiler's default instruction set is the toolchain's, not the
+    // tier's, and it moves with the toolchain: built on the `ubuntu-26.04`
+    // runner, the baseline asset carried 39 POPCNT, 101 BMI1, 281 BMI2 and
+    // 295 AVX instructions, which rustc's baseline target cannot emit, where
+    // the `ubuntu-24.04` build had none. So GNU and Clang get the tier's
+    // level by name, read from the same target features as the Rust. MSVC's
+    // x64 default is SSE2, the baseline itself.
+    let target_arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    if target_arch == "x86_64" && target_env != "msvc" {
+        if target_has_feature("avx2") && target_has_feature("bmi2") {
+            build.flag_if_supported("-march=x86-64-v3");
+        } else if target_has_feature("popcnt") && target_has_feature("sse4.2") {
+            build.flag_if_supported("-march=x86-64-v2");
+        } else {
+            build.flag("-march=x86-64");
+        }
+    }
+
     if target_env == "msvc" {
         build
             .cpp(true)
