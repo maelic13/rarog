@@ -54,3 +54,7 @@ e40738c	Colosseum repository commit (branch rarog-cli-0.4.0), the CLI 0.4.0 buil
 e91b8e63	Colosseum tournament ID (RAR-M63)
 effdc3fd	Stockfish master commit of 2026-10-17 (the connected-feature reading of RAR-R19)
 ffe556d	Reckless head of 2026-10-22 (the connected-feature reading of RAR-R19)
+12af143	Reckless commit of 2026-05-31, the oldest snapshot the 2.6.0 originality scans read
+02df47c54176e937	SHA-256 prefix of the Rarog 2.6.0 binary the originality review hashed
+b74ead5648cfa7a7	SHA-256 prefix of the Reckless binary the originality review hashed
+271b62dce0226789	SHA-256 prefix of the Stockfish 11 binary the originality review hashed
