@@ -323,9 +323,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | GAME_GATE | R3 | The root fail-high cascade fixed in the search and the evaluation (maintainer decisions 2026-10-23). Every arm that ended the probed stalls has cost Elo against its defaults: the four-part cluster's gate accepted H0 (RAR-R22: −7.4 ± 7.5 at `3+0.03`), and **the known-win offset alone failed its harm rule at `10+0.1`** (RAR-R23, 2026-10-24: −25.0 ± 21.5 nElo against −18; `3+0.03` −4.4 ± 15.2 passes). Nothing lands. **Maintainer decisions 2026-10-25:** research the cause, and keep the stop at twice the target open if it costs no strength. **The research card** points at the tree, not the window: Rarog's LMR correction term is uncapped and reduced moves search up to 4 plies deeper, past the line budget, while Basilisk's current head proves rec1's mate without its stop. Its zero-game tests wait for an idle host. **The interim cap, the stop at twice the target, passed its harm read** (RAR-R25, 2026-10-25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS). It landed as the default in `a79efe4`. **The card's zero-game reads (2026-10-25):** capping the correction term at one ply takes rec1 six plies deeper, but changes 24 of 40 bench positions, so it is a global change. Its equal-speed harm read **RAR-R26 passed** (−1.4 ± 9.0 Elo at `3+0.03`, +1.7 ± 11.5 at `10+0.1`). Its probe shows the cap and the stop cover each other (every row at or under its optimum), so the `[-5,5]` gate on the cap, with the stop in both arms, is next |
-| D.1.6.2 | RESEARCH | I2 | Nothing lands: RAR-R23 failed. On `NO_CHANGE` a cleanup removes `TmFailHighTarget` and its test and the ten unused instruments, `AspKnownWinWindow` among them, at the fingerprint 13,987,223 |
-| D.1.6.3 | GAME_GATE | V | **RAR-R27, registered 2026-10-25 before any game:** the LMR correction cap at one ply, the arm `7703768` (bench 11,480,295) against `d1`'s head `6253027`, both with the stop at twice the target. SPRT `[-5,5]` at `3+0.03`, cap 20,000 pairs; 1,000 games at `10+0.1`; the probe. Dry-run clean and maintainer-run (`run_r27.ps1 -Read probe\|gate\|ltc`). Earlier: RAR-R23 read 2026-10-24: **FAIL**. The offset alone against the defaults on one tune build read −2.3 ± 7.7 Elo at `3+0.03` and −11.1 ± 9.6 at `10+0.1` (−25.0 nElo, below the −18 threshold), with 0 faults, equal time a move and the wire live. The correctness reads had passed. The earlier road (RAR-R20 to RAR-R22) ended in H0 |
+| D.1.6 | READY_FOR_IMPLEMENTATION | R3 | The root fail-high cascade in won endings (maintainer decisions 2026-10-23, 2026-10-25). **Closes on the stop at twice the target**, `d1`'s default since `a79efe4` (RAR-R25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS), once D.1.6.2's cleanup lands. Every repair in the search or evaluation was read and none lands: the four-part cluster (RAR-R22, H0), the known-win offset (RAR-R23, harm at `10+0.1`), and the LMR correction cap at one ply (RAR-R27, H0 at −1.2 ± 3.0 Elo, although its probe passed). The research card's finding stands: the uncapped correction term drives the won-ending tree's growth and most deeper searches everywhere (RAR-R26). Retry trigger: an LMR refit with the correction slope free |
+| D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | The cleanup: remove the D.1.6 instruments no default uses (`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`, `AspDeltaSquareDiv`, `CoreLmrDeeperBudget`, `TmDepthFreeze`, `AspKnownWinWindow`, `MopupKnownWin`, `CoreLmrCorrectionCap` and the D.1.6 diag counters). A coordinate whose default is today's behaviour returns to its constant. `TmFailHighTarget` stays at twice the target. The fingerprint stays 13,987,223 |
 | D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read. **Cascade half met 2026-10-25** by RAR-R25's probe on the stop at twice the target (no row at the maximum), once that stop lands; the rec2 half waits for D.1.5 |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
@@ -1201,6 +1200,11 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           - **Prediction:** −1 ± 6 Elo.
           - **Dispositions:** H1 with the probe passing lands the cap and
             the cleanup; H0 closes D.1.6 on the stop.
+        - **RAR-R27 read 2026-10-26: H0**, −1.2 ± 3.0 Elo; `10+0.1` +1.7 ±
+          11.4; the probe PASS on both binaries. The cap does not land.
+          D.1.6 closes on the stop at twice the target after D.1.6.2's
+          cleanup. Retry trigger: an LMR refit with the correction slope
+          free.
         - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
           The research card (mechanism, interactions, invariants, falsifier)
           per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
@@ -1361,7 +1365,14 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           gate are RAR-R20's; the research recommends a fit of the
           aspiration and reduction constants around the cluster before the
           gate.
-        - **D.1.6.2 Implementation: the confined repair's landing, the known-win offset as the default, the instruments removed, the fingerprint re-declared — `I2`.**
+        - **D.1.6.2 Implementation: the cleanup, the unused D.1.6 instruments removed and the stop at twice the target kept — `I2`.**
+          **Re-scoped 2026-10-26 (RAR-R27, H0):** no repair lands. The step
+          removes the D.1.6 instruments no default uses, as D.1.6.2's
+          register row lists them. A coordinate whose default is today's
+          behaviour returns to its constant, `TmFailHighTarget` stays at
+          twice the target, and the fingerprint stays 13,987,223. It is
+          verified as a behaviour-neutral change by that fingerprint plus
+          the stop's test. The history follows.
           **Re-scoped 2026-10-24 to the offset alone (RAR-R23).** On its
           pass the landing on `d1` is:
           - `MopupKnownWin` 5826 as the default;
@@ -1397,7 +1408,16 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           `Aspiration` form, and the user-facing changelog entry (a fixed
           defect: the engine no longer runs a won ending into its hard
           maximum). On H0 nothing lands and the fit is the next step.
-        - **D.1.6.3 Gate: the confined repair's harm reads at equal speed, 2,000 games at `3+0.03` and 1,000 at `10+0.1`, the probe and the differential — `V`.**
+        - **D.1.6.3 Gate: the repairs' reads and gates, the probe and the differential — `V`, DONE 2026-10-26.**
+          **RAR-R27 read 2026-10-26: H0.**
+          - The LMR correction cap at one ply against `d1`'s head, both with
+            the stop: −1.2 ± 3.0 Elo (−2.2 ± 5.3 nElo) at 8,334 pairs, LLR
+            −2.99; `10+0.1` +1.7 ± 11.4; 0 faults.
+          - The probe passed on both binaries; on the PGO head the stop
+            alone ends every row (rec1 at `180000+2000` 1.39 × its
+            optimum).
+          - The cap does not land, and D.1.6 closes on the stop after
+            D.1.6.2's cleanup.
           **Registered 2026-10-24 as RAR-R23**, before any game:
           - **The read:** the offset alone (`MopupKnownWin=5826`) against
             the defaults on one tune build, `rarog-d16inst3-tune.exe`

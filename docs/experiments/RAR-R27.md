@@ -1,4 +1,4 @@
-# RAR-R27 — D.1.6.3: the gate of the LMR correction cap at one ply, on top of `d1`'s stop at twice the target — REGISTERED 2026-10-25, before any game
+# RAR-R27 — D.1.6.3: the gate of the LMR correction cap at one ply, on top of `d1`'s stop at twice the target — REGISTERED 2026-10-25, before any game; READ 2026-10-26: H0 (−1.2 ± 3.0 Elo), the probe PASS
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -103,3 +103,60 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   every row at or under its optimum. The PGO build crosses each iteration
   sooner, which moves which iteration meets the target; that is the most
   likely miss.
+
+## Results (2026-10-25/26, maintainer-run)
+
+The probe ran first (2026-10-25, its own idle check), then the SPRT, then
+the `10+0.1` read. Both matches had 0 faults and 0 time losses. The figures
+are the runner's final report lines (colosseum-cli 0.4.0).
+
+| Read | Elo | nElo | W/D/L (arm) | Pentanomial | Verdict | Host at launch |
+|---|---|---|---|---|---|---|
+| SPRT `3+0.03`, 8,334 pairs | **−1.2 ± 3.0** | **−2.2 ± 5.3** | 4066/8477/4125 | 186, 1974, 4069, 1923, 182 | **H0**, LLR −2.99 of −2.94 | 10.0% |
+| `10+0.1`, 1,000 games | +1.7 ± 11.4 | +3.3 ± 21.5 | 230/545/225 | 5, 114, 260, 113, 8 | — | 0.7% |
+
+- **Manifests:** `colosseum_sprt_rar-r27-gate_20261025_231002.manifest.txt`
+  (`games.pgn` `1065D109…3435C60A`) and
+  `colosseum_match_rar-r27-ltc_20261026_015648.manifest.txt`
+  (`5D464916…84F70D9D`), in `tools/results/`.
+- **Search, arm against head** (the manifests' `search:` lines):
+  - `3+0.03`: non-mate depth 13.19 against 13.16, 66.4 against 66.7 ms a
+    move, nps 2.33 against 2.38 M (−2.2%);
+  - `10+0.1`: 16.69 against 16.60, 221.6 against 223.3 ms, −2.3% nps.
+
+  At equal speed on one binary, RAR-R26 measured nps within 0.2%. So the
+  −2.2% is the PGO pair's or the tree's composition, and this entry cannot
+  separate the two.
+- **The probe** (`tm_rec_probe_r27.txt`; the verdict line reads PASS):
+
+| Clock, position | arm (cap + stop) | head (stop only) |
+|---|---|---|
+| `60000+600` rec1 | 0.76 × optimum | 0.87 |
+| `60000+600` rec3 | 0.51 | 0.94 |
+| `180000+2000` rec1 | 0.85 | 1.39 |
+| `180000+2000` rec3 | 0.41 | 0.89 |
+
+  No row of either binary reaches the maximum. On the PGO head the stop
+  alone ends rec3 at `180000+2000` at 0.89 × (1.10 × on the tune build in
+  RAR-R25), so the one-window gap did not show on this build.
+
+**Rule applied: H0.** The cap does not land. As frozen:
+- The won-ending tree's growth is accepted, and the stop at twice the
+  target, already `d1`'s default, remains the cap on the stalls. Both
+  binaries end every probed stall with it.
+- D.1.6 closes on the stop once the cleanup removes the unused D.1.6
+  instruments, `CoreLmrCorrectionCap` and its diag counters among them.
+- Retry trigger: a refit of the LMR terms with the correction slope free
+  (a search cluster, or F.6).
+- The arm's branch `d16-gate3` stays until the phase-close review of arm
+  branches; the recipe carries the arm.
+
+**Calibration.**
+- **Gate:** −1.2 Elo against the predicted −1 ± 6, as predicted. H0 was
+  given 0.30. A change near −1 to −2 Elo lands in `[-5,5]`'s H0 a third of
+  the time; that is the bracket's design, not a surprise.
+- **`ltc`:** +1.7 at or above the gate's −1.2, as predicted (0.6).
+- **Probe:** PASS, as predicted (0.75). The feared PGO shift moved the
+  head's rows down, not the arm's up.
+- **The miss was the instrument:** the arm's in-game nps fell 2.2% where
+  the equal-speed read showed none.
