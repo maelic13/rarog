@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read, now unblocked: D.1.6 closed 2026-10-26 on the stop at twice the target. `d1`'s head (`42b001f`: D.1.3's clock pieces at D.1.4's seeds plus the stop) against the 2.6.0 engine, registered before any game under AGENTS' repair case 2: 2,000 games at `3+0.03` and 2,000 at `10+0.1` with harm rules, 1,000 at four threads as a direction read, the probe, and the profile reads that tick D.1.2.1 and D.1.2.2. RAR-R24 already read the clock pieces alone (+8.0 ± 8.9, +14.3 ± 11.2), and RAR-R25 the stop |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read, now unblocked: D.1.6 closed 2026-10-26 on the stop at twice the target. `d1`'s head (`42b001f`: D.1.3's clock pieces at D.1.4's seeds plus the stop) against the 2.6.0 engine, registered before any game under AGENTS' repair case 2: 2,000 games at `3+0.03` and 2,000 at `10+0.1` with harm rules, 1,000 at four threads as a direction read, the probe, and the profile reads that tick D.1.2.1 and D.1.2.2. RAR-R24 already read the clock pieces alone (+8.0 ± 8.9, +14.3 ± 11.2), and RAR-R25 the stop. **Registered 2026-10-26 as RAR-R28** (`rarog-d1head3-pext-pgo.exe`, `6fcfac2`), all three matches dry-run clean; maintainer-run: `run_r28.ps1 -Read probe\|stc\|ltc\|4t\|profile` |
 | D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls. **The cascade half (rec1, rec3) is met:** D.1.6 closed on the stop at twice the target, which ends both under the maximum (RAR-R25, RAR-R27). The rec2 half, the proved-mate stop, ticks on D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
@@ -970,6 +970,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       - **Disposition:** the clock pieces stay on `d1` at their seeds.
         RAR-R22's −7.4 is not the clock's. A harm read accepts no gain, so
         this leaf's closing read after D.1.6 stands.
+      **The closing read, registered 2026-10-26 as RAR-R28**, before any
+      game:
+      - **Arms:** `d1`'s head `rarog-d1head3-pext-pgo.exe` (`6fcfac2`,
+        bench 13,987,223: the clock pieces at their seeds and the stop at
+        twice the target) against the 2.6.0 engine.
+      - **Reads:** 2,000 games at `3+0.03` and 2,000 at `10+0.1` with −13
+        nElo harm rules; 1,000 games at four threads as a direction read;
+        the probe on rec1–rec3; `tm_profile_d15.py` at horizon 50.
+      - **The ticks**, as D.1.2.1 and D.1.2.2 state them.
+      - **Predictions:** +12 ± 14 and +20 ± 16 nElo; four threads −2 ± 15
+        Elo.
+      - **Command:** `run_r28.ps1 -Read probe|stc|ltc|4t|profile`, all
+        three matches dry-run clean; maintainer-run.
     - **D.1.6 The root fail-high cascade in won endings: researched in the search, capped by the stop at twice the target — `R3` research, `I2`/`V` sub-steps, DONE 2026-10-26.**
       **Closed 2026-10-26.**
       - **The stalls end:** the fail-high stop at twice the soft target is
