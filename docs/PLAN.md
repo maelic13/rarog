@@ -323,10 +323,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.6 | READY_FOR_IMPLEMENTATION | R3 | The root fail-high cascade in won endings (maintainer decisions 2026-10-23, 2026-10-25). **Closes on the stop at twice the target**, `d1`'s default since `a79efe4` (RAR-R25: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`, probe PASS), once D.1.6.2's cleanup lands. Every repair in the search or evaluation was read and none lands: the four-part cluster (RAR-R22, H0), the known-win offset (RAR-R23, harm at `10+0.1`), and the LMR correction cap at one ply (RAR-R27, H0 at −1.2 ± 3.0 Elo, although its probe passed). The research card's finding stands: the uncapped correction term drives the won-ending tree's growth and most deeper searches everywhere (RAR-R26). Retry trigger: an LMR refit with the correction slope free |
-| D.1.6.2 | READY_FOR_IMPLEMENTATION | I2 | The cleanup: remove the D.1.6 instruments no default uses (`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`, `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`, `AspDeltaSquareDiv`, `CoreLmrDeeperBudget`, `TmDepthFreeze`, `AspKnownWinWindow`, `MopupKnownWin`, `CoreLmrCorrectionCap` and the D.1.6 diag counters). A coordinate whose default is today's behaviour returns to its constant. `TmFailHighTarget` stays at twice the target. The fingerprint stays 13,987,223 |
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix, harm reads at both controls, a four-thread read, the probe and the profile; registered when D.1.6 lands. RAR-R16's SPRT ended unresolved. **The clock pieces alone are read on their own by RAR-R24** (registered 2026-10-24, before any game): `d1`'s PGO head (`3f4dcf4`) against the 2.6.0 engine, 2,000 games at `3+0.03` and 1,000 at `10+0.1` with harm rules, plus the maximum-hitting rate. **Read 2026-10-24 (run before RAR-R23), no harm:** +8.0 ± 8.9 Elo at `3+0.03`, +14.3 ± 11.2 at `10+0.1`, 0 faults; d1head stalls in 38.0% of STC games against 20.5% with no measured cost. The clock pieces stay on `d1`; the closing read follows D.1.6 |
-| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls: rec1 and rec3 are D.1.6's (the cascade fixed in the search); rec2 is the proved-mate stop; ticks on D.1.6's probe and D.1.5's read. **Cascade half met 2026-10-25** by RAR-R25's probe on the stop at twice the target (no row at the maximum), once that stop lands; the rec2 half waits for D.1.5 |
+| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read, now unblocked: D.1.6 closed 2026-10-26 on the stop at twice the target. `d1`'s head (`42b001f`: D.1.3's clock pieces at D.1.4's seeds plus the stop) against the 2.6.0 engine, registered before any game under AGENTS' repair case 2: 2,000 games at `3+0.03` and 2,000 at `10+0.1` with harm rules, 1,000 at four threads as a direction read, the probe, and the profile reads that tick D.1.2.1 and D.1.2.2. RAR-R24 already read the clock pieces alone (+8.0 ± 8.9, +14.3 ± 11.2), and RAR-R25 the stop |
+| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls. **The cascade half (rec1, rec3) is met:** D.1.6 closed on the stop at twice the target, which ends both under the maximum (RAR-R25, RAR-R27). The rec2 half, the proved-mate stop, ticks on D.1.5's read |
 | D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
@@ -972,7 +970,22 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       - **Disposition:** the clock pieces stay on `d1` at their seeds.
         RAR-R22's −7.4 is not the clock's. A harm read accepts no gain, so
         this leaf's closing read after D.1.6 stands.
-    - **D.1.6 The root fail-high cascade fixed in the search: depth-reduced re-searches, from D.1's investigation — `R3` research, `I2`/`V` sub-steps.**
+    - **D.1.6 The root fail-high cascade in won endings: researched in the search, capped by the stop at twice the target — `R3` research, `I2`/`V` sub-steps, DONE 2026-10-26.**
+      **Closed 2026-10-26.**
+      - **The stalls end:** the fail-high stop at twice the soft target is
+        `d1`'s default (`a79efe4`). It read no harm against off (RAR-R25:
+        +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`), and on the
+        PGO build it ends every probed stall under the maximum (RAR-R27).
+      - **No repair in the search or evaluation lands:** RAR-R22 H0,
+        RAR-R23 harm at `10+0.1`, RAR-R27 H0 at −1.2 ± 3.0.
+      - **The cause is recorded, not fixed:** an uncapped LMR correction
+        term drives the won-ending tree's growth and most deeper searches
+        everywhere (RAR-R26).
+      - **Cleanup:** the research instruments are removed (`42b001f`),
+        and the fingerprint stays 13,987,223.
+      - **Retry trigger:** an LMR refit with the correction slope free.
+
+      The history follows.
       Rarog re-searches every root fail-high at full depth, so a cascade of
       k fail-highs costs k full iterations: rec1 ran nine re-searches to the
       hard maximum (32 s at `60000+600`, 104 s at `180000+2000`; RAR-R13),
@@ -1365,7 +1378,17 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           gate are RAR-R20's; the research recommends a fit of the
           aspiration and reduction constants around the cluster before the
           gate.
-        - **D.1.6.2 Implementation: the cleanup, the unused D.1.6 instruments removed and the stop at twice the target kept — `I2`.**
+        - **D.1.6.2 Implementation: the cleanup, the unused D.1.6 instruments removed and the stop at twice the target kept — `I2`, DONE 2026-10-26.**
+          **Done 2026-10-26 (`42b001f`):**
+          - The 13 instrument commits from `027a604` to `c4da889` are
+            reverted, `a79efe4` excepted: 680 lines removed, the stop
+            untouched.
+          - Bench is 13,987,223 / EBF 2.565 as before.
+          - fmt is clean, clippy with all features and targets has 0
+            warnings, and the tests pass (413 debug, 414 release, 0
+            failed; the six removed were the instruments' own).
+          - The `d16fix` SPSA group stays valid: `arms.txt` binds it to
+            its own arm.
           **Re-scoped 2026-10-26 (RAR-R27, H0):** no repair lands. The step
           removes the D.1.6 instruments no default uses, as D.1.6.2's
           register row lists them. A coordinate whose default is today's
