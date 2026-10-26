@@ -323,15 +323,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.2.1 | RESEARCH | R2 | Won-ending stalls. The probe half is met: no rec move at the maximum and rec2 in 5 ms (RAR-R28). The games half missed in RAR-R28: won moves at ≥ 0.9 × the maximum are 0.24% at `3+0.03` and 0.85% at `10+0.1`, against the 0.2% bar; every such game was won. The likeliest mechanism is the stop's gap, a single long window that never fails high. **Residue read 2026-10-26 (RAR-R28's addendum, zero games): no cost.** No residue move falls in a game not won, no later clock falls under 100 ms, and conversion is at most 13% longer. `d1`'s residue is a third of 2.6.0's at `10+0.1` (0.61% against 1.97%). **The research recommends closing D.1.2.1**: the 0.2% bar measured time, not a cost. The single-window fix is held with its trigger. Awaits the maintainer's decision |
-| D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); D.1.2.2 and D.1.2.3 done; closes with D.1.2.1 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
 ## Phase D — Clock, threads, robustness
 
-- **D.1 Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — `R2` investigation, `I2`/`V` sub-steps.** Audit the
+- **D.1 Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — `R2` investigation, `I2`/`V` sub-steps, DONE 2026-10-26.** **Maintainer decision 2026-10-26: closed, the residue accepted.** The stalls are solved for the vast majority and the rest is not harmful: the stop at twice the target ends every probed stall, and `d1`'s game residue is a third of 2.6.0's at `10+0.1` with no measured cost (RAR-R28 and its residue addendum). The single-window fix is held with its retry trigger, a measured cost. Audit the
   current clock (budget, overhead, `smp_reserve`; the root-confidence
   consumers are gone since B.1 and are not rebuilt) against the Reckless
   shape; implement the soft/hard bound model with the
@@ -398,7 +396,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       unchanged. The fix moves to D.1.2, which owns it, with these
       mechanisms and acceptance checks. RAR-R13's trigger pulls it forward
       again if a game record shows a cost.
-    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — `R2`.**
+    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — `R2`, DONE 2026-10-26.**
+      Closed 2026-10-26 with D.1.2.1, D.1.2.2 and D.1.2.3 done.
       The rest of D.1 as written above, after Phase C, starting from
       Phase C's head (D.1.1 changed nothing). **This step owns the fix of
       D.1.1's three behaviours** (RAR-R13,
@@ -485,7 +484,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
         mate stop" is corrected there; rec2's `mate 5` lies outside its rule.
       The decision is one clock-only cluster (D.1.3), one fit (D.1.4) and
       one gate (D.1.5); the addenda's findings:
-        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.**
+        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`, DONE 2026-10-26.**
+          **Maintainer decision 2026-10-26: closed, the residue accepted.** The stalls are solved for the vast majority and the rest is not harmful: the stop at twice the target ends every probed stall, and `d1`'s game residue is a third of 2.6.0's at `10+0.1` with no measured cost (RAR-R28 and its residue addendum). The single-window fix is held with its retry trigger, a measured cost.
           Research closed 2026-10-22: the fix is two cluster items, a
           proved-mate stop (a clock search ends after a completed iteration
           whose root mate for the side to move has held with the same move
