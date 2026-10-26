@@ -323,10 +323,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.5 | READY_FOR_IMPLEMENTATION | V | D.1's closing read, now unblocked: D.1.6 closed 2026-10-26 on the stop at twice the target. `d1`'s head (`42b001f`: D.1.3's clock pieces at D.1.4's seeds plus the stop) against the 2.6.0 engine, registered before any game under AGENTS' repair case 2: 2,000 games at `3+0.03` and 2,000 at `10+0.1` with harm rules, 1,000 at four threads as a direction read, the probe, and the profile reads that tick D.1.2.1 and D.1.2.2. RAR-R24 already read the clock pieces alone (+8.0 ± 8.9, +14.3 ± 11.2), and RAR-R25 the stop. **Registered 2026-10-26 as RAR-R28** (`rarog-d1head3-pext-pgo.exe`, `6fcfac2`), all three matches dry-run clean; maintainer-run: `run_r28.ps1 -Read probe\|stc\|ltc\|4t\|profile` |
-| D.1.2.1 | READY_FOR_IMPLEMENTATION | R2 | Won-ending stalls. **The cascade half (rec1, rec3) is met:** D.1.6 closed on the stop at twice the target, which ends both under the maximum (RAR-R25, RAR-R27). The rec2 half, the proved-mate stop, ticks on D.1.5's read |
-| D.1.2.2 | READY_FOR_IMPLEMENTATION | R2 | The forfeit margin is a horizon question: the sub-second contraction is a cluster item, the reserve stays; ticks on D.1.5's reads |
-| D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); closes with D.1.5 |
+| D.1.2.1 | RESEARCH | R2 | Won-ending stalls. The probe half is met: no rec move at the maximum and rec2 in 5 ms (RAR-R28). The games half missed in RAR-R28: won moves at ≥ 0.9 × the maximum are 0.24% at `3+0.03` and 0.85% at `10+0.1`, against the 0.2% bar; every such game was won. The likeliest mechanism is the stop's gap, a single long window that never fails high. The question is whether that residue costs anything, or whether the bar was the wrong measure of a defect with no measured cost |
+| D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); D.1.2.2 and D.1.2.3 done; closes with D.1.2.1 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
@@ -512,7 +510,12 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
           rec3 under the hard maximum with no clock stop, and D.1.5's
           closing read shows rec2 under 2 s and the won and mate shares at
           ≥ 0.9 × the maximum below 0.2%.
-        - **D.1.2.2 The forfeit margin against OS holds — `R2`.**
+        - **D.1.2.2 The forfeit margin against OS holds — `R2`, DONE 2026-10-26.**
+          **Ticked 2026-10-26 by RAR-R28:**
+          - no candidate time loss in 5,000 games;
+          - the clock-floor median 429 ms at `3+0.03`;
+          - no game under 100 ms, against the 2.6.0 engine's 680 of
+            2,000.
           Research closed 2026-10-22: the margin is a horizon question. The
           cluster contracts the horizon below one second of clock
           (`mtg = min(50, ⌊clock_s × TmHorizonPerSec⌋)`, seed 50, a fit
@@ -818,7 +821,19 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       rounded centres, and block 2 is abandoned. Another clock fit is
       registered only if D.1.5 accepts H1 at +10 Elo or more, from the gated
       head (RAR-R15, *Maintainer decision 2026-10-23*).
-    - **D.1.5 The clock gate, D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix; harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — `V`.**
+    - **D.1.5 The clock gate, D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix; harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — `V`, DONE 2026-10-26.**
+      **Done 2026-10-26 (RAR-R28): no harm.**
+      - `d1`'s head against the 2.6.0 engine read +1.2 ± 8.9 Elo at
+        `3+0.03` and −0.2 ± 7.8 at `10+0.1` (2,000 games each), and
+        −8.0 ± 11.3 at four threads. 0 faults, and 3–5% less time a
+        move.
+      - The probe passes, with rec2 in 5 ms where 2.6.0 runs to the
+        maximum.
+      - D.1's clock work is kept for 2.7.0. D.1.2.2 ticks.
+      - D.1.2.1 misses its won share at ≥ 0.9 × the maximum (0.24%,
+        0.85%; every game won) and returns to research.
+
+      The history follows.
       Registered as its own ledger entry before any game, with the packet's
       prediction re-frozen at the fitted values: the fitted cluster against
       the head, Colosseum `sprt-default`, `[0,3]` nElo, `3+0.03`, one
